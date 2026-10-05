@@ -41,6 +41,9 @@ export const ASA_DELTA_ATRITO_AR = 0.5;
 export const ESCALADA_VEL = 1.85;
 export const ESCALADA_MANTLE_EPS = 0.12;
 export const ESCALADA_IMPULSO_SOLTAR = 2.8;
+/** Mantle: arco suave pro topo (em vez de teleporte). */
+export const ESCALADA_MANTLE_DUR = 0.32;
+export const ESCALADA_MANTLE_ARCO = 0.42;
 
 /** Stamina (unidades arbitrárias). */
 export const STAMINA_MAX = 100;

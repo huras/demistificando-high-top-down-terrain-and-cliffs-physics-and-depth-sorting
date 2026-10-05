@@ -60,7 +60,7 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
     camera3d.yaw = facingYaw + Math.PI;
   }
 
-  const elev = (corpo.elevacao ?? corpo.z) + (corpo.hopLift || 0);
+  const elev = corpo.elevacao ?? corpo.z + (corpo.hopLift || 0);
   const la = CAMERA3D_LOOKAHEAD;
   const tx = corpo.x + (corpo.vx || 0) * la;
   const tz = corpo.y + (corpo.vy || 0) * la;

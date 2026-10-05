@@ -106,6 +106,10 @@ export function atualizarVisualAlvoEscalada(corpo, dt = 1 / 60) {
 function detectarAlvoBruto(corpo) {
   if (!corpo) return null;
 
+  if (corpo.mantle) {
+    return { cx: corpo.mantle.cx, cy: corpo.mantle.cy, z: corpo.mantle.zTopo };
+  }
+
   if (corpo.escalando && corpo.escalada) {
     return alvoNaEscalada(corpo);
   }

@@ -97,6 +97,7 @@ async function iniciar() {
       corpo.vz = 0;
       corpo.pulo = null;
       corpo.escalada = null;
+      corpo.mantle = null;
       corpo.pulando = false;
       corpo.planando = false;
       corpo.escalando = false;

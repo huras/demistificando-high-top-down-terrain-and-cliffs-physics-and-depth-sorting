@@ -16,6 +16,7 @@ import { atualizarCorrida } from "./corrida.js";
 import {
   anexarEscalada,
   atualizarEscalada,
+  atualizarMantle,
   soltarEscalada,
   tentarEscalar,
 } from "./escalada.js";
@@ -48,6 +49,7 @@ export function criarCorpo(spawn) {
     escalando: false,
     pulo: null,
     escalada: null,
+    mantle: null,
     travaEscalada: null,
     travaPosMantle: null,
     hopLift: 0,
@@ -71,6 +73,14 @@ export function criarCorpo(spawn) {
 export function atualizarMovimento(corpo, dt) {
   let { dx, dy } = vetorMovimento();
 
+  // —— Mantle: arco pro topo (bloqueia resto do input) ——
+  if (corpo.mantle) {
+    const ainda = atualizarMantle(corpo, dt);
+    corpo.andando = false;
+    if (ainda) return;
+    // pousou — continua o frame no chão com travaPosMantle
+  }
+
   // —— Escalando: WASD na face; Space ou E/F solta ——
   if (corpo.escalando && corpo.escalada) {
     const apertouPulo = teclaAgora("Space");
@@ -83,14 +93,13 @@ export function atualizarMovimento(corpo, dt) {
       // continua o frame na queda
     } else {
       corpo.hopLift = atualizarEscalada(corpo, dt, dx, dy);
-      if (corpo.escalando) {
+      if (corpo.escalando || corpo.mantle) {
         corpo.andando = false;
         corpo.vx = 0;
         corpo.vy = 0;
         if (dx !== 0 || dy !== 0) corpo.animT += dt;
         return;
       }
-      // mantle neste frame — segue pro chão com travaPosMantle
     }
   }
 

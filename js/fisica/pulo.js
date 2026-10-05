@@ -19,7 +19,7 @@ export function registrarBufferPulo(corpo, apertou) {
 }
 
 export function podeIniciarPulo(corpo) {
-  if (corpo.escalando || corpo.planando) return false;
+  if (corpo.escalando || corpo.planando || corpo.mantle) return false;
   if (corpo.noChao) return true;
   return corpo.coyoteT > 0;
 }

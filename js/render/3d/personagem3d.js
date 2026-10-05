@@ -76,7 +76,8 @@ export function criarPersonagem3d() {
     grupo,
     atualizar(corpoEstado) {
       const elev =
-        (corpoEstado.elevacao ?? corpoEstado.z) + (corpoEstado.hopLift || 0);
+        corpoEstado.elevacao ??
+        corpoEstado.z + (corpoEstado.hopLift || 0);
       grupo.position.set(corpoEstado.x, elev, corpoEstado.y);
 
       const ang = Math.atan2(corpoEstado.dirX || 0, corpoEstado.dirY || 1);
