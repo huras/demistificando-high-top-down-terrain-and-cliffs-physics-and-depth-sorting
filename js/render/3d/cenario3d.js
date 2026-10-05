@@ -16,9 +16,14 @@ let estado = null;
 
 /**
  * Inicializa cena Three.js uma vez (fica quente entre toggles).
+ * @param {HTMLCanvasElement} canvas
+ * @param {object} [atlas]
  */
-export function iniciarCenario3d(canvas) {
-  if (estado?.pronto) return estado;
+export function iniciarCenario3d(canvas, atlas = null) {
+  if (estado?.pronto) {
+    if (atlas) aplicarAtlasNaCena(atlas);
+    return estado;
+  }
 
   const largura = canvas.width || 960;
   const altura = canvas.height || 540;
@@ -35,18 +40,21 @@ export function iniciarCenario3d(canvas) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.12;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a100c);
-  scene.fog = new THREE.FogExp2(0x0a100c, 0.028);
+  scene.background = new THREE.Color(0x1a1512);
+  scene.fog = new THREE.Fog(0x2a221c, 36, 85);
 
   const camera3d = criarCamera3d(largura / altura);
 
-  const hemi = new THREE.HemisphereLight(0xb8d4ff, 0x3a2818, 0.55);
+  const hemi = new THREE.HemisphereLight(0xf5e6c8, 0x292524, 0.35);
   scene.add(hemi);
 
-  const sol = new THREE.DirectionalLight(0xfff2d6, 1.35);
+  const ambient = new THREE.AmbientLight(0xc4b5a5, 0.32);
+  scene.add(ambient);
+
+  const sol = new THREE.DirectionalLight(0xffe4c4, 1.55);
   sol.position.set(28, 42, 18);
   sol.castShadow = true;
   sol.shadow.mapSize.set(2048, 2048);
@@ -56,26 +64,32 @@ export function iniciarCenario3d(canvas) {
   sol.shadow.camera.right = 40;
   sol.shadow.camera.top = 40;
   sol.shadow.camera.bottom = -40;
-  sol.shadow.bias = -0.00025;
+  sol.shadow.bias = -0.0003;
   sol.shadow.normalBias = 0.04;
   scene.add(sol);
   scene.add(sol.target);
 
-  const fill = new THREE.DirectionalLight(0x6a8aaa, 0.25);
+  const fill = new THREE.DirectionalLight(0x9db4c8, 0.42);
   fill.position.set(-20, 12, -10);
   scene.add(fill);
 
-  const terreno = criarTerrenoMalha();
-  scene.add(terreno.mesh);
+  const rim = new THREE.DirectionalLight(0xf0a060, 0.58);
+  rim.position.set(2, 8, -18);
+  scene.add(rim);
 
-  const personagem = criarPersonagem3d();
+  const terreno = criarTerrenoMalha(atlas);
+  scene.add(terreno.grupo);
+
+  const personagem = criarPersonagem3d({
+    nome: "personagem",
+    sprite: atlas?.jogador ?? null,
+  });
   scene.add(personagem.grupo);
 
   const agente3d = criarPersonagem3d({
     nome: "agente",
-    cor: 0x5ec8e8,
-    emissive: 0x0a3048,
-    detalhe: 0xe8a040,
+    sprite: atlas?.jogador ?? null,
+    tint: 0x5ec8e8,
   });
   scene.add(agente3d.grupo);
 
@@ -88,6 +102,7 @@ export function iniciarCenario3d(canvas) {
     scene,
     camera3d,
     sol,
+    rim,
     terreno,
     personagem,
     agente3d,
@@ -97,7 +112,17 @@ export function iniciarCenario3d(canvas) {
     yaw: () => yawCamera(camera3d),
   };
 
+  if (atlas) aplicarAtlasNaCena(atlas);
+
   return estado;
+}
+
+function aplicarAtlasNaCena(atlas) {
+  if (!estado) return;
+  estado.terreno.aplicarAtlas?.(atlas);
+  estado.personagem.definirSprite?.(atlas?.jogador ?? null);
+  estado.agente3d.definirSprite?.(atlas?.jogador ?? null);
+  estado.terreno.aplicarVisual(usarTiles(atlas));
 }
 
 function criarMarcadorAlvoEscalada() {
@@ -177,13 +202,16 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   sincronizarVisualTerreno(atlas);
   seguirAlvo3d(estado.camera3d, corpo, dt);
-  estado.personagem.atualizar(corpo);
-  if (agente && estado.agente3d) estado.agente3d.atualizar(agente);
+  estado.personagem.atualizar(corpo, estado.camera3d.cam);
+  if (agente && estado.agente3d) {
+    estado.agente3d.atualizar(agente, estado.camera3d.cam);
+  }
   estado.alvoEscalada.atualizar(corpo, dt);
 
   // sombra do sol acompanha o jogador (frustum apertado = qualidade)
   estado.sol.target.position.set(corpo.x, corpo.elevacao ?? corpo.z, corpo.y);
   estado.sol.position.set(corpo.x + 28, (corpo.elevacao ?? corpo.z) + 42, corpo.y + 18);
+  estado.rim.position.set(corpo.x + 2, (corpo.elevacao ?? corpo.z) + 8, corpo.y - 18);
 
   estado.renderer.render(estado.scene, estado.camera3d.cam);
   return estado;

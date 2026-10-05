@@ -160,7 +160,7 @@ async function iniciar() {
 
 function garantir3d() {
   if (cenario3dPronto) return obterCenario3d();
-  const cen = iniciarCenario3d(canvas3d);
+  const cen = iniciarCenario3d(canvas3d, atlas);
   cenario3dPronto = true;
   return cen;
 }
