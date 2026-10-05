@@ -165,11 +165,6 @@ function atualizarNoChao(corpo, dx, dy, dt) {
     return;
   }
 
-  // degrau +1: sobe andando (sem Space)
-  if (zChao > corpo.z) {
-    corpo.acao = `degrau → z${zChao}`;
-  }
-
   corpo.z = zChao;
   corpo.elevacao = zChao;
   corpo.hopLift = 0;

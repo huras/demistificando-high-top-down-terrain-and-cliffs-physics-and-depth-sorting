@@ -1,10 +1,10 @@
 /**
  * Heightmap de testes — muitas combinações de cliff.
- * Base z=1; montanha Minecraft: escadas N/E/W + face sul contínua ×16.
+ * Base z=1; duas montanhas Minecraft: sul ×1 e sul ×2, com vão entre elas.
  */
 
-export const COLUNAS = 64;
-export const LINHAS = 42;
+export const COLUNAS = 80;
+export const LINHAS = 56;
 
 function criarGrade(cols, rows, base = 1) {
   const g = new Array(rows);
@@ -37,12 +37,14 @@ function pilar(g, x, y, z) {
  * Montanha estilo Minecraft:
  * - topo ≥3×3 em `topZ` (base 1 → topZ=17 = 16 de altura)
  * - face leste do topo = parede contínua (queda topZ−1)
- * - norte / sul / oeste = escadas de 1 em 1
+ * - norte / oeste = escadas de 1 célula por degrau
+ * - sul = `passoSul` células de chão por degrau (1 = clássico, 2 = mais fundo)
  */
-function montanhaMinecraft(g, cx0, cy0, cx1, cy1, topZ) {
+function montanhaMinecraft(g, cx0, cy0, cx1, cy1, topZ, passoSul = 1) {
   const degraus = topZ - 1; // 16 se topZ=17
+  const passo = Math.max(1, passoSul | 0);
   const yMin = cy0 - (degraus - 1);
-  const yMax = cy1 + (degraus - 1);
+  const yMax = cy1 + (degraus - 1) * passo;
   const xMin = cx0 - (degraus - 1);
   // sem expansão a leste — fatia leste = muro contínuo
 
@@ -50,8 +52,9 @@ function montanhaMinecraft(g, cx0, cy0, cx1, cy1, topZ) {
     for (let x = xMin; x <= cx1; x++) {
       if (y < 0 || y >= g.length || x < 0 || x >= g[0].length) continue;
       const dx = x < cx0 ? cx0 - x : 0; // só oeste
-      const dy = y < cy0 ? cy0 - y : y > cy1 ? y - cy1 : 0; // N e S
-      const dist = Math.max(dx, dy);
+      const dyN = y < cy0 ? cy0 - y : 0;
+      const dyS = y > cy1 ? Math.ceil((y - cy1) / passo) : 0;
+      const dist = Math.max(dx, dyN, dyS);
       const z = topZ - dist;
       if (z > 1) g[y][x] = Math.max(g[y][x], z);
     }
@@ -116,9 +119,14 @@ export const ALTURAS = (() => {
   // —— Faixa fina z2 (muro longo N-S) ——
   preencher(g, 12, 10, 12, 28, 2);
 
-  // —— Leste: montanha — escadas N/S/W + fatia leste contínua ×16 ——
-  // Topo 4×4 em z17. Face leste = muro contínuo (testar N e S nas escadas).
-  montanhaMinecraft(g, 48, 18, 51, 21, 17);
+  // —— Montanha A (clássica): sul com 1 passo de chão ——
+  // Topo 48..51 × 18..21. Muro leste em x=51. Escadas N/W/S×1.
+  montanhaMinecraft(g, 48, 18, 51, 21, 17, 1);
+
+  // Vão de 5 tiles (x=52..56) entre o muro da A e a escada oeste da B.
+  // —— Montanha B: mesma forma, sul com 2 passos de chão ——
+  // Oeste da B começa em x=57 → topo em 72..75 (15 células de escada oeste).
+  montanhaMinecraft(g, 72, 18, 75, 21, 17, 2);
 
   if (g.length !== LINHAS || g[0].length !== COLUNAS) {
     throw new Error("Heightmap com dimensões inválidas");
@@ -146,10 +154,18 @@ export const PROPS = [
   { id: "placa-canion", x: 32.5, y: 29.3, tipo: "placa", texto: "CÂNION" },
   { id: "placa-escada", x: 38.5, y: 18.3, tipo: "placa", texto: "ESCADA" },
   { id: "placa-muro", x: 12.5, y: 14.5, tipo: "placa", texto: "MURO" },
+
+  // Montanha A (sul ×1)
   { id: "placa-mc-leste", x: 52.4, y: 19.5, tipo: "placa", texto: "MURO×16" },
-  { id: "placa-mc-cume", x: 49.5, y: 19.5, tipo: "placa", texto: "CUME" },
+  { id: "placa-mc-cume", x: 49.5, y: 19.5, tipo: "placa", texto: "CUME×1" },
   { id: "placa-mc-n", x: 49.5, y: 5.4, tipo: "placa", texto: "ESC N" },
-  { id: "placa-mc-s", x: 49.5, y: 34.4, tipo: "placa", texto: "ESC S" },
+  { id: "placa-mc-s", x: 49.5, y: 34.4, tipo: "placa", texto: "ESC S×1" },
+
+  // Montanha B (sul ×2) — 5 tiles a leste da A
+  { id: "placa-mc2-leste", x: 76.4, y: 19.5, tipo: "placa", texto: "MURO×16" },
+  { id: "placa-mc2-cume", x: 73.5, y: 19.5, tipo: "placa", texto: "CUME×2" },
+  { id: "placa-mc2-n", x: 73.5, y: 5.4, tipo: "placa", texto: "ESC N" },
+  { id: "placa-mc2-s", x: 73.5, y: 42.4, tipo: "placa", texto: "ESC S×2" },
 
   { id: "arv-a", x: 35.2, y: 3.5, tipo: "arvore" },
   { id: "mata-a", x: 34.2, y: 3.8, tipo: "mata" },

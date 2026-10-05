@@ -6,9 +6,6 @@ export const EPS_SORT = 0.001;
 
 export const RAIO_CORPO = 0.28;
 
-/** Subir andando (estilo Minecraft) — 1 degrau sem pulo/escalada. */
-export const DEGRAU_ANDAR = 1;
-
 /** Corrida (células/s e células/s²). */
 export const VELOCIDADE_MAX = 5.4;
 export const ACELERACAO_CHAO = 32;
