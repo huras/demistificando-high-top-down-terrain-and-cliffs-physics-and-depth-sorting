@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { consultarAlvoEscalada } from "../alvoEscalada.js";
+import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
 import { teclaBaixa } from "../../entrada/teclado.js";
 import {
@@ -122,8 +122,8 @@ function criarMarcadorAlvoEscalada() {
 
   return {
     mesh,
-    atualizar(corpo) {
-      const alvo = consultarAlvoEscalada(corpo);
+    atualizar(corpo, dt = 1 / 60) {
+      const alvo = atualizarVisualAlvoEscalada(corpo, dt);
       if (!alvo) {
         mesh.visible = false;
         return;
@@ -131,7 +131,7 @@ function criarMarcadorAlvoEscalada() {
       mesh.visible = true;
       const pulso = 0.92 + 0.08 * Math.sin(performance.now() * 0.006);
       mesh.scale.setScalar(pulso);
-      mesh.position.set(alvo.cx + 0.5, alvo.z + 0.04, alvo.cy + 0.5);
+      mesh.position.set(alvo.x, (alvo.vz ?? alvo.z) + 0.04, alvo.y);
     },
   };
 }
@@ -173,7 +173,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas) {
   sincronizarVisualTerreno(atlas);
   seguirAlvo3d(estado.camera3d, corpo, dt);
   estado.personagem.atualizar(corpo);
-  estado.alvoEscalada.atualizar(corpo);
+  estado.alvoEscalada.atualizar(corpo, dt);
 
   // sombra do sol acompanha o jogador (frustum apertado = qualidade)
   estado.sol.target.position.set(corpo.x, corpo.elevacao ?? corpo.z, corpo.y);
