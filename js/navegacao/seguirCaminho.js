@@ -115,8 +115,50 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const startCx = Math.floor(agente.x);
   const startCy = Math.floor(agente.y);
   const goalMudou = goalCx !== nav.goalCx || goalCy !== nav.goalCy;
+  const liderZ = lider.elevacao ?? lider.z ?? 0;
+  const ocupadoAr = planando || naParede || noMantle || !agente.noChao;
 
-  // Mid-glide: não repath. Climb: repath se o líder mudou de célula (pode virar asa)
+  // No ar com asa (ou caindo pra abrir): segue o líder ao vivo — não o pouso antigo do A*
+  if (
+    !!perfil.podePlanar &&
+    !naParede &&
+    !noMantle &&
+    !agente.noChao &&
+    (planando || nav.planarAlvo)
+  ) {
+    nav.planarAlvo = {
+      x: lider.x,
+      y: lider.y,
+      cx: goalCx,
+      cy: goalCy,
+      z: Math.floor(liderZ || 1),
+    };
+    nav.climbAlvo = null;
+    // Path do chão fica obsoleto no ar — ao pousar pede rota nova daqui
+    nav.path = null;
+    nav.stuckT = 0;
+    nav.lastX = agente.x;
+    nav.lastY = agente.y;
+    const dxL = lider.x - agente.x;
+    const dyL = lider.y - agente.y;
+    const dL = Math.hypot(dxL, dyL) || 1;
+    const zChaoAr = alturaSobPes(agente.x, agente.y);
+    const folgaAr = agente.elevacao - (zChaoAr > 0 ? zChaoAr : 0);
+    // Fecha asa só perto do líder e quase no chão; senão pousa natural com a asa
+    const soltarAsa =
+      planando && dist <= AGENTE_DIST_PARAR * 1.35 && folgaAr <= 1.15;
+    return {
+      ix: dxL / dL,
+      iy: dyL / dL,
+      querPulo: false,
+      querPlanar: !soltarAsa,
+      querEscalar: false,
+      soltarAsa,
+      soltarParede: false,
+    };
+  }
+
+  // Mid-glide: não repath. No chão/climb: repath se o líder mudou de célula
   if (!planando) {
     if (goalMudou || (!nav.path && nav.estado !== "buscando")) {
       pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
@@ -186,10 +228,10 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     nav.planarAlvo = null;
     nav.climbAlvo = null;
     if (nav.estado === "semCaminho") {
-      return idleNav({ soltarAsa: planando });
+      return idleNav();
     }
     if (!ocupadoAr) pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
-    return idleNav({ soltarAsa: planando });
+    return idleNav();
   }
 
   const wp = nav.path.cells[nav.idx];
@@ -213,7 +255,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
 
   if (segmentoGlide) {
     nav.planarAlvo = { x: tx, y: ty, cx: wp.cx, cy: wp.cy, z: zWp };
-  } else if (!planando && !naParede) {
+  } else if (!naParede) {
     nav.planarAlvo = null;
   }
 
@@ -223,24 +265,12 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     nav.climbAlvo = null;
   }
 
-  const distPouso = nav.planarAlvo
-    ? Math.hypot(nav.planarAlvo.x - agente.x, nav.planarAlvo.y - agente.y)
-    : Infinity;
-  const sobrePouso =
-    planando &&
-    nav.planarAlvo &&
-    (distPouso < 0.75 ||
-      (Math.floor(agente.x) === nav.planarAlvo.cx &&
-        Math.floor(agente.y) === nav.planarAlvo.cy));
-
-  let querPlanar = !!perfil.podePlanar && segmentoGlide && !sobrePouso;
-  if (planando && !sobrePouso && nav.planarAlvo) querPlanar = true;
+  let querPlanar = !!perfil.podePlanar && segmentoGlide;
 
   // Soltar parede → asa (path pediu glide, ou líder bem mais baixo — mesmo com climb no path)
   const folgaParede = naParede
     ? agente.elevacao - (agente.escalada?.zBase ?? zChaoPes)
     : 0;
-  const liderZ = lider.elevacao ?? lider.z ?? 0;
   const liderMaisBaixo = liderZ <= agente.elevacao - 2.5;
   const soltarParede =
     naParede &&
@@ -250,35 +280,19 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
 
   if (soltarParede) {
     nav.climbAlvo = null;
-    if (!segmentoGlide || !nav.planarAlvo) {
-      nav.planarAlvo = {
-        x: lider.x,
-        y: lider.y,
-        cx: goalCx,
-        cy: goalCy,
-        z: Math.floor(liderZ || 1),
-      };
-    }
+    nav.planarAlvo = {
+      x: lider.x,
+      y: lider.y,
+      cx: goalCx,
+      cy: goalCy,
+      z: Math.floor(liderZ || 1),
+    };
     querPlanar = true;
   }
 
-  // No ar com alvo de pouso: mantém asa e não reagarra a parede
-  const caindoPraAsa =
-    !!perfil.podePlanar &&
-    !!nav.planarAlvo &&
-    !sobrePouso &&
-    !agente.noChao &&
-    !naParede &&
-    !noMantle;
-  if (caindoPraAsa) querPlanar = true;
-
-  const soltarAsa = !!sobrePouso;
   // querEscalar = path ainda quer subir; não “prende” só porque já está na parede
   const querEscalar =
-    (segmentoClimb || noMantle) &&
-    !soltarParede &&
-    !querPlanar &&
-    !caindoPraAsa;
+    (segmentoClimb || noMantle) && !soltarParede && !querPlanar;
 
   const prog = Math.hypot(agente.x - nav.lastX, agente.y - nav.lastY);
   if (!planando && !naParede && !noMantle && !segmentoClimb) {
@@ -323,7 +337,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     querPulo,
     querPlanar: querPlanar || soltarParede,
     querEscalar,
-    soltarAsa,
+    soltarAsa: false,
     soltarParede,
   };
 }
