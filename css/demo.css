@@ -170,6 +170,16 @@ kbd {
   color: var(--texto);
 }
 
+.estado dd[data-status="ATRÁS"] {
+  color: var(--aviso);
+  font-weight: 600;
+}
+
+.estado dd[data-status="NA FRENTE"] {
+  color: var(--destaque);
+  font-weight: 600;
+}
+
 .regras,
 .prova {
   margin: 0;

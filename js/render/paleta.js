@@ -24,6 +24,8 @@ export const CORES = Object.freeze({
   grade: "rgba(0, 0, 0, 0.08)",
   debug: "rgba(255, 220, 80, 0.9)",
   debugStroke: "rgba(255, 220, 80, 0.5)",
+  celulaJogador: "rgba(255, 255, 255, 0.95)",
+  celulaJogadorGlow: "rgba(120, 220, 255, 0.35)",
 });
 
 export function coresDoTopo(z) {

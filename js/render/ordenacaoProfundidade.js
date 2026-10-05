@@ -8,6 +8,19 @@ export function chaveProfundidade(y, z = 0) {
   return y + z * EPS_SORT;
 }
 
+/** Topo da célula — atrás da face da mesma célula. */
+export function chaveTopo(cy, z) {
+  return chaveProfundidade(cy + 0.9, z);
+}
+
+/**
+ * Face sul: ancora no lip sul da célula alta (cy+0.99).
+ * Norte (y menor) = atrás; sul no chão baixo (y > cy+1) = na frente.
+ */
+export function chaveFaceSul(cy, _queda, z) {
+  return chaveProfundidade(cy + 0.99, z);
+}
+
 export function criarListaProfundidade() {
   return { itens: [] };
 }

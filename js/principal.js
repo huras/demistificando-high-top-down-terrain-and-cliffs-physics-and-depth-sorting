@@ -59,7 +59,7 @@ function loop(agora) {
 
   atualizarMovimento(corpo, dt);
   seguirAlvo(camera, corpo.x, corpo.y, corpo.z);
-  atualizarPainel(corpo);
+  const ocl = atualizarPainel(corpo);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -68,11 +68,11 @@ function loop(agora) {
 
   aplicarCamera(ctx, camera);
   limparLista(lista);
-  empilharTerreno(lista, atlas, debug);
+  empilharTerreno(lista, atlas, debug, debug ? ocl?.face : null);
   empilharPersonagem(lista, atlas, corpo);
   desenharLista(lista, ctx);
 
-  desenharOverlayAjuda(ctx, camera, debug);
+  desenharOverlayAjuda(ctx, camera, debug, corpo, ocl);
 
   requestAnimationFrame(loop);
 }

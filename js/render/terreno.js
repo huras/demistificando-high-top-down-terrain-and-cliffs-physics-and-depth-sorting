@@ -2,32 +2,45 @@ import { ESCALA, FACE_H, TILE } from "../config.js";
 import { alturaEm, quedaSul } from "../mundo/altura.js";
 import { ALTURAS, COLUNAS, LINHAS, PROPS } from "../mundo/mapaDemo.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
-import { chaveProfundidade, empilhar } from "./ordenacaoProfundidade.js";
+import {
+  chaveFaceSul,
+  chaveProfundidade,
+  chaveTopo,
+  empilhar,
+} from "./ordenacaoProfundidade.js";
 import { bordaDoTopo, CORES, coresDoTopo } from "./paleta.js";
 
+/** Ties na mesma camada: topo < face < lateral < prop < player */
+const TIE_TOPO = 0;
+const TIE_FACE = 1;
+const TIE_LATERAL = 2;
+const TIE_PROP = 3;
+
 /**
- * Fallback de cubos legível:
- * - cor do topo muda com z (chão / terraço / mirante)
- * - borda em todo lado exposto (N/E/S/W)
- * - face sul + laterais W/E quando há queda
+ * Tudo na camada 0 — depth sort puro por Y (sortKey).
  */
-export function empilharTerreno(lista, _atlas, debug) {
+export function empilharTerreno(lista, _atlas, debug, faceDestaque = null) {
   for (let cy = 0; cy < LINHAS; cy++) {
     for (let cx = 0; cx < COLUNAS; cx++) {
       const z = ALTURAS[cy][cx];
       if (z <= 0) continue;
 
-      const sortTop = chaveProfundidade(cy + 0.99, z);
-      empilhar(lista, sortTop, 0, (ctx) => desenharTopo(ctx, cx, cy, z), 0);
+      const sortTop = chaveTopo(cy, z);
+      empilhar(lista, sortTop, 0, (ctx) => desenharTopo(ctx, cx, cy, z), TIE_TOPO);
 
       const quedaS = quedaSul(cx, cy);
       if (quedaS > 0) {
+        const sortFace = chaveFaceSul(cy, quedaS, z);
+        const destacar =
+          faceDestaque &&
+          faceDestaque.cx === cx &&
+          faceDestaque.cy === cy;
         empilhar(
           lista,
-          chaveProfundidade(cy + 0.995, z),
+          sortFace,
           0,
-          (ctx) => desenharFaceSul(ctx, cx, cy, z, quedaS),
-          1,
+          (ctx) => desenharFaceSul(ctx, cx, cy, z, quedaS, destacar),
+          TIE_FACE,
         );
       }
 
@@ -36,24 +49,30 @@ export function empilharTerreno(lista, _atlas, debug) {
       if (dzW > 0) {
         empilhar(
           lista,
-          chaveProfundidade(cy + 0.992, z),
+          chaveProfundidade(cy + 0.92, z),
           0,
           (ctx) => desenharFaceLateral(ctx, cx, cy, z, dzW, "w"),
-          2,
+          TIE_LATERAL,
         );
       }
       if (dzE > 0) {
         empilhar(
           lista,
-          chaveProfundidade(cy + 0.992, z),
+          chaveProfundidade(cy + 0.92, z),
           0,
           (ctx) => desenharFaceLateral(ctx, cx, cy, z, dzE, "e"),
-          2,
+          TIE_LATERAL,
         );
       }
 
       if (debug) {
-        empilhar(lista, sortTop + 0.0001, 2, (ctx) => desenharDebug(ctx, cx, cy, z), 9);
+        empilhar(
+          lista,
+          sortTop + 0.0001,
+          0,
+          (ctx) => desenharDebug(ctx, cx, cy, z),
+          9,
+        );
       }
     }
   }
@@ -63,9 +82,9 @@ export function empilharTerreno(lista, _atlas, debug) {
     empilhar(
       lista,
       chaveProfundidade(prop.y, z),
-      1,
+      0,
       (ctx) => desenharProp(ctx, prop, z),
-      2,
+      TIE_PROP,
     );
   }
 }
@@ -83,7 +102,6 @@ function desenharTopo(ctx, cx, cy, z) {
   ctx.fillRect(px, py + s - 1, s, 1);
   ctx.fillRect(px + s - 1, py, 1, s);
 
-  // contorno em todo lado mais baixo que este cubo
   const n = alturaEm(cx, cy - 1) < z;
   const sEdge = alturaEm(cx, cy + 1) < z;
   const w = alturaEm(cx - 1, cy) < z;
@@ -97,14 +115,13 @@ function desenharTopo(ctx, cx, cy, z) {
   if (w) ctx.fillRect(px, py, f, s);
   if (e) ctx.fillRect(px + s - f, py, f, s);
 
-  // cantos reforçados
   if (n && w) ctx.fillRect(px, py, f, f);
   if (n && e) ctx.fillRect(px + s - f, py, f, f);
   if (sEdge && w) ctx.fillRect(px, py + s - f, f, f);
   if (sEdge && e) ctx.fillRect(px + s - f, py + s - f, f, f);
 }
 
-function desenharFaceSul(ctx, cx, cy, z, queda) {
+function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {
   const px = mundoParaTelaX(cx);
   const topY = mundoParaTelaY(cy, z);
   const w = TILE * ESCALA;
@@ -127,9 +144,14 @@ function desenharFaceSul(ctx, cx, cy, z, queda) {
 
   ctx.fillStyle = bordaDoTopo(z);
   ctx.fillRect(px, py, w, Math.max(1, ESCALA));
+
+  if (destacar) {
+    ctx.strokeStyle = "rgba(255, 220, 80, 0.95)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px + 1, py + 1, w - 2, h - 2);
+  }
 }
 
-/** Lateral W/E do cubo — deixa o terraço legível de lado. */
 function desenharFaceLateral(ctx, cx, cy, z, queda, lado) {
   const px = mundoParaTelaX(cx);
   const topY = mundoParaTelaY(cy, z);
@@ -167,10 +189,11 @@ function desenharProp(ctx, prop, z) {
     ctx.fillStyle = "#6b4a2a";
     ctx.fillRect(px - 2, py - 14, 4, 14);
     ctx.fillStyle = "#d8c27a";
-    ctx.fillRect(px - 10, py - 26, 20, 12);
+    ctx.fillRect(px - 14, py - 28, 28, 14);
     ctx.fillStyle = "#333";
-    ctx.font = "8px monospace";
-    ctx.fillText("3→1", px - 8, py - 17);
+    ctx.font = "7px monospace";
+    const texto = prop.texto || "3→1";
+    ctx.fillText(texto, px - 12, py - 18);
   } else {
     ctx.fillStyle = "#7a6a5a";
     ctx.beginPath();

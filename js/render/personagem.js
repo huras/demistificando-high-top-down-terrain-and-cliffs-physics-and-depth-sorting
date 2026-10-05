@@ -1,20 +1,47 @@
 import { ESCALA, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
-import { chaveProfundidade, empilhar } from "./ordenacaoProfundidade.js";
+import { chaveProfundidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
+import { CORES } from "./paleta.js";
 
 /**
  * Sheet gold 4×4, frame 64px, displayScale 0.5.
  * Linhas: 0 sul, 1 oeste, 2 leste, 3 norte (padrão overworld).
  */
+/** Mesma camada 0 do terreno — compete por sortKey (Y). */
 export function empilharPersonagem(lista, atlas, corpo) {
+  const cx = Math.floor(corpo.x);
+  const cy = Math.floor(corpo.y);
+  // borda da célula sob os pés (no topo do cubo, antes do sprite)
+  empilhar(
+    lista,
+    chaveTopo(cy, corpo.z),
+    0,
+    (ctx) => desenharBordaCelula(ctx, cx, cy, corpo.z),
+    4,
+  );
+
   const sortKey = chaveProfundidade(corpo.y, corpo.z);
   empilhar(
     lista,
     sortKey,
-    1,
+    0,
     (ctx) => desenharPersonagem(ctx, atlas, corpo),
     5,
   );
+}
+
+function desenharBordaCelula(ctx, cx, cy, z) {
+  const px = mundoParaTelaX(cx);
+  const py = mundoParaTelaY(cy, z);
+  const s = TILE * ESCALA;
+
+  ctx.strokeStyle = CORES.celulaJogadorGlow;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(px + 1, py + 1, s - 2, s - 2);
+
+  ctx.strokeStyle = CORES.celulaJogador;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(px + 1.5, py + 1.5, s - 3, s - 3);
 }
 
 export function desenharPersonagem(ctx, atlas, corpo) {
