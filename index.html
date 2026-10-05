@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>High Top-Down — Cliffs, Física e Depth Sorting</title>
+  <link rel="stylesheet" href="css/demo.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="cabecalho">
+      <div class="cabecalho__texto">
+        <h1>High Top-Down</h1>
+        <p>Física + depth sorting — terreno em cubos simples (sem tiling)</p>
+      </div>
+      <div class="cabecalho__controles">
+        <span><kbd>WASD</kbd> mover</span>
+        <span><kbd>Space</kbd> pular / cair</span>
+        <span><kbd>E</kbd> escalar +1</span>
+        <span><kbd>F1</kbd> debug</span>
+      </div>
+    </header>
+
+    <main class="principal">
+      <div class="palco">
+        <canvas id="canvas" width="960" height="540"></canvas>
+      </div>
+
+      <aside class="painel" id="painel">
+        <section class="painel__bloco">
+          <h2>Modelo mental</h2>
+          <p class="painel__dica">
+            Em high top-down, o <strong>Y da tela</strong> carrega duas coisas ao mesmo tempo:
+            profundidade (norte/sul) e elevação (altura do cubo).
+            Cores: <span style="color:#5aad3a">z1</span> /
+            <span style="color:#c4b14a">z2</span> /
+            <span style="color:#d9a35c">z3</span>.
+          </p>
+          <pre class="formula" id="formula-tela">screenY = y·TILE − z·FACE − hop</pre>
+          <pre class="formula" id="formula-sort">sortKey = y + z·ε</pre>
+        </section>
+
+        <section class="painel__bloco">
+          <h2>Estado ao vivo</h2>
+          <dl class="estado" id="estado">
+            <div><dt>x, y, z</dt><dd>—</dd></div>
+            <div><dt>screenY</dt><dd>—</dd></div>
+            <div><dt>sortKey</dt><dd>—</dd></div>
+            <div><dt>hopLift</dt><dd>—</dd></div>
+            <div><dt>ação</dt><dd>—</dd></div>
+          </dl>
+        </section>
+
+        <section class="painel__bloco">
+          <h2>Regras de colisão</h2>
+          <ul class="regras">
+            <li><code>dz = 0</code> — anda livre</li>
+            <li><code>dz = +1</code> — só com <kbd>E</kbd> (escalar)</li>
+            <li><code>dz ≥ +2</code> — parede</li>
+            <li><code>dz = −1</code> — desce andando ou pulando</li>
+            <li><code>dz ≤ −2</code> — só com <kbd>Space</kbd> (ex.: 3→1)</li>
+          </ul>
+        </section>
+
+        <section class="painel__bloco">
+          <h2>Prova no mapa</h2>
+          <ol class="prova">
+            <li>Suba a escada (E em cada degrau).</li>
+            <li>Vá ao mirante z=3 e pule com Space até z=1.</li>
+            <li>Ande atrás do terraço — some atrás da face.</li>
+            <li>Ande na frente — fica na frente da face.</li>
+          </ol>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module" src="js/principal.js"></script>
+</body>
+</html>
