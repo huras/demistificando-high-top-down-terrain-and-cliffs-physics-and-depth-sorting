@@ -60,23 +60,30 @@ function desenharPathAgente(ctx, agente) {
   const idx = agente.nav?.idx ?? 0;
   ctx.save();
   ctx.lineWidth = 1.25;
-  ctx.strokeStyle = path.achou
-    ? "rgba(120, 220, 255, 0.75)"
-    : "rgba(255, 160, 80, 0.8)";
-  ctx.beginPath();
-  for (let i = 0; i < path.cells.length; i++) {
-    const c = path.cells[i];
-    const z = alturaEm(c.cx, c.cy);
-    const sx = mundoParaTelaX(c.cx + 0.5);
-    const sy = mundoParaTelaY(c.cy + 0.5, z);
-    if (i === 0) ctx.moveTo(sx, sy);
-    else ctx.lineTo(sx, sy);
+  for (let i = 1; i < path.cells.length; i++) {
+    const a = path.cells[i - 1];
+    const b = path.cells[i];
+    const za = alturaEm(a.cx, a.cy);
+    const zb = alturaEm(b.cx, b.cy);
+    const glide = (b.tipo | 0) === 3;
+    ctx.strokeStyle = glide
+      ? "rgba(80, 255, 220, 0.9)"
+      : path.achou
+        ? "rgba(120, 220, 255, 0.75)"
+        : "rgba(255, 160, 80, 0.8)";
+    if (glide) ctx.setLineDash([4, 3]);
+    else ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(mundoParaTelaX(a.cx + 0.5), mundoParaTelaY(a.cy + 0.5, za));
+    ctx.lineTo(mundoParaTelaX(b.cx + 0.5), mundoParaTelaY(b.cy + 0.5, zb));
+    ctx.stroke();
   }
-  ctx.stroke();
+  ctx.setLineDash([]);
   if (idx < path.cells.length) {
     const c = path.cells[idx];
     const z = alturaEm(c.cx, c.cy);
-    ctx.fillStyle = "rgba(255, 255, 120, 0.9)";
+    ctx.fillStyle =
+      (c.tipo | 0) === 3 ? "rgba(80, 255, 220, 0.95)" : "rgba(255, 255, 120, 0.9)";
     ctx.beginPath();
     ctx.arc(
       mundoParaTelaX(c.cx + 0.5),

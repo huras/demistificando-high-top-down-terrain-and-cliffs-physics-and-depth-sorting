@@ -10,6 +10,7 @@ import {
   obterResultadoPath,
   solicitarPath,
 } from "./filaPath.js";
+import { TIPO_GLIDE } from "./navGrade.js";
 
 /**
  * Estado de navegação embutido no agente (cria se faltar).
@@ -29,6 +30,7 @@ export function garantirNav(agente) {
     lastY: agente.y,
     retryT: 0,
     puloAlvo: null,
+    planarAlvo: null,
   };
   return agente.nav;
 }
@@ -72,21 +74,23 @@ function indiceWaypointInicial(cells, ax, ay) {
 
 /**
  * Atualiza pedido de path / segue waypoints.
- * Retorna { ix, iy, querPulo } pra física do agente.
+ * Retorna { ix, iy, querPulo, querPlanar }.
  */
 export function atualizarSeguirCaminho(agente, lider, dt) {
   const nav = garantirNav(agente);
   const perfil = agente.perfil;
   const dist = Math.hypot(lider.x - agente.x, lider.y - agente.y);
+  const planando = !!agente.planando;
 
-  if (dist <= AGENTE_DIST_PARAR) {
+  if (dist <= AGENTE_DIST_PARAR && !planando) {
     nav.estado = "idle";
     nav.path = null;
     nav.idx = 0;
     nav.puloAlvo = null;
+    nav.planarAlvo = null;
     nav.stuckT = 0;
     cancelarPath(agente.id);
-    return { ix: 0, iy: 0, querPulo: false };
+    return { ix: 0, iy: 0, querPulo: false, querPlanar: false, soltarAsa: false };
   }
 
   const goalCx = Math.floor(lider.x);
@@ -95,17 +99,21 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const startCy = Math.floor(agente.y);
   const goalMudou = goalCx !== nav.goalCx || goalCy !== nav.goalCy;
 
-  if (goalMudou || (!nav.path && nav.estado !== "buscando")) {
-    pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
-  } else if (nav.estado === "semCaminho") {
-    nav.retryT -= dt;
-    if (nav.retryT <= 0) {
+  // Mid-glide: mantém rota atual; não repath por goal/stuck leve
+  if (!planando) {
+    if (goalMudou || (!nav.path && nav.estado !== "buscando")) {
       pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
+    } else if (nav.estado === "semCaminho") {
+      nav.retryT -= dt;
+      if (nav.retryT <= 0) {
+        pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
+      }
     }
   }
 
   const res = obterResultadoPath(agente.id);
   if (
+    !planando &&
     res?.estado === "pronto" &&
     res.path &&
     res.versao === nav.versao &&
@@ -117,28 +125,57 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     nav.estado = res.path.achou ? "seguindo" : "semCaminho";
     if (!res.path.achou) nav.retryT = PATH_RETRY_SEM_CAMINHO;
     nav.stuckT = 0;
-  } else if (nav.estado === "buscando" && !nav.path) {
+  } else if (nav.estado === "buscando" && !nav.path && !planando) {
     const dx = lider.x - agente.x;
     const dy = lider.y - agente.y;
     const d = Math.hypot(dx, dy) || 1;
-    return { ix: dx / d, iy: dy / d, querPulo: false };
+    return {
+      ix: dx / d,
+      iy: dy / d,
+      querPulo: false,
+      querPlanar: false,
+      soltarAsa: false,
+    };
   }
 
   if (nav.estado === "semCaminho") {
     if (!nav.path || nav.idx >= (nav.path.cells?.length ?? 0)) {
-      return { ix: 0, iy: 0, querPulo: false };
+      return {
+        ix: 0,
+        iy: 0,
+        querPulo: false,
+        querPlanar: false,
+        soltarAsa: false,
+      };
     }
   }
 
   if (!nav.path?.cells?.length) {
-    return { ix: 0, iy: 0, querPulo: false };
+    return {
+      ix: 0,
+      iy: 0,
+      querPulo: false,
+      querPlanar: false,
+      soltarAsa: false,
+    };
   }
 
   while (nav.idx < nav.path.cells.length) {
     const wp = nav.path.cells[nav.idx];
     const tx = wp.cx + 0.5;
     const ty = wp.cy + 0.5;
-    if (Math.hypot(tx - agente.x, ty - agente.y) < 0.4) {
+    // glide: raio de chegada um pouco maior (pouso)
+    const raio = wp.tipo === TIPO_GLIDE ? 0.55 : 0.4;
+    if (Math.hypot(tx - agente.x, ty - agente.y) < raio && agente.noChao) {
+      nav.idx++;
+      continue;
+    }
+    if (
+      wp.tipo === TIPO_GLIDE &&
+      agente.noChao &&
+      Math.floor(agente.x) === wp.cx &&
+      Math.floor(agente.y) === wp.cy
+    ) {
       nav.idx++;
       continue;
     }
@@ -147,11 +184,24 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
 
   if (nav.idx >= nav.path.cells.length) {
     nav.path = null;
+    nav.planarAlvo = null;
     if (nav.estado === "semCaminho") {
-      return { ix: 0, iy: 0, querPulo: false };
+      return {
+        ix: 0,
+        iy: 0,
+        querPulo: false,
+        querPlanar: false,
+        soltarAsa: planando,
+      };
     }
-    pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
-    return { ix: 0, iy: 0, querPulo: false };
+    if (!planando) pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
+    return {
+      ix: 0,
+      iy: 0,
+      querPulo: false,
+      querPlanar: false,
+      soltarAsa: planando,
+    };
   }
 
   const wp = nav.path.cells[nav.idx];
@@ -161,30 +211,63 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const dy = ty - agente.y;
   const d = Math.hypot(dx, dy) || 1;
 
+  const zWp = alturaEm(wp.cx, wp.cy);
+  const zAqui = alturaSobPes(agente.x, agente.y);
+  // asa só no segmento glide do path, e nunca se o alvo é subir cliff
+  const segmentoGlide = wp.tipo === TIPO_GLIDE && zWp <= zAqui;
+  if (segmentoGlide) {
+    nav.planarAlvo = { x: tx, y: ty, cx: wp.cx, cy: wp.cy, z: zWp };
+  } else if (!planando) {
+    nav.planarAlvo = null;
+  }
+
+  // Chegou na XY do pouso → solta a asa (queda livre) em vez de descer devagar
+  const distPouso = nav.planarAlvo
+    ? Math.hypot(nav.planarAlvo.x - agente.x, nav.planarAlvo.y - agente.y)
+    : Infinity;
+  const sobrePouso =
+    planando &&
+    nav.planarAlvo &&
+    (distPouso < 0.75 ||
+      (Math.floor(agente.x) === nav.planarAlvo.cx &&
+        Math.floor(agente.y) === nav.planarAlvo.cy));
+
+  let querPlanar = !!perfil.podePlanar && segmentoGlide && !sobrePouso;
+  if (planando && !sobrePouso && nav.planarAlvo) querPlanar = true;
+  const soltarAsa = !!sobrePouso;
+
   const prog = Math.hypot(agente.x - nav.lastX, agente.y - nav.lastY);
-  if (prog < 0.03) nav.stuckT += dt;
-  else nav.stuckT = 0;
+  if (!planando) {
+    if (prog < 0.03) nav.stuckT += dt;
+    else nav.stuckT = 0;
+  } else {
+    nav.stuckT = 0;
+  }
   nav.lastX = agente.x;
   nav.lastY = agente.y;
 
-  if (nav.stuckT >= PATH_STUCK_SEG) {
+  if (!planando && nav.stuckT >= PATH_STUCK_SEG) {
     nav.stuckT = 0;
     nav.path = null;
     pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
-    return { ix: dx / d, iy: dy / d, querPulo: false };
+    return {
+      ix: dx / d,
+      iy: dy / d,
+      querPulo: false,
+      querPlanar: false,
+      soltarAsa: false,
+    };
   }
 
   let querPulo = false;
-  if (agente.noChao && perfil.podePular) {
-    const zAqui = alturaSobPes(agente.x, agente.y);
-    const zWp = alturaEm(wp.cx, wp.cy);
+  if (agente.noChao && perfil.podePular && !segmentoGlide) {
     if (zWp === zAqui + 1 && Math.hypot(dx, dy) < 1.15) {
       querPulo = true;
       nav.puloAlvo = { x: tx, y: ty, z: zWp };
     }
   }
 
-  return { ix: dx / d, iy: dy / d, querPulo };
+  return { ix: dx / d, iy: dy / d, querPulo, querPlanar, soltarAsa };
 }
 
 /** Células do path atual (debug). */

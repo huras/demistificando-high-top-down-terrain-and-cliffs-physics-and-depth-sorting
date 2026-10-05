@@ -24,6 +24,22 @@ export const PATH_REPATH_LIDER_CELULA = true;
 export const PATH_STUCK_SEG = 0.6;
 export const PATH_RETRY_SEM_CAMINHO = 1.25;
 export const PATH_CUSTO_ESCALADA = 2.4;
+/** Glide NavLinks (asa-delta no grafo). */
+/** Queda mínima a partir do chão (não do ápice) pra virar glide. */
+export const PATH_GLIDE_QUEDA_MIN = 2;
+/** Distância horizontal mínima — evita micro-glide / asa contra cliff. */
+export const PATH_GLIDE_DIST_MIN = 4;
+/** Pico→pico mesma altura: só com vão largo. */
+export const PATH_GLIDE_PICO_DIST_MIN = 8;
+/** Vão entre montanhas da demo ≈ 21; precisa cobrir pico→pico. */
+export const PATH_GLIDE_ALCANCE_MAX = 32;
+/** Fator conservador vs alcance físico real do glide. */
+export const PATH_GLIDE_ALCANCE_MUL = 0.85;
+/**
+ * Altura extra de lançamento (pulo→asa) só pro envelope/alcance.
+ * Nunca permite pousar acima do z do chão de origem.
+ */
+export const PATH_GLIDE_PULO_BONUS = 2.0;
 
 /**
  * Pulo Mario: segurar Space = gravidade leve; soltar = corta vz.

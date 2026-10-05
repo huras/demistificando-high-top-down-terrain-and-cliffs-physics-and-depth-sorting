@@ -1,6 +1,9 @@
 import {
   AGENTE_DIST_PARAR,
   AGENTE_VEL_MUL,
+  GRAVIDADE,
+  PATH_GLIDE_DIST_MIN,
+  PATH_GLIDE_PULO_BONUS,
   RAIO_CORPO,
   VELOCIDADE_MAX,
   VELOCIDADE_SPRINT,
@@ -12,6 +15,14 @@ import {
   garantirNav,
   resetarNav,
 } from "../navegacao/seguirCaminho.js";
+import {
+  abrirAsaDelta,
+  atualizarAsaDelta,
+  atualizarCorridaAsaDelta,
+  estaPlanando,
+  fecharAsaDelta,
+  podeAbrirAsaDelta,
+} from "./asaDelta.js";
 import { alturaSobPes, moverAereo, moverComColisao } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
 import {
@@ -21,6 +32,31 @@ import {
   iniciarQueda,
   podeIniciarPulo,
 } from "./pulo.js";
+
+function distPlanar(agente, nav) {
+  if (!nav?.planarAlvo) return 0;
+  return Math.hypot(
+    nav.planarAlvo.cx + 0.5 - agente.x,
+    nav.planarAlvo.cy + 0.5 - agente.y,
+  );
+}
+
+/** Só lança asa em glide longo pra baixo/mesmo nível — nunca contra cliff pra cima. */
+function deveLancarGlide(agente, nav, querPlanar) {
+  if (!querPlanar || !nav?.planarAlvo || !agente.perfil?.podePlanar) return false;
+  const zAqui = alturaSobPes(agente.x, agente.y);
+  const zAlvo = nav.planarAlvo.z;
+  if (zAlvo > zAqui) return false;
+  return distPlanar(agente, nav) >= PATH_GLIDE_DIST_MIN;
+}
+
+/** Abre asa só depois do ápice (senão corta o pulo de degrau/+1). */
+function deveAbrirAsaAgora(agente, querPlanar) {
+  if (!querPlanar || estaPlanando(agente) || !podeAbrirAsaDelta(agente)) {
+    return false;
+  }
+  return (agente.vz ?? 0) <= 0.2;
+}
 
 let _proxId = 1;
 
@@ -53,6 +89,9 @@ export function criarAgente(spawn, perfil = PERFIL_COMPANHEIRO) {
     puloBufferT: 0,
     tempoAr: 0,
     mantle: null,
+    _glideTempo: 0,
+    _glideYaw: 0,
+    _glideBank: 0,
   };
   garantirNav(agente);
   return agente;
@@ -70,8 +109,18 @@ export function atualizarAgente(agente, lider, dt) {
   const velLider = lider.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
   const velMax = velLider * AGENTE_VEL_MUL;
 
-  const { ix, iy, querPulo } = atualizarSeguirCaminho(agente, lider, dt);
+  const { ix, iy, querPulo, querPlanar, soltarAsa } = atualizarSeguirCaminho(
+    agente,
+    lider,
+    dt,
+  );
   const nav = agente.nav;
+
+  // Chegou na XY do pouso (ou path acabou no ar): solta asa e cai rápido
+  if (soltarAsa && estaPlanando(agente)) {
+    fecharAsaDelta(agente);
+    nav.planarAlvo = null;
+  }
 
   if (ix !== 0 || iy !== 0) {
     agente.dirX = Math.abs(ix) >= Math.abs(iy) ? Math.sign(ix) : 0;
@@ -83,13 +132,31 @@ export function atualizarAgente(agente, lider, dt) {
     agente.facing = facingDeDir(agente.dirX || ix, agente.dirY || iy);
   }
 
-  if (querPulo && podeIniciarPulo(agente)) {
+  const lancarGlide = deveLancarGlide(agente, nav, querPlanar);
+
+  // Degrau +1: pulo normal (nunca misturar com asa)
+  if (querPulo && !lancarGlide && podeIniciarPulo(agente)) {
     iniciarPulo(agente);
-    // tap fixo: Space do jogador não altera o pulo do companheiro
     agente.puloCortado = true;
   }
 
+  // Glide longo: pulo de lançamento só na beirada (chão vai sumir / já caindo)
+  if (lancarGlide && agente.noChao && podeIniciarPulo(agente)) {
+    const zAqui = alturaSobPes(agente.x, agente.y);
+    const frenteX = agente.x + Math.sign(ix || agente.dirX) * 0.55;
+    const frenteY = agente.y + Math.sign(iy || agente.dirY) * 0.55;
+    const zFrente = alturaSobPes(frenteX, frenteY);
+    const naBeirada = zFrente <= 0 || zFrente < zAqui;
+    if (naBeirada) {
+      iniciarPulo(agente);
+      agente.puloCortado = true;
+      agente.vz = Math.sqrt(2 * GRAVIDADE * PATH_GLIDE_PULO_BONUS);
+    }
+  }
+
   if (agente.noChao) {
+    if (estaPlanando(agente)) fecharAsaDelta(agente);
+
     const movendo = atualizarCorrida(agente, ix, iy, dt, true, velMax);
     const novo = moverComColisao(agente, agente.vx * dt, agente.vy * dt, "andar");
     if (novo.bloqueouX) agente.vx = 0;
@@ -101,7 +168,12 @@ export function atualizarAgente(agente, lider, dt) {
     if (zChao <= 0 || zChao < agente.z) {
       iniciarQueda(agente);
       agente.elevacao = agente.z;
-      atualizarAereo(agente, dt);
+      if (deveAbrirAsaAgora(agente, lancarGlide)) abrirAsaDelta(agente);
+      if (estaPlanando(agente)) {
+        atualizarNoArPlanando(agente, ix, iy, dt);
+      } else {
+        atualizarAereo(agente, dt);
+      }
       agente.andando = false;
       return;
     }
@@ -124,21 +196,49 @@ export function atualizarAgente(agente, lider, dt) {
     else if (agente.andando) agente.acao = "seguindo";
     else agente.acao = "parado";
   } else {
-    atualizarCorrida(agente, ix, iy, dt, false, velMax * 0.9);
-    const pos = moverAereo(
-      agente,
-      agente.vx * dt,
-      agente.vy * dt,
-      agente.elevacao,
-    );
-    if (pos.bloqueouX) agente.vx = 0;
-    if (pos.bloqueouY) agente.vy = 0;
-    agente.x = pos.x;
-    agente.y = pos.y;
-    atualizarAereo(agente, dt);
+    const zAlvo = nav?.planarAlvo?.z;
+    const glideNoAr =
+      !soltarAsa &&
+      querPlanar &&
+      distPlanar(agente, nav) >= PATH_GLIDE_DIST_MIN &&
+      (zAlvo == null || zAlvo <= agente.z);
+    if (deveAbrirAsaAgora(agente, glideNoAr)) abrirAsaDelta(agente);
+
+    if (estaPlanando(agente) && !soltarAsa) {
+      atualizarNoArPlanando(agente, ix, iy, dt);
+    } else {
+      atualizarCorrida(agente, ix, iy, dt, false, velMax * 0.9);
+      const pos = moverAereo(
+        agente,
+        agente.vx * dt,
+        agente.vy * dt,
+        agente.elevacao,
+      );
+      if (pos.bloqueouX) agente.vx = 0;
+      if (pos.bloqueouY) agente.vy = 0;
+      agente.x = pos.x;
+      agente.y = pos.y;
+      atualizarAereo(agente, dt);
+      agente.acao = agente.vz > 0.4 ? "pulando" : "caindo";
+    }
     agente.andando = false;
-    agente.acao = agente.vz > 0.4 ? "pulando" : "caindo";
   }
+}
+
+function atualizarNoArPlanando(agente, ix, iy, dt) {
+  atualizarCorridaAsaDelta(agente, ix, iy, dt);
+  const pos = moverAereo(
+    agente,
+    agente.vx * dt,
+    agente.vy * dt,
+    agente.elevacao,
+  );
+  if (pos.bloqueouX) agente.vx = 0;
+  if (pos.bloqueouY) agente.vy = 0;
+  agente.x = pos.x;
+  agente.y = pos.y;
+  atualizarAsaDelta(agente, dt);
+  if (estaPlanando(agente)) agente.acao = "asa-delta";
 }
 
 function facingDeDir(dx, dy) {

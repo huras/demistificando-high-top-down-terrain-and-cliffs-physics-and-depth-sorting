@@ -69,7 +69,6 @@ export function heuristica(key, goalKey, cols = COLUNAS) {
   const by = (goalKey / cols) | 0;
   const dx = Math.abs(ax - bx);
   const dy = Math.abs(ay - by);
-  // octile
   return dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy);
 }
 
@@ -84,6 +83,8 @@ export function criarBusca(grade, startKey, goalKey) {
 
   const veioDe = new Int32Array(n);
   veioDe.fill(-1);
+  const veioTipo = new Int8Array(n);
+  veioTipo.fill(0);
 
   const fechado = new Uint8Array(n);
   const heap = criarHeap();
@@ -96,6 +97,7 @@ export function criarBusca(grade, startKey, goalKey) {
     goalKey,
     gScore,
     veioDe,
+    veioTipo,
     fechado,
     heap,
     melhorKey: startKey,
@@ -111,7 +113,7 @@ export function criarBusca(grade, startKey, goalKey) {
  */
 export function expandirBusca(busca, orcamento) {
   if (busca.pronto) return true;
-  const { grade, goalKey, gScore, veioDe, fechado, heap } = busca;
+  const { grade, goalKey, gScore, veioDe, veioTipo, fechado, heap } = busca;
   let restam = orcamento;
 
   while (restam > 0 && heap.keys.length > 0) {
@@ -135,11 +137,12 @@ export function expandirBusca(busca, orcamento) {
       busca.melhorKey = atual;
     }
 
-    paraCadaVizinho(grade, atual, (viz, custo) => {
+    paraCadaVizinho(grade, atual, (viz, custo, tipo) => {
       if (fechado[viz]) return;
       const tent = gScore[atual] + custo;
       if (tent >= gScore[viz]) return;
       veioDe[viz] = atual;
+      veioTipo[viz] = tipo | 0;
       gScore[viz] = tent;
       const f = tent + heuristica(viz, goalKey, grade.cols);
       heapPush(heap, viz, f);
@@ -154,7 +157,7 @@ export function expandirBusca(busca, orcamento) {
   return false;
 }
 
-/** Reconstrói path de células {cx,cy}[] do start ao fim (goal ou best-effort). */
+/** Reconstrói path de células {cx,cy,tipo}[] — tipo = aresta de entrada (0 no start). */
 export function reconstruirCaminho(busca) {
   const fim = busca.achou ? busca.goalKey : busca.melhorKey;
   const keys = [];
@@ -172,7 +175,8 @@ export function reconstruirCaminho(busca) {
   const cells = new Array(keys.length);
   for (let i = 0; i < keys.length; i++) {
     const { cx, cy } = celulaDeChave(keys[i]);
-    cells[i] = { cx, cy, key: keys[i] };
+    const tipo = i === 0 ? 0 : busca.veioTipo[keys[i]] | 0;
+    cells[i] = { cx, cy, key: keys[i], tipo };
   }
   return {
     cells,

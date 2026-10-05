@@ -130,6 +130,7 @@ async function iniciar() {
         agente.hopLift = 0;
         agente.noChao = true;
         agente.pulando = false;
+        agente.planando = false;
         agente.puloCortado = false;
         agente.coyoteT = 0;
         agente.tempoAr = 0;
