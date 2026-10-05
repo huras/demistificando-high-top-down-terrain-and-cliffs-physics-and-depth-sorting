@@ -10,6 +10,10 @@ import {
   PATH_GLIDE_PICO_DIST_MIN,
   PATH_GLIDE_PULO_BONUS,
   PATH_GLIDE_QUEDA_MIN,
+  PATH_VOO_ALCANCE_MAX,
+  PATH_VOO_CUSTO_MUL,
+  PATH_VOO_DIST_MIN,
+  PATH_VOO_VEL,
   VELOCIDADE_MAX,
 } from "../config.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
@@ -29,11 +33,12 @@ const DIRS = [
   [-1, -1, true],
 ];
 
-/** tipo: 0=walk/drop, 1=jump, 2=climb, 3=glide */
+/** tipo: 0=walk/drop, 1=jump, 2=climb, 3=glide, 4=voo */
 export const TIPO_WALK = 0;
 export const TIPO_JUMP = 1;
 export const TIPO_CLIMB = 2;
 export const TIPO_GLIDE = 3;
+export const TIPO_VOO = 4;
 
 const cache = new Map();
 
@@ -97,6 +102,9 @@ function construirGrade(perfil) {
 
       if (perfil.podePlanar) {
         adicionarGlideRays(lista, cx, cy, zA);
+      }
+      if (perfil.podeVoar) {
+        adicionarVooRays(lista, cx, cy, zA);
       }
 
       edges[chaveCelula(cx, cy)] = new Float32Array(lista);
@@ -232,6 +240,61 @@ function clearanceGlide(sx, sy, zLaunch, lx, ly, zLand, dx, dy, step) {
     } else if (zTerreno >= zGlide - 0.05) {
       return false;
     }
+  }
+  return true;
+}
+
+/**
+ * NavLinks de voo: raio 8 dirs, pouso em qualquer altura (sobe/desce).
+ * Clearance = linha reta 3D acima do terreno.
+ */
+function adicionarVooRays(lista, cx, cy, zA) {
+  const jaTem = new Set();
+  for (let i = 0; i < lista.length; i += 3) jaTem.add(lista[i] | 0);
+
+  for (const [dx, dy, diag] of DIRS) {
+    const passo = diag ? SQRT2 : 1;
+    for (let step = 1; step <= PATH_VOO_ALCANCE_MAX; step++) {
+      const nx = cx + dx * step;
+      const ny = cy + dy * step;
+      if (!dentroDoMapa(nx, ny)) break;
+
+      const zLand = alturaEm(nx, ny);
+      if (zLand <= 0) continue;
+
+      const distHoriz = step * passo;
+      if (distHoriz < PATH_VOO_DIST_MIN) continue;
+
+      // cruzeiro um pouco acima do maior topo no caminho
+      const zCruise = Math.max(zA, zLand) + 1.25;
+      if (!clearanceVoo(cx, cy, zA, nx, ny, zLand, zCruise, dx, dy, step)) {
+        continue;
+      }
+
+      const key = chaveCelula(nx, ny);
+      if (jaTem.has(key)) continue;
+
+      const dist3 = Math.hypot(distHoriz, zLand - zA);
+      const custo = (dist3 / PATH_VOO_VEL + 0.2) * PATH_VOO_CUSTO_MUL;
+      lista.push(key, custo, TIPO_VOO);
+      jaTem.add(key);
+    }
+  }
+}
+
+function clearanceVoo(sx, sy, zA, lx, ly, zLand, zCruise, dx, dy, step) {
+  for (let t = 1; t < step; t++) {
+    const fx = sx + dx * t;
+    const fy = sy + dy * t;
+    const zTerreno = alturaEm(fx, fy);
+    if (zTerreno <= 0) continue;
+    const f = t / step;
+    // sobe até cruise e desce até pouso
+    const zPath =
+      f < 0.5
+        ? zA + (zCruise - zA) * (f * 2)
+        : zCruise + (zLand - zCruise) * ((f - 0.5) * 2);
+    if (zTerreno >= zPath - 0.15) return false;
   }
   return true;
 }

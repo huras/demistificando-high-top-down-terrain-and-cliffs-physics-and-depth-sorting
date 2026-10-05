@@ -255,6 +255,33 @@ body[data-modo="3d"] #canvas-3d.palco__camada--ativa {
   color: var(--texto);
 }
 
+.caps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.caps__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--texto);
+  cursor: pointer;
+  user-select: none;
+}
+
+.caps__item input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--destaque);
+}
+
+.estado--comp {
+  margin-top: 4px;
+}
+
 .estado dd[data-status="ATRÁS"] {
   color: var(--aviso);
   font-weight: 600;

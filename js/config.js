@@ -46,6 +46,17 @@ export const PATH_GLIDE_CUSTO_MUL = 0.55;
 /** Folga mínima (células) pra abrir asa por heurística de queda. */
 export const AGENTE_GLIDE_HEUR_FOLGA = 2.2;
 
+/** Fly NavLinks (voo livre no grafo). */
+export const PATH_VOO_DIST_MIN = 3;
+export const PATH_VOO_ALCANCE_MAX = 28;
+export const PATH_VOO_CUSTO_MUL = 0.42;
+export const PATH_VOO_VEL = 7.5;
+
+/** Voo livre (jogador F / companheiro path). */
+export const VOO_VEL_VERT = 5.2;
+export const VOO_VEL_HORIZ_MUL = 1.15;
+export const VOO_POUSO_EPS = 0.2;
+
 /**
  * Pulo Mario: segurar Space = gravidade leve; soltar = corta vz.
  * Tap ≈ v²/(2·g) ≈ 1.15 → sobe +1 sem segurar; hold ≈ 2.3 → +2.
@@ -96,8 +107,12 @@ export const CAMERA3D_ALTURA = 3.2;
 export const CAMERA3D_OLHAR_Y = 1.15;
 export const CAMERA3D_SUAVIDADE = 8;
 export const CAMERA3D_LOOKAHEAD = 0.35;
-/** rad/s — Q/E orbitam a câmera no modo 3D. */
+/** rad/s — fallback teclado (legado); mouse usa sensibilidade. */
 export const CAMERA3D_ROT_VEL = 2.4;
+/** Mouse-look 3D (rad por pixel). */
+export const CAMERA3D_MOUSE_SENS = 0.0022;
+export const CAMERA3D_PITCH_MIN = -0.55;
+export const CAMERA3D_PITCH_MAX = 1.15;
 
 export const CAMINHOS = {
   jogador: "assets/people/gold.png",

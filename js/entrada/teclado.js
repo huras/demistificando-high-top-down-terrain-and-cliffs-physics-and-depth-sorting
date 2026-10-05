@@ -21,6 +21,7 @@ export function iniciarTeclado() {
         "Minus",
         "KeyQ",
         "KeyE",
+        "KeyF",
         "ShiftLeft",
         "ShiftRight",
       ].includes(k)
@@ -84,13 +85,7 @@ export function limparEdges() {
   consumidos.clear();
 }
 
-/**
- * Escalada: E no 2D; F no 3D (Q/E órbitam a câmera).
- * codigoEscalada: "KeyE" | "KeyF" | null (auto pelo body[data-modo]).
- */
+/** Escalada: E nos dois modos (câmera 3D usa mouse). */
 export function teclaEscaladaAgora(codigoEscalada = null) {
-  const codigo =
-    codigoEscalada ||
-    (document.body?.dataset?.modo === "3d" ? "KeyF" : "KeyE");
-  return teclaAgora(codigo);
+  return teclaAgora(codigoEscalada || "KeyE");
 }

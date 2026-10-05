@@ -19,7 +19,9 @@ export function registrarBufferPulo(corpo, apertou) {
 }
 
 export function podeIniciarPulo(corpo) {
-  if (corpo.escalando || corpo.planando || corpo.mantle) return false;
+  if (corpo.escalando || corpo.planando || corpo.voando || corpo.mantle) {
+    return false;
+  }
   if (corpo.noChao) return true;
   return corpo.coyoteT > 0;
 }
@@ -112,6 +114,7 @@ export function pousarNoChao(corpo, zChao) {
   corpo.noChao = true;
   corpo.pulando = false;
   corpo.planando = false;
+  corpo.voando = false;
   corpo.puloCortado = false;
   corpo.coyoteT = 0;
   corpo.tempoAr = 0;

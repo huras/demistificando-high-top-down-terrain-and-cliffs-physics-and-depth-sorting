@@ -102,9 +102,18 @@ export function criarPersonagem3d(opts = {}) {
         grupo.rotation.z = 0;
       }
 
-      asa.visible = !!corpoEstado.planando;
-      if (corpoEstado.planando) {
+      const voando = !!corpoEstado.voando;
+      asa.visible = !!corpoEstado.planando || voando;
+      if (voando) {
+        asa.material.opacity = 0.45;
+        asa.material.color.setHex(0xffe080);
+        asa.rotation.z = Math.sin(performance.now() * 0.008) * 0.12;
+        asa.rotation.x = -0.55;
+      } else if (corpoEstado.planando) {
+        asa.material.opacity = 0.85;
+        asa.material.color.setHex(0xc8e8ff);
         asa.rotation.z = Math.sin(performance.now() * 0.004) * 0.08;
+        asa.rotation.x = -0.35;
       }
 
       // Na parede: sem cast no cliff; blob no chão da queda (zBase)

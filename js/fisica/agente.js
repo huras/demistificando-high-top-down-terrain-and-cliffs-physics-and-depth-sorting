@@ -42,6 +42,12 @@ import {
   podeIniciarPulo,
 } from "./pulo.js";
 import { iniciarStamina, regenerarStamina } from "./stamina.js";
+import {
+  atualizarVooAteAlvo,
+  entrarVoo,
+  estaVoando,
+  sairVoo,
+} from "./voo.js";
 
 function distPlanar(agente, nav) {
   if (!nav?.planarAlvo) return 0;
@@ -73,7 +79,13 @@ function deveAbrirAsaAgora(agente, querAbrir) {
  * Pathfinding continua mandando; isto só evita cair sem asa.
  */
 function querAsaHeuristica(agente, querPlanar, querEscalar) {
-  if (!agente.perfil?.podePlanar || querEscalar || agente.escalando || agente.mantle) {
+  if (
+    !agente.perfil?.podePlanar ||
+    querEscalar ||
+    agente.escalando ||
+    agente.mantle ||
+    agente.voando
+  ) {
     return false;
   }
   if (querPlanar) return true;
@@ -102,6 +114,7 @@ export function criarAgente(spawn, perfil = PERFIL_COMPANHEIRO) {
     noChao: true,
     pulando: false,
     planando: false,
+    voando: false,
     escalando: false,
     escalada: null,
     hopLift: 0,
@@ -137,11 +150,21 @@ export { resetarNav };
 export function atualizarAgente(agente, lider, dt) {
   if (!agente || !lider) return;
 
-  const velLider = lider.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
+  const podeCorrer = agente.perfil?.podeCorrer !== false;
+  const velLider =
+    podeCorrer && lider.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
   const velMax = velLider * AGENTE_VEL_MUL;
 
-  const { ix, iy, querPulo, querPlanar, querEscalar, soltarAsa, soltarParede } =
-    atualizarSeguirCaminho(agente, lider, dt);
+  const {
+    ix,
+    iy,
+    querPulo,
+    querPlanar,
+    querEscalar,
+    querVoar,
+    soltarAsa,
+    soltarParede,
+  } = atualizarSeguirCaminho(agente, lider, dt);
   const nav = agente.nav;
 
   if (soltarAsa && estaPlanando(agente)) {
@@ -156,14 +179,18 @@ export function atualizarAgente(agente, lider, dt) {
     if (ainda) return;
   }
 
-  // —— Escalando: sobe, ou solta a parede pra abrir asa (igual jogador) ——
+  // —— Escalando: sobe, ou solta a parede pra asa/voo ——
   let soltouPraAsa = false;
   if (agente.escalando && agente.escalada) {
-    if (soltarParede || (querPlanar && !querEscalar)) {
-      soltarEscalada(agente, { impulso: true, motivo: "asa-delta" });
-      soltouPraAsa = true;
-      // Liberar abertura no mesmo fluxo (jogador faria 2º Space)
-      agente.tempoAr = Math.max(agente.tempoAr ?? 0, ASA_DELTA_ABRIR_APOS);
+    if (soltarParede || querVoar || (querPlanar && !querEscalar)) {
+      soltarEscalada(agente, {
+        impulso: true,
+        motivo: querVoar ? "voo" : "asa-delta",
+      });
+      soltouPraAsa = !querVoar;
+      if (!querVoar) {
+        agente.tempoAr = Math.max(agente.tempoAr ?? 0, ASA_DELTA_ABRIR_APOS);
+      }
     } else {
       const cinX = agente._climbInX || 0;
       const cinY = agente._climbInY || -1;
@@ -183,28 +210,63 @@ export function atualizarAgente(agente, lider, dt) {
     agente.facing = facingDeDir(ix, iy);
   }
 
+  // —— Voo livre (path TIPO_VOO / seguir líder) ——
+  if (agente.perfil?.podeVoar && (querVoar || estaVoando(agente))) {
+    if (querVoar && !estaVoando(agente)) entrarVoo(agente);
+    if (estaVoando(agente)) {
+      if (!querVoar) {
+        sairVoo(agente, { pousar: true });
+        regenerarStamina(agente, dt);
+        return;
+      }
+      const alvo = nav?.vooAlvo || {
+        x: lider.x,
+        y: lider.y,
+        z: lider.elevacao ?? lider.z,
+      };
+      atualizarVooAteAlvo(agente, alvo, dt, velMax);
+      regenerarStamina(agente, dt);
+      return;
+    }
+  } else if (estaVoando(agente)) {
+    sairVoo(agente, { pousar: false });
+  }
+
   // Path pediu climb: gruda na face (nunca reagarra se acabou de soltar pra asa)
   if (
     querEscalar &&
     !soltouPraAsa &&
     !querPlanar &&
+    !querVoar &&
     !agente.escalando &&
     !agente.mantle &&
     !estaPlanando(agente) &&
+    !estaVoando(agente) &&
     agente.perfil?.podeEscalar
   ) {
     if (tentarGrudarClimb(agente, ix, iy)) return;
   }
 
   const lancarGlide =
-    deveLancarGlide(agente, nav, querPlanar) && !querEscalar && !agente.escalando;
+    deveLancarGlide(agente, nav, querPlanar) &&
+    !querEscalar &&
+    !querVoar &&
+    !agente.escalando;
   // Após soltar parede, querPlanar/heurística abrem asa no ar
   const abrirAsa =
     !querEscalar &&
+    !querVoar &&
     !agente.escalando &&
+    !estaVoando(agente) &&
     querAsaHeuristica(agente, querPlanar || soltouPraAsa || !!soltarParede, false);
 
-  if (querPulo && !lancarGlide && !querEscalar && podeIniciarPulo(agente)) {
+  if (
+    querPulo &&
+    !lancarGlide &&
+    !querEscalar &&
+    !querVoar &&
+    podeIniciarPulo(agente)
+  ) {
     iniciarPulo(agente);
     agente.puloCortado = true;
   }
@@ -274,6 +336,7 @@ export function atualizarAgente(agente, lider, dt) {
 
     if (nav?.estado === "semCaminho") agente.acao = "sem-caminho";
     else if (nav?.estado === "buscando") agente.acao = "buscando-path";
+    else if (querVoar) agente.acao = "indo-voar";
     else if (querEscalar) agente.acao = "indo-escalar";
     else if (agente.andando) agente.acao = "seguindo";
     else agente.acao = "parado";

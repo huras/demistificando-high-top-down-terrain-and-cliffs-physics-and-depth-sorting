@@ -15,7 +15,9 @@ export function estaPlanando(corpo) {
 }
 
 export function podeAbrirAsaDelta(corpo) {
-  if (!corpo || corpo.noChao || corpo.escalando || corpo.planando) return false;
+  if (!corpo || corpo.noChao || corpo.escalando || corpo.planando || corpo.voando) {
+    return false;
+  }
   if ((corpo.tempoAr ?? 0) < ASA_DELTA_ABRIR_APOS) return false;
   const zChao = alturaSobPes(corpo.x, corpo.y);
   const folga = corpo.elevacao - (zChao > 0 ? zChao : 0);

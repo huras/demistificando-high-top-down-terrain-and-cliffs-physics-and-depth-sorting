@@ -35,6 +35,7 @@ import {
 } from "./pulo.js";
 import { iniciarStamina, regenerarStamina } from "./stamina.js";
 import { resolverMovimentoPosMantle } from "./travaInputEscalada.js";
+import { atualizarVoo, entrarVoo, estaVoando, sairVoo } from "./voo.js";
 
 export function criarCorpo(spawn) {
   const corpo = {
@@ -52,6 +53,7 @@ export function criarCorpo(spawn) {
     pulando: false,
     planando: false,
     escalando: false,
+    voando: false,
     pulo: null,
     escalada: null,
     mantle: null,
@@ -79,6 +81,28 @@ export function criarCorpo(spawn) {
 export function atualizarMovimento(corpo, dt) {
   let { dx, dy } = vetorMovimento();
 
+  // F: toggle fly (não drena stamina)
+  if (teclaAgora("KeyF")) {
+    if (estaVoando(corpo)) sairVoo(corpo, { pousar: false });
+    else entrarVoo(corpo);
+  }
+
+  if (estaVoando(corpo)) {
+    if (dx !== 0 || dy !== 0) {
+      if (dx !== 0) corpo.dirX = Math.sign(dx);
+      if (dy !== 0) corpo.dirY = Math.sign(dy);
+      if (dx !== 0 && dy === 0) corpo.dirY = 0;
+      if (dy !== 0 && dx === 0) corpo.dirX = 0;
+      corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
+    }
+    const sobe = teclaBaixa("Space");
+    const desce = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+    corpo.correndo = false;
+    atualizarVoo(corpo, dx, dy, sobe, desce, dt, VELOCIDADE_MAX);
+    regenerarStamina(corpo, dt);
+    return;
+  }
+
   // —— Mantle: arco pro topo (bloqueia resto do input) ——
   if (corpo.mantle) {
     const ainda = atualizarMantle(corpo, dt);
@@ -87,7 +111,7 @@ export function atualizarMovimento(corpo, dt) {
     // pousou — continua o frame no chão com travaPosMantle
   }
 
-  // —— Escalando: WASD na face; Space ou E/F solta ——
+  // —— Escalando: WASD na face; Space ou E solta ——
   if (corpo.escalando && corpo.escalada) {
     const apertouPulo = teclaAgora("Space");
     const apertouEscala = teclaEscaladaAgora();
@@ -131,7 +155,7 @@ export function atualizarMovimento(corpo, dt) {
     tratarInputAsaDelta(corpo, true);
   }
 
-  // E (2D) / F (3D): gruda na face — tecla segurada vira “subir”
+  // E: gruda na face — tecla segurada vira “subir”
   if (teclaEscaladaAgora() && !corpo.escalando) {
     const res = tentarEscalar(corpo);
     if (res?.ok) {

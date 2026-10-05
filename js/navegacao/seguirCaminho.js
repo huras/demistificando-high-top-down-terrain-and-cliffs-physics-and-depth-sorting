@@ -10,7 +10,7 @@ import {
   obterResultadoPath,
   solicitarPath,
 } from "./filaPath.js";
-import { TIPO_CLIMB, TIPO_GLIDE } from "./navGrade.js";
+import { TIPO_CLIMB, TIPO_GLIDE, TIPO_VOO } from "./navGrade.js";
 
 function idleNav(extras = {}) {
   return {
@@ -19,6 +19,7 @@ function idleNav(extras = {}) {
     querPulo: false,
     querPlanar: false,
     querEscalar: false,
+    querVoar: false,
     soltarAsa: false,
     soltarParede: false,
     ...extras,
@@ -45,6 +46,7 @@ export function garantirNav(agente) {
     puloAlvo: null,
     planarAlvo: null,
     climbAlvo: null,
+    vooAlvo: null,
   };
   return agente.nav;
 }
@@ -95,19 +97,65 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const perfil = agente.perfil;
   const dist = Math.hypot(lider.x - agente.x, lider.y - agente.y);
   const planando = !!agente.planando;
+  const voando = !!agente.voando;
   const naParede = !!agente.escalando && !agente.mantle;
   const noMantle = !!agente.mantle;
 
-  if (dist <= AGENTE_DIST_PARAR && !planando && !naParede && !noMantle) {
+  const liderZ = lider.elevacao ?? lider.z ?? 0;
+  const gapElev = Math.abs((agente.elevacao ?? agente.z ?? 0) - liderZ);
+
+  if (
+    dist <= AGENTE_DIST_PARAR &&
+    gapElev < 1.5 &&
+    !planando &&
+    !voando &&
+    !naParede &&
+    !noMantle
+  ) {
     nav.estado = "idle";
     nav.path = null;
     nav.idx = 0;
     nav.puloAlvo = null;
     nav.planarAlvo = null;
     nav.climbAlvo = null;
+    nav.vooAlvo = null;
     nav.stuckT = 0;
     cancelarPath(agente.id);
     return idleNav();
+  }
+
+  // Já voando ou líder em fly: retarget 3D (arestas TIPO_VOO cobrem o resto)
+  if (!!perfil.podeVoar && !naParede && !noMantle && (voando || lider.voando)) {
+    const goalCxL = Math.floor(lider.x);
+    const goalCyL = Math.floor(lider.y);
+    nav.vooAlvo = {
+      x: lider.x,
+      y: lider.y,
+      cx: goalCxL,
+      cy: goalCyL,
+      z: liderZ,
+    };
+    nav.path = null;
+    nav.planarAlvo = null;
+    nav.climbAlvo = null;
+    nav.stuckT = 0;
+    nav.lastX = agente.x;
+    nav.lastY = agente.y;
+    const dxL = lider.x - agente.x;
+    const dyL = lider.y - agente.y;
+    const dL = Math.hypot(dxL, dyL) || 1;
+    const chegou =
+      dist <= AGENTE_DIST_PARAR * 1.2 && gapElev < 1.1 && !lider.voando;
+    return {
+      ix: dxL / dL,
+      iy: dyL / dL,
+      querPulo: false,
+      querPlanar: false,
+      querEscalar: false,
+      querVoar: !chegou,
+      soltarAsa: false,
+      soltarParede: false,
+    };
   }
 
   const goalCx = Math.floor(lider.x);
@@ -115,14 +163,48 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const startCx = Math.floor(agente.x);
   const startCy = Math.floor(agente.y);
   const goalMudou = goalCx !== nav.goalCx || goalCy !== nav.goalCy;
-  const liderZ = lider.elevacao ?? lider.z ?? 0;
-  const ocupadoAr = planando || naParede || noMantle || !agente.noChao;
+  const ocupadoAr = planando || voando || naParede || noMantle || !agente.noChao;
+
+  // Voo: segue líder em 3D (retarget ao vivo)
+  if (voando || (nav.vooAlvo && !agente.noChao && !!perfil.podeVoar && !naParede)) {
+    nav.vooAlvo = {
+      x: lider.x,
+      y: lider.y,
+      cx: goalCx,
+      cy: goalCy,
+      z: liderZ,
+    };
+    nav.planarAlvo = null;
+    nav.climbAlvo = null;
+    nav.path = null;
+    nav.stuckT = 0;
+    nav.lastX = agente.x;
+    nav.lastY = agente.y;
+    const dxL = lider.x - agente.x;
+    const dyL = lider.y - agente.y;
+    const dL = Math.hypot(dxL, dyL) || 1;
+    const pertoEBaixo =
+      dist <= AGENTE_DIST_PARAR * 1.4 &&
+      Math.abs((agente.elevacao ?? 0) - liderZ) < 1.2 &&
+      !lider.voando;
+    return {
+      ix: dxL / dL,
+      iy: dyL / dL,
+      querPulo: false,
+      querPlanar: false,
+      querEscalar: false,
+      querVoar: !pertoEBaixo,
+      soltarAsa: false,
+      soltarParede: false,
+    };
+  }
 
   // No ar com asa (ou caindo pra abrir): segue o líder ao vivo — não o pouso antigo do A*
   if (
     !!perfil.podePlanar &&
     !naParede &&
     !noMantle &&
+    !voando &&
     !agente.noChao &&
     (planando || nav.planarAlvo)
   ) {
@@ -134,6 +216,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
       z: Math.floor(liderZ || 1),
     };
     nav.climbAlvo = null;
+    nav.vooAlvo = null;
     // Path do chão fica obsoleto no ar — ao pousar pede rota nova daqui
     nav.path = null;
     nav.stuckT = 0;
@@ -153,13 +236,14 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
       querPulo: false,
       querPlanar: !soltarAsa,
       querEscalar: false,
+      querVoar: false,
       soltarAsa,
       soltarParede: false,
     };
   }
 
-  // Mid-glide: não repath. No chão/climb: repath se o líder mudou de célula
-  if (!planando) {
+  // Mid-glide/voo: não repath. No chão/climb: repath se o líder mudou de célula
+  if (!planando && !voando) {
     if (goalMudou || (!nav.path && nav.estado !== "buscando")) {
       pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
     } else if (nav.estado === "semCaminho") {
@@ -173,6 +257,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const res = obterResultadoPath(agente.id);
   if (
     !planando &&
+    !voando &&
     !noMantle &&
     res?.estado === "pronto" &&
     res.path &&
@@ -185,7 +270,13 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     nav.estado = res.path.achou ? "seguindo" : "semCaminho";
     if (!res.path.achou) nav.retryT = PATH_RETRY_SEM_CAMINHO;
     nav.stuckT = 0;
-  } else if (nav.estado === "buscando" && !nav.path && !planando && !naParede) {
+  } else if (
+    nav.estado === "buscando" &&
+    !nav.path &&
+    !planando &&
+    !voando &&
+    !naParede
+  ) {
     const dx = lider.x - agente.x;
     const dy = lider.y - agente.y;
     const d = Math.hypot(dx, dy) || 1;
@@ -206,13 +297,16 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     const wp = nav.path.cells[nav.idx];
     const tx = wp.cx + 0.5;
     const ty = wp.cy + 0.5;
-    const raio = wp.tipo === TIPO_GLIDE ? 0.55 : 0.4;
+    const raio =
+      wp.tipo === TIPO_GLIDE || wp.tipo === TIPO_VOO ? 0.55 : 0.4;
     if (Math.hypot(tx - agente.x, ty - agente.y) < raio && agente.noChao) {
       nav.idx++;
       continue;
     }
     if (
-      (wp.tipo === TIPO_GLIDE || wp.tipo === TIPO_CLIMB) &&
+      (wp.tipo === TIPO_GLIDE ||
+        wp.tipo === TIPO_CLIMB ||
+        wp.tipo === TIPO_VOO) &&
       agente.noChao &&
       Math.floor(agente.x) === wp.cx &&
       Math.floor(agente.y) === wp.cy
@@ -227,6 +321,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     nav.path = null;
     nav.planarAlvo = null;
     nav.climbAlvo = null;
+    nav.vooAlvo = null;
     if (nav.estado === "semCaminho") {
       return idleNav();
     }
@@ -244,14 +339,22 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const zWp = alturaEm(wp.cx, wp.cy);
   const zChaoPes = alturaSobPes(agente.x, agente.y);
   const zRef = naParede ? agente.elevacao : zChaoPes;
+  const segmentoVoo = !!perfil.podeVoar && wp.tipo === TIPO_VOO;
   // Na parede: glide se o pouso está abaixo da elevação atual
   const segmentoGlide =
-    wp.tipo === TIPO_GLIDE && zWp <= zRef + 0.05;
+    !segmentoVoo && wp.tipo === TIPO_GLIDE && zWp <= zRef + 0.05;
   const segmentoClimb =
     !!perfil.podeEscalar &&
     wp.tipo === TIPO_CLIMB &&
     zWp > zChaoPes &&
-    !segmentoGlide;
+    !segmentoGlide &&
+    !segmentoVoo;
+
+  if (segmentoVoo) {
+    nav.vooAlvo = { x: tx, y: ty, cx: wp.cx, cy: wp.cy, z: zWp };
+  } else if (!voando) {
+    nav.vooAlvo = null;
+  }
 
   if (segmentoGlide) {
     nav.planarAlvo = { x: tx, y: ty, cx: wp.cx, cy: wp.cy, z: zWp };
@@ -266,6 +369,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   }
 
   let querPlanar = !!perfil.podePlanar && segmentoGlide;
+  let querVoar = segmentoVoo;
 
   // Soltar parede → asa (path pediu glide, ou líder bem mais baixo — mesmo com climb no path)
   const folgaParede = naParede
@@ -275,6 +379,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const soltarParede =
     naParede &&
     !!perfil.podePlanar &&
+    !querVoar &&
     (segmentoGlide ||
       (folgaParede >= 2.2 && liderMaisBaixo && dist > 2.5));
 
@@ -290,12 +395,36 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     querPlanar = true;
   }
 
+  // Na parede com path de voo: solta e voa
+  if (naParede && querVoar) {
+    return {
+      ix: dx / d,
+      iy: dy / d,
+      querPulo: false,
+      querPlanar: false,
+      querEscalar: false,
+      querVoar: true,
+      soltarAsa: false,
+      soltarParede: true,
+    };
+  }
+
   // querEscalar = path ainda quer subir; não “prende” só porque já está na parede
   const querEscalar =
-    (segmentoClimb || noMantle) && !soltarParede && !querPlanar;
+    (segmentoClimb || noMantle) &&
+    !soltarParede &&
+    !querPlanar &&
+    !querVoar;
 
   const prog = Math.hypot(agente.x - nav.lastX, agente.y - nav.lastY);
-  if (!planando && !naParede && !noMantle && !segmentoClimb) {
+  if (
+    !planando &&
+    !voando &&
+    !naParede &&
+    !noMantle &&
+    !segmentoClimb &&
+    !segmentoVoo
+  ) {
     if (prog < 0.03) nav.stuckT += dt;
     else nav.stuckT = 0;
   } else {
@@ -306,9 +435,11 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
 
   if (
     !planando &&
+    !voando &&
     !naParede &&
     !noMantle &&
     !segmentoClimb &&
+    !segmentoVoo &&
     nav.stuckT >= PATH_STUCK_SEG
   ) {
     nav.stuckT = 0;
@@ -323,6 +454,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     perfil.podePular &&
     !segmentoGlide &&
     !segmentoClimb &&
+    !segmentoVoo &&
     !naParede
   ) {
     if (zWp === zChaoPes + 1 && Math.hypot(dx, dy) < 1.15) {
@@ -337,6 +469,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     querPulo,
     querPlanar: querPlanar || soltarParede,
     querEscalar,
+    querVoar,
     soltarAsa: false,
     soltarParede,
   };

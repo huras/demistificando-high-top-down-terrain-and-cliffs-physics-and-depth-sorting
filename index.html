@@ -26,10 +26,11 @@
           Jogar em 3D
         </button>
         <span><kbd>WASD</kbd> andar / strafe (3D)</span>
-        <span><kbd>Shift</kbd> sprint</span>
-        <span><kbd>Space</kbd> pular (hold=alto) · 2× = asa-delta</span>
-        <span><kbd>E</kbd> grudar (2D) · <kbd>F</kbd> grudar (3D)</span>
-        <span><kbd>Q</kbd><kbd>E</kbd> orbitar câmera (3D)</span>
+        <span><kbd>Shift</kbd> sprint · no voo = desce</span>
+        <span><kbd>Space</kbd> pular · 2× asa-delta · no voo = sobe</span>
+        <span><kbd>E</kbd> grudar</span>
+        <span><kbd>F</kbd> fly on/off</span>
+        <span>3D: click = mouse-look</span>
         <span><kbd>T</kbd> visual real / cubos</span>
         <span><kbd>3</kbd> modo 3D</span>
         <span><kbd>scroll</kbd> / <kbd>+</kbd><kbd>-</kbd> zoom</span>
@@ -77,16 +78,30 @@
         </section>
 
         <section class="painel__bloco">
+          <h2>Companheiro</h2>
+          <p class="painel__dica">Capacidades do pathfinding — desligar reconstrói o grafo.</p>
+          <div class="caps" id="caps-companheiro">
+            <label class="caps__item"><input type="checkbox" id="cap-pular" checked /> Jump</label>
+            <label class="caps__item"><input type="checkbox" id="cap-escalar" checked /> Climb</label>
+            <label class="caps__item"><input type="checkbox" id="cap-planar" checked /> Asa-delta</label>
+            <label class="caps__item"><input type="checkbox" id="cap-correr" checked /> Run</label>
+            <label class="caps__item"><input type="checkbox" id="cap-voar" checked /> Fly</label>
+          </div>
+          <dl class="estado estado--comp">
+            <div><dt>ação</dt><dd id="comp-acao">—</dd></div>
+            <div><dt>perfil</dt><dd id="comp-perfil">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="painel__bloco">
           <h2>Regras de colisão</h2>
           <ul class="regras">
-            <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint; agente segue a 60% da sua velocidade</li>
-            <li>Na parede = into sobe + diagonal (canto congela até soltar)</li>
-            <li><kbd>Space</kbd> — pulo (tap sobe +1; segure = mais alto)</li>
-            <li><kbd>Space</kbd> 2º toque no ar — asa-delta; na parede — solta</li>
-            <li><kbd>E</kbd> (2D) / <kbd>F</kbd> (3D) — gruda / solta a face; no 3D <kbd>Q</kbd><kbd>E</kbd> orbitam a câmera</li>
-            <li>Direção na parede trava no press — canto não remapeia; solte e aperte de novo pra reavaliar</li>
-            <li>Topo + subir — mantle; WASD mantém eixos do climb (platô/beirada/lado) até soltar</li>
-            <li>Base + descer — pousa; stamina 0 — cai</li>
+            <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint (no voo = desce)</li>
+            <li><kbd>E</kbd> — gruda / solta a face (2D e 3D)</li>
+            <li><kbd>F</kbd> — fly on/off; <kbd>Space</kbd> sobe no voo</li>
+            <li>3D: click no viewport = mouse-look (Esc libera)</li>
+            <li><kbd>Space</kbd> — pulo; 2º toque no ar — asa-delta; na parede — solta</li>
+            <li>Topo + subir — mantle; base + descer — pousa; stamina 0 — cai</li>
           </ul>
         </section>
 

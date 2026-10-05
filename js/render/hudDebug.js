@@ -70,10 +70,10 @@ export function desenharOverlayAjuda(
   ctx.fillStyle = "#a8c4a8";
   ctx.fillText(
     modoJogo === "3d"
-      ? "WASD strafe · Q/E orbit · F = gruda · 3 = 2D · scroll zoom"
+      ? "click olhar · WASD · E gruda · F voo · Space/Shift↑↓ · 3=2D"
       : debug
         ? "DEBUG — pivôs: P amarelo · topo · face"
-        : "` debug · E = gruda · T = visual · 3 = modo 3D",
+        : "` debug · E gruda · F voo · T visual · 3 = 3D",
     18,
     46,
   );

@@ -1,12 +1,11 @@
 import * as THREE from "three";
 import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
-import { teclaBaixa } from "../../entrada/teclado.js";
 import {
   ajustarDistancia,
+  aplicarOlharMouse,
   criarCamera3d,
   distanciaNormalizada,
-  girarYaw,
   seguirAlvo3d,
   yawCamera,
 } from "./camera3d.js";
@@ -164,13 +163,10 @@ export function resetarCamera3d() {
   estado.camera3d.pronta = false;
 }
 
-/** Q/E orbitam yaw (hold). Chamar antes do movimento pra WASD strafear no yaw atual. */
-export function orbitarCamera3d(dt) {
+/** Aplica deltas de mouse-look (pixels) na câmera 3D. */
+export function olharCamera3d(dx, dy) {
   if (!estado) return;
-  let sentido = 0;
-  if (teclaBaixa("KeyQ")) sentido -= 1;
-  if (teclaBaixa("KeyE")) sentido += 1;
-  girarYaw(estado.camera3d, sentido, dt);
+  aplicarOlharMouse(estado.camera3d, dx, dy);
 }
 
 /**

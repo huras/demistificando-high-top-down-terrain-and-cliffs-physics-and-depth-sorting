@@ -1,14 +1,21 @@
 import { CAMINHOS, ZOOM_PASSO } from "./config.js";
+import {
+  consumirMovimentoMouse,
+  desligarPonteiro3d,
+  ligarPonteiro3d,
+} from "./entrada/ponteiro3d.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
 import { atualizarAgente, criarAgente, resetarNav } from "./fisica/agente.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { iniciarStamina } from "./fisica/stamina.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
+import { CAPS_PADRAO } from "./navegacao/capacidades.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
 import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
+import { ligarHudCompanheiro, atualizarHudCompanheiro } from "./ui/hudCompanheiro.js";
 import {
   ativarInputRelativoCamera,
   desativarInputRelativoCamera,
@@ -17,8 +24,8 @@ import {
   ajustarZoom3d,
   atualizarEDesenhar3d,
   iniciarCenario3d,
+  olharCamera3d,
   obterCenario3d,
-  orbitarCamera3d,
   redimensionarCenario3d,
   resetarCamera3d,
 } from "./render/3d/cenario3d.js";
@@ -71,6 +78,7 @@ async function iniciar() {
   camera = criarCamera(canvas.width, canvas.height);
   redimensionarCena();
 
+  ligarHudCompanheiro(agente, CAPS_PADRAO);
   ligarControleModo(document.getElementById("btn-modo-3d"));
   aoMudarModo(aoTrocarModo);
   sincronizarCamadas(obterModo());
@@ -112,6 +120,7 @@ async function iniciar() {
       corpo.pulando = false;
       corpo.planando = false;
       corpo.escalando = false;
+      corpo.voando = false;
       corpo.noChao = true;
       corpo.hopLift = 0;
       corpo.puloCortado = false;
@@ -131,6 +140,7 @@ async function iniciar() {
         agente.noChao = true;
         agente.pulando = false;
         agente.planando = false;
+        agente.voando = false;
         agente.escalando = false;
         agente.escalada = null;
         agente.mantle = null;
@@ -161,7 +171,9 @@ function aoTrocarModo(modo) {
     const cen = garantir3d();
     resetarCamera3d();
     ativarInputRelativoCamera(() => cen.yaw());
+    ligarPonteiro3d(canvas3d);
   } else {
+    desligarPonteiro3d();
     desativarInputRelativoCamera();
     camera.pronta = false;
   }
@@ -187,7 +199,8 @@ function loop(agora) {
   const modo = obterModo();
   if (modo === "3d") {
     garantir3d();
-    orbitarCamera3d(dt);
+    const mouse = consumirMovimentoMouse();
+    olharCamera3d(mouse.dx, mouse.dy);
     if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
     if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
       ajustarZoom3d(1 / ZOOM_PASSO);
@@ -202,6 +215,7 @@ function loop(agora) {
   atualizarMovimento(corpo, dt);
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);
+  atualizarHudCompanheiro(agente);
 
   try {
     if (modo === "3d") {
