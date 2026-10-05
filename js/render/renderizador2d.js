@@ -1,5 +1,7 @@
 import {
   aplicarCamera,
+  mundoParaTelaX,
+  mundoParaTelaY,
   seguirAlvo,
 } from "./camera.js";
 import { desenharPivosSort } from "./debugPivos.js";
@@ -14,6 +16,8 @@ import { empilharAlvoEscalada } from "./alvoEscalada.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
+import { alturaEm } from "../mundo/altura.js";
+import { obterPathDebug } from "../navegacao/seguirCaminho.js";
 
 const lista = criarListaProfundidade();
 
@@ -39,12 +43,51 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   empilharPersonagem(lista, atlas, corpo);
   desenharLista(lista, ctx);
 
-  if (debug) desenharPivosSort(ctx, corpo);
+  if (debug) {
+    desenharPivosSort(ctx, corpo);
+    desenharPathAgente(ctx, agente);
+  }
 
   desenharOverlayAjuda(ctx, camera, debug, ocl, modoVisual, "2d");
   desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
 
   return { ocl, modoVisual };
+}
+
+function desenharPathAgente(ctx, agente) {
+  const path = obterPathDebug(agente);
+  if (!path?.cells?.length) return;
+  const idx = agente.nav?.idx ?? 0;
+  ctx.save();
+  ctx.lineWidth = 1.25;
+  ctx.strokeStyle = path.achou
+    ? "rgba(120, 220, 255, 0.75)"
+    : "rgba(255, 160, 80, 0.8)";
+  ctx.beginPath();
+  for (let i = 0; i < path.cells.length; i++) {
+    const c = path.cells[i];
+    const z = alturaEm(c.cx, c.cy);
+    const sx = mundoParaTelaX(c.cx + 0.5);
+    const sy = mundoParaTelaY(c.cy + 0.5, z);
+    if (i === 0) ctx.moveTo(sx, sy);
+    else ctx.lineTo(sx, sy);
+  }
+  ctx.stroke();
+  if (idx < path.cells.length) {
+    const c = path.cells[idx];
+    const z = alturaEm(c.cx, c.cy);
+    ctx.fillStyle = "rgba(255, 255, 120, 0.9)";
+    ctx.beginPath();
+    ctx.arc(
+      mundoParaTelaX(c.cx + 0.5),
+      mundoParaTelaY(c.cy + 0.5, z),
+      2.2,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /**

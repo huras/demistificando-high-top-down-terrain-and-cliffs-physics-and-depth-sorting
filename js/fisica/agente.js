@@ -1,18 +1,33 @@
 import {
   AGENTE_DIST_PARAR,
-  AGENTE_DIST_TELEPORTE,
   AGENTE_VEL_MUL,
   RAIO_CORPO,
   VELOCIDADE_MAX,
   VELOCIDADE_SPRINT,
 } from "../config.js";
 import { alturaEm } from "../mundo/altura.js";
+import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
+import {
+  atualizarSeguirCaminho,
+  garantirNav,
+  resetarNav,
+} from "../navegacao/seguirCaminho.js";
 import { alturaSobPes, moverAereo, moverComColisao } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
-import { atualizarAereo, empurrarForaDeCliff, iniciarQueda } from "./pulo.js";
+import {
+  atualizarAereo,
+  empurrarForaDeCliff,
+  iniciarPulo,
+  iniciarQueda,
+  podeIniciarPulo,
+} from "./pulo.js";
 
-export function criarAgente(spawn) {
-  return {
+let _proxId = 1;
+
+export function criarAgente(spawn, perfil = PERFIL_COMPANHEIRO) {
+  const agente = {
+    id: `agente-${_proxId++}`,
+    perfil,
     x: spawn.x,
     y: spawn.y,
     z: spawn.z,
@@ -32,33 +47,31 @@ export function criarAgente(spawn) {
     andando: false,
     acao: "agente",
     agente: true,
+    correndo: false,
+    coyoteT: 0,
+    puloCortado: false,
+    puloBufferT: 0,
+    tempoAr: 0,
+    mantle: null,
   };
+  garantirNav(agente);
+  return agente;
 }
 
+export { resetarNav };
+
 /**
- * Segue o líder a 60% da velocidade atual dele (walk/sprint).
+ * Segue o líder via pathfinding (sem teleporte).
+ * Velocidade = 60% da walk/sprint atual do líder.
  */
 export function atualizarAgente(agente, lider, dt) {
   if (!agente || !lider) return;
 
-  const dxL = lider.x - agente.x;
-  const dyL = lider.y - agente.y;
-  const dist = Math.hypot(dxL, dyL);
-
-  if (dist > AGENTE_DIST_TELEPORTE) {
-    puxarPertoDoLider(agente, lider);
-    return;
-  }
-
   const velLider = lider.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
   const velMax = velLider * AGENTE_VEL_MUL;
 
-  let ix = 0;
-  let iy = 0;
-  if (dist > AGENTE_DIST_PARAR) {
-    ix = dxL / dist;
-    iy = dyL / dist;
-  }
+  const { ix, iy, querPulo } = atualizarSeguirCaminho(agente, lider, dt);
+  const nav = agente.nav;
 
   if (ix !== 0 || iy !== 0) {
     agente.dirX = Math.abs(ix) >= Math.abs(iy) ? Math.sign(ix) : 0;
@@ -68,6 +81,12 @@ export function atualizarAgente(agente, lider, dt) {
       agente.dirY = Math.sign(iy) || 1;
     }
     agente.facing = facingDeDir(agente.dirX || ix, agente.dirY || iy);
+  }
+
+  if (querPulo && podeIniciarPulo(agente)) {
+    iniciarPulo(agente);
+    // tap fixo: Space do jogador não altera o pulo do companheiro
+    agente.puloCortado = true;
   }
 
   if (agente.noChao) {
@@ -87,48 +106,39 @@ export function atualizarAgente(agente, lider, dt) {
       return;
     }
 
-    agente.z = zChao;
-    agente.elevacao = zChao;
-    agente.hopLift = 0;
-    agente.vz = 0;
+    if (!agente.pulando) {
+      agente.z = zChao;
+      agente.elevacao = zChao;
+      agente.hopLift = 0;
+      agente.vz = 0;
+    }
+
     if (cantoEmCliffAlto(agente)) empurrarForaDeCliff(agente);
 
+    const dist = Math.hypot(lider.x - agente.x, lider.y - agente.y);
     agente.andando = movendo && dist > AGENTE_DIST_PARAR;
-    if (agente.andando) {
-      agente.animT += dt;
-      agente.acao = "seguindo";
-    } else {
-      agente.acao = "parado";
-    }
+    if (agente.andando) agente.animT += dt;
+
+    if (nav?.estado === "semCaminho") agente.acao = "sem-caminho";
+    else if (nav?.estado === "buscando") agente.acao = "buscando-path";
+    else if (agente.andando) agente.acao = "seguindo";
+    else agente.acao = "parado";
   } else {
-    atualizarCorrida(agente, ix, iy, dt, false, velMax * 0.85);
-    const pos = moverAereo(agente, agente.vx * dt, agente.vy * dt, agente.elevacao);
+    atualizarCorrida(agente, ix, iy, dt, false, velMax * 0.9);
+    const pos = moverAereo(
+      agente,
+      agente.vx * dt,
+      agente.vy * dt,
+      agente.elevacao,
+    );
     if (pos.bloqueouX) agente.vx = 0;
     if (pos.bloqueouY) agente.vy = 0;
     agente.x = pos.x;
     agente.y = pos.y;
     atualizarAereo(agente, dt);
     agente.andando = false;
-    agente.acao = "caindo";
+    agente.acao = agente.vz > 0.4 ? "pulando" : "caindo";
   }
-}
-
-function puxarPertoDoLider(agente, lider) {
-  const fx = lider.dirX || 0;
-  const fy = lider.dirY || 1;
-  const len = Math.hypot(fx, fy) || 1;
-  agente.x = lider.x - (fx / len) * 1.2;
-  agente.y = lider.y - (fy / len) * 1.2;
-  agente.z = lider.z;
-  agente.elevacao = lider.z;
-  agente.hopLift = 0;
-  agente.vx = 0;
-  agente.vy = 0;
-  agente.vz = 0;
-  agente.noChao = true;
-  agente.pulando = false;
-  agente.andando = false;
-  agente.acao = "alcançou";
 }
 
 function facingDeDir(dx, dy) {

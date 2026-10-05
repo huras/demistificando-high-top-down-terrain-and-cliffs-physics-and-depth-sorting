@@ -17,7 +17,13 @@ export const ATRITO_AR = 1.8;
 /** Agente que segue o jogador. */
 export const AGENTE_VEL_MUL = 0.6;
 export const AGENTE_DIST_PARAR = 1.15;
-export const AGENTE_DIST_TELEPORTE = 14;
+
+/** Pathfinding compartilhado (muitas entidades). */
+export const PATH_EXPAND_POR_FRAME = 768;
+export const PATH_REPATH_LIDER_CELULA = true;
+export const PATH_STUCK_SEG = 0.6;
+export const PATH_RETRY_SEM_CAMINHO = 1.25;
+export const PATH_CUSTO_ESCALADA = 2.4;
 
 /**
  * Pulo Mario: segurar Space = gravidade leve; soltar = corta vz.

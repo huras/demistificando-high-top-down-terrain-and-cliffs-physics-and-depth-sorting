@@ -1,8 +1,9 @@
 import { CAMINHOS, ZOOM_PASSO } from "./config.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
-import { atualizarAgente, criarAgente } from "./fisica/agente.js";
+import { atualizarAgente, criarAgente, resetarNav } from "./fisica/agente.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { iniciarStamina } from "./fisica/stamina.js";
+import { tickFilaPath } from "./navegacao/filaPath.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
@@ -129,6 +130,10 @@ async function iniciar() {
         agente.hopLift = 0;
         agente.noChao = true;
         agente.pulando = false;
+        agente.puloCortado = false;
+        agente.coyoteT = 0;
+        agente.tempoAr = 0;
+        resetarNav(agente);
       }
       camera.pronta = false;
       resetarCamera3d();
@@ -191,6 +196,7 @@ function loop(agora) {
   }
 
   atualizarMovimento(corpo, dt);
+  tickFilaPath();
   atualizarAgente(agente, corpo, dt);
 
   try {
