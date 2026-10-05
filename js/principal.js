@@ -62,12 +62,14 @@ async function iniciar() {
       corpo.pulo = null;
       corpo.escalada = null;
       corpo.pulando = false;
+      corpo.planando = false;
       corpo.escalando = false;
       corpo.noChao = true;
       corpo.hopLift = 0;
       corpo.puloCortado = false;
       corpo.coyoteT = 0;
       corpo.puloBufferT = 0;
+      corpo.tempoAr = 0;
       camera.pronta = false;
     },
   };

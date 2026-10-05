@@ -1,4 +1,5 @@
 import { ESCALA, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
+import { desenharAsaDelta } from "./asaDeltaVisual.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import { chaveEntidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
 import { CORES } from "./paleta.js";
@@ -75,6 +76,13 @@ export function desenharPersonagem(ctx, atlas, corpo) {
     dw,
     dh,
   );
+
+  // asa-delta no personagem (pés já com hopLift na tela)
+  if (corpo.planando) {
+    const ax = mundoParaTelaX(corpo.x);
+    const ay = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift);
+    desenharAsaDelta(ctx, corpo, ax, ay, dh * 0.55);
+  }
 }
 
 export function formulasPersonagem(corpo) {

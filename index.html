@@ -15,7 +15,7 @@
       </div>
       <div class="cabecalho__controles">
         <span><kbd>WASD</kbd> correr</span>
-        <span><kbd>Space</kbd> pular (segure = mais alto)</span>
+        <span><kbd>Space</kbd> pular (hold=alto) · 2× = asa-delta</span>
         <span><kbd>E</kbd> escalar +1</span>
         <span><kbd>scroll</kbd> / <kbd>+</kbd><kbd>-</kbd> zoom</span>
         <span><kbd>`</kbd> debug pivôs</span>
@@ -58,11 +58,11 @@
           <h2>Regras de colisão</h2>
           <ul class="regras">
             <li><kbd>WASD</kbd> — corrida com aceleração / momentum</li>
-            <li><kbd>Space</kbd> — pulo Mario (controle no ar; segure p/ altura)</li>
-            <li>Beirada — cai com gravidade (coyote time curto)</li>
-            <li>Pouso — em qualquer topo ≤ elevação dos pés</li>
-            <li><code>dz = +1</code> no chão — <kbd>E</kbd> ou pule em cima</li>
-            <li><code>dz ≥ +2</code> — parede (a menos que o pulo ultrapasse)</li>
+            <li><kbd>Space</kbd> — pulo Mario (segure = mais alto)</li>
+            <li><kbd>Space</kbd> 2º toque no ar — <strong>asa-delta</strong></li>
+            <li><kbd>Space</kbd> com asa aberta — fecha e cai</li>
+            <li>Beirada — cai com gravidade (coyote curto)</li>
+            <li><code>dz = +1</code> — <kbd>E</kbd> ou pule em cima da plataforma</li>
           </ul>
         </section>
 
@@ -72,7 +72,7 @@
             <li>Você spawna ao <strong>norte</strong> do terraço amarelo — deve estar <em>atrás</em> da face.</li>
             <li>Ande para o <strong>sul</strong> do terraço — fica <em>na frente</em> da face.</li>
             <li>Corra + Space pra pular <em>em cima</em> do terraço, ou use <kbd>E</kbd>.</li>
-            <li>Segure Space no mirante z=3 e steer no ar até o chão.</li>
+            <li>Do mirante z=3: Space (pulo), Space de novo → asa-delta até o chão.</li>
           </ol>
         </section>
       </aside>

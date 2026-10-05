@@ -2,6 +2,12 @@ import { RAIO_CORPO } from "../config.js";
 import { teclaAgora, vetorMovimento } from "../entrada/teclado.js";
 import { alturaEm } from "../mundo/altura.js";
 import {
+  atualizarAsaDelta,
+  atualizarCorridaAsaDelta,
+  estaPlanando,
+  tratarInputAsaDelta,
+} from "./asaDelta.js";
+import {
   alturaSobPes,
   moverAereo,
   moverComColisao,
@@ -31,6 +37,7 @@ export function criarCorpo(spawn) {
     facing: 0,
     noChao: true,
     pulando: false,
+    planando: false,
     escalando: false,
     pulo: null,
     escalada: null,
@@ -38,6 +45,10 @@ export function criarCorpo(spawn) {
     puloCortado: false,
     coyoteT: 0,
     puloBufferT: 0,
+    tempoAr: 0,
+    _glideTempo: 0,
+    _glideYaw: 0,
+    _glideBank: 0,
     acao: "parado",
     animT: 0,
     andando: false,
@@ -48,11 +59,11 @@ export function atualizarMovimento(corpo, dt) {
   if (corpo.escalando || corpo.escalada) {
     corpo.hopLift = atualizarEscalada(corpo, dt);
     if (!corpo.escalando) {
-      // terminou neste frame
       corpo.elevacao = corpo.z;
       corpo.noChao = true;
       corpo.vz = 0;
       corpo.hopLift = 0;
+      corpo.planando = false;
     }
     corpo.andando = false;
     corpo.vx = 0;
@@ -65,11 +76,16 @@ export function atualizarMovimento(corpo, dt) {
   const apertouPulo = teclaAgora("Space");
   registrarBufferPulo(corpo, apertouPulo);
 
-  if (
+  // Space: chão = hop Mario (hold = mais alto); 2º toque no ar = asa-delta
+  if (estaPlanando(corpo)) {
+    tratarInputAsaDelta(corpo, apertouPulo);
+  } else if (
     (apertouPulo || corpo.puloBufferT > 0) &&
     podeIniciarPulo(corpo)
   ) {
     iniciarPulo(corpo);
+  } else if (apertouPulo && !corpo.noChao) {
+    tratarInputAsaDelta(corpo, true);
   }
 
   if (teclaAgora("KeyE") && corpo.noChao) {
@@ -77,6 +93,7 @@ export function atualizarMovimento(corpo, dt) {
     if (res?.ok) {
       corpo.escalada = res.escalada;
       corpo.escalando = true;
+      corpo.planando = false;
       corpo.vx = 0;
       corpo.vy = 0;
       corpo.vz = 0;
@@ -100,6 +117,8 @@ export function atualizarMovimento(corpo, dt) {
 }
 
 function atualizarNoChao(corpo, dx, dy, dt) {
+  corpo.planando = false;
+  corpo.tempoAr = 0;
   const movendo = atualizarCorrida(corpo, dx, dy, dt, true);
   const passoX = corpo.vx * dt;
   const passoY = corpo.vy * dt;
@@ -138,7 +157,11 @@ function atualizarNoChao(corpo, dx, dy, dt) {
 }
 
 function atualizarNoAr(corpo, dx, dy, dt) {
-  atualizarCorrida(corpo, dx, dy, dt, false);
+  if (estaPlanando(corpo)) {
+    atualizarCorridaAsaDelta(corpo, dx, dy, dt);
+  } else {
+    atualizarCorrida(corpo, dx, dy, dt, false);
+  }
 
   const passoX = corpo.vx * dt;
   const passoY = corpo.vy * dt;
@@ -150,7 +173,12 @@ function atualizarNoAr(corpo, dx, dy, dt) {
   corpo.x = pos.x;
   corpo.y = pos.y;
 
-  atualizarAereo(corpo, dt);
+  if (estaPlanando(corpo)) {
+    atualizarAsaDelta(corpo, dt);
+  } else {
+    atualizarAereo(corpo, dt);
+  }
+
   corpo.andando = false;
   if (Math.hypot(corpo.vx, corpo.vy) > 0.4) corpo.animT += dt * 0.6;
 }
