@@ -28,6 +28,7 @@ import {
   registrarBufferPulo,
 } from "./pulo.js";
 import { iniciarStamina, regenerarStamina } from "./stamina.js";
+import { resolverMovimentoPosMantle } from "./travaInputEscalada.js";
 
 export function criarCorpo(spawn) {
   const corpo = {
@@ -48,6 +49,7 @@ export function criarCorpo(spawn) {
     pulo: null,
     escalada: null,
     travaEscalada: null,
+    travaPosMantle: null,
     hopLift: 0,
     puloCortado: false,
     coyoteT: 0,
@@ -67,7 +69,7 @@ export function criarCorpo(spawn) {
 }
 
 export function atualizarMovimento(corpo, dt) {
-  const { dx, dy } = vetorMovimento();
+  let { dx, dy } = vetorMovimento();
 
   // —— Escalando: WASD na face; Space ou E solta ——
   if (corpo.escalando && corpo.escalada) {
@@ -81,12 +83,20 @@ export function atualizarMovimento(corpo, dt) {
       // continua o frame na queda
     } else {
       corpo.hopLift = atualizarEscalada(corpo, dt, dx, dy);
-      corpo.andando = false;
-      corpo.vx = 0;
-      corpo.vy = 0;
-      if (dx !== 0 || dy !== 0) corpo.animT += dt;
-      return;
+      if (corpo.escalando) {
+        corpo.andando = false;
+        corpo.vx = 0;
+        corpo.vy = 0;
+        if (dx !== 0 || dy !== 0) corpo.animT += dt;
+        return;
+      }
+      // mantle neste frame — segue pro chão com travaPosMantle
     }
+  }
+
+  // pós-mantle: tecla segurada → dentro do platô até soltar
+  if (!corpo.escalando) {
+    ({ dx, dy } = resolverMovimentoPosMantle(corpo, dx, dy));
   }
 
   if (corpo.puloBufferT > 0) corpo.puloBufferT = Math.max(0, corpo.puloBufferT - dt);

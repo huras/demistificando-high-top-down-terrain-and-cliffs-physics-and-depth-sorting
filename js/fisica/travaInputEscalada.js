@@ -4,15 +4,82 @@
  * Attach com tecla segurada: componente pra dentro da parede = subir
  * (ex.: andando com S numa face norte → S continua subindo).
  *
- * Press já agarrado: N/S = W↑ S↓ A← D→; E/W = into sobe.
+ * Press já agarrado: into wall = sobe (todas as faces).
  * Enquanto segurar: mantém o significado (canto não remapeia).
  * Ao soltar tudo: limpa; próximo press reavalia na face atual.
+ *
+ * Pós-mantle: base da face continua no chão até soltar WASD —
+ * subir→platô, descer→beirada, lateral→lado a lado (não tudo pro platô).
  */
 
 const LIMIAR = 0.12;
 
 export function limparTravaEscalada(corpo) {
   corpo.travaEscalada = null;
+}
+
+export function limparTravaPosMantle(corpo) {
+  corpo.travaPosMantle = null;
+}
+
+/**
+ * No mantle: guarda eixos da face. Se a tecla de “subir” estava invertida
+ * vs into-wall (ex. S no attach sul), flipV corrige até soltar.
+ */
+export function capturarTravaPosMantle(corpo, face, dx = 0, dy = 0) {
+  const temInput = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
+  const stickySub = corpo.travaEscalada?.subida ?? 0;
+  const tinhaSubida = stickySub > LIMIAR;
+  if (!temInput && !tinhaSubida) {
+    limparTravaPosMantle(corpo);
+    return;
+  }
+
+  let flipV = 1;
+  if (temInput) {
+    const proj = projetarNosEixos(face, dx, dy);
+    // climb “subir” com tecla que into-wall lê como descer → inverte eixo vertical
+    if (stickySub > LIMIAR && proj.subida < -LIMIAR) flipV = -1;
+    else if (stickySub < -LIMIAR && proj.subida > LIMIAR) flipV = -1;
+  }
+
+  corpo.travaPosMantle = {
+    lado: face.lado,
+    normalX: face.normalX,
+    normalY: face.normalY,
+    latX: face.latX,
+    latY: face.latY,
+    fwdX: -face.normalX,
+    fwdY: -face.normalY,
+    flipV,
+  };
+}
+
+/**
+ * Reprojeta WASD nos eixos do climb → mundo:
+ * subida → platô (−normal), −subida → beirada, lateral → lat da face.
+ */
+export function resolverMovimentoPosMantle(corpo, dx, dy) {
+  const temInput = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
+  if (!temInput) {
+    limparTravaPosMantle(corpo);
+    return { dx: 0, dy: 0 };
+  }
+  const t = corpo.travaPosMantle;
+  if (!t) return { dx, dy };
+
+  const proj = projetarNosEixos(t, dx, dy);
+  const subida = proj.subida * (t.flipV || 1);
+  const lateral = proj.lateral;
+
+  let ox = subida * t.fwdX + lateral * t.latX;
+  let oy = subida * t.fwdY + lateral * t.latY;
+  const m = Math.hypot(ox, oy);
+  if (m > 1) {
+    ox /= m;
+    oy /= m;
+  }
+  return { dx: ox, dy: oy };
 }
 
 /**
@@ -89,19 +156,11 @@ export function resolverInputEscaladaTravado(corpo, eixos, dx, dy) {
 }
 
 function projetarNosEixos(eixos, dx, dy) {
-  let subida;
-  let lateral;
-
-  if (eixos.lado === "n" || eixos.lado === "s") {
-    // Norte espelha o sul: W↑ S↓ A← D→ (mundo) — só após soltar e apertar de novo
-    subida = -dy;
-    lateral = eixos.lado === "n" ? -dx : dx;
-  } else {
-    const paraParedeX = -eixos.normalX;
-    const paraParedeY = -eixos.normalY;
-    subida = dx * paraParedeX + dy * paraParedeY;
-    lateral = dx * eixos.latX + dy * eixos.latY;
-  }
+  // Into wall = sobe (norte inclusive — sem espelhar o sul)
+  const paraParedeX = -eixos.normalX;
+  const paraParedeY = -eixos.normalY;
+  let subida = dx * paraParedeX + dy * paraParedeY;
+  let lateral = dx * eixos.latX + dy * eixos.latY;
 
   if (Math.abs(subida) < LIMIAR) subida = 0;
   if (Math.abs(lateral) < LIMIAR) lateral = 0;

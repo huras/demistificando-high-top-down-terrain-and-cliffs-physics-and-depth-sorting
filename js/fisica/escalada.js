@@ -11,7 +11,9 @@ import { drenarStaminaEscalada } from "./stamina.js";
 import { iniciarQueda } from "./pulo.js";
 import {
   capturarTravaNoAttach,
+  capturarTravaPosMantle,
   limparTravaEscalada,
+  limparTravaPosMantle,
   resolverInputEscaladaTravado,
 } from "./travaInputEscalada.js";
 
@@ -59,6 +61,7 @@ export function anexarEscalada(corpo, res, dx = 0, dy = 0) {
   corpo.z = e.zBase > 0 ? e.zBase : Math.floor(res.elev0);
   corpo.hopLift = corpo.elevacao - corpo.z;
   corpo.acao = "escalando";
+  limparTravaPosMantle(corpo);
   capturarTravaNoAttach(corpo, e, dx, dy);
   sincronizarFacingParede(corpo, e);
 }
@@ -89,7 +92,7 @@ export function atualizarEscalada(corpo, dt, dx = 0, dy = 0) {
   }
 
   if (corpo.elevacao >= e.elevMax - 0.01 && subida > 0.2) {
-    fazerMantle(corpo, e);
+    fazerMantle(corpo, e, dx, dy);
     return 0;
   }
 
@@ -119,6 +122,7 @@ export function soltarEscalada(corpo, opts = {}) {
   corpo.escalada = null;
   corpo.planando = false;
   limparTravaEscalada(corpo);
+  limparTravaPosMantle(corpo);
 
   if (opts.pousarBase && e) {
     corpo.z = e.zBase > 0 ? e.zBase : 1;
@@ -237,7 +241,7 @@ function colarEixoNormal(corpo, e) {
   else if (e.lado === "e") corpo.x = e.cx + 1.02;
 }
 
-function fazerMantle(corpo, e) {
+function fazerMantle(corpo, e, dx = 0, dy = 0) {
   corpo.x = e.cx + 0.5;
   corpo.y = e.cy + 0.5;
   corpo.z = e.zTopo;
@@ -250,7 +254,10 @@ function fazerMantle(corpo, e) {
   corpo.pulando = false;
   corpo.escalando = false;
   corpo.escalada = null;
+  // trava climb → platô ANTES de limpar (usa subida da trava)
+  capturarTravaPosMantle(corpo, e, dx, dy);
   limparTravaEscalada(corpo);
+  sincronizarFacingParede(corpo, e);
   corpo.acao = `mantle → z=${e.zTopo}`;
 }
 
