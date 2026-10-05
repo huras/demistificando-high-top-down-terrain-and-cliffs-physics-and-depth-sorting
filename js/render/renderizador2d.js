@@ -10,6 +10,7 @@ import {
   desenharLista,
   limparLista,
 } from "./ordenacaoProfundidade.js";
+import { empilharAlvoEscalada } from "./alvoEscalada.js";
 import { empilharPersonagem } from "./personagem.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
@@ -33,6 +34,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt })
   aplicarCamera(ctx, camera);
   limparLista(lista);
   empilharTerreno(lista, atlas, debug, debug ? ocl?.face : null);
+  empilharAlvoEscalada(lista, corpo);
   empilharPersonagem(lista, atlas, corpo);
   desenharLista(lista, ctx);
 

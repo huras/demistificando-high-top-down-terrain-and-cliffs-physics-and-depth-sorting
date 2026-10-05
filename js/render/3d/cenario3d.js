@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { consultarAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
 import { teclaBaixa } from "../../entrada/teclado.js";
 import {
@@ -71,6 +72,9 @@ export function iniciarCenario3d(canvas) {
   const personagem = criarPersonagem3d();
   scene.add(personagem.grupo);
 
+  const alvoEscalada = criarMarcadorAlvoEscalada();
+  scene.add(alvoEscalada.mesh);
+
   estado = {
     canvas,
     renderer,
@@ -79,12 +83,57 @@ export function iniciarCenario3d(canvas) {
     sol,
     terreno,
     personagem,
+    alvoEscalada,
     pronto: true,
     distanciaNormalizada: () => distanciaNormalizada(camera3d),
     yaw: () => yawCamera(camera3d),
   };
 
   return estado;
+}
+
+function criarMarcadorAlvoEscalada() {
+  const geo = new THREE.RingGeometry(0.22, 0.38, 28);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x7dce6a,
+    transparent: true,
+    opacity: 0.85,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.visible = false;
+  mesh.renderOrder = 2;
+
+  const disco = new THREE.Mesh(
+    new THREE.CircleGeometry(0.2, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0x7dce6a,
+      transparent: true,
+      opacity: 0.22,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  disco.rotation.x = -Math.PI / 2;
+  disco.position.y = 0.01;
+  mesh.add(disco);
+
+  return {
+    mesh,
+    atualizar(corpo) {
+      const alvo = consultarAlvoEscalada(corpo);
+      if (!alvo) {
+        mesh.visible = false;
+        return;
+      }
+      mesh.visible = true;
+      const pulso = 0.92 + 0.08 * Math.sin(performance.now() * 0.006);
+      mesh.scale.setScalar(pulso);
+      mesh.position.set(alvo.cx + 0.5, alvo.z + 0.04, alvo.cy + 0.5);
+    },
+  };
 }
 
 export function obterCenario3d() {
@@ -124,6 +173,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas) {
   sincronizarVisualTerreno(atlas);
   seguirAlvo3d(estado.camera3d, corpo, dt);
   estado.personagem.atualizar(corpo);
+  estado.alvoEscalada.atualizar(corpo);
 
   // sombra do sol acompanha o jogador (frustum apertado = qualidade)
   estado.sol.target.position.set(corpo.x, corpo.elevacao ?? corpo.z, corpo.y);
