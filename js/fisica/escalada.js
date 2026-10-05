@@ -52,6 +52,10 @@ export function atualizarEscalada(corpo, dt) {
     corpo.x = e.paraX;
     corpo.y = e.paraY;
     corpo.z = e.paraZ;
+    corpo.elevacao = e.paraZ;
+    corpo.noChao = true;
+    corpo.vz = 0;
+    corpo.hopLift = 0;
     corpo.escalada = null;
     corpo.escalando = false;
     corpo.acao = `escalou → z=${e.paraZ}`;

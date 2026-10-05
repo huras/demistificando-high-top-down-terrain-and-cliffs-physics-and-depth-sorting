@@ -1,22 +1,43 @@
-import { VELOCIDADE } from "../config.js";
+import { RAIO_CORPO } from "../config.js";
 import { teclaAgora, vetorMovimento } from "../entrada/teclado.js";
-import { moverComColisao } from "./colisao.js";
+import { alturaEm } from "../mundo/altura.js";
+import {
+  alturaSobPes,
+  moverAereo,
+  moverComColisao,
+} from "./colisao.js";
+import { atualizarCorrida } from "./corrida.js";
 import { atualizarEscalada, tentarEscalar } from "./escalada.js";
-import { atualizarPulo, tentarPulo } from "./pulo.js";
+import {
+  atualizarAereo,
+  empurrarForaDeCliff,
+  iniciarPulo,
+  iniciarQueda,
+  podeIniciarPulo,
+  registrarBufferPulo,
+} from "./pulo.js";
 
 export function criarCorpo(spawn) {
   return {
     x: spawn.x,
     y: spawn.y,
     z: spawn.z,
+    elevacao: spawn.z,
+    vx: 0,
+    vy: 0,
+    vz: 0,
     dirX: 0,
     dirY: 1,
-    facing: 0, // 0 sul, 1 oeste, 2 leste, 3 norte (sheet gold)
+    facing: 0,
+    noChao: true,
     pulando: false,
     escalando: false,
     pulo: null,
     escalada: null,
     hopLift: 0,
+    puloCortado: false,
+    coyoteT: 0,
+    puloBufferT: 0,
     acao: "parado",
     animT: 0,
     andando: false,
@@ -24,35 +45,41 @@ export function criarCorpo(spawn) {
 }
 
 export function atualizarMovimento(corpo, dt) {
-  if (corpo.pulando || corpo.pulo) {
-    corpo.hopLift = atualizarPulo(corpo, dt);
-    corpo.andando = false;
-    return;
-  }
   if (corpo.escalando || corpo.escalada) {
     corpo.hopLift = atualizarEscalada(corpo, dt);
+    if (!corpo.escalando) {
+      // terminou neste frame
+      corpo.elevacao = corpo.z;
+      corpo.noChao = true;
+      corpo.vz = 0;
+      corpo.hopLift = 0;
+    }
     corpo.andando = false;
+    corpo.vx = 0;
+    corpo.vy = 0;
     return;
   }
 
-  corpo.hopLift = 0;
+  if (corpo.puloBufferT > 0) corpo.puloBufferT = Math.max(0, corpo.puloBufferT - dt);
 
-  if (teclaAgora("Space")) {
-    const res = tentarPulo(corpo, corpo.dirX, corpo.dirY);
-    if (res?.ok) {
-      corpo.pulo = res.pulo;
-      corpo.pulando = true;
-      corpo.hopLift = atualizarPulo(corpo, 0);
-      return;
-    }
-    corpo.acao = res?.motivo ? `pulo bloqueado (${res.motivo})` : "pulo bloqueado";
+  const apertouPulo = teclaAgora("Space");
+  registrarBufferPulo(corpo, apertouPulo);
+
+  if (
+    (apertouPulo || corpo.puloBufferT > 0) &&
+    podeIniciarPulo(corpo)
+  ) {
+    iniciarPulo(corpo);
   }
 
-  if (teclaAgora("KeyE")) {
+  if (teclaAgora("KeyE") && corpo.noChao) {
     const res = tentarEscalar(corpo);
     if (res?.ok) {
       corpo.escalada = res.escalada;
       corpo.escalando = true;
+      corpo.vx = 0;
+      corpo.vy = 0;
+      corpo.vz = 0;
       corpo.hopLift = atualizarEscalada(corpo, 0);
       return;
     }
@@ -60,33 +87,88 @@ export function atualizarMovimento(corpo, dt) {
   }
 
   const { dx, dy } = vetorMovimento();
-  if (dx === 0 && dy === 0) {
+  if (dx !== 0 || dy !== 0) {
+    if (dx !== 0) corpo.dirX = Math.sign(dx);
+    if (dy !== 0) corpo.dirY = Math.sign(dy);
+    if (dx !== 0 && dy === 0) corpo.dirY = 0;
+    if (dy !== 0 && dx === 0) corpo.dirX = 0;
+    corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
+  }
+
+  if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt);
+  else atualizarNoAr(corpo, dx, dy, dt);
+}
+
+function atualizarNoChao(corpo, dx, dy, dt) {
+  const movendo = atualizarCorrida(corpo, dx, dy, dt, true);
+  const passoX = corpo.vx * dt;
+  const passoY = corpo.vy * dt;
+  const novo = moverComColisao(corpo, passoX, passoY, "andar");
+
+  if (novo.bloqueouX) corpo.vx = 0;
+  if (novo.bloqueouY) corpo.vy = 0;
+
+  corpo.x = novo.x;
+  corpo.y = novo.y;
+
+  const zChao = alturaSobPes(corpo.x, corpo.y);
+
+  if (zChao <= 0 || zChao < corpo.z) {
+    iniciarQueda(corpo);
+    corpo.elevacao = corpo.z;
+    atualizarAereo(corpo, dt);
     corpo.andando = false;
-    if (!corpo.acao.startsWith("pulo") && !corpo.acao.startsWith("escala") && !corpo.acao.startsWith("caiu")) {
-      corpo.acao = "parado";
-    }
     return;
   }
 
-  // atualiza olhar só nos eixos pressionados (evita diagonal fantasma no E/Space)
-  if (dx !== 0) corpo.dirX = Math.sign(dx);
-  if (dy !== 0) corpo.dirY = Math.sign(dy);
-  if (dx !== 0 && dy === 0) corpo.dirY = 0;
-  if (dy !== 0 && dx === 0) corpo.dirX = 0;
-  corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
+  corpo.z = zChao;
+  corpo.elevacao = zChao;
+  corpo.hopLift = 0;
+  corpo.vz = 0;
 
-  const passoX = dx * VELOCIDADE * dt;
-  const passoY = dy * VELOCIDADE * dt;
-  const novo = moverComColisao(corpo, passoX, passoY, "andar");
-  corpo.x = novo.x;
-  corpo.y = novo.y;
-  corpo.z = novo.z;
-  corpo.andando = true;
-  corpo.animT += dt;
-  corpo.acao = "andando";
+  if (cantoEmCliffAlto(corpo)) empurrarForaDeCliff(corpo);
+
+  corpo.andando = movendo && (dx !== 0 || dy !== 0);
+  if (corpo.andando) {
+    corpo.animT += dt;
+    corpo.acao = "correndo";
+  } else if (!corpo.acao.startsWith("escala") && !corpo.acao.startsWith("pousou")) {
+    corpo.acao = "parado";
+  }
+}
+
+function atualizarNoAr(corpo, dx, dy, dt) {
+  atualizarCorrida(corpo, dx, dy, dt, false);
+
+  const passoX = corpo.vx * dt;
+  const passoY = corpo.vy * dt;
+  const pos = moverAereo(corpo, passoX, passoY, corpo.elevacao);
+
+  if (pos.bloqueouX) corpo.vx = 0;
+  if (pos.bloqueouY) corpo.vy = 0;
+
+  corpo.x = pos.x;
+  corpo.y = pos.y;
+
+  atualizarAereo(corpo, dt);
+  corpo.andando = false;
+  if (Math.hypot(corpo.vx, corpo.vy) > 0.4) corpo.animT += dt * 0.6;
 }
 
 function facingDeDir(dx, dy) {
-  if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 1 : 2; // O / L
-  return dy < 0 ? 3 : 0; // N / S
+  if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 1 : 2;
+  return dy < 0 ? 3 : 0;
+}
+
+function cantoEmCliffAlto(corpo) {
+  const r = RAIO_CORPO;
+  for (const [px, py] of [
+    [corpo.x - r, corpo.y - r],
+    [corpo.x + r, corpo.y - r],
+    [corpo.x - r, corpo.y + r],
+    [corpo.x + r, corpo.y + r],
+  ]) {
+    if (alturaEm(Math.floor(px), Math.floor(py)) > corpo.z) return true;
+  }
+  return false;
 }

@@ -1,116 +1,179 @@
 import {
-  PULO_ALCANCE,
-  PULO_ARCO_CELULAS,
-  PULO_DURACAO_BASE,
-  PULO_DURACAO_POR_DEGRAU,
+  GRAVIDADE,
+  GRAVIDADE_PULO_SEGURANDO,
+  PULO_BUFFER,
+  PULO_CORTE_SOLTAR,
+  PULO_COYOTE,
+  PULO_EMPURRAO_POUSO,
+  PULO_EPS_POUSO,
+  PULO_VELOCIDADE,
+  RAIO_CORPO,
 } from "../config.js";
+import { teclaBaixa } from "../entrada/teclado.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
-import { podeEntrar } from "./colisao.js";
+import { alturaSobPes, podeEntrar } from "./colisao.js";
+
+/** Edge de pulo com buffer (aperta um pouco antes de pousar). */
+export function registrarBufferPulo(corpo, apertou) {
+  if (apertou) corpo.puloBufferT = PULO_BUFFER;
+}
+
+export function podeIniciarPulo(corpo) {
+  if (corpo.escalando) return false;
+  if (corpo.noChao) return true;
+  return corpo.coyoteT > 0;
+}
 
 /**
- * Inicia pulo/queda na direção do olhar.
- * Permite Δz <= -2 (ex.: 3→1) e Δz = -1; bloqueia subida.
+ * Inicia pulo Mario: impulso vertical; XY continua com corrida/controle no ar.
  */
-export function tentarPulo(corpo, dirX, dirY) {
-  if (corpo.pulando || corpo.escalando) return null;
+export function iniciarPulo(corpo) {
+  if (!podeIniciarPulo(corpo)) return false;
 
-  let dx = Math.sign(dirX);
-  let dy = Math.sign(dirY);
-  if (dx === 0 && dy === 0) {
-    dx = Math.sign(corpo.dirX);
-    dy = Math.sign(corpo.dirY);
+  corpo.noChao = false;
+  corpo.pulando = true;
+  corpo.elevacao = corpo.z;
+  corpo.vz = PULO_VELOCIDADE;
+  corpo.puloCortado = false;
+  corpo.coyoteT = 0;
+  corpo.puloBufferT = 0;
+  corpo.hopLift = 0;
+  corpo.acao = "pulando";
+  return true;
+}
+
+/** Sai do chão sem impulso (beirada / degrau). */
+export function iniciarQueda(corpo) {
+  if (!corpo.noChao) return;
+  corpo.noChao = false;
+  corpo.pulando = true;
+  corpo.vz = Math.min(corpo.vz, 0);
+  corpo.puloCortado = true;
+  corpo.coyoteT = PULO_COYOTE;
+  corpo.acao = "caindo";
+}
+
+/**
+ * Gravidade + corte de pulo + pouso.
+ * Atualiza elevacao, z de referência e hopLift.
+ */
+export function atualizarAereo(corpo, dt) {
+  if (corpo.coyoteT > 0) corpo.coyoteT -= dt;
+
+  // variable jump: soltar Space corta o impulso pra cima
+  if (
+    !corpo.puloCortado &&
+    corpo.vz > 0 &&
+    !teclaBaixa("Space")
+  ) {
+    corpo.vz *= PULO_CORTE_SOLTAR;
+    corpo.puloCortado = true;
   }
-  if (dx !== 0 && dy !== 0) {
-    if (Math.abs(dirX) >= Math.abs(dirY)) dy = 0;
-    else dx = 0;
+
+  const segurando =
+    !corpo.puloCortado && corpo.vz > 0 && teclaBaixa("Space");
+  const g = segurando ? GRAVIDADE_PULO_SEGURANDO : GRAVIDADE;
+
+  corpo.vz -= g * dt;
+  corpo.elevacao += corpo.vz * dt;
+
+  const zChao = alturaSobPes(corpo.x, corpo.y);
+
+  // pouso (só descendo, e só se realmente alcançou o topo)
+  if (
+    corpo.vz <= 0 &&
+    zChao > 0 &&
+    corpo.elevacao <= zChao + PULO_EPS_POUSO
+  ) {
+    pousar(corpo, zChao);
+    return;
   }
-  if (dx === 0 && dy === 0) dy = 1;
 
-  const ox = Math.floor(corpo.x);
-  const oy = Math.floor(corpo.y);
-  const z0 = corpo.z;
+  // void profundo — clamp suave (mapa não tem kill)
+  if (corpo.elevacao < -2) {
+    corpo.elevacao = -2;
+    corpo.vz = 0;
+  }
 
-  // procura pouso a 1 célula; se Δz=0, tenta 2ª célula (salto longo de borda)
-  let tx = ox + dx;
-  let ty = oy + dy;
-  if (!dentroDoMapa(tx, ty)) return { ok: false, motivo: "fora-do-mapa" };
+  // z de referência = chão sob os pés (0 no void); hopLift completa a elevação visual
+  corpo.z = zChao > 0 ? zChao : 0;
+  corpo.hopLift = corpo.elevacao - corpo.z;
+  corpo.pulando = true;
+  corpo.acao = corpo.vz > 0.4 ? "pulando" : "caindo";
+}
 
-  let z1 = alturaEm(tx, ty);
-  if (z1 <= 0) return { ok: false, motivo: "void" };
-  if (z1 === z0) {
-    const tx2 = ox + dx * 2;
-    const ty2 = oy + dy * 2;
-    if (dentroDoMapa(tx2, ty2)) {
-      const z2 = alturaEm(tx2, ty2);
-      if (z2 > 0 && z2 < z0) {
-        tx = tx2;
-        ty = ty2;
-        z1 = z2;
-      }
+function pousar(corpo, zChao) {
+  const zAntes = corpo.elevacao;
+  corpo.z = zChao;
+  corpo.elevacao = zChao;
+  corpo.vz = 0;
+  corpo.hopLift = 0;
+  corpo.noChao = true;
+  corpo.pulando = false;
+  corpo.puloCortado = false;
+  corpo.coyoteT = 0;
+  empurrarForaDeCliff(corpo);
+
+  const queda = Math.max(0, Math.round(zAntes) - zChao);
+  corpo.acao = queda >= 2 ? `pousou ${queda}↓` : "pousou";
+
+  // buffer: se apertou Space perto do pouso, pula de novo
+  if (corpo.puloBufferT > 0) {
+    iniciarPulo(corpo);
+  }
+}
+
+/** Se algum canto ainda pisa célula mais alta, empurra pro centro seguro. */
+export function empurrarForaDeCliff(corpo) {
+  const r = RAIO_CORPO;
+  const z = corpo.z;
+  let empX = 0;
+  let empY = 0;
+  const cantos = [
+    [corpo.x - r, corpo.y - r],
+    [corpo.x + r, corpo.y - r],
+    [corpo.x - r, corpo.y + r],
+    [corpo.x + r, corpo.y + r],
+  ];
+  for (const [px, py] of cantos) {
+    const cx = Math.floor(px);
+    const cy = Math.floor(py);
+    if (!dentroDoMapa(cx, cy)) continue;
+    const hz = alturaEm(cx, cy);
+    if (hz > z) {
+      empX += Math.sign(corpo.x - (cx + 0.5));
+      empY += Math.sign(corpo.y - (cy + 0.5));
     }
   }
-
-  const dz = z1 - z0;
-  if (dz > 0) return { ok: false, motivo: "nao-sobe-com-pulo" };
-  if (!podeEntrar(tx, ty, z0, "pular") && dz !== 0) {
-    return { ok: false, motivo: "bloqueado" };
+  if (empX === 0 && empY === 0) {
+    const cx = Math.floor(corpo.x);
+    const cy = Math.floor(corpo.y);
+    if (alturaEm(cx, cy) === z) return;
+    for (const [dx, dy] of [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+    ]) {
+      if (podeEntrar(cx + dx, cy + dy, z, "andar") && alturaEm(cx + dx, cy + dy) === z) {
+        corpo.x = cx + dx + 0.5;
+        corpo.y = cy + dy + 0.5;
+        return;
+      }
+    }
+    return;
   }
-  if (dz === 0 && !podeEntrar(tx, ty, z0, "pular")) {
-    return { ok: false, motivo: "bloqueado" };
+  const len = Math.hypot(empX, empY) || 1;
+  corpo.x += (empX / len) * (0.25 + PULO_EMPURRAO_POUSO);
+  corpo.y += (empY / len) * (0.25 + PULO_EMPURRAO_POUSO);
+  const cx = Math.floor(corpo.x);
+  const cy = Math.floor(corpo.y);
+  if (alturaEm(cx, cy) === z) {
+    corpo.x = clamp(corpo.x, cx + r + 0.02, cx + 1 - r - 0.02);
+    corpo.y = clamp(corpo.y, cy + r + 0.02, cy + 1 - r - 0.02);
   }
-
-  const queda = z0 - z1;
-  if (queda < 0) return { ok: false, motivo: "subida" };
-
-  const duracao = PULO_DURACAO_BASE + PULO_DURACAO_POR_DEGRAU * Math.max(1, queda);
-  const destinoX = tx + 0.5;
-  const destinoY = ty + 0.5;
-
-  return {
-    ok: true,
-    pulo: {
-      deX: corpo.x,
-      deY: corpo.y,
-      deZ: z0,
-      paraX: destinoX,
-      paraY: destinoY,
-      paraZ: z1,
-      t: 0,
-      duracao,
-      queda,
-    },
-  };
 }
 
-/** Atualiza tween do pulo. Retorna hopLift em células. */
-export function atualizarPulo(corpo, dt) {
-  const p = corpo.pulo;
-  if (!p) return 0;
-
-  p.t += dt;
-  const u = Math.min(1, p.t / p.duracao);
-  const suave = u * u * (3 - 2 * u); // smoothstep
-
-  corpo.x = p.deX + (p.paraX - p.deX) * suave;
-  corpo.y = p.deY + (p.paraY - p.deY) * suave;
-  // z só aplica no pouso; no ar mantém z de origem para colisão visual
-  corpo.z = u < 1 ? p.deZ : p.paraZ;
-
-  const arco = Math.sin(Math.PI * u) * (PULO_ARCO_CELULAS + p.queda * 0.15);
-
-  if (u >= 1) {
-    corpo.x = p.paraX;
-    corpo.y = p.paraY;
-    corpo.z = p.paraZ;
-    corpo.pulo = null;
-    corpo.pulando = false;
-    corpo.acao = p.queda >= 2 ? `caiu ${p.deZ}→${p.paraZ}` : "pousou";
-    return 0;
-  }
-
-  corpo.pulando = true;
-  corpo.acao = p.queda >= 2 ? `pulando ${p.deZ}→${p.paraZ}` : "pulando";
-  return arco;
+function clamp(v, a, b) {
+  return Math.max(a, Math.min(b, v));
 }
-
-void PULO_ALCANCE;

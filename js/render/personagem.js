@@ -1,7 +1,8 @@
 import { ESCALA, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
-import { chaveProfundidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
+import { chaveEntidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
 import { CORES } from "./paleta.js";
+import { empilharSombras } from "./sombra.js";
 
 /**
  * Sheet gold 4×4, frame 64px, displayScale 0.5.
@@ -11,6 +12,9 @@ import { CORES } from "./paleta.js";
 export function empilharPersonagem(lista, atlas, corpo) {
   const cx = Math.floor(corpo.x);
   const cy = Math.floor(corpo.y);
+
+  empilharSombras(lista, corpo);
+
   // borda da célula sob os pés (no topo do cubo, antes do sprite)
   empilhar(
     lista,
@@ -18,15 +22,17 @@ export function empilharPersonagem(lista, atlas, corpo) {
     0,
     (ctx) => desenharBordaCelula(ctx, cx, cy, corpo.z),
     4,
+    corpo.z,
   );
 
-  const sortKey = chaveProfundidade(corpo.y, corpo.z);
+  const sortKey = chaveEntidade(corpo.y, corpo.z);
   empilhar(
     lista,
     sortKey,
     0,
     (ctx) => desenharPersonagem(ctx, atlas, corpo),
     5,
+    corpo.z,
   );
 }
 
@@ -58,14 +64,6 @@ export function desenharPersonagem(ctx, atlas, corpo) {
   const py = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift) - dh + 2 * ESCALA;
 
   ctx.imageSmoothingEnabled = false;
-
-  // sombra no chão (sem hop)
-  const sombraY = mundoParaTelaY(corpo.y, corpo.z) - 2 * ESCALA;
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.beginPath();
-  ctx.ellipse(mundoParaTelaX(corpo.x), sombraY, 7 * ESCALA, 3 * ESCALA, 0, 0, Math.PI * 2);
-  ctx.fill();
-
   ctx.drawImage(
     sheet,
     col * frame,
@@ -80,12 +78,13 @@ export function desenharPersonagem(ctx, atlas, corpo) {
 }
 
 export function formulasPersonagem(corpo) {
-  const screenY = corpo.y * TILE - corpo.z * TILE - corpo.hopLift * TILE;
-  const sortKey = chaveProfundidade(corpo.y, corpo.z);
+  const elev = corpo.elevacao ?? corpo.z + (corpo.hopLift || 0);
+  const screenY = corpo.y * TILE - elev * TILE;
+  const sortKey = chaveEntidade(corpo.y, corpo.z);
   return {
     screenY,
     sortKey,
-    textoTela: `screenY = ${corpo.y.toFixed(2)}·${TILE} − ${corpo.z}·${TILE} − ${corpo.hopLift.toFixed(2)}·${TILE} = ${screenY.toFixed(1)}`,
-    textoSort: `sortKey = ${corpo.y.toFixed(2)} + ${corpo.z}·ε = ${sortKey.toFixed(4)}`,
+    textoTela: `screenY = ${corpo.y.toFixed(2)}·${TILE} − elev ${elev.toFixed(2)}·${TILE} = ${screenY.toFixed(1)}`,
+    textoSort: `sortKey = entidade(${corpo.y.toFixed(2)}, z${corpo.z}) = ${sortKey.toFixed(4)}`,
   };
 }

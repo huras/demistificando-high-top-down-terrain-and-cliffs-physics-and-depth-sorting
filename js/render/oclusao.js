@@ -1,6 +1,6 @@
 import { ALTURAS, COLUNAS, LINHAS } from "../mundo/mapaDemo.js";
 import { quedaSul } from "../mundo/altura.js";
-import { chaveFaceSul, chaveProfundidade } from "./ordenacaoProfundidade.js";
+import { chaveEntidade, chaveFaceSul } from "./ordenacaoProfundidade.js";
 
 /**
  * Face sul que o player está “enfrentando”:
@@ -8,7 +8,7 @@ import { chaveFaceSul, chaveProfundidade } from "./ordenacaoProfundidade.js";
  * - senão, a face logo ao norte já passada (NA FRENTE)
  */
 export function consultarOclusao(corpo) {
-  const sortPlayer = chaveProfundidade(corpo.y, corpo.z);
+  const sortPlayer = chaveEntidade(corpo.y, corpo.z);
   let melhor = null;
   let melhorScore = Infinity;
 

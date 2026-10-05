@@ -3,8 +3,9 @@ import { alturaEm, quedaSul } from "../mundo/altura.js";
 import { ALTURAS, COLUNAS, LINHAS, PROPS } from "../mundo/mapaDemo.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
+  chaveEntidade,
+  chaveFaceLateral,
   chaveFaceSul,
-  chaveProfundidade,
   chaveTopo,
   empilhar,
 } from "./ordenacaoProfundidade.js";
@@ -26,7 +27,7 @@ export function empilharTerreno(lista, _atlas, debug, faceDestaque = null) {
       if (z <= 0) continue;
 
       const sortTop = chaveTopo(cy, z);
-      empilhar(lista, sortTop, 0, (ctx) => desenharTopo(ctx, cx, cy, z), TIE_TOPO);
+      empilhar(lista, sortTop, 0, (ctx) => desenharTopo(ctx, cx, cy, z), TIE_TOPO, z);
 
       const quedaS = quedaSul(cx, cy);
       if (quedaS > 0) {
@@ -41,6 +42,7 @@ export function empilharTerreno(lista, _atlas, debug, faceDestaque = null) {
           0,
           (ctx) => desenharFaceSul(ctx, cx, cy, z, quedaS, destacar),
           TIE_FACE,
+          z,
         );
       }
 
@@ -49,19 +51,21 @@ export function empilharTerreno(lista, _atlas, debug, faceDestaque = null) {
       if (dzW > 0) {
         empilhar(
           lista,
-          chaveProfundidade(cy + 0.92, z),
+          chaveFaceLateral(cy, z),
           0,
           (ctx) => desenharFaceLateral(ctx, cx, cy, z, dzW, "w"),
           TIE_LATERAL,
+          z,
         );
       }
       if (dzE > 0) {
         empilhar(
           lista,
-          chaveProfundidade(cy + 0.92, z),
+          chaveFaceLateral(cy, z),
           0,
           (ctx) => desenharFaceLateral(ctx, cx, cy, z, dzE, "e"),
           TIE_LATERAL,
+          z,
         );
       }
 
@@ -72,6 +76,7 @@ export function empilharTerreno(lista, _atlas, debug, faceDestaque = null) {
           0,
           (ctx) => desenharDebug(ctx, cx, cy, z),
           9,
+          z,
         );
       }
     }
@@ -81,10 +86,11 @@ export function empilharTerreno(lista, _atlas, debug, faceDestaque = null) {
     const z = alturaEm(Math.floor(prop.x), Math.floor(prop.y));
     empilhar(
       lista,
-      chaveProfundidade(prop.y, z),
+      chaveEntidade(prop.y, z),
       0,
       (ctx) => desenharProp(ctx, prop, z),
       TIE_PROP,
+      z,
     );
   }
 }
@@ -157,8 +163,9 @@ function desenharFaceLateral(ctx, cx, cy, z, queda, lado) {
   const topY = mundoParaTelaY(cy, z);
   const s = TILE * ESCALA;
   const h = queda * FACE_H * ESCALA;
-  const faixa = Math.max(3, ESCALA + 1);
-  const x = lado === "w" ? px - faixa : px + s;
+  // na borda do topo (não fora) — cobre a faixa onde o sprite compete de lado
+  const faixa = Math.max(5, ESCALA * 3);
+  const x = lado === "w" ? px : px + s - faixa;
 
   ctx.fillStyle = CORES.faceLateral;
   ctx.fillRect(x, topY, faixa, s + h);
@@ -214,6 +221,8 @@ function desenharDebug(ctx, cx, cy, z) {
   ctx.lineWidth = 1;
   ctx.strokeRect(px + 0.5, py + 0.5, s - 1, s - 1);
   ctx.fillStyle = CORES.debug;
-  ctx.font = "10px monospace";
-  ctx.fillText(`z${z}`, px + 3, py + 12);
+  ctx.font = "8px monospace";
+  ctx.fillText(`${cx}`, px + 2, py + 9);
+  ctx.fillText(`${cy}`, px + 2, py + 17);
+  ctx.fillText(`${z}`, px + 2, py + 25);
 }

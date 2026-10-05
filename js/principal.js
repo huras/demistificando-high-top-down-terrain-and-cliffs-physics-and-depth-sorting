@@ -1,13 +1,15 @@
-import { CAMINHOS } from "./config.js";
+import { CAMINHOS, ZOOM_PASSO } from "./config.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
 import { montarAtlas } from "./render/atlas.js";
 import {
+  ajustarZoom,
   aplicarCamera,
   criarCamera,
   seguirAlvo,
 } from "./render/camera.js";
+import { desenharPivosSort } from "./render/debugPivos.js";
 import { atualizarPainel, desenharOverlayAjuda } from "./render/hudDebug.js";
 import {
   criarListaProfundidade,
@@ -32,19 +34,41 @@ async function iniciar() {
   atlas = await montarAtlas(CAMINHOS);
   corpo = criarCorpo(SPAWN);
   camera = criarCamera(canvas.width, canvas.height);
+
+  canvas.addEventListener(
+    "wheel",
+    (ev) => {
+      ev.preventDefault();
+      ajustarZoom(camera, ev.deltaY < 0 ? ZOOM_PASSO : 1 / ZOOM_PASSO);
+    },
+    { passive: false },
+  );
+
   window.__demo = {
     get corpo() {
       return corpo;
+    },
+    get camera() {
+      return camera;
     },
     teleporte(x, y, z) {
       corpo.x = x;
       corpo.y = y;
       corpo.z = z;
+      corpo.elevacao = z;
+      corpo.vx = 0;
+      corpo.vy = 0;
+      corpo.vz = 0;
       corpo.pulo = null;
       corpo.escalada = null;
       corpo.pulando = false;
       corpo.escalando = false;
+      corpo.noChao = true;
       corpo.hopLift = 0;
+      corpo.puloCortado = false;
+      corpo.coyoteT = 0;
+      corpo.puloBufferT = 0;
+      camera.pronta = false;
     },
   };
   ultimo = performance.now();
@@ -55,11 +79,15 @@ function loop(agora) {
   const dt = Math.min(0.05, (agora - ultimo) / 1000);
   ultimo = agora;
 
-  if (teclaAgora("F1")) debug = !debug;
+  if (teclaAgora("Backquote")) debug = !debug;
+  if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom(camera, ZOOM_PASSO);
+  if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
+    ajustarZoom(camera, 1 / ZOOM_PASSO);
+  }
 
   atualizarMovimento(corpo, dt);
-  seguirAlvo(camera, corpo.x, corpo.y, corpo.z);
-  const ocl = atualizarPainel(corpo);
+  seguirAlvo(camera, corpo.x, corpo.y, corpo.z, corpo.hopLift, dt);
+  const ocl = atualizarPainel(corpo, camera.zoom);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -72,7 +100,9 @@ function loop(agora) {
   empilharPersonagem(lista, atlas, corpo);
   desenharLista(lista, ctx);
 
-  desenharOverlayAjuda(ctx, camera, debug, corpo, ocl);
+  if (debug) desenharPivosSort(ctx, corpo);
+
+  desenharOverlayAjuda(ctx, camera, debug, ocl);
 
   requestAnimationFrame(loop);
 }

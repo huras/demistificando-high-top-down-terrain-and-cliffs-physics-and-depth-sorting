@@ -10,7 +10,9 @@ function normalizar(codigo) {
 export function iniciarTeclado() {
   window.addEventListener("keydown", (ev) => {
     const k = normalizar(ev.code || ev.key);
-    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(k)) {
+    if (
+      ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "Equal", "Minus"].includes(k)
+    ) {
       ev.preventDefault();
     }
     if (!teclas.has(k)) acabouDePressionar.add(k);

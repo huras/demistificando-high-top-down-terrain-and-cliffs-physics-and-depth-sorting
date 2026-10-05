@@ -14,10 +14,11 @@
         <p>Física + depth sorting — terreno em cubos simples (sem tiling)</p>
       </div>
       <div class="cabecalho__controles">
-        <span><kbd>WASD</kbd> mover</span>
-        <span><kbd>Space</kbd> pular / cair</span>
+        <span><kbd>WASD</kbd> correr</span>
+        <span><kbd>Space</kbd> pular (segure = mais alto)</span>
         <span><kbd>E</kbd> escalar +1</span>
-        <span><kbd>F1</kbd> debug</span>
+        <span><kbd>scroll</kbd> / <kbd>+</kbd><kbd>-</kbd> zoom</span>
+        <span><kbd>`</kbd> debug pivôs</span>
       </div>
     </header>
 
@@ -49,17 +50,19 @@
             <div><dt>hopLift</dt><dd>—</dd></div>
             <div><dt>ação</dt><dd>—</dd></div>
             <div><dt>vs face</dt><dd id="oclusao-status">—</dd></div>
+            <div><dt>zoom</dt><dd id="zoom-status">1.00×</dd></div>
           </dl>
         </section>
 
         <section class="painel__bloco">
           <h2>Regras de colisão</h2>
           <ul class="regras">
-            <li><code>dz = 0</code> — anda livre</li>
-            <li><code>dz = +1</code> — só com <kbd>E</kbd> (escalar)</li>
-            <li><code>dz ≥ +2</code> — parede</li>
-            <li><code>dz = −1</code> — desce andando ou pulando</li>
-            <li><code>dz ≤ −2</code> — só com <kbd>Space</kbd> (ex.: 3→1)</li>
+            <li><kbd>WASD</kbd> — corrida com aceleração / momentum</li>
+            <li><kbd>Space</kbd> — pulo Mario (controle no ar; segure p/ altura)</li>
+            <li>Beirada — cai com gravidade (coyote time curto)</li>
+            <li>Pouso — em qualquer topo ≤ elevação dos pés</li>
+            <li><code>dz = +1</code> no chão — <kbd>E</kbd> ou pule em cima</li>
+            <li><code>dz ≥ +2</code> — parede (a menos que o pulo ultrapasse)</li>
           </ul>
         </section>
 
@@ -68,7 +71,8 @@
           <ol class="prova">
             <li>Você spawna ao <strong>norte</strong> do terraço amarelo — deve estar <em>atrás</em> da face.</li>
             <li>Ande para o <strong>sul</strong> do terraço — fica <em>na frente</em> da face.</li>
-            <li>Suba a escada (E) e pule do mirante z=3 com Space.</li>
+            <li>Corra + Space pra pular <em>em cima</em> do terraço, ou use <kbd>E</kbd>.</li>
+            <li>Segure Space no mirante z=3 e steer no ar até o chão.</li>
           </ol>
         </section>
       </aside>
