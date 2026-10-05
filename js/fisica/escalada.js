@@ -171,39 +171,19 @@ function moverAoLongoDaParede(corpo, e, lateral, dt) {
   aplicarFaceNoEstado(e, proxima, virouCanto);
 
   if (virouCanto) {
-    // cola no lip novo, na quina de onde veio
+    // quina mais perto da posição (convex = mesma célula; côncavo = diagonal)
     if (proxima.lado === "s") {
       corpo.y = proxima.cy + 1.02;
-      corpo.x =
-        ladoAntes === "e"
-          ? proxima.cx + 0.92
-          : ladoAntes === "w"
-            ? proxima.cx + 0.08
-            : clamp(nx, proxima.cx + 0.05, proxima.cx + 0.95);
+      corpo.x = clamp(nx, proxima.cx + 0.05, proxima.cx + 0.95);
     } else if (proxima.lado === "n") {
       corpo.y = proxima.cy - 0.02;
-      corpo.x =
-        ladoAntes === "e"
-          ? proxima.cx + 0.92
-          : ladoAntes === "w"
-            ? proxima.cx + 0.08
-            : clamp(nx, proxima.cx + 0.05, proxima.cx + 0.95);
+      corpo.x = clamp(nx, proxima.cx + 0.05, proxima.cx + 0.95);
     } else if (proxima.lado === "e") {
       corpo.x = proxima.cx + 1.02;
-      corpo.y =
-        ladoAntes === "s"
-          ? proxima.cy + 0.92
-          : ladoAntes === "n"
-            ? proxima.cy + 0.08
-            : clamp(ny, proxima.cy + 0.05, proxima.cy + 0.95);
+      corpo.y = clamp(ny, proxima.cy + 0.05, proxima.cy + 0.95);
     } else if (proxima.lado === "w") {
       corpo.x = proxima.cx - 0.02;
-      corpo.y =
-        ladoAntes === "s"
-          ? proxima.cy + 0.92
-          : ladoAntes === "n"
-            ? proxima.cy + 0.08
-            : clamp(ny, proxima.cy + 0.05, proxima.cy + 0.95);
+      corpo.y = clamp(ny, proxima.cy + 0.05, proxima.cy + 0.95);
     }
   } else {
     corpo.x = nx;

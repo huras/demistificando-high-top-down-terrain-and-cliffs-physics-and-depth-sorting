@@ -67,15 +67,15 @@ export function faceClimbavel(lado, cx, cy) {
 }
 
 /**
- * Após mover na parede: canto (quina), mesma face, ou vizinha reta.
+ * Após mover na parede: canto (convex/côncavo), mesma face, ou vizinha reta.
  * `latDir` = sinal do movimento lateral (força canto perto da aresta).
  */
 export function resolverFaceAposMovimento(x, y, elev, faceAtual, latDir = 0) {
   if (!faceAtual) return null;
 
-  // 1) canto externo primeiro — vira sem soltar (antes de “ficar na faixa”)
-  const canto = faceNoCanto(faceAtual, x, y, latDir);
-  if (canto && elevacaoOk(canto, elev)) return canto;
+  // 1) quina primeiro — convex, reta ou côncava (single→double no L interno)
+  const canto = primeiraFaceOk(candidatosNoCanto(faceAtual, x, y, latDir), elev);
+  if (canto) return canto;
 
   // 2) ainda na célula atual?
   if (pontoNaFaixaFace(faceAtual.lado, faceAtual.cx, faceAtual.cy, x, y)) {
@@ -83,7 +83,7 @@ export function resolverFaceAposMovimento(x, y, elev, faceAtual, latDir = 0) {
     if (f && elevacaoOk(f, elev)) return f;
   }
 
-  // 3) vizinho no mesmo lado (continua a parede reta)
+  // 3) vizinho no mesmo lado (parede plana, inclusive single→double)
   const viz = vizinhoMesmoLado(faceAtual, x, y);
   if (viz && elevacaoOk(viz, elev)) return viz;
 
@@ -93,6 +93,15 @@ export function resolverFaceAposMovimento(x, y, elev, faceAtual, latDir = 0) {
 function elevacaoOk(face, elev) {
   // folga ampla — não desgruda no canto por eps apertado
   return elev >= face.zBase + 0.02 && elev <= face.zTopo + 0.01;
+}
+
+/** Primeira candidata cuja faixa de elevação aceita o jogador. */
+function primeiraFaceOk(candidatas, elev) {
+  for (let i = 0; i < candidatas.length; i++) {
+    const f = candidatas[i];
+    if (f && elevacaoOk(f, elev)) return f;
+  }
+  return null;
 }
 
 function pontoNaFaixaFace(lado, cx, cy, x, y) {
@@ -132,48 +141,97 @@ function vizinhoMesmoLado(face, x, y) {
 }
 
 /**
- * Canto externo do platô — só na quina (ou já passou da aresta).
- * Preferência: face perpendicular da MESMA célula (vira sem soltar).
+ * Candidatas na quina (ordem = prioridade):
+ * 1) convexo — perpendicular da MESMA célula
+ * 2) plano — mesmo lado na vizinha
+ * 3) côncavo — perpendicular da célula DIAGONAL (L interno / single→double)
+ * 4) ombro — perpendicular da vizinha ortogonal (degrau no terraço)
+ *
  * Lateral: S +leste; N +oeste; E +norte; W +sul.
  */
-function faceNoCanto(face, x, y, latDir) {
+function candidatosNoCanto(face, x, y, latDir) {
   const { lado, cx, cy } = face;
   const s = Math.sign(latDir || 0);
   const A = 0.55;
+  const out = [];
+
+  const push = (...faces) => {
+    for (let i = 0; i < faces.length; i++) {
+      if (faces[i]) out.push(faces[i]);
+    }
+  };
 
   if (lado === "s") {
     if (x >= cx + 1 || (x >= cx + A && s > 0)) {
-      return faceClimbavel("e", cx, cy) || faceClimbavel("s", cx + 1, cy);
+      push(
+        faceClimbavel("e", cx, cy),
+        faceClimbavel("s", cx + 1, cy),
+        faceClimbavel("w", cx + 1, cy + 1),
+        faceClimbavel("w", cx + 1, cy),
+      );
     }
     if (x <= cx || (x <= cx + 1 - A && s < 0)) {
-      return faceClimbavel("w", cx, cy) || faceClimbavel("s", cx - 1, cy);
+      push(
+        faceClimbavel("w", cx, cy),
+        faceClimbavel("s", cx - 1, cy),
+        faceClimbavel("e", cx - 1, cy + 1),
+        faceClimbavel("e", cx - 1, cy),
+      );
     }
-  }
-  if (lado === "n") {
+  } else if (lado === "n") {
     if (x <= cx || (x <= cx + 1 - A && s > 0)) {
-      return faceClimbavel("w", cx, cy) || faceClimbavel("n", cx - 1, cy);
+      push(
+        faceClimbavel("w", cx, cy),
+        faceClimbavel("n", cx - 1, cy),
+        faceClimbavel("e", cx - 1, cy - 1),
+        faceClimbavel("e", cx - 1, cy),
+      );
     }
     if (x >= cx + 1 || (x >= cx + A && s < 0)) {
-      return faceClimbavel("e", cx, cy) || faceClimbavel("n", cx + 1, cy);
+      push(
+        faceClimbavel("e", cx, cy),
+        faceClimbavel("n", cx + 1, cy),
+        faceClimbavel("w", cx + 1, cy - 1),
+        faceClimbavel("w", cx + 1, cy),
+      );
     }
-  }
-  if (lado === "e") {
+  } else if (lado === "e") {
     if (y <= cy || (y <= cy + 1 - A && s > 0)) {
-      return faceClimbavel("n", cx, cy) || faceClimbavel("e", cx, cy - 1);
+      push(
+        faceClimbavel("n", cx, cy),
+        faceClimbavel("e", cx, cy - 1),
+        faceClimbavel("s", cx + 1, cy - 1),
+        faceClimbavel("s", cx + 1, cy),
+      );
     }
     if (y >= cy + 1 || (y >= cy + A && s < 0)) {
-      return faceClimbavel("s", cx, cy) || faceClimbavel("e", cx, cy + 1);
+      push(
+        faceClimbavel("s", cx, cy),
+        faceClimbavel("e", cx, cy + 1),
+        faceClimbavel("n", cx + 1, cy + 1),
+        faceClimbavel("n", cx + 1, cy),
+      );
     }
-  }
-  if (lado === "w") {
+  } else if (lado === "w") {
     if (y >= cy + 1 || (y >= cy + A && s > 0)) {
-      return faceClimbavel("s", cx, cy) || faceClimbavel("w", cx, cy + 1);
+      push(
+        faceClimbavel("s", cx, cy),
+        faceClimbavel("w", cx, cy + 1),
+        faceClimbavel("n", cx - 1, cy + 1),
+        faceClimbavel("n", cx - 1, cy),
+      );
     }
     if (y <= cy || (y <= cy + 1 - A && s < 0)) {
-      return faceClimbavel("n", cx, cy) || faceClimbavel("w", cx, cy - 1);
+      push(
+        faceClimbavel("n", cx, cy),
+        faceClimbavel("w", cx, cy - 1),
+        faceClimbavel("s", cx - 1, cy - 1),
+        faceClimbavel("s", cx - 1, cy),
+      );
     }
   }
-  return null;
+
+  return out;
 }
 
 function considerarFaceSul(cx, cy, zTopo, x, y, zRef, aceitar) {
