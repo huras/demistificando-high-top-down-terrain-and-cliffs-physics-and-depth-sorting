@@ -1,5 +1,10 @@
-import { RAIO_CORPO } from "../config.js";
-import { teclaAgora, teclaEscaladaAgora, vetorMovimento } from "../entrada/teclado.js";
+import { RAIO_CORPO, VELOCIDADE_MAX, VELOCIDADE_SPRINT } from "../config.js";
+import {
+  teclaAgora,
+  teclaBaixa,
+  teclaEscaladaAgora,
+  vetorMovimento,
+} from "../entrada/teclado.js";
 import { alturaEm } from "../mundo/altura.js";
 import {
   atualizarAsaDelta,
@@ -63,6 +68,7 @@ export function criarCorpo(spawn) {
     acao: "parado",
     animT: 0,
     andando: false,
+    correndo: false,
     stamina: 0,
     staminaMax: 0,
   };
@@ -144,8 +150,20 @@ export function atualizarMovimento(corpo, dt) {
     corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
   }
 
+  const shift =
+    teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+  corpo.correndo =
+    !!shift &&
+    corpo.noChao &&
+    !corpo.escalando &&
+    !corpo.mantle &&
+    (dx !== 0 || dy !== 0);
+
   if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt);
-  else atualizarNoAr(corpo, dx, dy, dt);
+  else {
+    corpo.correndo = false;
+    atualizarNoAr(corpo, dx, dy, dt);
+  }
 
   regenerarStamina(corpo, dt);
 }
@@ -153,7 +171,8 @@ export function atualizarMovimento(corpo, dt) {
 function atualizarNoChao(corpo, dx, dy, dt) {
   corpo.planando = false;
   corpo.tempoAr = 0;
-  const movendo = atualizarCorrida(corpo, dx, dy, dt, true);
+  const velMax = corpo.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
+  const movendo = atualizarCorrida(corpo, dx, dy, dt, true, velMax);
   const passoX = corpo.vx * dt;
   const passoY = corpo.vy * dt;
   const novo = moverComColisao(corpo, passoX, passoY, "andar");
@@ -171,6 +190,7 @@ function atualizarNoChao(corpo, dx, dy, dt) {
     corpo.elevacao = corpo.z;
     atualizarAereo(corpo, dt);
     corpo.andando = false;
+    corpo.correndo = false;
     return;
   }
 
@@ -183,8 +203,8 @@ function atualizarNoChao(corpo, dx, dy, dt) {
 
   corpo.andando = movendo && (dx !== 0 || dy !== 0);
   if (corpo.andando) {
-    corpo.animT += dt;
-    corpo.acao = "correndo";
+    corpo.animT += dt * (corpo.correndo ? 1.35 : 1);
+    corpo.acao = corpo.correndo ? "sprint" : "correndo";
   } else if (
     !corpo.acao.startsWith("escala") &&
     !corpo.acao.startsWith("pousou") &&

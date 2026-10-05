@@ -11,7 +11,7 @@ import {
   limparLista,
 } from "./ordenacaoProfundidade.js";
 import { empilharAlvoEscalada } from "./alvoEscalada.js";
-import { empilharPersonagem } from "./personagem.js";
+import { empilharAgente, empilharPersonagem } from "./personagem.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
 
@@ -20,7 +20,7 @@ const lista = criarListaProfundidade();
 /**
  * Pipeline completo high top-down (câmera + depth sort + HUD).
  */
-export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt }) {
+export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, agente }) {
   seguirAlvo(camera, corpo.x, corpo.y, corpo.z, corpo.hopLift, dt);
   const modoVisual = usarTiles(atlas) ? "real" : "cubos";
   const ocl = atualizarPainel(corpo, camera.zoom, modoVisual, "2d");
@@ -35,6 +35,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt })
   limparLista(lista);
   empilharTerreno(lista, atlas, debug, debug ? ocl?.face : null);
   empilharAlvoEscalada(lista, corpo, dt);
+  if (agente) empilharAgente(lista, atlas, agente);
   empilharPersonagem(lista, atlas, corpo);
   desenharLista(lista, ctx);
 

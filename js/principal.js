@@ -1,5 +1,6 @@
 import { CAMINHOS, ZOOM_PASSO } from "./config.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
+import { atualizarAgente, criarAgente } from "./fisica/agente.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { iniciarStamina } from "./fisica/stamina.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
@@ -28,6 +29,7 @@ const ctx = canvas.getContext("2d", { alpha: true });
 
 let atlas;
 let corpo;
+let agente;
 let camera;
 let debug = false;
 let ultimo = 0;
@@ -60,6 +62,11 @@ async function iniciar() {
   atlas = await montarAtlas(CAMINHOS);
   window.__atlas = atlas;
   corpo = criarCorpo(SPAWN);
+  agente = criarAgente({
+    x: SPAWN.x - 1.1,
+    y: SPAWN.y + 0.9,
+    z: SPAWN.z,
+  });
   camera = criarCamera(canvas.width, canvas.height);
   redimensionarCena();
 
@@ -87,6 +94,9 @@ async function iniciar() {
     get modo() {
       return obterModo();
     },
+    get agente() {
+      return agente;
+    },
     teleporte(x, y, z) {
       corpo.x = x;
       corpo.y = y;
@@ -108,6 +118,18 @@ async function iniciar() {
       corpo.puloBufferT = 0;
       corpo.tempoAr = 0;
       iniciarStamina(corpo);
+      if (agente) {
+        agente.x = x - 1.1;
+        agente.y = y + 0.9;
+        agente.z = z;
+        agente.elevacao = z;
+        agente.vx = 0;
+        agente.vy = 0;
+        agente.vz = 0;
+        agente.hopLift = 0;
+        agente.noChao = true;
+        agente.pulando = false;
+      }
       camera.pronta = false;
       resetarCamera3d();
     },
@@ -169,11 +191,12 @@ function loop(agora) {
   }
 
   atualizarMovimento(corpo, dt);
+  atualizarAgente(agente, corpo, dt);
 
   try {
     if (modo === "3d") {
       garantir3d();
-      const cen = atualizarEDesenhar3d(corpo, dt, atlas);
+      const cen = atualizarEDesenhar3d(corpo, dt, atlas, agente);
       const modoVisual = usarTiles(atlas) ? "real" : "cubos";
       desenharHudSobre3d(ctx, canvas, {
         corpo,
@@ -182,7 +205,7 @@ function loop(agora) {
         modoVisual,
       });
     } else {
-      desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt });
+      desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, agente });
     }
   } catch (err) {
     console.error("Erro no frame:", err);

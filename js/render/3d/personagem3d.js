@@ -2,20 +2,21 @@ import * as THREE from "three";
 
 /**
  * Cápsula legível + indicador de facing + sombra de contato.
+ * opts: { nome, cor, emissive, detalhe }
  */
-export function criarPersonagem3d() {
+export function criarPersonagem3d(opts = {}) {
   const grupo = new THREE.Group();
-  grupo.name = "personagem";
+  grupo.name = opts.nome || "personagem";
 
   const corpoMat = new THREE.MeshStandardMaterial({
-    color: 0xf0d060,
-    emissive: 0x3a2a00,
+    color: opts.cor ?? 0xf0d060,
+    emissive: opts.emissive ?? 0x3a2a00,
     emissiveIntensity: 0.35,
     roughness: 0.45,
     metalness: 0.1,
   });
   const detalheMat = new THREE.MeshStandardMaterial({
-    color: 0x3a6a9a,
+    color: opts.detalhe ?? 0x3a6a9a,
     roughness: 0.5,
     metalness: 0.15,
   });

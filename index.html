@@ -25,7 +25,8 @@
         <button type="button" id="btn-modo-3d" class="btn-modo" aria-pressed="false">
           Jogar em 3D
         </button>
-        <span><kbd>WASD</kbd> correr / strafe (3D)</span>
+        <span><kbd>WASD</kbd> andar / strafe (3D)</span>
+        <span><kbd>Shift</kbd> sprint</span>
         <span><kbd>Space</kbd> pular (hold=alto) · 2× = asa-delta</span>
         <span><kbd>E</kbd> grudar (2D) · <kbd>F</kbd> grudar (3D)</span>
         <span><kbd>Q</kbd><kbd>E</kbd> orbitar câmera (3D)</span>
@@ -78,7 +79,8 @@
         <section class="painel__bloco">
           <h2>Regras de colisão</h2>
           <ul class="regras">
-            <li><kbd>WASD</kbd> — corrida; na parede = into sobe + diagonal (canto congela até soltar)</li>
+            <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint; agente segue a 60% da sua velocidade</li>
+            <li>Na parede = into sobe + diagonal (canto congela até soltar)</li>
             <li><kbd>Space</kbd> — pulo (tap sobe +1; segure = mais alto)</li>
             <li><kbd>Space</kbd> 2º toque no ar — asa-delta; na parede — solta</li>
             <li><kbd>E</kbd> (2D) / <kbd>F</kbd> (3D) — gruda / solta a face; no 3D <kbd>Q</kbd><kbd>E</kbd> orbitam a câmera</li>

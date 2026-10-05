@@ -10,31 +10,43 @@ import { empilharSombras } from "./sombra.js";
  * Linhas: 0 sul, 1 oeste, 2 leste, 3 norte (padrão overworld).
  */
 /** Mesma camada 0 do terreno — compete por sortKey (Y). */
-export function empilharPersonagem(lista, atlas, corpo) {
+export function empilharPersonagem(lista, atlas, corpo, opts = {}) {
   const cx = Math.floor(corpo.x);
   const cy = Math.floor(corpo.y);
+  const borda = opts.borda !== false;
+  const tint = opts.tint || null;
+  const tie = opts.tie ?? 5;
 
   empilharSombras(lista, corpo);
 
-  // borda da célula sob os pés (no topo do cubo, antes do sprite)
-  empilhar(
-    lista,
-    chaveTopo(cy, corpo.z),
-    0,
-    (ctx) => desenharBordaCelula(ctx, cx, cy, corpo.z),
-    4,
-    corpo.z,
-  );
+  if (borda) {
+    empilhar(
+      lista,
+      chaveTopo(cy, corpo.z),
+      0,
+      (ctx) => desenharBordaCelula(ctx, cx, cy, corpo.z),
+      4,
+      corpo.z,
+    );
+  }
 
   const sortKey = chaveEntidade(corpo.y, corpo.z);
   empilhar(
     lista,
     sortKey,
     0,
-    (ctx) => desenharPersonagem(ctx, atlas, corpo),
-    5,
+    (ctx) => desenharPersonagem(ctx, atlas, corpo, tint),
+    tie,
     corpo.z,
   );
+}
+
+export function empilharAgente(lista, atlas, agente) {
+  empilharPersonagem(lista, atlas, agente, {
+    borda: false,
+    tint: "hue-rotate(170deg) saturate(1.35) brightness(1.05)",
+    tie: 6,
+  });
 }
 
 function desenharBordaCelula(ctx, cx, cy, z) {
@@ -51,7 +63,7 @@ function desenharBordaCelula(ctx, cx, cy, z) {
   ctx.strokeRect(px + 1.5, py + 1.5, s - 3, s - 3);
 }
 
-export function desenharPersonagem(ctx, atlas, corpo) {
+export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
   const sheet = atlas.jogador;
   const frame = JOGADOR_FRAME;
   const linha = corpo.facing | 0;
@@ -60,11 +72,12 @@ export function desenharPersonagem(ctx, atlas, corpo) {
   const dw = frame * JOGADOR_ESCALA * ESCALA;
   const dh = frame * JOGADOR_ESCALA * ESCALA;
 
-  // âncora nos pés
   const px = mundoParaTelaX(corpo.x) - dw * 0.5;
   const py = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift) - dh + 2 * ESCALA;
 
+  ctx.save();
   ctx.imageSmoothingEnabled = false;
+  if (tint) ctx.filter = tint;
   ctx.drawImage(
     sheet,
     col * frame,
@@ -76,8 +89,8 @@ export function desenharPersonagem(ctx, atlas, corpo) {
     dw,
     dh,
   );
+  ctx.restore();
 
-  // asa-delta no personagem (pés já com hopLift na tela)
   if (corpo.planando) {
     const ax = mundoParaTelaX(corpo.x);
     const ay = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift);

@@ -72,6 +72,14 @@ export function iniciarCenario3d(canvas) {
   const personagem = criarPersonagem3d();
   scene.add(personagem.grupo);
 
+  const agente3d = criarPersonagem3d({
+    nome: "agente",
+    cor: 0x5ec8e8,
+    emissive: 0x0a3048,
+    detalhe: 0xe8a040,
+  });
+  scene.add(agente3d.grupo);
+
   const alvoEscalada = criarMarcadorAlvoEscalada();
   scene.add(alvoEscalada.mesh);
 
@@ -83,6 +91,7 @@ export function iniciarCenario3d(canvas) {
     sol,
     terreno,
     personagem,
+    agente3d,
     alvoEscalada,
     pronto: true,
     distanciaNormalizada: () => distanciaNormalizada(camera3d),
@@ -167,12 +176,13 @@ export function orbitarCamera3d(dt) {
 /**
  * Atualiza câmera/personagem e renderiza um frame.
  */
-export function atualizarEDesenhar3d(corpo, dt, atlas) {
+export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   if (!estado) return null;
 
   sincronizarVisualTerreno(atlas);
   seguirAlvo3d(estado.camera3d, corpo, dt);
   estado.personagem.atualizar(corpo);
+  if (agente && estado.agente3d) estado.agente3d.atualizar(agente);
   estado.alvoEscalada.atualizar(corpo, dt);
 
   // sombra do sol acompanha o jogador (frustum apertado = qualidade)

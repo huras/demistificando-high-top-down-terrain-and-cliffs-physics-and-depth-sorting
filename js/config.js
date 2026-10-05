@@ -8,10 +8,16 @@ export const RAIO_CORPO = 0.28;
 
 /** Corrida (células/s e células/s²). */
 export const VELOCIDADE_MAX = 5.4;
+export const VELOCIDADE_SPRINT = 8.2; // Shift
 export const ACELERACAO_CHAO = 32;
 export const ATRITO_CHAO = 26;
 export const ACELERACAO_AR = 16;
 export const ATRITO_AR = 1.8;
+
+/** Agente que segue o jogador. */
+export const AGENTE_VEL_MUL = 0.6;
+export const AGENTE_DIST_PARAR = 1.15;
+export const AGENTE_DIST_TELEPORTE = 14;
 
 /**
  * Pulo Mario: segurar Space = gravidade leve; soltar = corta vz.
