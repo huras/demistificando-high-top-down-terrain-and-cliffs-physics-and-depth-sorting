@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
+import { ASA_DELTA_DESCIDA } from "../../config.js";
 import {
   ajustarDistancia,
   aplicarOlharMouse,
@@ -11,6 +12,7 @@ import {
 } from "./camera3d.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
+import { criarVentoAsa3d } from "./ventoAsa3d.js";
 
 let estado = null;
 
@@ -57,13 +59,13 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const sol = new THREE.DirectionalLight(0xffe4c4, 1.55);
   sol.position.set(28, 42, 18);
   sol.castShadow = true;
-  sol.shadow.mapSize.set(2048, 2048);
+  sol.shadow.mapSize.set(1024, 1024);
   sol.shadow.camera.near = 2;
-  sol.shadow.camera.far = 120;
-  sol.shadow.camera.left = -40;
-  sol.shadow.camera.right = 40;
-  sol.shadow.camera.top = 40;
-  sol.shadow.camera.bottom = -40;
+  sol.shadow.camera.far = 90;
+  sol.shadow.camera.left = -18;
+  sol.shadow.camera.right = 18;
+  sol.shadow.camera.top = 18;
+  sol.shadow.camera.bottom = -18;
   sol.shadow.bias = -0.0003;
   sol.shadow.normalBias = 0.04;
   scene.add(sol);
@@ -93,6 +95,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   });
   scene.add(agente3d.grupo);
 
+  const ventoAsa = criarVentoAsa3d();
+  scene.add(ventoAsa.objeto);
+
   const alvoEscalada = criarMarcadorAlvoEscalada();
   scene.add(alvoEscalada.mesh);
 
@@ -106,6 +111,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     terreno,
     personagem,
     agente3d,
+    ventoAsa,
     alvoEscalada,
     pronto: true,
     distanciaNormalizada: () => distanciaNormalizada(camera3d),
@@ -202,16 +208,33 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   sincronizarVisualTerreno(atlas);
   seguirAlvo3d(estado.camera3d, corpo, dt);
-  estado.personagem.atualizar(corpo, estado.camera3d.cam);
+
+  const yaw = yawCamera(estado.camera3d);
+  estado.personagem.atualizar(corpo, estado.camera3d.cam, yaw);
   if (agente && estado.agente3d) {
-    estado.agente3d.atualizar(agente, estado.camera3d.cam);
+    estado.agente3d.atualizar(agente, estado.camera3d.cam, yaw);
   }
   estado.alvoEscalada.atualizar(corpo, dt);
 
-  // sombra do sol acompanha o jogador (frustum apertado = qualidade)
-  estado.sol.target.position.set(corpo.x, corpo.elevacao ?? corpo.z, corpo.y);
-  estado.sol.position.set(corpo.x + 28, (corpo.elevacao ?? corpo.z) + 42, corpo.y + 18);
-  estado.rim.position.set(corpo.x + 2, (corpo.elevacao ?? corpo.z) + 8, corpo.y - 18);
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const planando = !!corpo.planando;
+  const voando = !!corpo.voando;
+  estado.ventoAsa.atualizar(dt, {
+    gliding: planando || voando,
+    x: corpo.x,
+    y: corpo.y,
+    elev,
+    vx: corpo.vx ?? 0,
+    vy: corpo.vy ?? 0,
+    fx: corpo.dirX ?? 0,
+    fy: corpo.dirY ?? 1,
+    queda: planando ? ASA_DELTA_DESCIDA : voando ? 2.5 : 0,
+    lift: Math.max(0, elev - (corpo.z ?? 0)),
+  });
+
+  estado.sol.target.position.set(corpo.x, elev, corpo.y);
+  estado.sol.position.set(corpo.x + 28, elev + 42, corpo.y + 18);
+  estado.rim.position.set(corpo.x + 2, elev + 8, corpo.y - 18);
 
   estado.renderer.render(estado.scene, estado.camera3d.cam);
   return estado;

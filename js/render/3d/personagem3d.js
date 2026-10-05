@@ -1,15 +1,13 @@
 import * as THREE from "three";
 import { JOGADOR_FRAME } from "../../config.js";
+import { criarAsaDelta3d } from "./asaDelta3d.js";
+import { linhaFacingDoCorpo } from "./facingCamera3d.js";
+import { criarSombraContato3d } from "./sombraContato3d.js";
 
 const ALTURA_SPRITE = 1.25;
-const SOMBRA_RX = 0.38;
-const SOMBRA_RY = 0.16;
-const SOMBRA_ALPHA = 0.34;
-const SHRINK_K = 0.55;
-const HOP_REF = 2.4;
 
 /**
- * Billboard HD-2D a partir do sheet gold (4×4, frame 64px) + sombra oval.
+ * Billboard HD-2D + sombra de contato + asa-delta.
  * opts: { nome, sprite, tint }
  */
 export function criarPersonagem3d(opts = {}) {
@@ -46,58 +44,22 @@ export function criarPersonagem3d(opts = {}) {
   sprite.receiveShadow = false;
   grupo.add(sprite);
 
-  // proxy invisível pra sombra direcional (Sprite não projeta bem)
-  const proxy = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.18, 0.35, 2, 6),
-    new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-    }),
-  );
-  proxy.position.y = 0.4;
-  proxy.castShadow = true;
-  proxy.receiveShadow = false;
-  grupo.add(proxy);
+  const sombra = criarSombraContato3d();
+  grupo.add(sombra.grupo);
 
-  const asaMat = new THREE.MeshStandardMaterial({
-    color: 0xc8e8ff,
-    roughness: 0.35,
-    metalness: 0.05,
-    transparent: true,
-    opacity: 0.85,
-    side: THREE.DoubleSide,
-  });
-  const asa = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.55), asaMat);
-  asa.position.set(0, 0.85, -0.05);
-  asa.rotation.x = -0.35;
-  asa.visible = false;
-  grupo.add(asa);
-
-  const sombra = new THREE.Mesh(
-    new THREE.CircleGeometry(1, 24),
-    new THREE.MeshBasicMaterial({
-      color: 0x0f172a,
-      transparent: true,
-      opacity: SOMBRA_ALPHA,
-      depthWrite: false,
-    }),
-  );
-  sombra.rotation.x = -Math.PI / 2;
-  sombra.position.y = 0.02;
-  sombra.scale.set(SOMBRA_RX, 1, SOMBRA_RY);
-  sombra.renderOrder = 1;
-  grupo.add(sombra);
+  const asa = criarAsaDelta3d();
+  grupo.add(asa.grupo);
 
   let sheet = opts.sprite || null;
   let ultimoFrameKey = "";
 
-  function pintarFrame(corpoEstado) {
+  function pintarFrame(corpoEstado, yawCam) {
     if (!sheet || !frameCtx) return;
-    const linha = corpoEstado.facing | 0;
+    const linha = linhaFacingDoCorpo(corpoEstado, yawCam ?? 0);
     const ciclo = [0, 1, 0, 3];
-    const col = corpoEstado.andando ? ciclo[Math.floor(corpoEstado.animT * 8) % 4] : 0;
+    const col = corpoEstado.andando
+      ? ciclo[Math.floor(corpoEstado.animT * 8) % 4]
+      : 0;
     const key = `${linha}:${col}`;
     if (key === ultimoFrameKey) return;
     ultimoFrameKey = key;
@@ -127,15 +89,29 @@ export function criarPersonagem3d(opts = {}) {
   return {
     grupo,
     definirSprite,
-    atualizar(corpoEstado, _camera = null) {
+    /**
+     * @param {object} corpoEstado
+     * @param {THREE.Camera|null} camera
+     * @param {number} [yawCam]
+     */
+    atualizar(corpoEstado, camera = null, yawCam = 0) {
       const elev =
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
       grupo.position.set(corpoEstado.x, elev, corpoEstado.y);
 
-      pintarFrame(corpoEstado);
+      const yaw =
+        yawCam != null && Number.isFinite(yawCam)
+          ? yawCam
+          : camera
+            ? Math.atan2(
+                camera.position.x - corpoEstado.x,
+                camera.position.z - corpoEstado.y,
+              )
+            : 0;
+
+      pintarFrame(corpoEstado, yaw);
 
       const naParede = !!(corpoEstado.escalando && corpoEstado.escalada);
-
       if (naParede) {
         const e = corpoEstado.escalada;
         const nx = e.normalX || 0;
@@ -151,49 +127,14 @@ export function criarPersonagem3d(opts = {}) {
         grupo.rotation.z = 0;
       }
 
-      const voando = !!corpoEstado.voando;
-      asa.visible = !!corpoEstado.planando || voando;
-      if (voando) {
-        asa.material.opacity = 0.45;
-        asa.material.color.setHex(0xffe080);
-        asa.rotation.z = Math.sin(performance.now() * 0.008) * 0.12;
-        asa.rotation.x = -0.55;
-      } else if (corpoEstado.planando) {
-        asa.material.opacity = 0.85;
-        asa.material.color.setHex(0xc8e8ff);
-        asa.rotation.z = Math.sin(performance.now() * 0.004) * 0.08;
-        asa.rotation.x = -0.35;
-      }
-
-      proxy.castShadow = !naParede;
-
-      const solo = naParede
-        ? corpoEstado.escalada.zBase > 0
-          ? corpoEstado.escalada.zBase
-          : 0
-        : (corpoEstado.z ?? 0);
-      const lift = Math.max(0, elev - solo);
-      const heightFrac = Math.max(0, Math.min(1, lift / HOP_REF));
-      const shrink = 1 - heightFrac * SHRINK_K;
-      const alpha =
-        SOMBRA_ALPHA *
-        (1 - heightFrac * SHRINK_K) *
-        (corpoEstado.noChao && !naParede ? 1 : 0.85);
-
-      sombra.visible = alpha > 0.04;
-      sombra.material.opacity = Math.max(0.06, alpha);
-      sombra.scale.set(SOMBRA_RX * shrink, 1, SOMBRA_RY * shrink);
-      sombra.position.set(0, solo - elev + 0.03, 0);
+      sombra.atualizar(corpoEstado, elev);
+      asa.atualizar(corpoEstado);
     },
     liberar() {
       tex.dispose();
       spriteMat.dispose();
-      asaMat.dispose();
-      sombra.material.dispose();
-      sombra.geometry.dispose();
-      proxy.geometry.dispose();
-      proxy.material.dispose();
-      asa.geometry.dispose();
+      sombra.liberar();
+      asa.liberar();
     },
   };
 }

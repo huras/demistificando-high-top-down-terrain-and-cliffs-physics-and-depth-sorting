@@ -10,7 +10,7 @@ import {
   CAMERA3D_PITCH_MAX,
   CAMERA3D_PITCH_MIN,
   CAMERA3D_ROT_VEL,
-  CAMERA3D_SUAVIDADE,
+  CAMERA3D_SUAVIDADE_Y,
   ZOOM_MAX,
   ZOOM_MIN,
 } from "../../config.js";
@@ -26,6 +26,7 @@ export function criarCamera3d(aspect) {
     _pos: new THREE.Vector3(),
     _alvo: new THREE.Vector3(),
     _look: new THREE.Vector3(),
+    _lookY: null,
   };
 }
 
@@ -66,7 +67,7 @@ export function aplicarOlharMouse(camera3d, dx, dy) {
 }
 
 /**
- * Terceira pessoa: segue o jogador; yaw/pitch via mouse-look.
+ * Terceira pessoa: XZ instantâneo; só o follow de altura (Y) é smooth.
  */
 export function seguirAlvo3d(camera3d, corpo, dt) {
   if (!camera3d.pronta) {
@@ -78,7 +79,7 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
   const la = CAMERA3D_LOOKAHEAD;
   const tx = corpo.x + (corpo.vx || 0) * la;
   const tz = corpo.y + (corpo.vy || 0) * la;
-  const ty = elev + CAMERA3D_OLHAR_Y;
+  const tyAlvo = elev + CAMERA3D_OLHAR_Y;
 
   const dist = camera3d.distancia;
   const cosP = Math.cos(camera3d.pitch);
@@ -87,20 +88,26 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
   const cosY = Math.cos(camera3d.yaw);
 
   const desejadoX = tx + sinY * dist * cosP;
-  const desejadoY = ty + CAMERA3D_ALTURA * 0.35 + sinP * dist;
   const desejadoZ = tz + cosY * dist * cosP;
 
   if (!camera3d.pronta) {
+    camera3d._lookY = tyAlvo;
+    const desejadoY =
+      camera3d._lookY + CAMERA3D_ALTURA * 0.35 + sinP * dist;
     camera3d._pos.set(desejadoX, desejadoY, desejadoZ);
     camera3d.pronta = true;
   } else {
-    const t = 1 - Math.exp(-CAMERA3D_SUAVIDADE * dt);
-    camera3d._pos.x += (desejadoX - camera3d._pos.x) * t;
-    camera3d._pos.y += (desejadoY - camera3d._pos.y) * t;
-    camera3d._pos.z += (desejadoZ - camera3d._pos.z) * t;
+    // XZ trava no alvo; Y (olho + posição) suaviza mudança de piso/rampa
+    const tY = 1 - Math.exp(-CAMERA3D_SUAVIDADE_Y * dt);
+    camera3d._lookY += (tyAlvo - camera3d._lookY) * tY;
+    const desejadoY =
+      camera3d._lookY + CAMERA3D_ALTURA * 0.35 + sinP * dist;
+    camera3d._pos.x = desejadoX;
+    camera3d._pos.z = desejadoZ;
+    camera3d._pos.y += (desejadoY - camera3d._pos.y) * tY;
   }
 
-  camera3d._look.set(tx, ty, tz);
+  camera3d._look.set(tx, camera3d._lookY, tz);
   camera3d.cam.position.copy(camera3d._pos);
   camera3d.cam.lookAt(camera3d._look);
 }
