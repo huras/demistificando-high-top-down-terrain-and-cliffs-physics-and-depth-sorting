@@ -1,4 +1,4 @@
-import { PULO_EPS_POUSO, RAIO_CORPO } from "../config.js";
+import { DEGRAU_ANDAR, PULO_EPS_POUSO, RAIO_CORPO } from "../config.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
 
 export function alturaSobPes(x, y) {
@@ -16,6 +16,7 @@ export function podeEntrar(cx, cy, zAtual, modo = "andar", elevacao = zAtual) {
 
   if (modo === "aereo") {
     if (zDest <= 0) return true;
+    // permite “pousar no topo” um pouco antes do apex (menos Space)
     return zDest <= elevacao + PULO_EPS_POUSO;
   }
 
@@ -24,9 +25,9 @@ export function podeEntrar(cx, cy, zAtual, modo = "andar", elevacao = zAtual) {
     return zDest - zAtual === 1 || zDest === zAtual;
   }
 
-  // andar: mesmo nível, ou descer/void (vira queda na física)
+  // andar: mesmo nível, subir 1 degrau, ou descer/void (vira queda)
   if (zDest === zAtual) return true;
-  if (zDest > zAtual) return false;
+  if (zDest > zAtual) return zDest - zAtual <= DEGRAU_ANDAR;
   return true; // zDest < zAtual ou void (0)
 }
 

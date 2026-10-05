@@ -5,5 +5,8 @@
   "description": "Demo educacional: física high top-down, cliffs e depth sorting",
   "scripts": {
     "start": "npx --yes serve . -p 4177"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
   }
 }

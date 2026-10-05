@@ -11,7 +11,17 @@ export function iniciarTeclado() {
   window.addEventListener("keydown", (ev) => {
     const k = normalizar(ev.code || ev.key);
     if (
-      ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "Equal", "Minus"].includes(k)
+      [
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+        "Space",
+        "Equal",
+        "Minus",
+        "KeyQ",
+        "KeyE",
+      ].includes(k)
     ) {
       ev.preventDefault();
     }
@@ -44,6 +54,13 @@ export function teclaAgora(codigo) {
   return true;
 }
 
+/** Transforma o vetor WASD (ex.: relativo à câmera 3D). */
+let adaptadorVetor = null;
+
+export function definirAdaptadorVetor(fn) {
+  adaptadorVetor = typeof fn === "function" ? fn : null;
+}
+
 export function vetorMovimento() {
   let dx = 0;
   let dy = 0;
@@ -56,10 +73,22 @@ export function vetorMovimento() {
     dx *= inv;
     dy *= inv;
   }
+  if (adaptadorVetor) return adaptadorVetor(dx, dy);
   return { dx, dy };
 }
 
 export function limparEdges() {
   acabouDePressionar.clear();
   consumidos.clear();
+}
+
+/**
+ * Escalada: E no 2D; F no 3D (Q/E órbitam a câmera).
+ * codigoEscalada: "KeyE" | "KeyF" | null (auto pelo body[data-modo]).
+ */
+export function teclaEscaladaAgora(codigoEscalada = null) {
+  const codigo =
+    codigoEscalada ||
+    (document.body?.dataset?.modo === "3d" ? "KeyF" : "KeyE");
+  return teclaAgora(codigo);
 }

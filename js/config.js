@@ -6,6 +6,9 @@ export const EPS_SORT = 0.001;
 
 export const RAIO_CORPO = 0.28;
 
+/** Subir andando (estilo Minecraft) — 1 degrau sem pulo/escalada. */
+export const DEGRAU_ANDAR = 1;
+
 /** Corrida (células/s e células/s²). */
 export const VELOCIDADE_MAX = 5.4;
 export const ACELERACAO_CHAO = 32;
@@ -15,15 +18,15 @@ export const ATRITO_AR = 1.8;
 
 /**
  * Pulo Mario: segurar Space = gravidade leve; soltar = corta vz.
- * Pico segurando ≈ v²/(2·gLeve) ≈ 1.7 → alcança plataforma +1.
+ * Tap ≈ v²/(2·g) ≈ 1.15 → sobe +1 sem segurar; hold ≈ 2.3 → +2.
  */
-export const PULO_VELOCIDADE = 6.4;
+export const PULO_VELOCIDADE = 7.4;
 export const GRAVIDADE = 24;
 export const GRAVIDADE_PULO_SEGURANDO = 12;
 export const PULO_CORTE_SOLTAR = 0.42;
 export const PULO_COYOTE = 0.09;
 export const PULO_BUFFER = 0.12;
-export const PULO_EPS_POUSO = 0.04;
+export const PULO_EPS_POUSO = 0.08;
 export const PULO_EMPURRAO_POUSO = 0.2;
 
 /**
@@ -51,6 +54,17 @@ export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 3.5;
 export const ZOOM_PASSO = 1.12;
 export const CAMERA_SUAVIDADE = 7;
+
+/** Câmera terceira pessoa (modo 3D). */
+export const CAMERA3D_DIST_MIN = 4;
+export const CAMERA3D_DIST_MAX = 28;
+export const CAMERA3D_DIST_PADRAO = 10;
+export const CAMERA3D_ALTURA = 3.2;
+export const CAMERA3D_OLHAR_Y = 1.15;
+export const CAMERA3D_SUAVIDADE = 8;
+export const CAMERA3D_LOOKAHEAD = 0.35;
+/** rad/s — Q/E orbitam a câmera no modo 3D. */
+export const CAMERA3D_ROT_VEL = 2.4;
 
 export const CAMINHOS = {
   jogador: "assets/people/gold.png",

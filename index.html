@@ -5,8 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>High Top-Down — Cliffs, Física e Depth Sorting</title>
   <link rel="stylesheet" href="css/demo.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
 </head>
-<body>
+<body data-modo="2d">
   <div class="app">
     <header class="cabecalho">
       <div class="cabecalho__texto">
@@ -14,10 +22,15 @@
         <p>Física + depth sorting — tiles reais do jogo (T = cubos didáticos)</p>
       </div>
       <div class="cabecalho__controles">
-        <span><kbd>WASD</kbd> correr</span>
+        <button type="button" id="btn-modo-3d" class="btn-modo" aria-pressed="false">
+          Jogar em 3D
+        </button>
+        <span><kbd>WASD</kbd> correr / strafe (3D)</span>
         <span><kbd>Space</kbd> pular (hold=alto) · 2× = asa-delta</span>
-        <span><kbd>E</kbd> grudar / soltar parede</span>
+        <span><kbd>E</kbd> grudar (2D) · <kbd>F</kbd> grudar (3D)</span>
+        <span><kbd>Q</kbd><kbd>E</kbd> orbitar câmera (3D)</span>
         <span><kbd>T</kbd> visual real / cubos</span>
+        <span><kbd>3</kbd> modo 3D</span>
         <span><kbd>scroll</kbd> / <kbd>+</kbd><kbd>-</kbd> zoom</span>
         <span><kbd>`</kbd> debug pivôs</span>
       </div>
@@ -25,7 +38,10 @@
 
     <main class="principal">
       <div class="palco">
-        <canvas id="canvas" width="960" height="540"></canvas>
+        <div class="palco__viewport">
+          <canvas id="canvas-3d" class="palco__camada palco__camada--oculta" width="960" height="540"></canvas>
+          <canvas id="canvas" class="palco__camada palco__camada--ativa" width="960" height="540"></canvas>
+        </div>
       </div>
 
       <aside class="painel" id="painel">
@@ -55,16 +71,17 @@
             <div><dt>stamina</dt><dd id="stamina-status">100%</dd></div>
             <div><dt>zoom</dt><dd id="zoom-status">1.00×</dd></div>
             <div><dt>visual</dt><dd id="visual-status">real</dd></div>
+            <div><dt>modo</dt><dd id="modo-status">2D</dd></div>
           </dl>
         </section>
 
         <section class="painel__bloco">
           <h2>Regras de colisão</h2>
           <ul class="regras">
-            <li><kbd>WASD</kbd> — corrida; na parede = into sobe + diagonal (canto congela até soltar)</li>
-            <li><kbd>Space</kbd> — pulo Mario (segure = mais alto)</li>
+            <li><kbd>WASD</kbd> — corrida; sobe 1 degrau andando; na parede = into sobe + diagonal</li>
+            <li><kbd>Space</kbd> — pulo (tap sobe +1; segure = mais alto)</li>
             <li><kbd>Space</kbd> 2º toque no ar — asa-delta; na parede — solta</li>
-            <li><kbd>E</kbd> — gruda / solta a face (stamina só ao se mover)</li>
+            <li><kbd>E</kbd> (2D) / <kbd>F</kbd> (3D) — gruda / solta a face; no 3D <kbd>Q</kbd><kbd>E</kbd> orbitam a câmera</li>
             <li>Direção na parede trava no press — canto não remapeia; solte e aperte de novo pra reavaliar</li>
             <li>Topo + subir — mantle; WASD mantém eixos do climb (platô/beirada/lado) até soltar</li>
             <li>Base + descer — pousa; stamina 0 — cai</li>

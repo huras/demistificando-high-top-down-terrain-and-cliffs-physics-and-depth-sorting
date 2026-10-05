@@ -1,5 +1,5 @@
 import { RAIO_CORPO } from "../config.js";
-import { teclaAgora, vetorMovimento } from "../entrada/teclado.js";
+import { teclaAgora, teclaEscaladaAgora, vetorMovimento } from "../entrada/teclado.js";
 import { alturaEm } from "../mundo/altura.js";
 import {
   atualizarAsaDelta,
@@ -71,14 +71,14 @@ export function criarCorpo(spawn) {
 export function atualizarMovimento(corpo, dt) {
   let { dx, dy } = vetorMovimento();
 
-  // —— Escalando: WASD na face; Space ou E solta ——
+  // —— Escalando: WASD na face; Space ou E/F solta ——
   if (corpo.escalando && corpo.escalada) {
     const apertouPulo = teclaAgora("Space");
-    const apertouE = teclaAgora("KeyE");
-    if (apertouPulo || apertouE) {
+    const apertouEscala = teclaEscaladaAgora();
+    if (apertouPulo || apertouEscala) {
       soltarEscalada(corpo, {
         impulso: true,
-        motivo: apertouE ? "e" : "space",
+        motivo: apertouEscala ? "escala" : "space",
       });
       // continua o frame na queda
     } else {
@@ -116,8 +116,8 @@ export function atualizarMovimento(corpo, dt) {
     tratarInputAsaDelta(corpo, true);
   }
 
-  // E: gruda na face (chão ou ar) — tecla segurada vira “subir”
-  if (teclaAgora("KeyE") && !corpo.escalando) {
+  // E (2D) / F (3D): gruda na face — tecla segurada vira “subir”
+  if (teclaEscaladaAgora() && !corpo.escalando) {
     const res = tentarEscalar(corpo);
     if (res?.ok) {
       anexarEscalada(corpo, res, dx, dy);
@@ -163,6 +163,11 @@ function atualizarNoChao(corpo, dx, dy, dt) {
     atualizarAereo(corpo, dt);
     corpo.andando = false;
     return;
+  }
+
+  // degrau +1: sobe andando (sem Space)
+  if (zChao > corpo.z) {
+    corpo.acao = `degrau → z${zChao}`;
   }
 
   corpo.z = zChao;

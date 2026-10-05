@@ -1,35 +1,35 @@
 import { CAMINHOS, ZOOM_PASSO } from "./config.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
-import { SPAWN } from "./mundo/mapaDemo.js";
-import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
-import {
-  ajustarZoom,
-  aplicarCamera,
-  criarCamera,
-  seguirAlvo,
-} from "./render/camera.js";
-import { desenharPivosSort } from "./render/debugPivos.js";
-import { atualizarPainel, desenharOverlayAjuda } from "./render/hudDebug.js";
-import { desenharHudStamina } from "./render/hudStamina.js";
-import {
-  criarListaProfundidade,
-  desenharLista,
-  limparLista,
-} from "./render/ordenacaoProfundidade.js";
-import { empilharPersonagem } from "./render/personagem.js";
-import { empilharTerreno } from "./render/terreno.js";
 import { iniciarStamina } from "./fisica/stamina.js";
+import { SPAWN } from "./mundo/mapaDemo.js";
+import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
+import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
+import { ajustarZoom, criarCamera } from "./render/camera.js";
+import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
+import {
+  ativarInputRelativoCamera,
+  desativarInputRelativoCamera,
+} from "./render/3d/adaptadorInput3d.js";
+import {
+  ajustarZoom3d,
+  atualizarEDesenhar3d,
+  iniciarCenario3d,
+  obterCenario3d,
+  orbitarCamera3d,
+  resetarCamera3d,
+} from "./render/3d/cenario3d.js";
 
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas3d = document.getElementById("canvas-3d");
+const ctx = canvas.getContext("2d", { alpha: true });
 
 let atlas;
 let corpo;
 let camera;
 let debug = false;
 let ultimo = 0;
-const lista = criarListaProfundidade();
+let cenario3dPronto = false;
 
 async function iniciar() {
   iniciarTeclado();
@@ -38,14 +38,18 @@ async function iniciar() {
   corpo = criarCorpo(SPAWN);
   camera = criarCamera(canvas.width, canvas.height);
 
-  canvas.addEventListener(
-    "wheel",
-    (ev) => {
-      ev.preventDefault();
-      ajustarZoom(camera, ev.deltaY < 0 ? ZOOM_PASSO : 1 / ZOOM_PASSO);
-    },
-    { passive: false },
-  );
+  ligarControleModo(document.getElementById("btn-modo-3d"));
+  aoMudarModo(aoTrocarModo);
+  sincronizarCamadas(obterModo());
+
+  const onWheel = (ev) => {
+    ev.preventDefault();
+    const fator = ev.deltaY < 0 ? ZOOM_PASSO : 1 / ZOOM_PASSO;
+    if (obterModo() === "3d") ajustarZoom3d(fator);
+    else ajustarZoom(camera, fator);
+  };
+  canvas.addEventListener("wheel", onWheel, { passive: false });
+  canvas3d.addEventListener("wheel", onWheel, { passive: false });
 
   window.__demo = {
     get corpo() {
@@ -53,6 +57,9 @@ async function iniciar() {
     },
     get camera() {
       return camera;
+    },
+    get modo() {
+      return obterModo();
     },
     teleporte(x, y, z) {
       corpo.x = x;
@@ -75,10 +82,40 @@ async function iniciar() {
       corpo.tempoAr = 0;
       iniciarStamina(corpo);
       camera.pronta = false;
+      resetarCamera3d();
     },
   };
+
   ultimo = performance.now();
   requestAnimationFrame(loop);
+}
+
+function garantir3d() {
+  if (cenario3dPronto) return obterCenario3d();
+  const cen = iniciarCenario3d(canvas3d);
+  cenario3dPronto = true;
+  return cen;
+}
+
+function aoTrocarModo(modo) {
+  sincronizarCamadas(modo);
+  if (modo === "3d") {
+    const cen = garantir3d();
+    resetarCamera3d();
+    ativarInputRelativoCamera(() => cen.yaw());
+  } else {
+    desativarInputRelativoCamera();
+    camera.pronta = false;
+  }
+}
+
+function sincronizarCamadas(modo) {
+  const em3d = modo === "3d";
+  canvas3d.classList.toggle("palco__camada--ativa", em3d);
+  canvas3d.classList.toggle("palco__camada--oculta", !em3d);
+  canvas.classList.toggle("palco__camada--hud", em3d);
+  canvas.classList.toggle("palco__camada--ativa", !em3d);
+  document.body.dataset.modo = modo;
 }
 
 function loop(agora) {
@@ -87,31 +124,42 @@ function loop(agora) {
 
   if (teclaAgora("Backquote")) debug = !debug;
   if (teclaAgora("KeyT")) alternarVisual(atlas);
-  if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom(camera, ZOOM_PASSO);
-  if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
-    ajustarZoom(camera, 1 / ZOOM_PASSO);
+  if (teclaAgora("Digit3") || teclaAgora("Numpad3")) alternarModo();
+
+  const modo = obterModo();
+  if (modo === "3d") {
+    garantir3d();
+    orbitarCamera3d(dt);
+    if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
+    if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
+      ajustarZoom3d(1 / ZOOM_PASSO);
+    }
+  } else {
+    if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom(camera, ZOOM_PASSO);
+    if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
+      ajustarZoom(camera, 1 / ZOOM_PASSO);
+    }
   }
 
   atualizarMovimento(corpo, dt);
-  seguirAlvo(camera, corpo.x, corpo.y, corpo.z, corpo.hopLift, dt);
-  const modoVisual = usarTiles(atlas) ? "real" : "cubos";
-  const ocl = atualizarPainel(corpo, camera.zoom, modoVisual);
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#0a100c";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  aplicarCamera(ctx, camera);
-  limparLista(lista);
-  empilharTerreno(lista, atlas, debug, debug ? ocl?.face : null);
-  empilharPersonagem(lista, atlas, corpo);
-  desenharLista(lista, ctx);
-
-  if (debug) desenharPivosSort(ctx, corpo);
-
-  desenharOverlayAjuda(ctx, camera, debug, ocl, modoVisual);
-  desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
+  try {
+    if (modo === "3d") {
+      garantir3d();
+      const cen = atualizarEDesenhar3d(corpo, dt, atlas);
+      const modoVisual = usarTiles(atlas) ? "real" : "cubos";
+      desenharHudSobre3d(ctx, canvas, {
+        corpo,
+        camera3d: cen,
+        debug,
+        modoVisual,
+      });
+    } else {
+      desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt });
+    }
+  } catch (err) {
+    console.error("Erro no frame:", err);
+  }
 
   requestAnimationFrame(loop);
 }
