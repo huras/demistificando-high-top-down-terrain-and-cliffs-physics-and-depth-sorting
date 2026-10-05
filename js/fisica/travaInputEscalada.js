@@ -4,12 +4,11 @@
  * Attach com tecla segurada: componente pra dentro da parede = subir
  * (ex.: andando com S numa face norte → S continua subindo).
  *
- * Press já agarrado: into wall = sobe (todas as faces).
- * Enquanto segurar: mantém o significado (canto não remapeia).
- * Ao soltar tudo: limpa; próximo press reavalia na face atual.
+ * Mesma face: reprojeta todo frame → diagonal (subida+lateral) livre.
+ * Canto / attach forçado: congela significado até soltar WASD.
  *
- * Pós-mantle: base da face continua no chão até soltar WASD —
- * subir→platô, descer→beirada, lateral→lado a lado (não tudo pro platô).
+ * Pós-mantle: base da face no chão até soltar —
+ * subir→platô, descer→beirada, lateral→lado a lado.
  */
 
 const LIMIAR = 0.12;
@@ -38,7 +37,6 @@ export function capturarTravaPosMantle(corpo, face, dx = 0, dy = 0) {
   let flipV = 1;
   if (temInput) {
     const proj = projetarNosEixos(face, dx, dy);
-    // climb “subir” com tecla que into-wall lê como descer → inverte eixo vertical
     if (stickySub > LIMIAR && proj.subida < -LIMIAR) flipV = -1;
     else if (stickySub < -LIMIAR && proj.subida > LIMIAR) flipV = -1;
   }
@@ -56,8 +54,7 @@ export function capturarTravaPosMantle(corpo, face, dx = 0, dy = 0) {
 }
 
 /**
- * Reprojeta WASD nos eixos do climb → mundo:
- * subida → platô (−normal), −subida → beirada, lateral → lat da face.
+ * Reprojeta WASD nos eixos do climb → mundo.
  */
 export function resolverMovimentoPosMantle(corpo, dx, dy) {
   const temInput = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
@@ -83,9 +80,8 @@ export function resolverMovimentoPosMantle(corpo, dx, dy) {
 }
 
 /**
- * No attach: tecla ainda segurada da caminhada vira continuidade pra cima.
- * Into-wall → sobe; se a tecla seria “descer” no esquema da face, ainda sobe
- * (ex.: andando com S e grudar). Strafe puro → só lateral.
+ * No attach: direção pra dentro da parede = subir.
+ * Continuidade forçada (tecla que seria “descer”) congela até soltar.
  */
 export function capturarTravaNoAttach(corpo, eixos, dx = 0, dy = 0) {
   limparTravaEscalada(corpo);
@@ -96,18 +92,19 @@ export function capturarTravaNoAttach(corpo, eixos, dx = 0, dy = 0) {
   if (Math.abs(lateral) < LIMIAR) lateral = 0;
 
   let subida;
+  let congelar = false;
+
   if (into > LIMIAR) {
     subida = into;
   } else if (
     Math.abs(lateral) > LIMIAR &&
     Math.abs(lateral) >= Math.abs(into) - 1e-6
   ) {
-    // strafe na hora do grab
     subida = 0;
   } else {
-    // continuidade: segurando direção ao grudar = subir (não remapeia pra descer)
     subida = 1;
     lateral = 0;
+    congelar = true;
   }
 
   if (subida < LIMIAR) subida = 0;
@@ -118,15 +115,17 @@ export function capturarTravaNoAttach(corpo, eixos, dx = 0, dy = 0) {
     subida /= m;
     lateral /= m;
   }
-  corpo.travaEscalada = { subida, lateral };
+  corpo.travaEscalada = {
+    subida,
+    lateral,
+    lado: eixos.lado,
+    congelar,
+  };
 }
 
 /**
- * @param {object} corpo
- * @param {{ lado:string, normalX:number, normalY:number, latX:number, latY:number }} eixos
- * @param {number} dx
- * @param {number} dy
- * @returns {{ subida:number, lateral:number }}
+ * Mesma face → reprojeta (diagonal OK).
+ * Canto ou attach forçado → congela (subida, lateral) até soltar.
  */
 export function resolverInputEscaladaTravado(corpo, eixos, dx, dy) {
   const temInput = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
@@ -135,28 +134,43 @@ export function resolverInputEscaladaTravado(corpo, eixos, dx, dy) {
     return { subida: 0, lateral: 0 };
   }
 
+  const proj = projetarNosEixos(eixos, dx, dy);
+
   if (!corpo.travaEscalada) {
-    const proj = projetarNosEixos(eixos, dx, dy);
-    if (proj.subida === 0 && proj.lateral === 0) {
-      return proj;
-    }
+    if (proj.subida === 0 && proj.lateral === 0) return proj;
     corpo.travaEscalada = {
       subida: proj.subida,
       lateral: proj.lateral,
+      lado: eixos.lado,
+      congelar: false,
     };
+    return { subida: proj.subida, lateral: proj.lateral };
   }
 
   const t = corpo.travaEscalada;
-  const magTecla = Math.min(1, Math.hypot(dx, dy));
-  const magTrava = Math.hypot(t.subida, t.lateral) || 1;
-  return {
-    subida: (t.subida / magTrava) * magTecla,
-    lateral: (t.lateral / magTrava) * magTecla,
-  };
+
+  if (t.lado !== eixos.lado) {
+    t.congelar = true;
+    t.lado = eixos.lado;
+  }
+
+  if (t.congelar) {
+    const mag = Math.min(1, Math.hypot(dx, dy));
+    const magT = Math.hypot(t.subida, t.lateral) || 1;
+    return {
+      subida: (t.subida / magT) * mag,
+      lateral: (t.lateral / magT) * mag,
+    };
+  }
+
+  // Mesma face: atualiza trava com a projeção atual (W+A = diagonal)
+  t.subida = proj.subida;
+  t.lateral = proj.lateral;
+  t.lado = eixos.lado;
+  return { subida: proj.subida, lateral: proj.lateral };
 }
 
 function projetarNosEixos(eixos, dx, dy) {
-  // Into wall = sobe (norte inclusive — sem espelhar o sul)
   const paraParedeX = -eixos.normalX;
   const paraParedeY = -eixos.normalY;
   let subida = dx * paraParedeX + dy * paraParedeY;

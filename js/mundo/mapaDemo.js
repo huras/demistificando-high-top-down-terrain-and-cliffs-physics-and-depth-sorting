@@ -1,49 +1,157 @@
 /**
- * Heightmap limpo — terraços retangulares.
- * Terraço isolado (y≈11–13) = prova de Y-depth sort.
+ * Heightmap de testes — muitas combinações de cliff.
+ * Base z=1; montanha Minecraft: escadas N/E/W + face sul contínua ×16.
  */
-export const COLUNAS = 24;
-export const LINHAS = 18;
+
+export const COLUNAS = 64;
+export const LINHAS = 42;
+
+function criarGrade(cols, rows, base = 1) {
+  const g = new Array(rows);
+  for (let y = 0; y < rows; y++) {
+    const row = new Array(cols);
+    for (let x = 0; x < cols; x++) row[x] = base;
+    g[y] = row;
+  }
+  return g;
+}
+
+/** Retângulo inclusivo [x0..x1] × [y0..y1]. */
+function preencher(g, x0, y0, x1, y1, z) {
+  const rows = g.length;
+  const cols = g[0].length;
+  const xa = Math.max(0, Math.min(x0, x1));
+  const xb = Math.min(cols - 1, Math.max(x0, x1));
+  const ya = Math.max(0, Math.min(y0, y1));
+  const yb = Math.min(rows - 1, Math.max(y0, y1));
+  for (let y = ya; y <= yb; y++) {
+    for (let x = xa; x <= xb; x++) g[y][x] = z;
+  }
+}
+
+function pilar(g, x, y, z) {
+  if (y >= 0 && y < g.length && x >= 0 && x < g[0].length) g[y][x] = z;
+}
+
+/**
+ * Montanha estilo Minecraft:
+ * - topo ≥3×3 em `topZ` (base 1 → topZ=17 = 16 de altura)
+ * - face leste do topo = parede contínua (queda topZ−1)
+ * - norte / sul / oeste = escadas de 1 em 1
+ */
+function montanhaMinecraft(g, cx0, cy0, cx1, cy1, topZ) {
+  const degraus = topZ - 1; // 16 se topZ=17
+  const yMin = cy0 - (degraus - 1);
+  const yMax = cy1 + (degraus - 1);
+  const xMin = cx0 - (degraus - 1);
+  // sem expansão a leste — fatia leste = muro contínuo
+
+  for (let y = yMin; y <= yMax; y++) {
+    for (let x = xMin; x <= cx1; x++) {
+      if (y < 0 || y >= g.length || x < 0 || x >= g[0].length) continue;
+      const dx = x < cx0 ? cx0 - x : 0; // só oeste
+      const dy = y < cy0 ? cy0 - y : y > cy1 ? y - cy1 : 0; // N e S
+      const dist = Math.max(dx, dy);
+      const z = topZ - dist;
+      if (z > 1) g[y][x] = Math.max(g[y][x], z);
+    }
+  }
+  preencher(g, cx0, cy0, cx1, cy1, topZ);
+}
 
 export const ALTURAS = (() => {
-  const dados = [
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,2,2,2,3,3,3,2,2,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,3,3,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    // terraço isolado — depth sort (norte = atrás, sul = frente)
-    [1,1,1,1,1,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,3,3,3,3,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,3,3,3,3,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  ];
-  if (dados.length !== LINHAS || dados[0].length !== COLUNAS) {
+  const g = criarGrade(COLUNAS, LINHAS, 1);
+
+  // —— NO: platô z2 + torre z3 (convex / single→double) ——
+  preencher(g, 3, 2, 12, 6, 2);
+  preencher(g, 7, 5, 10, 8, 3);
+
+  // —— N centro: L côncavo (inner corner climb) ——
+  preencher(g, 16, 2, 24, 4, 2);
+  preencher(g, 16, 2, 18, 8, 2);
+
+  // —— NE: U / alcova ——
+  preencher(g, 28, 2, 38, 8, 2);
+  preencher(g, 30, 4, 36, 8, 1);
+
+  // —— Oeste: degraus 1→2→3 (pirâmide) ——
+  preencher(g, 2, 11, 8, 18, 2);
+  preencher(g, 3, 12, 7, 17, 3);
+  preencher(g, 4, 13, 6, 16, 4);
+
+  // —— Centro: terraço isolado depth-sort (spawn) ——
+  preencher(g, 14, 12, 20, 15, 2);
+
+  // —— Centro-leste: parede plana single→double (face sul contínua) ——
+  preencher(g, 24, 12, 30, 14, 2);
+  preencher(g, 31, 12, 37, 14, 3);
+
+  // —— SO: cruz / plus (4 faces + côncavos) ——
+  preencher(g, 4, 22, 10, 24, 2);
+  preencher(g, 6, 20, 8, 26, 2);
+
+  // —— Sul centro: anel (buraco interno) ——
+  preencher(g, 14, 20, 22, 27, 2);
+  preencher(g, 16, 22, 20, 25, 1);
+
+  // —— SE: cânion estreito + pilares ——
+  preencher(g, 26, 20, 38, 28, 2);
+  preencher(g, 28, 22, 36, 26, 1);
+  pilar(g, 30, 23, 3);
+  pilar(g, 33, 24, 3);
+  pilar(g, 32, 22, 2);
+
+  // —— Leste meio: escada de terraços (offset) ——
+  preencher(g, 34, 10, 40, 11, 2);
+  preencher(g, 35, 12, 40, 13, 2);
+  preencher(g, 36, 14, 40, 15, 3);
+  preencher(g, 37, 16, 40, 17, 3);
+
+  // —— NO canto: pilares isolados (4 faces) ——
+  pilar(g, 1, 1, 3);
+  pilar(g, 40, 1, 2);
+  pilar(g, 1, 30, 2);
+  pilar(g, 40, 30, 3);
+
+  // —— Faixa fina z2 (muro longo N-S) ——
+  preencher(g, 12, 10, 12, 28, 2);
+
+  // —— Leste: montanha — escadas N/S/W + fatia leste contínua ×16 ——
+  // Topo 4×4 em z17. Face leste = muro contínuo (testar N e S nas escadas).
+  montanhaMinecraft(g, 48, 18, 51, 21, 17);
+
+  if (g.length !== LINHAS || g[0].length !== COLUNAS) {
     throw new Error("Heightmap com dimensões inválidas");
   }
-  return dados;
+  return g;
 })();
 
-/** Spawn ao norte do terraço amarelo — comece vendo oclusão. */
-export const SPAWN = { x: 7.5, y: 10.2, z: 1 };
+/** Spawn ao norte do terraço isolado — oclusão ATRÁS. */
+export const SPAWN = { x: 17.5, y: 11.2, z: 1 };
 
 export const PROPS = [
-  { id: "arv-atras", x: 7.5, y: 10.4, tipo: "arvore" },
-  { id: "mata-atras", x: 6.3, y: 10.5, tipo: "mata" },
-  { id: "placa-sort", x: 7.5, y: 10.9, tipo: "placa", texto: "ATRÁS" },
-  { id: "pedra-frente", x: 7.5, y: 14.3, tipo: "pedra" },
-  { id: "placa-frente", x: 9.2, y: 14.3, tipo: "placa", texto: "FRENTE" },
-  { id: "placa-pulo", x: 8.5, y: 8.3, tipo: "placa", texto: "3→1" },
-  { id: "arv-a", x: 20.2, y: 4.5, tipo: "arvore" },
-  { id: "mata-a", x: 19.2, y: 4.8, tipo: "mata" },
-  { id: "pedra-a", x: 2.5, y: 4.6, tipo: "pedra" },
+  { id: "arv-atras", x: 17.5, y: 11.4, tipo: "arvore" },
+  { id: "mata-atras", x: 16.3, y: 11.5, tipo: "mata" },
+  { id: "placa-sort", x: 17.5, y: 11.9, tipo: "placa", texto: "ATRÁS" },
+  { id: "pedra-frente", x: 17.5, y: 16.3, tipo: "pedra" },
+  { id: "placa-frente", x: 19.2, y: 16.3, tipo: "placa", texto: "FRENTE" },
+
+  { id: "placa-torre", x: 8.5, y: 9.2, tipo: "placa", texto: "TORRE" },
+  { id: "placa-L", x: 17.5, y: 9.2, tipo: "placa", texto: "L-CÔNC" },
+  { id: "placa-U", x: 33.5, y: 9.2, tipo: "placa", texto: "ALCOVA" },
+  { id: "placa-pir", x: 5.5, y: 19.2, tipo: "placa", texto: "PIRÂM" },
+  { id: "placa-1-2", x: 28.5, y: 15.3, tipo: "placa", texto: "1→2 SUL" },
+  { id: "placa-cruz", x: 7.5, y: 27.3, tipo: "placa", texto: "CRUZ" },
+  { id: "placa-anel", x: 18.5, y: 28.3, tipo: "placa", texto: "ANEL" },
+  { id: "placa-canion", x: 32.5, y: 29.3, tipo: "placa", texto: "CÂNION" },
+  { id: "placa-escada", x: 38.5, y: 18.3, tipo: "placa", texto: "ESCADA" },
+  { id: "placa-muro", x: 12.5, y: 14.5, tipo: "placa", texto: "MURO" },
+  { id: "placa-mc-leste", x: 52.4, y: 19.5, tipo: "placa", texto: "MURO×16" },
+  { id: "placa-mc-cume", x: 49.5, y: 19.5, tipo: "placa", texto: "CUME" },
+  { id: "placa-mc-n", x: 49.5, y: 5.4, tipo: "placa", texto: "ESC N" },
+  { id: "placa-mc-s", x: 49.5, y: 34.4, tipo: "placa", texto: "ESC S" },
+
+  { id: "arv-a", x: 35.2, y: 3.5, tipo: "arvore" },
+  { id: "mata-a", x: 34.2, y: 3.8, tipo: "mata" },
+  { id: "pedra-a", x: 4.5, y: 4.6, tipo: "pedra" },
 ];

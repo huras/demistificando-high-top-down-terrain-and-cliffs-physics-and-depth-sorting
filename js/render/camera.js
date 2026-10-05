@@ -28,7 +28,8 @@ export function ajustarZoom(camera, fator) {
  */
 export function seguirAlvo(camera, alvoX, alvoY, alvoZ, hopLift = 0, dt = 1 / 60) {
   const mundoW = COLUNAS * TILE * ESCALA;
-  const mundoH = (LINHAS * TILE + 4 * FACE_H) * ESCALA;
+  // folga vertical pras faces altas (muro/montanha z≈17)
+  const mundoH = (LINHAS * TILE + 20 * FACE_H) * ESCALA;
   const viewW = camera.largura / camera.zoom;
   const viewH = camera.altura / camera.zoom;
   const sx = mundoParaTelaX(alvoX);

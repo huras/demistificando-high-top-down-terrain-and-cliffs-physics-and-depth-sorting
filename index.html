@@ -36,7 +36,8 @@
             profundidade (norte/sul) e elevação (altura do cubo).
             Cores: <span style="color:#5aad3a">z1</span> /
             <span style="color:#c4b14a">z2</span> /
-            <span style="color:#d9a35c">z3</span>.
+            <span style="color:#d9a35c">z3+</span> /
+            <span style="color:#e8e8f0">cume</span>.
           </p>
           <pre class="formula" id="formula-tela">screenY = y·TILE − z·FACE − hop</pre>
           <pre class="formula" id="formula-sort">sortKey = y + z·ε</pre>
@@ -60,7 +61,7 @@
         <section class="painel__bloco">
           <h2>Regras de colisão</h2>
           <ul class="regras">
-            <li><kbd>WASD</kbd> — corrida; na parede = into sobe (trava até soltar)</li>
+            <li><kbd>WASD</kbd> — corrida; na parede = into sobe + diagonal (canto congela até soltar)</li>
             <li><kbd>Space</kbd> — pulo Mario (segure = mais alto)</li>
             <li><kbd>Space</kbd> 2º toque no ar — asa-delta; na parede — solta</li>
             <li><kbd>E</kbd> — gruda / solta a face (stamina só ao se mover)</li>
@@ -77,7 +78,8 @@
             <li>Ande para o <strong>sul</strong> do terraço — fica <em>na frente</em> da face.</li>
             <li>Na face: <kbd>E</kbd> gruda; segure lateral ao virar o canto — não solta; solte e <kbd>S</kbd> de novo pra descer.</li>
             <li>No topo: suba pra <em>mantle</em> — continue segurando pra entrar no platô; Space solta.</li>
-            <li>Mirante z=3: Space×2 → asa-delta até o chão.</li>
+            <li>Leste: montanha <strong>CUME</strong> 4×4 — leste = <strong>MURO×16</strong>; N/S/W = escadas.</li>
+            <li>Mirante/torre alta: Space×2 → asa-delta até o chão.</li>
           </ol>
         </section>
       </aside>

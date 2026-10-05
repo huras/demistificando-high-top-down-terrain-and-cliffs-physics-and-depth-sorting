@@ -10,6 +10,8 @@
   --kbd: #243028;
   --fonte-ui: "Segoe UI", "Candara", "Trebuchet MS", sans-serif;
   --fonte-mono: "Cascadia Mono", "Consolas", "Courier New", monospace;
+  --canvas-w: 960;
+  --canvas-h: 540;
 }
 
 *,
@@ -21,19 +23,23 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
   background: radial-gradient(1200px 700px at 20% 0%, #1a261c 0%, var(--bg) 55%);
   color: var(--texto);
   font-family: var(--fonte-ui);
 }
 
 .app {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .cabecalho {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -76,25 +82,33 @@ kbd {
   font-size: 0.8em;
 }
 
+/* Cena e painel: altura travada no viewport; só o painel rola */
 .principal {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   gap: 0;
-  min-height: 0;
+  overflow: hidden;
 }
 
 .palco {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  min-width: 0;
 }
 
 #canvas {
-  width: min(100%, 960px);
+  width: min(100%, calc(var(--canvas-w) * 1px));
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: var(--canvas-w) / var(--canvas-h);
   height: auto;
+  object-fit: contain;
   image-rendering: pixelated;
   background: #0a100c;
   border: 1px solid var(--borda);
@@ -102,10 +116,14 @@ kbd {
 }
 
 .painel {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-left: 1px solid var(--borda);
   background: linear-gradient(180deg, var(--painel), #121812);
   padding: 14px 16px 24px;
-  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .painel__bloco {
@@ -202,6 +220,7 @@ kbd {
 @media (max-width: 900px) {
   .principal {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(160px, 38%);
   }
 
   .painel {
