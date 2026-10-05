@@ -84,11 +84,13 @@ export function criarPersonagem3d(opts = {}) {
       const ang = Math.atan2(corpoEstado.dirX || 0, corpoEstado.dirY || 1);
       grupo.rotation.y = ang;
 
+      const naParede = !!(corpoEstado.escalando && corpoEstado.escalada);
+
       // escalada: inclina um pouco pra parede
-      if (corpoEstado.escalando && corpoEstado.escalada) {
+      if (naParede) {
         const e = corpoEstado.escalada;
-        const nx = e.nx || 0;
-        const ny = e.ny || 0;
+        const nx = e.normalX || 0;
+        const ny = e.normalY || 0;
         grupo.rotation.x = -0.15;
         if (Math.abs(nx) > Math.abs(ny)) {
           grupo.rotation.z = nx > 0 ? 0.2 : -0.2;
@@ -105,13 +107,22 @@ export function criarPersonagem3d(opts = {}) {
         asa.rotation.z = Math.sin(performance.now() * 0.004) * 0.08;
       }
 
-      const solo = corpoEstado.z ?? 0;
-      if (corpoEstado.escalando) {
-        sombra.visible = false;
+      // Na parede: sem cast no cliff; blob no chão da queda (zBase)
+      corpo.castShadow = !naParede;
+      cabeca.castShadow = !naParede;
+
+      if (naParede) {
+        const e = corpoEstado.escalada;
+        const zChao = e.zBase > 0 ? e.zBase : 0;
+        sombra.visible = true;
+        sombra.material.opacity = 0.3;
+        // local Y: sobe do pivô (elev) até a altura do chão da queda
+        sombra.position.set(0, zChao - elev + 0.03, 0);
       } else {
+        const solo = corpoEstado.z ?? 0;
         sombra.visible = true;
         sombra.material.opacity = corpoEstado.noChao ? 0.35 : 0.16;
-        sombra.position.y = solo - elev + 0.03;
+        sombra.position.set(0, solo - elev + 0.03, 0);
       }
     },
     liberar() {

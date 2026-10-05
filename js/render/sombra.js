@@ -7,6 +7,9 @@ import { chaveEntidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
 const TIE_SOMBRA_BAIXA = 2.5;
 const TIE_SOMBRA_ALTA = 4.5;
 
+/** Afastamento da parede pro blob da queda na escalada. */
+const SOMBRA_QUEDA_OFF = 0.28;
+
 /** Elipse em células de mundo (aprox.). */
 const RX_MUNDO = 0.45;
 const RY_MUNDO = 0.22;
@@ -21,6 +24,12 @@ const EPS_SOMBRA_SOB_ALTO = 0.0002;
  * onde o Y misturado ainda cai na célula alta e o AABB de tela sobrepõe).
  */
 export function empilharSombras(lista, corpo) {
+  // Escalando: só a elipse no chão da queda (onde cai se soltar), nunca na face
+  if (corpo.escalando && corpo.escalada) {
+    empilharSombraQuedaEscalada(lista, corpo);
+    return;
+  }
+
   const x = corpo.x;
   const y = corpo.y;
   const z = corpo.z;
@@ -67,6 +76,26 @@ export function empilharSombras(lista, corpo) {
     },
     TIE_SOMBRA_BAIXA,
     proj.z,
+  );
+}
+
+/** Elipse no chão da queda (zBase), um pouco afastada da face. */
+function empilharSombraQuedaEscalada(lista, corpo) {
+  const e = corpo.escalada;
+  const zChao = e.zBase > 0 ? e.zBase : 0;
+  if (zChao <= 0) return;
+
+  const x = corpo.x + (e.normalX || 0) * SOMBRA_QUEDA_OFF;
+  const y = corpo.y + (e.normalY || 0) * SOMBRA_QUEDA_OFF;
+  const cy = Math.floor(y);
+
+  empilhar(
+    lista,
+    chaveTopo(cy, zChao) + EPS_SOMBRA_NO_TOPO,
+    0,
+    (ctx) => desenharElipseSombra(ctx, x, y, zChao, 0.26),
+    TIE_SOMBRA_BAIXA,
+    zChao,
   );
 }
 
