@@ -17,11 +17,13 @@ import {
   iniciarCenario3d,
   obterCenario3d,
   orbitarCamera3d,
+  redimensionarCenario3d,
   resetarCamera3d,
 } from "./render/3d/cenario3d.js";
 
 const canvas = document.getElementById("canvas");
 const canvas3d = document.getElementById("canvas-3d");
+const viewport = document.querySelector(".palco__viewport");
 const ctx = canvas.getContext("2d", { alpha: true });
 
 let atlas;
@@ -31,12 +33,35 @@ let debug = false;
 let ultimo = 0;
 let cenario3dPronto = false;
 
+function tamanhoViewport() {
+  const rect = viewport?.getBoundingClientRect();
+  const w = Math.max(320, Math.floor(rect?.width || window.innerWidth));
+  const h = Math.max(240, Math.floor(rect?.height || window.innerHeight));
+  return { w, h };
+}
+
+function redimensionarCena() {
+  const { w, h } = tamanhoViewport();
+  if (canvas.width === w && canvas.height === h) return;
+  canvas.width = w;
+  canvas.height = h;
+  canvas3d.width = w;
+  canvas3d.height = h;
+  if (camera) {
+    camera.largura = w;
+    camera.altura = h;
+  }
+  if (cenario3dPronto) redimensionarCenario3d(w, h);
+}
+
 async function iniciar() {
   iniciarTeclado();
+  redimensionarCena();
   atlas = await montarAtlas(CAMINHOS);
   window.__atlas = atlas;
   corpo = criarCorpo(SPAWN);
   camera = criarCamera(canvas.width, canvas.height);
+  redimensionarCena();
 
   ligarControleModo(document.getElementById("btn-modo-3d"));
   aoMudarModo(aoTrocarModo);
@@ -50,6 +75,7 @@ async function iniciar() {
   };
   canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas3d.addEventListener("wheel", onWheel, { passive: false });
+  window.addEventListener("resize", redimensionarCena);
 
   window.__demo = {
     get corpo() {

@@ -10,8 +10,7 @@
   --kbd: #243028;
   --fonte-ui: "Segoe UI", "Candara", "Trebuchet MS", sans-serif;
   --fonte-mono: "Cascadia Mono", "Consolas", "Courier New", monospace;
-  --canvas-w: 960;
-  --canvas-h: 540;
+  --cabecalho-h: auto;
 }
 
 *,
@@ -42,24 +41,24 @@ body {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px 24px;
-  padding: 16px 20px 12px;
+  gap: 8px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--borda);
 }
 
 .cabecalho h1 {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: 1.1rem;
   letter-spacing: 0.02em;
   color: var(--destaque);
 }
 
 .cabecalho p {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   color: var(--texto-suave);
-  font-size: 0.92rem;
+  font-size: 0.8rem;
 }
 
 .cabecalho__controles {
@@ -108,12 +107,12 @@ kbd {
   font-size: 0.8em;
 }
 
-/* Cena e painel: altura travada no viewport; só o painel rola */
+/* Cena preenche o espaço; painel estreito à direita */
 .principal {
   flex: 1 1 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
   gap: 0;
   overflow: hidden;
 }
@@ -123,19 +122,19 @@ kbd {
   min-height: 0;
   overflow: hidden;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
 }
 
 .palco__viewport {
   position: relative;
-  width: min(100%, calc(var(--canvas-w) * 1px));
-  max-width: 100%;
-  max-height: 100%;
-  aspect-ratio: var(--canvas-w) / var(--canvas-h);
-  border: 1px solid var(--borda);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-right: 1px solid var(--borda);
+  box-shadow: none;
   background: #0a100c;
 }
 
@@ -288,11 +287,16 @@ body[data-modo="3d"] #canvas-3d.palco__camada--ativa {
 @media (max-width: 900px) {
   .principal {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(160px, 38%);
+    grid-template-rows: minmax(0, 1fr) minmax(120px, 28%);
+  }
+
+  .palco__viewport {
+    border-right: none;
+    border-bottom: 1px solid var(--borda);
   }
 
   .painel {
     border-left: none;
-    border-top: 1px solid var(--borda);
+    border-top: none;
   }
 }
