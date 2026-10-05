@@ -15,7 +15,7 @@ export const ACELERACAO_AR = 16;
 export const ATRITO_AR = 1.8;
 
 /** Agente que segue o jogador. */
-export const AGENTE_VEL_MUL = 0.6;
+export const AGENTE_VEL_MUL = 1;
 export const AGENTE_DIST_PARAR = 1.15;
 
 /** Pathfinding compartilhado (muitas entidades). */
@@ -23,7 +23,8 @@ export const PATH_EXPAND_POR_FRAME = 768;
 export const PATH_REPATH_LIDER_CELULA = true;
 export const PATH_STUCK_SEG = 0.6;
 export const PATH_RETRY_SEM_CAMINHO = 1.25;
-export const PATH_CUSTO_ESCALADA = 2.4;
+/** Overhead fixo de attach/mantle (o tempo vertical usa ESCALADA_VEL). */
+export const PATH_CUSTO_ESCALADA = 0.45;
 /** Glide NavLinks (asa-delta no grafo). */
 /** Queda mínima a partir do chão (não do ápice) pra virar glide. */
 export const PATH_GLIDE_QUEDA_MIN = 2;
@@ -33,13 +34,17 @@ export const PATH_GLIDE_DIST_MIN = 4;
 export const PATH_GLIDE_PICO_DIST_MIN = 8;
 /** Vão entre montanhas da demo ≈ 21; precisa cobrir pico→pico. */
 export const PATH_GLIDE_ALCANCE_MAX = 32;
-/** Fator conservador vs alcance físico real do glide. */
-export const PATH_GLIDE_ALCANCE_MUL = 0.85;
+/** Fator vs alcance físico (1 = teórico; um pouco generoso pra pico→pico). */
+export const PATH_GLIDE_ALCANCE_MUL = 0.95;
 /**
  * Altura extra de lançamento (pulo→asa) só pro envelope/alcance.
  * Nunca permite pousar acima do z do chão de origem.
  */
-export const PATH_GLIDE_PULO_BONUS = 2.0;
+export const PATH_GLIDE_PULO_BONUS = 2.2;
+/** Multiplicador de custo da aresta glide (<1 = A* prefere asa vs contorno). */
+export const PATH_GLIDE_CUSTO_MUL = 0.55;
+/** Folga mínima (células) pra abrir asa por heurística de queda. */
+export const AGENTE_GLIDE_HEUR_FOLGA = 2.2;
 
 /**
  * Pulo Mario: segurar Space = gravidade leve; soltar = corta vz.

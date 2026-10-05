@@ -3,11 +3,11 @@
  * Cada entidade carrega um perfil; a grade de vizinhos é cacheada por id.
  */
 
-/** Companheiro: anda, queda curta, pula +1, plana em drops maiores. Sem escalada. */
+/** Companheiro: anda, queda curta, pula +1, escala paredes altas, plana em drops. */
 export const PERFIL_COMPANHEIRO = Object.freeze({
-  id: "companheiro-g3",
+  id: "companheiro-8dir",
   podePular: true,
-  podeEscalar: false,
+  podeEscalar: true,
   podePlanar: true,
   /** Queda máxima a pé (aresta walk); acima disso só via glide ou contorno. */
   quedaMaxAndar: 2,

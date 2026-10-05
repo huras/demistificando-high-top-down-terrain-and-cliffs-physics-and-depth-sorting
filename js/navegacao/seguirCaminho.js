@@ -10,7 +10,20 @@ import {
   obterResultadoPath,
   solicitarPath,
 } from "./filaPath.js";
-import { TIPO_GLIDE } from "./navGrade.js";
+import { TIPO_CLIMB, TIPO_GLIDE } from "./navGrade.js";
+
+function idleNav(extras = {}) {
+  return {
+    ix: 0,
+    iy: 0,
+    querPulo: false,
+    querPlanar: false,
+    querEscalar: false,
+    soltarAsa: false,
+    soltarParede: false,
+    ...extras,
+  };
+}
 
 /**
  * Estado de navegação embutido no agente (cria se faltar).
@@ -31,6 +44,7 @@ export function garantirNav(agente) {
     retryT: 0,
     puloAlvo: null,
     planarAlvo: null,
+    climbAlvo: null,
   };
   return agente.nav;
 }
@@ -81,16 +95,19 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const perfil = agente.perfil;
   const dist = Math.hypot(lider.x - agente.x, lider.y - agente.y);
   const planando = !!agente.planando;
+  const naParede = !!agente.escalando && !agente.mantle;
+  const noMantle = !!agente.mantle;
 
-  if (dist <= AGENTE_DIST_PARAR && !planando) {
+  if (dist <= AGENTE_DIST_PARAR && !planando && !naParede && !noMantle) {
     nav.estado = "idle";
     nav.path = null;
     nav.idx = 0;
     nav.puloAlvo = null;
     nav.planarAlvo = null;
+    nav.climbAlvo = null;
     nav.stuckT = 0;
     cancelarPath(agente.id);
-    return { ix: 0, iy: 0, querPulo: false, querPlanar: false, soltarAsa: false };
+    return idleNav();
   }
 
   const goalCx = Math.floor(lider.x);
@@ -99,7 +116,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const startCy = Math.floor(agente.y);
   const goalMudou = goalCx !== nav.goalCx || goalCy !== nav.goalCy;
 
-  // Mid-glide: mantém rota atual; não repath por goal/stuck leve
+  // Mid-glide: não repath. Climb: repath se o líder mudou de célula (pode virar asa)
   if (!planando) {
     if (goalMudou || (!nav.path && nav.estado !== "buscando")) {
       pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
@@ -114,6 +131,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const res = obterResultadoPath(agente.id);
   if (
     !planando &&
+    !noMantle &&
     res?.estado === "pronto" &&
     res.path &&
     res.versao === nav.versao &&
@@ -125,53 +143,34 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     nav.estado = res.path.achou ? "seguindo" : "semCaminho";
     if (!res.path.achou) nav.retryT = PATH_RETRY_SEM_CAMINHO;
     nav.stuckT = 0;
-  } else if (nav.estado === "buscando" && !nav.path && !planando) {
+  } else if (nav.estado === "buscando" && !nav.path && !planando && !naParede) {
     const dx = lider.x - agente.x;
     const dy = lider.y - agente.y;
     const d = Math.hypot(dx, dy) || 1;
-    return {
-      ix: dx / d,
-      iy: dy / d,
-      querPulo: false,
-      querPlanar: false,
-      soltarAsa: false,
-    };
+    return idleNav({ ix: dx / d, iy: dy / d });
   }
 
   if (nav.estado === "semCaminho") {
     if (!nav.path || nav.idx >= (nav.path.cells?.length ?? 0)) {
-      return {
-        ix: 0,
-        iy: 0,
-        querPulo: false,
-        querPlanar: false,
-        soltarAsa: false,
-      };
+      return idleNav();
     }
   }
 
   if (!nav.path?.cells?.length) {
-    return {
-      ix: 0,
-      iy: 0,
-      querPulo: false,
-      querPlanar: false,
-      soltarAsa: false,
-    };
+    return idleNav();
   }
 
   while (nav.idx < nav.path.cells.length) {
     const wp = nav.path.cells[nav.idx];
     const tx = wp.cx + 0.5;
     const ty = wp.cy + 0.5;
-    // glide: raio de chegada um pouco maior (pouso)
     const raio = wp.tipo === TIPO_GLIDE ? 0.55 : 0.4;
     if (Math.hypot(tx - agente.x, ty - agente.y) < raio && agente.noChao) {
       nav.idx++;
       continue;
     }
     if (
-      wp.tipo === TIPO_GLIDE &&
+      (wp.tipo === TIPO_GLIDE || wp.tipo === TIPO_CLIMB) &&
       agente.noChao &&
       Math.floor(agente.x) === wp.cx &&
       Math.floor(agente.y) === wp.cy
@@ -185,23 +184,12 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   if (nav.idx >= nav.path.cells.length) {
     nav.path = null;
     nav.planarAlvo = null;
+    nav.climbAlvo = null;
     if (nav.estado === "semCaminho") {
-      return {
-        ix: 0,
-        iy: 0,
-        querPulo: false,
-        querPlanar: false,
-        soltarAsa: planando,
-      };
+      return idleNav({ soltarAsa: planando });
     }
-    if (!planando) pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
-    return {
-      ix: 0,
-      iy: 0,
-      querPulo: false,
-      querPlanar: false,
-      soltarAsa: planando,
-    };
+    if (!ocupadoAr) pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
+    return idleNav({ soltarAsa: planando });
   }
 
   const wp = nav.path.cells[nav.idx];
@@ -212,16 +200,29 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const d = Math.hypot(dx, dy) || 1;
 
   const zWp = alturaEm(wp.cx, wp.cy);
-  const zAqui = alturaSobPes(agente.x, agente.y);
-  // asa só no segmento glide do path, e nunca se o alvo é subir cliff
-  const segmentoGlide = wp.tipo === TIPO_GLIDE && zWp <= zAqui;
+  const zChaoPes = alturaSobPes(agente.x, agente.y);
+  const zRef = naParede ? agente.elevacao : zChaoPes;
+  // Na parede: glide se o pouso está abaixo da elevação atual
+  const segmentoGlide =
+    wp.tipo === TIPO_GLIDE && zWp <= zRef + 0.05;
+  const segmentoClimb =
+    !!perfil.podeEscalar &&
+    wp.tipo === TIPO_CLIMB &&
+    zWp > zChaoPes &&
+    !segmentoGlide;
+
   if (segmentoGlide) {
     nav.planarAlvo = { x: tx, y: ty, cx: wp.cx, cy: wp.cy, z: zWp };
-  } else if (!planando) {
+  } else if (!planando && !naParede) {
     nav.planarAlvo = null;
   }
 
-  // Chegou na XY do pouso → solta a asa (queda livre) em vez de descer devagar
+  if (segmentoClimb) {
+    nav.climbAlvo = { x: tx, y: ty, cx: wp.cx, cy: wp.cy, z: zWp };
+  } else if (!naParede && !noMantle) {
+    nav.climbAlvo = null;
+  }
+
   const distPouso = nav.planarAlvo
     ? Math.hypot(nav.planarAlvo.x - agente.x, nav.planarAlvo.y - agente.y)
     : Infinity;
@@ -234,10 +235,53 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
 
   let querPlanar = !!perfil.podePlanar && segmentoGlide && !sobrePouso;
   if (planando && !sobrePouso && nav.planarAlvo) querPlanar = true;
+
+  // Soltar parede → asa (path pediu glide, ou líder bem mais baixo — mesmo com climb no path)
+  const folgaParede = naParede
+    ? agente.elevacao - (agente.escalada?.zBase ?? zChaoPes)
+    : 0;
+  const liderZ = lider.elevacao ?? lider.z ?? 0;
+  const liderMaisBaixo = liderZ <= agente.elevacao - 2.5;
+  const soltarParede =
+    naParede &&
+    !!perfil.podePlanar &&
+    (segmentoGlide ||
+      (folgaParede >= 2.2 && liderMaisBaixo && dist > 2.5));
+
+  if (soltarParede) {
+    nav.climbAlvo = null;
+    if (!segmentoGlide || !nav.planarAlvo) {
+      nav.planarAlvo = {
+        x: lider.x,
+        y: lider.y,
+        cx: goalCx,
+        cy: goalCy,
+        z: Math.floor(liderZ || 1),
+      };
+    }
+    querPlanar = true;
+  }
+
+  // No ar com alvo de pouso: mantém asa e não reagarra a parede
+  const caindoPraAsa =
+    !!perfil.podePlanar &&
+    !!nav.planarAlvo &&
+    !sobrePouso &&
+    !agente.noChao &&
+    !naParede &&
+    !noMantle;
+  if (caindoPraAsa) querPlanar = true;
+
   const soltarAsa = !!sobrePouso;
+  // querEscalar = path ainda quer subir; não “prende” só porque já está na parede
+  const querEscalar =
+    (segmentoClimb || noMantle) &&
+    !soltarParede &&
+    !querPlanar &&
+    !caindoPraAsa;
 
   const prog = Math.hypot(agente.x - nav.lastX, agente.y - nav.lastY);
-  if (!planando) {
+  if (!planando && !naParede && !noMantle && !segmentoClimb) {
     if (prog < 0.03) nav.stuckT += dt;
     else nav.stuckT = 0;
   } else {
@@ -246,28 +290,42 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   nav.lastX = agente.x;
   nav.lastY = agente.y;
 
-  if (!planando && nav.stuckT >= PATH_STUCK_SEG) {
+  if (
+    !planando &&
+    !naParede &&
+    !noMantle &&
+    !segmentoClimb &&
+    nav.stuckT >= PATH_STUCK_SEG
+  ) {
     nav.stuckT = 0;
     nav.path = null;
     pedirPath(agente, nav, startCx, startCy, goalCx, goalCy);
-    return {
-      ix: dx / d,
-      iy: dy / d,
-      querPulo: false,
-      querPlanar: false,
-      soltarAsa: false,
-    };
+    return idleNav({ ix: dx / d, iy: dy / d });
   }
 
   let querPulo = false;
-  if (agente.noChao && perfil.podePular && !segmentoGlide) {
-    if (zWp === zAqui + 1 && Math.hypot(dx, dy) < 1.15) {
+  if (
+    agente.noChao &&
+    perfil.podePular &&
+    !segmentoGlide &&
+    !segmentoClimb &&
+    !naParede
+  ) {
+    if (zWp === zChaoPes + 1 && Math.hypot(dx, dy) < 1.15) {
       querPulo = true;
       nav.puloAlvo = { x: tx, y: ty, z: zWp };
     }
   }
 
-  return { ix: dx / d, iy: dy / d, querPulo, querPlanar, soltarAsa };
+  return {
+    ix: dx / d,
+    iy: dy / d,
+    querPulo,
+    querPlanar: querPlanar || soltarParede,
+    querEscalar,
+    soltarAsa,
+    soltarParede,
+  };
 }
 
 /** Células do path atual (debug). */

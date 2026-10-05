@@ -65,13 +65,17 @@ function desenharPathAgente(ctx, agente) {
     const b = path.cells[i];
     const za = alturaEm(a.cx, a.cy);
     const zb = alturaEm(b.cx, b.cy);
-    const glide = (b.tipo | 0) === 3;
+    const tipo = b.tipo | 0;
+    const glide = tipo === 3;
+    const climb = tipo === 2;
     ctx.strokeStyle = glide
       ? "rgba(80, 255, 220, 0.9)"
-      : path.achou
-        ? "rgba(120, 220, 255, 0.75)"
-        : "rgba(255, 160, 80, 0.8)";
-    if (glide) ctx.setLineDash([4, 3]);
+      : climb
+        ? "rgba(220, 140, 255, 0.9)"
+        : path.achou
+          ? "rgba(120, 220, 255, 0.75)"
+          : "rgba(255, 160, 80, 0.8)";
+    if (glide || climb) ctx.setLineDash([4, 3]);
     else ctx.setLineDash([]);
     ctx.beginPath();
     ctx.moveTo(mundoParaTelaX(a.cx + 0.5), mundoParaTelaY(a.cy + 0.5, za));

@@ -1,9 +1,11 @@
 import {
   ASA_DELTA_DESCIDA,
   ASA_DELTA_VEL_MUL,
+  ESCALADA_VEL,
   PATH_CUSTO_ESCALADA,
   PATH_GLIDE_ALCANCE_MAX,
   PATH_GLIDE_ALCANCE_MUL,
+  PATH_GLIDE_CUSTO_MUL,
   PATH_GLIDE_DIST_MIN,
   PATH_GLIDE_PICO_DIST_MIN,
   PATH_GLIDE_PULO_BONUS,
@@ -85,10 +87,8 @@ function construirGrade(perfil) {
         const zB = alturaEm(nx, ny);
         if (zB <= 0) continue;
 
-        if (diag) {
-          if (!cardinalOk(cx, cy, zA, nx, cy, perfil)) continue;
-          if (!cardinalOk(cx, cy, zA, cx, ny, perfil)) continue;
-        }
+        // 8 dirs: só bloqueia diagonal se o canto for parede mais alta (corte de canto)
+        if (diag && !cantoDiagonalLivre(cx, cy, zA, nx, ny)) continue;
 
         const edge = classificarAresta(zA, zB, perfil, diag);
         if (!edge) continue;
@@ -111,11 +111,19 @@ function construirGrade(perfil) {
   };
 }
 
-function cardinalOk(cx, cy, zA, tx, ty, perfil) {
-  if (!dentroDoMapa(tx, ty)) return false;
-  const zB = alturaEm(tx, ty);
-  if (zB <= 0) return false;
-  return !!classificarAresta(zA, zB, perfil, false);
+/**
+ * Diagonal 8-dir: não exige aresta nos cardinais.
+ * Bloqueia só se a quina for mais alta que origem e destino (corta muro).
+ * Vazio (z<=0) nos cantos é livre.
+ */
+function cantoDiagonalLivre(cx, cy, zA, nx, ny) {
+  const zB = alturaEm(nx, ny);
+  const teto = Math.max(zA, zB);
+  const zCornerX = alturaEm(nx, cy);
+  const zCornerY = alturaEm(cx, ny);
+  if (zCornerX > 0 && zCornerX > teto) return false;
+  if (zCornerY > 0 && zCornerY > teto) return false;
+  return true;
 }
 
 /**
@@ -133,12 +141,23 @@ function classificarAresta(zA, zB, perfil, diag) {
     return { custo: base + queda * 0.15, tipo: TIPO_WALK };
   }
 
+  // Degrau +1: pulo (rápido). Parede ≥2: climb com custo ≈ tempo real.
   if (dz === 1 && perfil.podePular) {
     return { custo: base + 0.35, tipo: TIPO_JUMP };
   }
 
+  if (perfil.podeEscalar && dz >= 2) {
+    // tempo de subida (células / vel) + overhead attach — sem isso A* sempre contorna
+    const custo =
+      base + PATH_CUSTO_ESCALADA + dz / Math.max(0.25, ESCALADA_VEL);
+    return { custo, tipo: TIPO_CLIMB };
+  }
+
+  // +1 sem pulo, ou fallback
   if (perfil.podeEscalar && dz >= 1) {
-    return { custo: base + PATH_CUSTO_ESCALADA * dz, tipo: TIPO_CLIMB };
+    const custo =
+      base + PATH_CUSTO_ESCALADA + dz / Math.max(0.25, ESCALADA_VEL);
+    return { custo, tipo: TIPO_CLIMB };
   }
 
   return null;
@@ -189,9 +208,10 @@ function adicionarGlideRays(lista, cx, cy, zA) {
       if (jaTem.has(key)) continue;
 
       const custo =
-        distHoriz / (VELOCIDADE_MAX * ASA_DELTA_VEL_MUL) +
-        Math.max(quedaChao, 0.5) / ASA_DELTA_DESCIDA +
-        0.35;
+        (distHoriz / (VELOCIDADE_MAX * ASA_DELTA_VEL_MUL) +
+          Math.max(quedaChao, 0.5) / ASA_DELTA_DESCIDA +
+          0.25) *
+        PATH_GLIDE_CUSTO_MUL;
       lista.push(key, custo, TIPO_GLIDE);
       jaTem.add(key);
     }
