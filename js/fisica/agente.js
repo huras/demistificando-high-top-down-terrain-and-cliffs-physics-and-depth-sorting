@@ -232,18 +232,17 @@ export function atualizarAgente(agente, lider, dt) {
     sairVoo(agente, { pousar: false });
   }
 
-  // Path pediu climb: gruda na face (nunca reagarra se acabou de soltar pra asa)
+  // Path/heurística pediu climb — inclusive saindo da asa-delta no ar
   if (
     querEscalar &&
     !soltouPraAsa &&
-    !querPlanar &&
     !querVoar &&
     !agente.escalando &&
     !agente.mantle &&
-    !estaPlanando(agente) &&
     !estaVoando(agente) &&
     agente.perfil?.podeEscalar
   ) {
+    if (estaPlanando(agente)) fecharAsaDelta(agente);
     if (tentarGrudarClimb(agente, ix, iy)) return;
   }
 
@@ -353,20 +352,17 @@ export function atualizarAgente(agente, lider, dt) {
       glidePath ||
       soltouPraAsa ||
       (!soltarAsa && querAsaHeuristica(agente, querPlanar || soltouPraAsa, querEscalar));
-    if (deveAbrirAsaAgora(agente, querAbrir)) abrirAsaDelta(agente);
+    if (deveAbrirAsaAgora(agente, querAbrir && !querEscalar)) abrirAsaDelta(agente);
 
-    if (estaPlanando(agente) && !soltarAsa) {
+    // Prioridade: grudar na parede (fecha asa se estiver planando)
+    if (querEscalar && !soltouPraAsa && !querVoar) {
+      if (estaPlanando(agente)) fecharAsaDelta(agente);
+      if (tentarGrudarClimb(agente, ix, iy)) return;
+    }
+
+    if (estaPlanando(agente) && !soltarAsa && !querEscalar) {
       atualizarNoArPlanando(agente, ix, iy, dt);
     } else {
-      if (
-        querEscalar &&
-        !querPlanar &&
-        !soltouPraAsa &&
-        tentarGrudarClimb(agente, ix, iy)
-      ) {
-        return;
-      }
-
       atualizarCorrida(agente, ix, iy, dt, false, velMax * 0.9);
       const pos = moverAereo(
         agente,
@@ -379,10 +375,12 @@ export function atualizarAgente(agente, lider, dt) {
       agente.x = pos.x;
       agente.y = pos.y;
       atualizarAereo(agente, dt);
-      if (deveAbrirAsaAgora(agente, querAbrir)) abrirAsaDelta(agente);
-      if (estaPlanando(agente) && !soltarAsa) {
+      if (deveAbrirAsaAgora(agente, querAbrir && !querEscalar)) {
+        abrirAsaDelta(agente);
+      }
+      if (estaPlanando(agente) && !soltarAsa && !querEscalar) {
         atualizarNoArPlanando(agente, ix, iy, dt);
-      } else {
+      } else if (!agente.escalando) {
         agente.acao = agente.vz > 0.4 ? "pulando" : "caindo";
       }
     }

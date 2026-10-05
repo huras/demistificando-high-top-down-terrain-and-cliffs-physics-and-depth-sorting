@@ -5,6 +5,7 @@ import {
 } from "../config.js";
 import { alturaEm } from "../mundo/altura.js";
 import { alturaSobPes } from "../fisica/colisao.js";
+import { encontrarFacePerto } from "../mundo/facesCliff.js";
 import {
   cancelarPath,
   obterResultadoPath,
@@ -65,6 +66,39 @@ function pedirPath(agente, nav, sx, sy, gx, gy) {
   solicitarPath(agente.id, agente.perfil, sx, sy, gx, gy, nav.versao);
   nav.estado = "buscando";
   nav.retryT = PATH_RETRY_SEM_CAMINHO;
+}
+
+/**
+ * No ar: se há face climbável na faixa de elevação e o líder pede subida, gruda.
+ */
+function decidirClimbNoAr(agente, lider, liderZ) {
+  const elevAg = agente.elevacao ?? agente.z ?? 0;
+  const face = encontrarFacePerto(agente.x, agente.y, elevAg);
+  if (!face) return null;
+
+  const naFaixa = elevAg >= face.zBase + 0.05 && elevAg <= face.zTopo + 0.35;
+  if (!naFaixa) return null;
+
+  const precisaSubir =
+    liderZ >= elevAg + 0.6 ||
+    liderZ >= face.zTopo - 0.4 ||
+    !!lider.escalando;
+  if (!precisaSubir) return null;
+
+  const ax = face.ancoraX - agente.x;
+  const ay = face.ancoraY - agente.y;
+  const ad = Math.hypot(ax, ay) || 1;
+  return {
+    ix: ax / ad,
+    iy: ay / ad,
+    climbAlvo: {
+      x: face.ancoraX,
+      y: face.ancoraY,
+      cx: face.cx,
+      cy: face.cy,
+      z: face.zTopo,
+    },
+  };
 }
 
 /** Escolhe o 1º waypoint à frente (não atrás) do agente. */
@@ -197,6 +231,35 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
       soltarAsa: false,
       soltarParede: false,
     };
+  }
+
+  // No ar: prioridade grudar na face (asa-delta ou queda) se o líder está acima
+  if (
+    !!perfil.podeEscalar &&
+    !naParede &&
+    !noMantle &&
+    !voando &&
+    !agente.noChao
+  ) {
+    const climbAr = decidirClimbNoAr(agente, lider, liderZ);
+    if (climbAr) {
+      nav.planarAlvo = null;
+      nav.vooAlvo = null;
+      nav.climbAlvo = climbAr.climbAlvo;
+      nav.stuckT = 0;
+      nav.lastX = agente.x;
+      nav.lastY = agente.y;
+      return {
+        ix: climbAr.ix,
+        iy: climbAr.iy,
+        querPulo: false,
+        querPlanar: false,
+        querEscalar: true,
+        querVoar: false,
+        soltarAsa: !!planando,
+        soltarParede: false,
+      };
+    }
   }
 
   // No ar com asa (ou caindo pra abrir): segue o líder ao vivo — não o pouso antigo do A*
