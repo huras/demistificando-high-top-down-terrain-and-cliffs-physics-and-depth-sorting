@@ -2,7 +2,7 @@ import { CAMINHOS, ZOOM_PASSO } from "./config.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
-import { montarAtlas } from "./render/atlas.js";
+import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
 import {
   ajustarZoom,
   aplicarCamera,
@@ -34,6 +34,7 @@ const lista = criarListaProfundidade();
 async function iniciar() {
   iniciarTeclado();
   atlas = await montarAtlas(CAMINHOS);
+  window.__atlas = atlas;
   corpo = criarCorpo(SPAWN);
   camera = criarCamera(canvas.width, canvas.height);
 
@@ -85,6 +86,7 @@ function loop(agora) {
   ultimo = agora;
 
   if (teclaAgora("Backquote")) debug = !debug;
+  if (teclaAgora("KeyT")) alternarVisual(atlas);
   if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom(camera, ZOOM_PASSO);
   if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
     ajustarZoom(camera, 1 / ZOOM_PASSO);
@@ -92,7 +94,8 @@ function loop(agora) {
 
   atualizarMovimento(corpo, dt);
   seguirAlvo(camera, corpo.x, corpo.y, corpo.z, corpo.hopLift, dt);
-  const ocl = atualizarPainel(corpo, camera.zoom);
+  const modoVisual = usarTiles(atlas) ? "real" : "cubos";
+  const ocl = atualizarPainel(corpo, camera.zoom, modoVisual);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -107,7 +110,7 @@ function loop(agora) {
 
   if (debug) desenharPivosSort(ctx, corpo);
 
-  desenharOverlayAjuda(ctx, camera, debug, ocl);
+  desenharOverlayAjuda(ctx, camera, debug, ocl, modoVisual);
   desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
 
   requestAnimationFrame(loop);

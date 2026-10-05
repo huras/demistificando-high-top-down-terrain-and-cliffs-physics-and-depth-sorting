@@ -1,6 +1,20 @@
-import { ESCALA, FACE_H, TILE } from "../config.js";
+import {
+  ESCALA,
+  FACE_H,
+  FLOOR_ROW_OFFSET,
+  ROLE_CENTER,
+  ROLE_CLIFF_CENTER,
+  ROLE_EDGE_E,
+  ROLE_EDGE_S,
+  ROLE_EDGE_S_UNDER,
+  ROLE_EDGE_W,
+  SHEET_COLS,
+  TILE,
+  TILE_ART,
+} from "../config.js";
 import { alturaEm, quedaSul } from "../mundo/altura.js";
 import { ALTURAS, COLUNAS, LINHAS, PROPS } from "../mundo/mapaDemo.js";
+import { usarTiles } from "./atlas.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
   chaveEntidade,
@@ -17,10 +31,13 @@ const TIE_FACE = 1;
 const TIE_LATERAL = 2;
 const TIE_PROP = 3;
 
+let _atlas = null;
+
 /**
  * Tudo na camada 0 — depth sort puro por Y (sortKey).
  */
-export function empilharTerreno(lista, _atlas, debug, faceDestaque = null) {
+export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
+  _atlas = atlas;
   for (let cy = 0; cy < LINHAS; cy++) {
     for (let cx = 0; cx < COLUNAS; cx++) {
       const z = ALTURAS[cy][cx];
@@ -96,6 +113,14 @@ export function empilharTerreno(lista, _atlas, debug, faceDestaque = null) {
 }
 
 function desenharTopo(ctx, cx, cy, z) {
+  if (usarTiles(_atlas)) {
+    desenharTopoReal(ctx, cx, cy, z);
+    return;
+  }
+  desenharTopoProcedural(ctx, cx, cy, z);
+}
+
+function desenharTopoProcedural(ctx, cx, cy, z) {
   const px = mundoParaTelaX(cx);
   const py = mundoParaTelaY(cy, z);
   const s = TILE * ESCALA;
@@ -127,7 +152,24 @@ function desenharTopo(ctx, cx, cy, z) {
   if (sEdge && e) ctx.fillRect(px + s - f, py + s - f, f, f);
 }
 
+function desenharTopoReal(ctx, cx, cy, z) {
+  const px = mundoParaTelaX(cx);
+  const py = mundoParaTelaY(cy, z);
+  const s = TILE * ESCALA;
+  // z>=2 usa dirt; z1 grama
+  const img = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
+  blitRole(ctx, img, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, s, s);
+}
+
 function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {
+  if (usarTiles(_atlas)) {
+    desenharFaceSulReal(ctx, cx, cy, z, queda, destacar);
+    return;
+  }
+  desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar);
+}
+
+function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
   const px = mundoParaTelaX(cx);
   const topY = mundoParaTelaY(cy, z);
   const w = TILE * ESCALA;
@@ -158,12 +200,55 @@ function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {
   }
 }
 
+function desenharFaceSulReal(ctx, cx, cy, z, queda, destacar = false) {
+  const px = mundoParaTelaX(cx);
+  const topY = mundoParaTelaY(cy, z);
+  const w = TILE * ESCALA;
+  const step = FACE_H * ESCALA;
+  const py0 = topY + TILE * ESCALA;
+  const sheet =
+    queda >= 2 && _atlas.cliffDuplo
+      ? _atlas.cliffDuplo
+      : _atlas.cliffSimples || _atlas.cliffDuplo;
+  const chao = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
+
+  for (let i = 0; i < queda; i++) {
+    let role = ROLE_EDGE_S;
+    if (queda > 1) {
+      if (i === 0) role = ROLE_EDGE_S;
+      else if (i === queda - 1 && sheet === _atlas.cliffDuplo) role = ROLE_EDGE_S_UNDER;
+      else role = ROLE_CLIFF_CENTER;
+    }
+    if (role === ROLE_EDGE_S_UNDER && sheet !== _atlas.cliffDuplo) {
+      role = ROLE_EDGE_S;
+    }
+    const dy = py0 + i * step;
+    // máscara magenta = terreno: preenche com chão sob o cliff
+    blitRole(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, dy, w, step);
+    blitRole(ctx, sheet, role, 0, px, dy, w, step);
+  }
+
+  if (destacar) {
+    const h = queda * step;
+    ctx.strokeStyle = "rgba(255, 220, 80, 0.95)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px + 1, py0 + 1, w - 2, h - 2);
+  }
+}
+
 function desenharFaceLateral(ctx, cx, cy, z, queda, lado) {
+  if (usarTiles(_atlas)) {
+    desenharFaceLateralReal(ctx, cx, cy, z, queda, lado);
+    return;
+  }
+  desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado);
+}
+
+function desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado) {
   const px = mundoParaTelaX(cx);
   const topY = mundoParaTelaY(cy, z);
   const s = TILE * ESCALA;
   const h = queda * FACE_H * ESCALA;
-  // na borda do topo (não fora) — cobre a faixa onde o sprite compete de lado
   const faixa = Math.max(5, ESCALA * 3);
   const x = lado === "w" ? px : px + s - faixa;
 
@@ -177,7 +262,61 @@ function desenharFaceLateral(ctx, cx, cy, z, queda, lado) {
   ctx.fillRect(x, topY, faixa, Math.max(1, ESCALA));
 }
 
+function desenharFaceLateralReal(ctx, cx, cy, z, queda, lado) {
+  const px = mundoParaTelaX(cx);
+  const topY = mundoParaTelaY(cy, z);
+  const s = TILE * ESCALA;
+  const step = FACE_H * ESCALA;
+  const faixa = Math.max(5, ESCALA * 3);
+  const x = lado === "w" ? px : px + s - faixa;
+  const sheet = _atlas.cliffDuplo || _atlas.cliffSimples;
+  const role = lado === "w" ? ROLE_EDGE_W : ROLE_EDGE_E;
+  const chao = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
+
+  blitRoleFaixa(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, lado, x, topY, faixa, s);
+  blitRoleFaixa(ctx, sheet, role, 0, lado, x, topY, faixa, s);
+
+  for (let i = 0; i < queda; i++) {
+    const dy = topY + s + i * step;
+    blitRoleFaixa(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, lado, x, dy, faixa, step);
+    blitRoleFaixa(ctx, sheet, role, 0, lado, x, dy, faixa, step);
+  }
+}
+
 function desenharProp(ctx, prop, z) {
+  if (usarTiles(_atlas) && prop.tipo !== "placa") {
+    if (desenharPropReal(ctx, prop, z)) return;
+  }
+  desenharPropProcedural(ctx, prop, z);
+}
+
+function desenharPropReal(ctx, prop, z) {
+  const px = mundoParaTelaX(prop.x);
+  const py = mundoParaTelaY(prop.y, z);
+
+  if (prop.tipo === "arvore" && _atlas.arvore) {
+    const img = _atlas.arvore;
+    const dw = img.width * ESCALA;
+    const dh = img.height * ESCALA;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, px - dw * 0.5, py - dh + 2 * ESCALA, dw, dh);
+    return true;
+  }
+
+  if (prop.tipo === "mata" && _atlas.mata) {
+    const img = _atlas.mata;
+    const dw = img.width * ESCALA * 1.5;
+    const dh = img.height * ESCALA * 1.5;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, px - dw * 0.5, py - dh + ESCALA, dw, dh);
+    return true;
+  }
+
+  // pedra continua procedural (sem sheet de rock dedicado)
+  return false;
+}
+
+function desenharPropProcedural(ctx, prop, z) {
   const px = mundoParaTelaX(prop.x);
   const py = mundoParaTelaY(prop.y, z);
 
@@ -192,6 +331,11 @@ function desenharProp(ctx, prop, z) {
     ctx.beginPath();
     ctx.arc(px - 5, py - 26, 8, 0, Math.PI * 2);
     ctx.fill();
+  } else if (prop.tipo === "mata") {
+    ctx.fillStyle = "#2a6a32";
+    ctx.fillRect(px - 6, py - 10, 12, 10);
+    ctx.fillStyle = "#3f9a4a";
+    ctx.fillRect(px - 4, py - 14, 8, 6);
   } else if (prop.tipo === "placa") {
     ctx.fillStyle = "#6b4a2a";
     ctx.fillRect(px - 2, py - 14, 4, 14);
@@ -225,4 +369,28 @@ function desenharDebug(ctx, cx, cy, z) {
   ctx.fillText(`${cx}`, px + 2, py + 9);
   ctx.fillText(`${cy}`, px + 2, py + 17);
   ctx.fillText(`${z}`, px + 2, py + 25);
+}
+
+/** role linear no sheet cols×rows; bandOffset = linhas a pular no topo. */
+function blitRole(ctx, img, role, bandOffset, dx, dy, dw, dh) {
+  if (!img) return;
+  const col = role % SHEET_COLS;
+  const row = Math.floor(role / SHEET_COLS) + bandOffset;
+  const sx = col * TILE_ART;
+  const sy = row * TILE_ART;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, sx, sy, TILE_ART, TILE_ART, dx, dy, dw, dh);
+}
+
+/** Recorta a borda W/E do tile de cliff para a faixa lateral. */
+function blitRoleFaixa(ctx, img, role, bandOffset, lado, dx, dy, dw, dh) {
+  if (!img) return;
+  const col = role % SHEET_COLS;
+  const row = Math.floor(role / SHEET_COLS) + bandOffset;
+  const sx0 = col * TILE_ART;
+  const sy = row * TILE_ART;
+  const srcW = Math.max(3, Math.round(TILE_ART * 0.35));
+  const sx = lado === "w" ? sx0 : sx0 + TILE_ART - srcW;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, sx, sy, srcW, TILE_ART, dx, dy, dw, dh);
 }

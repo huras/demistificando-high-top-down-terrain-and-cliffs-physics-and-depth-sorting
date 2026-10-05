@@ -38,10 +38,12 @@ export const SPAWN = { x: 7.5, y: 10.2, z: 1 };
 
 export const PROPS = [
   { id: "arv-atras", x: 7.5, y: 10.4, tipo: "arvore" },
+  { id: "mata-atras", x: 6.3, y: 10.5, tipo: "mata" },
   { id: "placa-sort", x: 7.5, y: 10.9, tipo: "placa", texto: "ATRÁS" },
   { id: "pedra-frente", x: 7.5, y: 14.3, tipo: "pedra" },
   { id: "placa-frente", x: 9.2, y: 14.3, tipo: "placa", texto: "FRENTE" },
   { id: "placa-pulo", x: 8.5, y: 8.3, tipo: "placa", texto: "3→1" },
   { id: "arv-a", x: 20.2, y: 4.5, tipo: "arvore" },
+  { id: "mata-a", x: 19.2, y: 4.8, tipo: "mata" },
   { id: "pedra-a", x: 2.5, y: 4.6, tipo: "pedra" },
 ];

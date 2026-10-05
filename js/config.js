@@ -55,7 +55,27 @@ export const CAMERA_SUAVIDADE = 7;
 export const CAMINHOS = {
   jogador: "assets/people/gold.png",
   asaDelta: "assets/items/asa_delta.png",
+  grama: "assets/terrain/grass.png",
+  terra: "assets/terrain/dirt.png",
+  cliffDuplo: "assets/terrain/double-cliff-autotile.png",
+  cliffSimples: "assets/terrain/cliff-autotile.png",
+  mata: "assets/vegetation/green-grass.png",
+  arvore: "assets/trees/broadleaf.png",
 };
+
+/** Preferir tiles reais quando o atlas de terreno carregar; tecla T alterna. */
+export const VISUAL_REAL_PADRAO = true;
 
 export const JOGADOR_FRAME = 64;
 export const JOGADOR_ESCALA = 0.5;
+
+/** Sheets processados / cliff autotile (mesmo layout do Pokemon AI). */
+export const TILE_ART = 16;
+export const SHEET_COLS = 5;
+export const FLOOR_ROW_OFFSET = 3;
+export const ROLE_CENTER = 6;
+export const ROLE_EDGE_S = 11;
+export const ROLE_EDGE_S_UNDER = 16;
+export const ROLE_EDGE_W = 5;
+export const ROLE_EDGE_E = 7;
+export const ROLE_CLIFF_CENTER = 6;
