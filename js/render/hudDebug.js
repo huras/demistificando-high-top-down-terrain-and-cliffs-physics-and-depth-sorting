@@ -1,3 +1,4 @@
+import { razaoStamina } from "../fisica/stamina.js";
 import { consultarOclusao } from "./oclusao.js";
 import { formulasPersonagem } from "./personagem.js";
 
@@ -13,7 +14,7 @@ export function atualizarPainel(corpo, zoom = 1) {
   const estado = document.getElementById("estado");
   if (!estado) return ocl;
   const dds = estado.querySelectorAll("dd");
-  if (dds.length < 6) return ocl;
+  if (dds.length < 7) return ocl;
   const elev = corpo.elevacao ?? corpo.z;
   dds[0].textContent = `${corpo.x.toFixed(2)}, ${corpo.y.toFixed(2)}, z${corpo.z}`;
   dds[1].textContent = f.screenY.toFixed(2);
@@ -22,6 +23,7 @@ export function atualizarPainel(corpo, zoom = 1) {
   dds[4].textContent = corpo.acao;
   dds[5].textContent = ocl.status;
   dds[5].dataset.status = ocl.status;
+  dds[6].textContent = `${Math.round(razaoStamina(corpo) * 100)}%`;
 
   const zoomEl = document.getElementById("zoom-status");
   if (zoomEl) zoomEl.textContent = `${zoom.toFixed(2)}×`;
@@ -42,7 +44,7 @@ export function desenharOverlayAjuda(ctx, camera, debug, ocl) {
   ctx.fillText(
     debug
       ? "DEBUG — pivôs: P amarelo · T topo · F face"
-      : "` debug · scroll/+/- zoom",
+      : "` debug · E = gruda na parede",
     18,
     46,
   );

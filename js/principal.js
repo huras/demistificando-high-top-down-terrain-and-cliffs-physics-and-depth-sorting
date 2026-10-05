@@ -11,6 +11,7 @@ import {
 } from "./render/camera.js";
 import { desenharPivosSort } from "./render/debugPivos.js";
 import { atualizarPainel, desenharOverlayAjuda } from "./render/hudDebug.js";
+import { desenharHudStamina } from "./render/hudStamina.js";
 import {
   criarListaProfundidade,
   desenharLista,
@@ -18,6 +19,7 @@ import {
 } from "./render/ordenacaoProfundidade.js";
 import { empilharPersonagem } from "./render/personagem.js";
 import { empilharTerreno } from "./render/terreno.js";
+import { iniciarStamina } from "./fisica/stamina.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -70,6 +72,7 @@ async function iniciar() {
       corpo.coyoteT = 0;
       corpo.puloBufferT = 0;
       corpo.tempoAr = 0;
+      iniciarStamina(corpo);
       camera.pronta = false;
     },
   };
@@ -105,6 +108,7 @@ function loop(agora) {
   if (debug) desenharPivosSort(ctx, corpo);
 
   desenharOverlayAjuda(ctx, camera, debug, ocl);
+  desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
 
   requestAnimationFrame(loop);
 }

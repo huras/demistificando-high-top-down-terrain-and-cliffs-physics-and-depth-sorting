@@ -3,16 +3,22 @@ import { alturaEm } from "../mundo/altura.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import { chaveEntidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
 
+/** Ties: sombra sob o sprite; baixa < alta na mesma faixa. */
 const TIE_SOMBRA_BAIXA = 2.5;
 const TIE_SOMBRA_ALTA = 4.5;
 
-/** Raio da elipse em células de mundo (aprox.). */
+/** Elipse em células de mundo (aprox.). */
 const RX_MUNDO = 0.45;
 const RY_MUNDO = 0.22;
 
+/** Sombra logo acima do topo do tile, sem ultrapassar terraços vizinhos. */
+const EPS_SOMBRA_NO_TOPO = 0.00015;
+const EPS_SOMBRA_SOB_ALTO = 0.0002;
+
 /**
- * Sombra no chão atual +, se estiver na beirada, pedaço no chão de baixo
- * (nunca em terreno mais alto que os pés).
+ * Sombra dual: pedaço no chão dos pés + pedaço no nível abaixo na beirada.
+ * A sombra baixa NUNCA ganha do topo do cliff (crítico na face de trás / ATRÁS,
+ * onde o Y misturado ainda cai na célula alta e o AABB de tela sobrepõe).
  */
 export function empilharSombras(lista, corpo) {
   const x = corpo.x;
@@ -25,7 +31,7 @@ export function empilharSombras(lista, corpo) {
   if (!baixos.length || zBaixo === null) {
     empilhar(
       lista,
-      chaveEntidade(y, z) - EPS_SOMBRA,
+      chaveEntidade(y, z) - EPS_SOMBRA_NO_TOPO,
       0,
       (ctx) => desenharElipseSombra(ctx, x, y, z, 0.28),
       TIE_SOMBRA_ALTA,
@@ -34,10 +40,9 @@ export function empilharSombras(lista, corpo) {
     return;
   }
 
-  // pedaço no terraço / chão onde está
   empilhar(
     lista,
-    chaveEntidade(y, z) - EPS_SOMBRA,
+    chaveEntidade(y, z) - EPS_SOMBRA_NO_TOPO,
     0,
     (ctx) => {
       ctx.save();
@@ -49,24 +54,37 @@ export function empilharSombras(lista, corpo) {
     z,
   );
 
-  // pedaço projetado no chão onde cairia (nível abaixo)
   const proj = projetarNoChaoBaixo(x, y, baixos);
   empilhar(
     lista,
-    chaveTopo(Math.floor(proj.y), zBaixo) + 0.005,
+    chaveSombraBaixa(proj, altos),
     0,
     (ctx) => {
       ctx.save();
       clipTopos(ctx, baixos);
-      desenharElipseSombra(ctx, proj.x, proj.y, zBaixo, 0.22);
+      desenharElipseSombra(ctx, proj.x, proj.y, proj.z, 0.22);
       ctx.restore();
     },
     TIE_SOMBRA_BAIXA,
-    zBaixo,
+    proj.z,
   );
 }
 
-const EPS_SOMBRA = 0.0002;
+/**
+ * Sort da sombra baixa: ancora no tile BAIXO real (não no y misturado).
+ * Garante sortKey < qualquer topo alto vizinho — senão pinta “por cima” do terraço
+ * na face de trás (AABB do chão z=0 em cy-1 ≡ topo z=1 em cy).
+ */
+function chaveSombraBaixa(proj, altos) {
+  let key = chaveTopo(proj.cy, proj.z) + EPS_SOMBRA_NO_TOPO;
+
+  for (let i = 0; i < altos.length; i++) {
+    const a = altos[i];
+    const teto = chaveTopo(a.cy, a.z) - EPS_SOMBRA_SOB_ALTO;
+    if (key > teto) key = teto;
+  }
+  return key;
+}
 
 function coletarToposPerto(x, y, z) {
   const cx0 = Math.floor(x);
@@ -79,11 +97,8 @@ function coletarToposPerto(x, y, z) {
     for (let cx = cx0 - 1; cx <= cx0 + 1; cx++) {
       const hz = alturaEm(cx, cy);
       if (hz <= 0) continue;
-
-      // só células que a elipse pode tocar
       if (!elipseTocaCelula(x, y, cx, cy)) continue;
 
-      // nunca projeta sombra em terreno mais alto que os pés
       if (hz === z) {
         altos.push({ cx, cy, z: hz });
       } else if (hz < z) {
@@ -93,22 +108,22 @@ function coletarToposPerto(x, y, z) {
     }
   }
 
-  // garante o topo sob os pés
   if (!altos.some((t) => t.cx === cx0 && t.cy === cy0)) {
     const hz = alturaEm(cx0, cy0);
     if (hz === z) altos.push({ cx: cx0, cy: cy0, z: hz });
   }
 
-  // sombra baixa só no nível imediatamente abaixo (nunca “acima”)
   if (zBaixo !== null) {
-    const filtrados = baixos.filter((t) => t.z === zBaixo);
-    return { altos, baixos: filtrados, zBaixo };
+    return {
+      altos,
+      baixos: baixos.filter((t) => t.z === zBaixo),
+      zBaixo,
+    };
   }
   return { altos, baixos, zBaixo };
 }
 
 function elipseTocaCelula(x, y, cx, cy) {
-  // ponto da célula mais perto dos pés
   const px = clamp(x, cx, cx + 1);
   const py = clamp(y, cy, cy + 1);
   const dx = (px - x) / RX_MUNDO;
@@ -116,14 +131,15 @@ function elipseTocaCelula(x, y, cx, cy) {
   return dx * dx + dy * dy <= 1.05;
 }
 
-/** Puxa o centro da sombra baixa pro ponto do chão inferior mais perto dos pés. */
+/** Centro da sombra baixa no tile inferior mais perto — guarda cx/cy do tile. */
 function projetarNoChaoBaixo(x, y, baixos) {
   let melhor = baixos[0];
   let melhorD = Infinity;
   let mx = x;
   let my = y;
 
-  for (const t of baixos) {
+  for (let i = 0; i < baixos.length; i++) {
+    const t = baixos[i];
     const px = clamp(x, t.cx, t.cx + 0.999);
     const py = clamp(y, t.cy, t.cy + 0.999);
     const d = (px - x) * (px - x) + (py - y) * (py - y);
@@ -135,18 +151,20 @@ function projetarNoChaoBaixo(x, y, baixos) {
     }
   }
 
-  // mistura: ainda perto dos pés, mas já no tile de baixo
   return {
     x: x * 0.35 + mx * 0.65,
     y: y * 0.35 + my * 0.65,
     z: melhor.z,
+    cx: melhor.cx,
+    cy: melhor.cy,
   };
 }
 
 function clipTopos(ctx, topos) {
   ctx.beginPath();
   const s = TILE * ESCALA;
-  for (const t of topos) {
+  for (let i = 0; i < topos.length; i++) {
+    const t = topos[i];
     const px = mundoParaTelaX(t.cx);
     const py = mundoParaTelaY(t.cy, t.z);
     ctx.rect(px, py, s, s);

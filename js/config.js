@@ -37,7 +37,15 @@ export const ASA_DELTA_VEL_MUL = 1.2;
 export const ASA_DELTA_ACEL_AR = 22;
 export const ASA_DELTA_ATRITO_AR = 0.5;
 
-export const ESCALADA_DURACAO = 0.34;
+/** Escalada grudada (BOTW) — células/s na face. */
+export const ESCALADA_VEL = 1.85;
+export const ESCALADA_MANTLE_EPS = 0.12;
+export const ESCALADA_IMPULSO_SOLTAR = 2.8;
+
+/** Stamina (unidades arbitrárias). */
+export const STAMINA_MAX = 100;
+export const STAMINA_DRAIN_ESCALADA = 18;
+export const STAMINA_REGEN = 28;
 
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 3.5;

@@ -13,7 +13,12 @@ import {
   moverComColisao,
 } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
-import { atualizarEscalada, tentarEscalar } from "./escalada.js";
+import {
+  anexarEscalada,
+  atualizarEscalada,
+  soltarEscalada,
+  tentarEscalar,
+} from "./escalada.js";
 import {
   atualizarAereo,
   empurrarForaDeCliff,
@@ -22,9 +27,10 @@ import {
   podeIniciarPulo,
   registrarBufferPulo,
 } from "./pulo.js";
+import { iniciarStamina, regenerarStamina } from "./stamina.js";
 
 export function criarCorpo(spawn) {
-  return {
+  const corpo = {
     x: spawn.x,
     y: spawn.y,
     z: spawn.z,
@@ -41,6 +47,7 @@ export function criarCorpo(spawn) {
     escalando: false,
     pulo: null,
     escalada: null,
+    travaEscalada: null,
     hopLift: 0,
     puloCortado: false,
     coyoteT: 0,
@@ -52,23 +59,34 @@ export function criarCorpo(spawn) {
     acao: "parado",
     animT: 0,
     andando: false,
+    stamina: 0,
+    staminaMax: 0,
   };
+  iniciarStamina(corpo);
+  return corpo;
 }
 
 export function atualizarMovimento(corpo, dt) {
-  if (corpo.escalando || corpo.escalada) {
-    corpo.hopLift = atualizarEscalada(corpo, dt);
-    if (!corpo.escalando) {
-      corpo.elevacao = corpo.z;
-      corpo.noChao = true;
-      corpo.vz = 0;
-      corpo.hopLift = 0;
-      corpo.planando = false;
+  const { dx, dy } = vetorMovimento();
+
+  // —— Escalando: WASD na face; Space ou E solta ——
+  if (corpo.escalando && corpo.escalada) {
+    const apertouPulo = teclaAgora("Space");
+    const apertouE = teclaAgora("KeyE");
+    if (apertouPulo || apertouE) {
+      soltarEscalada(corpo, {
+        impulso: true,
+        motivo: apertouE ? "e" : "space",
+      });
+      // continua o frame na queda
+    } else {
+      corpo.hopLift = atualizarEscalada(corpo, dt, dx, dy);
+      corpo.andando = false;
+      corpo.vx = 0;
+      corpo.vy = 0;
+      if (dx !== 0 || dy !== 0) corpo.animT += dt;
+      return;
     }
-    corpo.andando = false;
-    corpo.vx = 0;
-    corpo.vy = 0;
-    return;
   }
 
   if (corpo.puloBufferT > 0) corpo.puloBufferT = Math.max(0, corpo.puloBufferT - dt);
@@ -76,7 +94,7 @@ export function atualizarMovimento(corpo, dt) {
   const apertouPulo = teclaAgora("Space");
   registrarBufferPulo(corpo, apertouPulo);
 
-  // Space: chão = hop Mario (hold = mais alto); 2º toque no ar = asa-delta
+  // Space: chão = hop Mario; 2º toque no ar = asa-delta
   if (estaPlanando(corpo)) {
     tratarInputAsaDelta(corpo, apertouPulo);
   } else if (
@@ -88,22 +106,17 @@ export function atualizarMovimento(corpo, dt) {
     tratarInputAsaDelta(corpo, true);
   }
 
-  if (teclaAgora("KeyE") && corpo.noChao) {
+  // E: gruda na face (chão ou ar) — tecla segurada vira “subir”
+  if (teclaAgora("KeyE") && !corpo.escalando) {
     const res = tentarEscalar(corpo);
     if (res?.ok) {
-      corpo.escalada = res.escalada;
-      corpo.escalando = true;
-      corpo.planando = false;
-      corpo.vx = 0;
-      corpo.vy = 0;
-      corpo.vz = 0;
-      corpo.hopLift = atualizarEscalada(corpo, 0);
+      anexarEscalada(corpo, res, dx, dy);
+      corpo.hopLift = atualizarEscalada(corpo, 0, dx, dy);
       return;
     }
     corpo.acao = res?.motivo ? `escala bloqueada (${res.motivo})` : "escala bloqueada";
   }
 
-  const { dx, dy } = vetorMovimento();
   if (dx !== 0 || dy !== 0) {
     if (dx !== 0) corpo.dirX = Math.sign(dx);
     if (dy !== 0) corpo.dirY = Math.sign(dy);
@@ -114,6 +127,8 @@ export function atualizarMovimento(corpo, dt) {
 
   if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt);
   else atualizarNoAr(corpo, dx, dy, dt);
+
+  regenerarStamina(corpo, dt);
 }
 
 function atualizarNoChao(corpo, dx, dy, dt) {
@@ -151,7 +166,14 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   if (corpo.andando) {
     corpo.animT += dt;
     corpo.acao = "correndo";
-  } else if (!corpo.acao.startsWith("escala") && !corpo.acao.startsWith("pousou")) {
+  } else if (
+    !corpo.acao.startsWith("escala") &&
+    !corpo.acao.startsWith("pousou") &&
+    !corpo.acao.startsWith("mantle") &&
+    !corpo.acao.startsWith("soltou") &&
+    !corpo.acao.startsWith("desceu") &&
+    !corpo.acao.startsWith("stamina")
+  ) {
     corpo.acao = "parado";
   }
 }
