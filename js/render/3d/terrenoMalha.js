@@ -142,6 +142,168 @@ function quadLivre(a, b, c, d) {
   return geo;
 }
 
+/** Triângulo (CCW de fora). */
+function triLivre(a, b, c) {
+  const pos = new Float32Array([
+    a.x, a.y, a.z,
+    b.x, b.y, b.z,
+    c.x, c.y, c.z,
+  ]);
+  const uv = new Float32Array([0, 0, 1, 0, 0.5, 1]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function solidoNivel(wx, wy, lz) {
+  if (lz < 0 || lz >= CHUNK_Y) return false;
+  return ehSolido(obterBloco(wx, wy, lz));
+}
+
+/**
+ * Cantos convexos em L: ar na diagonal, sólidos ortogonais com bevel de 1 lado.
+ * O bloco A (este) precisa ter o topo cortado + triângulo de mitra.
+ */
+function cortesConvexosL(wx, wy, lz) {
+  const i = Math.max(0, Math.min(0.45, TRONCO_INSET));
+  if (i <= 0) return [];
+  /** @type {{ dir: string, i: number }[]} */
+  const out = [];
+
+  // SE: A canto côncavo; B=leste (bevel S); C=sul (bevel E); ar em (wx+1,wy+1)
+  if (
+    !solidoNivel(wx + 1, wy + 1, lz) &&
+    solidoNivel(wx + 1, wy, lz) &&
+    solidoNivel(wx, wy + 1, lz) &&
+    vizinhoAr(wx + 1, wy, lz, 0, 1, 0) &&
+    vizinhoAr(wx, wy + 1, lz, 1, 0, 0)
+  ) {
+    out.push({ dir: "se", i });
+  }
+  // SW
+  if (
+    !solidoNivel(wx - 1, wy + 1, lz) &&
+    solidoNivel(wx - 1, wy, lz) &&
+    solidoNivel(wx, wy + 1, lz) &&
+    vizinhoAr(wx - 1, wy, lz, 0, 1, 0) &&
+    vizinhoAr(wx, wy + 1, lz, -1, 0, 0)
+  ) {
+    out.push({ dir: "sw", i });
+  }
+  // NE
+  if (
+    !solidoNivel(wx + 1, wy - 1, lz) &&
+    solidoNivel(wx + 1, wy, lz) &&
+    solidoNivel(wx, wy - 1, lz) &&
+    vizinhoAr(wx + 1, wy, lz, 0, -1, 0) &&
+    vizinhoAr(wx, wy - 1, lz, 1, 0, 0)
+  ) {
+    out.push({ dir: "ne", i });
+  }
+  // NW
+  if (
+    !solidoNivel(wx - 1, wy - 1, lz) &&
+    solidoNivel(wx - 1, wy, lz) &&
+    solidoNivel(wx, wy - 1, lz) &&
+    vizinhoAr(wx - 1, wy, lz, 0, -1, 0) &&
+    vizinhoAr(wx, wy - 1, lz, -1, 0, 0)
+  ) {
+    out.push({ dir: "nw", i });
+  }
+  return out;
+}
+
+/** Triângulo vertical/inclinado que fecha a mitra do canto convexo. */
+function triMitraConvexo(wx, wy, wz, dir, i) {
+  const y0 = wz;
+  const y1 = wz + 1 - INSET_TOPO;
+  if (dir === "se") {
+    // P0 canto baixo do ar; TB = topo oeste do bevel S de B; TC = topo norte do bevel E de C
+    return triLivre(
+      { x: wx + 1, y: y0, z: wy + 1 },
+      { x: wx + 1, y: y1, z: wy + 1 - i },
+      { x: wx + 1 - i, y: y1, z: wy + 1 },
+    );
+  }
+  if (dir === "sw") {
+    return triLivre(
+      { x: wx, y: y0, z: wy + 1 },
+      { x: wx + i, y: y1, z: wy + 1 },
+      { x: wx, y: y1, z: wy + 1 - i },
+    );
+  }
+  if (dir === "ne") {
+    return triLivre(
+      { x: wx + 1, y: y0, z: wy },
+      { x: wx + 1 - i, y: y1, z: wy },
+      { x: wx + 1, y: y1, z: wy + i },
+    );
+  }
+  // nw
+  return triLivre(
+    { x: wx, y: y0, z: wy },
+    { x: wx, y: y1, z: wy + i },
+    { x: wx + i, y: y1, z: wy },
+  );
+}
+
+/**
+ * Topo de A com cantos L cortados (pentágono / hex…).
+ * verts em CCW vistos de cima.
+ */
+function topoComCortesConvexos(wx, wy, y1, cortes) {
+  let iSE = 0;
+  let iSW = 0;
+  let iNE = 0;
+  let iNW = 0;
+  for (const c of cortes) {
+    if (c.dir === "se") iSE = c.i;
+    else if (c.dir === "sw") iSW = c.i;
+    else if (c.dir === "ne") iNE = c.i;
+    else if (c.dir === "nw") iNW = c.i;
+  }
+
+  /** @type {{x:number,y:number,z:number}[]} */
+  const verts = [];
+  // NW → SW → SE → NE (CCW de cima)
+  if (iNW > 0) {
+    verts.push({ x: wx + iNW, y: y1, z: wy });
+    verts.push({ x: wx, y: y1, z: wy + iNW });
+  } else {
+    verts.push({ x: wx, y: y1, z: wy });
+  }
+
+  if (iSW > 0) {
+    verts.push({ x: wx, y: y1, z: wy + 1 - iSW });
+    verts.push({ x: wx + iSW, y: y1, z: wy + 1 });
+  } else {
+    verts.push({ x: wx, y: y1, z: wy + 1 });
+  }
+
+  if (iSE > 0) {
+    verts.push({ x: wx + 1 - iSE, y: y1, z: wy + 1 });
+    verts.push({ x: wx + 1, y: y1, z: wy + 1 - iSE });
+  } else {
+    verts.push({ x: wx + 1, y: y1, z: wy + 1 });
+  }
+
+  if (iNE > 0) {
+    verts.push({ x: wx + 1, y: y1, z: wy + iNE });
+    verts.push({ x: wx + 1 - iNE, y: y1, z: wy });
+  } else {
+    verts.push({ x: wx + 1, y: y1, z: wy });
+  }
+
+  /** @type {THREE.BufferGeometry[]} */
+  const tris = [];
+  for (let k = 1; k < verts.length - 1; k++) {
+    tris.push(triLivre(verts[0], verts[k], verts[k + 1]));
+  }
+  return tris;
+}
+
 /**
  * Bevel (tronco parcial) só em voxel de borda de cliff.
  * Inset apenas nos lados com ar — lados colados a sólido ficam flush.
@@ -293,21 +455,30 @@ function construirGeosChunk(chunk) {
           if (!vizinhoAr(wx, wy, lz, d.dx, d.dy, d.dz)) continue;
 
           if (d.nome === "u") {
+            const cortesL = ehSuperficie ? cortesConvexosL(wx, wy, lz) : [];
+            const yTopo = lz + 1 - INSET_TOPO;
+            const pushTop = (geo) => {
+              if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
+                topsTerra.push(geo);
+              } else {
+                topsGrama.push(geo);
+              }
+            };
+
             if (ehBordaCliff) {
               const bevel = geoBevelBorda(wx, wy, lz, lateraisAr);
-              if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
-                topsTerra.push(bevel.top);
-              } else {
-                topsGrama.push(bevel.top);
-              }
+              pushTop(bevel.top);
               for (const latGeo of bevel.laterais) faces.push(latGeo);
-            } else {
-              const q = quadFace(wx, wy, lz, "u");
-              if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
-                topsTerra.push(q);
-              } else {
-                topsGrama.push(q);
+            } else if (cortesL.length > 0) {
+              // Canto L: corta o topo de A + triângulo de mitra
+              for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
+                pushTop(t);
               }
+              for (const c of cortesL) {
+                faces.push(triMitraConvexo(wx, wy, lz, c.dir, c.i));
+              }
+            } else {
+              pushTop(quadFace(wx, wy, lz, "u"));
               for (const lat of lateraisAr) {
                 ledges.push(caixaLedge(wx, wy, lz + 1, lat));
               }
