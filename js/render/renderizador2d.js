@@ -37,7 +37,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
 
   aplicarCamera(ctx, camera);
   limparLista(lista);
-  empilharTerreno(lista, atlas, debug, debug ? ocl?.face : null);
+  empilharTerreno(lista, atlas, debug, debug ? ocl?.face : null, camera);
   empilharAlvoEscalada(lista, corpo, dt);
   if (agente) empilharAgente(lista, atlas, agente);
   empilharPersonagem(lista, atlas, corpo);

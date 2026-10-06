@@ -160,6 +160,11 @@ function vizinhoAr(wx, wy, wz, dx, dy, dz) {
  * Gera geometrias culled-face de um chunk.
  */
 function construirGeosChunk(chunk) {
+  // #region agent log
+  const __t0 = performance.now();
+  let __solidos = 0;
+  let __quads = 0;
+  // #endregion
   const topsGrama = [];
   const topsTerra = [];
   const faces = [];
@@ -177,10 +182,16 @@ function construirGeosChunk(chunk) {
       for (let lz = 0; lz < CHUNK_Y; lz++) {
         const id = obterBloco(wx, wy, lz);
         if (!ehSolido(id)) continue;
+        // #region agent log
+        __solidos++;
+        // #endregion
 
         for (const d of DIRS) {
           if (!vizinhoAr(wx, wy, lz, d.dx, d.dy, d.dz)) continue;
           const q = quadFace(wx, wy, lz, d.nome);
+          // #region agent log
+          __quads++;
+          // #endregion
 
           if (d.nome === "u") {
             if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
@@ -221,7 +232,7 @@ function construirGeosChunk(chunk) {
     }
   }
 
-  return {
+  const out = {
     geoGrama: mesclarLista(topsGrama),
     geoTerra: mesclarLista(topsTerra),
     geoFaces: mesclarLista(faces),
@@ -229,6 +240,10 @@ function construirGeosChunk(chunk) {
     geoAo: mesclarLista(aos),
     geoCubos: mesclarLista(cubos),
   };
+  // #region agent log
+  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'perf1',hypothesisId:'C',location:'terrenoMalha.js:construirGeosChunk',message:'mesh_chunk',data:{ms:+(performance.now()-__t0).toFixed(2),cx:chunk.cx,cy:chunk.cy,solidos:__solidos,quads:__quads,topsG:topsGrama.length,topsT:topsTerra.length,faces:faces.length,ledges:ledges.length},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  return out;
 }
 
 function geoProp(p) {

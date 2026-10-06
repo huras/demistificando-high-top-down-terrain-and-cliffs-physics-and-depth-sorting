@@ -149,3 +149,7 @@ export const CHUNK_Y = 64;
 export const RAIO_STREAM = 5;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 6;
+/** Raio (células) da grade de pathfinding em torno do centro. */
+export const NAV_RAIO = 28;
+/** Margem extra (células) no cull do terreno 2D. */
+export const TERRENO_2D_MARGEM = 4;

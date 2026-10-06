@@ -11,12 +11,11 @@ import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { iniciarStamina } from "./fisica/stamina.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
-import { invalidarNavCache } from "./navegacao/navGrade.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
 import {
   atualizarStreaming,
   iniciarMundoAoRedor,
-  onDirty,
+  obterAabbCarregado,
 } from "./mundo/voxel/storeMundo.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
@@ -78,7 +77,10 @@ async function iniciar() {
   window.__atlas = atlas;
 
   iniciarMundoAoRedor(SPAWN.x, SPAWN.y);
-  onDirty(() => invalidarNavCache());
+  // Nav só invalida em edição de bloco — streaming não deve rebuildar (era ~18s).
+  // #region agent log
+  // hypothesisId D: stream dirty ≠ nav invalidate
+  // #endregion
 
   corpo = criarCorpo(SPAWN);
   agente = criarAgente({
@@ -232,11 +234,27 @@ function loop(agora) {
     }
   }
 
+  // #region agent log
+  const __t0 = performance.now();
+  // #endregion
   atualizarStreaming(corpo.x, corpo.y);
+  // #region agent log
+  const __tStream = performance.now();
+  if (!atualizarStreaming.__lastComp || performance.now() - atualizarStreaming.__lastComp > 500) {
+    const aabb = obterAabbCarregado();
+    const ax = agente.x|0, ay = agente.y|0;
+    const fora = ax < aabb.x0 || ax > aabb.x1 || ay < aabb.y0 || ay > aabb.y1;
+    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'proc-follow',hypothesisId:'H-Unload',location:'principal.js:loop',message:'stream_vs_comp',data:{px:corpo.x|0,py:corpo.y|0,ax,ay,fora,aabb:{x0:aabb.x0,y0:aabb.y0,x1:aabb.x1,y1:aabb.y1},dist:+Math.hypot(corpo.x-agente.x,corpo.y-agente.y).toFixed(1)},timestamp:Date.now()})}).catch(()=>{});
+    atualizarStreaming.__lastComp = performance.now();
+  }
+  // #endregion
   atualizarMovimento(corpo, dt);
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);
   atualizarHudCompanheiro(agente);
+  // #region agent log
+  const __tSim = performance.now();
+  // #endregion
 
   try {
     if (modo === "3d") {
@@ -255,6 +273,22 @@ function loop(agora) {
   } catch (err) {
     console.error("Erro no frame:", err);
   }
+
+  // #region agent log
+  const __tEnd = performance.now();
+  if (!window.__perfDbg) window.__perfDbg = { n: 0, acc: 0, lastLog: 0 };
+  const __pd = window.__perfDbg;
+  const __frameMs = __tEnd - __t0;
+  __pd.n++;
+  __pd.acc += __frameMs;
+  if (__tEnd - __pd.lastLog > 1000) {
+    const avg = __pd.acc / Math.max(1, __pd.n);
+    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix',hypothesisId:'A,B,E',location:'principal.js:loop',message:'frame_budget',data:{modo,avgFrameMs:+avg.toFixed(2),streamMs:+(__tStream-__t0).toFixed(2),simMs:+(__tSim-__tStream).toFixed(2),drawMs:+(__tEnd-__tSim).toFixed(2),samples:__pd.n,x:corpo.x|0,y:corpo.y|0},timestamp:Date.now()})}).catch(()=>{});
+    __pd.n = 0;
+    __pd.acc = 0;
+    __pd.lastLog = __tEnd;
+  }
+  // #endregion
 
   requestAnimationFrame(loop);
 }

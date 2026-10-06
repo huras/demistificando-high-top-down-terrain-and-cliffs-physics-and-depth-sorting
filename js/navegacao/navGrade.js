@@ -2,6 +2,7 @@ import {
   ASA_DELTA_DESCIDA,
   ASA_DELTA_VEL_MUL,
   ESCALADA_VEL,
+  NAV_RAIO,
   PATH_CUSTO_ESCALADA,
   PATH_GLIDE_ALCANCE_MAX,
   PATH_GLIDE_ALCANCE_MUL,
@@ -41,6 +42,9 @@ export const TIPO_GLIDE = 3;
 export const TIPO_VOO = 4;
 
 const cache = new Map();
+/** Centro da última grade (mundo). */
+let navCentro = { cx: 0, cy: 0 };
+let navRaioAtivo = 28;
 
 export function chaveCelula(cx, cy) {
   return (((cy + KEY_OFFSET) & 0xffff) << 16) | ((cx + KEY_OFFSET) & 0xffff);
@@ -56,10 +60,40 @@ export function invalidarNavCache(_aabb = null) {
   cache.clear();
 }
 
-export function obterNavGrade(perfil) {
+/** Atualiza âncora da grade (jogador / agente). */
+export function definirNavCentro(cx, cy) {
+  navCentro.cx = cx | 0;
+  navCentro.cy = cy | 0;
+}
+
+export function obterNavGrade(perfil, ax = null, ay = null, gx = null, gy = null) {
+  const aCx = ax != null ? ax | 0 : navCentro.cx;
+  const aCy = ay != null ? ay | 0 : navCentro.cy;
+  const gCx = gx != null ? gx | 0 : aCx;
+  const gCy = gy != null ? gy | 0 : aCy;
+
   let g = cache.get(perfil.id);
-  if (g) return g;
-  g = construirGrade(perfil);
+  const fora =
+    !g ||
+    aCx < g.x0 ||
+    aCx > g.x1 ||
+    aCy < g.y0 ||
+    aCy > g.y1 ||
+    gCx < g.x0 ||
+    gCx > g.x1 ||
+    gCy < g.y0 ||
+    gCy > g.y1;
+
+  if (!fora) return g;
+
+  const midX = ((aCx + gCx) / 2) | 0;
+  const midY = ((aCy + gCy) / 2) | 0;
+  const dist = Math.hypot(gCx - aCx, gCy - aCy);
+  const raio = Math.min(48, Math.max(NAV_RAIO, Math.ceil(dist * 0.5) + 12));
+  navCentro.cx = midX;
+  navCentro.cy = midY;
+  navRaioAtivo = raio;
+  g = construirGrade(perfil, midX, midY, raio);
   cache.set(perfil.id, g);
   return g;
 }
@@ -68,23 +102,48 @@ function quedaMaxAndar(perfil) {
   return perfil.quedaMaxAndar ?? perfil.quedaMax ?? Infinity;
 }
 
-function construirGrade(perfil) {
-  const aabb = obterAabbCarregado();
-  const x0 = aabb.x0 | 0;
-  const y0 = aabb.y0 | 0;
-  const x1 = aabb.x1 | 0;
-  const y1 = aabb.y1 | 0;
+/** Célula na beira de precipício — única que precisa de NavLink glide. */
+function temBeiraGlide(cx, cy, zA) {
+  if (zA < PATH_GLIDE_QUEDA_MIN + 1) return false;
+  for (const [dx, dy] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]) {
+    if (zA - alturaEm(cx + dx, cy + dy) >= PATH_GLIDE_QUEDA_MIN) return true;
+  }
+  return false;
+}
 
-  /** @type {Map<number, Float32Array>} */
+function construirGrade(perfil, centroX, centroY, raio) {
+  // #region agent log
+  const __t0 = performance.now();
+  // #endregion
+  const loaded = obterAabbCarregado();
+  const x0 = Math.max(loaded.x0 | 0, centroX - raio);
+  const y0 = Math.max(loaded.y0 | 0, centroY - raio);
+  const x1 = Math.min(loaded.x1 | 0, centroX + raio);
+  const y1 = Math.min(loaded.y1 | 0, centroY + raio);
+
+  /** @type {Map<number, number[]>} — NÃO usar Float32Array: chaves packed >2^24 perdem precisão. */
   const edges = new Map();
+  // #region agent log
+  let __celulas = 0;
+  let __glide = 0;
+  let __arestaSample = 0;
+  // #endregion
 
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
       if (!dentroDoMapa(cx, cy)) continue;
       const zA = alturaEm(cx, cy);
       const key = chaveCelula(cx, cy);
+      // #region agent log
+      __celulas++;
+      // #endregion
       if (zA <= 0) {
-        edges.set(key, new Float32Array(0));
+        edges.set(key, []);
         continue;
       }
       const lista = [];
@@ -99,11 +158,25 @@ function construirGrade(perfil) {
         if (!edge) continue;
         lista.push(chaveCelula(nx, ny), edge.custo, edge.tipo);
       }
-      if (perfil.podePlanar) adicionarGlideRays(lista, cx, cy, zA);
-      if (perfil.podeVoar) adicionarVooRays(lista, cx, cy, zA);
-      edges.set(key, new Float32Array(lista));
+      if (perfil.podePlanar && temBeiraGlide(cx, cy, zA)) {
+        // #region agent log
+        __glide++;
+        // #endregion
+        adicionarGlideRays(lista, cx, cy, zA);
+      }
+      if (perfil.podeVoar && temBeiraGlide(cx, cy, zA)) {
+        adicionarVooRays(lista, cx, cy, zA);
+      }
+      edges.set(key, lista);
+      // #region agent log
+      if (cx === centroX && cy === centroY) __arestaSample = (lista.length / 3) | 0;
+      // #endregion
     }
   }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix3',hypothesisId:'Float32',location:'navGrade.js:construirGrade',message:'nav_rebuild',data:{ms:+(performance.now()-__t0).toFixed(2),celulas:__celulas,glideCells:__glide,arestasCentro:__arestaSample,aabbW:x1-x0+1,aabbH:y1-y0+1,centro:`${centroX},${centroY}`,raio,perfil:perfil.id},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   return {
     perfilId: perfil.id,

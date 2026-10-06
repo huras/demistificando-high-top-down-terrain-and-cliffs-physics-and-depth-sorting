@@ -9,6 +9,7 @@ import {
   ROLE_EDGE_S_UNDER,
   ROLE_EDGE_W,
   SHEET_COLS,
+  TERRENO_2D_MARGEM,
   TILE,
   TILE_ART,
 } from "../config.js";
@@ -31,26 +32,44 @@ const TIE_TOPO = 0;
 const TIE_FACE = 1;
 const TIE_LATERAL = 2;
 const TIE_PROP = 3;
+const FOLGA_Z = 20;
 
 let _atlas = null;
 
 /**
- * Terreno 2D a partir de voxels carregados — topo só com ar acima;
- * laterais não overdrawam o tile do topo.
+ * Terreno 2D — cull pela viewport da câmera quando disponível.
  */
-export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
+export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera = null) {
+  // #region agent log
+  const __t0 = performance.now();
+  let __celulas = 0;
+  let __faces = 0;
+  // #endregion
   _atlas = atlas;
   const aabb = obterAabbCarregado();
-  const x0 = aabb.x0 | 0;
-  const y0 = aabb.y0 | 0;
-  const x1 = aabb.x1 | 0;
-  const y1 = aabb.y1 | 0;
+  let x0 = aabb.x0 | 0;
+  let y0 = aabb.y0 | 0;
+  let x1 = aabb.x1 | 0;
+  let y1 = aabb.y1 | 0;
+
+  if (camera) {
+    const viewW = camera.largura / camera.zoom;
+    const viewH = camera.altura / camera.zoom;
+    const m = TERRENO_2D_MARGEM;
+    const inv = 1 / (TILE * ESCALA);
+    x0 = Math.max(x0, Math.floor(camera.x * inv) - m);
+    x1 = Math.min(x1, Math.ceil((camera.x + viewW) * inv) + m);
+    y0 = Math.max(y0, Math.floor(camera.y * inv) - m);
+    y1 = Math.min(y1, Math.ceil((camera.y + viewH) * inv) + FOLGA_Z + m);
+  }
 
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
       const z = alturaEm(cx, cy);
-      if (z <= 0 && !solidoEm(cx, cy, 0)) continue;
       if (z <= 0) continue;
+      // #region agent log
+      __celulas++;
+      // #endregion
 
       // topo: ar na célula de índice = walk height (acima do bloco z-1)
       if (z > 0 && !solidoEm(cx, cy, z)) {
@@ -60,6 +79,9 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
 
       const quedaS = contarQuedaFace(cx, cy, z, 0, 1);
       if (quedaS > 0) {
+        // #region agent log
+        __faces++;
+        // #endregion
         const sortFace = chaveFaceSul(cy, quedaS, z);
         const destacar =
           faceDestaque && faceDestaque.cx === cx && faceDestaque.cy === cy;
@@ -76,6 +98,9 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
       const dzW = contarQuedaFace(cx, cy, z, -1, 0);
       const dzE = contarQuedaFace(cx, cy, z, 1, 0);
       if (dzW > 0) {
+        // #region agent log
+        __faces++;
+        // #endregion
         empilhar(
           lista,
           chaveFaceLateral(cy, z),
@@ -86,6 +111,9 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
         );
       }
       if (dzE > 0) {
+        // #region agent log
+        __faces++;
+        // #endregion
         empilhar(
           lista,
           chaveFaceLateral(cy, z),
@@ -110,7 +138,10 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
   }
 
   for (const prop of PROPS) {
-    const z = alturaEm(Math.floor(prop.x), Math.floor(prop.y));
+    const px = Math.floor(prop.x);
+    const py = Math.floor(prop.y);
+    if (px < x0 || px > x1 || py < y0 - 2 || py > y1 + 2) continue;
+    const z = alturaEm(px, py);
     empilhar(
       lista,
       chaveEntidade(prop.y, z),
@@ -120,6 +151,13 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
       z,
     );
   }
+  // #region agent log
+  const __ms = performance.now() - __t0;
+  if (!empilharTerreno.__lastLog || performance.now() - empilharTerreno.__lastLog > 1000) {
+    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix',hypothesisId:'B',location:'terreno.js:empilharTerreno',message:'terreno_2d',data:{ms:+__ms.toFixed(2),celulas:__celulas,faces:__faces,aabbW:x1-x0+1,aabbH:y1-y0+1,listaLen:lista.itens?.length??0},timestamp:Date.now()})}).catch(()=>{});
+    empilharTerreno.__lastLog = performance.now();
+  }
+  // #endregion
 }
 
 /** Queda visual: quantos degraus de face até o vizinho (compat heightmap). */

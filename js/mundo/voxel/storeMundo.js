@@ -169,7 +169,30 @@ export function blocoSolidoEm(wx, wy, wz) {
  * Mantém disco de chunks em torno do jogador.
  */
 export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
+  // #region agent log
+  const __t0 = performance.now();
+  let __novos = 0;
+  let __removidos = 0;
+  // #endregion
   const { cx: pcx, cy: pcy } = mundoParaChunk(px, py);
+
+  // Early-out: mesmo chunk âncora e já carregado — evita Set/loop todo frame.
+  if (
+    atualizarStreaming._pcx === pcx &&
+    atualizarStreaming._pcy === pcy &&
+    chunks.size > 0
+  ) {
+    // #region agent log
+    if (!atualizarStreaming.__lastLog || performance.now() - atualizarStreaming.__lastLog > 1000) {
+      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix',hypothesisId:'A',location:'storeMundo.js:atualizarStreaming',message:'stream_tick',data:{ms:+(performance.now()-__t0).toFixed(2),novos:0,removidos:0,nChunks:chunks.size,pcx,pcy,skipped:true,aabbW:aabbCarregado.x1-aabbCarregado.x0+1,aabbH:aabbCarregado.y1-aabbCarregado.y0+1},timestamp:Date.now()})}).catch(()=>{});
+      atualizarStreaming.__lastLog = performance.now();
+    }
+    // #endregion
+    return aabbCarregado;
+  }
+  atualizarStreaming._pcx = pcx;
+  atualizarStreaming._pcy = pcy;
+
   const precisos = new Set();
 
   for (let dy = -raio; dy <= raio; dy++) {
@@ -178,12 +201,23 @@ export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
       const cx = pcx + dx;
       const cy = pcy + dy;
       precisos.add(chaveChunk(cx, cy));
+      // #region agent log
+      const __existia = chunks.has(chaveChunk(cx, cy));
+      // #endregion
       carregarChunk(cx, cy);
+      // #region agent log
+      if (!__existia) __novos++;
+      // #endregion
     }
   }
 
   for (const [k, chunk] of chunks) {
-    if (!precisos.has(k)) descarregarChunk(chunk.cx, chunk.cy);
+    if (!precisos.has(k)) {
+      // #region agent log
+      __removidos++;
+      // #endregion
+      descarregarChunk(chunk.cx, chunk.cy);
+    }
   }
 
   aabbCarregado = {
@@ -192,6 +226,13 @@ export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
     x1: (pcx + raio + 1) * CHUNK_XZ - 1,
     y1: (pcy + raio + 1) * CHUNK_XZ - 1,
   };
+  // #region agent log
+  const __ms = performance.now() - __t0;
+  if (!atualizarStreaming.__lastLog || performance.now() - atualizarStreaming.__lastLog > 1000) {
+    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix',hypothesisId:'A',location:'storeMundo.js:atualizarStreaming',message:'stream_tick',data:{ms:+__ms.toFixed(2),novos:__novos,removidos:__removidos,nChunks:chunks.size,pcx,pcy,skipped:false,aabbW:aabbCarregado.x1-aabbCarregado.x0+1,aabbH:aabbCarregado.y1-aabbCarregado.y0+1},timestamp:Date.now()})}).catch(()=>{});
+    atualizarStreaming.__lastLog = performance.now();
+  }
+  // #endregion
   return aabbCarregado;
 }
 

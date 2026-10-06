@@ -69,7 +69,8 @@ function pedirPath(agente, nav, sx, sy, gx, gy) {
 }
 
 /**
- * No ar: se há face climbável na faixa de elevação e o líder pede subida, gruda.
+ * No ar: gruda só se o líder está claramente ACIMA.
+ * Nunca se o path pede descer — senão loop descer→escalar→descer.
  */
 function decidirClimbNoAr(agente, lider, liderZ) {
   const elevAg = agente.elevacao ?? agente.z ?? 0;
@@ -79,15 +80,40 @@ function decidirClimbNoAr(agente, lider, liderZ) {
   const naFaixa = elevAg >= face.zBase + 0.05 && elevAg <= face.zTopo + 0.35;
   if (!naFaixa) return null;
 
-  const precisaSubir =
-    liderZ >= elevAg + 0.6 ||
-    liderZ >= face.zTopo - 0.4 ||
-    !!lider.escalando;
-  if (!precisaSubir) return null;
+  const nav = agente.nav;
+  if (nav?.path?.cells && nav.idx < nav.path.cells.length) {
+    const wp = nav.path.cells[nav.idx];
+    const zWp = alturaEm(wp.cx, wp.cy);
+    // Path pedindo descer / walk / glide → não climb
+    if (wp.tipo !== TIPO_CLIMB && zWp <= elevAg + 0.15) {
+      // #region agent log
+      if (!decidirClimbNoAr.__last || performance.now() - decidirClimbNoAr.__last > 500) {
+        fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix4',hypothesisId:'ClimbLoop',location:'seguirCaminho.js:decidirClimbNoAr',message:'climb_skip_path_down',data:{elevAg:+elevAg.toFixed(2),liderZ:+liderZ.toFixed(2),zWp,tipo:wp.tipo,cx:wp.cx,cy:wp.cy},timestamp:Date.now()})}).catch(()=>{});
+        decidirClimbNoAr.__last = performance.now();
+      }
+      // #endregion
+      return null;
+    }
+  }
+
+  // Só sobe se líder está acima do agente (não “quase no topo da face”)
+  const precisaSubir = liderZ >= elevAg + 1.15 || !!lider.escalando;
+  if (!precisaSubir) {
+    // #region agent log
+    if (!decidirClimbNoAr.__last2 || performance.now() - decidirClimbNoAr.__last2 > 500) {
+      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix4',hypothesisId:'ClimbLoop',location:'seguirCaminho.js:decidirClimbNoAr',message:'climb_skip_leader_not_above',data:{elevAg:+elevAg.toFixed(2),liderZ:+liderZ.toFixed(2),zTopo:face.zTopo},timestamp:Date.now()})}).catch(()=>{});
+      decidirClimbNoAr.__last2 = performance.now();
+    }
+    // #endregion
+    return null;
+  }
 
   const ax = face.ancoraX - agente.x;
   const ay = face.ancoraY - agente.y;
   const ad = Math.hypot(ax, ay) || 1;
+  // #region agent log
+  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix4',hypothesisId:'ClimbLoop',location:'seguirCaminho.js:decidirClimbNoAr',message:'climb_air_grab',data:{elevAg:+elevAg.toFixed(2),liderZ:+liderZ.toFixed(2),zTopo:face.zTopo},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   return {
     ix: ax / ad,
     iy: ay / ad,
@@ -137,6 +163,16 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
 
   const liderZ = lider.elevacao ?? lider.z ?? 0;
   const gapElev = Math.abs((agente.elevacao ?? agente.z ?? 0) - liderZ);
+
+  // #region agent log
+  if (!atualizarSeguirCaminho.__lastProc || performance.now() - atualizarSeguirCaminho.__lastProc > 400) {
+    const ax = agente.x | 0, ay = agente.y | 0, lx = lider.x | 0, ly = lider.y | 0;
+    const zAg = alturaEm(ax, ay);
+    const zLid = alturaEm(lx, ly);
+    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'proc-follow',hypothesisId:'H-Unload,H-NavFar,H-ModeOsc',location:'seguirCaminho.js:atualizarSeguirCaminho',message:'comp_follow_tick',data:{dist:+dist.toFixed(1),gapElev:+gapElev.toFixed(2),estado:nav.estado,ax,ay,lx,ly,zAg,zLid,chunkAg:zAg>0,chunkLid:zLid>0,voando,planando,liderVoando:!!lider.voando,noChao:!!agente.noChao,elev:+(agente.elevacao??0).toFixed(2),liderZ:+liderZ.toFixed(2),goalCx:nav.goalCx,goalCy:nav.goalCy,pathLen:nav.path?.cells?.length??0,idx:nav.idx|0},timestamp:Date.now()})}).catch(()=>{});
+    atualizarSeguirCaminho.__lastProc = performance.now();
+  }
+  // #endregion
 
   if (
     dist <= AGENTE_DIST_PARAR &&
@@ -434,19 +470,26 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   let querPlanar = !!perfil.podePlanar && segmentoGlide;
   let querVoar = segmentoVoo;
 
-  // Soltar parede → asa (path pediu glide, ou líder bem mais baixo — mesmo com climb no path)
+  // Soltar parede → asa / queda se path desce ou líder está abaixo
   const folgaParede = naParede
     ? agente.elevacao - (agente.escalada?.zBase ?? zChaoPes)
     : 0;
-  const liderMaisBaixo = liderZ <= agente.elevacao - 2.5;
+  const liderMaisBaixo = liderZ <= agente.elevacao - 1.2;
+  const pathQuerDescer =
+    naParede &&
+    zWp < agente.elevacao - 0.35 &&
+    wp.tipo !== TIPO_CLIMB;
   const soltarParede =
     naParede &&
-    !!perfil.podePlanar &&
     !querVoar &&
     (segmentoGlide ||
-      (folgaParede >= 2.2 && liderMaisBaixo && dist > 2.5));
+      pathQuerDescer ||
+      (folgaParede >= 1.5 && liderMaisBaixo && dist > 1.5));
 
   if (soltarParede) {
+    // #region agent log
+    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix4',hypothesisId:'ClimbLoop',location:'seguirCaminho.js:soltarParede',message:'climb_release',data:{pathQuerDescer,liderMaisBaixo,segmentoGlide,elev:+(agente.elevacao??0).toFixed(2),liderZ:+liderZ.toFixed(2),zWp,tipo:wp.tipo},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     nav.climbAlvo = null;
     nav.planarAlvo = {
       x: lider.x,
@@ -455,7 +498,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
       cy: goalCy,
       z: Math.floor(liderZ || 1),
     };
-    querPlanar = true;
+    querPlanar = !!perfil.podePlanar && (segmentoGlide || liderMaisBaixo);
   }
 
   // Na parede com path de voo: solta e voa
