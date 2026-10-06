@@ -1,14 +1,22 @@
-import { ALTURAS, COLUNAS, LINHAS } from "./mapaDemo.js";
+import { CHUNK_Y } from "../config.js";
+import {
+  chunkCarregadoEm,
+  obterBloco,
+  superficieEm,
+} from "./voxel/storeMundo.js";
+import { ehSolido } from "./voxel/tiposBloco.js";
 
+/** Célula com chunk carregado (mundo infinito fora do stream = inacessível). */
 export function dentroDoMapa(cx, cy) {
-  return cx >= 0 && cy >= 0 && cx < COLUNAS && cy < LINHAS;
+  return chunkCarregadoEm(cx | 0, cy | 0);
 }
 
+/** Altura de superfície (maior z sólido na coluna). */
 export function alturaEm(cx, cy) {
   const x = cx | 0;
   const y = cy | 0;
-  if (!dentroDoMapa(x, y)) return 0;
-  return ALTURAS[y][x] | 0;
+  if (!chunkCarregadoEm(x, y)) return 0;
+  return superficieEm(x, y) | 0;
 }
 
 export function alturaNoPonto(x, y) {
@@ -24,4 +32,10 @@ export function quedaSul(cx, cy) {
   const z = alturaEm(cx, cy);
   const zs = alturaEm(cx, cy + 1);
   return z - zs;
+}
+
+/** Bloco sólido em (cx,cy,z) — API voxel. */
+export function solidoEm(cx, cy, z) {
+  if (z < 0 || z >= CHUNK_Y) return false;
+  return ehSolido(obterBloco(cx, cy, z));
 }

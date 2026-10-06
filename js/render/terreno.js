@@ -12,8 +12,10 @@ import {
   TILE,
   TILE_ART,
 } from "../config.js";
-import { alturaEm, quedaSul } from "../mundo/altura.js";
-import { ALTURAS, COLUNAS, LINHAS, PROPS } from "../mundo/mapaDemo.js";
+import { alturaEm, solidoEm } from "../mundo/altura.js";
+import { PROPS } from "../mundo/mapaDemo.js";
+import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
+import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { usarTiles } from "./atlas.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
@@ -25,7 +27,6 @@ import {
 } from "./ordenacaoProfundidade.js";
 import { bordaDoTopo, CORES, coresDoTopo } from "./paleta.js";
 
-/** Ties na mesma camada: topo < face < lateral < prop < player */
 const TIE_TOPO = 0;
 const TIE_FACE = 1;
 const TIE_LATERAL = 2;
@@ -34,25 +35,34 @@ const TIE_PROP = 3;
 let _atlas = null;
 
 /**
- * Tudo na camada 0 — depth sort puro por Y (sortKey).
+ * Terreno 2D a partir de voxels carregados — topo só com ar acima;
+ * laterais não overdrawam o tile do topo.
  */
 export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
   _atlas = atlas;
-  for (let cy = 0; cy < LINHAS; cy++) {
-    for (let cx = 0; cx < COLUNAS; cx++) {
-      const z = ALTURAS[cy][cx];
+  const aabb = obterAabbCarregado();
+  const x0 = aabb.x0 | 0;
+  const y0 = aabb.y0 | 0;
+  const x1 = aabb.x1 | 0;
+  const y1 = aabb.y1 | 0;
+
+  for (let cy = y0; cy <= y1; cy++) {
+    for (let cx = x0; cx <= x1; cx++) {
+      const z = alturaEm(cx, cy);
+      if (z <= 0 && !solidoEm(cx, cy, 0)) continue;
       if (z <= 0) continue;
 
-      const sortTop = chaveTopo(cy, z);
-      empilhar(lista, sortTop, 0, (ctx) => desenharTopo(ctx, cx, cy, z), TIE_TOPO, z);
+      // topo: ar na célula de índice = walk height (acima do bloco z-1)
+      if (z > 0 && !solidoEm(cx, cy, z)) {
+        const sortTop = chaveTopo(cy, z);
+        empilhar(lista, sortTop, 0, (ctx) => desenharTopo(ctx, cx, cy, z), TIE_TOPO, z);
+      }
 
-      const quedaS = quedaSul(cx, cy);
+      const quedaS = contarQuedaFace(cx, cy, z, 0, 1);
       if (quedaS > 0) {
         const sortFace = chaveFaceSul(cy, quedaS, z);
         const destacar =
-          faceDestaque &&
-          faceDestaque.cx === cx &&
-          faceDestaque.cy === cy;
+          faceDestaque && faceDestaque.cx === cx && faceDestaque.cy === cy;
         empilhar(
           lista,
           sortFace,
@@ -63,8 +73,8 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
         );
       }
 
-      const dzW = z - alturaEm(cx - 1, cy);
-      const dzE = z - alturaEm(cx + 1, cy);
+      const dzW = contarQuedaFace(cx, cy, z, -1, 0);
+      const dzE = contarQuedaFace(cx, cy, z, 1, 0);
       if (dzW > 0) {
         empilhar(
           lista,
@@ -89,7 +99,7 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
       if (debug) {
         empilhar(
           lista,
-          sortTop + 0.0001,
+          chaveTopo(cy, z) + 0.0001,
           0,
           (ctx) => desenharDebug(ctx, cx, cy, z),
           9,
@@ -110,6 +120,13 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null) {
       z,
     );
   }
+}
+
+/** Queda visual: quantos degraus de face até o vizinho (compat heightmap). */
+function contarQuedaFace(cx, cy, z, dx, dy) {
+  const zn = alturaEm(cx + dx, cy + dy);
+  const queda = z - zn;
+  return queda > 0 ? queda : 0;
 }
 
 function desenharTopo(ctx, cx, cy, z) {
@@ -145,19 +162,18 @@ function desenharTopoProcedural(ctx, cx, cy, z) {
   if (sEdge) ctx.fillRect(px, py + s - f, s, f);
   if (w) ctx.fillRect(px, py, f, s);
   if (e) ctx.fillRect(px + s - f, py, f, s);
-
-  if (n && w) ctx.fillRect(px, py, f, f);
-  if (n && e) ctx.fillRect(px + s - f, py, f, f);
-  if (sEdge && w) ctx.fillRect(px, py + s - f, f, f);
-  if (sEdge && e) ctx.fillRect(px + s - f, py + s - f, f, f);
 }
 
 function desenharTopoReal(ctx, cx, cy, z) {
   const px = mundoParaTelaX(cx);
   const py = mundoParaTelaY(cy, z);
   const s = TILE * ESCALA;
-  // z>=2 usa dirt; z1 grama
-  const img = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
+  // bloco de superfície = z-1
+  const id = z > 0 ? obterBloco(cx, cy, z - 1) : BLOCO.AR;
+  const img =
+    id === BLOCO.TERRA || id === BLOCO.PEDRA || z >= 2
+      ? _atlas.terra || _atlas.grama
+      : _atlas.grama;
   blitRole(ctx, img, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, s, s);
 }
 
@@ -174,7 +190,8 @@ function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
   const topY = mundoParaTelaY(cy, z);
   const w = TILE * ESCALA;
   const h = queda * FACE_H * ESCALA;
-  const py = topY + TILE * ESCALA;
+  // 1px abaixo do topo — topo é autoridade da aresta
+  const py = topY + TILE * ESCALA + 1;
 
   const faixa = Math.max(3, ESCALA * 2);
   for (let y = 0; y < h; y += faixa) {
@@ -190,9 +207,6 @@ function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
   if (alturaEm(cx - 1, cy) < z) ctx.fillRect(px, py, borda, h);
   if (alturaEm(cx + 1, cy) < z) ctx.fillRect(px + w - borda, py, borda, h);
 
-  ctx.fillStyle = bordaDoTopo(z);
-  ctx.fillRect(px, py, w, Math.max(1, ESCALA));
-
   if (destacar) {
     ctx.strokeStyle = "rgba(255, 220, 80, 0.95)";
     ctx.lineWidth = 2;
@@ -205,7 +219,8 @@ function desenharFaceSulReal(ctx, cx, cy, z, queda, destacar = false) {
   const topY = mundoParaTelaY(cy, z);
   const w = TILE * ESCALA;
   const step = FACE_H * ESCALA;
-  const py0 = topY + TILE * ESCALA;
+  // topo autoridade: face começa sob o tile (+1px)
+  const py0 = topY + TILE * ESCALA + 1;
   const sheet =
     queda >= 2 && _atlas.cliffDuplo
       ? _atlas.cliffDuplo
@@ -223,9 +238,13 @@ function desenharFaceSulReal(ctx, cx, cy, z, queda, destacar = false) {
       role = ROLE_EDGE_S;
     }
     const dy = py0 + i * step;
-    // máscara magenta = terreno: preenche com chão sob o cliff
     blitRole(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, dy, w, step);
-    blitRole(ctx, sheet, role, 0, px, dy, w, step);
+    // crop 1px do lip do ROLE_EDGE_S no primeiro degrau
+    if (i === 0) {
+      blitRoleCropTopo(ctx, sheet, role, 0, px, dy, w, step, 1);
+    } else {
+      blitRole(ctx, sheet, role, 0, px, dy, w, step);
+    }
   }
 
   if (destacar) {
@@ -251,15 +270,14 @@ function desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado) {
   const h = queda * FACE_H * ESCALA;
   const faixa = Math.max(5, ESCALA * 3);
   const x = lado === "w" ? px : px + s - faixa;
+  // só a parede — não overdrawa o topo
+  const y0 = topY + s;
 
   ctx.fillStyle = CORES.faceLateral;
-  ctx.fillRect(x, topY, faixa, s + h);
+  ctx.fillRect(x, y0, faixa, h);
 
   ctx.fillStyle = CORES.faceSombra;
-  ctx.fillRect(lado === "w" ? x : x + faixa - 1, topY, 1, s + h);
-
-  ctx.fillStyle = bordaDoTopo(z);
-  ctx.fillRect(x, topY, faixa, Math.max(1, ESCALA));
+  ctx.fillRect(lado === "w" ? x : x + faixa - 1, y0, 1, h);
 }
 
 function desenharFaceLateralReal(ctx, cx, cy, z, queda, lado) {
@@ -273,9 +291,7 @@ function desenharFaceLateralReal(ctx, cx, cy, z, queda, lado) {
   const role = lado === "w" ? ROLE_EDGE_W : ROLE_EDGE_E;
   const chao = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
 
-  blitRoleFaixa(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, lado, x, topY, faixa, s);
-  blitRoleFaixa(ctx, sheet, role, 0, lado, x, topY, faixa, s);
-
+  // só parede (começa sob o topo)
   for (let i = 0; i < queda; i++) {
     const dy = topY + s + i * step;
     blitRoleFaixa(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, lado, x, dy, faixa, step);
@@ -312,7 +328,6 @@ function desenharPropReal(ctx, prop, z) {
     return true;
   }
 
-  // pedra continua procedural (sem sheet de rock dedicado)
   return false;
 }
 
@@ -371,7 +386,6 @@ function desenharDebug(ctx, cx, cy, z) {
   ctx.fillText(`${z}`, px + 2, py + 25);
 }
 
-/** role linear no sheet cols×rows; bandOffset = linhas a pular no topo. */
 function blitRole(ctx, img, role, bandOffset, dx, dy, dw, dh) {
   if (!img) return;
   const col = role % SHEET_COLS;
@@ -382,7 +396,19 @@ function blitRole(ctx, img, role, bandOffset, dx, dy, dw, dh) {
   ctx.drawImage(img, sx, sy, TILE_ART, TILE_ART, dx, dy, dw, dh);
 }
 
-/** Recorta a borda W/E do tile de cliff para a faixa lateral. */
+/** Recorta N px do topo do tile (remove lip duplicado). */
+function blitRoleCropTopo(ctx, img, role, bandOffset, dx, dy, dw, dh, cropPx) {
+  if (!img) return;
+  const col = role % SHEET_COLS;
+  const row = Math.floor(role / SHEET_COLS) + bandOffset;
+  const sx = col * TILE_ART;
+  const sy = row * TILE_ART + cropPx;
+  const srcH = TILE_ART - cropPx;
+  const dstCrop = (cropPx / TILE_ART) * dh;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, sx, sy, TILE_ART, srcH, dx, dy + dstCrop, dw, dh - dstCrop);
+}
+
 function blitRoleFaixa(ctx, img, role, bandOffset, lado, dx, dy, dw, dh) {
   if (!img) return;
   const col = role % SHEET_COLS;

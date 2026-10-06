@@ -17,9 +17,10 @@ import {
   VELOCIDADE_MAX,
 } from "../config.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
-import { COLUNAS, LINHAS } from "../mundo/mapaDemo.js";
+import { obterAabbCarregado } from "../mundo/voxel/storeMundo.js";
 
 const SQRT2 = Math.SQRT2;
+const KEY_OFFSET = 32768;
 
 /** 8 direções: dx, dy, éDiagonal */
 const DIRS = [
@@ -33,7 +34,6 @@ const DIRS = [
   [-1, -1, true],
 ];
 
-/** tipo: 0=walk/drop, 1=jump, 2=climb, 3=glide, 4=voo */
 export const TIPO_WALK = 0;
 export const TIPO_JUMP = 1;
 export const TIPO_CLIMB = 2;
@@ -43,23 +43,19 @@ export const TIPO_VOO = 4;
 const cache = new Map();
 
 export function chaveCelula(cx, cy) {
-  return cy * COLUNAS + cx;
+  return (((cy + KEY_OFFSET) & 0xffff) << 16) | ((cx + KEY_OFFSET) & 0xffff);
 }
 
 export function celulaDeChave(key) {
-  const cy = (key / COLUNAS) | 0;
-  const cx = key - cy * COLUNAS;
+  const cx = (key & 0xffff) - KEY_OFFSET;
+  const cy = ((key >>> 16) & 0xffff) - KEY_OFFSET;
   return { cx, cy };
 }
 
-export function invalidarNavCache() {
+export function invalidarNavCache(_aabb = null) {
   cache.clear();
 }
 
-/**
- * Garante grade de adjacência pro perfil (build lazy, 1×).
- * Cada célula: lista compacta de [vizKey0, custo0, tipo0, ...]
- */
 export function obterNavGrade(perfil) {
   let g = cache.get(perfil.id);
   if (g) return g;
@@ -73,15 +69,22 @@ function quedaMaxAndar(perfil) {
 }
 
 function construirGrade(perfil) {
-  const n = COLUNAS * LINHAS;
-  /** @type {Float32Array[]} */
-  const edges = new Array(n);
+  const aabb = obterAabbCarregado();
+  const x0 = aabb.x0 | 0;
+  const y0 = aabb.y0 | 0;
+  const x1 = aabb.x1 | 0;
+  const y1 = aabb.y1 | 0;
 
-  for (let cy = 0; cy < LINHAS; cy++) {
-    for (let cx = 0; cx < COLUNAS; cx++) {
+  /** @type {Map<number, Float32Array>} */
+  const edges = new Map();
+
+  for (let cy = y0; cy <= y1; cy++) {
+    for (let cx = x0; cx <= x1; cx++) {
+      if (!dentroDoMapa(cx, cy)) continue;
       const zA = alturaEm(cx, cy);
+      const key = chaveCelula(cx, cy);
       if (zA <= 0) {
-        edges[chaveCelula(cx, cy)] = new Float32Array(0);
+        edges.set(key, new Float32Array(0));
         continue;
       }
       const lista = [];
@@ -91,39 +94,27 @@ function construirGrade(perfil) {
         if (!dentroDoMapa(nx, ny)) continue;
         const zB = alturaEm(nx, ny);
         if (zB <= 0) continue;
-
-        // 8 dirs: só bloqueia diagonal se o canto for parede mais alta (corte de canto)
         if (diag && !cantoDiagonalLivre(cx, cy, zA, nx, ny)) continue;
-
         const edge = classificarAresta(zA, zB, perfil, diag);
         if (!edge) continue;
         lista.push(chaveCelula(nx, ny), edge.custo, edge.tipo);
       }
-
-      if (perfil.podePlanar) {
-        adicionarGlideRays(lista, cx, cy, zA);
-      }
-      if (perfil.podeVoar) {
-        adicionarVooRays(lista, cx, cy, zA);
-      }
-
-      edges[chaveCelula(cx, cy)] = new Float32Array(lista);
+      if (perfil.podePlanar) adicionarGlideRays(lista, cx, cy, zA);
+      if (perfil.podeVoar) adicionarVooRays(lista, cx, cy, zA);
+      edges.set(key, new Float32Array(lista));
     }
   }
 
   return {
     perfilId: perfil.id,
-    cols: COLUNAS,
-    rows: LINHAS,
+    x0,
+    y0,
+    x1,
+    y1,
     edges,
   };
 }
 
-/**
- * Diagonal 8-dir: não exige aresta nos cardinais.
- * Bloqueia só se a quina for mais alta que origem e destino (corta muro).
- * Vazio (z<=0) nos cantos é livre.
- */
 function cantoDiagonalLivre(cx, cy, zA, nx, ny) {
   const zB = alturaEm(nx, ny);
   const teto = Math.max(zA, zB);
@@ -134,9 +125,6 @@ function cantoDiagonalLivre(cx, cy, zA, nx, ny) {
   return true;
 }
 
-/**
- * @returns {{ custo: number, tipo: number } | null}
- */
 function classificarAresta(zA, zB, perfil, diag) {
   const base = diag ? SQRT2 : 1;
   const dz = zB - zA;
@@ -149,19 +137,16 @@ function classificarAresta(zA, zB, perfil, diag) {
     return { custo: base + queda * 0.15, tipo: TIPO_WALK };
   }
 
-  // Degrau +1: pulo (rápido). Parede ≥2: climb com custo ≈ tempo real.
   if (dz === 1 && perfil.podePular) {
     return { custo: base + 0.35, tipo: TIPO_JUMP };
   }
 
   if (perfil.podeEscalar && dz >= 2) {
-    // tempo de subida (células / vel) + overhead attach — sem isso A* sempre contorna
     const custo =
       base + PATH_CUSTO_ESCALADA + dz / Math.max(0.25, ESCALADA_VEL);
     return { custo, tipo: TIPO_CLIMB };
   }
 
-  // +1 sem pulo, ou fallback
   if (perfil.podeEscalar && dz >= 1) {
     const custo =
       base + PATH_CUSTO_ESCALADA + dz / Math.max(0.25, ESCALADA_VEL);
@@ -171,11 +156,6 @@ function classificarAresta(zA, zB, perfil, diag) {
   return null;
 }
 
-/**
- * NavLinks de asa-delta: raio em 8 dirs com **todos** os pousos válidos
- * (não só o 1º — senão o vale engole o link pico→pico).
- * Nunca pousa acima do z de origem (cliff/subida = pulo/escalada).
- */
 function adicionarGlideRays(lista, cx, cy, zA) {
   const velGlide = VELOCIDADE_MAX * ASA_DELTA_VEL_MUL * PATH_GLIDE_ALCANCE_MUL;
   const zLaunch = zA + PATH_GLIDE_PULO_BONUS;
@@ -190,9 +170,7 @@ function adicionarGlideRays(lista, cx, cy, zA) {
       if (!dentroDoMapa(nx, ny)) break;
 
       const zLand = alturaEm(nx, ny);
-      // parede acima do chão de origem bloqueia o raio (não “asa pra cima”)
       if (zLand > zA) break;
-
       if (zLand <= 0) continue;
 
       const distHoriz = step * passo;
@@ -203,14 +181,10 @@ function adicionarGlideRays(lista, cx, cy, zA) {
       const quedaOk = quedaChao >= PATH_GLIDE_QUEDA_MIN;
       if (!quedaOk && !picoAPico) continue;
 
-      // alcance usa ápice do pulo; pouso nunca acima de zA
       const dzLaunch = zLaunch - zLand;
       const alcanceMax = (dzLaunch / ASA_DELTA_DESCIDA) * velGlide;
       if (distHoriz > alcanceMax) continue;
-
-      if (!clearanceGlide(cx, cy, zLaunch, nx, ny, zLand, dx, dy, step)) {
-        continue;
-      }
+      if (!clearanceGlide(cx, cy, zLaunch, nx, ny, zLand, dx, dy, step)) continue;
 
       const key = chaveCelula(nx, ny);
       if (jaTem.has(key)) continue;
@@ -226,7 +200,6 @@ function adicionarGlideRays(lista, cx, cy, zA) {
   }
 }
 
-/** Terreno sob o arco linear de descida (de zLaunch até zLand) não fura o envelope. */
 function clearanceGlide(sx, sy, zLaunch, lx, ly, zLand, dx, dy, step) {
   for (let t = 1; t <= step; t++) {
     const fx = sx + dx * t;
@@ -244,10 +217,6 @@ function clearanceGlide(sx, sy, zLaunch, lx, ly, zLand, dx, dy, step) {
   return true;
 }
 
-/**
- * NavLinks de voo: raio 8 dirs, pouso em qualquer altura (sobe/desce).
- * Clearance = linha reta 3D acima do terreno.
- */
 function adicionarVooRays(lista, cx, cy, zA) {
   const jaTem = new Set();
   for (let i = 0; i < lista.length; i += 3) jaTem.add(lista[i] | 0);
@@ -265,7 +234,6 @@ function adicionarVooRays(lista, cx, cy, zA) {
       const distHoriz = step * passo;
       if (distHoriz < PATH_VOO_DIST_MIN) continue;
 
-      // cruzeiro um pouco acima do maior topo no caminho
       const zCruise = Math.max(zA, zLand) + 1.25;
       if (!clearanceVoo(cx, cy, zA, nx, ny, zLand, zCruise, dx, dy, step)) {
         continue;
@@ -289,7 +257,6 @@ function clearanceVoo(sx, sy, zA, lx, ly, zLand, zCruise, dx, dy, step) {
     const zTerreno = alturaEm(fx, fy);
     if (zTerreno <= 0) continue;
     const f = t / step;
-    // sobe até cruise e desce até pouso
     const zPath =
       f < 0.5
         ? zA + (zCruise - zA) * (f * 2)
@@ -299,9 +266,8 @@ function clearanceVoo(sx, sy, zA, lx, ly, zLand, zCruise, dx, dy, step) {
   return true;
 }
 
-/** Itera vizinhos: callback(vizKey, custo, tipo) */
 export function paraCadaVizinho(grade, key, fn) {
-  const arr = grade.edges[key];
+  const arr = grade.edges.get(key);
   if (!arr) return;
   for (let i = 0; i < arr.length; i += 3) {
     fn(arr[i] | 0, arr[i + 1], arr[i + 2] | 0);

@@ -1,9 +1,5 @@
-import { COLUNAS } from "../mundo/mapaDemo.js";
 import { celulaDeChave, paraCadaVizinho } from "./navGrade.js";
 
-/**
- * Min-heap por f (g+h). Índices 0-based.
- */
 export function criarHeap() {
   return { keys: [], f: [] };
 }
@@ -16,7 +12,7 @@ function heapPush(h, key, fScore) {
 
 function heapPop(h) {
   const n = h.keys.length;
-  if (n === 0) return -1;
+  if (n === 0) return null;
   const root = h.keys[0];
   const lastK = h.keys.pop();
   const lastF = h.f.pop();
@@ -62,33 +58,23 @@ function swap(h, a, b) {
   h.f[b] = t;
 }
 
-export function heuristica(key, goalKey, cols = COLUNAS) {
-  const ax = key % cols;
-  const ay = (key / cols) | 0;
-  const bx = goalKey % cols;
-  const by = (goalKey / cols) | 0;
-  const dx = Math.abs(ax - bx);
-  const dy = Math.abs(ay - by);
+export function heuristica(key, goalKey) {
+  const a = celulaDeChave(key);
+  const b = celulaDeChave(goalKey);
+  const dx = Math.abs(a.cx - b.cx);
+  const dy = Math.abs(a.cy - b.cy);
   return dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy);
 }
 
-/**
- * Estado resumível de uma busca A*.
- */
 export function criarBusca(grade, startKey, goalKey) {
-  const n = grade.edges.length;
-  const gScore = new Float32Array(n);
-  gScore.fill(Infinity);
-  gScore[startKey] = 0;
+  const gScore = new Map();
+  gScore.set(startKey, 0);
 
-  const veioDe = new Int32Array(n);
-  veioDe.fill(-1);
-  const veioTipo = new Int8Array(n);
-  veioTipo.fill(0);
-
-  const fechado = new Uint8Array(n);
+  const veioDe = new Map();
+  const veioTipo = new Map();
+  const fechado = new Set();
   const heap = criarHeap();
-  const h0 = heuristica(startKey, goalKey, grade.cols);
+  const h0 = heuristica(startKey, goalKey);
   heapPush(heap, startKey, h0);
 
   return {
@@ -108,9 +94,6 @@ export function criarBusca(grade, startKey, goalKey) {
   };
 }
 
-/**
- * Expande até `orcamento` nós. Retorna true se terminou (achou ou sem caminho).
- */
 export function expandirBusca(busca, orcamento) {
   if (busca.pronto) return true;
   const { grade, goalKey, gScore, veioDe, veioTipo, fechado, heap } = busca;
@@ -118,9 +101,9 @@ export function expandirBusca(busca, orcamento) {
 
   while (restam > 0 && heap.keys.length > 0) {
     const atual = heapPop(heap);
-    if (atual < 0) break;
-    if (fechado[atual]) continue;
-    fechado[atual] = 1;
+    if (atual == null) break;
+    if (fechado.has(atual)) continue;
+    fechado.add(atual);
     busca.expansoes++;
     restam--;
 
@@ -131,21 +114,21 @@ export function expandirBusca(busca, orcamento) {
       return true;
     }
 
-    const hAt = heuristica(atual, goalKey, grade.cols);
+    const hAt = heuristica(atual, goalKey);
     if (hAt < busca.melhorH) {
       busca.melhorH = hAt;
       busca.melhorKey = atual;
     }
 
+    const gAtual = gScore.get(atual) ?? Infinity;
     paraCadaVizinho(grade, atual, (viz, custo, tipo) => {
-      if (fechado[viz]) return;
-      const tent = gScore[atual] + custo;
-      if (tent >= gScore[viz]) return;
-      veioDe[viz] = atual;
-      veioTipo[viz] = tipo | 0;
-      gScore[viz] = tent;
-      const f = tent + heuristica(viz, goalKey, grade.cols);
-      heapPush(heap, viz, f);
+      if (fechado.has(viz)) return;
+      const tent = gAtual + custo;
+      if (tent >= (gScore.get(viz) ?? Infinity)) return;
+      veioDe.set(viz, atual);
+      veioTipo.set(viz, tipo | 0);
+      gScore.set(viz, tent);
+      heapPush(heap, viz, tent + heuristica(viz, goalKey));
     });
   }
 
@@ -157,17 +140,17 @@ export function expandirBusca(busca, orcamento) {
   return false;
 }
 
-/** Reconstrói path de células {cx,cy,tipo}[] — tipo = aresta de entrada (0 no start). */
 export function reconstruirCaminho(busca) {
   const fim = busca.achou ? busca.goalKey : busca.melhorKey;
   const keys = [];
   let k = fim;
-  const guard = busca.grade.edges.length + 2;
   let passos = 0;
-  while (k >= 0 && passos < guard) {
+  const guard = 100000;
+  while (k != null && passos < guard) {
     keys.push(k);
     if (k === busca.startKey) break;
-    k = busca.veioDe[k];
+    k = busca.veioDe.get(k);
+    if (k === undefined) break;
     passos++;
   }
   keys.reverse();
@@ -175,7 +158,7 @@ export function reconstruirCaminho(busca) {
   const cells = new Array(keys.length);
   for (let i = 0; i < keys.length; i++) {
     const { cx, cy } = celulaDeChave(keys[i]);
-    const tipo = i === 0 ? 0 : busca.veioTipo[keys[i]] | 0;
+    const tipo = i === 0 ? 0 : busca.veioTipo.get(keys[i]) | 0;
     cells[i] = { cx, cy, key: keys[i], tipo };
   }
   return {

@@ -1,5 +1,4 @@
 import { alturaEm, quedaSul } from "../mundo/altura.js";
-import { ALTURAS, COLUNAS, LINHAS } from "../mundo/mapaDemo.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
   chaveEntidade,
@@ -14,14 +13,14 @@ import {
 export function listarPivosProximos(corpo, raio = 4) {
   const sortPlayer = chaveEntidade(corpo.y, corpo.z);
   const itens = [];
-  const x0 = Math.max(0, Math.floor(corpo.x) - raio);
-  const x1 = Math.min(COLUNAS - 1, Math.floor(corpo.x) + raio);
-  const y0 = Math.max(0, Math.floor(corpo.y) - raio);
-  const y1 = Math.min(LINHAS - 1, Math.floor(corpo.y) + raio + 2);
+  const x0 = Math.floor(corpo.x) - raio;
+  const x1 = Math.floor(corpo.x) + raio;
+  const y0 = Math.floor(corpo.y) - raio;
+  const y1 = Math.floor(corpo.y) + raio + 2;
 
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
-      const z = ALTURAS[cy][cx];
+      const z = alturaEm(cx, cy);
       if (z <= 0) continue;
 
       const yTopo = cy + 0.97;
@@ -37,7 +36,7 @@ export function listarPivosProximos(corpo, raio = 4) {
       });
 
       const q = quedaSul(cx, cy);
-      if (q > 0 && cy + 1 < LINHAS) {
+      if (q > 0) {
         const yFace = cy + 0.99;
         const skFace = chaveFaceSul(cy, q, z);
         itens.push({
@@ -81,7 +80,6 @@ export function listarPivosProximos(corpo, raio = 4) {
     }
   }
 
-  // só os mais próximos do sortKey do player (os que realmente importam)
   itens.sort(
     (a, b) => Math.abs(a.sortKey - sortPlayer) - Math.abs(b.sortKey - sortPlayer),
   );
@@ -92,7 +90,6 @@ export function listarPivosProximos(corpo, raio = 4) {
   };
 }
 
-/** Desenha pivôs no espaço da câmera (chamar com transform da câmera ativo). */
 export function desenharPivosSort(ctx, corpo) {
   const dados = listarPivosProximos(corpo);
   const pxP = mundoParaTelaX(dados.player.x);
@@ -120,7 +117,6 @@ export function desenharPivosSort(ctx, corpo) {
       py - 4,
     );
 
-    // linha tracejada até o pivô do player
     ctx.strokeStyle = item.rel === "frente" ? "rgba(255,100,100,0.35)" : "rgba(80,200,200,0.3)";
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
@@ -131,7 +127,6 @@ export function desenharPivosSort(ctx, corpo) {
     ctx.setLineDash([]);
   }
 
-  // pivô do player por cima
   desenharCruz(ctx, pxP, pyP, "#ffe66d", 9);
   ctx.fillStyle = "#ffe66d";
   ctx.font = "10px monospace";

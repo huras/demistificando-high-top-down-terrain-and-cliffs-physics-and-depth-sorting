@@ -142,3 +142,10 @@ export const ROLE_EDGE_S_UNDER = 16;
 export const ROLE_EDGE_W = 5;
 export const ROLE_EDGE_E = 7;
 export const ROLE_CLIFF_CENTER = 6;
+
+/** Voxel / mundo infinito. */
+export const CHUNK_XZ = 16;
+export const CHUNK_Y = 64;
+export const RAIO_STREAM = 5;
+export const SEED_MUNDO = 1337;
+export const ALCANCE_EDICAO = 6;

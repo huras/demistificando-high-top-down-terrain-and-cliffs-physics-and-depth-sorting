@@ -1,20 +1,32 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { coresDoTopo } from "../paleta.js";
+import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
+import { PROPS } from "../../mundo/mapaDemo.js";
 import { alturaEm } from "../../mundo/altura.js";
-import { ALTURAS, COLUNAS, LINHAS, PROPS } from "../../mundo/mapaDemo.js";
+import {
+  limparSujo,
+  listarChunksSujos,
+  obterBloco,
+  onDirty,
+  paraCadaChunk,
+} from "../../mundo/voxel/storeMundo.js";
+import { BLOCO, ehSolido } from "../../mundo/voxel/tiposBloco.js";
+import { coresDoTopo } from "../paleta.js";
 import { criarTexturasTerreno3d } from "./texturasTerreno3d.js";
 
-const LEDGE_H = 0.14;
-const LEDGE_W = 0.2;
+const LEDGE_H = 0.12;
 const AO_OPACITY = 0.32;
 const AO_QUEDA_MIN = 2;
+/** Aresta da face vertical ligeiramente abaixo do topo — evita z-fight. */
+const INSET_TOPO = 0.002;
 
 const DIRS = [
-  { dx: 0, dy: 1, nome: "s" },
-  { dx: 0, dy: -1, nome: "n" },
-  { dx: 1, dy: 0, nome: "e" },
-  { dx: -1, dy: 0, nome: "w" },
+  { dx: 0, dy: 1, dz: 0, nome: "s" },
+  { dx: 0, dy: -1, dz: 0, nome: "n" },
+  { dx: 1, dy: 0, dz: 0, nome: "e" },
+  { dx: -1, dy: 0, dz: 0, nome: "w" },
+  { dx: 0, dy: 0, dz: 1, nome: "u" },
+  { dx: 0, dy: 0, dz: -1, nome: "d" },
 ];
 
 function hexParaRgb(hex) {
@@ -63,112 +75,164 @@ function mesclarLista(geos) {
   return merged;
 }
 
-/** Plano horizontal XZ com UV 0–1. */
-function planoTopo(cx, cy, z) {
+/** Quad 1×1 com UV; face vertical tem V = 1 (tile único). */
+function quadFace(wx, wy, wz, dir) {
   const geo = new THREE.PlaneGeometry(1, 1);
-  geo.rotateX(-Math.PI / 2);
-  geo.translate(cx + 0.5, z, cy + 0.5);
-  return geo;
-}
-
-/**
- * Quad vertical entre yBaixo e yAlto.
- * Face sul (+Z), norte (−Z), leste (+X), oeste (−X).
- */
-function planoFace(cx, cy, yBaixo, yAlto, dir) {
-  const h = Math.max(0.05, yAlto - yBaixo);
-  const midY = (yBaixo + yAlto) * 0.5;
-  const geo = new THREE.PlaneGeometry(1, h);
-  // UV: u 0–1, v 0–h (repeat por unidade de altura)
-  const uv = geo.attributes.uv;
-  for (let i = 0; i < uv.count; i++) {
-    const u = uv.getX(i);
-    const v = uv.getY(i);
-    uv.setXY(i, u, v * h);
-  }
-  uv.needsUpdate = true;
-
-  if (dir === "s") {
-    geo.translate(cx + 0.5, midY, cy + 1);
+  if (dir === "u") {
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(wx + 0.5, wz + 1 - INSET_TOPO * 0, wy + 0.5);
+    // topo exatamente em z+1; walls inset abaixo
+    geo.translate(0, 0, 0);
+  } else if (dir === "d") {
+    geo.rotateX(Math.PI / 2);
+    geo.translate(wx + 0.5, wz, wy + 0.5);
+  } else if (dir === "s") {
+    // vertical: altura ligeiramente encolhida no topo
+    geo.translate(0, -INSET_TOPO * 0.5, 0);
+    geo.scale(1, 1 - INSET_TOPO, 1);
+    geo.translate(wx + 0.5, wz + 0.5, wy + 1);
   } else if (dir === "n") {
     geo.rotateY(Math.PI);
-    geo.translate(cx + 0.5, midY, cy);
+    geo.translate(0, -INSET_TOPO * 0.5, 0);
+    geo.scale(1, 1 - INSET_TOPO, 1);
+    geo.translate(wx + 0.5, wz + 0.5, wy);
   } else if (dir === "e") {
     geo.rotateY(-Math.PI / 2);
-    geo.translate(cx + 1, midY, cy + 0.5);
+    geo.translate(0, -INSET_TOPO * 0.5, 0);
+    geo.scale(1, 1 - INSET_TOPO, 1);
+    geo.translate(wx + 1, wz + 0.5, wy + 0.5);
   } else {
     geo.rotateY(Math.PI / 2);
-    geo.translate(cx, midY, cy + 0.5);
+    geo.translate(0, -INSET_TOPO * 0.5, 0);
+    geo.scale(1, 1 - INSET_TOPO, 1);
+    geo.translate(wx, wz + 0.5, wy + 0.5);
   }
   return geo;
 }
 
-function caixaLedge(cx, cy, z, dir) {
+function caixaLedge(wx, wy, wzTopo, dir) {
   let geo;
+  const y = wzTopo - LEDGE_H; // totalmente abaixo do plano do topo
   if (dir === "s") {
-    geo = new THREE.BoxGeometry(1, LEDGE_H, LEDGE_W);
-    geo.translate(cx + 0.5, z - LEDGE_H * 0.5, cy + 1 - LEDGE_W * 0.5);
+    geo = new THREE.BoxGeometry(1, LEDGE_H, 0.18);
+    geo.translate(wx + 0.5, y + LEDGE_H * 0.5, wy + 1 - 0.09);
   } else if (dir === "n") {
-    geo = new THREE.BoxGeometry(1, LEDGE_H, LEDGE_W);
-    geo.translate(cx + 0.5, z - LEDGE_H * 0.5, cy + LEDGE_W * 0.5);
+    geo = new THREE.BoxGeometry(1, LEDGE_H, 0.18);
+    geo.translate(wx + 0.5, y + LEDGE_H * 0.5, wy + 0.09);
   } else if (dir === "e") {
-    geo = new THREE.BoxGeometry(LEDGE_W, LEDGE_H, 1);
-    geo.translate(cx + 1 - LEDGE_W * 0.5, z - LEDGE_H * 0.5, cy + 0.5);
+    geo = new THREE.BoxGeometry(0.18, LEDGE_H, 1);
+    geo.translate(wx + 1 - 0.09, y + LEDGE_H * 0.5, wy + 0.5);
   } else {
-    geo = new THREE.BoxGeometry(LEDGE_W, LEDGE_H, 1);
-    geo.translate(cx + LEDGE_W * 0.5, z - LEDGE_H * 0.5, cy + 0.5);
+    geo = new THREE.BoxGeometry(0.18, LEDGE_H, 1);
+    geo.translate(wx + 0.09, y + LEDGE_H * 0.5, wy + 0.5);
   }
   pintarVertices(geo, "#c4a574", "#8a6a40");
   return geo;
 }
 
-function planoAo(cx, cy, yChao, dir, queda) {
+function planoAo(wx, wy, yChao, dir, queda) {
   const profundidade = Math.min(0.55, 0.22 + queda * 0.06);
   const geo = new THREE.PlaneGeometry(0.92, profundidade);
   geo.rotateX(-Math.PI / 2);
   const y = yChao + 0.015;
-  if (dir === "s") geo.translate(cx + 0.5, y, cy + 1 + profundidade * 0.5);
-  else if (dir === "n") geo.translate(cx + 0.5, y, cy - profundidade * 0.5);
+  if (dir === "s") geo.translate(wx + 0.5, y, wy + 1 + profundidade * 0.5);
+  else if (dir === "n") geo.translate(wx + 0.5, y, wy - profundidade * 0.5);
   else if (dir === "e") {
     geo.rotateY(Math.PI / 2);
-    geo.translate(cx + 1 + profundidade * 0.5, y, cy + 0.5);
+    geo.translate(wx + 1 + profundidade * 0.5, y, wy + 0.5);
   } else {
     geo.rotateY(Math.PI / 2);
-    geo.translate(cx - profundidade * 0.5, y, cy + 0.5);
+    geo.translate(wx - profundidade * 0.5, y, wy + 0.5);
   }
   return geo;
 }
 
-function construirCubos() {
-  const geos = [];
+function vizinhoAr(wx, wy, wz, dx, dy, dz) {
+  const nx = wx + dx;
+  const ny = wy + dy;
+  const nz = wz + dz;
+  if (nz < 0) return false;
+  if (nz >= CHUNK_Y) return true;
+  return !ehSolido(obterBloco(nx, ny, nz));
+}
 
-  for (let cy = 0; cy < LINHAS; cy++) {
-    for (let cx = 0; cx < COLUNAS; cx++) {
-      const z = ALTURAS[cy][cx] | 0;
-      if (z <= 0) continue;
-      const h = Math.max(0.08, z);
-      const box = new THREE.BoxGeometry(1, h, 1);
-      box.translate(cx + 0.5, h * 0.5, cy + 0.5);
-      pintarVertices(box, coresDoTopo(z).a, corFacePorZ(z));
-      geos.push(box);
+/**
+ * Gera geometrias culled-face de um chunk.
+ */
+function construirGeosChunk(chunk) {
+  const topsGrama = [];
+  const topsTerra = [];
+  const faces = [];
+  const ledges = [];
+  const aos = [];
+  const cubos = [];
+
+  const baseX = chunk.cx * CHUNK_XZ;
+  const baseY = chunk.cy * CHUNK_XZ;
+
+  for (let ly = 0; ly < CHUNK_XZ; ly++) {
+    for (let lx = 0; lx < CHUNK_XZ; lx++) {
+      const wx = baseX + lx;
+      const wy = baseY + ly;
+      for (let lz = 0; lz < CHUNK_Y; lz++) {
+        const id = obterBloco(wx, wy, lz);
+        if (!ehSolido(id)) continue;
+
+        for (const d of DIRS) {
+          if (!vizinhoAr(wx, wy, lz, d.dx, d.dy, d.dz)) continue;
+          const q = quadFace(wx, wy, lz, d.nome);
+
+          if (d.nome === "u") {
+            if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
+              topsTerra.push(q);
+            } else {
+              topsGrama.push(q);
+            }
+            for (const lat of ["s", "n", "e", "w"]) {
+              const ld = DIRS.find((x) => x.nome === lat);
+              if (vizinhoAr(wx, wy, lz, ld.dx, ld.dy, 0)) {
+                ledges.push(caixaLedge(wx, wy, lz + 1, lat));
+              }
+            }
+          } else if (d.nome === "d") {
+            q.dispose();
+          } else {
+            faces.push(q);
+            const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
+            const queda = lz + 1 - vizSurf;
+            if (queda >= AO_QUEDA_MIN && vizSurf > 0) {
+              aos.push(planoAo(wx, wy, vizSurf, d.nome, queda));
+            }
+          }
+        }
+
+        // modo cubos didático: um box por voxel sólido exposto (caro) — usa coluna
+      }
+
+      // cubos: um box da base até superfície (mais leve)
+      const zSurf = alturaEm(wx, wy);
+      if (zSurf > 0) {
+        const h = Math.max(0.08, zSurf);
+        const box = new THREE.BoxGeometry(1, h, 1);
+        box.translate(wx + 0.5, h * 0.5, wy + 0.5);
+        pintarVertices(box, coresDoTopo(zSurf).a, corFacePorZ(zSurf));
+        cubos.push(box);
+      }
     }
   }
 
-  for (const p of PROPS) {
-    const geo = geoProp(p);
-    if (geo) geos.push(...geo);
-  }
-
-  const merged = mesclarLista(geos);
-  if (!merged) throw new Error("Falha ao mesclar geometria do terreno 3D (cubos)");
-  return merged;
+  return {
+    geoGrama: mesclarLista(topsGrama),
+    geoTerra: mesclarLista(topsTerra),
+    geoFaces: mesclarLista(faces),
+    geoLedges: mesclarLista(ledges),
+    geoAo: mesclarLista(aos),
+    geoCubos: mesclarLista(cubos),
+  };
 }
 
 function geoProp(p) {
-  const zx = Math.floor(p.x);
-  const zy = Math.floor(p.y);
-  const base =
-    zy >= 0 && zy < LINHAS && zx >= 0 && zx < COLUNAS ? ALTURAS[zy][zx] : 1;
+  const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
   const out = [];
   if (p.tipo === "arvore") {
     const tronco = new THREE.CylinderGeometry(0.12, 0.18, 1.1, 6);
@@ -198,60 +262,31 @@ function geoProp(p) {
   return out;
 }
 
-function construirTexturizado() {
-  const topsGrama = [];
-  const topsTerra = [];
-  const faces = [];
-  const ledges = [];
-  const aos = [];
+function construirProps() {
   const props = [];
-
-  for (let cy = 0; cy < LINHAS; cy++) {
-    for (let cx = 0; cx < COLUNAS; cx++) {
-      const z = ALTURAS[cy][cx] | 0;
-      if (z <= 0) continue;
-
-      const topo = planoTopo(cx, cy, z);
-      if (z >= 2) topsTerra.push(topo);
-      else topsGrama.push(topo);
-
-      for (const { dx, dy, nome } of DIRS) {
-        const zn = alturaEm(cx + dx, cy + dy);
-        const queda = z - zn;
-        if (queda <= 0) continue;
-        faces.push(planoFace(cx, cy, zn, z, nome));
-        ledges.push(caixaLedge(cx, cy, z, nome));
-        if (queda >= AO_QUEDA_MIN && zn > 0) {
-          aos.push(planoAo(cx, cy, zn, nome, queda));
-        }
-      }
-    }
-  }
-
   for (const p of PROPS) {
     const geo = geoProp(p);
     if (geo) props.push(...geo);
   }
-
-  return {
-    geoGrama: mesclarLista(topsGrama),
-    geoTerra: mesclarLista(topsTerra),
-    geoFaces: mesclarLista(faces),
-    geoLedges: mesclarLista(ledges),
-    geoAo: mesclarLista(aos),
-    geoProps: mesclarLista(props),
-  };
+  return mesclarLista(props);
 }
 
 /**
- * Heightmap → grupo com modo cubos (didático) e modo texturizado (HD-2D).
- * @param {object} [atlas]
+ * Terreno 3D por chunk — culled faces, rebuild dirty.
  */
 export function criarTerrenoMalha(atlas = null) {
   const grupo = new THREE.Group();
   grupo.name = "terreno";
 
-  const geoCubos = construirCubos();
+  const grupoCubos = new THREE.Group();
+  grupoCubos.name = "terreno-cubos";
+  grupo.add(grupoCubos);
+
+  const grupoReal = new THREE.Group();
+  grupoReal.name = "terreno-real";
+  grupoReal.visible = false;
+  grupo.add(grupoReal);
+
   const matCubos = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.82,
@@ -265,18 +300,6 @@ export function criarTerrenoMalha(atlas = null) {
     flatShading: false,
   });
 
-  const meshCubos = new THREE.Mesh(geoCubos, matCubos);
-  meshCubos.castShadow = true;
-  meshCubos.receiveShadow = true;
-  meshCubos.name = "terreno-cubos";
-  grupo.add(meshCubos);
-
-  const grupoReal = new THREE.Group();
-  grupoReal.name = "terreno-real";
-  grupoReal.visible = false;
-  grupo.add(grupoReal);
-
-  const geosReal = construirTexturizado();
   const materiais = {
     grama: null,
     terra: null,
@@ -286,6 +309,9 @@ export function criarTerrenoMalha(atlas = null) {
       roughness: 0.85,
       metalness: 0.05,
       vertexColors: true,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     }),
     ao: new THREE.MeshBasicMaterial({
       color: 0x000000,
@@ -304,20 +330,10 @@ export function criarTerrenoMalha(atlas = null) {
     }),
   };
 
-  const meshesReal = [];
-
-  function addMesh(geo, mat, nome, { shadow = true, order = 0 } = {}) {
-    if (!geo || !mat) return null;
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.name = nome;
-    mesh.castShadow = shadow;
-    mesh.receiveShadow = shadow;
-    mesh.renderOrder = order;
-    grupoReal.add(mesh);
-    meshesReal.push(mesh);
-    return mesh;
-  }
-
+  /** @type {Map<string, {cubos:THREE.Mesh, real:THREE.Group}>} */
+  const meshesPorChunk = new Map();
+  let meshProps = null;
+  let meshPropsCubos = null;
   let texturas = null;
   let atlasAplicado = false;
 
@@ -336,61 +352,177 @@ export function criarTerrenoMalha(atlas = null) {
       map: tex.cliff,
       roughness: 0.88,
       metalness: 0.04,
-      side: THREE.DoubleSide,
+      side: THREE.FrontSide,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     });
   }
 
-  function limparMeshesReal() {
-    for (const m of meshesReal) {
-      grupoReal.remove(m);
+  function liberarGrupoChunk(entry) {
+    if (!entry) return;
+    if (entry.cubos) {
+      grupoCubos.remove(entry.cubos);
+      entry.cubos.geometry?.dispose();
     }
-    meshesReal.length = 0;
+    if (entry.real) {
+      grupoReal.remove(entry.real);
+      entry.real.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+      });
+    }
   }
 
-  function reconstruirComTexturas(tex) {
-    limparMeshesReal();
-    if (materiais.grama) materiais.grama.dispose();
-    if (materiais.terra) materiais.terra.dispose();
-    if (materiais.cliff) materiais.cliff.dispose();
-    montarMateriaisTextura(tex);
+  function reconstruirChunk(chunk) {
+    const key = `${chunk.cx},${chunk.cy}`;
+    liberarGrupoChunk(meshesPorChunk.get(key));
+    meshesPorChunk.delete(key);
 
-    addMesh(geosReal.geoGrama, materiais.grama, "tops-grama");
-    addMesh(geosReal.geoTerra, materiais.terra, "tops-terra");
-    addMesh(geosReal.geoFaces, materiais.cliff, "faces-cliff");
-    addMesh(geosReal.geoLedges, materiais.ledge, "ledges");
-    addMesh(geosReal.geoAo, materiais.ao, "ao", { shadow: false, order: 1 });
-    addMesh(geosReal.geoProps, materiais.props, "props");
+    const geos = construirGeosChunk(chunk);
+    const entry = { cubos: null, real: new THREE.Group() };
+    entry.real.name = `chunk-real-${key}`;
+
+    if (geos.geoCubos) {
+      const mesh = new THREE.Mesh(geos.geoCubos, matCubos);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.name = `cubos-${key}`;
+      grupoCubos.add(mesh);
+      entry.cubos = mesh;
+    }
+
+    function add(geo, mat, nome, opts = {}) {
+      if (!geo || !mat) {
+        geo?.dispose();
+        return;
+      }
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.name = nome;
+      mesh.castShadow = opts.shadow !== false;
+      mesh.receiveShadow = opts.shadow !== false;
+      mesh.renderOrder = opts.order || 0;
+      entry.real.add(mesh);
+    }
+
+    if (atlasAplicado) {
+      add(geos.geoGrama, materiais.grama, "tops-grama");
+      add(geos.geoTerra, materiais.terra, "tops-terra");
+      add(geos.geoFaces, materiais.cliff, "faces-cliff");
+      add(geos.geoLedges, materiais.ledge, "ledges");
+      add(geos.geoAo, materiais.ao, "ao", { shadow: false, order: 1 });
+    } else {
+      geos.geoGrama?.dispose();
+      geos.geoTerra?.dispose();
+      geos.geoFaces?.dispose();
+      geos.geoLedges?.dispose();
+      geos.geoAo?.dispose();
+    }
+
+    grupoReal.add(entry.real);
+    meshesPorChunk.set(key, entry);
+    limparSujo(chunk);
   }
+
+  function reconstruirProps() {
+    if (meshProps) {
+      grupoReal.remove(meshProps);
+      meshProps.geometry?.dispose();
+      meshProps = null;
+    }
+    if (meshPropsCubos) {
+      grupoCubos.remove(meshPropsCubos);
+      meshPropsCubos.geometry?.dispose();
+      meshPropsCubos = null;
+    }
+    const geo = construirProps();
+    if (!geo) return;
+    meshProps = new THREE.Mesh(geo, materiais.props);
+    meshProps.name = "props";
+    meshProps.castShadow = true;
+    meshProps.receiveShadow = true;
+    grupoReal.add(meshProps);
+
+    const geo2 = geo.clone();
+    meshPropsCubos = new THREE.Mesh(geo2, materiais.props);
+    meshPropsCubos.name = "props-cubos";
+    meshPropsCubos.castShadow = true;
+    meshPropsCubos.receiveShadow = true;
+    grupoCubos.add(meshPropsCubos);
+  }
+
+  function reconstruirTudo() {
+    for (const key of [...meshesPorChunk.keys()]) {
+      liberarGrupoChunk(meshesPorChunk.get(key));
+      meshesPorChunk.delete(key);
+    }
+    paraCadaChunk((chunk) => {
+      chunk.sujo = true;
+      reconstruirChunk(chunk);
+    });
+    reconstruirProps();
+  }
+
+  function reconstruirSujados() {
+    const sujos = listarChunksSujos();
+    if (!sujos.length) return;
+    for (const chunk of sujos) reconstruirChunk(chunk);
+  }
+
+  onDirty((aabb) => {
+    if (aabb?.unload) {
+      const cx0 = Math.floor(aabb.x0 / CHUNK_XZ);
+      const cy0 = Math.floor(aabb.y0 / CHUNK_XZ);
+      const key = `${cx0},${cy0}`;
+      liberarGrupoChunk(meshesPorChunk.get(key));
+      meshesPorChunk.delete(key);
+      return;
+    }
+    reconstruirSujados();
+  });
 
   function aplicarAtlas(novoAtlas) {
     if (!novoAtlas?.terrenoPronto) return false;
     if (texturas) texturas.liberar();
     texturas = criarTexturasTerreno3d(novoAtlas);
     if (!texturas.pronto) return false;
-    reconstruirComTexturas(texturas);
+    if (materiais.grama) materiais.grama.dispose();
+    if (materiais.terra) materiais.terra.dispose();
+    if (materiais.cliff) materiais.cliff.dispose();
+    montarMateriaisTextura(texturas);
     atlasAplicado = true;
+    reconstruirTudo();
     return true;
   }
 
+  // build inicial dos chunks já carregados
+  reconstruirTudo();
   if (atlas) aplicarAtlas(atlas);
 
   return {
     grupo,
-    mesh: meshCubos,
+    mesh: grupoCubos,
     aplicarAtlas,
     aplicarVisual(usarTilesFlag) {
       const real = !!(usarTilesFlag && atlasAplicado);
       grupoReal.visible = real;
-      meshCubos.visible = !real;
+      grupoCubos.visible = !real;
       if (!real) {
-        meshCubos.material = usarTilesFlag ? matCubosSmooth : matCubos;
+        grupoCubos.traverse((o) => {
+          if (o.isMesh && o.name.startsWith("cubos")) {
+            o.material = usarTilesFlag ? matCubosSmooth : matCubos;
+          }
+        });
       }
     },
+    reconstruirSujados,
+    reconstruirTudo,
     liberar() {
-      geoCubos.dispose();
+      for (const key of [...meshesPorChunk.keys()]) {
+        liberarGrupoChunk(meshesPorChunk.get(key));
+      }
+      meshesPorChunk.clear();
       matCubos.dispose();
       matCubosSmooth.dispose();
-      for (const g of Object.values(geosReal)) g?.dispose();
       materiais.ledge.dispose();
       materiais.ao.dispose();
       materiais.props.dispose();

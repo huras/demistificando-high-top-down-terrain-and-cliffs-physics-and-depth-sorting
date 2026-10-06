@@ -1,23 +1,22 @@
-import { ALTURAS, COLUNAS, LINHAS } from "../mundo/mapaDemo.js";
-import { quedaSul } from "../mundo/altura.js";
+import { alturaEm, quedaSul } from "../mundo/altura.js";
 import { chaveEntidade, chaveFaceSul } from "./ordenacaoProfundidade.js";
 
 /**
- * Face sul que o player está “enfrentando”:
- * - se há face ao sul (lipY > y): essa é a que oclui (ATRÁS)
- * - senão, a face logo ao norte já passada (NA FRENTE)
+ * Face sul que o player está “enfrentando”.
  */
 export function consultarOclusao(corpo) {
   const sortPlayer = chaveEntidade(corpo.y, corpo.z);
   let melhor = null;
   let melhorScore = Infinity;
 
-  const x0 = Math.max(0, Math.floor(corpo.x) - 2);
-  const x1 = Math.min(COLUNAS - 1, Math.floor(corpo.x) + 2);
+  const x0 = Math.floor(corpo.x) - 2;
+  const x1 = Math.floor(corpo.x) + 2;
+  const y0 = Math.floor(corpo.y) - 8;
+  const y1 = Math.floor(corpo.y) + 12;
 
-  for (let cy = 0; cy < LINHAS - 1; cy++) {
+  for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
-      const z = ALTURAS[cy][cx];
+      const z = alturaEm(cx, cy);
       if (z <= 0) continue;
       const q = quedaSul(cx, cy);
       if (q <= 0) continue;
@@ -30,7 +29,6 @@ export function consultarOclusao(corpo) {
 
       const sortFace = chaveFaceSul(cy, q, z);
       const atrasDaFace = corpo.y < lipY;
-      // prioriza faces à frente (ao sul); senão faces já ultrapassadas
       const score = atrasDaFace
         ? lipY - corpo.y + dx * 0.25
         : 50 + (corpo.y - lipY) + dx * 0.25;

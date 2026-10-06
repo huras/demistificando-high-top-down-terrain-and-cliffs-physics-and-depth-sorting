@@ -1,4 +1,5 @@
 import { CAMINHOS, ZOOM_PASSO } from "./config.js";
+import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import {
   consumirMovimentoMouse,
   desligarPonteiro3d,
@@ -10,7 +11,13 @@ import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { iniciarStamina } from "./fisica/stamina.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
+import { invalidarNavCache } from "./navegacao/navGrade.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
+import {
+  atualizarStreaming,
+  iniciarMundoAoRedor,
+  onDirty,
+} from "./mundo/voxel/storeMundo.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
 import { ajustarZoom, criarCamera } from "./render/camera.js";
@@ -69,6 +76,10 @@ async function iniciar() {
   redimensionarCena();
   atlas = await montarAtlas(CAMINHOS);
   window.__atlas = atlas;
+
+  iniciarMundoAoRedor(SPAWN.x, SPAWN.y);
+  onDirty(() => invalidarNavCache());
+
   corpo = criarCorpo(SPAWN);
   agente = criarAgente({
     x: SPAWN.x - 1.1,
@@ -82,6 +93,14 @@ async function iniciar() {
   ligarControleModo(document.getElementById("btn-modo-3d"));
   aoMudarModo(aoTrocarModo);
   sincronizarCamadas(obterModo());
+
+  ligarEdicaoBlocos({
+    canvas2d: canvas,
+    canvas3d,
+    obterCorpo: () => corpo,
+    obterCamera2d: () => camera,
+    obterCenario3d: () => (cenario3dPronto ? obterCenario3d() : null),
+  });
 
   const onWheel = (ev) => {
     ev.preventDefault();
@@ -151,6 +170,7 @@ async function iniciar() {
       }
       camera.pronta = false;
       resetarCamera3d();
+      atualizarStreaming(x, y);
     },
   };
 
@@ -212,6 +232,7 @@ function loop(agora) {
     }
   }
 
+  atualizarStreaming(corpo.x, corpo.y);
   atualizarMovimento(corpo, dt);
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);

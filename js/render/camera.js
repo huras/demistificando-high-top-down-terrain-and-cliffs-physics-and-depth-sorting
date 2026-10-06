@@ -6,8 +6,6 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "../config.js";
-import { COLUNAS, LINHAS } from "../mundo/mapaDemo.js";
-
 export function criarCamera(larguraCss, alturaCss) {
   return {
     x: 0,
@@ -25,19 +23,15 @@ export function ajustarZoom(camera, fator) {
 
 /**
  * Segue o alvo com lerp — inclui hopLift pra não teletransportar na troca de z.
+ * Mundo infinito: sem clamp rígido de bounds.
  */
 export function seguirAlvo(camera, alvoX, alvoY, alvoZ, hopLift = 0, dt = 1 / 60) {
-  const mundoW = COLUNAS * TILE * ESCALA;
-  // folga vertical pras faces altas (muro/montanha z≈17)
-  const mundoH = (LINHAS * TILE + 20 * FACE_H) * ESCALA;
   const viewW = camera.largura / camera.zoom;
   const viewH = camera.altura / camera.zoom;
   const sx = mundoParaTelaX(alvoX);
   const sy = mundoParaTelaY(alvoY, alvoZ, hopLift);
-  let alvoCamX = sx - viewW * 0.5;
-  let alvoCamY = sy - viewH * 0.5;
-  alvoCamX = clamp(alvoCamX, -80, Math.max(-80, mundoW - viewW + 80));
-  alvoCamY = clamp(alvoCamY, -120, Math.max(-120, mundoH - viewH + 120));
+  const alvoCamX = sx - viewW * 0.5;
+  const alvoCamY = sy - viewH * 0.5;
 
   if (!camera.pronta) {
     camera.x = alvoCamX;
