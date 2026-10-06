@@ -73,9 +73,11 @@ export function atualizarVoo(corpo, dx, dy, sobe, desce, dt, velMax = VELOCIDADE
   corpo.x = pos.x;
   corpo.y = pos.y;
 
+  const elevAntes = corpo.elevacao;
+  corpo._elevAnterior = elevAntes;
   corpo.elevacao += corpo.vz * dt;
   aplicarTetoOverhang(corpo);
-  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao);
+  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao, elevAntes);
   const chao = zChao > 0 ? zChao : 0;
 
   if (corpo.elevacao < chao + 0.05) {

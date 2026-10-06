@@ -14,6 +14,7 @@ export {
   quedaVisualFace,
   superficieBaixa,
   superficieSobElevacao,
+  tetoDeck,
   tetoSobreElevacao,
 } from "./voxel/superficies.js";
 

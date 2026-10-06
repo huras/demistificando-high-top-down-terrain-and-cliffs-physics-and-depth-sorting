@@ -4,18 +4,18 @@ import {
   colunaTemArInterno,
   dentroDoMapa,
   superficieSobElevacao,
-  tetoSobreElevacao,
+  tetoDeck,
 } from "../mundo/altura.js";
 
 /**
  * Superfície sob os pés na camada da elevação.
  * Sem elevRef → topo da coluna (compat heightmap).
  */
-export function alturaSobPes(x, y, elevRef = null) {
+export function alturaSobPes(x, y, elevRef = null, elevAnterior = null) {
   const cx = Math.floor(x);
   const cy = Math.floor(y);
   if (elevRef == null) return alturaEm(cx, cy);
-  return superficieSobElevacao(cx, cy, elevRef);
+  return superficieSobElevacao(cx, cy, elevRef, PULO_EPS_POUSO, elevAnterior);
 }
 
 /**
@@ -52,9 +52,9 @@ function podeEntrarAereo(cx, cy, elevacao) {
     return topo <= elevacao + PULO_EPS_POUSO;
   }
 
-  // Overhang: bloqueia só se os pés estão dentro do sólido do deck.
-  const teto = tetoSobreElevacao(cx, cy, elevacao);
-  if (Number.isFinite(teto) && elevacao >= teto && elevacao < topo) {
+  // Laje sólida [base, topo): bloqueia se os pés colidem com o volume do deck.
+  const base = tetoDeck(cx, cy);
+  if (Number.isFinite(base) && elevacao >= base && elevacao < topo) {
     return false;
   }
   return true;
@@ -88,7 +88,7 @@ export function moverComColisao(corpo, dx, dy, modo = "andar") {
 }
 
 /**
- * Movimento no ar: atravessa vazios; parede se topo > elevação (ou dentro do deck).
+ * Movimento no ar: atravessa vazios; parede se colide com o volume do deck / coluna.
  */
 export function moverAereo(corpo, dx, dy, elevacao) {
   let { x, y } = corpo;
@@ -147,15 +147,37 @@ export function celulaAFrente(x, y, dirX, dirY, elevRef = null) {
   return { cx: fx, cy: fy, z };
 }
 
-/** Aplica teto do deck (pulo/voo por baixo). */
+/**
+ * Teto sólido do deck: se veio de baixo, não atravessa o underside
+ * (nem com dt grande que “teleporta” pra cima da laje).
+ */
 export function aplicarTetoOverhang(corpo) {
-  const cx = Math.floor(corpo.x);
-  const cy = Math.floor(corpo.y);
   const elev = corpo.elevacao ?? corpo.z;
-  const teto = tetoSobreElevacao(cx, cy, elev);
-  if (!Number.isFinite(teto)) return;
-  const lim = teto - 0.02;
-  if (elev > lim) {
+  const prev = corpo._elevAnterior ?? elev;
+  const r = RAIO_CORPO;
+  const cantos = [
+    [corpo.x - r, corpo.y - r],
+    [corpo.x + r, corpo.y - r],
+    [corpo.x - r, corpo.y + r],
+    [corpo.x + r, corpo.y + r],
+  ];
+
+  let lim = Infinity;
+  for (const [px, py] of cantos) {
+    const cx = Math.floor(px);
+    const cy = Math.floor(py);
+    if (!dentroDoMapa(cx, cy) || !colunaTemArInterno(cx, cy)) continue;
+    const base = tetoDeck(cx, cy);
+    const topo = alturaEm(cx, cy);
+    if (!Number.isFinite(base) || topo <= 0) continue;
+
+    // Veio de baixo do underside → teto duro em base (headbonk).
+    if (prev < base - 1e-4) {
+      lim = Math.min(lim, base - 0.02);
+    }
+  }
+
+  if (Number.isFinite(lim) && elev > lim) {
     corpo.elevacao = lim;
     if (corpo.vz > 0) corpo.vz = 0;
   }

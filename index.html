@@ -71,8 +71,9 @@
           <h2>Coluna vs overhang</h2>
           <p class="painel__dica">
             Coluna sólida: faces 2D descem o Δheightmap inteiro (cliff).
-            Overhang/deck: a face visual e climbável limita-se à <strong>espessura do topo</strong>
-            — senão a ponte vira um muro falso de 16. Em 3D tiles o fundo já existe; em cubos vira laje, não pilar.
+            Overhang/deck: laje <strong>sólida</strong> — passa por baixo sem colidir; bate a cabeça no
+            underside; só pousa em cima caindo de cima (não é plataforma one-way). Faces 2D usam a
+            espessura do topo. Em 3D tiles há fundo; em cubos vira laje, não pilar.
           </p>
         </section>
 

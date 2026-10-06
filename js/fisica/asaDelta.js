@@ -66,10 +66,12 @@ export function atualizarAsaDelta(corpo, dt) {
   tickYawAsaDelta(corpo, dt);
 
   corpo.vz = -ASA_DELTA_DESCIDA;
+  const elevAntes = corpo.elevacao;
+  corpo._elevAnterior = elevAntes;
   corpo.elevacao += corpo.vz * dt;
   aplicarTetoOverhang(corpo);
 
-  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao);
+  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao, elevAntes);
   corpo.z = zChao > 0 ? zChao : 0;
   corpo.hopLift = corpo.elevacao - corpo.z;
   corpo.pulando = true;

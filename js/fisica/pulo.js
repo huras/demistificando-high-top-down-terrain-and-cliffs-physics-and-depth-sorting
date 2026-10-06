@@ -81,10 +81,17 @@ export function atualizarAereo(corpo, dt) {
   const g = segurando ? GRAVIDADE_PULO_SEGURANDO : GRAVIDADE;
 
   corpo.vz -= g * dt;
+  const elevAntes = corpo.elevacao;
+  corpo._elevAnterior = elevAntes;
   corpo.elevacao += corpo.vz * dt;
   aplicarTetoOverhang(corpo);
 
-  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao);
+  const zChao = alturaSobPes(
+    corpo.x,
+    corpo.y,
+    corpo.elevacao,
+    elevAntes,
+  );
 
   if (
     corpo.vz <= 0 &&
