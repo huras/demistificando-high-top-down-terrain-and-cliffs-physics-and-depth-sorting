@@ -4,7 +4,7 @@ import {
   PATH_RETRY_SEM_CAMINHO,
   PATH_STUCK_SEG,
 } from "../config.js";
-import { alturaEm } from "../mundo/altura.js";
+import { superficieSobElevacao } from "../mundo/altura.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { encontrarFacePerto } from "../mundo/facesCliff.js";
 import {
@@ -162,7 +162,7 @@ function decidirClimbNoAr(agente, lider, liderZ) {
   const nav = agente.nav;
   if (nav?.path?.cells && nav.idx < nav.path.cells.length) {
     const wp = nav.path.cells[nav.idx];
-    const zWp = alturaEm(wp.cx, wp.cy);
+    const zWp = superficieSobElevacao(wp.cx, wp.cy, elevAg);
     // Path pedindo descer / walk / glide → não climb
     if (wp.tipo !== TIPO_CLIMB && zWp <= elevAg + 0.15) {
       return null;
@@ -430,7 +430,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     const dxL = lider.x - agente.x;
     const dyL = lider.y - agente.y;
     const dL = Math.hypot(dxL, dyL) || 1;
-    const zChaoAr = alturaSobPes(agente.x, agente.y);
+    const zChaoAr = alturaSobPes(agente.x, agente.y, agente.elevacao);
     const folgaAr = agente.elevacao - (zChaoAr > 0 ? zChaoAr : 0);
     // Fecha asa só perto do líder e quase no chão; senão pousa natural com a asa
     const soltarAsa =
@@ -541,9 +541,10 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const dy = ty - agente.y;
   const d = Math.hypot(dx, dy) || 1;
 
-  const zWp = alturaEm(wp.cx, wp.cy);
-  const zChaoPes = alturaSobPes(agente.x, agente.y);
-  const zRef = naParede ? agente.elevacao : zChaoPes;
+  const elevAg = agente.elevacao ?? agente.z;
+  const zWp = superficieSobElevacao(wp.cx, wp.cy, elevAg);
+  const zChaoPes = alturaSobPes(agente.x, agente.y, elevAg);
+  const zRef = naParede ? elevAg : zChaoPes;
   const segmentoVoo = !!perfil.podeVoar && wp.tipo === TIPO_VOO;
   // Na parede: glide se o pouso está abaixo da elevação atual
   const segmentoGlide =

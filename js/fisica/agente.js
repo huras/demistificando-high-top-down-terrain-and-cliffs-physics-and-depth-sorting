@@ -10,7 +10,7 @@ import {
   VELOCIDADE_MAX,
   VELOCIDADE_SPRINT,
 } from "../config.js";
-import { alturaEm } from "../mundo/altura.js";
+import { superficieSobElevacao } from "../mundo/altura.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import {
   atualizarSeguirCaminho,
@@ -60,7 +60,8 @@ function distPlanar(agente, nav) {
 /** Só lança asa em glide longo pra baixo/mesmo nível — nunca contra cliff pra cima. */
 function deveLancarGlide(agente, nav, querPlanar) {
   if (!querPlanar || !nav?.planarAlvo || !agente.perfil?.podePlanar) return false;
-  const zAqui = alturaSobPes(agente.x, agente.y);
+  const elev = agente.elevacao ?? agente.z;
+  const zAqui = alturaSobPes(agente.x, agente.y, elev);
   const zAlvo = nav.planarAlvo.z;
   if (zAlvo > zAqui) return false;
   return distPlanar(agente, nav) >= PATH_GLIDE_DIST_MIN;
@@ -90,7 +91,7 @@ function querAsaHeuristica(agente, querPlanar, querEscalar) {
   }
   if (querPlanar) return true;
   if (agente.noChao || estaPlanando(agente)) return false;
-  const zChao = alturaSobPes(agente.x, agente.y);
+  const zChao = alturaSobPes(agente.x, agente.y, agente.elevacao);
   const folga = agente.elevacao - (zChao > 0 ? zChao : 0);
   return folga >= AGENTE_GLIDE_HEUR_FOLGA;
 }
@@ -271,12 +272,16 @@ export function atualizarAgente(agente, lider, dt) {
   }
 
   if (lancarGlide && agente.noChao && podeIniciarPulo(agente)) {
-    const zAqui = alturaSobPes(agente.x, agente.y);
+    const zAqui = alturaSobPes(agente.x, agente.y, agente.z);
     const sx = Math.sign(ix || agente.dirX) || 0;
     const sy = Math.sign(iy || agente.dirY) || 0;
     let naBeirada = false;
     for (const dist of [0.45, 0.7, 1.05]) {
-      const zFrente = alturaSobPes(agente.x + sx * dist, agente.y + sy * dist);
+      const zFrente = alturaSobPes(
+        agente.x + sx * dist,
+        agente.y + sy * dist,
+        agente.z,
+      );
       if (zFrente <= 0 || zFrente <= zAqui - 2) {
         naBeirada = true;
         break;
@@ -299,7 +304,7 @@ export function atualizarAgente(agente, lider, dt) {
     agente.x = novo.x;
     agente.y = novo.y;
 
-    const zChao = alturaSobPes(agente.x, agente.y);
+    const zChao = alturaSobPes(agente.x, agente.y, agente.z);
     if (zChao <= 0 || zChao < agente.z) {
       iniciarQueda(agente);
       agente.elevacao = agente.z;
@@ -432,7 +437,8 @@ function cantoEmCliffAlto(corpo) {
     [corpo.x - r, corpo.y + r],
     [corpo.x + r, corpo.y + r],
   ]) {
-    if (alturaEm(Math.floor(px), Math.floor(py)) > corpo.z) return true;
+    const hz = superficieSobElevacao(Math.floor(px), Math.floor(py), corpo.z);
+    if (hz > corpo.z) return true;
   }
   return false;
 }

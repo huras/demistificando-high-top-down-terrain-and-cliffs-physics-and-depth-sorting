@@ -17,7 +17,12 @@ import {
   PATH_VOO_VEL,
   VELOCIDADE_MAX,
 } from "../config.js";
-import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
+import {
+  alturaEm,
+  dentroDoMapa,
+  superficieBaixa,
+  superficieSobElevacao,
+} from "../mundo/altura.js";
 import { obterAabbCarregado } from "../mundo/voxel/storeMundo.js";
 
 const SQRT2 = Math.SQRT2;
@@ -140,12 +145,28 @@ function construirGrade(perfil, centroX, centroY, raio) {
         const nx = cx + dx;
         const ny = cy + dy;
         if (!dentroDoMapa(nx, ny)) continue;
-        const zB = alturaEm(nx, ny);
+        // Camada do destino relativa a zA — permite andar sob overhang.
+        const zB = superficieSobElevacao(nx, ny, zA);
         if (zB <= 0) continue;
         if (diag && !cantoDiagonalLivre(cx, cy, zA, nx, ny)) continue;
         const edge = classificarAresta(zA, zB, perfil, diag);
         if (!edge) continue;
         lista.push(chaveCelula(nx, ny), edge.custo, edge.tipo);
+      }
+      // Camada do chão sob overhang — andar por baixo do deck.
+      const zBaixa = superficieBaixa(cx, cy);
+      if (zBaixa > 0 && zBaixa < zA) {
+        for (const [dx, dy, diag] of DIRS) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (!dentroDoMapa(nx, ny)) continue;
+          const zB = superficieSobElevacao(nx, ny, zBaixa);
+          if (zB <= 0) continue;
+          if (diag && !cantoDiagonalLivre(cx, cy, zBaixa, nx, ny)) continue;
+          const edge = classificarAresta(zBaixa, zB, perfil, diag);
+          if (!edge) continue;
+          lista.push(chaveCelula(nx, ny), edge.custo, edge.tipo);
+        }
       }
       if (perfil.podePlanar && temBeiraGlide(cx, cy, zA)) {
         adicionarGlideRays(lista, cx, cy, zA);

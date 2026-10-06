@@ -7,7 +7,7 @@ import {
   ASA_DELTA_VEL_MUL,
   VELOCIDADE_MAX,
 } from "../config.js";
-import { alturaSobPes } from "./colisao.js";
+import { alturaSobPes, aplicarTetoOverhang } from "./colisao.js";
 import { pousarNoChao } from "./pulo.js";
 
 export function estaPlanando(corpo) {
@@ -19,7 +19,7 @@ export function podeAbrirAsaDelta(corpo) {
     return false;
   }
   if ((corpo.tempoAr ?? 0) < ASA_DELTA_ABRIR_APOS) return false;
-  const zChao = alturaSobPes(corpo.x, corpo.y);
+  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao);
   const folga = corpo.elevacao - (zChao > 0 ? zChao : 0);
   return folga >= ASA_DELTA_LIFT_MIN;
 }
@@ -67,8 +67,9 @@ export function atualizarAsaDelta(corpo, dt) {
 
   corpo.vz = -ASA_DELTA_DESCIDA;
   corpo.elevacao += corpo.vz * dt;
+  aplicarTetoOverhang(corpo);
 
-  const zChao = alturaSobPes(corpo.x, corpo.y);
+  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao);
   corpo.z = zChao > 0 ? zChao : 0;
   corpo.hopLift = corpo.elevacao - corpo.z;
   corpo.pulando = true;

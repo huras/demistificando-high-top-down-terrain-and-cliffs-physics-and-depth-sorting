@@ -10,8 +10,8 @@ import {
   RAIO_CORPO,
 } from "../config.js";
 import { teclaBaixa } from "../entrada/teclado.js";
-import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
-import { alturaSobPes, podeEntrar } from "./colisao.js";
+import { dentroDoMapa, superficieSobElevacao } from "../mundo/altura.js";
+import { alturaSobPes, aplicarTetoOverhang, podeEntrar } from "./colisao.js";
 
 /** Edge de pulo com buffer (aperta um pouco antes de pousar). */
 export function registrarBufferPulo(corpo, apertou) {
@@ -82,8 +82,9 @@ export function atualizarAereo(corpo, dt) {
 
   corpo.vz -= g * dt;
   corpo.elevacao += corpo.vz * dt;
+  aplicarTetoOverhang(corpo);
 
-  const zChao = alturaSobPes(corpo.x, corpo.y);
+  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao);
 
   if (
     corpo.vz <= 0 &&
@@ -144,7 +145,7 @@ export function empurrarForaDeCliff(corpo) {
     const cx = Math.floor(px);
     const cy = Math.floor(py);
     if (!dentroDoMapa(cx, cy)) continue;
-    const hz = alturaEm(cx, cy);
+    const hz = superficieSobElevacao(cx, cy, z);
     if (hz > z) {
       empX += Math.sign(corpo.x - (cx + 0.5));
       empY += Math.sign(corpo.y - (cy + 0.5));
@@ -153,14 +154,17 @@ export function empurrarForaDeCliff(corpo) {
   if (empX === 0 && empY === 0) {
     const cx = Math.floor(corpo.x);
     const cy = Math.floor(corpo.y);
-    if (alturaEm(cx, cy) === z) return;
+    if (superficieSobElevacao(cx, cy, z) === z) return;
     for (const [dx, dy] of [
       [0, 1],
       [0, -1],
       [1, 0],
       [-1, 0],
     ]) {
-      if (podeEntrar(cx + dx, cy + dy, z, "andar") && alturaEm(cx + dx, cy + dy) === z) {
+      if (
+        podeEntrar(cx + dx, cy + dy, z, "andar") &&
+        superficieSobElevacao(cx + dx, cy + dy, z) === z
+      ) {
         corpo.x = cx + dx + 0.5;
         corpo.y = cy + dy + 0.5;
         return;
@@ -173,7 +177,7 @@ export function empurrarForaDeCliff(corpo) {
   corpo.y += (empY / len) * (0.25 + PULO_EMPURRAO_POUSO);
   const cx = Math.floor(corpo.x);
   const cy = Math.floor(corpo.y);
-  if (alturaEm(cx, cy) === z) {
+  if (superficieSobElevacao(cx, cy, z) === z) {
     corpo.x = clamp(corpo.x, cx + r + 0.02, cx + 1 - r - 0.02);
     corpo.y = clamp(corpo.y, cy + r + 0.02, cy + 1 - r - 0.02);
   }

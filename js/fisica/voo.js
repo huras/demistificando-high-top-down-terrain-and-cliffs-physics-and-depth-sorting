@@ -4,7 +4,7 @@ import {
   VOO_VEL_HORIZ_MUL,
   VOO_VEL_VERT,
 } from "../config.js";
-import { alturaSobPes, moverAereo } from "./colisao.js";
+import { alturaSobPes, aplicarTetoOverhang, moverAereo } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
 import { fecharAsaDelta } from "./asaDelta.js";
 import { limparTravaEscalada, limparTravaPosMantle } from "./travaInputEscalada.js";
@@ -38,7 +38,8 @@ export function sairVoo(corpo, { pousar = false } = {}) {
   if (!estaVoando(corpo)) return false;
   corpo.voando = false;
   if (pousar) {
-    const zChao = alturaSobPes(corpo.x, corpo.y);
+    const elev = corpo.elevacao ?? corpo.z;
+    const zChao = alturaSobPes(corpo.x, corpo.y, elev);
     if (zChao > 0) {
       pousarNoChao(corpo, zChao);
       return true;
@@ -73,7 +74,8 @@ export function atualizarVoo(corpo, dx, dy, sobe, desce, dt, velMax = VELOCIDADE
   corpo.y = pos.y;
 
   corpo.elevacao += corpo.vz * dt;
-  const zChao = alturaSobPes(corpo.x, corpo.y);
+  aplicarTetoOverhang(corpo);
+  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao);
   const chao = zChao > 0 ? zChao : 0;
 
   if (corpo.elevacao < chao + 0.05) {

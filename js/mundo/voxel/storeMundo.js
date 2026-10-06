@@ -7,6 +7,7 @@ import {
   definirLocal,
   mundoParaChunk,
   obterLocal,
+  superficieBaixaLocal,
   superficieLocal,
 } from "./chunk.js";
 import { gerarChunkProcedural } from "./gerarChunk.js";
@@ -188,6 +189,16 @@ export function baseTopoEm(wx, wy) {
   const chunk = chunks.get(chaveChunk(cx, cy));
   if (!chunk) return -1;
   return baseTopoLocal(chunk, x - cx * CHUNK_XZ, y - cy * CHUNK_XZ);
+}
+
+/** Superfície caminhável sob o deck (0 se não há overhang). */
+export function superficieBaixaEm(wx, wy) {
+  const x = wx | 0;
+  const y = wy | 0;
+  const { cx, cy } = mundoParaChunk(x, y);
+  const chunk = chunks.get(chaveChunk(cx, cy));
+  if (!chunk) return 0;
+  return superficieBaixaLocal(chunk, x - cx * CHUNK_XZ, y - cy * CHUNK_XZ);
 }
 
 export function blocoSolidoEm(wx, wy, wz) {

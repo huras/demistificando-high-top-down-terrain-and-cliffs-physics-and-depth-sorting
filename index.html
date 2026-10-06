@@ -59,8 +59,9 @@
             <span style="color:#e8e8f0">cume</span>.
           </p>
           <p class="painel__dica">
-            Voxels podem ter ar interno; o gameplay ainda usa <strong>uma superfície</strong> por coluna
-            (<code>alturaEm</code> = topo). Ponte = run sólido flutuante (deck) com void embaixo.
+            Voxels podem ter ar interno. <code>alturaEm</code> = topo da coluna; sob overhang a física
+            usa a <strong>camada da elevação</strong> (chão sob o deck ou o deck). Ponte = andar em cima
+            <em>e</em> passar por baixo.
           </p>
           <pre class="formula" id="formula-tela">screenY = y·TILE − z·FACE − hop</pre>
           <pre class="formula" id="formula-sort">sortKey = y + z·ε</pre>
@@ -127,7 +128,7 @@
             <li>Na face: <kbd>E</kbd> gruda; segure lateral ao virar o canto — não solta; solte e <kbd>S</kbd> de novo pra descer.</li>
             <li>No topo: suba pra <em>mantle</em> — continue segurando pra entrar no platô; Space solta.</li>
             <li>Leste: duas montanhas — <strong>CUME×1</strong> (norte 1 passo) e <strong>CUME×2</strong> (norte 2 passos); <strong>MURO×16</strong> nas faces leste dos cumes.</li>
-            <li>Entre os cumes: ande na <strong>PONTE</strong> (deck z=17, void embaixo). Compare 2D (saia curta) × 3D tiles (fundo) × cubos (laje). Companheiro cruza a pé com Asa-delta off.</li>
+            <li>Entre os cumes: ande na <strong>PONTE</strong> (em cima) e passe por baixo no vale (<strong>VOID↓</strong>). Compare 2D × 3D tiles × cubos. Companheiro cruza o deck a pé com Asa-delta off.</li>
             <li>Mirante/torre alta: Space×2 → asa-delta até o chão.</li>
           </ol>
         </section>

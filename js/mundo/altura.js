@@ -12,6 +12,9 @@ export {
   colunaTemArInterno,
   espessuraTopo,
   quedaVisualFace,
+  superficieBaixa,
+  superficieSobElevacao,
+  tetoSobreElevacao,
 } from "./voxel/superficies.js";
 
 /** Célula com chunk carregado (mundo infinito fora do stream = inacessível). */

@@ -5,7 +5,7 @@ import {
   teclaEscaladaAgora,
   vetorMovimento,
 } from "../entrada/teclado.js";
-import { alturaEm } from "../mundo/altura.js";
+import { superficieSobElevacao } from "../mundo/altura.js";
 import {
   atualizarAsaDelta,
   atualizarCorridaAsaDelta,
@@ -207,7 +207,7 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   corpo.x = novo.x;
   corpo.y = novo.y;
 
-  const zChao = alturaSobPes(corpo.x, corpo.y);
+  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.z);
 
   if (zChao <= 0 || zChao < corpo.z) {
     iniciarQueda(corpo);
@@ -281,7 +281,8 @@ function cantoEmCliffAlto(corpo) {
     [corpo.x - r, corpo.y + r],
     [corpo.x + r, corpo.y + r],
   ]) {
-    if (alturaEm(Math.floor(px), Math.floor(py)) > corpo.z) return true;
+    const hz = superficieSobElevacao(Math.floor(px), Math.floor(py), corpo.z);
+    if (hz > corpo.z) return true;
   }
   return false;
 }
