@@ -40,11 +40,6 @@ let _atlas = null;
  * Terreno 2D — cull pela viewport da câmera quando disponível.
  */
 export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera = null) {
-  // #region agent log
-  const __t0 = performance.now();
-  let __celulas = 0;
-  let __faces = 0;
-  // #endregion
   _atlas = atlas;
   const aabb = obterAabbCarregado();
   let x0 = aabb.x0 | 0;
@@ -67,9 +62,6 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
     for (let cx = x0; cx <= x1; cx++) {
       const z = alturaEm(cx, cy);
       if (z <= 0) continue;
-      // #region agent log
-      __celulas++;
-      // #endregion
 
       // topo: ar na célula de índice = walk height (acima do bloco z-1)
       if (z > 0 && !solidoEm(cx, cy, z)) {
@@ -79,9 +71,6 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
 
       const quedaS = contarQuedaFace(cx, cy, z, 0, 1);
       if (quedaS > 0) {
-        // #region agent log
-        __faces++;
-        // #endregion
         const sortFace = chaveFaceSul(cy, quedaS, z);
         const destacar =
           faceDestaque && faceDestaque.cx === cx && faceDestaque.cy === cy;
@@ -98,9 +87,6 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
       const dzW = contarQuedaFace(cx, cy, z, -1, 0);
       const dzE = contarQuedaFace(cx, cy, z, 1, 0);
       if (dzW > 0) {
-        // #region agent log
-        __faces++;
-        // #endregion
         empilhar(
           lista,
           chaveFaceLateral(cy, z),
@@ -111,9 +97,6 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
         );
       }
       if (dzE > 0) {
-        // #region agent log
-        __faces++;
-        // #endregion
         empilhar(
           lista,
           chaveFaceLateral(cy, z),
@@ -151,13 +134,6 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
       z,
     );
   }
-  // #region agent log
-  const __ms = performance.now() - __t0;
-  if (!empilharTerreno.__lastLog || performance.now() - empilharTerreno.__lastLog > 1000) {
-    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix',hypothesisId:'B',location:'terreno.js:empilharTerreno',message:'terreno_2d',data:{ms:+__ms.toFixed(2),celulas:__celulas,faces:__faces,aabbW:x1-x0+1,aabbH:y1-y0+1,listaLen:lista.itens?.length??0},timestamp:Date.now()})}).catch(()=>{});
-    empilharTerreno.__lastLog = performance.now();
-  }
-  // #endregion
 }
 
 /** Queda visual: quantos degraus de face até o vizinho (compat heightmap). */

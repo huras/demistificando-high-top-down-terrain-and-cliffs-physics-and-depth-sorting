@@ -117,9 +117,6 @@ function temBeiraGlide(cx, cy, zA) {
 }
 
 function construirGrade(perfil, centroX, centroY, raio) {
-  // #region agent log
-  const __t0 = performance.now();
-  // #endregion
   const loaded = obterAabbCarregado();
   const x0 = Math.max(loaded.x0 | 0, centroX - raio);
   const y0 = Math.max(loaded.y0 | 0, centroY - raio);
@@ -128,20 +125,12 @@ function construirGrade(perfil, centroX, centroY, raio) {
 
   /** @type {Map<number, number[]>} — NÃO usar Float32Array: chaves packed >2^24 perdem precisão. */
   const edges = new Map();
-  // #region agent log
-  let __celulas = 0;
-  let __glide = 0;
-  let __arestaSample = 0;
-  // #endregion
 
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
       if (!dentroDoMapa(cx, cy)) continue;
       const zA = alturaEm(cx, cy);
       const key = chaveCelula(cx, cy);
-      // #region agent log
-      __celulas++;
-      // #endregion
       if (zA <= 0) {
         edges.set(key, []);
         continue;
@@ -159,24 +148,15 @@ function construirGrade(perfil, centroX, centroY, raio) {
         lista.push(chaveCelula(nx, ny), edge.custo, edge.tipo);
       }
       if (perfil.podePlanar && temBeiraGlide(cx, cy, zA)) {
-        // #region agent log
-        __glide++;
-        // #endregion
         adicionarGlideRays(lista, cx, cy, zA);
       }
       if (perfil.podeVoar && temBeiraGlide(cx, cy, zA)) {
         adicionarVooRays(lista, cx, cy, zA);
       }
       edges.set(key, lista);
-      // #region agent log
-      if (cx === centroX && cy === centroY) __arestaSample = (lista.length / 3) | 0;
-      // #endregion
     }
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix3',hypothesisId:'Float32',location:'navGrade.js:construirGrade',message:'nav_rebuild',data:{ms:+(performance.now()-__t0).toFixed(2),celulas:__celulas,glideCells:__glide,arestasCentro:__arestaSample,aabbW:x1-x0+1,aabbH:y1-y0+1,centro:`${centroX},${centroY}`,raio,perfil:perfil.id},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   return {
     perfilId: perfil.id,

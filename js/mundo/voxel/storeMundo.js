@@ -65,6 +65,8 @@ export function carregarChunk(cx, cy) {
   chunk.gerado = true;
   chunk.sujo = true;
   chunks.set(k, chunk);
+  // Vizinhos precisam remeshar: faces de cliff na borda mudam com o vizinho.
+  marcarChunkVizinhosSujos(cx, cy);
   emitirDirty({
     x0: cx * CHUNK_XZ,
     y0: cy * CHUNK_XZ,
@@ -80,6 +82,8 @@ export function descarregarChunk(cx, cy) {
   const k = chaveChunk(cx, cy);
   const chunk = chunks.get(k);
   if (!chunk) return;
+  // Antes de sair: vizinhos regeneram faces expostas pro void.
+  marcarChunkVizinhosSujos(cx, cy);
   chunks.delete(k);
   emitirDirty({
     x0: cx * CHUNK_XZ,
@@ -151,6 +155,20 @@ function marcarVizinhosSujos(cx, cy, lx, ly) {
   if (ly === CHUNK_XZ - 1) obterChunk(cx, cy + 1) && (obterChunk(cx, cy + 1).sujo = true);
 }
 
+/** Marca o chunk e os 4 vizinhos (borda de stream / faces de cliff). */
+function marcarChunkVizinhosSujos(cx, cy) {
+  for (const [dx, dy] of [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]) {
+    const c = obterChunk(cx + dx, cy + dy);
+    if (c) c.sujo = true;
+  }
+}
+
 /** Superfície (maior z sólido) da coluna. */
 export function superficieEm(wx, wy) {
   const x = wx | 0;
@@ -169,11 +187,6 @@ export function blocoSolidoEm(wx, wy, wz) {
  * Mantém disco de chunks em torno do jogador.
  */
 export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
-  // #region agent log
-  const __t0 = performance.now();
-  let __novos = 0;
-  let __removidos = 0;
-  // #endregion
   const { cx: pcx, cy: pcy } = mundoParaChunk(px, py);
 
   // Early-out: mesmo chunk âncora e já carregado — evita Set/loop todo frame.
@@ -182,12 +195,6 @@ export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
     atualizarStreaming._pcy === pcy &&
     chunks.size > 0
   ) {
-    // #region agent log
-    if (!atualizarStreaming.__lastLog || performance.now() - atualizarStreaming.__lastLog > 1000) {
-      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix',hypothesisId:'A',location:'storeMundo.js:atualizarStreaming',message:'stream_tick',data:{ms:+(performance.now()-__t0).toFixed(2),novos:0,removidos:0,nChunks:chunks.size,pcx,pcy,skipped:true,aabbW:aabbCarregado.x1-aabbCarregado.x0+1,aabbH:aabbCarregado.y1-aabbCarregado.y0+1},timestamp:Date.now()})}).catch(()=>{});
-      atualizarStreaming.__lastLog = performance.now();
-    }
-    // #endregion
     return aabbCarregado;
   }
   atualizarStreaming._pcx = pcx;
@@ -201,21 +208,12 @@ export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
       const cx = pcx + dx;
       const cy = pcy + dy;
       precisos.add(chaveChunk(cx, cy));
-      // #region agent log
-      const __existia = chunks.has(chaveChunk(cx, cy));
-      // #endregion
       carregarChunk(cx, cy);
-      // #region agent log
-      if (!__existia) __novos++;
-      // #endregion
     }
   }
 
   for (const [k, chunk] of chunks) {
     if (!precisos.has(k)) {
-      // #region agent log
-      __removidos++;
-      // #endregion
       descarregarChunk(chunk.cx, chunk.cy);
     }
   }
@@ -226,13 +224,6 @@ export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
     x1: (pcx + raio + 1) * CHUNK_XZ - 1,
     y1: (pcy + raio + 1) * CHUNK_XZ - 1,
   };
-  // #region agent log
-  const __ms = performance.now() - __t0;
-  if (!atualizarStreaming.__lastLog || performance.now() - atualizarStreaming.__lastLog > 1000) {
-    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix',hypothesisId:'A',location:'storeMundo.js:atualizarStreaming',message:'stream_tick',data:{ms:+__ms.toFixed(2),novos:__novos,removidos:__removidos,nChunks:chunks.size,pcx,pcy,skipped:false,aabbW:aabbCarregado.x1-aabbCarregado.x0+1,aabbH:aabbCarregado.y1-aabbCarregado.y0+1},timestamp:Date.now()})}).catch(()=>{});
-    atualizarStreaming.__lastLog = performance.now();
-  }
-  // #endregion
   return aabbCarregado;
 }
 

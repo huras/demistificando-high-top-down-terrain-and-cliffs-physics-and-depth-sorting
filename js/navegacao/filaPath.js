@@ -50,15 +50,6 @@ export function solicitarPath(entidadeId, perfil, sx, sy, gx, gy, versao = 0) {
   }
 
   const grade = obterNavGrade(perfil, sx | 0, sy | 0, gx | 0, gy | 0);
-  // #region agent log
-  const __gk = chaveCelula(gx | 0, gy | 0);
-  const __goalIn = grade.edges.has(__gk);
-  if (!solicitarPath.__lastLog || performance.now() - solicitarPath.__lastLog > 800) {
-    const __dist = Math.hypot((gx|0)-(sx|0),(gy|0)-(sy|0));
-    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'proc-follow',hypothesisId:'H-NavFar',location:'filaPath.js:solicitarPath',message:'path_request',data:{sx:sx|0,sy:sy|0,gx:gx|0,gy:gy|0,dist:+__dist.toFixed(1),goalInGrade:__goalIn,startInGrade:grade.edges.has(startKey),gradeW:(grade.x1-grade.x0+1),gradeH:(grade.y1-grade.y0+1),gx0:grade.x0,gy0:grade.y0,gx1:grade.x1,gy1:grade.y1},timestamp:Date.now()})}).catch(()=>{});
-    solicitarPath.__lastLog = performance.now();
-  }
-  // #endregion
   const busca = criarBusca(grade, startKey, goalKey);
   const pedido = {
     entidadeId,
@@ -116,9 +107,6 @@ export function tickFilaPath(orcamento = PATH_EXPAND_POR_FRAME) {
       p.path = path;
       p.estado = "pronto";
       cacheResultado.set(p.coalesce, { path, t: performance.now() });
-      // #region agent log
-      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'post-fix3',hypothesisId:'Float32',location:'filaPath.js:tickFilaPath',message:'path_done',data:{achou:!!path.achou,cells:path.cells?.length??0,expansoes:p.busca?.expansoes??0,id,start:celulaDeChave(p.startKey),goal:celulaDeChave(p.goalKey)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       filaOrdem.shift();
     } else {
       // round-robin

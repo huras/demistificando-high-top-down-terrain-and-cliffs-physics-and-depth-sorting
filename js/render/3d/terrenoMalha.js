@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
+import { CHUNK_XZ, CHUNK_Y, MESH_CHUNKS_POR_FRAME } from "../../config.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { alturaEm } from "../../mundo/altura.js";
 import {
@@ -87,7 +87,7 @@ function quadFace(wx, wy, wz, dir) {
     geo.rotateX(Math.PI / 2);
     geo.translate(wx + 0.5, wz, wy + 0.5);
   } else if (dir === "s") {
-    // vertical: altura ligeiramente encolhida no topo
+    // PlaneGeometry default normal +Z (= sul / +worldY)
     geo.translate(0, -INSET_TOPO * 0.5, 0);
     geo.scale(1, 1 - INSET_TOPO, 1);
     geo.translate(wx + 0.5, wz + 0.5, wy + 1);
@@ -97,12 +97,14 @@ function quadFace(wx, wy, wz, dir) {
     geo.scale(1, 1 - INSET_TOPO, 1);
     geo.translate(wx + 0.5, wz + 0.5, wy);
   } else if (dir === "e") {
-    geo.rotateY(-Math.PI / 2);
+    // +X outward (antes estava -π/2 → normal -X)
+    geo.rotateY(Math.PI / 2);
     geo.translate(0, -INSET_TOPO * 0.5, 0);
     geo.scale(1, 1 - INSET_TOPO, 1);
     geo.translate(wx + 1, wz + 0.5, wy + 0.5);
   } else {
-    geo.rotateY(Math.PI / 2);
+    // w: -X outward
+    geo.rotateY(-Math.PI / 2);
     geo.translate(0, -INSET_TOPO * 0.5, 0);
     geo.scale(1, 1 - INSET_TOPO, 1);
     geo.translate(wx, wz + 0.5, wy + 0.5);
@@ -158,13 +160,10 @@ function vizinhoAr(wx, wy, wz, dx, dy, dz) {
 
 /**
  * Gera geometrias culled-face de um chunk.
+ * Sempre gera cubos + real (grupos separados; só um visível) —
+ * pular um dos modos deixava faces/cliff faltando após trocar visual / stream.
  */
 function construirGeosChunk(chunk) {
-  // #region agent log
-  const __t0 = performance.now();
-  let __solidos = 0;
-  let __quads = 0;
-  // #endregion
   const topsGrama = [];
   const topsTerra = [];
   const faces = [];
@@ -182,16 +181,10 @@ function construirGeosChunk(chunk) {
       for (let lz = 0; lz < CHUNK_Y; lz++) {
         const id = obterBloco(wx, wy, lz);
         if (!ehSolido(id)) continue;
-        // #region agent log
-        __solidos++;
-        // #endregion
 
         for (const d of DIRS) {
           if (!vizinhoAr(wx, wy, lz, d.dx, d.dy, d.dz)) continue;
           const q = quadFace(wx, wy, lz, d.nome);
-          // #region agent log
-          __quads++;
-          // #endregion
 
           if (d.nome === "u") {
             if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
@@ -206,7 +199,8 @@ function construirGeosChunk(chunk) {
               }
             }
           } else if (d.nome === "d") {
-            q.dispose();
+            // Fundo de overhang — sem isto a câmera 3ª pessoa vê “cavernas”
+            faces.push(q);
           } else {
             faces.push(q);
             const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
@@ -216,11 +210,8 @@ function construirGeosChunk(chunk) {
             }
           }
         }
-
-        // modo cubos didático: um box por voxel sólido exposto (caro) — usa coluna
       }
 
-      // cubos: um box da base até superfície (mais leve)
       const zSurf = alturaEm(wx, wy);
       if (zSurf > 0) {
         const h = Math.max(0.08, zSurf);
@@ -240,9 +231,6 @@ function construirGeosChunk(chunk) {
     geoAo: mesclarLista(aos),
     geoCubos: mesclarLista(cubos),
   };
-  // #region agent log
-  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8ac17a'},body:JSON.stringify({sessionId:'8ac17a',runId:'perf1',hypothesisId:'C',location:'terrenoMalha.js:construirGeosChunk',message:'mesh_chunk',data:{ms:+(performance.now()-__t0).toFixed(2),cx:chunk.cx,cy:chunk.cy,solidos:__solidos,quads:__quads,topsG:topsGrama.length,topsT:topsTerra.length,faces:faces.length,ledges:ledges.length},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   return out;
 }
 
@@ -351,6 +339,8 @@ export function criarTerrenoMalha(atlas = null) {
   let meshPropsCubos = null;
   let texturas = null;
   let atlasAplicado = false;
+  /** Visual ativo: cubos (didático) vs real (tiles). */
+  let modoCubos = true;
 
   function montarMateriaisTextura(tex) {
     materiais.grama = new THREE.MeshStandardMaterial({
@@ -483,6 +473,30 @@ export function criarTerrenoMalha(atlas = null) {
     for (const chunk of sujos) reconstruirChunk(chunk);
   }
 
+  /**
+   * Rebuild orçado — 1 chunk/frame perto do jogador (stream não trava o frame).
+   */
+  function tickMalha(px = 0, py = 0, maxChunks = MESH_CHUNKS_POR_FRAME) {
+    const sujos = listarChunksSujos();
+    if (!sujos.length) return 0;
+    const cx = Math.floor(px / CHUNK_XZ);
+    const cy = Math.floor(py / CHUNK_XZ);
+    sujos.sort((a, b) => {
+      const da = (a.cx - cx) * (a.cx - cx) + (a.cy - cy) * (a.cy - cy);
+      const db = (b.cx - cx) * (b.cx - cx) + (b.cy - cy) * (b.cy - cy);
+      return da - db;
+    });
+    let n = 0;
+    const lim = Math.max(1, maxChunks | 0);
+    for (const chunk of sujos) {
+      if (n >= lim) break;
+      reconstruirChunk(chunk);
+      n++;
+    }
+    return n;
+  }
+
+  // Só libera unload sync; mesh sujo fica pro tickMalha (evita 11×mesh no stream).
   onDirty((aabb) => {
     if (aabb?.unload) {
       const cx0 = Math.floor(aabb.x0 / CHUNK_XZ);
@@ -490,9 +504,7 @@ export function criarTerrenoMalha(atlas = null) {
       const key = `${cx0},${cy0}`;
       liberarGrupoChunk(meshesPorChunk.get(key));
       meshesPorChunk.delete(key);
-      return;
     }
-    reconstruirSujados();
   });
 
   function aplicarAtlas(novoAtlas) {
@@ -519,6 +531,7 @@ export function criarTerrenoMalha(atlas = null) {
     aplicarAtlas,
     aplicarVisual(usarTilesFlag) {
       const real = !!(usarTilesFlag && atlasAplicado);
+      modoCubos = !real;
       grupoReal.visible = real;
       grupoCubos.visible = !real;
       if (!real) {
@@ -529,6 +542,7 @@ export function criarTerrenoMalha(atlas = null) {
         });
       }
     },
+    tickMalha,
     reconstruirSujados,
     reconstruirTudo,
     liberar() {

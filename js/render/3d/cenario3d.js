@@ -207,6 +207,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   if (!estado) return null;
 
   sincronizarVisualTerreno(atlas);
+  estado.terreno.tickMalha?.(corpo.x, corpo.y);
   seguirAlvo3d(estado.camera3d, corpo, dt);
 
   const yaw = yawCamera(estado.camera3d);

@@ -17,6 +17,8 @@ export const ATRITO_AR = 1.8;
 /** Agente que segue o jogador. */
 export const AGENTE_VEL_MUL = 1;
 export const AGENTE_DIST_PARAR = 1.15;
+/** Só “chegou” se |Δelev| estiver abaixo disto (evita satisfeito no tile ao lado do cliff). */
+export const AGENTE_GAP_ELEV_PARAR = 0.85;
 
 /** Pathfinding compartilhado (muitas entidades). */
 export const PATH_EXPAND_POR_FRAME = 768;
@@ -149,6 +151,8 @@ export const CHUNK_Y = 64;
 export const RAIO_STREAM = 5;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 6;
+/** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */
+export const MESH_CHUNKS_POR_FRAME = 1;
 /** Raio (células) da grade de pathfinding em torno do centro. */
 export const NAV_RAIO = 28;
 /** Margem extra (células) no cull do terreno 2D. */
