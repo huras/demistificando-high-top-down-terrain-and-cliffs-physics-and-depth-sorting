@@ -13,6 +13,7 @@ import {
   limparLista,
 } from "./ordenacaoProfundidade.js";
 import { empilharAlvoEscalada } from "./alvoEscalada.js";
+import { atualizarFadeCobertura } from "./fadeCobertura.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
@@ -36,6 +37,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   aplicarCamera(ctx, camera);
+  atualizarFadeCobertura(corpo, dt, atlas);
   limparLista(lista);
   empilharTerreno(lista, atlas, debug, debug ? ocl?.face : null, camera);
   empilharAlvoEscalada(lista, corpo, dt);

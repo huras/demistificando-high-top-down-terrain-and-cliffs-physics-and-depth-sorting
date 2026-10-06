@@ -166,3 +166,27 @@ export const NAV_RAIO = 28;
 export const NAV_MAX_PISOS = 4;
 /** Margem extra (células) no cull do terreno 2D. */
 export const TERRENO_2D_MARGEM = 4;
+
+/** Fade de cobertura 2D — tiles/props que desenham na frente do player. */
+export const FADE_COBERTURA_ALPHA = 0.28;
+/** Velocidade do lerp exponencial (1/s). */
+export const FADE_COBERTURA_VEL = 10;
+/**
+ * Raio de visão (células de mundo) — janela circular onde o terreno
+ * na frente do player fica transparente pra ele ver o que acontece.
+ */
+export const FADE_COBERTURA_RAIO = 4.3;
+/** Meia-largura da query de peças em torno do player (células). */
+export const FADE_COBERTURA_RAIO_X = 6;
+/** Meia-altura da query (faces sul estendem na tela). */
+export const FADE_COBERTURA_RAIO_Y = 14;
+/**
+ * Só fade se z da peça > z do player + isto.
+ * 2 = cliffs de 1 e 2 degraus no chão do player ficam opacos.
+ */
+export const FADE_COBERTURA_DELTA_Z_MIN = 2;
+/**
+ * Sob teto (caverna/deck): fade só do teto/parede LOCAL (colunas sob a cabeça).
+ * Exterior de cima fica opaco — sem X-ray do mundo acima.
+ */
+export const FADE_COBERTURA_SOB_TETO = true;

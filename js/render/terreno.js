@@ -13,12 +13,20 @@ import {
   TILE,
   TILE_ART,
 } from "../config.js";
-import { alturaEm, quedaVisualFace, solidoEm } from "../mundo/altura.js";
+import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
 import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { usarTiles } from "./atlas.js";
+import { coletarPecasColuna } from "./camadasVoxel2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
+import {
+  chaveFadeFaceSul,
+  chaveFadeLateral,
+  chaveFadeProp,
+  chaveFadeTopo,
+  desenharComFadeCobertura,
+} from "./fadeCobertura.js";
 import {
   chaveEntidade,
   chaveFaceLateral,
@@ -60,85 +68,134 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
 
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
-      const z = alturaEm(cx, cy);
-      if (z <= 0) continue;
+      const pecas = coletarPecasColuna(cx, cy);
+      const zSurf = pecas.zSurf;
+      if (zSurf <= 0) continue;
 
-      // topo: ar na célula de índice = walk height (acima do bloco z-1)
-      if (z > 0 && !solidoEm(cx, cy, z)) {
-        const sortTop = chaveTopo(cy, z);
-        empilhar(lista, sortTop, 0, (ctx) => desenharTopo(ctx, cx, cy, z), TIE_TOPO, z);
+      // Todos os pisos com ar acima (superfície + cavernas / sob deck).
+      for (let i = 0; i < pecas.topos.length; i++) {
+        const zTop = pecas.topos[i];
+        const naSuperficie = zTop === zSurf;
+        const fadeTop = naSuperficie ? chaveFadeTopo(cx, cy) : null;
+        empilhar(
+          lista,
+          chaveTopo(cy, zTop),
+          0,
+          (ctx) => {
+            if (fadeTop) {
+              desenharComFadeCobertura(ctx, fadeTop, () =>
+                desenharTopo(ctx, cx, cy, zTop),
+              );
+            } else {
+              desenharTopo(ctx, cx, cy, zTop);
+            }
+          },
+          TIE_TOPO,
+          zTop,
+        );
       }
 
-      const quedaS = contarQuedaFace(cx, cy, z, 0, 1);
-      if (quedaS > 0) {
-        const sortFace = chaveFaceSul(cy, quedaS, z);
+      for (let i = 0; i < pecas.facesS.length; i++) {
+        const run = pecas.facesS[i];
+        const queda = run.zTopo - run.zBase;
+        if (queda <= 0) continue;
+        const zTop = run.zTopo;
+        const naSuperficie = zTop === zSurf;
         const destacar =
-          faceDestaque && faceDestaque.cx === cx && faceDestaque.cy === cy;
+          naSuperficie &&
+          faceDestaque &&
+          faceDestaque.cx === cx &&
+          faceDestaque.cy === cy;
+        const fadeFace = naSuperficie ? chaveFadeFaceSul(cx, cy) : null;
         empilhar(
           lista,
-          sortFace,
+          chaveFaceSul(cy, queda, zTop),
           0,
-          (ctx) => desenharFaceSul(ctx, cx, cy, z, quedaS, destacar),
+          (ctx) => {
+            const draw = () =>
+              desenharFaceSul(ctx, cx, cy, zTop, queda, destacar);
+            if (fadeFace) desenharComFadeCobertura(ctx, fadeFace, draw);
+            else draw();
+          },
           TIE_FACE,
-          z,
+          zTop,
         );
       }
 
-      const dzW = contarQuedaFace(cx, cy, z, -1, 0);
-      const dzE = contarQuedaFace(cx, cy, z, 1, 0);
-      if (dzW > 0) {
+      for (let i = 0; i < pecas.facesW.length; i++) {
+        const run = pecas.facesW[i];
+        const queda = run.zTopo - run.zBase;
+        if (queda <= 0) continue;
+        const zTop = run.zTopo;
+        const fadeW = zTop === zSurf ? chaveFadeLateral(cx, cy, "w") : null;
         empilhar(
           lista,
-          chaveFaceLateral(cy, z),
+          chaveFaceLateral(cy, zTop),
           0,
-          (ctx) => desenharFaceLateral(ctx, cx, cy, z, dzW, "w"),
+          (ctx) => {
+            const draw = () =>
+              desenharFaceLateral(ctx, cx, cy, zTop, queda, "w");
+            if (fadeW) desenharComFadeCobertura(ctx, fadeW, draw);
+            else draw();
+          },
           TIE_LATERAL,
-          z,
+          zTop,
         );
       }
-      if (dzE > 0) {
+
+      for (let i = 0; i < pecas.facesE.length; i++) {
+        const run = pecas.facesE[i];
+        const queda = run.zTopo - run.zBase;
+        if (queda <= 0) continue;
+        const zTop = run.zTopo;
+        const fadeE = zTop === zSurf ? chaveFadeLateral(cx, cy, "e") : null;
         empilhar(
           lista,
-          chaveFaceLateral(cy, z),
+          chaveFaceLateral(cy, zTop),
           0,
-          (ctx) => desenharFaceLateral(ctx, cx, cy, z, dzE, "e"),
+          (ctx) => {
+            const draw = () =>
+              desenharFaceLateral(ctx, cx, cy, zTop, queda, "e");
+            if (fadeE) desenharComFadeCobertura(ctx, fadeE, draw);
+            else draw();
+          },
           TIE_LATERAL,
-          z,
+          zTop,
         );
       }
 
       if (debug) {
         empilhar(
           lista,
-          chaveTopo(cy, z) + 0.0001,
+          chaveTopo(cy, zSurf) + 0.0001,
           0,
-          (ctx) => desenharDebug(ctx, cx, cy, z),
+          (ctx) => desenharDebug(ctx, cx, cy, zSurf),
           9,
-          z,
+          zSurf,
         );
       }
     }
   }
 
-  for (const prop of PROPS) {
+  for (let i = 0; i < PROPS.length; i++) {
+    const prop = PROPS[i];
     const px = Math.floor(prop.x);
     const py = Math.floor(prop.y);
     if (px < x0 || px > x1 || py < y0 - 2 || py > y1 + 2) continue;
     const z = alturaEm(px, py);
+    const fadeProp = chaveFadeProp(i);
     empilhar(
       lista,
       chaveEntidade(prop.y, z),
       0,
-      (ctx) => desenharProp(ctx, prop, z),
+      (ctx) =>
+        desenharComFadeCobertura(ctx, fadeProp, () =>
+          desenharProp(ctx, prop, z),
+        ),
       TIE_PROP,
       z,
     );
   }
-}
-
-/** Queda visual: Δ heightmap, limitada à espessura do topo em overhang. */
-function contarQuedaFace(cx, cy, _z, dx, dy) {
-  return quedaVisualFace(cx, cy, dx, dy);
 }
 
 function desenharTopo(ctx, cx, cy, z) {
@@ -162,10 +219,12 @@ function desenharTopoProcedural(ctx, cx, cy, z) {
   ctx.fillRect(px, py + s - 1, s, 1);
   ctx.fillRect(px + s - 1, py, 1, s);
 
-  const n = alturaEm(cx, cy - 1) < z;
-  const sEdge = alturaEm(cx, cy + 1) < z;
-  const w = alturaEm(cx - 1, cy) < z;
-  const e = alturaEm(cx + 1, cy) < z;
+  // Borda por camada (z-1): cavernas não usam só o heightmap da superfície.
+  const bz = z - 1;
+  const n = bz < 0 || !solidoEm(cx, cy - 1, bz);
+  const sEdge = bz < 0 || !solidoEm(cx, cy + 1, bz);
+  const w = bz < 0 || !solidoEm(cx - 1, cy, bz);
+  const e = bz < 0 || !solidoEm(cx + 1, cy, bz);
   const f = Math.max(2, ESCALA);
   const borda = bordaDoTopo(z);
 
