@@ -15,7 +15,6 @@ import { SPAWN } from "./mundo/mapaDemo.js";
 import {
   atualizarStreaming,
   iniciarMundoAoRedor,
-  obterAabbCarregado,
 } from "./mundo/voxel/storeMundo.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";

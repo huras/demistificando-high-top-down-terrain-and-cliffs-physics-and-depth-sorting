@@ -1,62 +1,87 @@
-import { PULO_EPS_POUSO, RAIO_CORPO } from "../config.js";
 import {
-  alturaEm,
-  colunaTemArInterno,
-  dentroDoMapa,
-  superficieSobElevacao,
-  tetoDeck,
-} from "../mundo/altura.js";
+  ALTURA_CORPO,
+  CHUNK_Y,
+  PULO_EPS_POUSO,
+  RAIO_CORPO,
+} from "../config.js";
+import { dentroDoMapa } from "../mundo/altura.js";
+import { obterBloco } from "../mundo/voxel/storeMundo.js";
+import { ehSolido } from "../mundo/voxel/tiposBloco.js";
+
+/**
+ * Walk height (= face acima do sólido) sob elevRef na coluna.
+ * Scan voxel — funciona com N cavernas / andares.
+ */
+export function chaoSobElevacao(cx, cy, elevRef) {
+  if (!dentroDoMapa(cx, cy)) return 0;
+  let z = Math.min(CHUNK_Y - 1, Math.floor(elevRef + PULO_EPS_POUSO));
+  if (z < 0) z = 0;
+  for (; z >= 0; z--) {
+    if (ehSolido(obterBloco(cx, cy, z))) return z + 1;
+  }
+  return 0;
+}
+
+/**
+ * Underside do primeiro sólido acima da cabeça (teto).
+ * Infinity se céu aberto.
+ */
+export function tetoSobreCabeca(cx, cy, elevPes, altura = ALTURA_CORPO) {
+  if (!dentroDoMapa(cx, cy)) return Infinity;
+  const zHead = Math.floor(elevPes + altura - 1e-4);
+  const z0 = Math.max(0, zHead);
+  for (let z = z0; z < CHUNK_Y; z++) {
+    if (ehSolido(obterBloco(cx, cy, z))) return z;
+  }
+  return Infinity;
+}
+
+/** True se há sólido na faixa vertical [elevPes, elevPes+altura). */
+export function corpoColideSolido(cx, cy, elevPes, altura = ALTURA_CORPO) {
+  if (!dentroDoMapa(cx, cy)) return true;
+  const z0 = Math.floor(elevPes + 1e-4);
+  const z1 = Math.floor(elevPes + altura - 1e-4);
+  for (let z = Math.max(0, z0); z <= z1 && z < CHUNK_Y; z++) {
+    if (ehSolido(obterBloco(cx, cy, z))) return true;
+  }
+  return false;
+}
 
 /**
  * Superfície sob os pés na camada da elevação.
- * Sem elevRef → topo da coluna (compat heightmap).
+ * Sem elevRef → chão sob y=CHUNK_Y (topo implícito via scan do alto).
  */
-export function alturaSobPes(x, y, elevRef = null, elevAnterior = null) {
+export function alturaSobPes(x, y, elevRef = null, _elevAnterior = null) {
   const cx = Math.floor(x);
   const cy = Math.floor(y);
-  if (elevRef == null) return alturaEm(cx, cy);
-  return superficieSobElevacao(cx, cy, elevRef, PULO_EPS_POUSO, elevAnterior);
+  if (elevRef == null) return chaoSobElevacao(cx, cy, CHUNK_Y);
+  return chaoSobElevacao(cx, cy, elevRef);
 }
 
 /**
  * Pode ocupar a célula destino?
  * modo: "andar" | "aereo" | "escalar"
- * elevacao: altura contínua dos pés (modo aereo / camada)
  */
 export function podeEntrar(cx, cy, zAtual, modo = "andar", elevacao = zAtual) {
   if (!dentroDoMapa(cx, cy)) return false;
 
   if (modo === "aereo") {
-    return podeEntrarAereo(cx, cy, elevacao);
+    return !corpoColideSolido(cx, cy, elevacao);
   }
 
-  const zDest = superficieSobElevacao(cx, cy, zAtual);
+  const zDest = chaoSobElevacao(cx, cy, elevacao + 0.35);
 
   if (modo === "escalar") {
     if (zDest <= 0) return false;
     return zDest - zAtual === 1 || zDest === zAtual;
   }
 
-  // andar: compara na mesma camada (sob o deck zDest≈chão; no deck zDest≈topo)
+  // andar: precisa piso + espaço pra cabeça; sobe só +0 (degrau sobe = pulo)
   if (zDest <= 0) return false;
-  if (zDest === zAtual) return true;
-  if (zDest > zAtual) return false;
-  return true; // zDest < zAtual — degrau pra baixo / queda
-}
-
-function podeEntrarAereo(cx, cy, elevacao) {
-  const topo = alturaEm(cx, cy);
-  if (topo <= 0) return true;
-
-  if (!colunaTemArInterno(cx, cy)) {
-    return topo <= elevacao + PULO_EPS_POUSO;
-  }
-
-  // Laje sólida [base, topo): bloqueia se os pés colidem com o volume do deck.
-  const base = tetoDeck(cx, cy);
-  if (Number.isFinite(base) && elevacao >= base && elevacao < topo) {
-    return false;
-  }
+  if (corpoColideSolido(cx, cy, zDest)) return false;
+  const zPes = Math.floor(zAtual + 1e-4);
+  if (zDest === zPes) return true;
+  if (zDest > zPes) return false;
   return true;
 }
 
@@ -68,14 +93,15 @@ export function moverComColisao(corpo, dx, dy, modo = "andar") {
   const r = RAIO_CORPO;
   const x0 = x;
   const y0 = y;
+  const elev = corpo.elevacao ?? z;
 
   if (dx !== 0) {
     const nx = x + dx;
-    if (cantosLivres(nx, y, z, r, modo, z)) x = nx;
+    if (cantosLivres(nx, y, elev, r, modo, elev)) x = nx;
   }
   if (dy !== 0) {
     const ny = y + dy;
-    if (cantosLivres(x, ny, z, r, modo, z)) y = ny;
+    if (cantosLivres(x, ny, elev, r, modo, elev)) y = ny;
   }
 
   return {
@@ -88,7 +114,7 @@ export function moverComColisao(corpo, dx, dy, modo = "andar") {
 }
 
 /**
- * Movimento no ar: atravessa vazios; parede se colide com o volume do deck / coluna.
+ * Movimento no ar: AABB vs sólidos na faixa do corpo.
  */
 export function moverAereo(corpo, dx, dy, elevacao) {
   let { x, y } = corpo;
@@ -140,20 +166,16 @@ export function celulaAFrente(x, y, dirX, dirY, elevRef = null) {
   if (sx === 0 && sy === 0) sy = 1;
   const fx = Math.floor(x) + sx;
   const fy = Math.floor(y) + sy;
-  const z =
-    elevRef != null
-      ? superficieSobElevacao(fx, fy, elevRef)
-      : alturaEm(fx, fy);
+  const elev = elevRef != null ? elevRef : CHUNK_Y;
+  const z = chaoSobElevacao(fx, fy, elev);
   return { cx: fx, cy: fy, z };
 }
 
 /**
- * Teto sólido do deck: se veio de baixo, não atravessa o underside
- * (nem com dt grande que “teleporta” pra cima da laje).
+ * Clamp vertical: não atravessa teto sólido acima da cabeça.
  */
 export function aplicarTetoOverhang(corpo) {
   const elev = corpo.elevacao ?? corpo.z;
-  const prev = corpo._elevAnterior ?? elev;
   const r = RAIO_CORPO;
   const cantos = [
     [corpo.x - r, corpo.y - r],
@@ -166,14 +188,10 @@ export function aplicarTetoOverhang(corpo) {
   for (const [px, py] of cantos) {
     const cx = Math.floor(px);
     const cy = Math.floor(py);
-    if (!dentroDoMapa(cx, cy) || !colunaTemArInterno(cx, cy)) continue;
-    const base = tetoDeck(cx, cy);
-    const topo = alturaEm(cx, cy);
-    if (!Number.isFinite(base) || topo <= 0) continue;
-
-    // Veio de baixo do underside → teto duro em base (headbonk).
-    if (prev < base - 1e-4) {
-      lim = Math.min(lim, base - 0.02);
+    if (!dentroDoMapa(cx, cy)) continue;
+    const teto = tetoSobreCabeca(cx, cy, elev);
+    if (Number.isFinite(teto)) {
+      lim = Math.min(lim, teto - ALTURA_CORPO);
     }
   }
 
@@ -181,4 +199,24 @@ export function aplicarTetoOverhang(corpo) {
     corpo.elevacao = lim;
     if (corpo.vz > 0) corpo.vz = 0;
   }
+}
+
+/**
+ * Lista pisos walkable da coluna (sólido abaixo, 2 ar pra cabeça).
+ * Usado pelo nav multi-floor.
+ */
+export function listarPisosWalkable(cx, cy, maxPisos = 8) {
+  if (!dentroDoMapa(cx, cy)) return [];
+  const out = [];
+  for (let z = 0; z < CHUNK_Y - 1 && out.length < maxPisos; z++) {
+    if (!ehSolido(obterBloco(cx, cy, z))) continue;
+    const floor = z + 1;
+    if (floor >= CHUNK_Y) continue;
+    if (ehSolido(obterBloco(cx, cy, floor))) continue;
+    if (floor + 1 < CHUNK_Y && ehSolido(obterBloco(cx, cy, floor + 1))) {
+      continue;
+    }
+    out.push(floor);
+  }
+  return out;
 }

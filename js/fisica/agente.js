@@ -10,7 +10,6 @@ import {
   VELOCIDADE_MAX,
   VELOCIDADE_SPRINT,
 } from "../config.js";
-import { superficieSobElevacao } from "../mundo/altura.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import {
   atualizarSeguirCaminho,
@@ -25,7 +24,7 @@ import {
   fecharAsaDelta,
   podeAbrirAsaDelta,
 } from "./asaDelta.js";
-import { alturaSobPes, moverAereo, moverComColisao } from "./colisao.js";
+import { alturaSobPes, corpoColideSolido, moverAereo, moverComColisao } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
 import {
   anexarEscalada,
@@ -126,6 +125,7 @@ export function criarAgente(spawn, perfil = PERFIL_COMPANHEIRO) {
     correndo: false,
     coyoteT: 0,
     puloCortado: false,
+    segurarPulo: false,
     puloBufferT: 0,
     tempoAr: 0,
     mantle: null,
@@ -268,7 +268,9 @@ export function atualizarAgente(agente, lider, dt) {
     podeIniciarPulo(agente)
   ) {
     iniciarPulo(agente);
-    agente.puloCortado = true;
+    // Segura o pulo (como Space) pra limpar degrau de 1 bloco
+    agente.segurarPulo = true;
+    agente.puloCortado = false;
   }
 
   if (lancarGlide && agente.noChao && podeIniciarPulo(agente)) {
@@ -289,6 +291,7 @@ export function atualizarAgente(agente, lider, dt) {
     }
     if (naBeirada) {
       iniciarPulo(agente);
+      agente.segurarPulo = false;
       agente.puloCortado = true;
       agente.vz = Math.sqrt(2 * GRAVIDADE * PATH_GLIDE_PULO_BONUS);
     }
@@ -431,14 +434,14 @@ function facingDeDir(dx, dy) {
 
 function cantoEmCliffAlto(corpo) {
   const r = RAIO_CORPO;
+  const elev = corpo.elevacao ?? corpo.z;
   for (const [px, py] of [
     [corpo.x - r, corpo.y - r],
     [corpo.x + r, corpo.y - r],
     [corpo.x - r, corpo.y + r],
     [corpo.x + r, corpo.y + r],
   ]) {
-    const hz = superficieSobElevacao(Math.floor(px), Math.floor(py), corpo.z);
-    if (hz > corpo.z) return true;
+    if (corpoColideSolido(Math.floor(px), Math.floor(py), elev)) return true;
   }
   return false;
 }

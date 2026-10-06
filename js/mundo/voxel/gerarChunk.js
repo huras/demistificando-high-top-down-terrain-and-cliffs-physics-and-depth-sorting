@@ -1,16 +1,17 @@
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import { preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
-import { fbm2 } from "./ruido.js";
+import { fbm2, valueNoise3 } from "./ruido.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
 
 /**
- * Gera terreno procedural no chunk (coluna sólida por altura).
- * Sem cavernas: a física/nav é surface-walking — buracos internos
- * só abriam “cuevas” visuais no cliff sem dá pra entrar.
+ * Terreno procedural: colunas + cavernas caminháveis (piso + teto + boca em cliff).
  */
 export function gerarChunkProcedural(chunk, seed) {
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
+
+  /** @type {Int16Array} */
+  const alturas = new Int16Array(CHUNK_XZ * CHUNK_XZ);
 
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
@@ -18,11 +19,78 @@ export function gerarChunkProcedural(chunk, seed) {
       const wy = baseY + ly;
       const n = fbm2(wx * 0.035, wy * 0.035, seed);
       const h = Math.max(1, Math.min(28, Math.floor(3 + n * 14)));
+      alturas[ly * CHUNK_XZ + lx] = h;
       preencherColunaSolida(chunk, lx, ly, h);
     }
   }
 
-  // garante piso em z=0
+  // Cavernas: túneis horizontais com altura ≥ 3 e piso sólido
+  for (let ly = 0; ly < CHUNK_XZ; ly++) {
+    for (let lx = 0; lx < CHUNK_XZ; lx++) {
+      const h = alturas[ly * CHUNK_XZ + lx];
+      if (h < 8) continue;
+      const wx = baseX + lx;
+      const wy = baseY + ly;
+
+      for (let lz = 2; lz < h - 3; lz++) {
+        const c = valueNoise3(wx * 0.07, wy * 0.07, lz * 0.11, seed + 77);
+        if (c <= 0.68) continue;
+
+        // Escava 3 blocos de altura (pés + cabeça + folga)
+        for (let dz = 0; dz < 3; dz++) {
+          const z = lz + dz;
+          if (z >= h - 1) break;
+          chunk.blocos[((ly * CHUNK_XZ + lx) * CHUNK_Y + z) | 0] = BLOCO.AR;
+        }
+        // Garante piso sob a caverna
+        const zPiso = lz - 1;
+        if (zPiso >= 0) {
+          const i = ((ly * CHUNK_XZ + lx) * CHUNK_Y + zPiso) | 0;
+          if (!ehSolido(chunk.blocos[i])) chunk.blocos[i] = BLOCO.PEDRA;
+        }
+      }
+    }
+  }
+
+  // Bocas: se a coluna é bem mais alta que o vizinho e tem caverna baixa, abre face
+  for (let ly = 0; ly < CHUNK_XZ; ly++) {
+    for (let lx = 0; lx < CHUNK_XZ; lx++) {
+      const h = alturas[ly * CHUNK_XZ + lx];
+      if (h < 8) continue;
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const nx = lx + dx;
+        const ny = ly + dy;
+        let hViz = 0;
+        if (nx >= 0 && ny >= 0 && nx < CHUNK_XZ && ny < CHUNK_XZ) {
+          hViz = alturas[ny * CHUNK_XZ + nx];
+        } else {
+          // Fora do chunk: estima com o mesmo ruído
+          const wx = baseX + nx;
+          const wy = baseY + ny;
+          const n = fbm2(wx * 0.035, wy * 0.035, seed);
+          hViz = Math.max(1, Math.min(28, Math.floor(3 + n * 14)));
+        }
+        if (h - hViz < 3) continue;
+
+        // Abre corredor na altura do topo do vizinho (entrada no cliff)
+        const zEnt = Math.max(1, hViz);
+        for (let z = zEnt; z < zEnt + 3 && z < h - 1; z++) {
+          chunk.blocos[((ly * CHUNK_XZ + lx) * CHUNK_Y + z) | 0] = BLOCO.AR;
+        }
+        if (zEnt - 1 >= 0) {
+          const i = ((ly * CHUNK_XZ + lx) * CHUNK_Y + (zEnt - 1)) | 0;
+          if (!ehSolido(chunk.blocos[i])) chunk.blocos[i] = BLOCO.PEDRA;
+        }
+      }
+    }
+  }
+
+  // Piso z=0 sempre sólido
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const i = ((ly * CHUNK_XZ + lx) * CHUNK_Y) | 0;

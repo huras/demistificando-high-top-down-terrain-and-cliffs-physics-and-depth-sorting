@@ -5,7 +5,6 @@ import {
   teclaEscaladaAgora,
   vetorMovimento,
 } from "../entrada/teclado.js";
-import { superficieSobElevacao } from "../mundo/altura.js";
 import {
   atualizarAsaDelta,
   atualizarCorridaAsaDelta,
@@ -14,6 +13,7 @@ import {
 } from "./asaDelta.js";
 import {
   alturaSobPes,
+  corpoColideSolido,
   moverAereo,
   moverComColisao,
 } from "./colisao.js";
@@ -61,6 +61,7 @@ export function criarCorpo(spawn) {
     travaPosMantle: null,
     hopLift: 0,
     puloCortado: false,
+    segurarPulo: false,
     coyoteT: 0,
     puloBufferT: 0,
     tempoAr: 0,
@@ -275,14 +276,14 @@ function facingDeDir(dx, dy) {
 
 function cantoEmCliffAlto(corpo) {
   const r = RAIO_CORPO;
+  const elev = corpo.elevacao ?? corpo.z;
   for (const [px, py] of [
     [corpo.x - r, corpo.y - r],
     [corpo.x + r, corpo.y - r],
     [corpo.x - r, corpo.y + r],
     [corpo.x + r, corpo.y + r],
   ]) {
-    const hz = superficieSobElevacao(Math.floor(px), Math.floor(py), corpo.z);
-    if (hz > corpo.z) return true;
+    if (corpoColideSolido(Math.floor(px), Math.floor(py), elev)) return true;
   }
   return false;
 }

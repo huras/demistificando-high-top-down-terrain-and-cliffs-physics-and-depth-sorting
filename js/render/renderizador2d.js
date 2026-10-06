@@ -63,8 +63,8 @@ function desenharPathAgente(ctx, agente) {
   for (let i = 1; i < path.cells.length; i++) {
     const a = path.cells[i - 1];
     const b = path.cells[i];
-    const za = alturaEm(a.cx, a.cy);
-    const zb = alturaEm(b.cx, b.cy);
+    const za = a.z != null && a.z > 0 ? a.z : alturaEm(a.cx, a.cy);
+    const zb = b.z != null && b.z > 0 ? b.z : alturaEm(b.cx, b.cy);
     const tipo = b.tipo | 0;
     const glide = tipo === 3;
     const climb = tipo === 2;
@@ -88,7 +88,7 @@ function desenharPathAgente(ctx, agente) {
   ctx.setLineDash([]);
   if (idx < path.cells.length) {
     const c = path.cells[idx];
-    const z = alturaEm(c.cx, c.cy);
+    const z = c.z != null && c.z > 0 ? c.z : alturaEm(c.cx, c.cy);
     const t = c.tipo | 0;
     ctx.fillStyle =
       t === 4

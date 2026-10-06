@@ -1,6 +1,11 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CHUNK_XZ, CHUNK_Y, MESH_CHUNKS_POR_FRAME } from "../../config.js";
+import {
+  CHUNK_XZ,
+  CHUNK_Y,
+  MESH_CHUNKS_POR_FRAME,
+  TRONCO_INSET,
+} from "../../config.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { alturaEm, colunaTemArInterno, espessuraTopo } from "../../mundo/altura.js";
 import {
@@ -113,6 +118,97 @@ function quadFace(wx, wy, wz, dir) {
   return geo;
 }
 
+/**
+ * Quad livre (4 vértices CCW vistos de fora) → BufferGeometry com UV.
+ * a,b,c,d = {x,y,z} em coords Three (y = elevação).
+ */
+function quadLivre(a, b, c, d) {
+  const pos = new Float32Array([
+    a.x, a.y, a.z,
+    b.x, b.y, b.z,
+    c.x, c.y, c.z,
+    a.x, a.y, a.z,
+    c.x, c.y, c.z,
+    d.x, d.y, d.z,
+  ]);
+  const uv = new Float32Array([
+    0, 0, 1, 0, 1, 1,
+    0, 0, 1, 1, 0, 1,
+  ]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Bevel (tronco parcial) só em voxel de borda de cliff.
+ * Inset apenas nos lados com ar — lados colados a sólido ficam flush.
+ */
+function geoBevelBorda(wx, wy, wz, lateraisExpostas) {
+  const i = Math.max(0, Math.min(0.45, TRONCO_INSET));
+  const y0 = wz;
+  const y1 = wz + 1 - INSET_TOPO;
+  const exp = new Set(lateraisExpostas);
+  const iS = exp.has("s") ? i : 0;
+  const iN = exp.has("n") ? i : 0;
+  const iE = exp.has("e") ? i : 0;
+  const iW = exp.has("w") ? i : 0;
+
+  // NW → SW → SE → NE (CCW de cima → normal +Y)
+  const nw = { x: wx + iW, y: y1, z: wy + iN };
+  const sw = { x: wx + iW, y: y1, z: wy + 1 - iS };
+  const se = { x: wx + 1 - iE, y: y1, z: wy + 1 - iS };
+  const ne = { x: wx + 1 - iE, y: y1, z: wy + iN };
+  const top = quadLivre(nw, sw, se, ne);
+
+  /** @type {THREE.BufferGeometry[]} */
+  const laterais = [];
+  if (exp.has("s")) {
+    laterais.push(
+      quadLivre(
+        { x: wx, y: y0, z: wy + 1 },
+        { x: wx + 1, y: y0, z: wy + 1 },
+        { x: wx + 1 - iE, y: y1, z: wy + 1 - iS },
+        { x: wx + iW, y: y1, z: wy + 1 - iS },
+      ),
+    );
+  }
+  if (exp.has("n")) {
+    laterais.push(
+      quadLivre(
+        { x: wx + 1, y: y0, z: wy },
+        { x: wx, y: y0, z: wy },
+        { x: wx + iW, y: y1, z: wy + iN },
+        { x: wx + 1 - iE, y: y1, z: wy + iN },
+      ),
+    );
+  }
+  if (exp.has("e")) {
+    laterais.push(
+      quadLivre(
+        { x: wx + 1, y: y0, z: wy + 1 },
+        { x: wx + 1, y: y0, z: wy },
+        { x: wx + 1 - iE, y: y1, z: wy + iN },
+        { x: wx + 1 - iE, y: y1, z: wy + 1 - iS },
+      ),
+    );
+  }
+  if (exp.has("w")) {
+    laterais.push(
+      quadLivre(
+        { x: wx, y: y0, z: wy },
+        { x: wx, y: y0, z: wy + 1 },
+        { x: wx + iW, y: y1, z: wy + 1 - iS },
+        { x: wx + iW, y: y1, z: wy + iN },
+      ),
+    );
+  }
+
+  return { top, laterais };
+}
+
 function caixaLedge(wx, wy, wzTopo, dir) {
   let geo;
   const y = wzTopo - LEDGE_H; // totalmente abaixo do plano do topo
@@ -183,27 +279,52 @@ function construirGeosChunk(chunk) {
         const id = obterBloco(wx, wy, lz);
         if (!ehSolido(id)) continue;
 
+        const ehSuperficie = vizinhoAr(wx, wy, lz, 0, 0, 1);
+        const lateraisAr = [];
+        for (const lat of ["s", "n", "e", "w"]) {
+          const ld = DIRS.find((x) => x.nome === lat);
+          if (vizinhoAr(wx, wy, lz, ld.dx, ld.dy, 0)) lateraisAr.push(lat);
+        }
+        // Bevel só na borda do cliff (superfície + pelo menos 1 lado aberto)
+        const ehBordaCliff =
+          ehSuperficie && lateraisAr.length > 0 && TRONCO_INSET > 0;
+
         for (const d of DIRS) {
           if (!vizinhoAr(wx, wy, lz, d.dx, d.dy, d.dz)) continue;
-          const q = quadFace(wx, wy, lz, d.nome);
 
           if (d.nome === "u") {
-            if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
-              topsTerra.push(q);
+            if (ehBordaCliff) {
+              const bevel = geoBevelBorda(wx, wy, lz, lateraisAr);
+              if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
+                topsTerra.push(bevel.top);
+              } else {
+                topsGrama.push(bevel.top);
+              }
+              for (const latGeo of bevel.laterais) faces.push(latGeo);
             } else {
-              topsGrama.push(q);
-            }
-            for (const lat of ["s", "n", "e", "w"]) {
-              const ld = DIRS.find((x) => x.nome === lat);
-              if (vizinhoAr(wx, wy, lz, ld.dx, ld.dy, 0)) {
+              const q = quadFace(wx, wy, lz, "u");
+              if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
+                topsTerra.push(q);
+              } else {
+                topsGrama.push(q);
+              }
+              for (const lat of lateraisAr) {
                 ledges.push(caixaLedge(wx, wy, lz + 1, lat));
               }
             }
           } else if (d.nome === "d") {
-            // Fundo de overhang — sem isto a câmera 3ª pessoa vê “cavernas”
-            faces.push(q);
+            faces.push(quadFace(wx, wy, lz, "d"));
           } else {
-            faces.push(q);
+            // Lateral da borda já veio no bevel inclinado
+            if (ehBordaCliff && lateraisAr.includes(d.nome)) {
+              const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
+              const queda = lz + 1 - vizSurf;
+              if (queda >= AO_QUEDA_MIN && vizSurf > 0) {
+                aos.push(planoAo(wx, wy, vizSurf, d.nome, queda));
+              }
+              continue;
+            }
+            faces.push(quadFace(wx, wy, lz, d.nome));
             const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
             const queda = lz + 1 - vizSurf;
             if (queda >= AO_QUEDA_MIN && vizSurf > 0) {

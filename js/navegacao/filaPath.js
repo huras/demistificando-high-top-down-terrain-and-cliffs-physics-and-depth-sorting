@@ -1,6 +1,10 @@
 import { PATH_EXPAND_POR_FRAME } from "../config.js";
 import { criarBusca, expandirBusca, reconstruirCaminho } from "./astar.js";
-import { celulaDeChave, chaveCelula, obterNavGrade } from "./navGrade.js";
+import {
+  chaveCelula,
+  obterNavGrade,
+  pisoMaisProximo,
+} from "./navGrade.js";
 
 /** @type {Map<string, any>} */
 const pedidos = new Map(); // entidadeId -> pedido
@@ -15,11 +19,30 @@ function coalesceKey(perfilId, startKey, goalKey) {
 }
 
 /**
- * Solicita (ou atualiza) path. Não bloqueia — resultado via obterResultadoPath.
+ * Solicita (ou atualiza) path 3D (cx,cy,zFloor).
+ * sz/gz opcionais — se null, usa piso walkable mais próximo da elevação.
  */
-export function solicitarPath(entidadeId, perfil, sx, sy, gx, gy, versao = 0) {
-  const startKey = chaveCelula(sx | 0, sy | 0);
-  const goalKey = chaveCelula(gx | 0, gy | 0);
+export function solicitarPath(
+  entidadeId,
+  perfil,
+  sx,
+  sy,
+  gx,
+  gy,
+  versao = 0,
+  sz = null,
+  gz = null,
+) {
+  const sCx = sx | 0;
+  const sCy = sy | 0;
+  const gCx = gx | 0;
+  const gCy = gy | 0;
+  const zStart =
+    sz != null ? pisoMaisProximo(sCx, sCy, sz) : pisoMaisProximo(sCx, sCy, 999);
+  const zGoal =
+    gz != null ? pisoMaisProximo(gCx, gCy, gz) : pisoMaisProximo(gCx, gCy, 999);
+  const startKey = chaveCelula(sCx, sCy, zStart);
+  const goalKey = chaveCelula(gCx, gCy, zGoal);
   const ck = coalesceKey(perfil.id, startKey, goalKey);
 
   const cached = cacheResultado.get(ck);
@@ -49,7 +72,7 @@ export function solicitarPath(entidadeId, perfil, sx, sy, gx, gy, versao = 0) {
     return;
   }
 
-  const grade = obterNavGrade(perfil, sx | 0, sy | 0, gx | 0, gy | 0);
+  const grade = obterNavGrade(perfil, sCx, sCy, gCx, gCy);
   const busca = criarBusca(grade, startKey, goalKey);
   const pedido = {
     entidadeId,
@@ -98,27 +121,16 @@ export function tickFilaPath(orcamento = PATH_EXPAND_POR_FRAME) {
     }
 
     // fatia justa: pelo menos 32, até restam
-    const fatia = Math.max(32, Math.min(restam, (orcamento / Math.max(1, filaOrdem.length)) | 0));
-    const terminou = expandirBusca(p.busca, fatia);
+    const fatia = Math.max(32, Math.min(restam, Math.ceil(restam / filaOrdem.length)));
+    const pronto = expandirBusca(p.busca, fatia);
     restam -= fatia;
 
-    if (terminou) {
+    if (pronto) {
       const path = reconstruirCaminho(p.busca);
       p.path = path;
       p.estado = "pronto";
       cacheResultado.set(p.coalesce, { path, t: performance.now() });
       filaOrdem.shift();
-    } else {
-      // round-robin
-      filaOrdem.push(filaOrdem.shift());
-    }
-  }
-
-  // limpa cache velho ocasionalmente
-  if (cacheResultado.size > 64) {
-    const agora = performance.now();
-    for (const [k, v] of cacheResultado) {
-      if (agora - v.t > CACHE_TTL_MS * 3) cacheResultado.delete(k);
     }
   }
 }

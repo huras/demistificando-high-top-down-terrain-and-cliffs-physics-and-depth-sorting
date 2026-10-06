@@ -63,7 +63,8 @@ export function heuristica(key, goalKey) {
   const b = celulaDeChave(goalKey);
   const dx = Math.abs(a.cx - b.cx);
   const dy = Math.abs(a.cy - b.cy);
-  return dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy);
+  const dz = Math.abs((a.z ?? 0) - (b.z ?? 0));
+  return dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy) + dz * 0.85;
 }
 
 export function criarBusca(grade, startKey, goalKey) {
@@ -157,9 +158,9 @@ export function reconstruirCaminho(busca) {
 
   const cells = new Array(keys.length);
   for (let i = 0; i < keys.length; i++) {
-    const { cx, cy } = celulaDeChave(keys[i]);
+    const { cx, cy, z } = celulaDeChave(keys[i]);
     const tipo = i === 0 ? 0 : busca.veioTipo.get(keys[i]) | 0;
-    cells[i] = { cx, cy, key: keys[i], tipo };
+    cells[i] = { cx, cy, z: z | 0, key: keys[i], tipo };
   }
   return {
     cells,

@@ -2,6 +2,7 @@ import {
   ASA_DELTA_DESCIDA,
   ASA_DELTA_VEL_MUL,
   ESCALADA_VEL,
+  NAV_MAX_PISOS,
   NAV_RAIO,
   PATH_CUSTO_ESCALADA,
   PATH_GLIDE_ALCANCE_MAX,
@@ -17,16 +18,14 @@ import {
   PATH_VOO_VEL,
   VELOCIDADE_MAX,
 } from "../config.js";
-import {
-  alturaEm,
-  dentroDoMapa,
-  superficieBaixa,
-  superficieSobElevacao,
-} from "../mundo/altura.js";
-import { obterAabbCarregado } from "../mundo/voxel/storeMundo.js";
+import { listarPisosWalkable } from "../fisica/colisao.js";
+import { dentroDoMapa } from "../mundo/altura.js";
+import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
+import { ehSolido } from "../mundo/voxel/tiposBloco.js";
 
 const SQRT2 = Math.SQRT2;
 const KEY_OFFSET = 32768;
+const KEY_Z_MUL = 4294967296;
 
 /** 8 direções: dx, dy, éDiagonal */
 const DIRS = [
@@ -51,14 +50,36 @@ const cache = new Map();
 let navCentro = { cx: 0, cy: 0 };
 let navRaioAtivo = 28;
 
-export function chaveCelula(cx, cy) {
-  return (((cy + KEY_OFFSET) & 0xffff) << 16) | ((cx + KEY_OFFSET) & 0xffff);
+/** Chave 3D: (cx, cy, zFloor). */
+export function chaveCelula(cx, cy, z = 0) {
+  const xy =
+    (((cy + KEY_OFFSET) & 0xffff) << 16) | ((cx + KEY_OFFSET) & 0xffff);
+  return ((z | 0) >>> 0) * KEY_Z_MUL + (xy >>> 0);
 }
 
 export function celulaDeChave(key) {
-  const cx = (key & 0xffff) - KEY_OFFSET;
-  const cy = ((key >>> 16) & 0xffff) - KEY_OFFSET;
-  return { cx, cy };
+  const z = (key / KEY_Z_MUL) | 0;
+  let xy = key - z * KEY_Z_MUL;
+  if (xy < 0) xy += KEY_Z_MUL;
+  const cx = (xy & 0xffff) - KEY_OFFSET;
+  const cy = ((xy / 65536) | 0) - KEY_OFFSET;
+  return { cx: cx | 0, cy: cy | 0, z: z | 0 };
+}
+
+/** Piso walkable mais próximo de elev (fallback: topo da lista). */
+export function pisoMaisProximo(cx, cy, elev) {
+  const pisos = listarPisosWalkable(cx, cy, NAV_MAX_PISOS);
+  if (!pisos.length) return 0;
+  let best = pisos[0];
+  let bestD = Math.abs(best - elev);
+  for (let i = 1; i < pisos.length; i++) {
+    const d = Math.abs(pisos[i] - elev);
+    if (d < bestD) {
+      bestD = d;
+      best = pisos[i];
+    }
+  }
+  return best;
 }
 
 export function invalidarNavCache(_aabb = null) {
@@ -107,6 +128,14 @@ function quedaMaxAndar(perfil) {
   return perfil.quedaMaxAndar ?? perfil.quedaMax ?? Infinity;
 }
 
+function pisosColuna(cx, cy) {
+  return listarPisosWalkable(cx, cy, NAV_MAX_PISOS);
+}
+
+function topoColuna(pisos) {
+  return pisos.length ? pisos[pisos.length - 1] : 0;
+}
+
 /** Célula na beira de precipício — única que precisa de NavLink glide. */
 function temBeiraGlide(cx, cy, zA) {
   if (zA < PATH_GLIDE_QUEDA_MIN + 1) return false;
@@ -116,7 +145,9 @@ function temBeiraGlide(cx, cy, zA) {
     [0, 1],
     [0, -1],
   ]) {
-    if (zA - alturaEm(cx + dx, cy + dy) >= PATH_GLIDE_QUEDA_MIN) return true;
+    const pisos = pisosColuna(cx + dx, cy + dy);
+    const zViz = topoColuna(pisos);
+    if (zA - zViz >= PATH_GLIDE_QUEDA_MIN) return true;
   }
   return false;
 }
@@ -128,56 +159,69 @@ function construirGrade(perfil, centroX, centroY, raio) {
   const x1 = Math.min(loaded.x1 | 0, centroX + raio);
   const y1 = Math.min(loaded.y1 | 0, centroY + raio);
 
-  /** @type {Map<number, number[]>} — NÃO usar Float32Array: chaves packed >2^24 perdem precisão. */
+  /** @type {Map<number, number[]>} */
   const edges = new Map();
+  /** Cache local de pisos no AABB */
+  const cachePisos = new Map();
+  function pisosDe(cx, cy) {
+    const k = ((cy + KEY_OFFSET) << 16) | (cx + KEY_OFFSET);
+    let p = cachePisos.get(k);
+    if (!p) {
+      p = pisosColuna(cx, cy);
+      cachePisos.set(k, p);
+    }
+    return p;
+  }
 
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
       if (!dentroDoMapa(cx, cy)) continue;
-      const zA = alturaEm(cx, cy);
-      const key = chaveCelula(cx, cy);
-      if (zA <= 0) {
-        edges.set(key, []);
-        continue;
-      }
-      const lista = [];
-      for (const [dx, dy, diag] of DIRS) {
-        const nx = cx + dx;
-        const ny = cy + dy;
-        if (!dentroDoMapa(nx, ny)) continue;
-        // Camada do destino relativa a zA — permite andar sob overhang.
-        const zB = superficieSobElevacao(nx, ny, zA);
-        if (zB <= 0) continue;
-        if (diag && !cantoDiagonalLivre(cx, cy, zA, nx, ny)) continue;
-        const edge = classificarAresta(zA, zB, perfil, diag);
-        if (!edge) continue;
-        lista.push(chaveCelula(nx, ny), edge.custo, edge.tipo);
-      }
-      // Camada do chão sob overhang — andar por baixo do deck.
-      const zBaixa = superficieBaixa(cx, cy);
-      if (zBaixa > 0 && zBaixa < zA) {
+      const pisosA = pisosDe(cx, cy);
+      if (!pisosA.length) continue;
+
+      for (const zA of pisosA) {
+        const key = chaveCelula(cx, cy, zA);
+        const lista = [];
+
         for (const [dx, dy, diag] of DIRS) {
           const nx = cx + dx;
           const ny = cy + dy;
           if (!dentroDoMapa(nx, ny)) continue;
-          const zB = superficieSobElevacao(nx, ny, zBaixa);
-          if (zB <= 0) continue;
-          if (diag && !cantoDiagonalLivre(cx, cy, zBaixa, nx, ny)) continue;
-          const edge = classificarAresta(zBaixa, zB, perfil, diag);
-          if (!edge) continue;
-          lista.push(chaveCelula(nx, ny), edge.custo, edge.tipo);
+          const pisosB = pisosDe(nx, ny);
+          if (!pisosB.length) continue;
+          if (diag && !cantoDiagonalLivre(cx, cy, zA, nx, ny, pisosDe)) {
+            continue;
+          }
+          for (const zB of pisosB) {
+            const edge = classificarAresta(zA, zB, perfil, diag);
+            if (!edge) continue;
+            lista.push(chaveCelula(nx, ny, zB), edge.custo, edge.tipo);
+          }
         }
+
+        // Shaft vertical na mesma coluna (climb curto entre andares)
+        if (perfil.podeEscalar) {
+          for (const zB of pisosA) {
+            if (zB <= zA) continue;
+            const dz = zB - zA;
+            if (dz < 2 || dz > 12) continue;
+            const custo =
+              PATH_CUSTO_ESCALADA + dz / Math.max(0.25, ESCALADA_VEL);
+            lista.push(chaveCelula(cx, cy, zB), custo, TIPO_CLIMB);
+          }
+        }
+
+        if (perfil.podePlanar && temBeiraGlide(cx, cy, zA)) {
+          adicionarGlideRays(lista, cx, cy, zA, pisosDe);
+        }
+        if (perfil.podeVoar && temBeiraGlide(cx, cy, zA)) {
+          adicionarVooRays(lista, cx, cy, zA, pisosDe);
+        }
+
+        edges.set(key, lista);
       }
-      if (perfil.podePlanar && temBeiraGlide(cx, cy, zA)) {
-        adicionarGlideRays(lista, cx, cy, zA);
-      }
-      if (perfil.podeVoar && temBeiraGlide(cx, cy, zA)) {
-        adicionarVooRays(lista, cx, cy, zA);
-      }
-      edges.set(key, lista);
     }
   }
-
 
   return {
     perfilId: perfil.id,
@@ -189,13 +233,19 @@ function construirGrade(perfil, centroX, centroY, raio) {
   };
 }
 
-function cantoDiagonalLivre(cx, cy, zA, nx, ny) {
-  const zB = alturaEm(nx, ny);
-  const teto = Math.max(zA, zB);
-  const zCornerX = alturaEm(nx, cy);
-  const zCornerY = alturaEm(cx, ny);
-  if (zCornerX > 0 && zCornerX > teto) return false;
-  if (zCornerY > 0 && zCornerY > teto) return false;
+function cantoDiagonalLivre(cx, cy, zA, nx, ny, pisosDe) {
+  const teto = zA + 1;
+  const px = pisosDe(nx, cy);
+  const py = pisosDe(cx, ny);
+  for (const z of px) {
+    if (z > teto && z <= zA + 3) return false;
+  }
+  for (const z of py) {
+    if (z > teto && z <= zA + 3) return false;
+  }
+  // Parede sólida no canto na faixa do corpo
+  if (ehSolido(obterBloco(nx, cy, Math.floor(zA)))) return false;
+  if (ehSolido(obterBloco(cx, ny, Math.floor(zA)))) return false;
   return true;
 }
 
@@ -230,11 +280,11 @@ function classificarAresta(zA, zB, perfil, diag) {
   return null;
 }
 
-function adicionarGlideRays(lista, cx, cy, zA) {
+function adicionarGlideRays(lista, cx, cy, zA, pisosDe) {
   const velGlide = VELOCIDADE_MAX * ASA_DELTA_VEL_MUL * PATH_GLIDE_ALCANCE_MUL;
   const zLaunch = zA + PATH_GLIDE_PULO_BONUS;
   const jaTem = new Set();
-  for (let i = 0; i < lista.length; i += 3) jaTem.add(lista[i] | 0);
+  for (let i = 0; i < lista.length; i += 3) jaTem.add(lista[i]);
 
   for (const [dx, dy, diag] of DIRS) {
     const passo = diag ? SQRT2 : 1;
@@ -243,9 +293,15 @@ function adicionarGlideRays(lista, cx, cy, zA) {
       const ny = cy + dy * step;
       if (!dentroDoMapa(nx, ny)) break;
 
-      const zLand = alturaEm(nx, ny);
-      if (zLand > zA) break;
+      const pisos = pisosDe(nx, ny);
+      if (!pisos.length) continue;
+      // Pouso: piso ≤ zA mais alto possível
+      let zLand = 0;
+      for (const z of pisos) {
+        if (z <= zA && z > zLand) zLand = z;
+      }
       if (zLand <= 0) continue;
+      if (zLand > zA) break;
 
       const distHoriz = step * passo;
       if (distHoriz < PATH_GLIDE_DIST_MIN) continue;
@@ -254,15 +310,18 @@ function adicionarGlideRays(lista, cx, cy, zA) {
       const picoAPico = quedaChao === 0 && distHoriz >= PATH_GLIDE_PICO_DIST_MIN;
       const quedaOk = quedaChao >= PATH_GLIDE_QUEDA_MIN;
       if (!quedaOk && !picoAPico) continue;
-      // Deck contínuo no mesmo z (ponte): walk cobre o vão — não emitir glide pico→pico.
-      if (picoAPico && !vaoTemQuedaNoRay(cx, cy, zA, dx, dy, step)) continue;
+      if (picoAPico && !vaoTemQuedaNoRay(cx, cy, zA, dx, dy, step, pisosDe)) {
+        continue;
+      }
 
       const dzLaunch = zLaunch - zLand;
       const alcanceMax = (dzLaunch / ASA_DELTA_DESCIDA) * velGlide;
       if (distHoriz > alcanceMax) continue;
-      if (!clearanceGlide(cx, cy, zLaunch, nx, ny, zLand, dx, dy, step)) continue;
+      if (!clearanceGlide(cx, cy, zLaunch, nx, ny, zLand, dx, dy, step, pisosDe)) {
+        continue;
+      }
 
-      const key = chaveCelula(nx, ny);
+      const key = chaveCelula(nx, ny, zLand);
       if (jaTem.has(key)) continue;
 
       const custo =
@@ -276,11 +335,12 @@ function adicionarGlideRays(lista, cx, cy, zA) {
   }
 }
 
-function clearanceGlide(sx, sy, zLaunch, lx, ly, zLand, dx, dy, step) {
+function clearanceGlide(sx, sy, zLaunch, lx, ly, zLand, dx, dy, step, pisosDe) {
   for (let t = 1; t <= step; t++) {
     const fx = sx + dx * t;
     const fy = sy + dy * t;
-    const zTerreno = alturaEm(fx, fy);
+    const pisos = pisosDe(fx, fy);
+    const zTerreno = topoColuna(pisos);
     if (zTerreno <= 0) continue;
     const f = t / step;
     const zGlide = zLaunch + (zLand - zLaunch) * f;
@@ -293,18 +353,17 @@ function clearanceGlide(sx, sy, zLaunch, lx, ly, zLand, dx, dy, step) {
   return true;
 }
 
-/** True se algum passo intermediário está abaixo de zA (vão real, não deck). */
-function vaoTemQuedaNoRay(sx, sy, zA, dx, dy, step) {
+function vaoTemQuedaNoRay(sx, sy, zA, dx, dy, step, pisosDe) {
   for (let t = 1; t < step; t++) {
-    const zT = alturaEm(sx + dx * t, sy + dy * t);
+    const zT = topoColuna(pisosDe(sx + dx * t, sy + dy * t));
     if (zT < zA) return true;
   }
   return false;
 }
 
-function adicionarVooRays(lista, cx, cy, zA) {
+function adicionarVooRays(lista, cx, cy, zA, pisosDe) {
   const jaTem = new Set();
-  for (let i = 0; i < lista.length; i += 3) jaTem.add(lista[i] | 0);
+  for (let i = 0; i < lista.length; i += 3) jaTem.add(lista[i]);
 
   for (const [dx, dy, diag] of DIRS) {
     const passo = diag ? SQRT2 : 1;
@@ -313,18 +372,19 @@ function adicionarVooRays(lista, cx, cy, zA) {
       const ny = cy + dy * step;
       if (!dentroDoMapa(nx, ny)) break;
 
-      const zLand = alturaEm(nx, ny);
-      if (zLand <= 0) continue;
+      const pisos = pisosDe(nx, ny);
+      if (!pisos.length) continue;
+      const zLand = topoColuna(pisos);
 
       const distHoriz = step * passo;
       if (distHoriz < PATH_VOO_DIST_MIN) continue;
 
       const zCruise = Math.max(zA, zLand) + 1.25;
-      if (!clearanceVoo(cx, cy, zA, nx, ny, zLand, zCruise, dx, dy, step)) {
+      if (!clearanceVoo(cx, cy, zA, nx, ny, zLand, zCruise, dx, dy, step, pisosDe)) {
         continue;
       }
 
-      const key = chaveCelula(nx, ny);
+      const key = chaveCelula(nx, ny, zLand);
       if (jaTem.has(key)) continue;
 
       const dist3 = Math.hypot(distHoriz, zLand - zA);
@@ -335,11 +395,11 @@ function adicionarVooRays(lista, cx, cy, zA) {
   }
 }
 
-function clearanceVoo(sx, sy, zA, lx, ly, zLand, zCruise, dx, dy, step) {
+function clearanceVoo(sx, sy, zA, lx, ly, zLand, zCruise, dx, dy, step, pisosDe) {
   for (let t = 1; t < step; t++) {
     const fx = sx + dx * t;
     const fy = sy + dy * t;
-    const zTerreno = alturaEm(fx, fy);
+    const zTerreno = topoColuna(pisosDe(fx, fy));
     if (zTerreno <= 0) continue;
     const f = t / step;
     const zPath =
@@ -355,6 +415,6 @@ export function paraCadaVizinho(grade, key, fn) {
   const arr = grade.edges.get(key);
   if (!arr) return;
   for (let i = 0; i < arr.length; i += 3) {
-    fn(arr[i] | 0, arr[i + 1], arr[i + 2] | 0);
+    fn(arr[i], arr[i + 1], arr[i + 2] | 0);
   }
 }

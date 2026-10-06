@@ -5,6 +5,8 @@ export const ESCALA = 2;
 export const EPS_SORT = 0.001;
 
 export const RAIO_CORPO = 0.28;
+/** Altura do corpo em células (pés → topo da cabeça) pra AABB voxel. */
+export const ALTURA_CORPO = 1.7;
 
 /** Corrida (células/s e células/s²). */
 export const VELOCIDADE_MAX = 5.4;
@@ -153,7 +155,14 @@ export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 6;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */
 export const MESH_CHUNKS_POR_FRAME = 1;
+/**
+ * Inset do bevel só em voxels de borda de cliff (suaviza a aresta).
+ * 0 = desliga; lados colados a sólido ficam flush.
+ */
+export const TRONCO_INSET = 0.12;
 /** Raio (células) da grade de pathfinding em torno do centro. */
 export const NAV_RAIO = 28;
+/** Máx. pisos walkable por coluna no grafo de navegação. */
+export const NAV_MAX_PISOS = 4;
 /** Margem extra (células) no cull do terreno 2D. */
 export const TERRENO_2D_MARGEM = 4;

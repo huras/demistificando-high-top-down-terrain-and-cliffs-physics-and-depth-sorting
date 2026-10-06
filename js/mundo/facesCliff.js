@@ -1,13 +1,14 @@
-import { RAIO_CORPO } from "../config.js";
+import { CHUNK_Y, RAIO_CORPO } from "../config.js";
 import { alturaEm, dentroDoMapa, quedaVisualFace } from "./altura.js";
+import { obterBloco } from "./voxel/storeMundo.js";
+import { ehSolido } from "./voxel/tiposBloco.js";
 
 /** Alcance pra grudar na face (células). */
 const ALCANCE = 0.55;
 
 /**
  * Probe O(1) — face climbável mais próxima do corpo.
- * Normal aponta para fora (lado do jogador).
- * Lateral = direita do jogador quando ele olha PRA parede (-normal).
+ * Inclui cliffs de superfície e paredes internas (caverna).
  */
 export function encontrarFacePerto(x, y, zRef) {
   const cx0 = Math.floor(x);
@@ -18,28 +19,38 @@ export function encontrarFacePerto(x, y, zRef) {
   for (let cy = cy0 - 1; cy <= cy0 + 1; cy++) {
     for (let cx = cx0 - 1; cx <= cx0 + 1; cx++) {
       if (!dentroDoMapa(cx, cy)) continue;
-      const zTopo = alturaEm(cx, cy);
-      if (zTopo <= 0) continue;
 
-      considerarFaceSul(cx, cy, zTopo, x, y, zRef, (f, s) => {
-        if (s < melhorScore) {
-          melhorScore = s;
-          melhor = f;
-        }
-      });
-      considerarFaceNorte(cx, cy, zTopo, x, y, zRef, (f, s) => {
-        if (s < melhorScore) {
-          melhorScore = s;
-          melhor = f;
-        }
-      });
-      considerarFaceOeste(cx, cy, zTopo, x, y, zRef, (f, s) => {
-        if (s < melhorScore) {
-          melhorScore = s;
-          melhor = f;
-        }
-      });
-      considerarFaceLeste(cx, cy, zTopo, x, y, zRef, (f, s) => {
+      // Faces de superfície (heightmap)
+      const zTopo = alturaEm(cx, cy);
+      if (zTopo > 0) {
+        considerarFaceSul(cx, cy, zTopo, x, y, zRef, (f, s) => {
+          if (s < melhorScore) {
+            melhorScore = s;
+            melhor = f;
+          }
+        });
+        considerarFaceNorte(cx, cy, zTopo, x, y, zRef, (f, s) => {
+          if (s < melhorScore) {
+            melhorScore = s;
+            melhor = f;
+          }
+        });
+        considerarFaceOeste(cx, cy, zTopo, x, y, zRef, (f, s) => {
+          if (s < melhorScore) {
+            melhorScore = s;
+            melhor = f;
+          }
+        });
+        considerarFaceLeste(cx, cy, zTopo, x, y, zRef, (f, s) => {
+          if (s < melhorScore) {
+            melhorScore = s;
+            melhor = f;
+          }
+        });
+      }
+
+      // Paredes voxel internas perto da elevação
+      considerarFacesVoxel(cx, cy, x, y, zRef, (f, s) => {
         if (s < melhorScore) {
           melhorScore = s;
           melhor = f;
@@ -51,17 +62,139 @@ export function encontrarFacePerto(x, y, zRef) {
   return melhor;
 }
 
-/** True se a célula tem face climbável naquele lado. */
-export function faceClimbavel(lado, cx, cy) {
+/** True se a célula tem face climbável naquele lado (superfície ou voxel). */
+export function faceClimbavel(lado, cx, cy, zRef = null) {
   if (!dentroDoMapa(cx, cy)) return null;
-  const zTopo = alturaEm(cx, cy);
-  if (zTopo <= 0) return null;
   const dir = dirDoLado(lado);
   if (!dir) return null;
-  const queda = quedaVisualFace(cx, cy, dir.dx, dir.dy);
-  if (queda < 1) return null;
-  const zBase = zTopo - queda;
-  return montarFace(lado, cx, cy, zBase, zTopo);
+
+  // Preferência: face de superfície clássica
+  const zTopo = alturaEm(cx, cy);
+  if (zTopo > 0) {
+    const queda = quedaVisualFace(cx, cy, dir.dx, dir.dy);
+    if (queda >= 1) {
+      const zBase = zTopo - queda;
+      if (zRef == null || (zRef >= zBase - 0.5 && zRef <= zTopo + 0.5)) {
+        return montarFace(lado, cx, cy, zBase, zTopo);
+      }
+    }
+  }
+
+  // Fallback: run sólido com ar no vizinho
+  const run = runSolidoExposto(lado, cx, cy, zRef);
+  if (!run) return null;
+  return montarFace(lado, cx, cy, run.zBase, run.zTopo);
+}
+
+/**
+ * Contíguo de sólidos em (cx,cy) com ar no vizinho do lado.
+ * Se zRef != null, escolhe o run que contém / mais perto de zRef.
+ */
+function runSolidoExposto(lado, cx, cy, zRef = null) {
+  const dir = dirDoLado(lado);
+  if (!dir) return null;
+  const nx = cx + dir.dx;
+  const ny = cy + dir.dy;
+
+  /** @type {{ zBase: number, zTopo: number }[]} */
+  const runs = [];
+  let z0 = null;
+  for (let z = 0; z < CHUNK_Y; z++) {
+    const solido = ehSolido(obterBloco(cx, cy, z));
+    const vizAr = !ehSolido(obterBloco(nx, ny, z));
+    if (solido && vizAr) {
+      if (z0 == null) z0 = z;
+    } else if (z0 != null) {
+      runs.push({ zBase: z0, zTopo: z });
+      z0 = null;
+    }
+  }
+  if (z0 != null) runs.push({ zBase: z0, zTopo: CHUNK_Y });
+
+  if (!runs.length) return null;
+  if (zRef == null) {
+    // Maior face
+    let best = runs[0];
+    for (const r of runs) {
+      if (r.zTopo - r.zBase > best.zTopo - best.zBase) best = r;
+    }
+    return best.zTopo - best.zBase >= 1 ? best : null;
+  }
+
+  let best = null;
+  let bestD = Infinity;
+  for (const r of runs) {
+    if (r.zTopo - r.zBase < 1) continue;
+    if (zRef >= r.zBase - 0.35 && zRef <= r.zTopo + 0.35) {
+      return r;
+    }
+    const mid = (r.zBase + r.zTopo) * 0.5;
+    const d = Math.abs(mid - zRef);
+    if (d < bestD) {
+      bestD = d;
+      best = r;
+    }
+  }
+  return best;
+}
+
+function considerarFacesVoxel(cx, cy, x, y, zRef, aceitar) {
+  for (const lado of ["s", "n", "w", "e"]) {
+    const run = runSolidoExposto(lado, cx, cy, zRef);
+    if (!run) continue;
+    if (zRef > run.zTopo - 0.05) continue;
+    if (zRef < run.zBase - 0.4) continue;
+
+    if (lado === "s") {
+      const lipY = cy + 1;
+      const ax = clamp(x, cx + RAIO_CORPO, cx + 1 - RAIO_CORPO);
+      const dy = y - lipY;
+      if (dy < -0.15 || dy > ALCANCE + 0.35) continue;
+      const dx = x - (cx + 0.5);
+      if (Math.abs(dx) > 0.65) continue;
+      const score = Math.abs(dy) + Math.abs(dx) * 0.35 - dy * 0.5 + 0.05;
+      aceitar(
+        montarFace("s", cx, cy, run.zBase, run.zTopo, ax, lipY + 0.02),
+        score,
+      );
+    } else if (lado === "n") {
+      const lipY = cy;
+      const ax = clamp(x, cx + RAIO_CORPO, cx + 1 - RAIO_CORPO);
+      const dy = lipY - y;
+      if (dy < -0.15 || dy > ALCANCE + 0.35) continue;
+      const dx = x - (cx + 0.5);
+      if (Math.abs(dx) > 0.65) continue;
+      const score = Math.abs(dy) + Math.abs(dx) * 0.35 - dy * 0.5 + 0.05;
+      aceitar(
+        montarFace("n", cx, cy, run.zBase, run.zTopo, ax, lipY - 0.02),
+        score,
+      );
+    } else if (lado === "w") {
+      const lipX = cx;
+      const ay = clamp(y, cy + RAIO_CORPO, cy + 1 - RAIO_CORPO);
+      const dx = lipX - x;
+      if (dx < -0.15 || dx > ALCANCE + 0.35) continue;
+      const dy = y - (cy + 0.5);
+      if (Math.abs(dy) > 0.65) continue;
+      const score = Math.abs(dx) + Math.abs(dy) * 0.35 - dx * 0.5 + 0.05;
+      aceitar(
+        montarFace("w", cx, cy, run.zBase, run.zTopo, lipX - 0.02, ay),
+        score,
+      );
+    } else {
+      const lipX = cx + 1;
+      const ay = clamp(y, cy + RAIO_CORPO, cy + 1 - RAIO_CORPO);
+      const dx = x - lipX;
+      if (dx < -0.15 || dx > ALCANCE + 0.35) continue;
+      const dy = y - (cy + 0.5);
+      if (Math.abs(dy) > 0.65) continue;
+      const score = Math.abs(dx) + Math.abs(dy) * 0.35 - dx * 0.5 + 0.05;
+      aceitar(
+        montarFace("e", cx, cy, run.zBase, run.zTopo, lipX + 0.02, ay),
+        score,
+      );
+    }
+  }
 }
 
 function dirDoLado(lado) {
@@ -86,29 +219,24 @@ function zBaseFace(cx, cy, dx, dy, zTopo) {
 export function resolverFaceAposMovimento(x, y, elev, faceAtual, latDir = 0) {
   if (!faceAtual) return null;
 
-  // 1) quina primeiro — convex, reta ou côncava (single→double no L interno)
   const canto = primeiraFaceOk(candidatosNoCanto(faceAtual, x, y, latDir), elev);
   if (canto) return canto;
 
-  // 2) ainda na célula atual?
   if (pontoNaFaixaFace(faceAtual.lado, faceAtual.cx, faceAtual.cy, x, y)) {
-    const f = faceClimbavel(faceAtual.lado, faceAtual.cx, faceAtual.cy);
+    const f = faceClimbavel(faceAtual.lado, faceAtual.cx, faceAtual.cy, elev);
     if (f && elevacaoOk(f, elev)) return f;
   }
 
-  // 3) vizinho no mesmo lado (parede plana, inclusive single→double)
-  const viz = vizinhoMesmoLado(faceAtual, x, y);
+  const viz = vizinhoMesmoLado(faceAtual, x, y, elev);
   if (viz && elevacaoOk(viz, elev)) return viz;
 
   return null;
 }
 
 function elevacaoOk(face, elev) {
-  // folga ampla — não desgruda no canto por eps apertado
   return elev >= face.zBase + 0.02 && elev <= face.zTopo + 0.01;
 }
 
-/** Primeira candidata cuja faixa de elevação aceita o jogador. */
 function primeiraFaceOk(candidatas, elev) {
   for (let i = 0; i < candidatas.length; i++) {
     const f = candidatas[i];
@@ -134,39 +262,30 @@ function pontoNaFaixaFace(lado, cx, cy, x, y) {
   return false;
 }
 
-function vizinhoMesmoLado(face, x, y) {
+function vizinhoMesmoLado(face, x, y, elev) {
   const lado = face.lado;
   if (lado === "s" || lado === "n") {
-    // pode estar em cx-1, cx ou cx+1
     for (const cx of [Math.floor(x), Math.floor(x) - 1, Math.floor(x) + 1]) {
       if (cx === face.cx) continue;
-      const f = faceClimbavel(lado, cx, face.cy);
+      const f = faceClimbavel(lado, cx, face.cy, elev);
       if (f) return f;
     }
     return null;
   }
   for (const cy of [Math.floor(y), Math.floor(y) - 1, Math.floor(y) + 1]) {
     if (cy === face.cy) continue;
-    const f = faceClimbavel(lado, face.cx, cy);
+    const f = faceClimbavel(lado, face.cx, cy, elev);
     if (f) return f;
   }
   return null;
 }
 
-/**
- * Candidatas na quina (ordem = prioridade):
- * 1) convexo — perpendicular da MESMA célula
- * 2) plano — mesmo lado na vizinha
- * 3) côncavo — perpendicular da célula DIAGONAL (L interno / single→double)
- * 4) ombro — perpendicular da vizinha ortogonal (degrau no terraço)
- *
- * Lateral: S +leste; N +oeste; E +norte; W +sul.
- */
 function candidatosNoCanto(face, x, y, latDir) {
   const { lado, cx, cy } = face;
   const s = Math.sign(latDir || 0);
   const A = 0.55;
   const out = [];
+  const elev = (face.zBase + face.zTopo) * 0.5;
 
   const push = (...faces) => {
     for (let i = 0; i < faces.length; i++) {
@@ -177,69 +296,69 @@ function candidatosNoCanto(face, x, y, latDir) {
   if (lado === "s") {
     if (x >= cx + 1 || (x >= cx + A && s > 0)) {
       push(
-        faceClimbavel("e", cx, cy),
-        faceClimbavel("s", cx + 1, cy),
-        faceClimbavel("w", cx + 1, cy + 1),
-        faceClimbavel("w", cx + 1, cy),
+        faceClimbavel("e", cx, cy, elev),
+        faceClimbavel("s", cx + 1, cy, elev),
+        faceClimbavel("w", cx + 1, cy + 1, elev),
+        faceClimbavel("w", cx + 1, cy, elev),
       );
     }
     if (x <= cx || (x <= cx + 1 - A && s < 0)) {
       push(
-        faceClimbavel("w", cx, cy),
-        faceClimbavel("s", cx - 1, cy),
-        faceClimbavel("e", cx - 1, cy + 1),
-        faceClimbavel("e", cx - 1, cy),
+        faceClimbavel("w", cx, cy, elev),
+        faceClimbavel("s", cx - 1, cy, elev),
+        faceClimbavel("e", cx - 1, cy + 1, elev),
+        faceClimbavel("e", cx - 1, cy, elev),
       );
     }
   } else if (lado === "n") {
     if (x <= cx || (x <= cx + 1 - A && s > 0)) {
       push(
-        faceClimbavel("w", cx, cy),
-        faceClimbavel("n", cx - 1, cy),
-        faceClimbavel("e", cx - 1, cy - 1),
-        faceClimbavel("e", cx - 1, cy),
+        faceClimbavel("w", cx, cy, elev),
+        faceClimbavel("n", cx - 1, cy, elev),
+        faceClimbavel("e", cx - 1, cy - 1, elev),
+        faceClimbavel("e", cx - 1, cy, elev),
       );
     }
     if (x >= cx + 1 || (x >= cx + A && s < 0)) {
       push(
-        faceClimbavel("e", cx, cy),
-        faceClimbavel("n", cx + 1, cy),
-        faceClimbavel("w", cx + 1, cy - 1),
-        faceClimbavel("w", cx + 1, cy),
+        faceClimbavel("e", cx, cy, elev),
+        faceClimbavel("n", cx + 1, cy, elev),
+        faceClimbavel("w", cx + 1, cy - 1, elev),
+        faceClimbavel("w", cx + 1, cy, elev),
       );
     }
   } else if (lado === "e") {
     if (y <= cy || (y <= cy + 1 - A && s > 0)) {
       push(
-        faceClimbavel("n", cx, cy),
-        faceClimbavel("e", cx, cy - 1),
-        faceClimbavel("s", cx + 1, cy - 1),
-        faceClimbavel("s", cx + 1, cy),
+        faceClimbavel("n", cx, cy, elev),
+        faceClimbavel("e", cx, cy - 1, elev),
+        faceClimbavel("s", cx + 1, cy - 1, elev),
+        faceClimbavel("s", cx + 1, cy, elev),
       );
     }
     if (y >= cy + 1 || (y >= cy + A && s < 0)) {
       push(
-        faceClimbavel("s", cx, cy),
-        faceClimbavel("e", cx, cy + 1),
-        faceClimbavel("n", cx + 1, cy + 1),
-        faceClimbavel("n", cx + 1, cy),
+        faceClimbavel("s", cx, cy, elev),
+        faceClimbavel("e", cx, cy + 1, elev),
+        faceClimbavel("n", cx + 1, cy + 1, elev),
+        faceClimbavel("n", cx + 1, cy, elev),
       );
     }
   } else if (lado === "w") {
     if (y >= cy + 1 || (y >= cy + A && s > 0)) {
       push(
-        faceClimbavel("s", cx, cy),
-        faceClimbavel("w", cx, cy + 1),
-        faceClimbavel("n", cx - 1, cy + 1),
-        faceClimbavel("n", cx - 1, cy),
+        faceClimbavel("s", cx, cy, elev),
+        faceClimbavel("w", cx, cy + 1, elev),
+        faceClimbavel("n", cx - 1, cy + 1, elev),
+        faceClimbavel("n", cx - 1, cy, elev),
       );
     }
     if (y <= cy || (y <= cy + 1 - A && s < 0)) {
       push(
-        faceClimbavel("n", cx, cy),
-        faceClimbavel("w", cx, cy - 1),
-        faceClimbavel("s", cx - 1, cy - 1),
-        faceClimbavel("s", cx - 1, cy),
+        faceClimbavel("n", cx, cy, elev),
+        faceClimbavel("w", cx, cy - 1, elev),
+        faceClimbavel("s", cx - 1, cy - 1, elev),
+        faceClimbavel("s", cx - 1, cy, elev),
       );
     }
   }

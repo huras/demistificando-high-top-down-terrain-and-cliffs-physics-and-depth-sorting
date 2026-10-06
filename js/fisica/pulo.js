@@ -10,8 +10,14 @@ import {
   RAIO_CORPO,
 } from "../config.js";
 import { teclaBaixa } from "../entrada/teclado.js";
-import { dentroDoMapa, superficieSobElevacao } from "../mundo/altura.js";
-import { alturaSobPes, aplicarTetoOverhang, podeEntrar } from "./colisao.js";
+import { dentroDoMapa } from "../mundo/altura.js";
+import {
+  alturaSobPes,
+  aplicarTetoOverhang,
+  chaoSobElevacao,
+  corpoColideSolido,
+  podeEntrar,
+} from "./colisao.js";
 
 /** Edge de pulo com buffer (aperta um pouco antes de pousar). */
 export function registrarBufferPulo(corpo, apertou) {
@@ -62,22 +68,26 @@ export function iniciarQueda(corpo) {
 
 /**
  * Gravidade Mario + pouso (queda livre — sem asa).
+ * `segurarPulo` = IA segura o pulo (equivalente a Space).
  */
 export function atualizarAereo(corpo, dt) {
   if (corpo.coyoteT > 0) corpo.coyoteT -= dt;
   corpo.tempoAr = (corpo.tempoAr ?? 0) + dt;
 
+  const querSegurar =
+    !!corpo.segurarPulo || teclaBaixa("Space");
+
   if (
     !corpo.puloCortado &&
     corpo.vz > 0 &&
-    !teclaBaixa("Space")
+    !querSegurar
   ) {
     corpo.vz *= PULO_CORTE_SOLTAR;
     corpo.puloCortado = true;
   }
 
   const segurando =
-    !corpo.puloCortado && corpo.vz > 0 && teclaBaixa("Space");
+    !corpo.puloCortado && corpo.vz > 0 && querSegurar;
   const g = segurando ? GRAVIDADE_PULO_SEGURANDO : GRAVIDADE;
 
   corpo.vz -= g * dt;
@@ -85,6 +95,11 @@ export function atualizarAereo(corpo, dt) {
   corpo._elevAnterior = elevAntes;
   corpo.elevacao += corpo.vz * dt;
   aplicarTetoOverhang(corpo);
+
+  // No ápice / descida: solta o “hold” da IA
+  if (corpo.segurarPulo && corpo.vz <= 0) {
+    corpo.segurarPulo = false;
+  }
 
   const zChao = alturaSobPes(
     corpo.x,
@@ -124,6 +139,7 @@ export function pousarNoChao(corpo, zChao) {
   corpo.planando = false;
   corpo.voando = false;
   corpo.puloCortado = false;
+  corpo.segurarPulo = false;
   corpo.coyoteT = 0;
   corpo.tempoAr = 0;
   empurrarForaDeCliff(corpo);
@@ -140,6 +156,7 @@ export function pousarNoChao(corpo, zChao) {
 export function empurrarForaDeCliff(corpo) {
   const r = RAIO_CORPO;
   const z = corpo.z;
+  const elev = corpo.elevacao ?? z;
   let empX = 0;
   let empY = 0;
   const cantos = [
@@ -152,8 +169,7 @@ export function empurrarForaDeCliff(corpo) {
     const cx = Math.floor(px);
     const cy = Math.floor(py);
     if (!dentroDoMapa(cx, cy)) continue;
-    const hz = superficieSobElevacao(cx, cy, z);
-    if (hz > z) {
+    if (corpoColideSolido(cx, cy, elev)) {
       empX += Math.sign(corpo.x - (cx + 0.5));
       empY += Math.sign(corpo.y - (cy + 0.5));
     }
@@ -161,7 +177,8 @@ export function empurrarForaDeCliff(corpo) {
   if (empX === 0 && empY === 0) {
     const cx = Math.floor(corpo.x);
     const cy = Math.floor(corpo.y);
-    if (superficieSobElevacao(cx, cy, z) === z) return;
+    const hz = chaoSobElevacao(cx, cy, elev);
+    if (hz === Math.floor(elev + 1e-4) || Math.abs(hz - elev) < 0.05) return;
     for (const [dx, dy] of [
       [0, 1],
       [0, -1],
@@ -169,8 +186,8 @@ export function empurrarForaDeCliff(corpo) {
       [-1, 0],
     ]) {
       if (
-        podeEntrar(cx + dx, cy + dy, z, "andar") &&
-        superficieSobElevacao(cx + dx, cy + dy, z) === z
+        podeEntrar(cx + dx, cy + dy, z, "andar", elev) &&
+        Math.abs(chaoSobElevacao(cx + dx, cy + dy, elev) - elev) < 0.05
       ) {
         corpo.x = cx + dx + 0.5;
         corpo.y = cy + dy + 0.5;
@@ -184,7 +201,7 @@ export function empurrarForaDeCliff(corpo) {
   corpo.y += (empY / len) * (0.25 + PULO_EMPURRAO_POUSO);
   const cx = Math.floor(corpo.x);
   const cy = Math.floor(corpo.y);
-  if (superficieSobElevacao(cx, cy, z) === z) {
+  if (Math.abs(chaoSobElevacao(cx, cy, elev) - elev) < 0.05) {
     corpo.x = clamp(corpo.x, cx + r + 0.02, cx + 1 - r - 0.02);
     corpo.y = clamp(corpo.y, cy + r + 0.02, cy + 1 - r - 0.02);
   }
