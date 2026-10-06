@@ -2,6 +2,7 @@
  * Heightmap autoral da demo — patch sobre o gen procedural.
  */
 import { CHUNK_XZ } from "../../config.js";
+import { aplicarDeckRetangular, DECK_CUMES } from "../autor/ponte.js";
 import { preencherColunaSolida } from "../voxel/chunk.js";
 
 export const COLUNAS = 84;
@@ -136,10 +137,13 @@ export const PROPS = [
   { id: "placa-escada", x: 38.5, y: 18.3, tipo: "placa", texto: "ESCADA" },
   { id: "placa-muro", x: 12.5, y: 14.5, tipo: "placa", texto: "MURO" },
 
-  { id: "placa-mc-leste", x: 52.4, y: 35.5, tipo: "placa", texto: "MURO×16" },
+  { id: "placa-mc-leste", x: 51.6, y: 34.2, tipo: "placa", texto: "MURO×16" },
   { id: "placa-mc-cume", x: 49.5, y: 35.5, tipo: "placa", texto: "CUME×1" },
   { id: "placa-mc-n", x: 49.5, y: 20.4, tipo: "placa", texto: "ESC N×1" },
   { id: "placa-mc-s", x: 49.5, y: 50.4, tipo: "placa", texto: "ESC S" },
+
+  { id: "placa-ponte", x: 61.5, y: 35.5, tipo: "placa", texto: "PONTE" },
+  { id: "placa-void", x: 61.5, y: 37.4, tipo: "placa", texto: "VOID↓" },
 
   { id: "placa-mc2-leste", x: 76.4, y: 35.5, tipo: "placa", texto: "MURO×16" },
   { id: "placa-mc2-cume", x: 73.5, y: 35.5, tipo: "placa", texto: "CUME×2" },
@@ -165,5 +169,7 @@ export function aplicarPatchDemo(chunk, alturas = ALTURAS) {
       tocado = true;
     }
   }
+  // 2ª passagem: deck overhang entre cumes (ar embaixo; não altera heightmap).
+  if (aplicarDeckRetangular(chunk, DECK_CUMES)) tocado = true;
   return tocado;
 }

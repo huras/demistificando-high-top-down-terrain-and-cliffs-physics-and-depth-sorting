@@ -1,5 +1,5 @@
 import { RAIO_CORPO } from "../config.js";
-import { alturaEm, dentroDoMapa } from "./altura.js";
+import { alturaEm, dentroDoMapa, quedaVisualFace } from "./altura.js";
 
 /** Alcance pra grudar na face (células). */
 const ALCANCE = 0.55;
@@ -56,14 +56,27 @@ export function faceClimbavel(lado, cx, cy) {
   if (!dentroDoMapa(cx, cy)) return null;
   const zTopo = alturaEm(cx, cy);
   if (zTopo <= 0) return null;
-  let zBase = 0;
-  if (lado === "s") zBase = alturaEm(cx, cy + 1);
-  else if (lado === "n") zBase = alturaEm(cx, cy - 1);
-  else if (lado === "w") zBase = alturaEm(cx - 1, cy);
-  else if (lado === "e") zBase = alturaEm(cx + 1, cy);
-  else return null;
-  if (zTopo - zBase < 1) return null;
+  const dir = dirDoLado(lado);
+  if (!dir) return null;
+  const queda = quedaVisualFace(cx, cy, dir.dx, dir.dy);
+  if (queda < 1) return null;
+  const zBase = zTopo - queda;
   return montarFace(lado, cx, cy, zBase, zTopo);
+}
+
+function dirDoLado(lado) {
+  if (lado === "s") return { dx: 0, dy: 1 };
+  if (lado === "n") return { dx: 0, dy: -1 };
+  if (lado === "w") return { dx: -1, dy: 0 };
+  if (lado === "e") return { dx: 1, dy: 0 };
+  return null;
+}
+
+/** Base da face (vizinho heightmap, limitada à espessura do topo em overhang). */
+function zBaseFace(cx, cy, dx, dy, zTopo) {
+  const queda = quedaVisualFace(cx, cy, dx, dy);
+  if (queda < 1) return null;
+  return zTopo - queda;
 }
 
 /**
@@ -235,8 +248,8 @@ function candidatosNoCanto(face, x, y, latDir) {
 }
 
 function considerarFaceSul(cx, cy, zTopo, x, y, zRef, aceitar) {
-  const zBase = alturaEm(cx, cy + 1);
-  if (zTopo - zBase < 1) return;
+  const zBase = zBaseFace(cx, cy, 0, 1, zTopo);
+  if (zBase == null) return;
   if (zRef > zTopo - 0.05) return;
   const lipY = cy + 1;
   const ax = clamp(x, cx + RAIO_CORPO, cx + 1 - RAIO_CORPO);
@@ -249,8 +262,8 @@ function considerarFaceSul(cx, cy, zTopo, x, y, zRef, aceitar) {
 }
 
 function considerarFaceNorte(cx, cy, zTopo, x, y, zRef, aceitar) {
-  const zBase = alturaEm(cx, cy - 1);
-  if (zTopo - zBase < 1) return;
+  const zBase = zBaseFace(cx, cy, 0, -1, zTopo);
+  if (zBase == null) return;
   if (zRef > zTopo - 0.05) return;
   const lipY = cy;
   const ax = clamp(x, cx + RAIO_CORPO, cx + 1 - RAIO_CORPO);
@@ -263,8 +276,8 @@ function considerarFaceNorte(cx, cy, zTopo, x, y, zRef, aceitar) {
 }
 
 function considerarFaceOeste(cx, cy, zTopo, x, y, zRef, aceitar) {
-  const zBase = alturaEm(cx - 1, cy);
-  if (zTopo - zBase < 1) return;
+  const zBase = zBaseFace(cx, cy, -1, 0, zTopo);
+  if (zBase == null) return;
   if (zRef > zTopo - 0.05) return;
   const lipX = cx;
   const ay = clamp(y, cy + RAIO_CORPO, cy + 1 - RAIO_CORPO);
@@ -277,8 +290,8 @@ function considerarFaceOeste(cx, cy, zTopo, x, y, zRef, aceitar) {
 }
 
 function considerarFaceLeste(cx, cy, zTopo, x, y, zRef, aceitar) {
-  const zBase = alturaEm(cx + 1, cy);
-  if (zTopo - zBase < 1) return;
+  const zBase = zBaseFace(cx, cy, 1, 0, zTopo);
+  if (zBase == null) return;
   if (zRef > zTopo - 0.05) return;
   const lipX = cx + 1;
   const ay = clamp(y, cy + RAIO_CORPO, cy + 1 - RAIO_CORPO);

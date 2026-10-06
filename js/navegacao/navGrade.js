@@ -233,6 +233,8 @@ function adicionarGlideRays(lista, cx, cy, zA) {
       const picoAPico = quedaChao === 0 && distHoriz >= PATH_GLIDE_PICO_DIST_MIN;
       const quedaOk = quedaChao >= PATH_GLIDE_QUEDA_MIN;
       if (!quedaOk && !picoAPico) continue;
+      // Deck contínuo no mesmo z (ponte): walk cobre o vão — não emitir glide pico→pico.
+      if (picoAPico && !vaoTemQuedaNoRay(cx, cy, zA, dx, dy, step)) continue;
 
       const dzLaunch = zLaunch - zLand;
       const alcanceMax = (dzLaunch / ASA_DELTA_DESCIDA) * velGlide;
@@ -268,6 +270,15 @@ function clearanceGlide(sx, sy, zLaunch, lx, ly, zLand, dx, dy, step) {
     }
   }
   return true;
+}
+
+/** True se algum passo intermediário está abaixo de zA (vão real, não deck). */
+function vaoTemQuedaNoRay(sx, sy, zA, dx, dy, step) {
+  for (let t = 1; t < step; t++) {
+    const zT = alturaEm(sx + dx * t, sy + dy * t);
+    if (zT < zA) return true;
+  }
+  return false;
 }
 
 function adicionarVooRays(lista, cx, cy, zA) {

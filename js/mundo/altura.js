@@ -5,6 +5,14 @@ import {
   superficieEm,
 } from "./voxel/storeMundo.js";
 import { ehSolido } from "./voxel/tiposBloco.js";
+import { quedaVisualFace } from "./voxel/superficies.js";
+
+export {
+  baseTopoColuna,
+  colunaTemArInterno,
+  espessuraTopo,
+  quedaVisualFace,
+} from "./voxel/superficies.js";
 
 /** Célula com chunk carregado (mundo infinito fora do stream = inacessível). */
 export function dentroDoMapa(cx, cy) {
@@ -29,9 +37,7 @@ export function vizinho(cx, cy, dx, dy) {
 
 /** Queda sul: Δz positivo se a célula atual é mais alta que a do sul. */
 export function quedaSul(cx, cy) {
-  const z = alturaEm(cx, cy);
-  const zs = alturaEm(cx, cy + 1);
-  return z - zs;
+  return quedaVisualFace(cx, cy, 0, 1);
 }
 
 /** Bloco sólido em (cx,cy,z) — API voxel. */

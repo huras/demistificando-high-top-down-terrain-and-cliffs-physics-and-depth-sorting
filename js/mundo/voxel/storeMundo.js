@@ -1,6 +1,7 @@
 import { CHUNK_XZ, CHUNK_Y, RAIO_STREAM, SEED_MUNDO } from "../../config.js";
 import { aplicarPatchDemo, ALTURAS } from "../regioes/mapaDemoPatch.js";
 import {
+  baseTopoLocal,
   chaveChunk,
   criarChunk,
   definirLocal,
@@ -177,6 +178,16 @@ export function superficieEm(wx, wy) {
   const chunk = chunks.get(chaveChunk(cx, cy));
   if (!chunk) return 0;
   return superficieLocal(chunk, x - cx * CHUNK_XZ, y - cy * CHUNK_XZ);
+}
+
+/** Base do run sólido do topo (−1 se vazio). */
+export function baseTopoEm(wx, wy) {
+  const x = wx | 0;
+  const y = wy | 0;
+  const { cx, cy } = mundoParaChunk(x, y);
+  const chunk = chunks.get(chaveChunk(cx, cy));
+  if (!chunk) return -1;
+  return baseTopoLocal(chunk, x - cx * CHUNK_XZ, y - cy * CHUNK_XZ);
 }
 
 export function blocoSolidoEm(wx, wy, wz) {

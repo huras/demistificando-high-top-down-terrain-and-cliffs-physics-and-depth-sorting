@@ -13,7 +13,7 @@ import {
   TILE,
   TILE_ART,
 } from "../config.js";
-import { alturaEm, solidoEm } from "../mundo/altura.js";
+import { alturaEm, quedaVisualFace, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
 import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
@@ -136,11 +136,9 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
   }
 }
 
-/** Queda visual: quantos degraus de face até o vizinho (compat heightmap). */
-function contarQuedaFace(cx, cy, z, dx, dy) {
-  const zn = alturaEm(cx + dx, cy + dy);
-  const queda = z - zn;
-  return queda > 0 ? queda : 0;
+/** Queda visual: Δ heightmap, limitada à espessura do topo em overhang. */
+function contarQuedaFace(cx, cy, _z, dx, dy) {
+  return quedaVisualFace(cx, cy, dx, dy);
 }
 
 function desenharTopo(ctx, cx, cy, z) {

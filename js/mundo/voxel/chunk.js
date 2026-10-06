@@ -11,7 +11,10 @@ export function criarChunk(cx, cy) {
     cx,
     cy,
     blocos: new Uint16Array(VOLUME),
+    /** Walk height = face acima do sólido mais alto. */
     superficie: new Int16Array(CHUNK_XZ * CHUNK_XZ),
+    /** Menor lz do run sólido contíguo que inclui o topo (−1 se vazio). */
+    baseTopo: new Int16Array(CHUNK_XZ * CHUNK_XZ),
     sujo: true,
     gerado: false,
   };
@@ -58,6 +61,11 @@ export function superficieLocal(chunk, lx, ly) {
   return chunk.superficie[ly * CHUNK_XZ + lx] | 0;
 }
 
+export function baseTopoLocal(chunk, lx, ly) {
+  if (lx < 0 || ly < 0 || lx >= CHUNK_XZ || ly >= CHUNK_XZ) return -1;
+  return chunk.baseTopo[ly * CHUNK_XZ + lx] | 0;
+}
+
 export function recalcularSuperficies(chunk) {
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
@@ -74,8 +82,19 @@ function atualizarSuperficieColuna(chunk, lx, ly) {
       break;
     }
   }
+  const i = ly * CHUNK_XZ + lx;
+  if (topo < 0) {
+    chunk.superficie[i] = 0;
+    chunk.baseTopo[i] = -1;
+    return;
+  }
+  let base = topo;
+  while (base > 0 && ehSolido(chunk.blocos[indiceLocal(lx, ly, base - 1)])) {
+    base--;
+  }
   // walk height = face superior do bloco mais alto (lz ocupa [lz, lz+1])
-  chunk.superficie[ly * CHUNK_XZ + lx] = topo < 0 ? 0 : topo + 1;
+  chunk.superficie[i] = topo + 1;
+  chunk.baseTopo[i] = base;
 }
 
 /**
@@ -93,6 +112,6 @@ export function preencherColunaSolida(chunk, lx, ly, zTopo) {
     else if (lz >= z - 3 && z > 1) id = BLOCO.TERRA;
     chunk.blocos[indiceLocal(lx, ly, lz)] = id;
   }
-  chunk.superficie[ly * CHUNK_XZ + lx] = z;
+  atualizarSuperficieColuna(chunk, lx, ly);
   chunk.sujo = true;
 }

@@ -2,8 +2,9 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { CHUNK_XZ, CHUNK_Y, MESH_CHUNKS_POR_FRAME } from "../../config.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
-import { alturaEm } from "../../mundo/altura.js";
+import { alturaEm, colunaTemArInterno, espessuraTopo } from "../../mundo/altura.js";
 import {
+  baseTopoEm,
   limparSujo,
   listarChunksSujos,
   obterBloco,
@@ -214,9 +215,19 @@ function construirGeosChunk(chunk) {
 
       const zSurf = alturaEm(wx, wy);
       if (zSurf > 0) {
-        const h = Math.max(0.08, zSurf);
+        // Overhang: laje fina na altura do deck; coluna sólida: pilar 0→surf.
+        let h;
+        let yCentro;
+        if (colunaTemArInterno(wx, wy)) {
+          h = Math.max(0.08, espessuraTopo(wx, wy));
+          const base = baseTopoEm(wx, wy);
+          yCentro = (base < 0 ? zSurf - h : base) + h * 0.5;
+        } else {
+          h = Math.max(0.08, zSurf);
+          yCentro = h * 0.5;
+        }
         const box = new THREE.BoxGeometry(1, h, 1);
-        box.translate(wx + 0.5, h * 0.5, wy + 0.5);
+        box.translate(wx + 0.5, yCentro, wy + 0.5);
         pintarVertices(box, coresDoTopo(zSurf).a, corFacePorZ(zSurf));
         cubos.push(box);
       }

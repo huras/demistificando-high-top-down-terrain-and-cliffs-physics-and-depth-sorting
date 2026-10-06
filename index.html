@@ -58,8 +58,21 @@
             <span style="color:#d9a35c">z3+</span> /
             <span style="color:#e8e8f0">cume</span>.
           </p>
+          <p class="painel__dica">
+            Voxels podem ter ar interno; o gameplay ainda usa <strong>uma superfície</strong> por coluna
+            (<code>alturaEm</code> = topo). Ponte = run sólido flutuante (deck) com void embaixo.
+          </p>
           <pre class="formula" id="formula-tela">screenY = y·TILE − z·FACE − hop</pre>
           <pre class="formula" id="formula-sort">sortKey = y + z·ε</pre>
+        </section>
+
+        <section class="painel__bloco">
+          <h2>Coluna vs overhang</h2>
+          <p class="painel__dica">
+            Coluna sólida: faces 2D descem o Δheightmap inteiro (cliff).
+            Overhang/deck: a face visual e climbável limita-se à <strong>espessura do topo</strong>
+            — senão a ponte vira um muro falso de 16. Em 3D tiles o fundo já existe; em cubos vira laje, não pilar.
+          </p>
         </section>
 
         <section class="painel__bloco">
@@ -113,7 +126,8 @@
             <li>Ande para o <strong>sul</strong> do terraço — fica <em>na frente</em> da face.</li>
             <li>Na face: <kbd>E</kbd> gruda; segure lateral ao virar o canto — não solta; solte e <kbd>S</kbd> de novo pra descer.</li>
             <li>No topo: suba pra <em>mantle</em> — continue segurando pra entrar no platô; Space solta.</li>
-            <li>Leste: duas montanhas — <strong>CUME×1</strong> (norte 1 passo) e, 5 tiles depois, <strong>CUME×2</strong> (norte 2 passos); ambas com <strong>MURO×16</strong> a leste.</li>
+            <li>Leste: duas montanhas — <strong>CUME×1</strong> (norte 1 passo) e <strong>CUME×2</strong> (norte 2 passos); <strong>MURO×16</strong> nas faces leste dos cumes.</li>
+            <li>Entre os cumes: ande na <strong>PONTE</strong> (deck z=17, void embaixo). Compare 2D (saia curta) × 3D tiles (fundo) × cubos (laje). Companheiro cruza a pé com Asa-delta off.</li>
             <li>Mirante/torre alta: Space×2 → asa-delta até o chão.</li>
           </ol>
         </section>
