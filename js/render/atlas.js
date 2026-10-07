@@ -39,6 +39,17 @@ export function removerMagenta(img) {
   return c;
 }
 
+/** Sheet cliff legado (5×N). grass-on-dirt tem UNDER próprio. */
+export function sheetCliffDoAtlas(atlas) {
+  if (!atlas) return null;
+  return atlas.cliffSimples || atlas.cliffDuplo || null;
+}
+
+/** Path principal: chão com lip + cliff UNDER. */
+export function usarGrassOnDirt(atlas) {
+  return !!(atlas && atlas.visualReal && atlas.grassOnDirt);
+}
+
 /**
  * Jogador obrigatório para sprite; terreno opcional — sem ele, cubos procedurais.
  */
@@ -47,6 +58,7 @@ export async function montarAtlas(caminhos = CAMINHOS) {
     jogador,
     grama,
     terra,
+    grassOnDirtRaw,
     cliffSimplesRaw,
     cliffDuploRaw,
     mata,
@@ -55,21 +67,35 @@ export async function montarAtlas(caminhos = CAMINHOS) {
     carregarImagem(caminhos.jogador),
     tentarCarregar(caminhos.grama),
     tentarCarregar(caminhos.terra),
+    tentarCarregar(caminhos.grassOnDirt),
     tentarCarregar(caminhos.cliffSimples),
     tentarCarregar(caminhos.cliffDuplo),
     tentarCarregar(caminhos.mata),
     tentarCarregar(caminhos.arvore),
   ]);
 
-  // Single = path 2D (empilhavel). Double so fallback se single ausente.
+  const grassOnDirt = grassOnDirtRaw
+    ? (() => {
+        const c = document.createElement("canvas");
+        c.width = grassOnDirtRaw.width || grassOnDirtRaw.naturalWidth;
+        c.height = grassOnDirtRaw.height || grassOnDirtRaw.naturalHeight;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(grassOnDirtRaw, 0, 0);
+        return c;
+      })()
+    : null;
   const cliffSimples = removerMagenta(cliffSimplesRaw);
   const cliffDuplo = removerMagenta(cliffDuploRaw);
-  const terrenoPronto = !!(grama && (cliffSimples || cliffDuplo));
+  const terrenoPronto = !!(
+    grassOnDirt ||
+    (grama && (cliffSimples || cliffDuplo))
+  );
 
   return {
     jogador,
     grama,
     terra,
+    grassOnDirt,
     cliffSimples,
     cliffDuplo,
     mata,

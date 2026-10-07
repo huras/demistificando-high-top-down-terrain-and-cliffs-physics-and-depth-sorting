@@ -2,6 +2,15 @@ import {
   ESCALA,
   FACE_H,
   FLOOR_ROW_OFFSET,
+  GOD_CENTER,
+  GOD_EDGE_E,
+  GOD_EDGE_N,
+  GOD_EDGE_S,
+  GOD_EDGE_W,
+  GOD_OUT_NE,
+  GOD_OUT_NW,
+  GOD_OUT_SE,
+  GOD_OUT_SW,
   ROLE_CENTER,
   SHEET_COLS,
   TERRENO_2D_MARGEM,
@@ -16,14 +25,13 @@ import {
   onDirty,
 } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
-import { usarTiles } from "./atlas.js";
+import { usarGrassOnDirt, usarTiles } from "./atlas.js";
 import { coletarPecasColuna } from "./camadasVoxel2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
-import { sheetCliffDoAtlas } from "./cliffDualGrid.js";
 import {
+  blitGod,
   desenharFaceLateralSingle,
   desenharFaceSulSingle,
-  empilharCliffsSimples,
 } from "./cliffEmpilhar.js";
 import {
   chaveFadeFaceSul,
@@ -48,8 +56,6 @@ const TIE_PROP = 3;
 const FOLGA_Z = 20;
 
 let _atlas = null;
-/** Dual-grid single empilhado (sheet 5x3). */
-let _cliffDual = false;
 
 /** Cache do empilhamento estático (invalida com cull/mundo/debug). */
 const _cacheTerreno = { chave: "", itens: [] };
@@ -85,7 +91,6 @@ export function empilharTerreno(
 ) {
   garantirDirtyTerreno();
   _atlas = atlas;
-  _cliffDual = !!(usarTiles(atlas) && sheetCliffDoAtlas(atlas));
   const aabb = obterAabbCarregado();
   let x0 = aabb.x0 | 0;
   let y0 = aabb.y0 | 0;
@@ -116,8 +121,6 @@ export function empilharTerreno(
     y1 +
     "|" +
     (tetoCaverna == null ? "" : tetoCaverna) +
-    "|" +
-    (_cliffDual ? 1 : 0) +
     "|" +
     (debug ? 1 : 0) +
     "|" +
@@ -165,8 +168,8 @@ export function empilharTerreno(
         );
       }
 
-      // Superfície: cliffs no dual-grid. Caverna: faces voxel empilhadas.
-      empilharFacesCaverna(
+      // Face sul = cliff. W/E só no sheet legado (GOD já tem lip no chão).
+      empilharFaces(
         scratch,
         pecas.facesS,
         "s",
@@ -175,30 +178,29 @@ export function empilharTerreno(
         zSurf,
         tetoCaverna,
         faceDestaque,
-        _cliffDual,
       );
-      empilharFacesCaverna(
-        scratch,
-        pecas.facesW,
-        "w",
-        cx,
-        cy,
-        zSurf,
-        tetoCaverna,
-        null,
-        _cliffDual,
-      );
-      empilharFacesCaverna(
-        scratch,
-        pecas.facesE,
-        "e",
-        cx,
-        cy,
-        zSurf,
-        tetoCaverna,
-        null,
-        _cliffDual,
-      );
+      if (!usarGrassOnDirt(atlas)) {
+        empilharFaces(
+          scratch,
+          pecas.facesW,
+          "w",
+          cx,
+          cy,
+          zSurf,
+          tetoCaverna,
+          null,
+        );
+        empilharFaces(
+          scratch,
+          pecas.facesE,
+          "e",
+          cx,
+          cy,
+          zSurf,
+          tetoCaverna,
+          null,
+        );
+      }
 
       if (debug && (tetoCaverna == null || zSurf <= tetoCaverna)) {
         empilhar(
@@ -211,19 +213,6 @@ export function empilharTerreno(
         );
       }
     }
-  }
-
-  if (_cliffDual) {
-    empilharCliffsSimples(
-      scratch,
-      atlas,
-      x0,
-      y0,
-      x1,
-      y1,
-      tetoCaverna,
-      faceDestaque,
-    );
   }
 
   for (let i = 0; i < PROPS.length; i++) {
@@ -250,11 +239,8 @@ export function empilharTerreno(
   anexarItens(lista, scratch.itens);
 }
 
-/**
- * Empilha faces; em caverna corta no teto.
- * Com cliff dual, faces de superfície ficam a cargo do dual-grid.
- */
-function empilharFacesCaverna(
+/** Empilha faces S/W/E; em caverna corta no teto. */
+function empilharFaces(
   lista,
   runs,
   lado,
@@ -263,7 +249,6 @@ function empilharFacesCaverna(
   zSurf,
   tetoCaverna,
   faceDestaque,
-  pularSuperficieDual = false,
 ) {
   for (let i = 0; i < runs.length; i++) {
     const run = runs[i];
@@ -277,7 +262,6 @@ function empilharFacesCaverna(
     if (queda <= 0) continue;
 
     const naSuperficie = zTopo === zSurf;
-    if (pularSuperficieDual && naSuperficie) continue;
 
     const destacar =
       lado === "s" &&
@@ -361,13 +345,38 @@ function desenharTopoReal(ctx, cx, cy, z) {
   const px = mundoParaTelaX(cx);
   const py = mundoParaTelaY(cy, z);
   const s = TILE * ESCALA;
+
+  if (usarGrassOnDirt(_atlas)) {
+    blitGod(ctx, _atlas.grassOnDirt, roleChaoGod(cx, cy, z), px, py, s, s);
+    return;
+  }
+
   const id = z > 0 ? obterBloco(cx, cy, z - 1) : BLOCO.AR;
   const img =
     id === BLOCO.TERRA || id === BLOCO.PEDRA || z >= 2
       ? _atlas.terra || _atlas.grama
       : _atlas.grama;
-  // So chao (banda floor). Labios de cliff = dual-grid empilhado.
   blitRole(ctx, img, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, s, s);
+}
+
+/**
+ * Autotile 3×3 sem IN_*: canto/edge quando vizinho está mais baixo.
+ */
+function roleChaoGod(cx, cy, z) {
+  const nLow = alturaEm(cx, cy - 1) < z;
+  const sLow = alturaEm(cx, cy + 1) < z;
+  const wLow = alturaEm(cx - 1, cy) < z;
+  const eLow = alturaEm(cx + 1, cy) < z;
+
+  if (nLow && wLow) return GOD_OUT_NW;
+  if (nLow && eLow) return GOD_OUT_NE;
+  if (sLow && wLow) return GOD_OUT_SW;
+  if (sLow && eLow) return GOD_OUT_SE;
+  if (nLow) return GOD_EDGE_N;
+  if (sLow) return GOD_EDGE_S;
+  if (wLow) return GOD_EDGE_W;
+  if (eLow) return GOD_EDGE_E;
+  return GOD_CENTER;
 }
 
 function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {

@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import {
   FLOOR_ROW_OFFSET,
+  GOD_CENTER,
+  GOD_COLS,
+  GOD_EDGE_S_UNDER,
   ROLE_CENTER,
   ROLE_EDGE_S,
   SHEET_COLS,
@@ -11,10 +14,10 @@ import {
  * Extrai um tile 16×16 do sheet (role + bandOffset).
  * @returns {HTMLCanvasElement | null}
  */
-export function extrairTileCanvas(img, role, bandOffset = 0) {
+export function extrairTileCanvas(img, role, bandOffset = 0, cols = SHEET_COLS) {
   if (!img) return null;
-  const col = role % SHEET_COLS;
-  const row = bandOffset + ((role / SHEET_COLS) | 0);
+  const col = role % cols;
+  const row = bandOffset + ((role / cols) | 0);
   const canvas = document.createElement("canvas");
   canvas.width = TILE_ART;
   canvas.height = TILE_ART;
@@ -35,10 +38,29 @@ export function extrairTileCanvas(img, role, bandOffset = 0) {
  * Tile de cliff opaco: preenche fundo marrom sob pixels transparentes (magenta).
  */
 function extrairCliffSeamless(atlas) {
+  if (atlas?.grassOnDirt) {
+    const tile = extrairTileCanvas(
+      atlas.grassOnDirt,
+      GOD_EDGE_S_UNDER,
+      0,
+      GOD_COLS,
+    );
+    if (!tile) return null;
+    const out = document.createElement("canvas");
+    out.width = TILE_ART;
+    out.height = TILE_ART;
+    const ctx = out.getContext("2d");
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = "#6e4a2e";
+    ctx.fillRect(0, 0, TILE_ART, TILE_ART);
+    ctx.drawImage(tile, 0, 0);
+    return out;
+  }
+
   const sheet = atlas?.cliffSimples || atlas?.cliffDuplo;
   if (!sheet) return null;
 
-  // Single: EDGE_S e a face; CENTER e magenta vazio.
   const tile = extrairTileCanvas(sheet, ROLE_EDGE_S, 0);
   if (!tile) return null;
 
@@ -85,12 +107,16 @@ export function canvasParaTextura(fonte, { repeat = false } = {}) {
  * @returns {{ grama: THREE.Texture|null, terra: THREE.Texture|null, cliff: THREE.Texture|null, pronto: boolean, liberar: Function }}
  */
 export function criarTexturasTerreno3d(atlas) {
-  const gramaCanvas = atlas?.grama
-    ? extrairTileCanvas(atlas.grama, ROLE_CENTER, FLOOR_ROW_OFFSET)
-    : null;
-  const terraCanvas = atlas?.terra
-    ? extrairTileCanvas(atlas.terra, ROLE_CENTER, FLOOR_ROW_OFFSET)
-    : null;
+  const gramaCanvas = atlas?.grassOnDirt
+    ? extrairTileCanvas(atlas.grassOnDirt, GOD_CENTER, 0, GOD_COLS)
+    : atlas?.grama
+      ? extrairTileCanvas(atlas.grama, ROLE_CENTER, FLOOR_ROW_OFFSET)
+      : null;
+  const terraCanvas = atlas?.grassOnDirt
+    ? extrairTileCanvas(atlas.grassOnDirt, GOD_CENTER, 0, GOD_COLS)
+    : atlas?.terra
+      ? extrairTileCanvas(atlas.terra, ROLE_CENTER, FLOOR_ROW_OFFSET)
+      : null;
   const cliffCanvas = extrairCliffSeamless(atlas);
 
   const grama = canvasParaTextura(gramaCanvas, { repeat: true });

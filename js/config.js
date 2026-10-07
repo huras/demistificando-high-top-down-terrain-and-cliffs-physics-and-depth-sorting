@@ -124,7 +124,12 @@ export const CAMINHOS = {
   asaDelta: "assets/items/asa_delta.png",
   grama: "assets/terrain/grass.png",
   terra: "assets/terrain/dirt.png",
-  /** Path 2D: single empilhado (preferido). Double so fallback legado. */
+  /**
+   * Path principal 2D: grass-on-dirt 3×4 (Zerudez).
+   * Rows 0–2 = chão com lip; row 3 = OUT_SW/EDGE_S/OUT_SE _UNDER (cliff).
+   */
+  grassOnDirt: "assets/terrain/grass-on-dirt.png",
+  /** Fallback legado 5×N. */
   cliffSimples: "assets/terrain/cliff-autotile.png",
   cliffDuplo: "assets/terrain/double-cliff-autotile.png",
   mata: "assets/vegetation/green-grass.png",
@@ -138,18 +143,32 @@ export const JOGADOR_FRAME = 64;
 export const JOGADOR_ESCALA = 0.5;
 
 /**
- * Sheets processados (layout Pokemon AI / terrainBlit).
+ * Sheets processados.
  *
- * Floor (grass/dirt 5x6): banda FLOOR_ROW_OFFSET — OUT_*, EDGE_*, CENTER = CHAO.
+ * grass-on-dirt (3×4, GOD_COLS): chão com lip + cliff UNDER na row 3.
+ * Sem IN_*; laterais W/E do chão já trazem o lip — não desenha faixa lateral.
  *
- * Cliff single 5x3 (path principal): dual-grid half-cell; cada nivel de altura
- * empilha uma camada (2 de altura = 2 singles). CENTER = magenta vazio.
- *
- * Double 5x4 (legado / opcional): row 3 = *_UNDER — nao usado no empilhamento 2D.
+ * Legado 5×N (SHEET_COLS): floor band + cliff single/double.
  */
 export const TILE_ART = 16;
+/** Sheet legado Pokemon AI (5 colunas). */
 export const SHEET_COLS = 5;
 export const FLOOR_ROW_OFFSET = 3;
+/** Sheet grass-on-dirt (3 colunas). */
+export const GOD_COLS = 3;
+export const GOD_OUT_NW = 0;
+export const GOD_EDGE_N = 1;
+export const GOD_OUT_NE = 2;
+export const GOD_EDGE_W = 3;
+export const GOD_CENTER = 4;
+export const GOD_EDGE_E = 5;
+export const GOD_OUT_SW = 6;
+export const GOD_EDGE_S = 7;
+export const GOD_OUT_SE = 8;
+export const GOD_OUT_SW_UNDER = 9;
+export const GOD_EDGE_S_UNDER = 10;
+export const GOD_OUT_SE_UNDER = 11;
+
 export const ROLE_OUT_NW = 0;
 export const ROLE_EDGE_N = 1;
 export const ROLE_OUT_NE = 2;
@@ -163,11 +182,11 @@ export const ROLE_EDGE_S = 11;
 export const ROLE_OUT_SE = 12;
 export const ROLE_IN_NE = 13;
 export const ROLE_IN_NW = 14;
-/** Legado double-cliff — mantidos pra assets/3D antigos. */
+/** Legado double-cliff. */
 export const ROLE_OUT_SW_UNDER = 15;
 export const ROLE_EDGE_S_UNDER = 16;
 export const ROLE_OUT_SE_UNDER = 17;
-/** @deprecated Prefira ROLE_EDGE_S no sheet single. */
+/** @deprecated */
 export const ROLE_CLIFF_CENTER = ROLE_EDGE_S;
 
 /** Voxel / mundo infinito. */
