@@ -210,6 +210,7 @@ export const NAV_MAX_PISOS = 4;
 export const TERRENO_2D_MARGEM = 4;
 
 /** Fade de cobertura 2D — tiles/props que desenham na frente do player. */
+export const FADE_COBERTURA_ATIVO = false;
 export const FADE_COBERTURA_ALPHA = 0.28;
 /** Velocidade do lerp exponencial (1/s). */
 export const FADE_COBERTURA_VEL = 10;

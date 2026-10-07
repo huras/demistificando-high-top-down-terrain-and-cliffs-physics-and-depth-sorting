@@ -63,9 +63,9 @@ body {
 
 .cabecalho__controles {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px 14px;
+  gap: 8px;
   color: var(--texto-suave);
   font-size: 0.85rem;
 }
@@ -93,6 +93,91 @@ body {
 .btn-modo[aria-pressed="true"] {
   background: linear-gradient(180deg, #3a5a30, #2a4028);
   color: #e8ffe0;
+}
+
+.ajuda-atalhos {
+  position: relative;
+}
+
+.btn-ajuda {
+  appearance: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #243028, #1a221c);
+  color: var(--texto-suave);
+  font-family: var(--fonte-ui);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-ajuda:hover,
+.btn-ajuda:focus-visible,
+.ajuda-atalhos--aberto .btn-ajuda {
+  border-color: var(--destaque);
+  color: var(--destaque);
+  background: linear-gradient(180deg, #2e4634, #223226);
+  outline: none;
+}
+
+.ajuda-atalhos__painel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  min-width: 260px;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1c241e, #141a16);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.ajuda-atalhos__painel[hidden] {
+  display: none !important;
+}
+
+.ajuda-atalhos__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ajuda-atalhos__lista li {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(42, 56, 44, 0.55);
+}
+
+.ajuda-atalhos__lista li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.ajuda-atalhos__lista li:first-child {
+  padding-top: 0;
+}
+
+.ajuda-atalhos__teclas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+  color: var(--texto);
+  font-family: var(--fonte-mono);
+  font-size: 0.78rem;
 }
 
 kbd {

@@ -84,8 +84,8 @@ export function desenharOverlayAjuda(
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const boxX = 10;
   const boxY = 10;
-  const boxW = 420;
-  const h = debug && modoJogo === "2d" ? 96 : 72;
+  const boxW = 280;
+  const h = debug && modoJogo === "2d" ? 62 : 48;
   const padR = boxX + boxW - 12;
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(boxX, boxY, boxW, h);
@@ -93,53 +93,37 @@ export function desenharOverlayAjuda(
   ctx.font = "12px Segoe UI, sans-serif";
   ctx.textAlign = "left";
   ctx.fillStyle = "#d8f0d0";
-  ctx.fillText(
-    modoJogo === "3d" ? "Modo 3D — terceira pessoa" : "High Top-Down Demo",
-    18,
-    28,
-  );
+  ctx.fillText(modoJogo === "3d" ? "3D" : "2D", 18, 26);
 
   const fps = obterFps();
   ctx.textAlign = "right";
   ctx.fillStyle = fps >= 55 ? "#7dce6a" : fps >= 40 ? "#e0c36a" : "#ff8a7a";
-  ctx.fillText(`${fps || "—"} fps`, padR, 28);
+  ctx.fillText(`${fps || "—"} fps`, padR, 26);
 
-  ctx.textAlign = "left";
-  ctx.fillStyle = "#a8c4a8";
-  ctx.fillText(
-    modoJogo === "3d"
-      ? "click olhar · WASD · E gruda · F voo · Space/Shift↑↓ · 3=2D"
-      : debug
-        ? "DEBUG — pivôs: P amarelo · topo · face"
-        : "` debug · E gruda · F voo · T visual · 3 = 3D",
-    18,
-    46,
-  );
+  const zoom = camera?.zoom ?? 1;
+  let statusEsq = `zoom ${zoom.toFixed(2)}× · ${modoVisual}`;
+  let corEsq = "#a8c4a8";
   if (modoJogo === "2d" && ocl) {
-    const cor =
+    statusEsq = `${ocl.status} · ${statusEsq}`;
+    corEsq =
       ocl.status === "ATRÁS"
         ? "#e0c36a"
         : ocl.status === "NA FRENTE"
           ? "#7dce6a"
           : "#a8c4a8";
-    ctx.fillStyle = cor;
-    ctx.fillText(`vs face: ${ocl.status}`, 18, 64);
-  } else if (modoJogo === "3d") {
-    ctx.fillStyle = "#a8c4a8";
-    ctx.fillText("Z-buffer ativo · física compartilhada", 18, 64);
   }
-  const zoom = camera?.zoom ?? 1;
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#a8c4a8";
-  ctx.fillText(`zoom ${zoom.toFixed(2)}× · ${modoVisual}`, padR, 64);
+
   ctx.textAlign = "left";
+  ctx.fillStyle = corEsq;
+  ctx.fillText(statusEsq, 18, 42);
+
   if (debug && modoJogo === "2d") {
     ctx.fillStyle = "#ffe66d";
-    ctx.fillText("cruz = pivô de sortKey (Y)", 18, 84);
+    ctx.fillText("pivô Y", 18, 58);
     ctx.fillStyle = "#4ecdc4";
-    ctx.fillText("topo", 200, 84);
+    ctx.fillText("topo", 70, 58);
     ctx.fillStyle = "#ff6b6b";
-    ctx.fillText("F  (frente=mais saturado)", 240, 84);
+    ctx.fillText("face", 110, 58);
   }
   ctx.restore();
 }

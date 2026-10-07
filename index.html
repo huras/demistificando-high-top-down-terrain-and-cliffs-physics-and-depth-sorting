@@ -25,17 +25,38 @@
         <button type="button" id="btn-modo-3d" class="btn-modo" aria-pressed="false">
           Jogar em 3D
         </button>
-        <span><kbd>WASD</kbd> andar / strafe (3D)</span>
-        <span><kbd>Shift</kbd> sprint · no voo = desce</span>
-        <span><kbd>Space</kbd> pular · 2× asa-delta · no voo = sobe</span>
-        <span><kbd>E</kbd> grudar</span>
-        <span><kbd>F</kbd> fly on/off</span>
-        <span>3D: click = mouse-look</span>
-        <span><kbd>T</kbd> visual real / cubos</span>
-        <span><kbd>3</kbd> modo 3D</span>
-        <span><kbd>scroll</kbd> / <kbd>+</kbd><kbd>-</kbd> zoom</span>
-        <span><kbd>`</kbd> debug pivôs</span>
-        <span>LMB quebra · RMB coloca bloco</span>
+        <div class="ajuda-atalhos" id="ajuda-atalhos">
+          <button
+            type="button"
+            id="btn-ajuda-controles"
+            class="btn-ajuda"
+            aria-label="Controles"
+            aria-expanded="false"
+            aria-controls="painel-ajuda-controles"
+          >
+            ?
+          </button>
+          <div
+            class="ajuda-atalhos__painel"
+            id="painel-ajuda-controles"
+            role="tooltip"
+            hidden
+          >
+            <ul class="ajuda-atalhos__lista">
+              <li><span class="ajuda-atalhos__teclas"><kbd>WASD</kbd></span> andar / strafe (3D)</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>Shift</kbd></span> sprint · no voo = desce</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>Space</kbd></span> pular · 2× asa-delta · no voo = sobe</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>E</kbd></span> grudar / soltar face</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>F</kbd></span> fly on/off</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>T</kbd></span> visual real / cubos</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>3</kbd></span> modo 3D</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>scroll</kbd> <kbd>+</kbd><kbd>-</kbd></span> zoom</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>`</kbd></span> debug pivôs</li>
+              <li><span class="ajuda-atalhos__teclas">click</span> mouse-look (3D)</li>
+              <li><span class="ajuda-atalhos__teclas">LMB · RMB</span> quebra / coloca bloco</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </header>
 

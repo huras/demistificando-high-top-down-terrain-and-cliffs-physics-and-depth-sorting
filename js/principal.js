@@ -20,6 +20,7 @@ import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJ
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
 import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
+import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
 import { ligarHudCompanheiro, atualizarHudCompanheiro } from "./ui/hudCompanheiro.js";
 import {
   ativarInputRelativoCamera,
@@ -88,6 +89,7 @@ async function iniciar() {
   redimensionarCena();
 
   ligarHudCompanheiro(agente, CAPS_PADRAO);
+  ligarAjudaAtalhos();
   ligarControleModo(document.getElementById("btn-modo-3d"));
   aoMudarModo(aoTrocarModo);
   sincronizarCamadas(obterModo());

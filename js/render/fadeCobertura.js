@@ -2,6 +2,7 @@ import {
   ESCALA,
   FACE_H,
   FADE_COBERTURA_ALPHA,
+  FADE_COBERTURA_ATIVO,
   FADE_COBERTURA_DELTA_Z_MIN,
   FADE_COBERTURA_RAIO,
   FADE_COBERTURA_RAIO_X,
@@ -42,6 +43,13 @@ const TAU = Math.PI * 2;
  * Chamar uma vez por frame 2D, antes de empilharTerreno.
  */
 export function atualizarFadeCobertura(corpo, dt, atlas = null) {
+  if (!FADE_COBERTURA_ATIVO) {
+    cobrindoAgora.clear();
+    zonaFade = null;
+    fades.clear();
+    return;
+  }
+
   cobrindoAgora.clear();
   zonaFade = circuloVisaoPlayer(corpo);
   marcarPecasCobrindo(corpo, atlas);
@@ -82,6 +90,11 @@ export function obterZonaFadeCobertura() {
  * Desenha opaco fora do raio do player; translúcido só dentro do círculo.
  */
 export function desenharComFadeCobertura(ctx, chave, desenhar) {
+  if (!FADE_COBERTURA_ATIVO) {
+    desenhar();
+    return;
+  }
+
   const a = alphaCobertura(chave);
   if (a >= 1 - 1e-4) {
     desenhar();
