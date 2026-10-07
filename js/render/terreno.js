@@ -46,8 +46,17 @@ let _atlas = null;
 
 /**
  * Terreno 2D — cull pela viewport da câmera quando disponível.
+ * @param {{ teto: number, elev: number } | null} visaoCaverna
+ *   Se setado, só empilha geometria sob o teto (visão de caverna).
  */
-export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera = null) {
+export function empilharTerreno(
+  lista,
+  atlas,
+  debug,
+  faceDestaque = null,
+  camera = null,
+  visaoCaverna = null,
+) {
   _atlas = atlas;
   const aabb = obterAabbCarregado();
   let x0 = aabb.x0 | 0;
@@ -66,6 +75,8 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
     y1 = Math.min(y1, Math.ceil((camera.y + viewH) * inv) + FOLGA_Z + m);
   }
 
+  const tetoCaverna = visaoCaverna ? visaoCaverna.teto : null;
+
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
       const pecas = coletarPecasColuna(cx, cy);
@@ -75,6 +86,8 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
       // Todos os pisos com ar acima (superfície + cavernas / sob deck).
       for (let i = 0; i < pecas.topos.length; i++) {
         const zTop = pecas.topos[i];
+        // Caverna: sem topo exterior (acima do underside do teto).
+        if (tetoCaverna != null && zTop > tetoCaverna) continue;
         const naSuperficie = zTop === zSurf;
         const fadeTop = naSuperficie ? chaveFadeTopo(cx, cy) : null;
         empilhar(
@@ -95,76 +108,38 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
         );
       }
 
-      for (let i = 0; i < pecas.facesS.length; i++) {
-        const run = pecas.facesS[i];
-        const queda = run.zTopo - run.zBase;
-        if (queda <= 0) continue;
-        const zTop = run.zTopo;
-        const naSuperficie = zTop === zSurf;
-        const destacar =
-          naSuperficie &&
-          faceDestaque &&
-          faceDestaque.cx === cx &&
-          faceDestaque.cy === cy;
-        const fadeFace = naSuperficie ? chaveFadeFaceSul(cx, cy) : null;
-        empilhar(
-          lista,
-          chaveFaceSul(cy, queda, zTop),
-          0,
-          (ctx) => {
-            const draw = () =>
-              desenharFaceSul(ctx, cx, cy, zTop, queda, destacar);
-            if (fadeFace) desenharComFadeCobertura(ctx, fadeFace, draw);
-            else draw();
-          },
-          TIE_FACE,
-          zTop,
-        );
-      }
+      empilharFacesCaverna(
+        lista,
+        pecas.facesS,
+        "s",
+        cx,
+        cy,
+        zSurf,
+        tetoCaverna,
+        faceDestaque,
+      );
+      empilharFacesCaverna(
+        lista,
+        pecas.facesW,
+        "w",
+        cx,
+        cy,
+        zSurf,
+        tetoCaverna,
+        null,
+      );
+      empilharFacesCaverna(
+        lista,
+        pecas.facesE,
+        "e",
+        cx,
+        cy,
+        zSurf,
+        tetoCaverna,
+        null,
+      );
 
-      for (let i = 0; i < pecas.facesW.length; i++) {
-        const run = pecas.facesW[i];
-        const queda = run.zTopo - run.zBase;
-        if (queda <= 0) continue;
-        const zTop = run.zTopo;
-        const fadeW = zTop === zSurf ? chaveFadeLateral(cx, cy, "w") : null;
-        empilhar(
-          lista,
-          chaveFaceLateral(cy, zTop),
-          0,
-          (ctx) => {
-            const draw = () =>
-              desenharFaceLateral(ctx, cx, cy, zTop, queda, "w");
-            if (fadeW) desenharComFadeCobertura(ctx, fadeW, draw);
-            else draw();
-          },
-          TIE_LATERAL,
-          zTop,
-        );
-      }
-
-      for (let i = 0; i < pecas.facesE.length; i++) {
-        const run = pecas.facesE[i];
-        const queda = run.zTopo - run.zBase;
-        if (queda <= 0) continue;
-        const zTop = run.zTopo;
-        const fadeE = zTop === zSurf ? chaveFadeLateral(cx, cy, "e") : null;
-        empilhar(
-          lista,
-          chaveFaceLateral(cy, zTop),
-          0,
-          (ctx) => {
-            const draw = () =>
-              desenharFaceLateral(ctx, cx, cy, zTop, queda, "e");
-            if (fadeE) desenharComFadeCobertura(ctx, fadeE, draw);
-            else draw();
-          },
-          TIE_LATERAL,
-          zTop,
-        );
-      }
-
-      if (debug) {
+      if (debug && (tetoCaverna == null || zSurf <= tetoCaverna)) {
         empilhar(
           lista,
           chaveTopo(cy, zSurf) + 0.0001,
@@ -183,6 +158,8 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
     const py = Math.floor(prop.y);
     if (px < x0 || px > x1 || py < y0 - 2 || py > y1 + 2) continue;
     const z = alturaEm(px, py);
+    // Caverna: props do mundo de cima não entram.
+    if (tetoCaverna != null && z > tetoCaverna) continue;
     const fadeProp = chaveFadeProp(i);
     empilhar(
       lista,
@@ -195,6 +172,73 @@ export function empilharTerreno(lista, atlas, debug, faceDestaque = null, camera
       TIE_PROP,
       z,
     );
+  }
+}
+
+/**
+ * Empilha faces; em caverna corta no teto e ignora runs só de exterior.
+ */
+function empilharFacesCaverna(
+  lista,
+  runs,
+  lado,
+  cx,
+  cy,
+  zSurf,
+  tetoCaverna,
+  faceDestaque,
+) {
+  for (let i = 0; i < runs.length; i++) {
+    const run = runs[i];
+    let zBase = run.zBase;
+    let zTopo = run.zTopo;
+    if (tetoCaverna != null) {
+      if (zBase >= tetoCaverna) continue;
+      if (zTopo > tetoCaverna) zTopo = tetoCaverna;
+    }
+    const queda = zTopo - zBase;
+    if (queda <= 0) continue;
+
+    const naSuperficie = zTopo === zSurf;
+    const destacar =
+      lado === "s" &&
+      naSuperficie &&
+      faceDestaque &&
+      faceDestaque.cx === cx &&
+      faceDestaque.cy === cy;
+
+    if (lado === "s") {
+      const fadeFace = naSuperficie ? chaveFadeFaceSul(cx, cy) : null;
+      empilhar(
+        lista,
+        chaveFaceSul(cy, queda, zTopo),
+        0,
+        (ctx) => {
+          const draw = () =>
+            desenharFaceSul(ctx, cx, cy, zTopo, queda, destacar);
+          if (fadeFace) desenharComFadeCobertura(ctx, fadeFace, draw);
+          else draw();
+        },
+        TIE_FACE,
+        zTopo,
+      );
+    } else {
+      const fadeLat =
+        zTopo === zSurf ? chaveFadeLateral(cx, cy, lado) : null;
+      empilhar(
+        lista,
+        chaveFaceLateral(cy, zTopo),
+        0,
+        (ctx) => {
+          const draw = () =>
+            desenharFaceLateral(ctx, cx, cy, zTopo, queda, lado);
+          if (fadeLat) desenharComFadeCobertura(ctx, fadeLat, draw);
+          else draw();
+        },
+        TIE_LATERAL,
+        zTopo,
+      );
+    }
   }
 }
 

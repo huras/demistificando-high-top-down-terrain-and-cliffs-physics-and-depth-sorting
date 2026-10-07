@@ -1,3 +1,6 @@
+import { CAVERNA_2D_FUNDO } from "../config.js";
+import { alturaEm } from "../mundo/altura.js";
+import { obterPathDebug } from "../navegacao/seguirCaminho.js";
 import {
   aplicarCamera,
   mundoParaTelaX,
@@ -5,6 +8,7 @@ import {
   seguirAlvo,
 } from "./camera.js";
 import { desenharPivosSort } from "./debugPivos.js";
+import { atualizarFadeCobertura } from "./fadeCobertura.js";
 import { atualizarPainel, desenharOverlayAjuda } from "./hudDebug.js";
 import { desenharHudStamina } from "./hudStamina.js";
 import {
@@ -13,12 +17,10 @@ import {
   limparLista,
 } from "./ordenacaoProfundidade.js";
 import { empilharAlvoEscalada } from "./alvoEscalada.js";
-import { atualizarFadeCobertura } from "./fadeCobertura.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
-import { alturaEm } from "../mundo/altura.js";
-import { obterPathDebug } from "../navegacao/seguirCaminho.js";
+import { obterVisaoCaverna2d } from "./visaoCaverna2d.js";
 
 const lista = criarListaProfundidade();
 
@@ -29,17 +31,25 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   seguirAlvo(camera, corpo.x, corpo.y, corpo.z, corpo.hopLift, dt);
   const modoVisual = usarTiles(atlas) ? "real" : "cubos";
   const ocl = atualizarPainel(corpo, camera.zoom, modoVisual, "2d");
+  const visaoCaverna = obterVisaoCaverna2d(corpo);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#0a100c";
+  ctx.fillStyle = visaoCaverna ? CAVERNA_2D_FUNDO : "#0a100c";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   aplicarCamera(ctx, camera);
   atualizarFadeCobertura(corpo, dt, atlas);
   limparLista(lista);
-  empilharTerreno(lista, atlas, debug, debug ? ocl?.face : null, camera);
+  empilharTerreno(
+    lista,
+    atlas,
+    debug,
+    debug ? ocl?.face : null,
+    camera,
+    visaoCaverna,
+  );
   empilharAlvoEscalada(lista, corpo, dt);
   if (agente) empilharAgente(lista, atlas, agente);
   empilharPersonagem(lista, atlas, corpo);

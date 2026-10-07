@@ -175,11 +175,11 @@ export const FADE_COBERTURA_VEL = 10;
  * Raio de visão (células de mundo) — janela circular onde o terreno
  * na frente do player fica transparente pra ele ver o que acontece.
  */
-export const FADE_COBERTURA_RAIO = 4.3;
+export const FADE_COBERTURA_RAIO = 8.6;
 /** Meia-largura da query de peças em torno do player (células). */
-export const FADE_COBERTURA_RAIO_X = 6;
+export const FADE_COBERTURA_RAIO_X = 10;
 /** Meia-altura da query (faces sul estendem na tela). */
-export const FADE_COBERTURA_RAIO_Y = 14;
+export const FADE_COBERTURA_RAIO_Y = 20;
 /**
  * Só fade se z da peça > z do player + isto.
  * 2 = cliffs de 1 e 2 degraus no chão do player ficam opacos.
@@ -190,3 +190,5 @@ export const FADE_COBERTURA_DELTA_Z_MIN = 2;
  * Exterior de cima fica opaco — sem X-ray do mundo acima.
  */
 export const FADE_COBERTURA_SOB_TETO = true;
+/** Cor de fundo na visão de caverna 2D (sem mundo exterior). */
+export const CAVERNA_2D_FUNDO = "#07060a";
