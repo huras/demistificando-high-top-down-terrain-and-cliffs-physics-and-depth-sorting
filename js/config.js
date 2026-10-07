@@ -63,9 +63,9 @@ export const VOO_POUSO_EPS = 0.2;
 
 /**
  * Pulo Mario: segurar Space = gravidade leve; soltar = corta vz.
- * Tap ≈ v²/(2·g) ≈ 1.15 → sobe +1 sem segurar; hold ≈ 2.3 → +2.
+ * Hold ≈ v²/(2·g_hold) ≈ 1.25 → sobe +1 (single cliff); tap = hop curto.
  */
-export const PULO_VELOCIDADE = 7.4;
+export const PULO_VELOCIDADE = 5.5;
 export const GRAVIDADE = 24;
 export const GRAVIDADE_PULO_SEGURANDO = 12;
 export const PULO_CORTE_SOLTAR = 0.42;
