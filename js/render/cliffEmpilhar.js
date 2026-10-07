@@ -82,19 +82,29 @@ export function empilharCliffsSimples(
         const iAlto = indiceCantoAlto(h, nivel);
         const chao = escolherChao(chaoGrama, chaoTerra, vx, vy, iAlto, nivel);
 
+        // Camada sul mais baixa deste vertice? Half-cell deixa vao de 0.5 tile
+        // ate o chao — fundo #0a100c vazava (nao e sombra).
+        const maskAbaixo = nivel > 1 ? mascaraDosCantos(h, nivel - 1) : 0;
+        const rolesAbaixo = rolesDaMascara(maskAbaixo);
+        const sulMaisBaixa = !temRoleSul(rolesAbaixo);
+
         for (let r = 0; r < roles.length; r++) {
           const nome = roles[r];
           if (ROLE_VAZIO_SINGLE[nome]) continue;
           const roleId = idDoRole(nome);
           if (roleId < 0) continue;
 
+          const eSul = !!ROLE_SUL[nome];
           const destacar =
             !!faceDestaque &&
-            ROLE_SUL[nome] &&
+            eSul &&
             (faceDestaque.cx === vx - 1 || faceDestaque.cx === vx) &&
             faceDestaque.cy === vy - 1;
 
-          // Captura primitivos — sem ref mutavel do loop.
+          const chaoVao = eSul && sulMaisBaixa
+            ? escolherChaoBaixo(chaoGrama, chaoTerra, vx, vy, h, nivel)
+            : null;
+
           empilhar(
             lista,
             chaveProfundidade(wy + 0.97, nivel),
@@ -108,6 +118,8 @@ export function empilharCliffsSimples(
               nivel,
               s,
               destacar,
+              eSul && sulMaisBaixa,
+              chaoVao,
             ),
             TIE_CLIFF,
             nivel,
@@ -116,6 +128,14 @@ export function empilharCliffsSimples(
       }
     }
   }
+}
+
+function temRoleSul(roles) {
+  if (!roles) return false;
+  for (let i = 0; i < roles.length; i++) {
+    if (ROLE_SUL[roles[i]]) return true;
+  }
+  return false;
 }
 
 /**
@@ -171,17 +191,40 @@ export function desenharFaceLateralSingle(ctx, atlas, cx, cy, zTopo, queda, lado
   }
 }
 
-function criarDesenhoCamada(sheet, chao, roleId, wx, wy, z, s, destacar) {
+function criarDesenhoCamada(
+  sheet,
+  chao,
+  roleId,
+  wx,
+  wy,
+  z,
+  s,
+  destacar,
+  preencherVaoSul,
+  chaoVao,
+) {
   return (ctx) => {
     const px = mundoParaTelaX(wx);
     const py = mundoParaTelaY(wy, z);
-    // Magenta do single → chao do platô alto (mesmo truque do bake Pokemon AI).
+    // Magenta do single → chao do plato alto (bake Pokemon AI).
     if (chao) blitRole(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, s, s);
     blitRole(ctx, sheet, roleId, 0, px, py, s, s);
+
+    // Dual-grid half-cell: fundo da pilha sul fica 0.5 tile acima do chao baixo.
+    if (preencherVaoSul) {
+      const gap = s >> 1;
+      const dy = py + s;
+      if (chaoVao) {
+        blitRole(ctx, chaoVao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, dy, s, gap);
+      }
+      blitRoleFaixaSul(ctx, sheet, roleId, px, dy, s, gap);
+    }
+
     if (destacar) {
       ctx.strokeStyle = "rgba(255, 220, 80, 0.95)";
       ctx.lineWidth = 2;
-      ctx.strokeRect(px + 1, py + 1, s - 2, s - 2);
+      const h = preencherVaoSul ? s + (s >> 1) : s;
+      ctx.strokeRect(px + 1, py + 1, s - 2, h - 2);
     }
   };
 }
@@ -196,6 +239,32 @@ function escolherChao(grama, terra, vx, vy, iAlto, nivel) {
     return terra || grama;
   }
   return grama || terra;
+}
+
+/** Chao do lado baixo (cantos SW/SE) pra underfill do vao sul. */
+function escolherChaoBaixo(grama, terra, vx, vy, hCantos, nivel) {
+  let bestI = -1;
+  let bestH = -1;
+  for (let i = 0; i < 4; i++) {
+    if (hCantos[i] < nivel && hCantos[i] > bestH) {
+      bestH = hCantos[i];
+      bestI = i;
+    }
+  }
+  if (bestI < 0) return grama || terra;
+  return escolherChao(grama, terra, vx, vy, bestI, Math.max(1, bestH));
+}
+
+/** Metade de baixo do tile de cliff → preenche o vao sul. */
+function blitRoleFaixaSul(ctx, img, role, dx, dy, dw, dh) {
+  if (!img || !ctx || dh < 1) return;
+  const col = role % SHEET_COLS;
+  const row = (role / SHEET_COLS) | 0;
+  const sx = col * TILE_ART;
+  const half = TILE_ART >> 1;
+  const sy = row * TILE_ART + half;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, sx, sy, TILE_ART, half, dx, dy, dw, dh);
 }
 
 function papelLabioSulCell(cx, cy, zTopo) {
