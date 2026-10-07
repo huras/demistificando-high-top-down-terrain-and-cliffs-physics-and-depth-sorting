@@ -30,11 +30,22 @@ import {
   TILE,
   TILE_ART,
 } from "../config.js";
-import { alturaEm } from "../mundo/altura.js";
+import { solidoEm } from "../mundo/altura.js";
 import { sheetCliffDoAtlas, usarGrassOnDirt } from "./atlas.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 
 const GOD_HALF = TILE_ART >> 1;
+
+/**
+ * Vizinho ainda "alto" nesta camada de topo (z = superfície do tile).
+ * Usa solidoEm na laje (z-1), não alturaEm — em caverna/overhang o heightmap
+ * do cume mentiria e sumiria as bordas do chão interno.
+ */
+function vizinhoNaCamada(nx, ny, zTopo) {
+  const bz = (zTopo | 0) - 1;
+  if (bz < 0) return false;
+  return solidoEm(nx, ny, bz);
+}
 
 /**
  * Topo grass-on-dirt: 4 quartos (N/S/E/W + solo) a partir das bordas do sheet.
@@ -51,10 +62,10 @@ export function desenharTopoGod(ctx, atlas, cx, cy, z) {
   const dw = half + 1;
   const dh = half + 1;
 
-  const n = alturaEm(cx, cy - 1) >= z;
-  const sOk = alturaEm(cx, cy + 1) >= z;
-  const w = alturaEm(cx - 1, cy) >= z;
-  const e = alturaEm(cx + 1, cy) >= z;
+  const n = vizinhoNaCamada(cx, cy - 1, z);
+  const sOk = vizinhoNaCamada(cx, cy + 1, z);
+  const w = vizinhoNaCamada(cx - 1, cy, z);
+  const e = vizinhoNaCamada(cx + 1, cy, z);
 
   blitGodQuarto(ctx, img, roleQuartoGod(n, w, GOD_OUT_NW, GOD_EDGE_N, GOD_EDGE_W), 0, px, py, dw, dh);
   blitGodQuarto(ctx, img, roleQuartoGod(n, e, GOD_OUT_NE, GOD_EDGE_N, GOD_EDGE_E), 1, px + half, py, dw, dh);
@@ -117,8 +128,8 @@ export function desenharFaceSulSingle(ctx, atlas, cx, cy, zTopo, queda, destacar
  * UNDER sul: tile inteiro nas pontas; solo = metade SW + metade SE.
  */
 function desenharUnderGod(ctx, sheet, cx, cy, zTopo, px, dy, dw, dh) {
-  const wHigh = alturaEm(cx - 1, cy) >= zTopo;
-  const eHigh = alturaEm(cx + 1, cy) >= zTopo;
+  const wHigh = vizinhoNaCamada(cx - 1, cy, zTopo);
+  const eHigh = vizinhoNaCamada(cx + 1, cy, zTopo);
   if (eHigh && !wHigh) {
     blitGod(ctx, sheet, GOD_OUT_SW_UNDER, px, dy, dw, dh);
     return;
@@ -166,8 +177,8 @@ export function desenharFaceLateralSingle(ctx, atlas, cx, cy, zTopo, queda, lado
 }
 
 function papelLabioSulLegado(cx, cy, zTopo) {
-  const wHigh = alturaEm(cx - 1, cy) >= zTopo;
-  const eHigh = alturaEm(cx + 1, cy) >= zTopo;
+  const wHigh = vizinhoNaCamada(cx - 1, cy, zTopo);
+  const eHigh = vizinhoNaCamada(cx + 1, cy, zTopo);
   if (eHigh && !wHigh) return ROLE_OUT_SW;
   if (wHigh && !eHigh) return ROLE_OUT_SE;
   return ROLE_EDGE_S;
