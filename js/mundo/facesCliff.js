@@ -144,6 +144,7 @@ function considerarFacesVoxel(cx, cy, x, y, zRef, aceitar) {
     if (!run) continue;
     if (zRef > run.zTopo - 0.05) continue;
     if (zRef < run.zBase - 0.4) continue;
+    if (!zRefNaFaixaFace(zRef, run.zBase, run.zTopo)) continue;
 
     if (lado === "s") {
       const lipY = cy + 1;
@@ -152,7 +153,9 @@ function considerarFacesVoxel(cx, cy, x, y, zRef, aceitar) {
       if (dy < -0.15 || dy > ALCANCE + 0.35) continue;
       const dx = x - (cx + 0.5);
       if (Math.abs(dx) > 0.65) continue;
-      const score = Math.abs(dy) + Math.abs(dx) * 0.35 - dy * 0.5 + 0.05;
+      // Leve preferência vs face heightmap (boca / andares internos).
+      const score =
+        scoreFace(dy, dx, run.zBase, run.zTopo, zRef) - 0.08;
       aceitar(
         montarFace("s", cx, cy, run.zBase, run.zTopo, ax, lipY + 0.02),
         score,
@@ -164,7 +167,8 @@ function considerarFacesVoxel(cx, cy, x, y, zRef, aceitar) {
       if (dy < -0.15 || dy > ALCANCE + 0.35) continue;
       const dx = x - (cx + 0.5);
       if (Math.abs(dx) > 0.65) continue;
-      const score = Math.abs(dy) + Math.abs(dx) * 0.35 - dy * 0.5 + 0.05;
+      const score =
+        scoreFace(dy, dx, run.zBase, run.zTopo, zRef) - 0.08;
       aceitar(
         montarFace("n", cx, cy, run.zBase, run.zTopo, ax, lipY - 0.02),
         score,
@@ -176,7 +180,8 @@ function considerarFacesVoxel(cx, cy, x, y, zRef, aceitar) {
       if (dx < -0.15 || dx > ALCANCE + 0.35) continue;
       const dy = y - (cy + 0.5);
       if (Math.abs(dy) > 0.65) continue;
-      const score = Math.abs(dx) + Math.abs(dy) * 0.35 - dx * 0.5 + 0.05;
+      const score =
+        scoreFace(dx, dy, run.zBase, run.zTopo, zRef) - 0.08;
       aceitar(
         montarFace("w", cx, cy, run.zBase, run.zTopo, lipX - 0.02, ay),
         score,
@@ -188,7 +193,8 @@ function considerarFacesVoxel(cx, cy, x, y, zRef, aceitar) {
       if (dx < -0.15 || dx > ALCANCE + 0.35) continue;
       const dy = y - (cy + 0.5);
       if (Math.abs(dy) > 0.65) continue;
-      const score = Math.abs(dx) + Math.abs(dy) * 0.35 - dx * 0.5 + 0.05;
+      const score =
+        scoreFace(dx, dy, run.zBase, run.zTopo, zRef) - 0.08;
       aceitar(
         montarFace("e", cx, cy, run.zBase, run.zTopo, lipX + 0.02, ay),
         score,
@@ -366,17 +372,34 @@ function candidatosNoCanto(face, x, y, latDir) {
   return out;
 }
 
+/** Player precisa estar na faixa vertical da face (senão pega o lip do deck no topo). */
+function zRefNaFaixaFace(zRef, zBase, zTopo) {
+  return zRef >= zBase - 0.5 && zRef <= zTopo + 0.5;
+}
+
+function scoreFace(distPrin, distLat, zBase, zTopo, zRef) {
+  const midZ = (zBase + zTopo) * 0.5;
+  return (
+    Math.abs(distPrin) +
+    Math.abs(distLat) * 0.35 -
+    distPrin * 0.5 +
+    Math.abs(midZ - zRef) * 0.3
+  );
+}
+
 function considerarFaceSul(cx, cy, zTopo, x, y, zRef, aceitar) {
   const zBase = zBaseFace(cx, cy, 0, 1, zTopo);
   if (zBase == null) return;
   if (zRef > zTopo - 0.05) return;
+  // Boca de caverna: não grudar no deck do cume estando no chão.
+  if (!zRefNaFaixaFace(zRef, zBase, zTopo)) return;
   const lipY = cy + 1;
   const ax = clamp(x, cx + RAIO_CORPO, cx + 1 - RAIO_CORPO);
   const dy = y - lipY;
   if (dy < -0.15 || dy > ALCANCE + 0.35) return;
   const dx = x - (cx + 0.5);
   if (Math.abs(dx) > 0.65) return;
-  const score = Math.abs(dy) + Math.abs(dx) * 0.35 - dy * 0.5;
+  const score = scoreFace(dy, dx, zBase, zTopo, zRef);
   aceitar(montarFace("s", cx, cy, zBase, zTopo, ax, lipY + 0.02), score);
 }
 
@@ -384,13 +407,14 @@ function considerarFaceNorte(cx, cy, zTopo, x, y, zRef, aceitar) {
   const zBase = zBaseFace(cx, cy, 0, -1, zTopo);
   if (zBase == null) return;
   if (zRef > zTopo - 0.05) return;
+  if (!zRefNaFaixaFace(zRef, zBase, zTopo)) return;
   const lipY = cy;
   const ax = clamp(x, cx + RAIO_CORPO, cx + 1 - RAIO_CORPO);
   const dy = lipY - y;
   if (dy < -0.15 || dy > ALCANCE + 0.35) return;
   const dx = x - (cx + 0.5);
   if (Math.abs(dx) > 0.65) return;
-  const score = Math.abs(dy) + Math.abs(dx) * 0.35 - dy * 0.5;
+  const score = scoreFace(dy, dx, zBase, zTopo, zRef);
   aceitar(montarFace("n", cx, cy, zBase, zTopo, ax, lipY - 0.02), score);
 }
 
@@ -398,13 +422,14 @@ function considerarFaceOeste(cx, cy, zTopo, x, y, zRef, aceitar) {
   const zBase = zBaseFace(cx, cy, -1, 0, zTopo);
   if (zBase == null) return;
   if (zRef > zTopo - 0.05) return;
+  if (!zRefNaFaixaFace(zRef, zBase, zTopo)) return;
   const lipX = cx;
   const ay = clamp(y, cy + RAIO_CORPO, cy + 1 - RAIO_CORPO);
   const dx = lipX - x;
   if (dx < -0.15 || dx > ALCANCE + 0.35) return;
   const dy = y - (cy + 0.5);
   if (Math.abs(dy) > 0.65) return;
-  const score = Math.abs(dx) + Math.abs(dy) * 0.35 - dx * 0.5;
+  const score = scoreFace(dx, dy, zBase, zTopo, zRef);
   aceitar(montarFace("w", cx, cy, zBase, zTopo, lipX - 0.02, ay), score);
 }
 
@@ -412,13 +437,14 @@ function considerarFaceLeste(cx, cy, zTopo, x, y, zRef, aceitar) {
   const zBase = zBaseFace(cx, cy, 1, 0, zTopo);
   if (zBase == null) return;
   if (zRef > zTopo - 0.05) return;
+  if (!zRefNaFaixaFace(zRef, zBase, zTopo)) return;
   const lipX = cx + 1;
   const ay = clamp(y, cy + RAIO_CORPO, cy + 1 - RAIO_CORPO);
   const dx = x - lipX;
   if (dx < -0.15 || dx > ALCANCE + 0.35) return;
   const dy = y - (cy + 0.5);
   if (Math.abs(dy) > 0.65) return;
-  const score = Math.abs(dx) + Math.abs(dy) * 0.35 - dx * 0.5;
+  const score = scoreFace(dx, dy, zBase, zTopo, zRef);
   aceitar(montarFace("e", cx, cy, zBase, zTopo, lipX + 0.02, ay), score);
 }
 

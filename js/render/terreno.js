@@ -3,17 +3,23 @@ import {
   FACE_H,
   FLOOR_ROW_OFFSET,
   ROLE_CENTER,
-  ROLE_CLIFF_CENTER,
   ROLE_EDGE_E,
+  ROLE_EDGE_N,
   ROLE_EDGE_S,
   ROLE_EDGE_S_UNDER,
   ROLE_EDGE_W,
+  ROLE_OUT_NE,
+  ROLE_OUT_NW,
+  ROLE_OUT_SE,
+  ROLE_OUT_SE_UNDER,
+  ROLE_OUT_SW,
+  ROLE_OUT_SW_UNDER,
   SHEET_COLS,
   TERRENO_2D_MARGEM,
   TILE,
   TILE_ART,
 } from "../config.js";
-import { alturaEm, solidoEm } from "../mundo/altura.js";
+import { alturaEm, quedaVisualFace, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
 import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
@@ -289,7 +295,62 @@ function desenharTopoReal(ctx, cx, cy, z) {
     id === BLOCO.TERRA || id === BLOCO.PEDRA || z >= 2
       ? _atlas.terra || _atlas.grama
       : _atlas.grama;
+  // CENTER / EDGE_* / OUT_* do grass|dirt = chão (banda floor), nunca parede
   blitRole(ctx, img, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, s, s);
+  desenharLabiosCliffNoTopo(ctx, cx, cy, z, px, py, s);
+}
+
+/**
+ * Lábios do double/single-cliff no platô alto (magenta → deixa o chão).
+ * Faces verticais (*_UNDER) ficam em desenharFaceSulReal.
+ */
+function desenharLabiosCliffNoTopo(ctx, cx, cy, z, px, py, s) {
+  const sheet = _atlas.cliffDuplo || _atlas.cliffSimples;
+  if (!sheet) return;
+
+  const dropS = quedaVisualFace(cx, cy, 0, 1) >= 1;
+  const dropN = quedaVisualFace(cx, cy, 0, -1) >= 1;
+  const dropW = quedaVisualFace(cx, cy, -1, 0) >= 1;
+  const dropE = quedaVisualFace(cx, cy, 1, 0) >= 1;
+  if (!dropS && !dropN && !dropW && !dropE) return;
+
+  let role = null;
+  if (dropS && dropW && !dropE && !dropN) role = ROLE_OUT_SW;
+  else if (dropS && dropE && !dropW && !dropN) role = ROLE_OUT_SE;
+  else if (dropN && dropW && !dropE && !dropS) role = ROLE_OUT_NW;
+  else if (dropN && dropE && !dropW && !dropS) role = ROLE_OUT_NE;
+  else if (dropS && !dropN) role = papelLabioSul(cx, cy, z);
+  else if (dropN && !dropS) role = ROLE_EDGE_N;
+  else if (dropW && !dropE) role = ROLE_EDGE_W;
+  else if (dropE && !dropW) role = ROLE_EDGE_E;
+  else if (dropS) role = papelLabioSul(cx, cy, z);
+  else if (dropN) role = ROLE_EDGE_N;
+  else if (dropW) role = ROLE_EDGE_W;
+  else role = ROLE_EDGE_E;
+
+  blitRole(ctx, sheet, role, 0, px, py, s, s);
+}
+
+/** Labio sul no platô: OUT_SW / EDGE_S / OUT_SE conforme vizinhos à mesma altura. */
+function papelLabioSul(cx, cy, zTopo) {
+  const wHigh = alturaEm(cx - 1, cy) >= zTopo;
+  const eHigh = alturaEm(cx + 1, cy) >= zTopo;
+  if (wHigh && eHigh) return ROLE_EDGE_S;
+  if (eHigh && !wHigh) return ROLE_OUT_SW;
+  if (wHigh && !eHigh) return ROLE_OUT_SE;
+  return ROLE_EDGE_S;
+}
+
+function papelUnderDoLabio(labio) {
+  if (labio === ROLE_OUT_SW) return ROLE_OUT_SW_UNDER;
+  if (labio === ROLE_OUT_SE) return ROLE_OUT_SE_UNDER;
+  return ROLE_EDGE_S_UNDER;
+}
+
+function sheetTemBandaUnder(sheet) {
+  if (!sheet) return false;
+  const h = sheet.height || sheet.naturalHeight || 0;
+  return h >= TILE_ART * 4;
 }
 
 function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {
@@ -336,30 +397,27 @@ function desenharFaceSulReal(ctx, cx, cy, z, queda, destacar = false) {
   const step = FACE_H * ESCALA;
   // topo autoridade: face começa sob o tile (+1px)
   const py0 = topY + TILE * ESCALA + 1;
-  const sheet =
-    queda >= 2 && _atlas.cliffDuplo
-      ? _atlas.cliffDuplo
-      : _atlas.cliffSimples || _atlas.cliffDuplo;
+  const sheetDuplo = _atlas.cliffDuplo;
+  const sheetSimples = _atlas.cliffSimples;
+  // Double 5×4: parede sempre *_UNDER (também em queda 1). Labio fica no topo.
+  const usaDuplo = sheetTemBandaUnder(sheetDuplo);
+  const sheet = usaDuplo
+    ? sheetDuplo
+    : sheetSimples || sheetDuplo;
+  if (!sheet) return;
+
+  const labio = papelLabioSul(cx, cy, z);
+  // Single 5×3: sem banda UNDER — a face sul é o próprio labio.
+  const roleFace = usaDuplo ? papelUnderDoLabio(labio) : labio;
   const chao = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
 
   for (let i = 0; i < queda; i++) {
-    let role = ROLE_EDGE_S;
-    if (queda > 1) {
-      if (i === 0) role = ROLE_EDGE_S;
-      else if (i === queda - 1 && sheet === _atlas.cliffDuplo) role = ROLE_EDGE_S_UNDER;
-      else role = ROLE_CLIFF_CENTER;
-    }
-    if (role === ROLE_EDGE_S_UNDER && sheet !== _atlas.cliffDuplo) {
-      role = ROLE_EDGE_S;
-    }
     const dy = py0 + i * step;
-    blitRole(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, dy, w, step);
-    // crop 1px do lip do ROLE_EDGE_S no primeiro degrau
-    if (i === 0) {
-      blitRoleCropTopo(ctx, sheet, role, 0, px, dy, w, step, 1);
-    } else {
-      blitRole(ctx, sheet, role, 0, px, dy, w, step);
+    // Magenta do labio (single) deixa o chão baixo aparecer; UNDER é opaco.
+    if (!usaDuplo) {
+      blitRole(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, dy, w, step);
     }
+    blitRole(ctx, sheet, roleFace, 0, px, dy, w, step);
   }
 
   if (destacar) {
@@ -402,14 +460,27 @@ function desenharFaceLateralReal(ctx, cx, cy, z, queda, lado) {
   const step = FACE_H * ESCALA;
   const faixa = Math.max(5, ESCALA * 3);
   const x = lado === "w" ? px : px + s - faixa;
-  const sheet = _atlas.cliffDuplo || _atlas.cliffSimples;
-  const role = lado === "w" ? ROLE_EDGE_W : ROLE_EDGE_E;
+  const sheetDuplo = _atlas.cliffDuplo;
+  const sheet = sheetTemBandaUnder(sheetDuplo)
+    ? sheetDuplo
+    : _atlas.cliffSimples || sheetDuplo;
+  if (!sheet) return;
+
+  // EDGE_W/E são lábios de chão no platô — parede lateral pega faixa do UNDER.
+  const role = sheetTemBandaUnder(sheet)
+    ? lado === "w"
+      ? ROLE_OUT_SW_UNDER
+      : ROLE_OUT_SE_UNDER
+    : lado === "w"
+      ? ROLE_EDGE_W
+      : ROLE_EDGE_E;
   const chao = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
 
-  // só parede (começa sob o topo)
   for (let i = 0; i < queda; i++) {
     const dy = topY + s + i * step;
-    blitRoleFaixa(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, lado, x, dy, faixa, step);
+    if (!sheetTemBandaUnder(sheet)) {
+      blitRoleFaixa(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, lado, x, dy, faixa, step);
+    }
     blitRoleFaixa(ctx, sheet, role, 0, lado, x, dy, faixa, step);
   }
 }
@@ -512,18 +583,6 @@ function blitRole(ctx, img, role, bandOffset, dx, dy, dw, dh) {
 }
 
 /** Recorta N px do topo do tile (remove lip duplicado). */
-function blitRoleCropTopo(ctx, img, role, bandOffset, dx, dy, dw, dh, cropPx) {
-  if (!img) return;
-  const col = role % SHEET_COLS;
-  const row = Math.floor(role / SHEET_COLS) + bandOffset;
-  const sx = col * TILE_ART;
-  const sy = row * TILE_ART + cropPx;
-  const srcH = TILE_ART - cropPx;
-  const dstCrop = (cropPx / TILE_ART) * dh;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(img, sx, sy, TILE_ART, srcH, dx, dy + dstCrop, dw, dh - dstCrop);
-}
-
 function blitRoleFaixa(ctx, img, role, bandOffset, lado, dx, dy, dw, dh) {
   if (!img) return;
   const col = role % SHEET_COLS;

@@ -136,16 +136,34 @@ export const VISUAL_REAL_PADRAO = true;
 export const JOGADOR_FRAME = 64;
 export const JOGADOR_ESCALA = 0.5;
 
-/** Sheets processados / cliff autotile (mesmo layout do Pokemon AI). */
+/**
+ * Sheets processados / cliff autotile (layout Pokemon AI / terrainBlit).
+ *
+ * Floor (grass/dirt 5x6): banda em FLOOR_ROW_OFFSET — OUT_*, EDGE_*, CENTER
+ * sao tiles de CHAO (grass-on-dirt), nao parede.
+ *
+ * Double-cliff 5x4:
+ *   rows 0-2 = labios do plato (OUT_NW ... OUT_SE); CENTER vazio (magenta)
+ *   row 3    = faces verticais OUT_SW_UNDER, EDGE_S_UNDER, OUT_SE_UNDER
+ * Single-cliff 5x3: so labios; face sul usa EDGE_S, OUT_SW, OUT_SE.
+ */
 export const TILE_ART = 16;
 export const SHEET_COLS = 5;
 export const FLOOR_ROW_OFFSET = 3;
-export const ROLE_CENTER = 6;
-export const ROLE_EDGE_S = 11;
-export const ROLE_EDGE_S_UNDER = 16;
+export const ROLE_OUT_NW = 0;
+export const ROLE_EDGE_N = 1;
+export const ROLE_OUT_NE = 2;
 export const ROLE_EDGE_W = 5;
+export const ROLE_CENTER = 6;
 export const ROLE_EDGE_E = 7;
-export const ROLE_CLIFF_CENTER = 6;
+export const ROLE_OUT_SW = 10;
+export const ROLE_EDGE_S = 11;
+export const ROLE_OUT_SE = 12;
+export const ROLE_OUT_SW_UNDER = 15;
+export const ROLE_EDGE_S_UNDER = 16;
+export const ROLE_OUT_SE_UNDER = 17;
+/** @deprecated CENTER do cliff e vazio — use roles UNDER pra parede. */
+export const ROLE_CLIFF_CENTER = ROLE_EDGE_S_UNDER;
 
 /** Voxel / mundo infinito. */
 export const CHUNK_XZ = 16;
