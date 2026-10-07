@@ -2,8 +2,8 @@
  * Dual-grid de cliff (half-cell) — layout Pokemon AI / wang 4-cantos.
  *
  * Vertice (vx, vy) olha NW/NE/SW/SE. Tile em (vx-0.5, vy-0.5).
- * Single-cliff 5x3: cada nivel de altura = uma camada empilhada.
- * (altura 2 = 2 singles; nao usa banda UNDER do double-cliff.)
+ * Mascara por VOXEL solido no nivel (nao heightmap cru) — assim deck/ponte
+ * so gera 1 camada na laje e nao tapa o vao; bocas de caverna ficam abertas.
  */
 
 import {
@@ -28,7 +28,7 @@ export const CANTOS_DUAL = Object.freeze([
   Object.freeze({ dx: 0, dy: 0, bit: 8 }), // SE
 ]);
 
-/** mask → roles do sheet single-cliff (15 = platô cheio → sem tile). */
+/** mask → roles do sheet single-cliff (15 = plato cheio → sem tile). */
 const ROLES_POR_MASCARA = Object.freeze({
   1: Object.freeze(["OUT_SE"]),
   2: Object.freeze(["OUT_SW"]),
@@ -84,34 +84,54 @@ export function sheetCliffDoAtlas(atlas) {
 }
 
 /**
- * Empacota alturas dos 4 cantos (1x alturaEm por canto).
- * @returns {{ h: number[], max: number } | null}
+ * Superficie max dos 4 cantos (so pra limitar o loop de niveis).
+ * @returns {{ max: number, cx: number[], cy: number[] } | null}
  */
 export function amostrarCantos(vx, vy, alturaEm) {
-  const h = [0, 0, 0, 0];
+  const cx = [0, 0, 0, 0];
+  const cy = [0, 0, 0, 0];
   let max = 0;
   for (let i = 0; i < 4; i++) {
     const c = CANTOS_DUAL[i];
-    const v = alturaEm(vx + c.dx, vy + c.dy) | 0;
-    h[i] = v;
+    cx[i] = vx + c.dx;
+    cy[i] = vy + c.dy;
+    const v = alturaEm(cx[i], cy[i]) | 0;
     if (v > max) max = v;
   }
   if (max <= 0) return null;
-  return { h, max };
+  return { max, cx, cy };
 }
 
-export function mascaraDosCantos(hCantos, nivel) {
+/**
+ * Bit ligado se ha solido no bloco sob o walk-height `nivel` (lz = nivel-1).
+ * Deck fino: so o nivel da laje; ar embaixo nao conta como plato.
+ */
+export function mascaraDosCantosSolido(cx, cy, nivel, solidoEm) {
+  if (nivel < 1) return 0;
+  const lz = nivel - 1;
   let mask = 0;
   for (let i = 0; i < 4; i++) {
-    if (hCantos[i] >= nivel) mask |= CANTOS_DUAL[i].bit;
+    if (solidoEm(cx[i], cy[i], lz)) mask |= CANTOS_DUAL[i].bit;
   }
   return mask;
 }
 
-/** Primeiro canto alto no nivel — pra escolher skin de chao sob magenta. */
-export function indiceCantoAlto(hCantos, nivel) {
+/** Primeiro canto solido no nivel — skin de chao sob magenta. */
+export function indiceCantoSolido(cx, cy, nivel, solidoEm) {
+  if (nivel < 1) return -1;
+  const lz = nivel - 1;
   for (let i = 0; i < 4; i++) {
-    if (hCantos[i] >= nivel) return i;
+    if (solidoEm(cx[i], cy[i], lz)) return i;
+  }
+  return -1;
+}
+
+/** Primeiro canto SEM solido no nivel (lado baixo / boca). */
+export function indiceCantoAr(cx, cy, nivel, solidoEm) {
+  if (nivel < 1) return -1;
+  const lz = nivel - 1;
+  for (let i = 0; i < 4; i++) {
+    if (!solidoEm(cx[i], cy[i], lz)) return i;
   }
   return -1;
 }

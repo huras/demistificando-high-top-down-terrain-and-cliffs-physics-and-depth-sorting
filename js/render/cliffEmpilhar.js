@@ -16,16 +16,16 @@ import {
   TILE,
   TILE_ART,
 } from "../config.js";
-import { alturaEm } from "../mundo/altura.js";
+import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
-  CANTOS_DUAL,
   amostrarCantos,
   idDoRole,
-  indiceCantoAlto,
-  mascaraDosCantos,
+  indiceCantoAr,
+  indiceCantoSolido,
+  mascaraDosCantosSolido,
   ROLE_SUL,
   rolesDaMascara,
   sheetCliffDoAtlas,
@@ -68,23 +68,24 @@ export function empilharCliffsSimples(
       const amostra = amostrarCantos(vx, vy, alturaEm);
       if (!amostra) continue;
 
-      const { h, max } = amostra;
+      const { max, cx, cy } = amostra;
       const wx = vx - 0.5;
       const wy = vy - 0.5;
 
-      // Cada nivel com silhueta = uma camada single empilhada.
+      // Cada nivel com solido real = uma camada. Ar sob deck nao gera parede.
       for (let nivel = 1; nivel <= max; nivel++) {
         if (tetoCaverna != null && nivel > tetoCaverna) continue;
-        const mask = mascaraDosCantos(h, nivel);
+        const mask = mascaraDosCantosSolido(cx, cy, nivel, solidoEm);
         const roles = rolesDaMascara(mask);
         if (!roles) continue;
 
-        const iAlto = indiceCantoAlto(h, nivel);
-        const chao = escolherChao(chaoGrama, chaoTerra, vx, vy, iAlto, nivel);
+        const iAlto = indiceCantoSolido(cx, cy, nivel, solidoEm);
+        const chao = escolherChao(chaoGrama, chaoTerra, cx, cy, iAlto, nivel);
 
-        // Camada sul mais baixa deste vertice? Half-cell deixa vao de 0.5 tile
-        // ate o chao — fundo #0a100c vazava (nao e sombra).
-        const maskAbaixo = nivel > 1 ? mascaraDosCantos(h, nivel - 1) : 0;
+        // Camada sul mais baixa: preenche vao half-cell (fundo #0a100c).
+        // Nao preenche se o "baixo" ainda tem solido no nivel-1 (boca/vao interno).
+        const maskAbaixo =
+          nivel > 1 ? mascaraDosCantosSolido(cx, cy, nivel - 1, solidoEm) : 0;
         const rolesAbaixo = rolesDaMascara(maskAbaixo);
         const sulMaisBaixa = !temRoleSul(rolesAbaixo);
 
@@ -101,9 +102,10 @@ export function empilharCliffsSimples(
             (faceDestaque.cx === vx - 1 || faceDestaque.cx === vx) &&
             faceDestaque.cy === vy - 1;
 
-          const chaoVao = eSul && sulMaisBaixa
-            ? escolherChaoBaixo(chaoGrama, chaoTerra, vx, vy, h, nivel)
-            : null;
+          const chaoVao =
+            eSul && sulMaisBaixa
+              ? escolherChaoVao(chaoGrama, chaoTerra, cx, cy, nivel)
+              : null;
 
           empilhar(
             lista,
@@ -229,30 +231,24 @@ function criarDesenhoCamada(
   };
 }
 
-function escolherChao(grama, terra, vx, vy, iAlto, nivel) {
+function escolherChao(grama, terra, cxs, cys, iAlto, nivel) {
   if (iAlto < 0) return terra || grama;
-  const c = CANTOS_DUAL[iAlto];
-  const cx = vx + c.dx;
-  const cy = vy + c.dy;
-  const id = nivel > 0 ? obterBloco(cx, cy, nivel - 1) : BLOCO.AR;
+  const bx = cxs[iAlto];
+  const by = cys[iAlto];
+  const id = nivel > 0 ? obterBloco(bx, by, nivel - 1) : BLOCO.AR;
   if (id === BLOCO.TERRA || id === BLOCO.PEDRA || nivel >= 2) {
     return terra || grama;
   }
   return grama || terra;
 }
 
-/** Chao do lado baixo (cantos SW/SE) pra underfill do vao sul. */
-function escolherChaoBaixo(grama, terra, vx, vy, hCantos, nivel) {
-  let bestI = -1;
-  let bestH = -1;
-  for (let i = 0; i < 4; i++) {
-    if (hCantos[i] < nivel && hCantos[i] > bestH) {
-      bestH = hCantos[i];
-      bestI = i;
-    }
-  }
-  if (bestI < 0) return grama || terra;
-  return escolherChao(grama, terra, vx, vy, bestI, Math.max(1, bestH));
+/** Chao do lado com ar no nivel (vao / boca) pra underfill do half-cell sul. */
+function escolherChaoVao(grama, terra, cxs, cys, nivel) {
+  const iAr = indiceCantoAr(cxs, cys, nivel, solidoEm);
+  if (iAr < 0) return grama || terra;
+  // Usa superficie do canto aberto (chao sob a boca / sob a ponte).
+  const surf = alturaEm(cxs[iAr], cys[iAr]) | 0;
+  return escolherChao(grama, terra, cxs, cys, iAr, Math.max(1, surf));
 }
 
 /** Metade de baixo do tile de cliff → preenche o vao sul. */
