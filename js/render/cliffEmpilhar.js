@@ -259,7 +259,6 @@ function blitRoleFaixaSul(ctx, img, role, dx, dy, dw, dh) {
   const sx = col * TILE_ART;
   const half = TILE_ART >> 1;
   const sy = row * TILE_ART + half;
-  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, sx, sy, TILE_ART, half, dx, dy, dw, dh);
 }
 
@@ -277,7 +276,6 @@ function blitRole(ctx, img, role, bandOffset, dx, dy, dw, dh) {
   const row = ((role / SHEET_COLS) | 0) + bandOffset;
   const sx = col * TILE_ART;
   const sy = row * TILE_ART;
-  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, sx, sy, TILE_ART, TILE_ART, dx, dy, dw, dh);
 }
 
@@ -289,6 +287,5 @@ function blitRoleFaixa(ctx, img, role, bandOffset, lado, dx, dy, dw, dh) {
   const sy = row * TILE_ART;
   const srcW = Math.max(3, (TILE_ART * 0.35) | 0);
   const sx = lado === "w" ? sx0 : sx0 + TILE_ART - srcW;
-  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, sx, sy, srcW, TILE_ART, dx, dy, dw, dh);
 }

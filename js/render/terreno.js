@@ -10,7 +10,11 @@ import {
 } from "../config.js";
 import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
-import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
+import {
+  obterAabbCarregado,
+  obterBloco,
+  onDirty,
+} from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { usarTiles } from "./atlas.js";
 import { coletarPecasColuna } from "./camadasVoxel2d.js";
@@ -47,6 +51,25 @@ let _atlas = null;
 /** Dual-grid single empilhado (sheet 5x3). */
 let _cliffDual = false;
 
+/** Cache do empilhamento estático (invalida com cull/mundo/debug). */
+const _cacheTerreno = { chave: "", itens: [] };
+let _geracaoMundo = 0;
+let _dirtyOk = false;
+
+function garantirDirtyTerreno() {
+  if (_dirtyOk) return;
+  _dirtyOk = true;
+  onDirty(() => {
+    _geracaoMundo++;
+    _cacheTerreno.chave = "";
+  });
+}
+
+function anexarItens(destino, origem) {
+  const dest = destino.itens;
+  for (let i = 0; i < origem.length; i++) dest.push(origem[i]);
+}
+
 /**
  * Terreno 2D — cull pela viewport da câmera quando disponível.
  * @param {{ teto: number, elev: number } | null} visaoCaverna
@@ -60,6 +83,7 @@ export function empilharTerreno(
   camera = null,
   visaoCaverna = null,
 ) {
+  garantirDirtyTerreno();
   _atlas = atlas;
   _cliffDual = !!(usarTiles(atlas) && sheetCliffDoAtlas(atlas));
   const aabb = obterAabbCarregado();
@@ -80,6 +104,37 @@ export function empilharTerreno(
   }
 
   const tetoCaverna = visaoCaverna ? visaoCaverna.teto : null;
+  const faceCx = faceDestaque ? faceDestaque.cx | 0 : -1;
+  const faceCy = faceDestaque ? faceDestaque.cy | 0 : -1;
+  const chave =
+    x0 +
+    "|" +
+    y0 +
+    "|" +
+    x1 +
+    "|" +
+    y1 +
+    "|" +
+    (tetoCaverna == null ? "" : tetoCaverna) +
+    "|" +
+    (_cliffDual ? 1 : 0) +
+    "|" +
+    (debug ? 1 : 0) +
+    "|" +
+    faceCx +
+    "," +
+    faceCy +
+    "|" +
+    _geracaoMundo;
+
+  if (chave === _cacheTerreno.chave && _cacheTerreno.itens.length) {
+    anexarItens(lista, _cacheTerreno.itens);
+    return;
+  }
+
+  const scratch = { itens: [] };
+  _cacheTerreno.chave = chave;
+  _cacheTerreno.itens = scratch.itens;
 
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
@@ -93,7 +148,7 @@ export function empilharTerreno(
         const naSuperficie = zTop === zSurf;
         const fadeTop = naSuperficie ? chaveFadeTopo(cx, cy) : null;
         empilhar(
-          lista,
+          scratch,
           chaveTopo(cy, zTop),
           0,
           (ctx) => {
@@ -112,7 +167,7 @@ export function empilharTerreno(
 
       // Superfície: cliffs no dual-grid. Caverna: faces voxel empilhadas.
       empilharFacesCaverna(
-        lista,
+        scratch,
         pecas.facesS,
         "s",
         cx,
@@ -123,7 +178,7 @@ export function empilharTerreno(
         _cliffDual,
       );
       empilharFacesCaverna(
-        lista,
+        scratch,
         pecas.facesW,
         "w",
         cx,
@@ -134,7 +189,7 @@ export function empilharTerreno(
         _cliffDual,
       );
       empilharFacesCaverna(
-        lista,
+        scratch,
         pecas.facesE,
         "e",
         cx,
@@ -147,7 +202,7 @@ export function empilharTerreno(
 
       if (debug && (tetoCaverna == null || zSurf <= tetoCaverna)) {
         empilhar(
-          lista,
+          scratch,
           chaveTopo(cy, zSurf) + 0.0001,
           0,
           (ctx) => desenharDebug(ctx, cx, cy, zSurf),
@@ -160,7 +215,7 @@ export function empilharTerreno(
 
   if (_cliffDual) {
     empilharCliffsSimples(
-      lista,
+      scratch,
       atlas,
       x0,
       y0,
@@ -180,7 +235,7 @@ export function empilharTerreno(
     if (tetoCaverna != null && z > tetoCaverna) continue;
     const fadeProp = chaveFadeProp(i);
     empilhar(
-      lista,
+      scratch,
       chaveEntidade(prop.y, z),
       0,
       (ctx) =>
@@ -191,6 +246,8 @@ export function empilharTerreno(
       z,
     );
   }
+
+  anexarItens(lista, scratch.itens);
 }
 
 /**
@@ -388,7 +445,6 @@ function desenharPropReal(ctx, prop, z) {
     const img = _atlas.arvore;
     const dw = img.width * ESCALA;
     const dh = img.height * ESCALA;
-    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, px - dw * 0.5, py - dh + 2 * ESCALA, dw, dh);
     return true;
   }
@@ -397,7 +453,6 @@ function desenharPropReal(ctx, prop, z) {
     const img = _atlas.mata;
     const dw = img.width * ESCALA * 1.5;
     const dh = img.height * ESCALA * 1.5;
-    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, px - dw * 0.5, py - dh + ESCALA, dw, dh);
     return true;
   }
@@ -466,6 +521,5 @@ function blitRole(ctx, img, role, bandOffset, dx, dy, dw, dh) {
   const row = Math.floor(role / SHEET_COLS) + bandOffset;
   const sx = col * TILE_ART;
   const sy = row * TILE_ART;
-  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, sx, sy, TILE_ART, TILE_ART, dx, dy, dw, dh);
 }

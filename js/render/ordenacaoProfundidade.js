@@ -61,5 +61,6 @@ export function desenharLista(lista, ctx) {
       a.z - b.z ||
       a.tie - b.tie,
   );
+  ctx.imageSmoothingEnabled = false;
   for (let i = 0; i < arr.length; i++) arr[i].desenhar(ctx);
 }

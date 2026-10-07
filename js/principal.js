@@ -254,7 +254,6 @@ function loop(agora) {
     console.error("Erro no frame:", err);
   }
 
-
   requestAnimationFrame(loop);
 }
 

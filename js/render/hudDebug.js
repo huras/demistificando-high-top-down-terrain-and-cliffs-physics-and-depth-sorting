@@ -2,9 +2,31 @@ import { razaoStamina } from "../fisica/stamina.js";
 import { consultarOclusao } from "./oclusao.js";
 import { formulasPersonagem } from "./personagem.js";
 
+let _fpsMostrado = 0;
+let _fpsFrames = 0;
+let _fpsJanelaT0 = 0;
+
+function tickFps() {
+  const agora = performance.now();
+  if (!_fpsJanelaT0) _fpsJanelaT0 = agora;
+  _fpsFrames++;
+  const dt = agora - _fpsJanelaT0;
+  if (dt >= 500) {
+    _fpsMostrado = Math.round((_fpsFrames * 1000) / dt);
+    _fpsFrames = 0;
+    _fpsJanelaT0 = agora;
+  }
+  return _fpsMostrado;
+}
+
+export function obterFps() {
+  return _fpsMostrado;
+}
+
 export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo = "2d") {
   const f = formulasPersonagem(corpo);
   const ocl = modoJogo === "2d" ? consultarOclusao(corpo) : null;
+  const fps = tickFps();
 
   const formulaTela = document.getElementById("formula-tela");
   const formulaSort = document.getElementById("formula-sort");
@@ -35,6 +57,9 @@ export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo 
   }
   dds[6].textContent = `${Math.round(razaoStamina(corpo) * 100)}%`;
 
+  const fpsEl = document.getElementById("fps-status");
+  if (fpsEl) fpsEl.textContent = fps > 0 ? String(fps) : "—";
+
   const zoomEl = document.getElementById("zoom-status");
   if (zoomEl) zoomEl.textContent = `${zoom.toFixed(2)}×`;
 
@@ -57,16 +82,29 @@ export function desenharOverlayAjuda(
 ) {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const boxX = 10;
+  const boxY = 10;
+  const boxW = 420;
   const h = debug && modoJogo === "2d" ? 96 : 72;
+  const padR = boxX + boxW - 12;
   ctx.fillStyle = "rgba(0,0,0,0.45)";
-  ctx.fillRect(10, 10, 400, h);
-  ctx.fillStyle = "#d8f0d0";
+  ctx.fillRect(boxX, boxY, boxW, h);
+
   ctx.font = "12px Segoe UI, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#d8f0d0";
   ctx.fillText(
     modoJogo === "3d" ? "Modo 3D — terceira pessoa" : "High Top-Down Demo",
     18,
     28,
   );
+
+  const fps = obterFps();
+  ctx.textAlign = "right";
+  ctx.fillStyle = fps >= 55 ? "#7dce6a" : fps >= 40 ? "#e0c36a" : "#ff8a7a";
+  ctx.fillText(`${fps || "—"} fps`, padR, 28);
+
+  ctx.textAlign = "left";
   ctx.fillStyle = "#a8c4a8";
   ctx.fillText(
     modoJogo === "3d"
@@ -91,8 +129,10 @@ export function desenharOverlayAjuda(
     ctx.fillText("Z-buffer ativo · física compartilhada", 18, 64);
   }
   const zoom = camera?.zoom ?? 1;
+  ctx.textAlign = "right";
   ctx.fillStyle = "#a8c4a8";
-  ctx.fillText(`zoom ${zoom.toFixed(2)}× · visual ${modoVisual}`, 200, 64);
+  ctx.fillText(`zoom ${zoom.toFixed(2)}× · ${modoVisual}`, padR, 64);
+  ctx.textAlign = "left";
   if (debug && modoJogo === "2d") {
     ctx.fillStyle = "#ffe66d";
     ctx.fillText("cruz = pivô de sortKey (Y)", 18, 84);
