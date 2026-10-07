@@ -152,6 +152,70 @@ export function pousarNoChao(corpo, zChao) {
   }
 }
 
+/**
+ * Beirada: cantos ainda no piso alto travam o XY no ar (AABB entra no sólido).
+ * Empurra até nenhum canto ficar em célula com piso > zMaxPiso.
+ */
+export function empurrarForaDePisoAlto(corpo, zMaxPiso) {
+  const r = RAIO_CORPO;
+  const elev = corpo.elevacao ?? corpo.z;
+  const lim = zMaxPiso + 0.05;
+  const scanZ = Math.max(elev, lim) + 0.35;
+
+  for (let iter = 0; iter < 6; iter++) {
+    let empX = 0;
+    let empY = 0;
+    let n = 0;
+    const cantos = [
+      [corpo.x - r, corpo.y - r],
+      [corpo.x + r, corpo.y - r],
+      [corpo.x - r, corpo.y + r],
+      [corpo.x + r, corpo.y + r],
+    ];
+    for (const [px, py] of cantos) {
+      const cx = Math.floor(px);
+      const cy = Math.floor(py);
+      if (!dentroDoMapa(cx, cy)) continue;
+      const hz = chaoSobElevacao(cx, cy, scanZ);
+      if (hz <= lim) continue;
+      const sx = Math.sign(corpo.x - (cx + 0.5));
+      const sy = Math.sign(corpo.y - (cy + 0.5));
+      empX += sx !== 0 ? sx : corpo.x >= cx + 0.5 ? 1 : -1;
+      empY += sy !== 0 ? sy : corpo.y >= cy + 0.5 ? 1 : -1;
+      n++;
+    }
+    if (n === 0) return false;
+    const len = Math.hypot(empX, empY) || 1;
+    corpo.x += (empX / len) * 0.22;
+    corpo.y += (empY / len) * 0.22;
+  }
+  return true;
+}
+
+/**
+ * Só resolve penetração em sólido.
+ * Não empurra piso alto genérico aqui — isso impede pular pro degrau +1.
+ * O push de beirada fica no walk-off (`empurrarForaDePisoAlto`).
+ */
+export function liberarCorpoAereo(corpo) {
+  if (cantoPenetraSolido(corpo)) empurrarForaDeCliff(corpo);
+}
+
+function cantoPenetraSolido(corpo) {
+  const r = RAIO_CORPO;
+  const elev = corpo.elevacao ?? corpo.z;
+  const cantos = [
+    [corpo.x - r, corpo.y - r],
+    [corpo.x + r, corpo.y - r],
+    [corpo.x - r, corpo.y + r],
+    [corpo.x + r, corpo.y + r],
+  ];
+  for (const [px, py] of cantos) {
+    if (corpoColideSolido(Math.floor(px), Math.floor(py), elev)) return true;
+  }
+  return false;
+}
+
 /** Se algum canto ainda pisa célula mais alta, empurra pro centro seguro. */
 export function empurrarForaDeCliff(corpo) {
   const r = RAIO_CORPO;

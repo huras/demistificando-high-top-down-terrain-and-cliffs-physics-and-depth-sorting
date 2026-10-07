@@ -36,8 +36,10 @@ import {
 import {
   atualizarAereo,
   empurrarForaDeCliff,
+  empurrarForaDePisoAlto,
   iniciarPulo,
   iniciarQueda,
+  liberarCorpoAereo,
   podeIniciarPulo,
 } from "./pulo.js";
 import { iniciarStamina, regenerarStamina } from "./stamina.js";
@@ -311,6 +313,7 @@ export function atualizarAgente(agente, lider, dt) {
     if (zChao <= 0 || zChao < agente.z) {
       iniciarQueda(agente);
       agente.elevacao = agente.z;
+      empurrarForaDePisoAlto(agente, zChao);
       if (deveAbrirAsaAgora(agente, abrirAsa || lancarGlide)) abrirAsaDelta(agente);
       if (estaPlanando(agente)) {
         atualizarNoArPlanando(agente, ix, iy, dt);
@@ -372,6 +375,7 @@ export function atualizarAgente(agente, lider, dt) {
       atualizarNoArPlanando(agente, ix, iy, dt);
     } else {
       atualizarCorrida(agente, ix, iy, dt, false, velMax * 0.9);
+      liberarCorpoAereo(agente);
       const pos = moverAereo(
         agente,
         agente.vx * dt,
@@ -382,6 +386,7 @@ export function atualizarAgente(agente, lider, dt) {
       if (pos.bloqueouY) agente.vy = 0;
       agente.x = pos.x;
       agente.y = pos.y;
+      liberarCorpoAereo(agente);
       atualizarAereo(agente, dt);
       if (deveAbrirAsaAgora(agente, querAbrir && !querEscalar)) {
         abrirAsaDelta(agente);
@@ -413,6 +418,7 @@ function tentarGrudarClimb(agente, ix, iy) {
 
 function atualizarNoArPlanando(agente, ix, iy, dt) {
   atualizarCorridaAsaDelta(agente, ix, iy, dt);
+  liberarCorpoAereo(agente);
   const pos = moverAereo(
     agente,
     agente.vx * dt,
@@ -423,6 +429,7 @@ function atualizarNoArPlanando(agente, ix, iy, dt) {
   if (pos.bloqueouY) agente.vy = 0;
   agente.x = pos.x;
   agente.y = pos.y;
+  liberarCorpoAereo(agente);
   atualizarAsaDelta(agente, dt);
   if (estaPlanando(agente)) agente.acao = "asa-delta";
 }

@@ -28,8 +28,10 @@ import {
 import {
   atualizarAereo,
   empurrarForaDeCliff,
+  empurrarForaDePisoAlto,
   iniciarPulo,
   iniciarQueda,
+  liberarCorpoAereo,
   podeIniciarPulo,
   registrarBufferPulo,
 } from "./pulo.js";
@@ -213,6 +215,8 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   if (zChao <= 0 || zChao < corpo.z) {
     iniciarQueda(corpo);
     corpo.elevacao = corpo.z;
+    // Tira cantos do piso alto — senão o AABB trava o XY a queda inteira.
+    empurrarForaDePisoAlto(corpo, zChao);
     atualizarAereo(corpo, dt);
     corpo.andando = false;
     corpo.correndo = false;
@@ -249,6 +253,8 @@ function atualizarNoAr(corpo, dx, dy, dt) {
     atualizarCorrida(corpo, dx, dy, dt, false);
   }
 
+  liberarCorpoAereo(corpo);
+
   const passoX = corpo.vx * dt;
   const passoY = corpo.vy * dt;
   const pos = moverAereo(corpo, passoX, passoY, corpo.elevacao);
@@ -258,6 +264,8 @@ function atualizarNoAr(corpo, dx, dy, dt) {
 
   corpo.x = pos.x;
   corpo.y = pos.y;
+
+  liberarCorpoAereo(corpo);
 
   if (estaPlanando(corpo)) {
     atualizarAsaDelta(corpo, dt);
