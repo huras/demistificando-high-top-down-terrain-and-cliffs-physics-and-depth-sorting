@@ -1,6 +1,7 @@
 /**
  * Cliffs por célula — grass-on-dirt usa *_UNDER; legado usa EDGE_S/OUT_*.
- * Laterais W/E: só no sheet legado (faixa); no GOD o lip já está no chão.
+ * Topo GOD: 4 quartos de borda (solo / faixa vertical / horizontal).
+ * Laterais W/E: só no sheet legado; no GOD o lip vem dos quartos do chão.
  */
 import {
   ESCALA,
@@ -8,8 +9,16 @@ import {
   FLOOR_ROW_OFFSET,
   GOD_CENTER,
   GOD_COLS,
+  GOD_EDGE_E,
+  GOD_EDGE_N,
+  GOD_EDGE_S,
   GOD_EDGE_S_UNDER,
+  GOD_EDGE_W,
+  GOD_OUT_NE,
+  GOD_OUT_NW,
+  GOD_OUT_SE,
   GOD_OUT_SE_UNDER,
+  GOD_OUT_SW,
   GOD_OUT_SW_UNDER,
   ROLE_CENTER,
   ROLE_EDGE_E,
@@ -25,6 +34,42 @@ import { alturaEm } from "../mundo/altura.js";
 import { sheetCliffDoAtlas, usarGrassOnDirt } from "./atlas.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 
+const GOD_HALF = TILE_ART >> 1;
+
+/**
+ * Topo grass-on-dirt: 4 quartos (N/S/E/W + solo) a partir das bordas do sheet.
+ */
+export function desenharTopoGod(ctx, atlas, cx, cy, z) {
+  const img = atlas?.grassOnDirt;
+  if (!img || !ctx) return;
+
+  const px = mundoParaTelaX(cx);
+  const py = mundoParaTelaY(cy, z);
+  const s = TILE * ESCALA;
+  const half = s >> 1;
+  // overlap entre quartos e células vizinhas
+  const dw = half + 1;
+  const dh = half + 1;
+
+  const n = alturaEm(cx, cy - 1) >= z;
+  const sOk = alturaEm(cx, cy + 1) >= z;
+  const w = alturaEm(cx - 1, cy) >= z;
+  const e = alturaEm(cx + 1, cy) >= z;
+
+  blitGodQuarto(ctx, img, roleQuartoGod(n, w, GOD_OUT_NW, GOD_EDGE_N, GOD_EDGE_W), 0, px, py, dw, dh);
+  blitGodQuarto(ctx, img, roleQuartoGod(n, e, GOD_OUT_NE, GOD_EDGE_N, GOD_EDGE_E), 1, px + half, py, dw, dh);
+  blitGodQuarto(ctx, img, roleQuartoGod(sOk, w, GOD_OUT_SW, GOD_EDGE_S, GOD_EDGE_W), 2, px, py + half, dw, dh);
+  blitGodQuarto(ctx, img, roleQuartoGod(sOk, e, GOD_OUT_SE, GOD_EDGE_S, GOD_EDGE_E), 3, px + half, py + half, dw, dh);
+}
+
+/** cardA/cardB = vizinho naquele eixo ainda alto; senão usa canto/edge. */
+function roleQuartoGod(cardA, cardB, out, edgeA, edgeB) {
+  if (cardA && cardB) return GOD_CENTER;
+  if (!cardA && !cardB) return out;
+  if (!cardA) return edgeA;
+  return edgeB;
+}
+
 /**
  * Face sul: empilha um tile de cliff por degrau.
  */
@@ -35,16 +80,18 @@ export function desenharFaceSulSingle(ctx, atlas, cx, cy, zTopo, queda, destacar
   const topY = mundoParaTelaY(cy, zTopo);
   const w = TILE * ESCALA;
   const step = FACE_H * ESCALA;
-  const py0 = topY + TILE * ESCALA + 1;
+  // Colado no topo (+ overlap) — evita linha/grade entre terraço e face.
+  const py0 = topY + TILE * ESCALA - 1;
+  const dw = w + 1;
+  const dh = step + 1;
 
   if (usarGrassOnDirt(atlas)) {
-    // Base de chão no mesmo retângulo da face (alpha do UNDER); não é topo.
-    const role = papelUnderGod(cx, cy, zTopo);
     const sheet = atlas.grassOnDirt;
     for (let i = 0; i < queda; i++) {
       const dy = py0 + i * step;
-      blitGod(ctx, sheet, GOD_CENTER, px, dy, w, step);
-      blitGod(ctx, sheet, role, px, dy, w, step);
+      // Chão atrás do alpha: só na base (degraus de cima = arredondamento puro).
+      if (i === queda - 1) blitGod(ctx, sheet, GOD_CENTER, px, dy, dw, dh);
+      desenharUnderGod(ctx, sheet, cx, cy, zTopo, px, dy, dw, dh);
     }
   } else {
     const sheet = sheetCliffDoAtlas(atlas);
@@ -54,8 +101,8 @@ export function desenharFaceSulSingle(ctx, atlas, cx, cy, zTopo, queda, destacar
       zTopo >= 2 && atlas.terra ? atlas.terra : atlas.grama || atlas.terra;
     for (let i = 0; i < queda; i++) {
       const dy = py0 + i * step;
-      if (chao) blitRole(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, dy, w, step);
-      blitRole(ctx, sheet, role, 0, px, dy, w, step);
+      if (chao) blitRole(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, dy, dw, dh);
+      blitRole(ctx, sheet, role, 0, px, dy, dw, dh);
     }
   }
 
@@ -64,6 +111,30 @@ export function desenharFaceSulSingle(ctx, atlas, cx, cy, zTopo, queda, destacar
     ctx.lineWidth = 2;
     ctx.strokeRect(px + 1, py0 + 1, w - 2, queda * step - 2);
   }
+}
+
+/**
+ * UNDER sul: tile inteiro nas pontas; solo = metade SW + metade SE.
+ */
+function desenharUnderGod(ctx, sheet, cx, cy, zTopo, px, dy, dw, dh) {
+  const wHigh = alturaEm(cx - 1, cy) >= zTopo;
+  const eHigh = alturaEm(cx + 1, cy) >= zTopo;
+  if (eHigh && !wHigh) {
+    blitGod(ctx, sheet, GOD_OUT_SW_UNDER, px, dy, dw, dh);
+    return;
+  }
+  if (wHigh && !eHigh) {
+    blitGod(ctx, sheet, GOD_OUT_SE_UNDER, px, dy, dw, dh);
+    return;
+  }
+  if (wHigh && eHigh) {
+    blitGod(ctx, sheet, GOD_EDGE_S_UNDER, px, dy, dw, dh);
+    return;
+  }
+  // Solo / faixa 1 de largura: quartos laterais das bordas UNDER.
+  const halfW = dw >> 1;
+  blitGodMetade(ctx, sheet, GOD_OUT_SW_UNDER, "w", px, dy, halfW + 1, dh);
+  blitGodMetade(ctx, sheet, GOD_OUT_SE_UNDER, "e", px + halfW, dy, dw - halfW, dh);
 }
 
 /**
@@ -86,20 +157,12 @@ export function desenharFaceLateralSingle(ctx, atlas, cx, cy, zTopo, queda, lado
     zTopo >= 2 && atlas.terra ? atlas.terra : atlas.grama || atlas.terra;
 
   for (let i = 0; i < queda; i++) {
-    const dy = topY + s + i * step;
+    const dy = topY + s - 1 + i * step;
     if (chao) {
       blitRoleFaixa(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, lado, x, dy, faixa, step);
     }
     blitRoleFaixa(ctx, sheet, role, 0, lado, x, dy, faixa, step);
   }
-}
-
-function papelUnderGod(cx, cy, zTopo) {
-  const wHigh = alturaEm(cx - 1, cy) >= zTopo;
-  const eHigh = alturaEm(cx + 1, cy) >= zTopo;
-  if (eHigh && !wHigh) return GOD_OUT_SW_UNDER;
-  if (wHigh && !eHigh) return GOD_OUT_SE_UNDER;
-  return GOD_EDGE_S_UNDER;
 }
 
 function papelLabioSulLegado(cx, cy, zTopo) {
@@ -125,6 +188,25 @@ export function blitGod(ctx, img, role, dx, dy, dw, dh) {
     dw,
     dh,
   );
+}
+
+/** q: 0=NW 1=NE 2=SW 3=SE — copia o quarto correspondente do role. */
+function blitGodQuarto(ctx, img, role, q, dx, dy, dw, dh) {
+  if (!img || !ctx) return;
+  const col = role % GOD_COLS;
+  const row = (role / GOD_COLS) | 0;
+  const sx = col * TILE_ART + ((q & 1) ? GOD_HALF : 0);
+  const sy = row * TILE_ART + ((q & 2) ? GOD_HALF : 0);
+  ctx.drawImage(img, sx, sy, GOD_HALF, GOD_HALF, dx, dy, dw, dh);
+}
+
+function blitGodMetade(ctx, img, role, lado, dx, dy, dw, dh) {
+  if (!img || !ctx) return;
+  const col = role % GOD_COLS;
+  const row = (role / GOD_COLS) | 0;
+  const sx = col * TILE_ART + (lado === "e" ? GOD_HALF : 0);
+  const sy = row * TILE_ART;
+  ctx.drawImage(img, sx, sy, GOD_HALF, TILE_ART, dx, dy, dw, dh);
 }
 
 function blitRole(ctx, img, role, bandOffset, dx, dy, dw, dh) {

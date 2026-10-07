@@ -2,15 +2,6 @@ import {
   ESCALA,
   FACE_H,
   FLOOR_ROW_OFFSET,
-  GOD_CENTER,
-  GOD_EDGE_E,
-  GOD_EDGE_N,
-  GOD_EDGE_S,
-  GOD_EDGE_W,
-  GOD_OUT_NE,
-  GOD_OUT_NW,
-  GOD_OUT_SE,
-  GOD_OUT_SW,
   ROLE_CENTER,
   SHEET_COLS,
   TERRENO_2D_MARGEM,
@@ -29,9 +20,9 @@ import { usarGrassOnDirt, usarTiles } from "./atlas.js";
 import { coletarPecasColuna } from "./camadasVoxel2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
-  blitGod,
   desenharFaceLateralSingle,
   desenharFaceSulSingle,
+  desenharTopoGod,
 } from "./cliffEmpilhar.js";
 import {
   chaveFadeFaceSul,
@@ -342,41 +333,23 @@ function desenharTopoProcedural(ctx, cx, cy, z) {
 }
 
 function desenharTopoReal(ctx, cx, cy, z) {
-  const px = mundoParaTelaX(cx);
-  const py = mundoParaTelaY(cy, z);
-  const s = TILE * ESCALA;
-
   if (usarGrassOnDirt(_atlas)) {
-    blitGod(ctx, _atlas.grassOnDirt, roleChaoGod(cx, cy, z), px, py, s, s);
+    desenharTopoGod(ctx, _atlas, cx, cy, z);
     return;
   }
 
+  const px = mundoParaTelaX(cx);
+  const py = mundoParaTelaY(cy, z);
+  const s = TILE * ESCALA;
+  // +1 overlap tapa fresta entre células (zoom/câmera).
+  const dw = s + 1;
+  const dh = s + 1;
   const id = z > 0 ? obterBloco(cx, cy, z - 1) : BLOCO.AR;
   const img =
     id === BLOCO.TERRA || id === BLOCO.PEDRA || z >= 2
       ? _atlas.terra || _atlas.grama
       : _atlas.grama;
-  blitRole(ctx, img, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, s, s);
-}
-
-/**
- * Autotile 3×3 sem IN_*: canto/edge quando vizinho está mais baixo.
- */
-function roleChaoGod(cx, cy, z) {
-  const nLow = alturaEm(cx, cy - 1) < z;
-  const sLow = alturaEm(cx, cy + 1) < z;
-  const wLow = alturaEm(cx - 1, cy) < z;
-  const eLow = alturaEm(cx + 1, cy) < z;
-
-  if (nLow && wLow) return GOD_OUT_NW;
-  if (nLow && eLow) return GOD_OUT_NE;
-  if (sLow && wLow) return GOD_OUT_SW;
-  if (sLow && eLow) return GOD_OUT_SE;
-  if (nLow) return GOD_EDGE_N;
-  if (sLow) return GOD_EDGE_S;
-  if (wLow) return GOD_EDGE_W;
-  if (eLow) return GOD_EDGE_E;
-  return GOD_CENTER;
+  blitRole(ctx, img, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, dw, dh);
 }
 
 function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {
@@ -392,7 +365,7 @@ function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
   const topY = mundoParaTelaY(cy, z);
   const w = TILE * ESCALA;
   const h = queda * FACE_H * ESCALA;
-  const py = topY + TILE * ESCALA + 1;
+  const py = topY + TILE * ESCALA - 1;
 
   const faixa = Math.max(3, ESCALA * 2);
   for (let y = 0; y < h; y += faixa) {

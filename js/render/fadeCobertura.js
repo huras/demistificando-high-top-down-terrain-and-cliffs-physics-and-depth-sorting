@@ -245,7 +245,7 @@ function aabbFaceSul(cx, cy, z, queda) {
   const h = queda * FACE_H * ESCALA;
   const px = mundoParaTelaX(cx);
   const topY = mundoParaTelaY(cy, z);
-  const py = topY + TILE * ESCALA + 1;
+  const py = topY + TILE * ESCALA - 1;
   return { x0: px, y0: py, x1: px + w, y1: py + h };
 }
 

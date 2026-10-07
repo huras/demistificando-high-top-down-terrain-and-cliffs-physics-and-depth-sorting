@@ -146,7 +146,7 @@ export const JOGADOR_ESCALA = 0.5;
  * Sheets processados.
  *
  * grass-on-dirt (3×4, GOD_COLS): chão com lip + cliff UNDER na row 3.
- * Sem IN_*; laterais W/E do chão já trazem o lip — não desenha faixa lateral.
+ * Topo = 4 quartos de borda (solo / faixa V/H). Sem IN_*; sem faixa lateral W/E.
  *
  * Legado 5×N (SHEET_COLS): floor band + cliff single/double.
  */

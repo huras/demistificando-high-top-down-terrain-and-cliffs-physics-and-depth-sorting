@@ -57,7 +57,11 @@ export function mundoParaTelaY(y, z, hopLift = 0) {
 
 export function aplicarCamera(ctx, camera) {
   const z = camera.zoom;
-  ctx.setTransform(z, 0, 0, z, -camera.x * z, -camera.y * z);
+  // Snap em pixels físicos — câmera float + zoom abre fresta/grade entre tiles.
+  const tx = -Math.round(camera.x * z);
+  const ty = -Math.round(camera.y * z);
+  ctx.setTransform(z, 0, 0, z, tx, ty);
+  ctx.imageSmoothingEnabled = false;
 }
 
 function clamp(v, a, b) {
