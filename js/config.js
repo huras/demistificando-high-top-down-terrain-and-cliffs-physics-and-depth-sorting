@@ -124,8 +124,9 @@ export const CAMINHOS = {
   asaDelta: "assets/items/asa_delta.png",
   grama: "assets/terrain/grass.png",
   terra: "assets/terrain/dirt.png",
-  cliffDuplo: "assets/terrain/double-cliff-autotile.png",
+  /** Path 2D: single empilhado (preferido). Double so fallback legado. */
   cliffSimples: "assets/terrain/cliff-autotile.png",
+  cliffDuplo: "assets/terrain/double-cliff-autotile.png",
   mata: "assets/vegetation/green-grass.png",
   arvore: "assets/trees/broadleaf.png",
 };
@@ -137,15 +138,14 @@ export const JOGADOR_FRAME = 64;
 export const JOGADOR_ESCALA = 0.5;
 
 /**
- * Sheets processados / cliff autotile (layout Pokemon AI / terrainBlit).
+ * Sheets processados (layout Pokemon AI / terrainBlit).
  *
- * Floor (grass/dirt 5x6): banda em FLOOR_ROW_OFFSET — OUT_*, EDGE_*, CENTER
- * sao tiles de CHAO (grass-on-dirt), nao parede.
+ * Floor (grass/dirt 5x6): banda FLOOR_ROW_OFFSET — OUT_*, EDGE_*, CENTER = CHAO.
  *
- * Double-cliff 5x4:
- *   rows 0-2 = labios do plato (OUT_NW ... OUT_SE); CENTER vazio (magenta)
- *   row 3    = faces verticais OUT_SW_UNDER, EDGE_S_UNDER, OUT_SE_UNDER
- * Single-cliff 5x3: so labios; face sul usa EDGE_S, OUT_SW, OUT_SE.
+ * Cliff single 5x3 (path principal): dual-grid half-cell; cada nivel de altura
+ * empilha uma camada (2 de altura = 2 singles). CENTER = magenta vazio.
+ *
+ * Double 5x4 (legado / opcional): row 3 = *_UNDER — nao usado no empilhamento 2D.
  */
 export const TILE_ART = 16;
 export const SHEET_COLS = 5;
@@ -153,17 +153,22 @@ export const FLOOR_ROW_OFFSET = 3;
 export const ROLE_OUT_NW = 0;
 export const ROLE_EDGE_N = 1;
 export const ROLE_OUT_NE = 2;
+export const ROLE_IN_SE = 3;
+export const ROLE_IN_SW = 4;
 export const ROLE_EDGE_W = 5;
 export const ROLE_CENTER = 6;
 export const ROLE_EDGE_E = 7;
 export const ROLE_OUT_SW = 10;
 export const ROLE_EDGE_S = 11;
 export const ROLE_OUT_SE = 12;
+export const ROLE_IN_NE = 13;
+export const ROLE_IN_NW = 14;
+/** Legado double-cliff — mantidos pra assets/3D antigos. */
 export const ROLE_OUT_SW_UNDER = 15;
 export const ROLE_EDGE_S_UNDER = 16;
 export const ROLE_OUT_SE_UNDER = 17;
-/** @deprecated CENTER do cliff e vazio — use roles UNDER pra parede. */
-export const ROLE_CLIFF_CENTER = ROLE_EDGE_S_UNDER;
+/** @deprecated Prefira ROLE_EDGE_S no sheet single. */
+export const ROLE_CLIFF_CENTER = ROLE_EDGE_S;
 
 /** Voxel / mundo infinito. */
 export const CHUNK_XZ = 16;

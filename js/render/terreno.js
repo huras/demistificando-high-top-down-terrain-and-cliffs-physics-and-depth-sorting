@@ -3,29 +3,24 @@ import {
   FACE_H,
   FLOOR_ROW_OFFSET,
   ROLE_CENTER,
-  ROLE_EDGE_E,
-  ROLE_EDGE_N,
-  ROLE_EDGE_S,
-  ROLE_EDGE_S_UNDER,
-  ROLE_EDGE_W,
-  ROLE_OUT_NE,
-  ROLE_OUT_NW,
-  ROLE_OUT_SE,
-  ROLE_OUT_SE_UNDER,
-  ROLE_OUT_SW,
-  ROLE_OUT_SW_UNDER,
   SHEET_COLS,
   TERRENO_2D_MARGEM,
   TILE,
   TILE_ART,
 } from "../config.js";
-import { alturaEm, quedaVisualFace, solidoEm } from "../mundo/altura.js";
+import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
 import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { usarTiles } from "./atlas.js";
 import { coletarPecasColuna } from "./camadasVoxel2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
+import { sheetCliffDoAtlas } from "./cliffDualGrid.js";
+import {
+  desenharFaceLateralSingle,
+  desenharFaceSulSingle,
+  empilharCliffsSimples,
+} from "./cliffEmpilhar.js";
 import {
   chaveFadeFaceSul,
   chaveFadeLateral,
@@ -49,6 +44,8 @@ const TIE_PROP = 3;
 const FOLGA_Z = 20;
 
 let _atlas = null;
+/** Dual-grid single empilhado (sheet 5x3). */
+let _cliffDual = false;
 
 /**
  * Terreno 2D — cull pela viewport da câmera quando disponível.
@@ -64,6 +61,7 @@ export function empilharTerreno(
   visaoCaverna = null,
 ) {
   _atlas = atlas;
+  _cliffDual = !!(usarTiles(atlas) && sheetCliffDoAtlas(atlas));
   const aabb = obterAabbCarregado();
   let x0 = aabb.x0 | 0;
   let y0 = aabb.y0 | 0;
@@ -89,10 +87,8 @@ export function empilharTerreno(
       const zSurf = pecas.zSurf;
       if (zSurf <= 0) continue;
 
-      // Todos os pisos com ar acima (superfície + cavernas / sob deck).
       for (let i = 0; i < pecas.topos.length; i++) {
         const zTop = pecas.topos[i];
-        // Caverna: sem topo exterior (acima do underside do teto).
         if (tetoCaverna != null && zTop > tetoCaverna) continue;
         const naSuperficie = zTop === zSurf;
         const fadeTop = naSuperficie ? chaveFadeTopo(cx, cy) : null;
@@ -114,6 +110,7 @@ export function empilharTerreno(
         );
       }
 
+      // Superfície: cliffs no dual-grid. Caverna: faces voxel empilhadas.
       empilharFacesCaverna(
         lista,
         pecas.facesS,
@@ -123,6 +120,7 @@ export function empilharTerreno(
         zSurf,
         tetoCaverna,
         faceDestaque,
+        _cliffDual,
       );
       empilharFacesCaverna(
         lista,
@@ -133,6 +131,7 @@ export function empilharTerreno(
         zSurf,
         tetoCaverna,
         null,
+        _cliffDual,
       );
       empilharFacesCaverna(
         lista,
@@ -143,6 +142,7 @@ export function empilharTerreno(
         zSurf,
         tetoCaverna,
         null,
+        _cliffDual,
       );
 
       if (debug && (tetoCaverna == null || zSurf <= tetoCaverna)) {
@@ -158,13 +158,25 @@ export function empilharTerreno(
     }
   }
 
+  if (_cliffDual) {
+    empilharCliffsSimples(
+      lista,
+      atlas,
+      x0,
+      y0,
+      x1,
+      y1,
+      tetoCaverna,
+      faceDestaque,
+    );
+  }
+
   for (let i = 0; i < PROPS.length; i++) {
     const prop = PROPS[i];
     const px = Math.floor(prop.x);
     const py = Math.floor(prop.y);
     if (px < x0 || px > x1 || py < y0 - 2 || py > y1 + 2) continue;
     const z = alturaEm(px, py);
-    // Caverna: props do mundo de cima não entram.
     if (tetoCaverna != null && z > tetoCaverna) continue;
     const fadeProp = chaveFadeProp(i);
     empilhar(
@@ -182,7 +194,8 @@ export function empilharTerreno(
 }
 
 /**
- * Empilha faces; em caverna corta no teto e ignora runs só de exterior.
+ * Empilha faces; em caverna corta no teto.
+ * Com cliff dual, faces de superfície ficam a cargo do dual-grid.
  */
 function empilharFacesCaverna(
   lista,
@@ -193,6 +206,7 @@ function empilharFacesCaverna(
   zSurf,
   tetoCaverna,
   faceDestaque,
+  pularSuperficieDual = false,
 ) {
   for (let i = 0; i < runs.length; i++) {
     const run = runs[i];
@@ -206,6 +220,8 @@ function empilharFacesCaverna(
     if (queda <= 0) continue;
 
     const naSuperficie = zTopo === zSurf;
+    if (pularSuperficieDual && naSuperficie) continue;
+
     const destacar =
       lado === "s" &&
       naSuperficie &&
@@ -269,7 +285,6 @@ function desenharTopoProcedural(ctx, cx, cy, z) {
   ctx.fillRect(px, py + s - 1, s, 1);
   ctx.fillRect(px + s - 1, py, 1, s);
 
-  // Borda por camada (z-1): cavernas não usam só o heightmap da superfície.
   const bz = z - 1;
   const n = bz < 0 || !solidoEm(cx, cy - 1, bz);
   const sEdge = bz < 0 || !solidoEm(cx, cy + 1, bz);
@@ -289,73 +304,18 @@ function desenharTopoReal(ctx, cx, cy, z) {
   const px = mundoParaTelaX(cx);
   const py = mundoParaTelaY(cy, z);
   const s = TILE * ESCALA;
-  // bloco de superfície = z-1
   const id = z > 0 ? obterBloco(cx, cy, z - 1) : BLOCO.AR;
   const img =
     id === BLOCO.TERRA || id === BLOCO.PEDRA || z >= 2
       ? _atlas.terra || _atlas.grama
       : _atlas.grama;
-  // CENTER / EDGE_* / OUT_* do grass|dirt = chão (banda floor), nunca parede
+  // So chao (banda floor). Labios de cliff = dual-grid empilhado.
   blitRole(ctx, img, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, s, s);
-  desenharLabiosCliffNoTopo(ctx, cx, cy, z, px, py, s);
-}
-
-/**
- * Lábios do double/single-cliff no platô alto (magenta → deixa o chão).
- * Faces verticais (*_UNDER) ficam em desenharFaceSulReal.
- */
-function desenharLabiosCliffNoTopo(ctx, cx, cy, z, px, py, s) {
-  const sheet = _atlas.cliffDuplo || _atlas.cliffSimples;
-  if (!sheet) return;
-
-  const dropS = quedaVisualFace(cx, cy, 0, 1) >= 1;
-  const dropN = quedaVisualFace(cx, cy, 0, -1) >= 1;
-  const dropW = quedaVisualFace(cx, cy, -1, 0) >= 1;
-  const dropE = quedaVisualFace(cx, cy, 1, 0) >= 1;
-  if (!dropS && !dropN && !dropW && !dropE) return;
-
-  let role = null;
-  if (dropS && dropW && !dropE && !dropN) role = ROLE_OUT_SW;
-  else if (dropS && dropE && !dropW && !dropN) role = ROLE_OUT_SE;
-  else if (dropN && dropW && !dropE && !dropS) role = ROLE_OUT_NW;
-  else if (dropN && dropE && !dropW && !dropS) role = ROLE_OUT_NE;
-  else if (dropS && !dropN) role = papelLabioSul(cx, cy, z);
-  else if (dropN && !dropS) role = ROLE_EDGE_N;
-  else if (dropW && !dropE) role = ROLE_EDGE_W;
-  else if (dropE && !dropW) role = ROLE_EDGE_E;
-  else if (dropS) role = papelLabioSul(cx, cy, z);
-  else if (dropN) role = ROLE_EDGE_N;
-  else if (dropW) role = ROLE_EDGE_W;
-  else role = ROLE_EDGE_E;
-
-  blitRole(ctx, sheet, role, 0, px, py, s, s);
-}
-
-/** Labio sul no platô: OUT_SW / EDGE_S / OUT_SE conforme vizinhos à mesma altura. */
-function papelLabioSul(cx, cy, zTopo) {
-  const wHigh = alturaEm(cx - 1, cy) >= zTopo;
-  const eHigh = alturaEm(cx + 1, cy) >= zTopo;
-  if (wHigh && eHigh) return ROLE_EDGE_S;
-  if (eHigh && !wHigh) return ROLE_OUT_SW;
-  if (wHigh && !eHigh) return ROLE_OUT_SE;
-  return ROLE_EDGE_S;
-}
-
-function papelUnderDoLabio(labio) {
-  if (labio === ROLE_OUT_SW) return ROLE_OUT_SW_UNDER;
-  if (labio === ROLE_OUT_SE) return ROLE_OUT_SE_UNDER;
-  return ROLE_EDGE_S_UNDER;
-}
-
-function sheetTemBandaUnder(sheet) {
-  if (!sheet) return false;
-  const h = sheet.height || sheet.naturalHeight || 0;
-  return h >= TILE_ART * 4;
 }
 
 function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {
   if (usarTiles(_atlas)) {
-    desenharFaceSulReal(ctx, cx, cy, z, queda, destacar);
+    desenharFaceSulSingle(ctx, _atlas, cx, cy, z, queda, destacar);
     return;
   }
   desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar);
@@ -366,7 +326,6 @@ function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
   const topY = mundoParaTelaY(cy, z);
   const w = TILE * ESCALA;
   const h = queda * FACE_H * ESCALA;
-  // 1px abaixo do topo — topo é autoridade da aresta
   const py = topY + TILE * ESCALA + 1;
 
   const faixa = Math.max(3, ESCALA * 2);
@@ -390,47 +349,9 @@ function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
   }
 }
 
-function desenharFaceSulReal(ctx, cx, cy, z, queda, destacar = false) {
-  const px = mundoParaTelaX(cx);
-  const topY = mundoParaTelaY(cy, z);
-  const w = TILE * ESCALA;
-  const step = FACE_H * ESCALA;
-  // topo autoridade: face começa sob o tile (+1px)
-  const py0 = topY + TILE * ESCALA + 1;
-  const sheetDuplo = _atlas.cliffDuplo;
-  const sheetSimples = _atlas.cliffSimples;
-  // Double 5×4: parede sempre *_UNDER (também em queda 1). Labio fica no topo.
-  const usaDuplo = sheetTemBandaUnder(sheetDuplo);
-  const sheet = usaDuplo
-    ? sheetDuplo
-    : sheetSimples || sheetDuplo;
-  if (!sheet) return;
-
-  const labio = papelLabioSul(cx, cy, z);
-  // Single 5×3: sem banda UNDER — a face sul é o próprio labio.
-  const roleFace = usaDuplo ? papelUnderDoLabio(labio) : labio;
-  const chao = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
-
-  for (let i = 0; i < queda; i++) {
-    const dy = py0 + i * step;
-    // Magenta do labio (single) deixa o chão baixo aparecer; UNDER é opaco.
-    if (!usaDuplo) {
-      blitRole(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, px, dy, w, step);
-    }
-    blitRole(ctx, sheet, roleFace, 0, px, dy, w, step);
-  }
-
-  if (destacar) {
-    const h = queda * step;
-    ctx.strokeStyle = "rgba(255, 220, 80, 0.95)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(px + 1, py0 + 1, w - 2, h - 2);
-  }
-}
-
 function desenharFaceLateral(ctx, cx, cy, z, queda, lado) {
   if (usarTiles(_atlas)) {
-    desenharFaceLateralReal(ctx, cx, cy, z, queda, lado);
+    desenharFaceLateralSingle(ctx, _atlas, cx, cy, z, queda, lado);
     return;
   }
   desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado);
@@ -443,7 +364,6 @@ function desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado) {
   const h = queda * FACE_H * ESCALA;
   const faixa = Math.max(5, ESCALA * 3);
   const x = lado === "w" ? px : px + s - faixa;
-  // só a parede — não overdrawa o topo
   const y0 = topY + s;
 
   ctx.fillStyle = CORES.faceLateral;
@@ -451,38 +371,6 @@ function desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado) {
 
   ctx.fillStyle = CORES.faceSombra;
   ctx.fillRect(lado === "w" ? x : x + faixa - 1, y0, 1, h);
-}
-
-function desenharFaceLateralReal(ctx, cx, cy, z, queda, lado) {
-  const px = mundoParaTelaX(cx);
-  const topY = mundoParaTelaY(cy, z);
-  const s = TILE * ESCALA;
-  const step = FACE_H * ESCALA;
-  const faixa = Math.max(5, ESCALA * 3);
-  const x = lado === "w" ? px : px + s - faixa;
-  const sheetDuplo = _atlas.cliffDuplo;
-  const sheet = sheetTemBandaUnder(sheetDuplo)
-    ? sheetDuplo
-    : _atlas.cliffSimples || sheetDuplo;
-  if (!sheet) return;
-
-  // EDGE_W/E são lábios de chão no platô — parede lateral pega faixa do UNDER.
-  const role = sheetTemBandaUnder(sheet)
-    ? lado === "w"
-      ? ROLE_OUT_SW_UNDER
-      : ROLE_OUT_SE_UNDER
-    : lado === "w"
-      ? ROLE_EDGE_W
-      : ROLE_EDGE_E;
-  const chao = z >= 2 && _atlas.terra ? _atlas.terra : _atlas.grama;
-
-  for (let i = 0; i < queda; i++) {
-    const dy = topY + s + i * step;
-    if (!sheetTemBandaUnder(sheet)) {
-      blitRoleFaixa(ctx, chao, ROLE_CENTER, FLOOR_ROW_OFFSET, lado, x, dy, faixa, step);
-    }
-    blitRoleFaixa(ctx, sheet, role, 0, lado, x, dy, faixa, step);
-  }
 }
 
 function desenharProp(ctx, prop, z) {
@@ -580,17 +468,4 @@ function blitRole(ctx, img, role, bandOffset, dx, dy, dw, dh) {
   const sy = row * TILE_ART;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, sx, sy, TILE_ART, TILE_ART, dx, dy, dw, dh);
-}
-
-/** Recorta N px do topo do tile (remove lip duplicado). */
-function blitRoleFaixa(ctx, img, role, bandOffset, lado, dx, dy, dw, dh) {
-  if (!img) return;
-  const col = role % SHEET_COLS;
-  const row = Math.floor(role / SHEET_COLS) + bandOffset;
-  const sx0 = col * TILE_ART;
-  const sy = row * TILE_ART;
-  const srcW = Math.max(3, Math.round(TILE_ART * 0.35));
-  const sx = lado === "w" ? sx0 : sx0 + TILE_ART - srcW;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(img, sx, sy, srcW, TILE_ART, dx, dy, dw, dh);
 }

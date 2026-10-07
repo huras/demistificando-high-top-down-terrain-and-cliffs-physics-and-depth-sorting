@@ -47,30 +47,31 @@ export async function montarAtlas(caminhos = CAMINHOS) {
     jogador,
     grama,
     terra,
-    cliffDuploRaw,
     cliffSimplesRaw,
+    cliffDuploRaw,
     mata,
     arvore,
   ] = await Promise.all([
     carregarImagem(caminhos.jogador),
     tentarCarregar(caminhos.grama),
     tentarCarregar(caminhos.terra),
-    tentarCarregar(caminhos.cliffDuplo),
     tentarCarregar(caminhos.cliffSimples),
+    tentarCarregar(caminhos.cliffDuplo),
     tentarCarregar(caminhos.mata),
     tentarCarregar(caminhos.arvore),
   ]);
 
-  const cliffDuplo = removerMagenta(cliffDuploRaw);
+  // Single = path 2D (empilhavel). Double so fallback se single ausente.
   const cliffSimples = removerMagenta(cliffSimplesRaw);
-  const terrenoPronto = !!(grama && (cliffDuplo || cliffSimples));
+  const cliffDuplo = removerMagenta(cliffDuploRaw);
+  const terrenoPronto = !!(grama && (cliffSimples || cliffDuplo));
 
   return {
     jogador,
     grama,
     terra,
-    cliffDuplo,
     cliffSimples,
+    cliffDuplo,
     mata,
     arvore,
     terrenoPronto,

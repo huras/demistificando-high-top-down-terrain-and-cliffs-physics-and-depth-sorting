@@ -3,7 +3,6 @@ import {
   FLOOR_ROW_OFFSET,
   ROLE_CENTER,
   ROLE_EDGE_S,
-  ROLE_EDGE_S_UNDER,
   SHEET_COLS,
   TILE_ART,
 } from "../../config.js";
@@ -39,10 +38,8 @@ function extrairCliffSeamless(atlas) {
   const sheet = atlas?.cliffSimples || atlas?.cliffDuplo;
   if (!sheet) return null;
 
-  // Parede = *_UNDER; CENTER do cliff é magenta vazio.
-  let tile =
-    extrairTileCanvas(sheet, ROLE_EDGE_S_UNDER, 0) ||
-    extrairTileCanvas(sheet, ROLE_EDGE_S, 0);
+  // Single: EDGE_S e a face; CENTER e magenta vazio.
+  const tile = extrairTileCanvas(sheet, ROLE_EDGE_S, 0);
   if (!tile) return null;
 
   const out = document.createElement("canvas");
