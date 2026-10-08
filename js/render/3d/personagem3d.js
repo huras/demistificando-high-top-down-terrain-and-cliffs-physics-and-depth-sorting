@@ -106,7 +106,7 @@ export function criarPersonagem3d(opts = {}) {
       if (agua.superficie > 0 && elev < agua.superficie - 0.05) {
         planoAgua.constant = -agua.superficie;
         spriteMat.clippingPlanes = [planoAgua];
-      } else if (spriteMat.clippingPlanes.length) {
+      } else if (spriteMat.clippingPlanes && spriteMat.clippingPlanes.length) {
         spriteMat.clippingPlanes = [];
       }
 
