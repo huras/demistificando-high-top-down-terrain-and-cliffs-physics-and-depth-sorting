@@ -143,6 +143,8 @@ async function iniciar() {
       corpo.planando = false;
       corpo.escalando = false;
       corpo.voando = false;
+      corpo.nadando = false;
+      corpo.afogandoT = 0;
       corpo.noChao = true;
       corpo.hopLift = 0;
       corpo.puloCortado = false;
@@ -164,6 +166,8 @@ async function iniciar() {
         agente.planando = false;
         agente.voando = false;
         agente.escalando = false;
+        agente.nadando = false;
+        agente.afogandoT = 0;
         agente.escalada = null;
         agente.mantle = null;
         agente.puloCortado = false;

@@ -19,6 +19,7 @@ import {
 } from "./ordenacaoProfundidade.js";
 import { empilharAlvoEscalada } from "./alvoEscalada.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
+import { avancarTempoAgua, empilharAgua2d } from "./agua2d.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
 import { obterVisaoCaverna2d } from "./visaoCaverna2d.js";
@@ -51,6 +52,8 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
     camera,
     visaoCaverna,
   );
+  avancarTempoAgua(dt);
+  empilharAgua2d(lista, camera);
   empilharAlvoEscalada(lista, corpo, dt);
   if (agente) empilharAgente(lista, atlas, agente);
   empilharPersonagem(lista, atlas, corpo);

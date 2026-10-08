@@ -1,7 +1,7 @@
 import { ALCANCE_EDICAO } from "../../config.js";
 import { invalidarNavCache } from "../../navegacao/navGrade.js";
 import { definirBloco, obterBloco, superficieEm } from "./storeMundo.js";
-import { BLOCO, ehSolido } from "./tiposBloco.js";
+import { BLOCO, ehLiquido, ehSolido } from "./tiposBloco.js";
 
 let blocoNaMao = BLOCO.PEDRA;
 
@@ -30,7 +30,7 @@ export function quebrarBloco(corpo, alvo) {
   const { x, y, z } = alvo;
   if (!alcanceOk(corpo, x, y, z)) return BLOCO.AR;
   const id = obterBloco(x, y, z);
-  if (!ehSolido(id)) return BLOCO.AR;
+  if (!ehSolido(id) && !ehLiquido(id)) return BLOCO.AR;
   if (!definirBloco(x, y, z, BLOCO.AR)) return BLOCO.AR;
   definirBlocoNaMao(id);
   invalidarNavCache();

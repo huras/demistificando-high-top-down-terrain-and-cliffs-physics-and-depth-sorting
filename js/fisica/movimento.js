@@ -17,6 +17,13 @@ import {
   moverAereo,
   moverComColisao,
 } from "./colisao.js";
+import {
+  aplicarCorrenteChao,
+  atualizarNado,
+  fimPassoChao,
+  inicioPassoChao,
+  tentarBracada,
+} from "./agua.js";
 import { atualizarCorrida } from "./corrida.js";
 import {
   anexarEscalada,
@@ -56,6 +63,11 @@ export function criarCorpo(spawn) {
     planando: false,
     escalando: false,
     voando: false,
+    nadando: false,
+    aguaSegura: null,
+    afogandoT: 0,
+    aguaProf: 0,
+    aguaCaindo: 0,
     pulo: null,
     escalada: null,
     mantle: null,
@@ -87,7 +99,10 @@ export function atualizarMovimento(corpo, dt) {
   // F: toggle fly (não drena stamina)
   if (teclaAgora("KeyF")) {
     if (estaVoando(corpo)) sairVoo(corpo, { pousar: false });
-    else entrarVoo(corpo);
+    else {
+      corpo.nadando = false;
+      entrarVoo(corpo);
+    }
   }
 
   if (estaVoando(corpo)) {
@@ -146,15 +161,17 @@ export function atualizarMovimento(corpo, dt) {
   const apertouPulo = teclaAgora("Space");
   registrarBufferPulo(corpo, apertouPulo);
 
-  // Space: chão = hop Mario; 2º toque no ar = asa-delta
-  if (estaPlanando(corpo)) {
+  // Space: chão = hop Mario; nado = braçada; 2º toque no ar = asa-delta
+  if (corpo.nadando && apertouPulo) {
+    tentarBracada(corpo);
+  } else if (estaPlanando(corpo)) {
     tratarInputAsaDelta(corpo, apertouPulo);
   } else if (
     (apertouPulo || corpo.puloBufferT > 0) &&
     podeIniciarPulo(corpo)
   ) {
     iniciarPulo(corpo);
-  } else if (apertouPulo && !corpo.noChao) {
+  } else if (apertouPulo && !corpo.noChao && !corpo.nadando) {
     tratarInputAsaDelta(corpo, true);
   }
 
@@ -186,6 +203,11 @@ export function atualizarMovimento(corpo, dt) {
     !corpo.mantle &&
     (dx !== 0 || dy !== 0);
 
+  if (corpo.nadando && !corpo.escalando && !corpo.voando) {
+    atualizarNado(corpo, dx, dy, dt);
+    return;
+  }
+
   if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt);
   else {
     corpo.correndo = false;
@@ -199,7 +221,25 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   corpo.planando = false;
   corpo.tempoAr = 0;
   const velMax = corpo.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
-  const movendo = atualizarCorrida(corpo, dx, dy, dt, true, velMax);
+  const fase = inicioPassoChao(corpo, velMax);
+  if (fase === "nado") {
+    atualizarNado(corpo, dx, dy, dt);
+    return;
+  }
+  if (fase === "queda") {
+    iniciarQueda(corpo);
+    atualizarAereo(corpo, dt);
+    corpo.andando = false;
+    corpo.correndo = false;
+    return;
+  }
+
+  const vel = corpo._velAgua ?? velMax;
+  const comCorrente = aplicarCorrenteChao(corpo, dx, dy, dt);
+  const movendo =
+    comCorrente == null
+      ? atualizarCorrida(corpo, dx, dy, dt, true, vel)
+      : comCorrente;
   const passoX = corpo.vx * dt;
   const passoY = corpo.vy * dt;
   const novo = moverComColisao(corpo, passoX, passoY, "andar");
@@ -209,6 +249,12 @@ function atualizarNoChao(corpo, dx, dy, dt) {
 
   corpo.x = novo.x;
   corpo.y = novo.y;
+
+  const depois = fimPassoChao(corpo);
+  if (depois === "nado") {
+    atualizarNado(corpo, dx, dy, dt);
+    return;
+  }
 
   const zChao = alturaSobPes(corpo.x, corpo.y, corpo.z);
 
@@ -231,7 +277,11 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   if (cantoEmCliffAlto(corpo)) empurrarForaDeCliff(corpo);
 
   corpo.andando = movendo && (dx !== 0 || dy !== 0);
-  if (corpo.andando) {
+  if (corpo.aguaProf > 0.2) {
+    corpo.correndo = false;
+    corpo.acao = corpo.andando ? "vadeando" : "vado";
+    if (corpo.andando) corpo.animT += dt;
+  } else if (corpo.andando) {
     corpo.animT += dt * (corpo.correndo ? 1.35 : 1);
     corpo.acao = corpo.correndo ? "sprint" : "correndo";
   } else if (

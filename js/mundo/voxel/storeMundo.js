@@ -5,6 +5,7 @@ import {
   chaveChunk,
   criarChunk,
   definirLocal,
+  invalidarFluxo,
   mundoParaChunk,
   obterLocal,
   superficieBaixaLocal,
@@ -66,9 +67,11 @@ export function carregarChunk(cx, cy) {
   aplicarEditsNoChunk(chunk);
   chunk.gerado = true;
   chunk.sujo = true;
+  invalidarFluxo(chunk);
   chunks.set(k, chunk);
   // Vizinhos precisam remeshar: faces de cliff na borda mudam com o vizinho.
   marcarChunkVizinhosSujos(cx, cy);
+  invalidarFluxoVizinhos(cx, cy);
   emitirDirty({
     x0: cx * CHUNK_XZ,
     y0: cy * CHUNK_XZ,
@@ -86,6 +89,7 @@ export function descarregarChunk(cx, cy) {
   if (!chunk) return;
   // Antes de sair: vizinhos regeneram faces expostas pro void.
   marcarChunkVizinhosSujos(cx, cy);
+  invalidarFluxoVizinhos(cx, cy);
   chunks.delete(k);
   emitirDirty({
     x0: cx * CHUNK_XZ,
@@ -138,6 +142,8 @@ export function definirBloco(wx, wy, wz, id) {
 
   // marca vizinhos se na borda
   marcarVizinhosSujos(cx, cy, lx, ly);
+  invalidarFluxo(chunk);
+  invalidarFluxoVizinhos(cx, cy);
 
   emitirDirty({
     x0: x - 1,
@@ -148,6 +154,17 @@ export function definirBloco(wx, wy, wz, id) {
     z1: Math.min(CHUNK_Y - 1, z + 1),
   });
   return true;
+}
+
+function invalidarFluxoVizinhos(cx, cy) {
+  for (const [dx, dy] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]) {
+    invalidarFluxo(obterChunk(cx + dx, cy + dy));
+  }
 }
 
 function marcarVizinhosSujos(cx, cy, lx, ly) {

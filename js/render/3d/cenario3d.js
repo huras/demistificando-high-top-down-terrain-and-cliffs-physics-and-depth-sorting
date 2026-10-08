@@ -44,6 +44,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.12;
+  renderer.localClippingEnabled = true;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1512);

@@ -7,6 +7,7 @@ import {
   ASA_DELTA_VEL_MUL,
   VELOCIDADE_MAX,
 } from "../config.js";
+import { resolverAguaAereo } from "./agua.js";
 import { alturaSobPes, aplicarTetoOverhang } from "./colisao.js";
 import { pousarNoChao } from "./pulo.js";
 
@@ -15,7 +16,14 @@ export function estaPlanando(corpo) {
 }
 
 export function podeAbrirAsaDelta(corpo) {
-  if (!corpo || corpo.noChao || corpo.escalando || corpo.planando || corpo.voando) {
+  if (
+    !corpo ||
+    corpo.noChao ||
+    corpo.escalando ||
+    corpo.planando ||
+    corpo.voando ||
+    corpo.nadando
+  ) {
     return false;
   }
   if ((corpo.tempoAr ?? 0) < ASA_DELTA_ABRIR_APOS) return false;
@@ -70,6 +78,7 @@ export function atualizarAsaDelta(corpo, dt) {
   corpo._elevAnterior = elevAntes;
   corpo.elevacao += corpo.vz * dt;
   aplicarTetoOverhang(corpo);
+  if (resolverAguaAereo(corpo)) return true;
 
   const zChao = alturaSobPes(corpo.x, corpo.y, corpo.elevacao, elevAntes);
   corpo.z = zChao > 0 ? zChao : 0;

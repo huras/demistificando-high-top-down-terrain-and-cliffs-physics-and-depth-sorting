@@ -51,6 +51,8 @@ export function anexarEscalada(corpo, res, dx = 0, dy = 0) {
   const e = res.escalada;
   corpo.escalada = e;
   corpo.escalando = true;
+  corpo.nadando = false;
+  corpo.afogandoT = 0;
   corpo.noChao = false;
   corpo.pulando = false;
   corpo.planando = false;

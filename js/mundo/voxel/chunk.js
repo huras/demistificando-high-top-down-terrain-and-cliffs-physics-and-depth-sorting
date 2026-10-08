@@ -17,9 +17,22 @@ export function criarChunk(cx, cy) {
     baseTopo: new Int16Array(CHUNK_XZ * CHUNK_XZ),
     /** Walk height sob o deck (0 se coluna sólida / sem camada inferior). */
     superficieBaixa: new Int16Array(CHUNK_XZ * CHUNK_XZ),
+    /** Corrente horizontal por coluna (−1, 0, 1). */
+    fluxoX: new Int8Array(CHUNK_XZ * CHUNK_XZ),
+    fluxoY: new Int8Array(CHUNK_XZ * CHUNK_XZ),
+    aguaCaindo: new Uint8Array(CHUNK_XZ * CHUNK_XZ),
+    aguaSuperficie: new Int16Array(CHUNK_XZ * CHUNK_XZ),
+    aguaFundo: new Int16Array(CHUNK_XZ * CHUNK_XZ),
+    aguaProf: new Int16Array(CHUNK_XZ * CHUNK_XZ),
+    aguaPiso: new Int16Array(CHUNK_XZ * CHUNK_XZ),
+    fluxoPronto: false,
     sujo: true,
     gerado: false,
   };
+}
+
+export function invalidarFluxo(chunk) {
+  if (chunk) chunk.fluxoPronto = false;
 }
 
 export function chaveChunk(cx, cy) {
@@ -54,6 +67,7 @@ export function definirLocal(chunk, lx, ly, lz, id) {
   if (ant === novo) return false;
   chunk.blocos[i] = novo;
   atualizarSuperficieColuna(chunk, lx, ly);
+  chunk.fluxoPronto = false;
   chunk.sujo = true;
   return true;
 }

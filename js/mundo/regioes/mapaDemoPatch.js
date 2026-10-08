@@ -2,6 +2,7 @@
  * Heightmap autoral da demo — patch sobre o gen procedural.
  */
 import { CHUNK_XZ } from "../../config.js";
+import { aplicarAguaDemo } from "../autor/agua.js";
 import { aplicarDeckRetangular, DECK_CUMES } from "../autor/ponte.js";
 import { preencherColunaSolida } from "../voxel/chunk.js";
 
@@ -153,6 +154,8 @@ export const PROPS = [
   { id: "arv-a", x: 35.2, y: 3.5, tipo: "arvore" },
   { id: "mata-a", x: 34.2, y: 3.8, tipo: "mata" },
   { id: "pedra-a", x: 4.5, y: 4.6, tipo: "pedra" },
+
+  { id: "placa-lago", x: 10.5, y: 23.4, tipo: "placa", texto: "LAGO" },
 ];
 
 /** Sobrescreve colunas do chunk que caem no retângulo autoral. */
@@ -171,5 +174,6 @@ export function aplicarPatchDemo(chunk, alturas = ALTURAS) {
   }
   // 2ª passagem: deck overhang entre cumes (ar embaixo; não altera heightmap).
   if (aplicarDeckRetangular(chunk, DECK_CUMES)) tocado = true;
+  if (aplicarAguaDemo(chunk)) tocado = true;
   return tocado;
 }

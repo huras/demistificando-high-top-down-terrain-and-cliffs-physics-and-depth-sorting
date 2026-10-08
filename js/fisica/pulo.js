@@ -11,6 +11,7 @@ import {
 } from "../config.js";
 import { teclaBaixa } from "../entrada/teclado.js";
 import { dentroDoMapa } from "../mundo/altura.js";
+import { resolverAguaAereo } from "./agua.js";
 import {
   alturaSobPes,
   aplicarTetoOverhang,
@@ -25,7 +26,13 @@ export function registrarBufferPulo(corpo, apertou) {
 }
 
 export function podeIniciarPulo(corpo) {
-  if (corpo.escalando || corpo.planando || corpo.voando || corpo.mantle) {
+  if (
+    corpo.escalando ||
+    corpo.planando ||
+    corpo.voando ||
+    corpo.mantle ||
+    corpo.nadando
+  ) {
     return false;
   }
   if (corpo.noChao) return true;
@@ -95,6 +102,7 @@ export function atualizarAereo(corpo, dt) {
   corpo._elevAnterior = elevAntes;
   corpo.elevacao += corpo.vz * dt;
   aplicarTetoOverhang(corpo);
+  if (resolverAguaAereo(corpo)) return;
 
   // No ápice / descida: solta o “hold” da IA
   if (corpo.segurarPulo && corpo.vz <= 0) {

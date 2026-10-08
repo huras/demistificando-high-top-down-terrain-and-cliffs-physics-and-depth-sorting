@@ -1,4 +1,6 @@
 import {
+  AGUA_DRAIN_NADO,
+  AGUA_DRAIN_NADO_PARADO,
   STAMINA_DRAIN_ESCALADA,
   STAMINA_MAX,
   STAMINA_REGEN,
@@ -16,9 +18,22 @@ export function drenarStaminaEscalada(corpo, dt, movendo = true) {
   return corpo.stamina <= 1e-4;
 }
 
+/** Drena o tempo todo na água funda. Mais rápido se está se movendo. */
+export function drenarStaminaNado(corpo, dt, movendo = true) {
+  if (dt <= 0) return (corpo.stamina ?? 0) <= 1e-4;
+  const taxa = movendo ? AGUA_DRAIN_NADO : AGUA_DRAIN_NADO_PARADO;
+  corpo.stamina = Math.max(0, (corpo.stamina ?? 0) - taxa * dt);
+  return corpo.stamina <= 1e-4;
+}
+
 /** Regen no chão (parado ou andando). */
 export function regenerarStamina(corpo, dt) {
-  if (corpo.escalando || corpo.planando || (!corpo.noChao && corpo.pulando)) {
+  if (
+    corpo.escalando ||
+    corpo.planando ||
+    corpo.nadando ||
+    (!corpo.noChao && corpo.pulando)
+  ) {
     return;
   }
   const max = corpo.staminaMax ?? STAMINA_MAX;

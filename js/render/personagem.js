@@ -1,4 +1,5 @@
 import { ESCALA, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
+import { cobrirPernasAgua } from "./agua2d.js";
 import { desenharAsaDelta } from "./asaDeltaVisual.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import { chaveEntidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
@@ -90,6 +91,7 @@ export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
     dh,
   );
   ctx.restore();
+  cobrirPernasAgua(ctx, corpo);
 
   if (corpo.planando) {
     const ax = mundoParaTelaX(corpo.x);

@@ -24,6 +24,12 @@ import {
   fecharAsaDelta,
   podeAbrirAsaDelta,
 } from "./asaDelta.js";
+import {
+  aplicarCorrenteChao,
+  atualizarNado,
+  fimPassoChao,
+  inicioPassoChao,
+} from "./agua.js";
 import { alturaSobPes, corpoColideSolido, moverAereo, moverComColisao } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
 import {
@@ -117,6 +123,11 @@ export function criarAgente(spawn, perfil = PERFIL_COMPANHEIRO) {
     pulando: false,
     planando: false,
     voando: false,
+    nadando: false,
+    aguaSegura: null,
+    afogandoT: 0,
+    aguaProf: 0,
+    aguaCaindo: 0,
     escalando: false,
     escalada: null,
     hopLift: 0,
@@ -299,15 +310,45 @@ export function atualizarAgente(agente, lider, dt) {
     }
   }
 
+  if (agente.nadando && !agente.escalando && !estaVoando(agente)) {
+    atualizarNado(agente, ix, iy, dt);
+    return;
+  }
+
   if (agente.noChao) {
     if (estaPlanando(agente)) fecharAsaDelta(agente);
 
-    const movendo = atualizarCorrida(agente, ix, iy, dt, true, velMax);
+    const fase = inicioPassoChao(agente, velMax);
+    if (fase === "nado") {
+      atualizarNado(agente, ix, iy, dt);
+      return;
+    }
+    if (fase === "queda") {
+      iniciarQueda(agente);
+      agente.elevacao = agente.z;
+      empurrarForaDePisoAlto(agente, 0);
+      atualizarAereo(agente, dt);
+      agente.andando = false;
+      return;
+    }
+
+    const vel = agente._velAgua ?? velMax;
+    const comCorrente = aplicarCorrenteChao(agente, ix, iy, dt);
+    const movendo =
+      comCorrente == null
+        ? atualizarCorrida(agente, ix, iy, dt, true, vel)
+        : comCorrente;
     const novo = moverComColisao(agente, agente.vx * dt, agente.vy * dt, "andar");
     if (novo.bloqueouX) agente.vx = 0;
     if (novo.bloqueouY) agente.vy = 0;
     agente.x = novo.x;
     agente.y = novo.y;
+
+    const depois = fimPassoChao(agente);
+    if (depois === "nado") {
+      atualizarNado(agente, ix, iy, dt);
+      return;
+    }
 
     const zChao = alturaSobPes(agente.x, agente.y, agente.z);
     if (zChao <= 0 || zChao < agente.z) {
@@ -348,6 +389,7 @@ export function atualizarAgente(agente, lider, dt) {
     else if (nav?.estado === "buscando") agente.acao = "buscando-path";
     else if (querVoar) agente.acao = "indo-voar";
     else if (querEscalar) agente.acao = "indo-escalar";
+    else if (agente.aguaProf > 0.2) agente.acao = agente.andando ? "vadeando" : "vado";
     else if (agente.andando) agente.acao = "seguindo";
     else agente.acao = "parado";
 

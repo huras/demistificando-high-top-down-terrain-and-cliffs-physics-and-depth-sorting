@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { JOGADOR_FRAME } from "../../config.js";
+import { colunaAgua } from "../../mundo/agua/fluxo.js";
 import { criarAsaDelta3d } from "./asaDelta3d.js";
 import { linhaFacingDoCorpo } from "./facingCamera3d.js";
 import { criarSombraContato3d } from "./sombraContato3d.js";
@@ -35,6 +36,8 @@ export function criarPersonagem3d(opts = {}) {
     sizeAttenuation: true,
   });
   if (opts.tint != null) spriteMat.color.setHex(opts.tint);
+
+  const planoAgua = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
   const sprite = new THREE.Sprite(spriteMat);
   sprite.center.set(0.5, 0);
@@ -98,6 +101,14 @@ export function criarPersonagem3d(opts = {}) {
       const elev =
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
       grupo.position.set(corpoEstado.x, elev, corpoEstado.y);
+
+      const agua = colunaAgua(corpoEstado.x, corpoEstado.y);
+      if (agua.superficie > 0 && elev < agua.superficie - 0.05) {
+        planoAgua.constant = -agua.superficie;
+        spriteMat.clippingPlanes = [planoAgua];
+      } else if (spriteMat.clippingPlanes.length) {
+        spriteMat.clippingPlanes = [];
+      }
 
       const yaw =
         yawCam != null && Number.isFinite(yawCam)

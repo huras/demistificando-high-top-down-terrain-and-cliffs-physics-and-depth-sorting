@@ -16,9 +16,13 @@ import {
   PATH_VOO_CUSTO_MUL,
   PATH_VOO_DIST_MIN,
   PATH_VOO_VEL,
+  AGUA_CUSTO_NAV,
+  AGUA_CUSTO_NAV_RASO,
+  AGUA_LIMIAR_VADO,
   VELOCIDADE_MAX,
 } from "../config.js";
 import { listarPisosWalkable } from "../fisica/colisao.js";
+import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { dentroDoMapa } from "../mundo/altura.js";
 import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
 import { ehSolido } from "../mundo/voxel/tiposBloco.js";
@@ -195,6 +199,7 @@ function construirGrade(perfil, centroX, centroY, raio) {
           for (const zB of pisosB) {
             const edge = classificarAresta(zA, zB, perfil, diag);
             if (!edge) continue;
+            edge.custo *= custoAgua(cx, cy, nx, ny);
             lista.push(chaveCelula(nx, ny, zB), edge.custo, edge.tipo);
           }
         }
@@ -247,6 +252,16 @@ function cantoDiagonalLivre(cx, cy, zA, nx, ny, pisosDe) {
   if (ehSolido(obterBloco(nx, cy, Math.floor(zA)))) return false;
   if (ehSolido(obterBloco(cx, ny, Math.floor(zA)))) return false;
   return true;
+}
+
+function custoAgua(cx, cy, nx, ny) {
+  const a = colunaAgua(cx, cy);
+  const b = colunaAgua(nx, ny);
+  if (a.caindo || b.caindo) return AGUA_CUSTO_NAV + 2;
+  const p = Math.max(a.profundidade || 0, b.profundidade || 0);
+  if (p > AGUA_LIMIAR_VADO) return AGUA_CUSTO_NAV;
+  if (p > 0.2) return AGUA_CUSTO_NAV_RASO;
+  return 1;
 }
 
 function classificarAresta(zA, zB, perfil, diag) {

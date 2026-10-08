@@ -99,6 +99,24 @@ export const STAMINA_MAX = 100;
 export const STAMINA_DRAIN_ESCALADA = 18;
 export const STAMINA_REGEN = 28;
 
+/**
+ * Água. Profundidade = superfície − piso sólido.
+ * Até o limiar dá pra vadear; acima disso o corpo flutua.
+ */
+export const AGUA_LIMIAR_VADO = 1.05;
+export const AGUA_VEL_NADO = 2.4;
+export const AGUA_CORRENTE = 2.2;
+export const AGUA_QUEDA_VEL = 7.5;
+/** Pés ficam isto abaixo da superfície ao nadar. */
+export const AGUA_FLUTUA = 0.35;
+export const AGUA_DRAIN_NADO = 10;
+export const AGUA_DRAIN_NADO_PARADO = 4;
+export const AGUA_AFOGA_SEG = 2.5;
+export const AGUA_BRACADA_VZ = 8.1;
+export const AGUA_BRACADA_CUSTO = 22;
+export const AGUA_CUSTO_NAV = 4;
+export const AGUA_CUSTO_NAV_RASO = 1.65;
+
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 3.5;
 export const ZOOM_PASSO = 1.12;

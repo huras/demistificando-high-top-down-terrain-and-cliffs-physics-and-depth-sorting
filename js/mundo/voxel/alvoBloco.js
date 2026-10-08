@@ -1,6 +1,6 @@
 import { ALCANCE_EDICAO, CHUNK_Y } from "../../config.js";
 import { obterBloco } from "./storeMundo.js";
-import { ehSolido } from "./tiposBloco.js";
+import { ehLiquido, ehSolido } from "./tiposBloco.js";
 
 const FACES = [
   { nx: 1, ny: 0, nz: 0 },
@@ -61,7 +61,7 @@ export function raycastVoxel(ox, oy, oz, dx, dy, dz, maxDist = ALCANCE_EDICAO) {
   for (let i = 0; i < 128; i++) {
     if (z >= 0 && z < CHUNK_Y) {
       const id = obterBloco(x, y, z);
-      if (ehSolido(id)) {
+      if (ehSolido(id) || ehLiquido(id)) {
         return { x, y, z, nx, ny, nz, id };
       }
     }
@@ -119,7 +119,7 @@ export function alvoBloco2d(cx, cy, zMax = CHUNK_Y) {
   }
   for (let z = zIni; z >= 0; z--) {
     const id = obterBloco(x, y, z);
-    if (ehSolido(id)) {
+    if (ehSolido(id) || ehLiquido(id)) {
       return { x, y, z, nx: 0, ny: 0, nz: 1, id };
     }
   }

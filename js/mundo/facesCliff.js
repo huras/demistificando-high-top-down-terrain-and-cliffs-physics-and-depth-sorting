@@ -1,4 +1,5 @@
 import { CHUNK_Y, RAIO_CORPO } from "../config.js";
+import { colunaAgua } from "./agua/fluxo.js";
 import { alturaEm, dentroDoMapa, quedaVisualFace } from "./altura.js";
 import { obterBloco } from "./voxel/storeMundo.js";
 import { ehSolido } from "./voxel/tiposBloco.js";
@@ -59,6 +60,20 @@ export function encontrarFacePerto(x, y, zRef) {
     }
   }
 
+  // A lâmina da queda fica uma célula à frente do lábio; o nado no poço
+  // precisa enxergar a face dois tiles ao norte.
+  for (let cy = cy0 - 2; cy <= cy0 + 2; cy++) {
+    for (let cx = cx0 - 2; cx <= cx0 + 2; cx++) {
+      if (!dentroDoMapa(cx, cy)) continue;
+      considerarCachoeira(cx, cy, x, y, zRef, (f, s) => {
+        if (s < melhorScore) {
+          melhorScore = s;
+          melhor = f;
+        }
+      });
+    }
+  }
+
   return melhor;
 }
 
@@ -67,6 +82,9 @@ export function faceClimbavel(lado, cx, cy, zRef = null) {
   if (!dentroDoMapa(cx, cy)) return null;
   const dir = dirDoLado(lado);
   if (!dir) return null;
+
+  const quedaAgua = faceCachoeira(lado, cx, cy, zRef);
+  if (quedaAgua) return quedaAgua;
 
   // Preferência: face de superfície clássica
   const zTopo = alturaEm(cx, cy);
@@ -200,6 +218,48 @@ function considerarFacesVoxel(cx, cy, x, y, zRef, aceitar) {
         score,
       );
     }
+  }
+}
+
+/** Face da queda: a coluna vizinha é água caindo; o topo é o piso do rio. */
+function faceCachoeira(lado, cx, cy, zRef) {
+  const dir = dirDoLado(lado);
+  if (!dir) return null;
+  const col = colunaAgua(cx + dir.dx, cy + dir.dy);
+  if (!col.caindo) return null;
+  const zTopo = alturaEm(cx, cy);
+  const zBase = col.pisoQueda;
+  if (zTopo - zBase < 1) return null;
+  if (zRef != null && (zRef < zBase - 0.75 || zRef > zTopo + 0.45)) return null;
+  return montarFace(lado, cx, cy, zBase, zTopo);
+}
+
+const ALCANCE_CACHOEIRA = 1.45;
+
+function considerarCachoeira(cx, cy, x, y, zRef, aceitar) {
+  for (const lado of ["s", "n", "w", "e"]) {
+    const face = faceCachoeira(lado, cx, cy, zRef);
+    if (!face) continue;
+    let distPrin = 0;
+    let distLat = 0;
+    if (lado === "s") {
+      distPrin = y - (cy + 1);
+      distLat = x - (cx + 0.5);
+    } else if (lado === "n") {
+      distPrin = cy - y;
+      distLat = x - (cx + 0.5);
+    } else if (lado === "w") {
+      distPrin = cx - x;
+      distLat = y - (cy + 0.5);
+    } else {
+      distPrin = x - (cx + 1);
+      distLat = y - (cy + 0.5);
+    }
+    if (distPrin < -0.25 || distPrin > ALCANCE_CACHOEIRA) continue;
+    if (Math.abs(distLat) > 0.8) continue;
+    const score =
+      scoreFace(distPrin, distLat, face.zBase, face.zTopo, zRef) - 0.2;
+    aceitar(face, score);
   }
 }
 

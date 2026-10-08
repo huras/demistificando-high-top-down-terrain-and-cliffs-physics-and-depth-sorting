@@ -1,4 +1,5 @@
 import { textoHoverBloco } from "../entrada/hoverBloco.js";
+import { amostraAgua } from "../mundo/agua/amostra.js";
 import { razaoStamina } from "../fisica/stamina.js";
 import { consultarOclusao } from "./oclusao.js";
 import { formulasPersonagem } from "./personagem.js";
@@ -48,7 +49,16 @@ export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo 
   dds[1].textContent = modoJogo === "3d" ? "—" : f.screenY.toFixed(2);
   dds[2].textContent = modoJogo === "3d" ? "—" : f.sortKey.toFixed(4);
   dds[3].textContent = `${corpo.hopLift.toFixed(2)} (e${elev.toFixed(2)})`;
-  dds[4].textContent = corpo.acao;
+  const agua = amostraAgua(corpo.x, corpo.y, elev);
+  if (agua.superficie > 0) {
+    const prof = agua.caindo
+      ? Math.max(0, agua.superficie - agua.pisoQueda)
+      : agua.profundidade;
+    const modo = corpo.nadando ? " nado" : agua.caindo ? " queda" : "";
+    dds[4].textContent = `${corpo.acao} · água ${prof.toFixed(1)}${modo}`;
+  } else {
+    dds[4].textContent = corpo.acao;
+  }
   if (modoJogo === "3d") {
     dds[5].textContent = "3D";
     dds[5].dataset.status = "";
