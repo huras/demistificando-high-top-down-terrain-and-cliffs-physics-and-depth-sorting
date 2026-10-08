@@ -11,6 +11,7 @@ import { desenharPivosSort } from "./debugPivos.js";
 import { atualizarFadeCobertura } from "./fadeCobertura.js";
 import { atualizarPainel, desenharOverlayAjuda } from "./hudDebug.js";
 import { desenharHudStamina } from "./hudStamina.js";
+import { desenharHoverTile2d, desenharLabelHoverHud } from "./hoverTile.js";
 import {
   criarListaProfundidade,
   desenharLista,
@@ -54,6 +55,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   if (agente) empilharAgente(lista, atlas, agente);
   empilharPersonagem(lista, atlas, corpo);
   desenharLista(lista, ctx);
+  desenharHoverTile2d(ctx);
 
   if (debug) {
     desenharPivosSort(ctx, corpo);
@@ -62,6 +64,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
 
   desenharOverlayAjuda(ctx, camera, debug, ocl, modoVisual, "2d");
   desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
+  desenharLabelHoverHud(ctx, canvas.width, canvas.height);
 
   return { ocl, modoVisual };
 }
@@ -133,6 +136,7 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
 
   desenharOverlayAjuda(ctx, { zoom }, debug, null, modoVisual, "3d");
   desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
+  desenharLabelHoverHud(ctx, canvas.width, canvas.height, true);
 
   return { ocl, modoVisual };
 }

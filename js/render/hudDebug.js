@@ -1,3 +1,4 @@
+import { textoHoverBloco } from "../entrada/hoverBloco.js";
 import { razaoStamina } from "../fisica/stamina.js";
 import { consultarOclusao } from "./oclusao.js";
 import { formulasPersonagem } from "./personagem.js";
@@ -41,7 +42,7 @@ export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo 
   const estado = document.getElementById("estado");
   if (!estado) return ocl;
   const dds = estado.querySelectorAll("dd");
-  if (dds.length < 7) return ocl;
+  if (dds.length < 6) return ocl;
   const elev = corpo.elevacao ?? corpo.z;
   dds[0].textContent = `${corpo.x.toFixed(2)}, ${corpo.y.toFixed(2)}, z${corpo.z}`;
   dds[1].textContent = modoJogo === "3d" ? "—" : f.screenY.toFixed(2);
@@ -55,10 +56,20 @@ export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo 
     dds[5].textContent = ocl.status;
     dds[5].dataset.status = ocl.status;
   }
-  dds[6].textContent = `${Math.round(razaoStamina(corpo) * 100)}%`;
+
+  const staminaEl = document.getElementById("stamina-status");
+  if (staminaEl) {
+    staminaEl.textContent = `${Math.round(razaoStamina(corpo) * 100)}%`;
+  }
 
   const fpsEl = document.getElementById("fps-status");
   if (fpsEl) fpsEl.textContent = fps > 0 ? String(fps) : "—";
+
+  const hoverEl = document.getElementById("hover-status");
+  if (hoverEl) {
+    const t = textoHoverBloco();
+    if (hoverEl.textContent !== (t || "—")) hoverEl.textContent = t || "—";
+  }
 
   const zoomEl = document.getElementById("zoom-status");
   if (zoomEl) zoomEl.textContent = `${zoom.toFixed(2)}×`;

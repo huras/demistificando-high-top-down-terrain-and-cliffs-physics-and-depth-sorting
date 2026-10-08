@@ -108,11 +108,16 @@ export function raycastVoxel(ox, oy, oz, dx, dy, dz, maxDist = ALCANCE_EDICAO) {
 /**
  * Alvo 2D: célula sob cursor → bloco de superfície.
  * Colocar usa normal +Z.
+ * @param {number} [zMax] teto exclusivo (caverna) — só considera blocos com z < zMax
  */
-export function alvoBloco2d(cx, cy) {
+export function alvoBloco2d(cx, cy, zMax = CHUNK_Y) {
   const x = cx | 0;
   const y = cy | 0;
-  for (let z = CHUNK_Y - 1; z >= 0; z--) {
+  let zIni = CHUNK_Y - 1;
+  if (zMax != null && Number.isFinite(zMax)) {
+    zIni = Math.min(zIni, (zMax | 0) - 1);
+  }
+  for (let z = zIni; z >= 0; z--) {
     const id = obterBloco(x, y, z);
     if (ehSolido(id)) {
       return { x, y, z, nx: 0, ny: 0, nz: 1, id };

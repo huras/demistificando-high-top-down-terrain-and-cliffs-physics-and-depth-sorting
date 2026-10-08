@@ -1,5 +1,6 @@
 import { CAMINHOS, ZOOM_PASSO } from "./config.js";
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
+import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
   consumirMovimentoMouse,
   desligarPonteiro3d,
@@ -94,13 +95,15 @@ async function iniciar() {
   aoMudarModo(aoTrocarModo);
   sincronizarCamadas(obterModo());
 
-  ligarEdicaoBlocos({
+  const optsPonteiro = {
     canvas2d: canvas,
     canvas3d,
     obterCorpo: () => corpo,
     obterCamera2d: () => camera,
     obterCenario3d: () => (cenario3dPronto ? obterCenario3d() : null),
-  });
+  };
+  ligarEdicaoBlocos(optsPonteiro);
+  ligarHoverBloco(optsPonteiro);
 
   const onWheel = (ev) => {
     ev.preventDefault();
@@ -237,6 +240,7 @@ function loop(agora) {
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);
   atualizarHudCompanheiro(agente);
+  atualizarHoverBloco();
 
   try {
     if (modo === "3d") {

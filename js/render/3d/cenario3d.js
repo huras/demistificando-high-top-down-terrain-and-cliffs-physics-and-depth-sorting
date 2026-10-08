@@ -13,6 +13,7 @@ import {
 import { criarPersonagem3d } from "./personagem3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
+import { criarMarcadorHover3d } from "../hoverTile.js";
 
 let estado = null;
 
@@ -101,6 +102,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const alvoEscalada = criarMarcadorAlvoEscalada();
   scene.add(alvoEscalada.mesh);
 
+  const hoverTile = criarMarcadorHover3d(THREE);
+  scene.add(hoverTile.mesh);
+
   estado = {
     canvas,
     renderer,
@@ -113,6 +117,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     agente3d,
     ventoAsa,
     alvoEscalada,
+    hoverTile,
     pronto: true,
     distanciaNormalizada: () => distanciaNormalizada(camera3d),
     yaw: () => yawCamera(camera3d),
@@ -216,6 +221,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     estado.agente3d.atualizar(agente, estado.camera3d.cam, yaw);
   }
   estado.alvoEscalada.atualizar(corpo, dt);
+  estado.hoverTile?.atualizar();
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;
   const planando = !!corpo.planando;

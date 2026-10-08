@@ -54,23 +54,23 @@ export function desenharTopoGod(ctx, atlas, cx, cy, z) {
   const img = atlas?.grassOnDirt;
   if (!img || !ctx) return;
 
-  const px = mundoParaTelaX(cx);
-  const py = mundoParaTelaY(cy, z);
+  const px = Math.round(mundoParaTelaX(cx));
+  const py = Math.round(mundoParaTelaY(cy, z));
   const s = TILE * ESCALA;
   const half = s >> 1;
-  // overlap entre quartos e células vizinhas
-  const dw = half + 1;
-  const dh = half + 1;
+  // Overlap só para o centro do tile — nunca vaza pro vizinho (linhas nas quinas).
+  const o = 1;
+  const q = half + o;
 
   const n = vizinhoNaCamada(cx, cy - 1, z);
   const sOk = vizinhoNaCamada(cx, cy + 1, z);
   const w = vizinhoNaCamada(cx - 1, cy, z);
   const e = vizinhoNaCamada(cx + 1, cy, z);
 
-  blitGodQuarto(ctx, img, roleQuartoGod(n, w, GOD_OUT_NW, GOD_EDGE_N, GOD_EDGE_W), 0, px, py, dw, dh);
-  blitGodQuarto(ctx, img, roleQuartoGod(n, e, GOD_OUT_NE, GOD_EDGE_N, GOD_EDGE_E), 1, px + half, py, dw, dh);
-  blitGodQuarto(ctx, img, roleQuartoGod(sOk, w, GOD_OUT_SW, GOD_EDGE_S, GOD_EDGE_W), 2, px, py + half, dw, dh);
-  blitGodQuarto(ctx, img, roleQuartoGod(sOk, e, GOD_OUT_SE, GOD_EDGE_S, GOD_EDGE_E), 3, px + half, py + half, dw, dh);
+  blitGodQuarto(ctx, img, roleQuartoGod(n, w, GOD_OUT_NW, GOD_EDGE_N, GOD_EDGE_W), 0, px, py, q, q);
+  blitGodQuarto(ctx, img, roleQuartoGod(n, e, GOD_OUT_NE, GOD_EDGE_N, GOD_EDGE_E), 1, px + half - o, py, q, q);
+  blitGodQuarto(ctx, img, roleQuartoGod(sOk, w, GOD_OUT_SW, GOD_EDGE_S, GOD_EDGE_W), 2, px, py + half - o, q, q);
+  blitGodQuarto(ctx, img, roleQuartoGod(sOk, e, GOD_OUT_SE, GOD_EDGE_S, GOD_EDGE_E), 3, px + half - o, py + half - o, q, q);
 }
 
 /** cardA/cardB = vizinho naquele eixo ainda alto; senão usa canto/edge. */
@@ -87,13 +87,13 @@ function roleQuartoGod(cardA, cardB, out, edgeA, edgeB) {
 export function desenharFaceSulSingle(ctx, atlas, cx, cy, zTopo, queda, destacar) {
   if (queda < 1) return;
 
-  const px = mundoParaTelaX(cx);
-  const topY = mundoParaTelaY(cy, zTopo);
+  const px = Math.round(mundoParaTelaX(cx));
+  const topY = Math.round(mundoParaTelaY(cy, zTopo));
   const w = TILE * ESCALA;
   const step = FACE_H * ESCALA;
-  // Colado no topo (+ overlap) — evita linha/grade entre terraço e face.
+  // Colado no topo; overlap só na vertical entre degraus (não vaza pra coluna vizinha).
   const py0 = topY + TILE * ESCALA - 1;
-  const dw = w + 1;
+  const dw = w;
   const dh = step + 1;
 
   if (usarGrassOnDirt(atlas)) {
@@ -142,10 +142,11 @@ function desenharUnderGod(ctx, sheet, cx, cy, zTopo, px, dy, dw, dh) {
     blitGod(ctx, sheet, GOD_EDGE_S_UNDER, px, dy, dw, dh);
     return;
   }
-  // Solo / faixa 1 de largura: quartos laterais das bordas UNDER.
+  // Solo / faixa 1 de largura: metades com overlap só no centro.
   const halfW = dw >> 1;
-  blitGodMetade(ctx, sheet, GOD_OUT_SW_UNDER, "w", px, dy, halfW + 1, dh);
-  blitGodMetade(ctx, sheet, GOD_OUT_SE_UNDER, "e", px + halfW, dy, dw - halfW, dh);
+  const o = 1;
+  blitGodMetade(ctx, sheet, GOD_OUT_SW_UNDER, "w", px, dy, halfW + o, dh);
+  blitGodMetade(ctx, sheet, GOD_OUT_SE_UNDER, "e", px + halfW - o, dy, dw - halfW + o, dh);
 }
 
 /**
