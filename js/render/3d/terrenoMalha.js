@@ -6,7 +6,6 @@ import {
   MESH_CHUNKS_POR_FRAME,
   TRONCO_INSET,
 } from "../../config.js";
-import { rgbAgua } from "../../mundo/agua/amostra.js";
 import { colunaAgua, garantirFluxoChunk } from "../../mundo/agua/fluxo.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { alturaEm, colunaTemArInterno, espessuraTopo } from "../../mundo/altura.js";
@@ -21,6 +20,12 @@ import {
 } from "../../mundo/voxel/storeMundo.js";
 import { BLOCO, ehSolido } from "../../mundo/voxel/tiposBloco.js";
 import { coresDoTopo } from "../paleta.js";
+import {
+  avancarMateriaisAgua,
+  liberarMateriaisAgua,
+  obterMaterialLago,
+  obterMaterialQueda,
+} from "./texturasAgua3d.js";
 import { criarTexturasTerreno3d } from "./texturasTerreno3d.js";
 
 const LEDGE_H = 0.12;
@@ -608,27 +613,12 @@ function vizinhoAr(wx, wy, wz, dx, dy, dz) {
  * Sempre gera cubos + real (grupos separados; só um visível) —
  * pular um dos modos deixava faces/cliff faltando após trocar visual / stream.
  */
-function texturaCorrenteAgua() {
-  const c = document.createElement("canvas");
-  c.width = 32;
-  c.height = 32;
-  const g = c.getContext("2d");
-  g.fillStyle = "#d7f4ff";
-  g.fillRect(0, 0, 32, 32);
-  g.fillStyle = "#ffffff";
-  g.fillRect(0, 0, 8, 32);
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.magFilter = THREE.LinearFilter;
-  tex.minFilter = THREE.LinearFilter;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
-function hexDeRgb(r, g, b) {
-  const h = (n) => (n | 0).toString(16).padStart(2, "0");
-  return `#${h(r)}${h(g)}${h(b)}`;
+/** Multiplica o sprite: raso quase branco, fundo um pouco mais escuro. */
+function tintaLago(prof) {
+  const t = Math.max(0, Math.min(1, ((prof || 1) - 1) / 3));
+  const v = Math.round(255 - t * 55);
+  const h = (n) => n.toString(16).padStart(2, "0");
+  return `#${h(v)}${h(v)}${h(255)}`;
 }
 
 function orientarUvFluxo(geo, fx, fy) {
@@ -652,10 +642,11 @@ function geoSuperficieAgua(wx, wy, y, fx, fy, cor) {
   return geo;
 }
 
-function planoQueda(wx, wy, y0, y1, dir, cor) {
+function planoQueda(wx, wy, y0, y1, dir) {
   const h = Math.max(0.2, y1 - y0);
   const geo = new THREE.PlaneGeometry(1, h);
-  orientarUvFluxo(geo, 0, 1);
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * h);
   const yc = (y0 + y1) * 0.5;
   if (dir === "s") geo.translate(wx + 0.5, yc, wy + 1);
   else if (dir === "n") {
@@ -668,7 +659,7 @@ function planoQueda(wx, wy, y0, y1, dir, cor) {
     geo.rotateY(-Math.PI / 2);
     geo.translate(wx, yc, wy + 0.5);
   }
-  pintarVertices(geo, cor, cor);
+  pintarVertices(geo, "#ffffff", "#ffffff");
   return geo;
 }
 
@@ -820,6 +811,7 @@ function* construirGeosChunk(chunk) {
   const ledges = [];
   const aos = [];
   const aguas = [];
+  const quedas = [];
   const loteGrama = criarLote(false);
   const loteTerra = criarLote(false);
   const loteFaces = criarLote(false);
@@ -948,8 +940,6 @@ function* construirGeosChunk(chunk) {
         const prof = caindo
           ? Math.max(1, supAgua - (chunk.aguaPiso[ia] | 0))
           : chunk.aguaProf[ia] | 0;
-        const rgb = rgbAgua(prof || 1);
-        const cor = hexDeRgb(rgb.r, rgb.g, rgb.b);
         aguas.push(
           geoSuperficieAgua(
             wx,
@@ -957,17 +947,25 @@ function* construirGeosChunk(chunk) {
             supAgua - 0.04,
             chunk.fluxoX[ia] | 0,
             chunk.fluxoY[ia] | 0,
-            cor,
+            tintaLago(prof || 1),
           ),
         );
         if (caindo) {
-          const y0 = chunk.aguaPiso[ia] | 0;
-          for (const d of DIRS) {
-            if (d.dz !== 0) continue;
-            const viz = colunaAgua(wx + d.dx, wy + d.dy);
-            if (viz.caindo) continue;
-            aguas.push(planoQueda(wx, wy, y0, supAgua, d.nome, cor));
+          let yBase = chunk.aguaFundo[ia] | 0;
+          let dir = "s";
+          const fx = chunk.fluxoX[ia] | 0;
+          const fy = chunk.fluxoY[ia] | 0;
+          if (fx || fy) {
+            const dest = colunaAgua(wx + fx, wy + fy);
+            if (dest.superficie > 0 && !dest.caindo && dest.superficie < supAgua - 0.05) {
+              yBase = dest.superficie;
+            }
+            if (fy > 0) dir = "s";
+            else if (fy < 0) dir = "n";
+            else if (fx > 0) dir = "e";
+            else dir = "w";
           }
+          if (supAgua - yBase > 0.15) quedas.push(planoQueda(wx, wy, yBase, supAgua, dir));
         }
       }
     }
@@ -982,6 +980,7 @@ function* construirGeosChunk(chunk) {
     geoAo: finalizarLote(loteAo, aos),
     geoCubos: geoDoLote(loteCubos),
     geoAgua: mesclarLista(aguas),
+    geoQueda: mesclarLista(quedas),
   };
   return out;
 }
@@ -1053,18 +1052,8 @@ export function criarTerrenoMalha(atlas = null) {
   grupoAgua.name = "terreno-agua";
   grupo.add(grupoAgua);
 
-  const texCorrente = texturaCorrenteAgua();
-  const matAgua = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    map: texCorrente,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.78,
-    roughness: 0.18,
-    metalness: 0.04,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
+  const matAgua = obterMaterialLago();
+  const matQueda = obterMaterialQueda();
 
   const matCubos = new THREE.MeshStandardMaterial({
     vertexColors: true,
@@ -1146,6 +1135,10 @@ export function criarTerrenoMalha(atlas = null) {
       grupoAgua.remove(entry.agua);
       entry.agua.geometry?.dispose();
     }
+    if (entry.queda) {
+      grupoAgua.remove(entry.queda);
+      entry.queda.geometry?.dispose();
+    }
     if (entry.cubos) {
       grupoCubos.remove(entry.cubos);
       entry.cubos.geometry?.dispose();
@@ -1184,6 +1177,15 @@ export function criarTerrenoMalha(atlas = null) {
       mesh.renderOrder = 2;
       grupoAgua.add(mesh);
       entry.agua = mesh;
+    }
+    if (geos.geoQueda) {
+      const mesh = new THREE.Mesh(geos.geoQueda, matQueda);
+      mesh.name = `queda-${key}`;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.renderOrder = 3;
+      grupoAgua.add(mesh);
+      entry.queda = mesh;
     }
 
     function add(geo, mat, nome, opts = {}) {
@@ -1271,7 +1273,7 @@ export function criarTerrenoMalha(atlas = null) {
    * Gasta no máximo ~2 ms por frame na malha. Um chunk leva vários frames.
    */
   function tickMalha(px = 0, py = 0, _maxChunks = MESH_CHUNKS_POR_FRAME) {
-    texCorrente.offset.x = (performance.now() * 0.00035) % 1;
+    avancarMateriaisAgua(performance.now() / 1000);
     const t0 = performance.now();
     if (
       trabalhoMalha &&
@@ -1380,6 +1382,7 @@ export function criarTerrenoMalha(atlas = null) {
       materiais.terra?.dispose();
       materiais.cliff?.dispose();
       texturas?.liberar();
+      liberarMateriaisAgua();
     },
   };
 }
