@@ -130,7 +130,6 @@ export const CAMERA3D_ALTURA = 3.2;
 export const CAMERA3D_OLHAR_Y = 1.15;
 /** Suavidade só no follow vertical (Y). XZ é instantâneo. */
 export const CAMERA3D_SUAVIDADE_Y = 6;
-export const CAMERA3D_LOOKAHEAD = 0.35;
 /** rad/s — fallback teclado (legado); mouse usa sensibilidade. */
 export const CAMERA3D_ROT_VEL = 2.4;
 /** Mouse-look 3D (rad por pixel). */

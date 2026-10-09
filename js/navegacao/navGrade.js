@@ -53,6 +53,9 @@ const cache = new Map();
 /** Centro da última grade (mundo). */
 let navCentro = { cx: 0, cy: 0 };
 let navRaioAtivo = 28;
+/** Construção fatiada — uma grade por vez, sem travar o frame. */
+let trabalhoNav = null;
+const ORCAMENTO_NAV_MS = 2;
 
 /** Chave 3D: (cx, cy, zFloor). */
 export function chaveCelula(cx, cy, z = 0) {
@@ -88,6 +91,31 @@ export function pisoMaisProximo(cx, cy, elev) {
 
 export function invalidarNavCache(_aabb = null) {
   cache.clear();
+  trabalhoNav = null;
+}
+
+function caixaCobre(box, ax, ay, gx, gy) {
+  return (
+    !!box &&
+    ax >= box.x0 &&
+    ax <= box.x1 &&
+    ay >= box.y0 &&
+    ay <= box.y1 &&
+    gx >= box.x0 &&
+    gx <= box.x1 &&
+    gy >= box.y0 &&
+    gy <= box.y1
+  );
+}
+
+function limitesGrade(centroX, centroY, raio) {
+  const loaded = obterAabbCarregado();
+  return {
+    x0: Math.max(loaded.x0 | 0, centroX - raio),
+    y0: Math.max(loaded.y0 | 0, centroY - raio),
+    x1: Math.min(loaded.x1 | 0, centroX + raio),
+    y1: Math.min(loaded.y1 | 0, centroY + raio),
+  };
 }
 
 /** Atualiza âncora da grade (jogador / agente). */
@@ -102,30 +130,44 @@ export function obterNavGrade(perfil, ax = null, ay = null, gx = null, gy = null
   const gCx = gx != null ? gx | 0 : aCx;
   const gCy = gy != null ? gy | 0 : aCy;
 
-  let g = cache.get(perfil.id);
-  const fora =
-    !g ||
-    aCx < g.x0 ||
-    aCx > g.x1 ||
-    aCy < g.y0 ||
-    aCy > g.y1 ||
-    gCx < g.x0 ||
-    gCx > g.x1 ||
-    gCy < g.y0 ||
-    gCy > g.y1;
-
-  if (!fora) return g;
+  const g = cache.get(perfil.id);
+  if (caixaCobre(g, aCx, aCy, gCx, gCy)) return g;
 
   const midX = ((aCx + gCx) / 2) | 0;
   const midY = ((aCy + gCy) / 2) | 0;
   const dist = Math.hypot(gCx - aCx, gCy - aCy);
   const raio = Math.min(48, Math.max(NAV_RAIO, Math.ceil(dist * 0.5) + 12));
+  const box = limitesGrade(midX, midY, raio);
+  if (
+    trabalhoNav &&
+    trabalhoNav.perfilId === perfil.id &&
+    caixaCobre(trabalhoNav, aCx, aCy, gCx, gCy)
+  ) {
+    return null;
+  }
+
   navCentro.cx = midX;
   navCentro.cy = midY;
   navRaioAtivo = raio;
-  g = construirGrade(perfil, midX, midY, raio);
-  cache.set(perfil.id, g);
-  return g;
+  trabalhoNav = {
+    perfilId: perfil.id,
+    ...box,
+    gen: construirGrade(perfil, midX, midY, raio),
+  };
+  return null;
+}
+
+/** Avança a grade suja por no máximo alguns ms. O A* espera ela ficar pronta. */
+export function tickNavGrade(orcamentoMs = ORCAMENTO_NAV_MS) {
+  if (!trabalhoNav) return;
+  const t0 = performance.now();
+  let passo = trabalhoNav.gen.next();
+  while (!passo.done && performance.now() - t0 < orcamentoMs) {
+    passo = trabalhoNav.gen.next();
+  }
+  if (!passo.done) return;
+  cache.set(trabalhoNav.perfilId, passo.value);
+  trabalhoNav = null;
 }
 
 function quedaMaxAndar(perfil) {
@@ -156,12 +198,8 @@ function temBeiraGlide(cx, cy, zA) {
   return false;
 }
 
-function construirGrade(perfil, centroX, centroY, raio) {
-  const loaded = obterAabbCarregado();
-  const x0 = Math.max(loaded.x0 | 0, centroX - raio);
-  const y0 = Math.max(loaded.y0 | 0, centroY - raio);
-  const x1 = Math.min(loaded.x1 | 0, centroX + raio);
-  const y1 = Math.min(loaded.y1 | 0, centroY + raio);
+function* construirGrade(perfil, centroX, centroY, raio) {
+  const { x0, y0, x1, y1 } = limitesGrade(centroX, centroY, raio);
 
   /** @type {Map<number, number[]>} */
   const edges = new Map();
@@ -181,7 +219,10 @@ function construirGrade(perfil, centroX, centroY, raio) {
     for (let cx = x0; cx <= x1; cx++) {
       if (!dentroDoMapa(cx, cy)) continue;
       const pisosA = pisosDe(cx, cy);
-      if (!pisosA.length) continue;
+      if (!pisosA.length) {
+        yield;
+        continue;
+      }
 
       for (const zA of pisosA) {
         const key = chaveCelula(cx, cy, zA);
@@ -224,6 +265,7 @@ function construirGrade(perfil, centroX, centroY, raio) {
         }
 
         edges.set(key, lista);
+        yield;
       }
     }
   }

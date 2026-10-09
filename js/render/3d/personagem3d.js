@@ -37,8 +37,6 @@ export function criarPersonagem3d(opts = {}) {
   });
   if (opts.tint != null) spriteMat.color.setHex(opts.tint);
 
-  const planoAgua = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-
   const sprite = new THREE.Sprite(spriteMat);
   sprite.center.set(0.5, 0);
   sprite.scale.set(ALTURA_SPRITE, ALTURA_SPRITE, 1);
@@ -46,6 +44,28 @@ export function criarPersonagem3d(opts = {}) {
   sprite.castShadow = false;
   sprite.receiveShadow = false;
   grupo.add(sprite);
+
+  // Véu só abaixo da superfície (normal para baixo descarta o que está acima).
+  const planoVeu = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+  const veuMat = new THREE.SpriteMaterial({
+    map: tex,
+    color: 0x1a6fbf,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    depthTest: true,
+    alphaTest: 0.12,
+    sizeAttenuation: true,
+    clippingPlanes: [planoVeu],
+  });
+  const veu = new THREE.Sprite(veuMat);
+  veu.center.set(0.5, 0);
+  veu.scale.set(ALTURA_SPRITE, ALTURA_SPRITE, 1);
+  veu.renderOrder = 4;
+  veu.castShadow = false;
+  veu.receiveShadow = false;
+  veu.visible = false;
+  grupo.add(veu);
 
   const sombra = criarSombraContato3d();
   grupo.add(sombra.grupo);
@@ -85,6 +105,7 @@ export function criarPersonagem3d(opts = {}) {
     sheet = img || null;
     ultimoFrameKey = "";
     sprite.visible = !!sheet;
+    if (!sheet) veu.visible = false;
   }
 
   definirSprite(sheet);
@@ -103,12 +124,9 @@ export function criarPersonagem3d(opts = {}) {
       grupo.position.set(corpoEstado.x, elev, corpoEstado.y);
 
       const agua = colunaAgua(corpoEstado.x, corpoEstado.y);
-      if (agua.superficie > 0 && elev < agua.superficie - 0.05) {
-        planoAgua.constant = -agua.superficie;
-        spriteMat.clippingPlanes = [planoAgua];
-      } else if (spriteMat.clippingPlanes && spriteMat.clippingPlanes.length) {
-        spriteMat.clippingPlanes = [];
-      }
+      const imerso = agua.superficie > 0 && elev < agua.superficie - 0.05;
+      veu.visible = imerso && sprite.visible;
+      if (imerso) planoVeu.constant = agua.superficie;
 
       const yaw =
         yawCam != null && Number.isFinite(yawCam)
@@ -144,6 +162,7 @@ export function criarPersonagem3d(opts = {}) {
     liberar() {
       tex.dispose();
       spriteMat.dispose();
+      veuMat.dispose();
       sombra.liberar();
       asa.liberar();
     },

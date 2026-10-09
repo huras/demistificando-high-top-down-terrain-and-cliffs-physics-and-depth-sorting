@@ -4,7 +4,6 @@ import {
   CAMERA3D_DIST_MAX,
   CAMERA3D_DIST_MIN,
   CAMERA3D_DIST_PADRAO,
-  CAMERA3D_LOOKAHEAD,
   CAMERA3D_MOUSE_SENS,
   CAMERA3D_OLHAR_Y,
   CAMERA3D_PITCH_MAX,
@@ -71,7 +70,7 @@ export function aplicarOlharMouse(camera3d, dx, dy) {
 }
 
 /**
- * Terceira pessoa: XZ instantâneo; só o follow de altura (Y) é smooth.
+ * Terceira pessoa: XZ instantâneo no corpo; só o follow de altura (Y) é smooth.
  * Clip suave contra sólidos (caverna / teto).
  */
 export function seguirAlvo3d(camera3d, corpo, dt) {
@@ -81,9 +80,8 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
   }
 
   const elev = corpo.elevacao ?? corpo.z + (corpo.hopLift || 0);
-  const la = CAMERA3D_LOOKAHEAD;
-  const tx = corpo.x + (corpo.vx || 0) * la;
-  const tz = corpo.y + (corpo.vy || 0) * la;
+  const tx = corpo.x;
+  const tz = corpo.y;
   const tyAlvo = elev + CAMERA3D_OLHAR_Y;
 
   const distDesejada = camera3d.distancia;

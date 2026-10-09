@@ -14,6 +14,7 @@ import {
   baseTopoEm,
   limparSujo,
   listarChunksSujos,
+  obterChunk,
   obterBloco,
   onDirty,
   paraCadaChunk,
@@ -410,6 +411,189 @@ function planoAo(wx, wy, yChao, dir, queda) {
   return geo;
 }
 
+const LADOS_COL = [
+  { nome: "s", dx: 0, dy: 1 },
+  { nome: "n", dx: 0, dy: -1 },
+  { nome: "e", dx: 1, dy: 0 },
+  { nome: "w", dx: -1, dy: 0 },
+];
+
+function criarLote(comCor) {
+  return { pos: [], uv: [], nor: [], cor: comCor ? [] : null, _rgb: null, _n: [0, 1, 0] };
+}
+
+function q6(lote, coords, uvs) {
+  lote.pos.push(
+    coords[0], coords[1], coords[2],
+    coords[3], coords[4], coords[5],
+    coords[6], coords[7], coords[8],
+    coords[9], coords[10], coords[11],
+    coords[12], coords[13], coords[14],
+    coords[15], coords[16], coords[17],
+  );
+  lote.uv.push(uvs[0], uvs[1], uvs[2], uvs[3], uvs[4], uvs[5], uvs[6], uvs[7], uvs[8], uvs[9], uvs[10], uvs[11]);
+  const n = lote._n;
+  for (let i = 0; i < 6; i++) lote.nor.push(n[0], n[1], n[2]);
+  if (lote.cor && lote._rgb) {
+    const r = lote._rgb[0];
+    const g = lote._rgb[1];
+    const b = lote._rgb[2];
+    for (let i = 0; i < 6; i++) lote.cor.push(r, g, b);
+  }
+}
+
+function geoDoLote(lote) {
+  if (!lote.pos.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(lote.pos, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(lote.uv, 2));
+  geo.setAttribute("normal", new THREE.Float32BufferAttribute(lote.nor, 3));
+  if (lote.cor) geo.setAttribute("color", new THREE.Float32BufferAttribute(lote.cor, 3));
+  return geo;
+}
+
+function pushLivre(lote, a, b, c, d) {
+  const ux = b.x - a.x;
+  const uy = b.y - a.y;
+  const uz = b.z - a.z;
+  const vx = c.x - a.x;
+  const vy = c.y - a.y;
+  const vz = c.z - a.z;
+  let nx = uy * vz - uz * vy;
+  let ny = uz * vx - ux * vz;
+  let nz = ux * vy - uy * vx;
+  const len = Math.hypot(nx, ny, nz) || 1;
+  lote._n = [nx / len, ny / len, nz / len];
+  q6(
+    lote,
+    [a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z],
+    [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1],
+  );
+}
+
+function finalizarLote(lote, extras) {
+  const geo = geoDoLote(lote);
+  if (!extras.length) return geo;
+  if (geo) extras.push(geo);
+  return mesclarLista(extras);
+}
+
+/** Topo 1×1 em y, UV igual ao PlaneGeometry rotacionado. */
+function pushTopoLote(lote, wx, wy, y) {
+  lote._n = [0, 1, 0];
+  q6(
+    lote,
+    [wx, y, wy, wx, y, wy + 1, wx + 1, y, wy, wx, y, wy + 1, wx + 1, y, wy + 1, wx + 1, y, wy],
+    [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1],
+  );
+}
+
+function pushFaceSul(lote, wx, wy, wz) {
+  lote._n = [0, 0, 1];
+  const y0 = wz;
+  const y1 = wz + 1 - INSET_TOPO;
+  const z = wy + 1;
+  q6(
+    lote,
+    [wx, y1, z, wx, y0, z, wx + 1, y1, z, wx, y0, z, wx + 1, y0, z, wx + 1, y1, z],
+    [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1],
+  );
+}
+
+function pushFaceNorte(lote, wx, wy, wz) {
+  lote._n = [0, 0, -1];
+  const y0 = wz;
+  const y1 = wz + 1 - INSET_TOPO;
+  const z = wy;
+  q6(
+    lote,
+    [wx + 1, y1, z, wx + 1, y0, z, wx, y1, z, wx + 1, y0, z, wx, y0, z, wx, y1, z],
+    [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1],
+  );
+}
+
+function pushFaceLeste(lote, wx, wy, wz) {
+  lote._n = [1, 0, 0];
+  const y0 = wz;
+  const y1 = wz + 1 - INSET_TOPO;
+  const x = wx + 1;
+  q6(
+    lote,
+    [x, y0, wy, x, y1, wy, x, y1, wy + 1, x, y0, wy, x, y1, wy + 1, x, y0, wy + 1],
+    [0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0],
+  );
+}
+
+function pushFaceOeste(lote, wx, wy, wz) {
+  lote._n = [-1, 0, 0];
+  const y0 = wz;
+  const y1 = wz + 1 - INSET_TOPO;
+  const x = wx;
+  q6(
+    lote,
+    [x, y0, wy + 1, x, y1, wy + 1, x, y1, wy, x, y0, wy + 1, x, y1, wy, x, y0, wy],
+    [0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0],
+  );
+}
+
+const PUSH_FACE = {
+  s: pushFaceSul,
+  n: pushFaceNorte,
+  e: pushFaceLeste,
+  w: pushFaceOeste,
+};
+
+const UV_FACE = [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1];
+
+function pushCuboLote(lote, wx, wy, y0, y1, corTopo, corFace) {
+  const x0 = wx;
+  const x1 = wx + 1;
+  const z0 = wy;
+  const z1 = wy + 1;
+  const ct = hexParaRgb(corTopo);
+  const cf = hexParaRgb(corFace);
+  lote._rgb = [ct.r, ct.g, ct.b];
+  lote._n = [0, 1, 0];
+  q6(
+    lote,
+    [x0, y1, z0, x0, y1, z1, x1, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0],
+    UV_FACE,
+  );
+  lote._rgb = [cf.r * 0.88, cf.g * 0.88, cf.b * 0.88];
+  lote._n = [0, 0, 1];
+  q6(
+    lote,
+    [x0, y1, z1, x0, y0, z1, x1, y1, z1, x0, y0, z1, x1, y0, z1, x1, y1, z1],
+    UV_FACE,
+  );
+  lote._n = [0, 0, -1];
+  q6(
+    lote,
+    [x1, y1, z0, x1, y0, z0, x0, y1, z0, x1, y0, z0, x0, y0, z0, x0, y1, z0],
+    UV_FACE,
+  );
+  lote._n = [1, 0, 0];
+  q6(
+    lote,
+    [x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z0, x1, y1, z1, x1, y0, z1],
+    UV_FACE,
+  );
+  lote._n = [-1, 0, 0];
+  q6(
+    lote,
+    [x0, y0, z1, x0, y1, z1, x0, y1, z0, x0, y0, z1, x0, y1, z0, x0, y0, z0],
+    UV_FACE,
+  );
+  lote._rgb = [cf.r * 0.55, cf.g * 0.55, cf.b * 0.55];
+  lote._n = [0, -1, 0];
+  q6(
+    lote,
+    [x0, y0, z1, x0, y0, z0, x1, y0, z1, x0, y0, z0, x1, y0, z0, x1, y0, z1],
+    UV_FACE,
+  );
+  lote._rgb = null;
+}
+
 function vizinhoAr(wx, wy, wz, dx, dy, dz) {
   const nx = wx + dx;
   const ny = wy + dy;
@@ -488,24 +672,198 @@ function planoQueda(wx, wy, y0, y1, dir, cor) {
   return geo;
 }
 
-function construirGeosChunk(chunk) {
+function empurrarBevel(loteTop, loteFaces, wx, wy, wz, lateraisExpostas) {
+  const i = Math.max(0, Math.min(0.45, TRONCO_INSET));
+  const y0 = wz;
+  const y1 = wz + 1 - INSET_TOPO;
+  const exp = new Set(lateraisExpostas);
+  const iS = exp.has("s") ? i : 0;
+  const iN = exp.has("n") ? i : 0;
+  const iE = exp.has("e") ? i : 0;
+  const iW = exp.has("w") ? i : 0;
+  const nw = { x: wx + iW, y: y1, z: wy + iN };
+  const sw = { x: wx + iW, y: y1, z: wy + 1 - iS };
+  const se = { x: wx + 1 - iE, y: y1, z: wy + 1 - iS };
+  const ne = { x: wx + 1 - iE, y: y1, z: wy + iN };
+  pushLivre(loteTop, nw, sw, se, ne);
+  if (exp.has("s")) {
+    pushLivre(
+      loteFaces,
+      { x: wx, y: y0, z: wy + 1 },
+      { x: wx + 1, y: y0, z: wy + 1 },
+      { x: wx + 1 - iE, y: y1, z: wy + 1 - iS },
+      { x: wx + iW, y: y1, z: wy + 1 - iS },
+    );
+  }
+  if (exp.has("n")) {
+    pushLivre(
+      loteFaces,
+      { x: wx + 1, y: y0, z: wy },
+      { x: wx, y: y0, z: wy },
+      { x: wx + iW, y: y1, z: wy + iN },
+      { x: wx + 1 - iE, y: y1, z: wy + iN },
+    );
+  }
+  if (exp.has("e")) {
+    pushLivre(
+      loteFaces,
+      { x: wx + 1, y: y0, z: wy + 1 },
+      { x: wx + 1, y: y0, z: wy },
+      { x: wx + 1 - iE, y: y1, z: wy + iN },
+      { x: wx + 1 - iE, y: y1, z: wy + 1 - iS },
+    );
+  }
+  if (exp.has("w")) {
+    pushLivre(
+      loteFaces,
+      { x: wx, y: y0, z: wy },
+      { x: wx, y: y0, z: wy + 1 },
+      { x: wx + iW, y: y1, z: wy + 1 - iS },
+      { x: wx + iW, y: y1, z: wy + iN },
+    );
+  }
+}
+
+function pushParede(lote, nome, wx, wy, y0, y1) {
+  const h = y1 - y0;
+  if (h <= 1e-4) return;
+  const uv = [0, h, 0, 0, 1, h, 0, 0, 1, 0, 1, h];
+  if (nome === "s") {
+    lote._n = [0, 0, 1];
+    const z = wy + 1;
+    q6(lote, [wx, y1, z, wx, y0, z, wx + 1, y1, z, wx, y0, z, wx + 1, y0, z, wx + 1, y1, z], uv);
+  } else if (nome === "n") {
+    lote._n = [0, 0, -1];
+    const z = wy;
+    q6(lote, [wx + 1, y1, z, wx + 1, y0, z, wx, y1, z, wx + 1, y0, z, wx, y0, z, wx, y1, z], uv);
+  } else if (nome === "e") {
+    lote._n = [1, 0, 0];
+    const x = wx + 1;
+    q6(lote, [x, y0, wy, x, y1, wy, x, y1, wy + 1, x, y0, wy, x, y1, wy + 1, x, y0, wy + 1], [0, 0, 0, h, 1, h, 0, 0, 1, h, 1, 0]);
+  } else {
+    lote._n = [-1, 0, 0];
+    const x = wx;
+    q6(lote, [x, y0, wy + 1, x, y1, wy + 1, x, y1, wy, x, y0, wy + 1, x, y1, wy, x, y0, wy], [0, 0, 0, h, 1, h, 0, 0, 1, h, 1, 0]);
+  }
+}
+
+function pushAo(lote, wx, wy, yChao, dir, queda) {
+  const p = Math.min(0.55, 0.22 + queda * 0.06);
+  const y = yChao + 0.015;
+  const x0 = wx + 0.04;
+  const x1 = wx + 0.96;
+  const z0 = wy + 0.04;
+  const z1 = wy + 0.96;
+  lote._n = [0, 1, 0];
+  if (dir === "s") {
+    q6(lote, [x0, y, wy + 1, x0, y, wy + 1 + p, x1, y, wy + 1, x0, y, wy + 1 + p, x1, y, wy + 1 + p, x1, y, wy + 1], UV_FACE);
+  } else if (dir === "n") {
+    q6(lote, [x1, y, wy, x1, y, wy - p, x0, y, wy, x1, y, wy - p, x0, y, wy - p, x0, y, wy], UV_FACE);
+  } else if (dir === "e") {
+    q6(lote, [wx + 1, y, z1, wx + 1 + p, y, z1, wx + 1, y, z0, wx + 1 + p, y, z1, wx + 1 + p, y, z0, wx + 1, y, z0], UV_FACE);
+  } else {
+    q6(lote, [wx, y, z0, wx - p, y, z0, wx, y, z1, wx - p, y, z0, wx - p, y, z1, wx, y, z1], UV_FACE);
+  }
+}
+
+function emitirColunaSolida(wx, wy, zSurf, loteGrama, loteTerra, loteFaces, loteAo, topsTerra, topsGrama, faces, ledges) {
+  const lz = zSurf - 1;
+  const id = obterBloco(wx, wy, lz);
+  const laterais = [];
+  for (let i = 0; i < LADOS_COL.length; i++) {
+    const d = LADOS_COL[i];
+    if (alturaEm(wx + d.dx, wy + d.dy) < zSurf) laterais.push(d);
+  }
+  const ehBorda = laterais.length > 0 && TRONCO_INSET > 0;
+  const loteTop =
+    id === BLOCO.TERRA || id === BLOCO.PEDRA || zSurf >= 2 ? loteTerra : loteGrama;
+  const extrasTop = loteTop === loteTerra ? topsTerra : topsGrama;
+
+  if (ehBorda) {
+    const nomes = [];
+    for (let i = 0; i < laterais.length; i++) nomes.push(laterais[i].nome);
+    empurrarBevel(loteTop, loteFaces, wx, wy, lz, nomes);
+  } else {
+    const cortesL = cortesConvexosL(wx, wy, lz);
+    if (cortesL.length > 0) {
+      const yTopo = lz + 1 - INSET_TOPO;
+      const tris = topoComCortesConvexos(wx, wy, yTopo, cortesL);
+      for (let i = 0; i < tris.length; i++) extrasTop.push(tris[i]);
+      for (let i = 0; i < cortesL.length; i++) {
+        faces.push(triMitraConvexo(wx, wy, lz, cortesL[i].dir, cortesL[i].i));
+      }
+    } else {
+      pushTopoLote(loteTop, wx, wy, zSurf);
+      for (let i = 0; i < laterais.length; i++) {
+        ledges.push(caixaLedge(wx, wy, zSurf, laterais[i].nome));
+      }
+    }
+  }
+
+  for (let i = 0; i < laterais.length; i++) {
+    const d = laterais[i];
+    const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
+    const queda = zSurf - vizSurf;
+    if (queda <= 0) continue;
+    const zFim = ehBorda ? zSurf - 1 : zSurf;
+    pushParede(loteFaces, d.nome, wx, wy, vizSurf, zFim);
+    if (queda >= AO_QUEDA_MIN && vizSurf > 0) {
+      pushAo(loteAo, wx, wy, vizSurf, d.nome, queda);
+    }
+  }
+}
+
+function* construirGeosChunk(chunk) {
   const topsGrama = [];
   const topsTerra = [];
   const faces = [];
   const ledges = [];
   const aos = [];
-  const cubos = [];
   const aguas = [];
+  const loteGrama = criarLote(false);
+  const loteTerra = criarLote(false);
+  const loteFaces = criarLote(false);
+  const loteAo = criarLote(false);
+  const loteCubos = criarLote(true);
   garantirFluxoChunk(chunk);
+  yield;
 
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
 
+  let _colunas = 0;
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
+      if ((_colunas++ & 7) === 7) yield;
       const wx = baseX + lx;
       const wy = baseY + ly;
-      for (let lz = 0; lz < CHUNK_Y; lz++) {
+      const zSurf = alturaEm(wx, wy);
+      let colunaSimples = zSurf > 0 && !colunaTemArInterno(wx, wy);
+      if (colunaSimples) {
+        for (let i = 0; i < LADOS_COL.length; i++) {
+          const d = LADOS_COL[i];
+          if (colunaTemArInterno(wx + d.dx, wy + d.dy)) {
+            colunaSimples = false;
+            break;
+          }
+        }
+      }
+      if (colunaSimples) {
+        emitirColunaSolida(
+          wx,
+          wy,
+          zSurf,
+          loteGrama,
+          loteTerra,
+          loteFaces,
+          loteAo,
+          topsTerra,
+          topsGrama,
+          faces,
+          ledges,
+        );
+      }
+      for (let lz = 0; lz < zSurf && !colunaSimples; lz++) {
         const id = obterBloco(wx, wy, lz);
         if (!ehSolido(id)) continue;
 
@@ -525,71 +883,62 @@ function construirGeosChunk(chunk) {
           if (d.nome === "u") {
             const cortesL = ehSuperficie ? cortesConvexosL(wx, wy, lz) : [];
             const yTopo = lz + 1 - INSET_TOPO;
-            const pushTop = (geo) => {
-              if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
-                topsTerra.push(geo);
-              } else {
-                topsGrama.push(geo);
-              }
-            };
+            const loteTop =
+              id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2 ? loteTerra : loteGrama;
 
             if (ehBordaCliff) {
-              const bevel = geoBevelBorda(wx, wy, lz, lateraisAr);
-              pushTop(bevel.top);
-              for (const latGeo of bevel.laterais) faces.push(latGeo);
+              empurrarBevel(loteTop, loteFaces, wx, wy, lz, lateraisAr);
             } else if (cortesL.length > 0) {
               // Canto L: corta o topo de A + triângulo de mitra
+              const extrasTop = loteTop === loteTerra ? topsTerra : topsGrama;
               for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
-                pushTop(t);
+                extrasTop.push(t);
               }
               for (const c of cortesL) {
                 faces.push(triMitraConvexo(wx, wy, lz, c.dir, c.i));
               }
             } else {
-              pushTop(quadFace(wx, wy, lz, "u"));
+              pushTopoLote(loteTop, wx, wy, lz + 1);
               for (const lat of lateraisAr) {
                 ledges.push(caixaLedge(wx, wy, lz + 1, lat));
               }
             }
           } else if (d.nome === "d") {
-            faces.push(quadFace(wx, wy, lz, "d"));
+            loteFaces._n = [0, -1, 0];
+            q6(
+              loteFaces,
+              [wx, lz, wy + 1, wx, lz, wy, wx + 1, lz, wy + 1, wx, lz, wy, wx + 1, lz, wy, wx + 1, lz, wy + 1],
+              UV_FACE,
+            );
           } else {
-            // Lateral da borda já veio no bevel inclinado
             if (ehBordaCliff && lateraisAr.includes(d.nome)) {
               const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
               const queda = lz + 1 - vizSurf;
               if (queda >= AO_QUEDA_MIN && vizSurf > 0) {
-                aos.push(planoAo(wx, wy, vizSurf, d.nome, queda));
+                pushAo(loteAo, wx, wy, vizSurf, d.nome, queda);
               }
               continue;
             }
-            faces.push(quadFace(wx, wy, lz, d.nome));
+            PUSH_FACE[d.nome](loteFaces, wx, wy, lz);
             const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
             const queda = lz + 1 - vizSurf;
             if (queda >= AO_QUEDA_MIN && vizSurf > 0) {
-              aos.push(planoAo(wx, wy, vizSurf, d.nome, queda));
+              pushAo(loteAo, wx, wy, vizSurf, d.nome, queda);
             }
           }
         }
       }
 
-      const zSurf = alturaEm(wx, wy);
       if (zSurf > 0) {
-        // Overhang: laje fina na altura do deck; coluna sólida: pilar 0→surf.
-        let h;
-        let yCentro;
+        let y0 = 0;
+        let y1 = Math.max(0.08, zSurf);
         if (colunaTemArInterno(wx, wy)) {
-          h = Math.max(0.08, espessuraTopo(wx, wy));
+          const h = Math.max(0.08, espessuraTopo(wx, wy));
           const base = baseTopoEm(wx, wy);
-          yCentro = (base < 0 ? zSurf - h : base) + h * 0.5;
-        } else {
-          h = Math.max(0.08, zSurf);
-          yCentro = h * 0.5;
+          y0 = base < 0 ? zSurf - h : base;
+          y1 = y0 + h;
         }
-        const box = new THREE.BoxGeometry(1, h, 1);
-        box.translate(wx + 0.5, yCentro, wy + 0.5);
-        pintarVertices(box, coresDoTopo(zSurf).a, corFacePorZ(zSurf));
-        cubos.push(box);
+        pushCuboLote(loteCubos, wx, wy, y0, y1, coresDoTopo(zSurf).a, corFacePorZ(zSurf));
       }
 
       const ia = ly * CHUNK_XZ + lx;
@@ -624,16 +973,24 @@ function construirGeosChunk(chunk) {
     }
   }
 
+  yield;
   const out = {
-    geoGrama: mesclarLista(topsGrama),
-    geoTerra: mesclarLista(topsTerra),
-    geoFaces: mesclarLista(faces),
+    geoGrama: finalizarLote(loteGrama, topsGrama),
+    geoTerra: finalizarLote(loteTerra, topsTerra),
+    geoFaces: finalizarLote(loteFaces, faces),
     geoLedges: mesclarLista(ledges),
-    geoAo: mesclarLista(aos),
-    geoCubos: mesclarLista(cubos),
+    geoAo: finalizarLote(loteAo, aos),
+    geoCubos: geoDoLote(loteCubos),
     geoAgua: mesclarLista(aguas),
   };
   return out;
+}
+
+function drenarGeosChunk(chunk) {
+  const gen = construirGeosChunk(chunk);
+  let passo = gen.next();
+  while (!passo.done) passo = gen.next();
+  return passo.value;
 }
 
 function geoProp(p) {
@@ -801,12 +1158,12 @@ export function criarTerrenoMalha(atlas = null) {
     }
   }
 
-  function reconstruirChunk(chunk) {
+  function reconstruirChunk(chunk, geosProntos = null) {
     const key = `${chunk.cx},${chunk.cy}`;
     liberarGrupoChunk(meshesPorChunk.get(key));
     meshesPorChunk.delete(key);
 
-    const geos = construirGeosChunk(chunk);
+    const geos = geosProntos || drenarGeosChunk(chunk);
     const entry = { cubos: null, real: new THREE.Group() };
     entry.real.name = `chunk-real-${key}`;
 
@@ -906,28 +1263,58 @@ export function criarTerrenoMalha(atlas = null) {
     for (const chunk of sujos) reconstruirChunk(chunk);
   }
 
+  /** Chunk em construção, fatiado entre frames. */
+  let trabalhoMalha = null;
+  const ORCAMENTO_MALHA_MS = 2;
+
   /**
-   * Rebuild orçado — 1 chunk/frame perto do jogador (stream não trava o frame).
+   * Gasta no máximo ~2 ms por frame na malha. Um chunk leva vários frames.
    */
-  function tickMalha(px = 0, py = 0, maxChunks = MESH_CHUNKS_POR_FRAME) {
+  function tickMalha(px = 0, py = 0, _maxChunks = MESH_CHUNKS_POR_FRAME) {
     texCorrente.offset.x = (performance.now() * 0.00035) % 1;
-    const sujos = listarChunksSujos();
-    if (!sujos.length) return 0;
-    const cx = Math.floor(px / CHUNK_XZ);
-    const cy = Math.floor(py / CHUNK_XZ);
-    sujos.sort((a, b) => {
-      const da = (a.cx - cx) * (a.cx - cx) + (a.cy - cy) * (a.cy - cy);
-      const db = (b.cx - cx) * (b.cx - cx) + (b.cy - cy) * (b.cy - cy);
-      return da - db;
-    });
-    let n = 0;
-    const lim = Math.max(1, maxChunks | 0);
-    for (const chunk of sujos) {
-      if (n >= lim) break;
-      reconstruirChunk(chunk);
-      n++;
+    const t0 = performance.now();
+    if (
+      trabalhoMalha &&
+      (obterChunk(trabalhoMalha.chunk.cx, trabalhoMalha.chunk.cy) !== trabalhoMalha.chunk ||
+        (trabalhoMalha.chunk.rev | 0) !== trabalhoMalha.rev)
+    ) {
+      trabalhoMalha = null;
     }
-    return n;
+    if (!trabalhoMalha) {
+      const sujos = listarChunksSujos();
+      if (!sujos.length) return 0;
+      const cx = Math.floor(px / CHUNK_XZ);
+      const cy = Math.floor(py / CHUNK_XZ);
+      sujos.sort((a, b) => {
+        const da = (a.cx - cx) * (a.cx - cx) + (a.cy - cy) * (a.cy - cy);
+        const db = (b.cx - cx) * (b.cx - cx) + (b.cy - cy) * (b.cy - cy);
+        return da - db;
+      });
+      const chunk = sujos[0];
+      trabalhoMalha = {
+        chunk,
+        rev: chunk.rev | 0,
+        gen: construirGeosChunk(chunk),
+      };
+    }
+    let passo;
+    while (performance.now() - t0 < ORCAMENTO_MALHA_MS) {
+      passo = trabalhoMalha.gen.next();
+      if (passo.done) break;
+    }
+    let fechou = 0;
+    if (passo && passo.done) {
+      const chunk = trabalhoMalha.chunk;
+      if (
+        obterChunk(chunk.cx, chunk.cy) === chunk &&
+        (chunk.rev | 0) === trabalhoMalha.rev
+      ) {
+        reconstruirChunk(chunk, passo.value);
+        fechou = 1;
+      }
+      trabalhoMalha = null;
+    }
+    return fechou;
   }
 
   // Só libera unload sync; mesh sujo fica pro tickMalha (evita 11×mesh no stream).

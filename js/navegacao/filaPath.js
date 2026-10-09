@@ -4,6 +4,7 @@ import {
   chaveCelula,
   obterNavGrade,
   pisoMaisProximo,
+  tickNavGrade,
 } from "./navGrade.js";
 
 /** @type {Map<string, any>} */
@@ -73,20 +74,35 @@ export function solicitarPath(
   }
 
   const grade = obterNavGrade(perfil, sCx, sCy, gCx, gCy);
-  const busca = criarBusca(grade, startKey, goalKey);
   const pedido = {
     entidadeId,
-    estado: "buscando",
-    busca,
+    estado: grade ? "buscando" : "aguardando",
+    busca: grade ? criarBusca(grade, startKey, goalKey) : null,
     path: null,
     versao,
     perfilId: perfil.id,
+    perfil,
+    sCx,
+    sCy,
+    gCx,
+    gCy,
     startKey,
     goalKey,
     coalesce: ck,
   };
   pedidos.set(entidadeId, pedido);
-  if (!filaOrdem.includes(entidadeId)) filaOrdem.push(entidadeId);
+  if (grade && !filaOrdem.includes(entidadeId)) filaOrdem.push(entidadeId);
+}
+
+function promoverGradePronta() {
+  for (const p of pedidos.values()) {
+    if (p.estado !== "aguardando") continue;
+    const grade = obterNavGrade(p.perfil, p.sCx, p.sCy, p.gCx, p.gCy);
+    if (!grade) continue;
+    p.busca = criarBusca(grade, p.startKey, p.goalKey);
+    p.estado = "buscando";
+    if (!filaOrdem.includes(p.entidadeId)) filaOrdem.push(p.entidadeId);
+  }
 }
 
 export function obterResultadoPath(entidadeId) {
@@ -107,6 +123,8 @@ export function cancelarPath(entidadeId) {
  * Processa orçamento global de expansões neste frame.
  */
 export function tickFilaPath(orcamento = PATH_EXPAND_POR_FRAME) {
+  tickNavGrade();
+  promoverGradePronta();
   if (filaOrdem.length === 0) return;
   let restam = orcamento;
   let i = 0;

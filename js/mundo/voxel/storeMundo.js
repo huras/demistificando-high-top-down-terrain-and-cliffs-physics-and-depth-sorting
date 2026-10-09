@@ -184,7 +184,10 @@ function marcarChunkVizinhosSujos(cx, cy) {
     [0, -1],
   ]) {
     const c = obterChunk(cx + dx, cy + dy);
-    if (c) c.sujo = true;
+    if (c) {
+      c.sujo = true;
+      c.rev = (c.rev | 0) + 1;
+    }
   }
 }
 
@@ -246,7 +249,8 @@ export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
       if (dx * dx + dy * dy > raio * raio + 1) continue;
       const cx = pcx + dx;
       const cy = pcy + dy;
-      precisos.add(chaveChunk(cx, cy));
+      const k = chaveChunk(cx, cy);
+      precisos.add(k);
       carregarChunk(cx, cy);
     }
   }
