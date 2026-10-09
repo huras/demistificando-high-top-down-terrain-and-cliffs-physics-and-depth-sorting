@@ -9,6 +9,9 @@ export const CAPS_PADRAO = Object.freeze({
   planar: true,
   correr: true,
   voar: true,
+  vadear: true,
+  nadar: true,
+  cachoeira: true,
 });
 
 export function normalizarCaps(caps = {}) {
@@ -18,6 +21,9 @@ export function normalizarCaps(caps = {}) {
     planar: caps.planar !== false,
     correr: caps.correr !== false,
     voar: caps.voar !== false,
+    vadear: caps.vadear !== false,
+    nadar: caps.nadar !== false,
+    cachoeira: caps.cachoeira !== false,
   };
 }
 
@@ -31,6 +37,9 @@ export function fingerprintCaps(caps) {
     `planar=${c.planar ? 1 : 0}`,
     `correr=${c.correr ? 1 : 0}`,
     `voar=${c.voar ? 1 : 0}`,
+    `vau=${c.vadear ? 1 : 0}`,
+    `nado=${c.nadar ? 1 : 0}`,
+    `queda=${c.cachoeira ? 1 : 0}`,
   ].join("|");
 }
 
@@ -43,6 +52,9 @@ export function perfilDeCapacidades(caps, base = PERFIL_COMPANHEIRO) {
     podePlanar: c.planar,
     podeCorrer: c.correr,
     podeVoar: c.voar,
+    podeVadear: c.vadear,
+    podeNadar: c.nadar,
+    podeCachoeira: c.cachoeira,
   });
 }
 

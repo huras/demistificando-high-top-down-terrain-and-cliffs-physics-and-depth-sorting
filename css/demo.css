@@ -341,9 +341,9 @@ body[data-modo="3d"] #canvas-3d.palco__camada--ativa {
 }
 
 .caps {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
   margin: 0 0 10px;
 }
 

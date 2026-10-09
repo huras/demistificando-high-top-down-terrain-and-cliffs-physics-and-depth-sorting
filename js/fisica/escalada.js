@@ -219,6 +219,7 @@ function estadoDeFace(face) {
     ancoraY: face.ancoraY,
     elevMin: face.zBase + 0.05,
     elevMax: face.zTopo - ESCALADA_MANTLE_EPS,
+    cachoeira: !!face.cachoeira,
   };
 }
 

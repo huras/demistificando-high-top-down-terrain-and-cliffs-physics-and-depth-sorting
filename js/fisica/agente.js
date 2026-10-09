@@ -92,7 +92,9 @@ function querAsaHeuristica(agente, querPlanar, querEscalar) {
     querEscalar ||
     agente.escalando ||
     agente.mantle ||
-    agente.voando
+    agente.voando ||
+    agente.nadando ||
+    agente.aguaCaindo
   ) {
     return false;
   }
@@ -254,7 +256,8 @@ export function atualizarAgente(agente, lider, dt) {
     !agente.escalando &&
     !agente.mantle &&
     !estaVoando(agente) &&
-    agente.perfil?.podeEscalar
+    agente.perfil?.podeEscalar ||
+    agente.perfil?.podeCachoeira
   ) {
     if (estaPlanando(agente)) fecharAsaDelta(agente);
     if (tentarGrudarClimb(agente, ix, iy)) return;
@@ -444,9 +447,13 @@ export function atualizarAgente(agente, lider, dt) {
 }
 
 function tentarGrudarClimb(agente, ix, iy) {
-  if (!agente.perfil?.podeEscalar) return false;
+  const perfil = agente.perfil || {};
+  if (!perfil.podeEscalar && !perfil.podeCachoeira) return false;
   const res = tentarEscalar(agente);
   if (!res?.ok) return false;
+  const queda = !!res.escalada?.cachoeira;
+  if (queda && !perfil.podeCachoeira) return false;
+  if (!queda && !perfil.podeEscalar) return false;
   const cinX = ix;
   const cinY = iy;
   agente._climbInX = cinX;

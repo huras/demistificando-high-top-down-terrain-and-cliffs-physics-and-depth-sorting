@@ -16,13 +16,15 @@ import {
   PATH_VOO_CUSTO_MUL,
   PATH_VOO_DIST_MIN,
   PATH_VOO_VEL,
-  AGUA_CUSTO_NAV,
-  AGUA_CUSTO_NAV_RASO,
-  AGUA_LIMIAR_VADO,
   VELOCIDADE_MAX,
 } from "../config.js";
 import { listarPisosWalkable } from "../fisica/colisao.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
+import {
+  alturasLocomocao,
+  linksCachoeira,
+  multiplicadorAgua,
+} from "./aguaNav.js";
 import { dentroDoMapa } from "../mundo/altura.js";
 import { obterAabbCarregado, obterBloco } from "../mundo/voxel/storeMundo.js";
 import { ehSolido } from "../mundo/voxel/tiposBloco.js";
@@ -48,6 +50,7 @@ export const TIPO_JUMP = 1;
 export const TIPO_CLIMB = 2;
 export const TIPO_GLIDE = 3;
 export const TIPO_VOO = 4;
+export const TIPO_NADO = 5;
 
 const cache = new Map();
 /** Centro da última grade (mundo). */
@@ -73,9 +76,12 @@ export function celulaDeChave(key) {
   return { cx: cx | 0, cy: cy | 0, z: z | 0 };
 }
 
-/** Piso walkable mais próximo de elev (fallback: topo da lista). */
-export function pisoMaisProximo(cx, cy, elev) {
-  const pisos = listarPisosWalkable(cx, cy, NAV_MAX_PISOS);
+/** Piso de locomoção mais próximo de elev (nado na superfície, senão o sólido). */
+export function pisoMaisProximo(cx, cy, elev, perfil = null) {
+  const brutos = listarPisosWalkable(cx, cy, NAV_MAX_PISOS);
+  const pisos = perfil
+    ? alturasLocomocao(brutos, colunaAgua(cx, cy), perfil)
+    : brutos;
   if (!pisos.length) return 0;
   let best = pisos[0];
   let bestD = Math.abs(best - elev);
@@ -174,16 +180,12 @@ function quedaMaxAndar(perfil) {
   return perfil.quedaMaxAndar ?? perfil.quedaMax ?? Infinity;
 }
 
-function pisosColuna(cx, cy) {
-  return listarPisosWalkable(cx, cy, NAV_MAX_PISOS);
-}
-
 function topoColuna(pisos) {
   return pisos.length ? pisos[pisos.length - 1] : 0;
 }
 
 /** Célula na beira de precipício — única que precisa de NavLink glide. */
-function temBeiraGlide(cx, cy, zA) {
+function temBeiraGlide(cx, cy, zA, pisosDe) {
   if (zA < PATH_GLIDE_QUEDA_MIN + 1) return false;
   for (const [dx, dy] of [
     [1, 0],
@@ -191,9 +193,9 @@ function temBeiraGlide(cx, cy, zA) {
     [0, 1],
     [0, -1],
   ]) {
-    const pisos = pisosColuna(cx + dx, cy + dy);
+    const pisos = pisosDe(cx + dx, cy + dy);
     const zViz = topoColuna(pisos);
-    if (zA - zViz >= PATH_GLIDE_QUEDA_MIN) return true;
+    if (!pisos.length || zA - zViz >= PATH_GLIDE_QUEDA_MIN) return true;
   }
   return false;
 }
@@ -203,13 +205,27 @@ function* construirGrade(perfil, centroX, centroY, raio) {
 
   /** @type {Map<number, number[]>} */
   const edges = new Map();
-  /** Cache local de pisos no AABB */
+  /** Cache local de pisos e de água no AABB */
   const cachePisos = new Map();
+  const cacheAgua = new Map();
+  function aguaDe(cx, cy) {
+    const k = ((cy + KEY_OFFSET) << 16) | (cx + KEY_OFFSET);
+    let a = cacheAgua.get(k);
+    if (!a) {
+      a = colunaAgua(cx, cy);
+      cacheAgua.set(k, a);
+    }
+    return a;
+  }
   function pisosDe(cx, cy) {
     const k = ((cy + KEY_OFFSET) << 16) | (cx + KEY_OFFSET);
     let p = cachePisos.get(k);
     if (!p) {
-      p = pisosColuna(cx, cy);
+      p = alturasLocomocao(
+        listarPisosWalkable(cx, cy, NAV_MAX_PISOS),
+        aguaDe(cx, cy),
+        perfil,
+      );
       cachePisos.set(k, p);
     }
     return p;
@@ -240,9 +256,37 @@ function* construirGrade(perfil, centroX, centroY, raio) {
           for (const zB of pisosB) {
             const edge = classificarAresta(zA, zB, perfil, diag);
             if (!edge) continue;
-            edge.custo *= custoAgua(cx, cy, nx, ny);
+            const mult = multiplicadorAgua(
+              aguaDe(cx, cy),
+              aguaDe(nx, ny),
+              dx,
+              dy,
+              perfil,
+            );
+            if (mult == null) continue;
+            edge.custo *= mult;
             lista.push(chaveCelula(nx, ny, zB), edge.custo, edge.tipo);
           }
+        }
+
+        const jaAgua = new Set();
+        for (let i = 0; i < lista.length; i += 3) jaAgua.add(lista[i]);
+        for (const link of linksCachoeira(
+          cx,
+          cy,
+          zA,
+          perfil,
+          aguaDe,
+          pisosDe,
+        )) {
+          const key = chaveCelula(link.cx, link.cy, link.z);
+          if (jaAgua.has(key)) continue;
+          lista.push(
+            key,
+            link.custo,
+            link.tipo === "nado" ? TIPO_NADO : TIPO_CLIMB,
+          );
+          jaAgua.add(key);
         }
 
         // Shaft vertical na mesma coluna (climb curto entre andares)
@@ -257,10 +301,10 @@ function* construirGrade(perfil, centroX, centroY, raio) {
           }
         }
 
-        if (perfil.podePlanar && temBeiraGlide(cx, cy, zA)) {
+        if (perfil.podePlanar && temBeiraGlide(cx, cy, zA, pisosDe)) {
           adicionarGlideRays(lista, cx, cy, zA, pisosDe);
         }
-        if (perfil.podeVoar && temBeiraGlide(cx, cy, zA)) {
+        if (perfil.podeVoar && temBeiraGlide(cx, cy, zA, pisosDe)) {
           adicionarVooRays(lista, cx, cy, zA, pisosDe);
         }
 
@@ -294,16 +338,6 @@ function cantoDiagonalLivre(cx, cy, zA, nx, ny, pisosDe) {
   if (ehSolido(obterBloco(nx, cy, Math.floor(zA)))) return false;
   if (ehSolido(obterBloco(cx, ny, Math.floor(zA)))) return false;
   return true;
-}
-
-function custoAgua(cx, cy, nx, ny) {
-  const a = colunaAgua(cx, cy);
-  const b = colunaAgua(nx, ny);
-  if (a.caindo || b.caindo) return AGUA_CUSTO_NAV + 2;
-  const p = Math.max(a.profundidade || 0, b.profundidade || 0);
-  if (p > AGUA_LIMIAR_VADO) return AGUA_CUSTO_NAV;
-  if (p > 0.2) return AGUA_CUSTO_NAV_RASO;
-  return 1;
 }
 
 function classificarAresta(zA, zB, perfil, diag) {

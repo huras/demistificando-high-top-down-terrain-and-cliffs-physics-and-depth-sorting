@@ -18,6 +18,15 @@ const WF_FRAME_S = 0.11;
 let folhaWf = null;
 let pedidoWf = false;
 
+/** Lago 5×3, frames empilhados. Só o CENTER (tile 6) — as bordas tapariam o cliff. */
+const LAGO_URL = "assets/terrain/lake-autotile.png";
+const LAGO_COLS = 5;
+const LAGO_LINHAS = 3;
+const LAGO_CENTER = 6;
+const LAGO_FRAME_S = 0.48;
+let imgLago = null;
+let pedidoLago = false;
+
 function folhaCachoeira() {
   if (folhaWf?.complete && folhaWf.naturalWidth > 0) return folhaWf;
   if (!pedidoWf) {
@@ -29,6 +38,33 @@ function folhaCachoeira() {
     img.src = WF_URL;
   }
   return null;
+}
+
+function folhaLago() {
+  if (imgLago?.complete && imgLago.naturalWidth > 0) return imgLago;
+  if (!pedidoLago) {
+    pedidoLago = true;
+    const img = new Image();
+    img.onload = () => {
+      imgLago = img;
+    };
+    img.src = LAGO_URL;
+  }
+  return null;
+}
+
+function blitCentroLago(ctx, dx, dy, dw, dh, alpha) {
+  const img = folhaLago();
+  if (!img) return false;
+  const frames = Math.max(1, Math.floor(img.naturalHeight / (LAGO_LINHAS * WF_CEL)));
+  const frame = Math.floor(tempo / LAGO_FRAME_S) % frames;
+  const sx = (LAGO_CENTER % LAGO_COLS) * WF_CEL;
+  const sy =
+    Math.floor(LAGO_CENTER / LAGO_COLS) * WF_CEL + frame * LAGO_LINHAS * WF_CEL;
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(img, sx, sy, WF_CEL, WF_CEL, dx, dy, dw, dh);
+  return true;
 }
 
 export function avancarTempoAgua(dt) {
@@ -82,21 +118,25 @@ export function empilharAgua2d(lista, camera) {
 
 function desenharTopoAgua(ctx, cx, cy, col) {
   const s = TILE * ESCALA;
-  const px = mundoParaTelaX(cx);
-  const py = mundoParaTelaY(cy, col.superficie);
-  const prof = col.caindo
-    ? Math.max(1, col.superficie - col.pisoQueda)
-    : col.profundidade || 1;
+  const px = Math.round(mundoParaTelaX(cx));
+  const py = Math.round(mundoParaTelaY(cy, col.superficie));
+  const alpha = col.caindo ? 0.55 : 0.78;
   ctx.save();
   ctx.beginPath();
   ctx.rect(px, py, s, s);
   ctx.clip();
-  ctx.fillStyle = cssAgua(prof, col.caindo ? 0.5 : 0.72);
-  ctx.fillRect(px, py, s, s);
+  if (!blitCentroLago(ctx, px, py, s, s, alpha)) {
+    const prof = col.caindo
+      ? Math.max(1, col.superficie - col.pisoQueda)
+      : col.profundidade || 1;
+    ctx.fillStyle = cssAgua(prof, alpha);
+    ctx.fillRect(px, py, s, s);
+  }
   const faixa = Math.max(2, ESCALA + 1);
   const ciclo = s + faixa;
-  const vel = (col.fluxoX || col.fluxoY) ? 28 : 10;
+  const vel = col.fluxoX || col.fluxoY ? 28 : 10;
   const desloc = (tempo * vel) % ciclo;
+  ctx.globalAlpha = 1;
   ctx.fillStyle = "rgba(255,255,255,0.28)";
   if (Math.abs(col.fluxoX) > Math.abs(col.fluxoY)) {
     const x = px + (col.fluxoX < 0 ? ciclo - desloc : desloc) - faixa;
@@ -108,10 +148,13 @@ function desenharTopoAgua(ctx, cx, cy, col) {
   ctx.restore();
 }
 
-/** Lábio da lâmina até a superfície do poço (ou o fundo da coluna). */
+/**
+ * A lâmina fica 1 z acima do sólido, então a face sul do lago começa
+ * um tile abaixo do sprite da água. A cortina sobe até o fim desse sprite.
+ */
 function medidaQueda(cx, cy, col) {
   const s = TILE * ESCALA;
-  const lip = mundoParaTelaY(cy, col.superficie) + s - 1;
+  const lip = mundoParaTelaY(cy, col.superficie);
   let base = mundoParaTelaY(cy, col.fundo > 0 ? col.fundo : col.pisoQueda);
   const fx = col.fluxoX | 0;
   const fy = col.fluxoY | 0;
@@ -185,15 +228,17 @@ export function cobrirPernasAgua(ctx, corpo) {
   const y0 = Math.max(py, aguaY);
   const h = peY - y0;
   if (h <= 1) return;
-  const prof = agua.caindo
-    ? Math.max(1, agua.superficie - agua.pisoQueda)
-    : agua.profundidade || agua.imersao;
   ctx.save();
   ctx.beginPath();
   ctx.rect(px, y0, dw, h);
   ctx.clip();
-  ctx.fillStyle = cssAgua(prof, 0.62);
-  ctx.fillRect(px, y0, dw, h);
+  if (!blitCentroLago(ctx, px, y0, dw, h, 0.62)) {
+    const prof = agua.caindo
+      ? Math.max(1, agua.superficie - agua.pisoQueda)
+      : agua.profundidade || agua.imersao;
+    ctx.fillStyle = cssAgua(prof, 0.62);
+    ctx.fillRect(px, y0, dw, h);
+  }
   ctx.restore();
 }
 

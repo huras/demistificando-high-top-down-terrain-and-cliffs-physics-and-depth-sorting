@@ -3,7 +3,7 @@
  * Cada entidade carrega um perfil; a grade de vizinhos é cacheada por id.
  */
 
-/** Companheiro: anda, queda curta, pula +1, escala, plana, voa, corre. */
+/** Companheiro: anda, queda curta, pula +1, escala, plana, voa, corre, água. */
 export const PERFIL_COMPANHEIRO = Object.freeze({
   id: "companheiro-8dir",
   podePular: true,
@@ -11,6 +11,9 @@ export const PERFIL_COMPANHEIRO = Object.freeze({
   podePlanar: true,
   podeCorrer: true,
   podeVoar: true,
+  podeVadear: true,
+  podeNadar: true,
+  podeCachoeira: true,
   /** Queda máxima a pé (aresta walk); acima disso só via glide/voo ou contorno. */
   quedaMaxAndar: 2,
   /** Alias legado — preferir quedaMaxAndar. */
@@ -25,6 +28,9 @@ export const PERFIL_ESCALADOR = Object.freeze({
   podePlanar: false,
   podeCorrer: true,
   podeVoar: false,
+  podeVadear: true,
+  podeNadar: true,
+  podeCachoeira: true,
   quedaMaxAndar: Infinity,
   quedaMax: Infinity,
 });
@@ -42,6 +48,9 @@ export function clonarPerfil(base, overrides = {}) {
     podePlanar: overrides.podePlanar ?? base.podePlanar ?? false,
     podeCorrer: overrides.podeCorrer ?? base.podeCorrer ?? true,
     podeVoar: overrides.podeVoar ?? base.podeVoar ?? false,
+    podeVadear: overrides.podeVadear ?? base.podeVadear ?? true,
+    podeNadar: overrides.podeNadar ?? base.podeNadar ?? true,
+    podeCachoeira: overrides.podeCachoeira ?? base.podeCachoeira ?? true,
     quedaMaxAndar,
     quedaMax: overrides.quedaMax ?? quedaMaxAndar,
   };

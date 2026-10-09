@@ -10,6 +10,9 @@ const IDS = {
   planar: "cap-planar",
   correr: "cap-correr",
   voar: "cap-voar",
+  vadear: "cap-vadear",
+  nadar: "cap-nadar",
+  cachoeira: "cap-cachoeira",
 };
 
 let agenteRef = null;
@@ -43,6 +46,9 @@ export function lerCapsDoDom() {
     planar: !!document.getElementById(IDS.planar)?.checked,
     correr: !!document.getElementById(IDS.correr)?.checked,
     voar: !!document.getElementById(IDS.voar)?.checked,
+    vadear: !!document.getElementById(IDS.vadear)?.checked,
+    nadar: !!document.getElementById(IDS.nadar)?.checked,
+    cachoeira: !!document.getElementById(IDS.cachoeira)?.checked,
   };
 }
 

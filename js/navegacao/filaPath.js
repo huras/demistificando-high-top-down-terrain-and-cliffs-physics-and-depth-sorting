@@ -39,9 +39,13 @@ export function solicitarPath(
   const gCx = gx | 0;
   const gCy = gy | 0;
   const zStart =
-    sz != null ? pisoMaisProximo(sCx, sCy, sz) : pisoMaisProximo(sCx, sCy, 999);
+    sz != null
+      ? pisoMaisProximo(sCx, sCy, sz, perfil)
+      : pisoMaisProximo(sCx, sCy, 999, perfil);
   const zGoal =
-    gz != null ? pisoMaisProximo(gCx, gCy, gz) : pisoMaisProximo(gCx, gCy, 999);
+    gz != null
+      ? pisoMaisProximo(gCx, gCy, gz, perfil)
+      : pisoMaisProximo(gCx, gCy, 999, perfil);
   const startKey = chaveCelula(sCx, sCy, zStart);
   const goalKey = chaveCelula(gCx, gCy, zGoal);
   const ck = coalesceKey(perfil.id, startKey, goalKey);

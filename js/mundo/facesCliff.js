@@ -231,7 +231,9 @@ function faceCachoeira(lado, cx, cy, zRef) {
   const zBase = col.pisoQueda;
   if (zTopo - zBase < 1) return null;
   if (zRef != null && (zRef < zBase - 0.75 || zRef > zTopo + 0.45)) return null;
-  return montarFace(lado, cx, cy, zBase, zTopo);
+  const face = montarFace(lado, cx, cy, zBase, zTopo);
+  face.cachoeira = true;
+  return face;
 }
 
 const ALCANCE_CACHOEIRA = 1.45;
