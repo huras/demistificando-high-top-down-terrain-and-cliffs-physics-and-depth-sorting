@@ -993,23 +993,10 @@ function drenarGeosChunk(chunk) {
 }
 
 function geoProp(p) {
+  if (p.tipo === "arvore" || p.tipo === "mata") return [];
   const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
   const out = [];
-  if (p.tipo === "arvore") {
-    const tronco = new THREE.CylinderGeometry(0.12, 0.18, 1.1, 6);
-    tronco.translate(p.x, base + 0.55, p.y);
-    pintarVertices(tronco, "#3d6b2e", "#5a3a22");
-    out.push(tronco);
-    const copa = new THREE.ConeGeometry(0.55, 1.2, 7);
-    copa.translate(p.x, base + 1.5, p.y);
-    pintarVertices(copa, "#4f9e32", "#3d7a28");
-    out.push(copa);
-  } else if (p.tipo === "mata") {
-    const mata = new THREE.SphereGeometry(0.35, 6, 5);
-    mata.translate(p.x, base + 0.3, p.y);
-    pintarVertices(mata, "#5aad3a", "#3f7a28");
-    out.push(mata);
-  } else if (p.tipo === "pedra") {
+  if (p.tipo === "pedra") {
     const pedra = new THREE.DodecahedronGeometry(0.28, 0);
     pedra.translate(p.x, base + 0.22, p.y);
     pintarVertices(pedra, "#8a8680", "#5a564e");

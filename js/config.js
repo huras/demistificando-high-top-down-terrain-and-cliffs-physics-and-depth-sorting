@@ -157,6 +157,19 @@ export const CAMINHOS = {
 /** Preferir tiles reais quando o atlas de terreno carregar; tecla T alterna. */
 export const VISUAL_REAL_PADRAO = true;
 
+/**
+ * Billboard 3D (árvore / mata). Tamanho mundo = (px do PNG / TILE) × escala,
+ * o mesmo recorte do desenho 2D. Cutout no passe opaco (sem soft-alpha).
+ */
+export const VEG_ALPHA_TEST = 0.12;
+export const VEG_ARVORE_ESCALA = 1;
+export const VEG_MATA_ESCALA = 1.5;
+/** Afundamento do pé em células — 2D soma 2 px (árvore) e 1 px (mata) na tela. */
+export const VEG_ARVORE_PE = 2 / TILE;
+export const VEG_MATA_PE = 1 / TILE;
+/** Só reescreve instanceMatrix se o yaw mudou mais que isto (rad). */
+export const VEG_YAW_EPS = 0.001;
+
 export const JOGADOR_FRAME = 64;
 export const JOGADOR_ESCALA = 0.5;
 

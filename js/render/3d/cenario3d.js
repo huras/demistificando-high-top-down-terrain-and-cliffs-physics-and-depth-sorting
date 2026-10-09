@@ -12,6 +12,7 @@ import {
 } from "./camera3d.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
+import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 
@@ -84,6 +85,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const terreno = criarTerrenoMalha(atlas);
   scene.add(terreno.grupo);
 
+  const vegetacao = criarVegetacaoBillboard3d();
+  scene.add(vegetacao.grupo);
+
   const personagem = criarPersonagem3d({
     nome: "personagem",
     sprite: atlas?.jogador ?? null,
@@ -114,6 +118,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     sol,
     rim,
     terreno,
+    vegetacao,
     personagem,
     agente3d,
     ventoAsa,
@@ -132,6 +137,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
 function aplicarAtlasNaCena(atlas) {
   if (!estado) return;
   estado.terreno.aplicarAtlas?.(atlas);
+  estado.vegetacao?.aplicarAtlas?.(atlas);
   estado.personagem.definirSprite?.(atlas?.jogador ?? null);
   estado.agente3d.definirSprite?.(atlas?.jogador ?? null);
   estado.terreno.aplicarVisual(usarTiles(atlas));
@@ -217,6 +223,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   seguirAlvo3d(estado.camera3d, corpo, dt);
 
   const yaw = yawCamera(estado.camera3d);
+  estado.vegetacao?.atualizar?.(yaw);
   estado.personagem.atualizar(corpo, estado.camera3d.cam, yaw);
   if (agente && estado.agente3d) {
     estado.agente3d.atualizar(agente, estado.camera3d.cam, yaw);
