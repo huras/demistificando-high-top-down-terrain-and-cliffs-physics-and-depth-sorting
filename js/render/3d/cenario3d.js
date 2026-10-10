@@ -260,8 +260,16 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   aplicarNevoa(obterRaioStream());
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
   estado.terrenoSuave?.tick(corpo.x, corpo.y, estado.terreno.chunksExibidos?.());
-  estado.terreno.aplicarAnel?.(corpo.x, corpo.y, !!estado.terrenoSuave?.visivel?.());
   seguirAlvo3d(estado.camera3d, corpo, dt);
+
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const elevVis = elev * ALTURA_BLOCO;
+  estado._alvoCeu.set(corpo.x, elevVis, corpo.y);
+  estado.ceu.atualizar(dt, {
+    camera: estado.camera3d.cam,
+    alvo: estado._alvoCeu,
+    nevoa: estado.nevoaBase,
+  });
 
   const yaw = yawCamera(estado.camera3d);
   estado.vegetacao?.atualizar?.(yaw);
@@ -272,8 +280,6 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.alvoEscalada.atualizar(corpo, dt);
   estado.hoverTile?.atualizar();
 
-  const elev = corpo.elevacao ?? corpo.z ?? 0;
-  const elevVis = elev * ALTURA_BLOCO;
   const planando = !!corpo.planando;
   const voando = !!corpo.voando;
   estado.ventoAsa.atualizar(dt, {
@@ -287,13 +293,6 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     fy: corpo.dirY ?? 1,
     queda: planando ? ASA_DELTA_DESCIDA : voando ? 2.5 : 0,
     lift: Math.max(0, elev - (corpo.z ?? 0)),
-  });
-
-  estado._alvoCeu.set(corpo.x, elevVis, corpo.y);
-  estado.ceu.atualizar(dt, {
-    camera: estado.camera3d.cam,
-    alvo: estado._alvoCeu,
-    nevoa: estado.nevoaBase,
   });
 
   estado.renderer.render(estado.scene, estado.camera3d.cam);

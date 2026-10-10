@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { aplicarLuzBillboard, yawCartaoSol } from "./ceu/luzBillboard.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import {
   ALTURA_BLOCO,
@@ -87,6 +88,7 @@ export function criarVegetacaoBillboard3d() {
   let atlasAtual = null;
 
   let yawAplicado = null;
+  let yawSolAplicado = null;
   let alturasSujas = true;
 
   function imagemDe(prop) {
@@ -100,7 +102,12 @@ export function criarVegetacaoBillboard3d() {
   function soltarLote(lote) {
     grupo.remove(lote.mesh);
     lote.mesh.dispatchEvent({ type: "dispose" });
+    if (lote.sombra) {
+      grupo.remove(lote.sombra);
+      lote.sombra.dispatchEvent({ type: "dispose" });
+    }
     lote.material.dispose();
+    lote.matSombra?.dispose();
     lote.depth.dispose();
     lote.textura.dispose();
   }
@@ -123,16 +130,16 @@ export function criarVegetacaoBillboard3d() {
 
     const { largura, altura } = medidasDe(img, def.escala);
     const tex = criarTextura(img);
-    const material = aplicarSombraNuvem(new THREE.MeshStandardMaterial({
+    const material = aplicarSombraNuvem(aplicarLuzBillboard(new THREE.MeshStandardMaterial({
       map: tex,
-      roughness: 0.92,
+      roughness: 1,
       metalness: 0,
       transparent: false,
       alphaTest: VEG_ALPHA_TEST,
       depthWrite: true,
       depthTest: true,
       side: THREE.FrontSide,
-    }));
+    })));
     const depth = new THREE.MeshDepthMaterial({
       depthPacking: THREE.RGBADepthPacking,
       map: tex,
@@ -142,17 +149,36 @@ export function criarVegetacaoBillboard3d() {
 
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
     mesh.name = `veg-${def.chave}`;
-    mesh.castShadow = true;
+    mesh.castShadow = false;
     mesh.receiveShadow = false;
-    mesh.customDepthMaterial = depth;
     mesh.frustumCulled = true;
     mesh.count = Math.min(def.itens.length, CAP_INSTANCIAS);
     grupo.add(mesh);
 
+    const matSombra = new THREE.MeshBasicMaterial({
+      map: tex,
+      alphaTest: VEG_ALPHA_TEST,
+      colorWrite: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    // O sol olha a face da frente. O padrão do Three só rasteriza a de trás.
+    matSombra.shadowSide = THREE.DoubleSide;
+    const sombra = new THREE.InstancedMesh(geo, matSombra, CAP_INSTANCIAS);
+    sombra.name = `veg-sombra-${def.chave}`;
+    sombra.castShadow = true;
+    sombra.receiveShadow = false;
+    sombra.customDepthMaterial = depth;
+    sombra.frustumCulled = false;
+    sombra.count = mesh.count;
+    grupo.add(sombra);
+
     const lote = {
       chave: def.chave,
       mesh,
+      sombra,
       material,
+      matSombra,
       depth,
       textura: tex,
       img,
@@ -170,7 +196,10 @@ export function criarVegetacaoBillboard3d() {
       const img = imagemDe(def.amostra);
       let lote = lotes.get(def.chave);
       if (!img) {
-        if (lote) lote.mesh.visible = false;
+        if (lote) {
+          lote.mesh.visible = false;
+          if (lote.sombra) lote.sombra.visible = false;
+        }
         continue;
       }
       if (!lote || lote.img !== img) lote = montarLote(def, img);
@@ -181,33 +210,47 @@ export function criarVegetacaoBillboard3d() {
       lote.itens = def.itens;
       lote.mesh.count = def.itens.length;
       lote.mesh.visible = def.itens.length > 0;
+      if (lote.sombra) {
+        lote.sombra.count = def.itens.length;
+        lote.sombra.visible = def.itens.length > 0;
+      }
     }
     for (const [chave, lote] of lotes) {
       if (grupos.has(chave)) continue;
       lote.itens = [];
       lote.mesh.count = 0;
       lote.mesh.visible = false;
+      if (lote.sombra) {
+        lote.sombra.count = 0;
+        lote.sombra.visible = false;
+      }
     }
   }
 
-  function escrever(yaw, recalcularLimites) {
+  function escreverMesh(mesh, itens, largura, altura, pe, yaw, limites) {
+    if (!mesh) return;
+    for (let i = 0; i < itens.length; i++) {
+      const p = itens[i];
+      const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
+      dummy.position.set(p.x, (base - pe) * ALTURA_BLOCO, p.y);
+      dummy.rotation.set(0, yaw, 0);
+      dummy.scale.set(largura, altura, 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    if (itens.length) mesh.instanceMatrix.needsUpdate = true;
+    if (limites && itens.length) {
+      mesh.computeBoundingBox();
+      mesh.computeBoundingSphere();
+    }
+  }
+
+  function escrever(yaw, yawSol, recalcularLimites) {
     if (recalcularLimites) sincronizarLotes(recolherGrupos());
     for (const lote of lotes.values()) {
-      const { mesh, itens, largura, altura, pe } = lote;
-      for (let i = 0; i < itens.length; i++) {
-        const p = itens[i];
-        const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
-        dummy.position.set(p.x, (base - pe) * ALTURA_BLOCO, p.y);
-        dummy.rotation.set(0, yaw, 0);
-        dummy.scale.set(largura, altura, 1);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(i, dummy.matrix);
-      }
-      if (itens.length) mesh.instanceMatrix.needsUpdate = true;
-      if (recalcularLimites && itens.length) {
-        mesh.computeBoundingBox();
-        mesh.computeBoundingSphere();
-      }
+      const { mesh, sombra, itens, largura, altura, pe } = lote;
+      escreverMesh(mesh, itens, largura, altura, pe, yaw, recalcularLimites);
+      escreverMesh(sombra, itens, largura, altura, pe, yawSol, recalcularLimites);
     }
   }
 
@@ -225,7 +268,7 @@ export function criarVegetacaoBillboard3d() {
     sincronizarVisivel();
     alturasSujas = true;
     if (grupo.visible && yawAplicado != null) {
-      escrever(yawAplicado, true);
+      escrever(yawAplicado, yawCartaoSol(), true);
       alturasSujas = false;
     }
   }
@@ -233,7 +276,7 @@ export function criarVegetacaoBillboard3d() {
   function reconstruir() {
     alturasSujas = true;
     if (!grupo.visible || yawAplicado == null) return;
-    escrever(yawAplicado, true);
+    escrever(yawAplicado, yawCartaoSol(), true);
     alturasSujas = false;
   }
 
@@ -241,11 +284,14 @@ export function criarVegetacaoBillboard3d() {
     if (!atlasAtual) return;
     const yaw = Number.isFinite(yawCam) ? yawCam : 0;
     const mudouYaw = yawDiferente(yaw, yawAplicado);
-    if (!mudouYaw && !alturasSujas) return;
+    const yawSol = yawCartaoSol();
+    const mudouSol = yawDiferente(yawSol, yawSolAplicado);
+    if (!mudouYaw && !mudouSol && !alturasSujas) return;
     const recalcular = alturasSujas || yawAplicado == null;
     yawAplicado = yaw;
+    yawSolAplicado = yawSol;
     alturasSujas = false;
-    escrever(yaw, recalcular);
+    escrever(yaw, yawSol, recalcular);
     sincronizarVisivel();
   }
 

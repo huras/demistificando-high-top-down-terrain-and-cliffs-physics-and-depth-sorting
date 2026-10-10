@@ -22,6 +22,7 @@ import {
   uniformsNuvem,
 } from "./parametros.js";
 import { criarPrecipitacao } from "./precipitacao.js";
+import { atualizarLuzBillboard } from "./luzBillboard.js";
 import { criarRelampago } from "./relampago.js";
 
 export {
@@ -96,6 +97,8 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     rim.intensity = visual.rim;
     rim.position.set(alvo.x - dir.z * 16, alvo.y + 7, alvo.z + dir.x * 16);
     rim.target.position.set(alvo.x, alvo.y, alvo.z);
+
+    atualizarLuzBillboard({ sol, ambient, hemi, fill, rim });
   }
 
   function aplicarNevoa(visual, clima, nevoa) {

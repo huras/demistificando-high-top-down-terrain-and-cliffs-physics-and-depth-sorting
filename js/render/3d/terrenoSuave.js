@@ -180,9 +180,6 @@ export function criarTerrenoSuave() {
     tick,
     aplicarTexturas,
     aplicarVisual,
-    visivel() {
-      return !!(meshGrama.visible || meshTerra.visible);
-    },
     liberar() {
       trabalho = null;
       dados = null;
@@ -199,6 +196,7 @@ export function criarTerrenoSuave() {
 function criarMesh(nome, material) {
   const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
   mesh.name = nome;
+  mesh.renderOrder = 0;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   mesh.visible = false;

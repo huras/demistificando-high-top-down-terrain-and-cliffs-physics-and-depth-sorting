@@ -17,7 +17,6 @@ import {
   listarChunksSujos,
   obterChunk,
   obterBloco,
-  obterRaioStream,
   onDirty,
   paraCadaChunk,
 } from "../../mundo/voxel/storeMundo.js";
@@ -1240,6 +1239,7 @@ export function criarTerrenoMalha(atlas = null) {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.name = `cubos-${key}`;
+      mesh.renderOrder = 1;
       grupoCubos.add(mesh);
       entry.cubos = mesh;
     }
@@ -1272,7 +1272,7 @@ export function criarTerrenoMalha(atlas = null) {
       mesh.name = nome;
       mesh.castShadow = opts.shadow !== false;
       mesh.receiveShadow = opts.shadow !== false;
-      mesh.renderOrder = opts.order || 0;
+      mesh.renderOrder = 1 + (opts.order || 0);
       entry.real.add(mesh);
     }
 
@@ -1316,6 +1316,7 @@ export function criarTerrenoMalha(atlas = null) {
     meshProps.name = "props";
     meshProps.castShadow = true;
     meshProps.receiveShadow = true;
+    meshProps.renderOrder = 1;
     grupoReal.add(meshProps);
 
     const geo2 = geo.clone();
@@ -1323,6 +1324,7 @@ export function criarTerrenoMalha(atlas = null) {
     meshPropsCubos.name = "props-cubos";
     meshPropsCubos.castShadow = true;
     meshPropsCubos.receiveShadow = true;
+    meshPropsCubos.renderOrder = 1;
     grupoCubos.add(meshPropsCubos);
   }
 
@@ -1425,43 +1427,6 @@ export function criarTerrenoMalha(atlas = null) {
     return true;
   }
 
-  function definirVisivelChunk(entry, visivel) {
-    if (!entry) return;
-    if (entry.cubos) entry.cubos.visible = visivel;
-    if (entry.real) entry.real.visible = visivel;
-    if (entry.agua) entry.agua.visible = visivel;
-    if (entry.queda) entry.queda.visible = visivel;
-  }
-
-  /** Anel do disco de blocos: vizinho cai fora do raio. O suave cobre esse trecho. */
-  function ehAnelBloco(key, pcx, pcy, raio2) {
-    const sep = key.indexOf(",");
-    const cx = Number(key.slice(0, sep));
-    const cy = Number(key.slice(sep + 1));
-    const dx = cx - pcx;
-    const dy = cy - pcy;
-    if (dx * dx + dy * dy > raio2) return false;
-    for (let iy = -1; iy <= 1; iy++) {
-      for (let ix = -1; ix <= 1; ix++) {
-        const nx = cx + ix - pcx;
-        const ny = cy + iy - pcy;
-        if (nx * nx + ny * ny > raio2) return true;
-      }
-    }
-    return false;
-  }
-
-  function aplicarAnel(px, py, suaveCobre) {
-    const raio = obterRaioStream();
-    const raio2 = raio * raio + 1;
-    const pcx = Math.floor(px / CHUNK_XZ);
-    const pcy = Math.floor(py / CHUNK_XZ);
-    for (const [key, entry] of meshesPorChunk) {
-      const esconder = !!suaveCobre && ehAnelBloco(key, pcx, pcy, raio2);
-      definirVisivelChunk(entry, !esconder);
-    }
-  }
-
   // build inicial dos chunks já carregados
   reconstruirTudo();
   if (atlas) aplicarAtlas(atlas);
@@ -1484,7 +1449,6 @@ export function criarTerrenoMalha(atlas = null) {
       }
     },
     tickMalha,
-    aplicarAnel,
     /** Texturas de topo já usadas nos blocos. Não descartar daqui. */
     obterTexturasTopo() {
       if (!texturas?.pronto) return null;
