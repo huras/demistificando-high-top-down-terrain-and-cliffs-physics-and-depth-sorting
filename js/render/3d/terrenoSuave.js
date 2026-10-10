@@ -178,6 +178,9 @@ export function criarTerrenoSuave() {
     tick,
     aplicarTexturas,
     aplicarVisual,
+    visivel() {
+      return !!(meshGrama.visible || meshTerra.visible);
+    },
     liberar() {
       trabalho = null;
       dados = null;

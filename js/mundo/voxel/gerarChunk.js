@@ -120,9 +120,15 @@ export function gerarChunkProcedural(chunk, seed) {
         if (h - alturas[ny * CHUNK_XZ + nx] >= 2) cliff = true;
       }
       if (cliff) continue;
-      const tipo = plantaDoRelevo(wx, wy);
-      if (!tipo) continue;
-      props.push({ id: `v${wx}_${wy}`, x: wx + 0.5, y: wy + 0.5, tipo });
+      const planta = plantaDoRelevo(wx, wy);
+      if (!planta) continue;
+      props.push({
+        id: `v${wx}_${wy}`,
+        x: wx + 0.5,
+        y: wy + 0.5,
+        tipo: planta.classe,
+        sprite: planta.sprite,
+      });
     }
   }
   definirPropsChunk(chunk.cx, chunk.cy, props);

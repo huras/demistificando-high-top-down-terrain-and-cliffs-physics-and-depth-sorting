@@ -4,6 +4,7 @@ import {
   biomaDominante,
 } from "../mundo/bioma/catalogo.js";
 import { avaliarGrafo } from "../mundo/bioma/grafo.js";
+import { carregarKits, idsDeKit } from "../mundo/bioma/kits.js";
 
 const PORTAS = {
   constante: { entradas: [], saidas: ["Out"] },
@@ -370,6 +371,30 @@ function pintarInspector() {
   sup.append(select);
   inspectorEl.append(sup);
 
+  const kitLabel = document.createElement("label");
+  kitLabel.className = "campo";
+  kitLabel.append(document.createTextNode("Kit"));
+  const kitSelect = document.createElement("select");
+  const vazio = document.createElement("option");
+  vazio.value = "";
+  vazio.textContent = "(nenhum)";
+  kitSelect.append(vazio);
+  const ids = idsDeKit();
+  if (bioma.kit && !ids.includes(bioma.kit)) ids.push(bioma.kit);
+  for (const id of ids) {
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = id;
+    if (bioma.kit === id) o.selected = true;
+    kitSelect.append(o);
+  }
+  kitSelect.addEventListener("change", () => {
+    bioma.kit = kitSelect.value || null;
+    pintarPreviews();
+  });
+  kitLabel.append(kitSelect);
+  inspectorEl.append(kitLabel);
+
   inspectorEl.append(
     campo("Árvore (0–1)", bioma.arvore, (v) => {
       bioma.arvore = v;
@@ -604,6 +629,7 @@ window.addEventListener("keydown", (ev) => {
   pintarTudo();
 });
 
+await carregarKits();
 const resposta = await fetch("biomas/mundo.json", { cache: "no-store" });
 dados = await resposta.json();
 pintarPaleta();

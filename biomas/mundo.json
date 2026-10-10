@@ -128,7 +128,8 @@
           "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "A"
         }
-      ]
+      ],
+      "kit": "lush-grass"
     },
     {
       "id": "desert_a",
@@ -240,7 +241,8 @@
           "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "B"
         }
-      ]
+      ],
+      "kit": "faroeste-desert"
     },
     {
       "id": "Canyons_a",
@@ -364,7 +366,8 @@
           "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "A"
         }
-      ]
+      ],
+      "kit": "amber-rock"
     },
     {
       "id": "rocky_peaks_a",
@@ -482,7 +485,8 @@
           "para": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "portaPara": "In"
         }
-      ]
+      ],
+      "kit": "stone"
     },
     {
       "id": "Ice_Hight_Steps_a",
@@ -606,7 +610,8 @@
           "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "A"
         }
-      ]
+      ],
+      "kit": "snow"
     },
     {
       "id": "Ice_Canyons_a",
@@ -730,7 +735,8 @@
           "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "A"
         }
-      ]
+      ],
+      "kit": "tundra"
     },
     {
       "id": "ocean_a",
@@ -842,7 +848,8 @@
           "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "B"
         }
-      ]
+      ],
+      "kit": "dirty-sand"
     }
   ]
 }

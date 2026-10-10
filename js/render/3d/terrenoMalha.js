@@ -16,18 +16,21 @@ import {
   listarChunksSujos,
   obterChunk,
   obterBloco,
+  obterRaioStream,
   onDirty,
   paraCadaChunk,
 } from "../../mundo/voxel/storeMundo.js";
 import { BLOCO, ehSolido } from "../../mundo/voxel/tiposBloco.js";
-import { hexBioma, rgbBioma } from "../../mundo/bioma/tinta.js";
+import { hexBioma } from "../../mundo/bioma/tinta.js";
+import { kitDoRelevo } from "../../mundo/bioma/catalogo.js";
+import { obterKit } from "../../mundo/bioma/kits.js";
 import {
   avancarMateriaisAgua,
   liberarMateriaisAgua,
   obterMaterialLago,
   obterMaterialQueda,
 } from "./texturasAgua3d.js";
-import { criarTexturasTerreno3d } from "./texturasTerreno3d.js";
+import { canvasParaTextura, criarTexturasTerreno3d, texturaCliffDeFolha } from "./texturasTerreno3d.js";
 
 const LEDGE_H = 0.12;
 const AO_OPACITY = 0.32;
@@ -823,16 +826,20 @@ function emitirColunaSolida(wx, wy, zSurf, loteGrama, loteTerra, loteFaces, lote
 }
 
 function* construirGeosChunk(chunk) {
-  const topsGrama = [];
-  const topsTerra = [];
-  const faces = [];
   const ledges = [];
   const aos = [];
   const aguas = [];
   const quedas = [];
-  const loteGrama = criarLote(true);
-  const loteTerra = criarLote(true);
-  const loteFaces = criarLote(true);
+  const sacosTopo = new Map();
+  const sacosParede = new Map();
+  function sacoDe(mapa, kit) {
+    let saco = mapa.get(kit);
+    if (!saco) {
+      saco = { lote: criarLote(false), extras: [] };
+      mapa.set(kit, saco);
+    }
+    return saco;
+  }
   const loteAo = criarLote(false);
   const loteCubos = criarLote(true);
   garantirFluxoChunk(chunk);
@@ -847,11 +854,15 @@ function* construirGeosChunk(chunk) {
       if ((_colunas++ & 7) === 7) yield;
       const wx = baseX + lx;
       const wy = baseY + ly;
-      const rgbTopo = rgbBioma(wx, wy, false);
-      const rgbParede = rgbBioma(wx, wy, true);
-      loteGrama._rgb = rgbTopo;
-      loteTerra._rgb = rgbTopo;
-      loteFaces._rgb = rgbParede;
+      const kit = kitDoRelevo(wx, wy) || "_";
+      const sacoTopo = sacoDe(sacosTopo, kit);
+      const sacoParede = sacoDe(sacosParede, kit);
+      const loteGrama = sacoTopo.lote;
+      const loteTerra = sacoTopo.lote;
+      const loteFaces = sacoParede.lote;
+      const topsGrama = sacoTopo.extras;
+      const topsTerra = sacoTopo.extras;
+      const faces = sacoParede.extras;
       const zSurf = alturaEm(wx, wy);
       let colunaSimples = zSurf > 0 && !colunaTemArInterno(wx, wy);
       if (colunaSimples) {
@@ -995,10 +1006,19 @@ function* construirGeosChunk(chunk) {
   }
 
   yield;
+  const topos = [];
+  for (const [kit, saco] of sacosTopo) {
+    const geo = finalizarLote(saco.lote, saco.extras);
+    if (geo) topos.push({ kit, geo });
+  }
+  const paredes = [];
+  for (const [kit, saco] of sacosParede) {
+    const geo = finalizarLote(saco.lote, saco.extras);
+    if (geo) paredes.push({ kit, geo });
+  }
   const out = {
-    geoGrama: finalizarLote(loteGrama, topsGrama),
-    geoTerra: finalizarLote(loteTerra, topsTerra),
-    geoFaces: finalizarLote(loteFaces, faces),
+    topos,
+    paredes,
     geoLedges: mesclarLista(ledges),
     geoAo: finalizarLote(loteAo, aos),
     geoCubos: geoDoLote(loteCubos),
@@ -1016,7 +1036,9 @@ function drenarGeosChunk(chunk) {
 }
 
 function geoProp(p) {
-  if (p.tipo === "arvore" || p.tipo === "mata") return [];
+  if (p.sprite || p.tipo === "arvore" || p.tipo === "mata" || p.tipo === "grama" || p.tipo === "cristal") {
+    return [];
+  }
   const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
   const out = [];
   if (p.tipo === "pedra") {
@@ -1114,6 +1136,9 @@ export function criarTerrenoMalha(atlas = null) {
   let meshProps = null;
   let meshPropsCubos = null;
   let texturas = null;
+  let visuais = null;
+  /** @type {Map<string, { mat: THREE.Material, tex: THREE.Texture | null }>} */
+  const materiaisKit = new Map();
   let atlasAplicado = false;
   /** Visual ativo: cubos (didático) vs real (tiles). */
   let modoCubos = true;
@@ -1141,6 +1166,39 @@ export function criarTerrenoMalha(atlas = null) {
     misturarTinta(materiais.grama, 0.62);
     misturarTinta(materiais.terra, 0.62);
     misturarTinta(materiais.cliff, 0.8);
+  }
+
+  function soltarMateriaisKit() {
+    for (const item of materiaisKit.values()) {
+      item.mat.dispose();
+      item.tex?.dispose();
+    }
+    materiaisKit.clear();
+  }
+
+  function materialKit(kit, tipo) {
+    const chave = `${tipo}:${kit}`;
+    const pronto = materiaisKit.get(chave);
+    if (pronto) return pronto.mat;
+    const meta = obterKit(kit);
+    let tex = null;
+    if (tipo === "topo") {
+      const img = meta?.chao ? visuais?.centros?.[meta.chao] : null;
+      if (img) tex = canvasParaTextura(img, { repeat: true });
+    } else {
+      const img = visuais?.cliffs?.[kit];
+      if (img) tex = texturaCliffDeFolha(img);
+    }
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex || (tipo === "topo" ? texturas?.grama : texturas?.cliff),
+      roughness: tipo === "topo" ? 0.88 : 0.88,
+      metalness: 0.04,
+      polygonOffset: tipo === "parede",
+      polygonOffsetFactor: tipo === "parede" ? 1 : 0,
+      polygonOffsetUnits: tipo === "parede" ? 1 : 0,
+    });
+    materiaisKit.set(chave, { mat, tex });
+    return mat;
   }
 
   function liberarGrupoChunk(entry) {
@@ -1216,15 +1274,19 @@ export function criarTerrenoMalha(atlas = null) {
     }
 
     if (atlasAplicado) {
-      add(geos.geoGrama, materiais.grama, "tops-grama");
-      add(geos.geoTerra, materiais.terra, "tops-terra");
-      add(geos.geoFaces, materiais.cliff, "faces-cliff");
+      const topos = geos.topos || [];
+      const paredes = geos.paredes || [];
+      for (let i = 0; i < topos.length; i++) {
+        add(topos[i].geo, materialKit(topos[i].kit, "topo"), `tops-${topos[i].kit}`);
+      }
+      for (let i = 0; i < paredes.length; i++) {
+        add(paredes[i].geo, materialKit(paredes[i].kit, "parede"), `faces-${paredes[i].kit}`);
+      }
       add(geos.geoLedges, materiais.ledge, "ledges");
       add(geos.geoAo, materiais.ao, "ao", { shadow: false, order: 1 });
     } else {
-      geos.geoGrama?.dispose();
-      geos.geoTerra?.dispose();
-      geos.geoFaces?.dispose();
+      for (const item of geos.topos || []) item.geo?.dispose();
+      for (const item of geos.paredes || []) item.geo?.dispose();
       geos.geoLedges?.dispose();
       geos.geoAo?.dispose();
     }
@@ -1352,10 +1414,49 @@ export function criarTerrenoMalha(atlas = null) {
     if (materiais.grama) materiais.grama.dispose();
     if (materiais.terra) materiais.terra.dispose();
     if (materiais.cliff) materiais.cliff.dispose();
+    soltarMateriaisKit();
+    visuais = novoAtlas;
     montarMateriaisTextura(texturas);
     atlasAplicado = true;
     reconstruirTudo();
     return true;
+  }
+
+  function definirVisivelChunk(entry, visivel) {
+    if (!entry) return;
+    if (entry.cubos) entry.cubos.visible = visivel;
+    if (entry.real) entry.real.visible = visivel;
+    if (entry.agua) entry.agua.visible = visivel;
+    if (entry.queda) entry.queda.visible = visivel;
+  }
+
+  /** Anel do disco de blocos: vizinho cai fora do raio. O suave cobre esse trecho. */
+  function ehAnelBloco(key, pcx, pcy, raio2) {
+    const sep = key.indexOf(",");
+    const cx = Number(key.slice(0, sep));
+    const cy = Number(key.slice(sep + 1));
+    const dx = cx - pcx;
+    const dy = cy - pcy;
+    if (dx * dx + dy * dy > raio2) return false;
+    for (let iy = -1; iy <= 1; iy++) {
+      for (let ix = -1; ix <= 1; ix++) {
+        const nx = cx + ix - pcx;
+        const ny = cy + iy - pcy;
+        if (nx * nx + ny * ny > raio2) return true;
+      }
+    }
+    return false;
+  }
+
+  function aplicarAnel(px, py, suaveCobre) {
+    const raio = obterRaioStream();
+    const raio2 = raio * raio + 1;
+    const pcx = Math.floor(px / CHUNK_XZ);
+    const pcy = Math.floor(py / CHUNK_XZ);
+    for (const [key, entry] of meshesPorChunk) {
+      const esconder = !!suaveCobre && ehAnelBloco(key, pcx, pcy, raio2);
+      definirVisivelChunk(entry, !esconder);
+    }
   }
 
   // build inicial dos chunks já carregados
@@ -1380,6 +1481,7 @@ export function criarTerrenoMalha(atlas = null) {
       }
     },
     tickMalha,
+    aplicarAnel,
     /** Texturas de topo já usadas nos blocos. Não descartar daqui. */
     obterTexturasTopo() {
       if (!texturas?.pronto) return null;
@@ -1415,6 +1517,7 @@ export function criarTerrenoMalha(atlas = null) {
       materiais.grama?.dispose();
       materiais.terra?.dispose();
       materiais.cliff?.dispose();
+      soltarMateriaisKit();
       texturas?.liberar();
       liberarMateriaisAgua();
     },

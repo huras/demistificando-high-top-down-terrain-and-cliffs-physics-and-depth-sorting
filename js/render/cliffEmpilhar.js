@@ -32,6 +32,7 @@ import {
 } from "../config.js";
 import { solidoEm } from "../mundo/altura.js";
 import { sheetCliffDoAtlas, usarGrassOnDirt } from "./atlas.js";
+import { kitDoRelevo } from "../mundo/bioma/catalogo.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 
 const GOD_HALF = TILE_ART >> 1;
@@ -98,11 +99,12 @@ export function desenharFaceSulSingle(ctx, atlas, cx, cy, zTopo, queda, destacar
 
   if (usarGrassOnDirt(atlas)) {
     const sheet = atlas.grassOnDirt;
+    const folhaCliff = atlas.cliffs?.[kitDoRelevo(cx, cy)] || sheet;
     for (let i = 0; i < queda; i++) {
       const dy = py0 + i * step;
       // Chão atrás do alpha: só na base (degraus de cima = arredondamento puro).
       if (i === queda - 1) blitGod(ctx, sheet, GOD_CENTER, px, dy, dw, dh);
-      desenharUnderGod(ctx, sheet, cx, cy, zTopo, px, dy, dw, dh);
+      desenharUnderGod(ctx, folhaCliff, cx, cy, zTopo, px, dy, dw, dh);
     }
   } else {
     const sheet = sheetCliffDoAtlas(atlas);

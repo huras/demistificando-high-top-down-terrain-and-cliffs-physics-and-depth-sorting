@@ -15,45 +15,47 @@ import { todaVegetacao } from "../../mundo/bioma/propsBioma.js";
 import { onDirty } from "../../mundo/voxel/storeMundo.js";
 
 /**
- * Vegetação HD-2D: um InstancedMesh por tipo.
+ * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
  * Quad com pivô no pé e billboard só no yaw (o pitch não deita o sprite).
  */
 
-const CATALOGO = [
-  {
-    tipo: "arvore",
-    chave: "arvore",
-    escala: VEG_ARVORE_ESCALA,
-    pe: VEG_ARVORE_PE,
-    itens: [],
-  },
-  {
-    tipo: "mata",
-    chave: "mata",
-    escala: VEG_MATA_ESCALA,
-    pe: VEG_MATA_PE,
-    itens: [],
-  },
-];
-
 const CAP_INSTANCIAS = 4096;
 
-function recolherItens() {
-  const plantas = todaVegetacao();
-  for (let t = 0; t < CATALOGO.length; t++) {
-    const def = CATALOGO[t];
-    const itens = [];
-    for (let i = 0; i < PROPS.length; i++) {
-      if (PROPS[i].tipo === def.tipo) itens.push(PROPS[i]);
-    }
-    for (let i = 0; i < plantas.length; i++) {
-      if (plantas[i].tipo === def.tipo) itens.push(plantas[i]);
-    }
-    def.itens = itens.length > CAP_INSTANCIAS ? itens.slice(0, CAP_INSTANCIAS) : itens;
-  }
+function estiloDe(prop) {
+  if (prop.tipo === "arvore") return { escala: VEG_ARVORE_ESCALA, pe: VEG_ARVORE_PE };
+  if (prop.tipo === "pedra" || prop.tipo === "cristal") return { escala: 1, pe: VEG_MATA_PE };
+  return { escala: VEG_MATA_ESCALA, pe: VEG_MATA_PE };
 }
 
-recolherItens();
+function chaveDe(prop) {
+  if (!prop || prop.tipo === "placa") return null;
+  return prop.sprite || prop.tipo || null;
+}
+
+function recolherGrupos() {
+  const grupos = new Map();
+  function por(prop) {
+    const chave = chaveDe(prop);
+    if (!chave) return;
+    let grupo = grupos.get(chave);
+    if (!grupo) {
+      const est = estiloDe(prop);
+      grupo = {
+        chave,
+        amostra: prop,
+        escala: est.escala,
+        pe: est.pe,
+        itens: [],
+      };
+      grupos.set(chave, grupo);
+    }
+    if (grupo.itens.length < CAP_INSTANCIAS) grupo.itens.push(prop);
+  }
+  for (let i = 0; i < PROPS.length; i++) por(PROPS[i]);
+  const plantas = todaVegetacao();
+  for (let i = 0; i < plantas.length; i++) por(plantas[i]);
+  return grupos;
+}
 
 function medidasDe(img, escala) {
   const pw = img.naturalWidth || img.width || TILE;
@@ -81,9 +83,18 @@ export function criarVegetacaoBillboard3d() {
   const dummy = new THREE.Object3D();
   /** @type {Map<string, object>} */
   const lotes = new Map();
+  let atlasAtual = null;
 
   let yawAplicado = null;
   let alturasSujas = true;
+
+  function imagemDe(prop) {
+    if (!atlasAtual || !prop) return null;
+    if (prop.sprite && atlasAtual.sprites?.[prop.sprite]) return atlasAtual.sprites[prop.sprite];
+    if (prop.tipo === "arvore") return atlasAtual.arvore || null;
+    if (prop.tipo === "mata" || prop.tipo === "grama") return atlasAtual.mata || null;
+    return null;
+  }
 
   function soltarLote(lote) {
     grupo.remove(lote.mesh);
@@ -106,7 +117,7 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function montarLote(def, img) {
-    const anterior = lotes.get(def.tipo);
+    const anterior = lotes.get(def.chave);
     if (anterior) soltarLote(anterior);
 
     const { largura, altura } = medidasDe(img, def.escala);
@@ -129,7 +140,7 @@ export function criarVegetacaoBillboard3d() {
     });
 
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
-    mesh.name = `veg-${def.tipo}`;
+    mesh.name = `veg-${def.chave}`;
     mesh.castShadow = true;
     mesh.receiveShadow = false;
     mesh.customDepthMaterial = depth;
@@ -138,7 +149,7 @@ export function criarVegetacaoBillboard3d() {
     grupo.add(mesh);
 
     const lote = {
-      tipo: def.tipo,
+      chave: def.chave,
       mesh,
       material,
       depth,
@@ -149,20 +160,37 @@ export function criarVegetacaoBillboard3d() {
       altura,
       pe: def.pe,
     };
-    lotes.set(def.tipo, lote);
+    lotes.set(def.chave, lote);
     return lote;
   }
 
-  function escrever(yaw, recalcularLimites) {
-    if (recalcularLimites) {
-      recolherItens();
-      for (const lote of lotes.values()) {
-        const def = CATALOGO.find((c) => c.tipo === lote.tipo);
-        lote.itens = def ? def.itens : lote.itens;
-        lote.mesh.count = lote.itens.length;
-        lote.mesh.visible = lote.itens.length > 0;
+  function sincronizarLotes(grupos) {
+    for (const def of grupos.values()) {
+      const img = imagemDe(def.amostra);
+      let lote = lotes.get(def.chave);
+      if (!img) {
+        if (lote) lote.mesh.visible = false;
+        continue;
       }
+      if (!lote || lote.img !== img) lote = montarLote(def, img);
+      const { largura, altura } = medidasDe(img, def.escala);
+      lote.largura = largura;
+      lote.altura = altura;
+      lote.pe = def.pe;
+      lote.itens = def.itens;
+      lote.mesh.count = def.itens.length;
+      lote.mesh.visible = def.itens.length > 0;
     }
+    for (const [chave, lote] of lotes) {
+      if (grupos.has(chave)) continue;
+      lote.itens = [];
+      lote.mesh.count = 0;
+      lote.mesh.visible = false;
+    }
+  }
+
+  function escrever(yaw, recalcularLimites) {
+    if (recalcularLimites) sincronizarLotes(recolherGrupos());
     for (const lote of lotes.values()) {
       const { mesh, itens, largura, altura, pe } = lote;
       for (let i = 0; i < itens.length; i++) {
@@ -174,7 +202,7 @@ export function criarVegetacaoBillboard3d() {
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
       }
-      mesh.instanceMatrix.needsUpdate = true;
+      if (itens.length) mesh.instanceMatrix.needsUpdate = true;
       if (recalcularLimites && itens.length) {
         mesh.computeBoundingBox();
         mesh.computeBoundingSphere();
@@ -191,23 +219,8 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function aplicarAtlas(atlas) {
-    recolherItens();
-    for (let t = 0; t < CATALOGO.length; t++) {
-      const def = CATALOGO[t];
-      if (!def.itens.length) continue;
-      const img = atlas?.[def.chave] || null;
-      const lote = lotes.get(def.tipo);
-      if (!img) {
-        if (lote) lote.mesh.visible = false;
-        continue;
-      }
-      if (lote && lote.img === img) {
-        lote.mesh.visible = true;
-        continue;
-      }
-      const novo = montarLote(def, img);
-      novo.mesh.visible = true;
-    }
+    atlasAtual = atlas;
+    sincronizarLotes(recolherGrupos());
     sincronizarVisivel();
     alturasSujas = true;
     if (grupo.visible && yawAplicado != null) {
@@ -224,7 +237,7 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function atualizar(yawCam) {
-    if (!lotes.size) return;
+    if (!atlasAtual) return;
     const yaw = Number.isFinite(yawCam) ? yawCam : 0;
     const mudouYaw = yawDiferente(yaw, yawAplicado);
     if (!mudouYaw && !alturasSujas) return;
@@ -232,6 +245,7 @@ export function criarVegetacaoBillboard3d() {
     yawAplicado = yaw;
     alturasSujas = false;
     escrever(yaw, recalcular);
+    sincronizarVisivel();
   }
 
   const cancelarDirty = onDirty(() => {

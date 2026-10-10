@@ -1,0 +1,1913 @@
+{
+  "versao": 1,
+  "gramaChance": 0.35,
+  "pedraChance": 0.02,
+  "sprites": {
+    "green": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/green-grass.png"
+    },
+    "greeny": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/greeny-grass.png"
+    },
+    "meadow": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/grass.png"
+    },
+    "jungle": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/jungle-grass.png"
+    },
+    "junglyTall": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/jungly-tall-grass.png"
+    },
+    "tuft": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/tuft.png"
+    },
+    "sand-grass": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/sand-grass.png"
+    },
+    "dry-grass": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/dry-grass.png"
+    },
+    "snow-grass": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/snow-grass.png"
+    },
+    "tall-snow-grass": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/tall-snow-grass.png"
+    },
+    "ice-grass": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/ice-grass.png"
+    },
+    "autumn-leaves": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/autumn-leaves.png"
+    },
+    "purple-lily": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/purple-lily.png"
+    },
+    "orange-daisy": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/orange-daisy.png"
+    },
+    "tri-flower": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/tri-flower.png"
+    },
+    "honey-flower": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/honey-flower.png"
+    },
+    "margarida-flower": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/margarida-flower.png"
+    },
+    "pinko-flower": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/pinko-flower.png"
+    },
+    "red-flower": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/red-flower.png"
+    },
+    "small-cactus": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/small-cactus.png"
+    },
+    "ruins-tall-grass": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/ruins-tall-grass.png"
+    },
+    "ruins-grass": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/ruins-grass.png"
+    },
+    "ruins-small-grass": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/ruins-small-grass.png"
+    },
+    "gen2-grass-1": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/gen2-grass-1.png"
+    },
+    "tree-c": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tree-c.png"
+    },
+    "broadleaf": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/broadleaf.png"
+    },
+    "broadleaf-alt": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/broadleaf-alt.png"
+    },
+    "large-broadleaf": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/large-broadleaf.png"
+    },
+    "japanese": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/japanese.png"
+    },
+    "pine": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/pine.png"
+    },
+    "palm": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/palm.png"
+    },
+    "fat-palm": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/fat-palm.png"
+    },
+    "palm-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/palm-tree.png"
+    },
+    "palm-tree-with-coconuts": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/palm-tree-with-coconuts.png"
+    },
+    "large-palm-with-coconuts": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/large-palm-with-coconuts.png"
+    },
+    "large-palm-with-bananas": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/large-palm-with-bananas.png"
+    },
+    "cactus": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/cactus.png"
+    },
+    "savannah": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/savannah.png"
+    },
+    "autumn-orange": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/autumn-orange.png"
+    },
+    "autumn-yellow": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/autumn-yellow.png"
+    },
+    "autumn-red": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/autumn-red.png"
+    },
+    "pine-snow": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/pine-snow.png"
+    },
+    "broadleaf-snow": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/broadleaf-snow.png"
+    },
+    "tall-tree-dark-green": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-dark-green.png"
+    },
+    "tall-tree-water-green": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-water-green.png"
+    },
+    "tall-tree-water-green-w-snow": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-water-green-w-snow.png"
+    },
+    "tall-tree-light-green": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-light-green.png"
+    },
+    "tall-tree-light-green-w-snow": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-light-green-w-snow.png"
+    },
+    "tall-tree-autum-yellow": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-autum-yellow.png"
+    },
+    "tall-tree-autumn-red": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-autumn-red.png"
+    },
+    "tall-tree-pink-cherry": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-pink-cherry.png"
+    },
+    "honey-pine-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/honey-pine-tree.png"
+    },
+    "honey-round-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/honey-round-tree.png"
+    },
+    "honey-bushy-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/honey-bushy-tree.png"
+    },
+    "bush-a-with-fruits": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/bush-a-with-fruits.png"
+    },
+    "bush-a-without-fruits": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/bush-a-without-fruits.png"
+    },
+    "tall-tree-full-snow": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-full-snow.png"
+    },
+    "tall-tree-leafless": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/tall-tree-leafless.png"
+    },
+    "wide-tree-dark-green": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/wide-tree-dark-green.png"
+    },
+    "wide-tree-dark-green-a": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/wide-tree-dark-green-a.png"
+    },
+    "coconut-tree-left": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/coconut-tree-left.png"
+    },
+    "coconut-tree-right": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/coconut-tree-right.png"
+    },
+    "desert-palm-to-left": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/desert-palm-to-left.png"
+    },
+    "desert-palm-to-right": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/desert-palm-to-right.png"
+    },
+    "round-small-cactus": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/round-small-cactus.png"
+    },
+    "round-small-cactus-2": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/round-small-cactus-2.png"
+    },
+    "round-small-cactus-3": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/round-small-cactus-3.png"
+    },
+    "round-small-cactus-4": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/round-small-cactus-4.png"
+    },
+    "dried-volcanic-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/dried-volcanic-tree.png"
+    },
+    "gen2-broadleaf-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/gen2-broadleaf-tree.png"
+    },
+    "gen2-pine-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/gen2-pine-tree.png"
+    },
+    "gen2-small-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/gen2-small-tree.png"
+    },
+    "gen2-sapling-tree": {
+      "classe": "arvore",
+      "arquivo": "assets/trees/gen2-sapling-tree.png"
+    },
+    "stone-rock-a": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/stone-rock-a.png"
+    },
+    "stone-rock-b": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/stone-rock-b.png"
+    },
+    "stone-rock-c": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/stone-rock-c.png"
+    },
+    "stone-rock-d": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/stone-rock-d.png"
+    },
+    "stone-rock-e": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/stone-rock-e.png"
+    },
+    "brown-rock-a": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/brown-rock-a.png"
+    },
+    "brown-rock-b": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/brown-rock-b.png"
+    },
+    "brown-rock-c": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/brown-rock-c.png"
+    },
+    "brown-rock-d": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/brown-rock-d.png"
+    },
+    "brown-rock-e": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/brown-rock-e.png"
+    },
+    "mushroom-1": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/mushroom-1.png"
+    },
+    "dirt-rock-a": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/dirt-rock-a.png"
+    },
+    "dirt-rock-b": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/dirt-rock-b.png"
+    },
+    "dirt-rock-c": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/dirt-rock-c.png"
+    },
+    "dirt-rock-d": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/dirt-rock-d.png"
+    },
+    "dirt-rock-k": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/dirt-rock-k.png"
+    },
+    "dirt-rock-m": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/dirt-rock-m.png"
+    },
+    "big-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/big-rock.png"
+    },
+    "big-mossy-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/big-mossy-rock.png"
+    },
+    "ice-small-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/ice-small-rock.png"
+    },
+    "small-black-meteorite": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/small-black-meteorite.png"
+    },
+    "red-mushroom-b": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/red-mushroom-b.png"
+    },
+    "yellow-mushroom-a": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/yellow-mushroom-a.png"
+    },
+    "earth-small-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/earth-small-rock.png"
+    },
+    "earth-long-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/earth-long-rock.png"
+    },
+    "earth-big-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/earth-big-rock.png"
+    },
+    "small-volcanic-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/small-volcanic-rock.png"
+    },
+    "volcanic-tall-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/volcanic-tall-rock.png"
+    },
+    "volcanic-rock-with-fume-holes": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/volcanic-rock-with-fume-holes.png"
+    },
+    "gen2-dirt-rock": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/gen2-dirt-rock.png"
+    },
+    "small-blue-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/small-blue-crystal.png"
+    },
+    "small-red-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/small-red-crystal.png"
+    },
+    "small-yellow-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/small-yellow-crystal.png"
+    },
+    "small-purple-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/small-purple-crystal.png"
+    },
+    "small-light-blue-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/small-light-blue-crystal.png"
+    },
+    "light-blue-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/light-blue-crystal.png"
+    },
+    "large-light-blue-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/large-light-blue-crystal.png"
+    },
+    "tall-blue-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/tall-blue-crystal.png"
+    },
+    "tall-red-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/tall-red-crystal.png"
+    },
+    "large-red-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/large-red-crystal.png"
+    },
+    "tall-yellow-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/tall-yellow-crystal.png"
+    },
+    "large-yellow-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/large-yellow-crystal.png"
+    },
+    "tall-purple-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/tall-purple-crystal.png"
+    },
+    "large-purple-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/large-purple-crystal.png"
+    },
+    "small-green-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/small-green-crystal.png"
+    },
+    "tall-green-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/tall-green-crystal.png"
+    },
+    "large-green-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/large-green-crystal.png"
+    },
+    "small-pink-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/small-pink-crystal.png"
+    },
+    "tall-pink-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/tall-pink-crystal.png"
+    },
+    "large-pink-crystal": {
+      "classe": "cristal",
+      "arquivo": "assets/crystals/large-pink-crystal.png"
+    }
+  },
+  "kits": {
+    "dirty-sand": {
+      "chao": "sand",
+      "chaoArquivo": "assets/terrain/centro/sand.png",
+      "cliffArquivo": "assets/terrain/cliffs/dirty-sand.png",
+      "grama": [
+        {
+          "id": "sand-grass",
+          "peso": 1.5
+        },
+        {
+          "id": "small-cactus",
+          "peso": 1.1
+        }
+      ],
+      "arvore": [
+        {
+          "id": "palm",
+          "peso": 1.6
+        },
+        {
+          "id": "palm-tree",
+          "peso": 1.5
+        },
+        {
+          "id": "palm-tree-with-coconuts",
+          "peso": 1.45
+        },
+        {
+          "id": "large-palm-with-coconuts",
+          "peso": 1.55
+        },
+        {
+          "id": "cactus",
+          "peso": 1.7
+        },
+        {
+          "id": "coconut-tree-left",
+          "peso": 1.4
+        },
+        {
+          "id": "coconut-tree-right",
+          "peso": 1.4
+        },
+        {
+          "id": "desert-palm-to-left",
+          "peso": 1.35
+        },
+        {
+          "id": "desert-palm-to-right",
+          "peso": 1.35
+        },
+        {
+          "id": "round-small-cactus",
+          "peso": 0.85
+        },
+        {
+          "id": "round-small-cactus-2",
+          "peso": 0.8
+        },
+        {
+          "id": "round-small-cactus-3",
+          "peso": 0.8
+        },
+        {
+          "id": "round-small-cactus-4",
+          "peso": 0.75
+        }
+      ],
+      "pedra": [
+        {
+          "id": "dirt-rock-a",
+          "peso": 1
+        },
+        {
+          "id": "dirt-rock-d",
+          "peso": 1
+        },
+        {
+          "id": "earth-small-rock",
+          "peso": 1
+        },
+        {
+          "id": "earth-long-rock",
+          "peso": 1
+        },
+        {
+          "id": "earth-big-rock",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "light-grass": {
+      "chao": "grass",
+      "chaoArquivo": "assets/terrain/centro/grass.png",
+      "cliffArquivo": "assets/terrain/cliffs/light-grass.png",
+      "grama": [
+        {
+          "id": "green",
+          "peso": 1.2
+        },
+        {
+          "id": "greeny",
+          "peso": 1.15
+        },
+        {
+          "id": "meadow",
+          "peso": 1
+        },
+        {
+          "id": "tuft",
+          "peso": 0.9
+        }
+      ],
+      "arvore": [
+        {
+          "id": "broadleaf",
+          "peso": 1.25
+        },
+        {
+          "id": "broadleaf-alt",
+          "peso": 1
+        },
+        {
+          "id": "tall-tree-light-green",
+          "peso": 1.1
+        }
+      ],
+      "pedra": [
+        {
+          "id": "stone-rock-b",
+          "peso": 1
+        }
+      ],
+      "cristal": [
+        {
+          "id": "small-blue-crystal",
+          "peso": 1
+        },
+        {
+          "id": "small-red-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-blue-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-red-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "lush-grass": {
+      "chao": "lush",
+      "chaoArquivo": "assets/terrain/centro/lush.png",
+      "cliffArquivo": "assets/terrain/cliffs/lush-grass.png",
+      "grama": [
+        {
+          "id": "green",
+          "peso": 1.2
+        },
+        {
+          "id": "greeny",
+          "peso": 1.15
+        },
+        {
+          "id": "meadow",
+          "peso": 1
+        },
+        {
+          "id": "jungle",
+          "peso": 1.4
+        },
+        {
+          "id": "tuft",
+          "peso": 0.9
+        }
+      ],
+      "arvore": [
+        {
+          "id": "broadleaf",
+          "peso": 1.25
+        },
+        {
+          "id": "broadleaf-alt",
+          "peso": 1
+        },
+        {
+          "id": "large-broadleaf",
+          "peso": 1.1
+        },
+        {
+          "id": "japanese",
+          "peso": 1.5
+        },
+        {
+          "id": "tall-tree-dark-green",
+          "peso": 1.1
+        },
+        {
+          "id": "bush-a-with-fruits",
+          "peso": 0.7
+        },
+        {
+          "id": "bush-a-without-fruits",
+          "peso": 0.7
+        },
+        {
+          "id": "wide-tree-dark-green",
+          "peso": 1
+        },
+        {
+          "id": "wide-tree-dark-green-a",
+          "peso": 1
+        }
+      ],
+      "pedra": [
+        {
+          "id": "mushroom-1",
+          "peso": 1
+        },
+        {
+          "id": "big-mossy-rock",
+          "peso": 1
+        },
+        {
+          "id": "red-mushroom-b",
+          "peso": 1
+        }
+      ],
+      "cristal": [
+        {
+          "id": "small-red-crystal",
+          "peso": 1
+        },
+        {
+          "id": "small-yellow-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-red-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-yellow-crystal",
+          "peso": 1
+        },
+        {
+          "id": "small-green-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-green-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "brown-earth": {
+      "chao": "dirt",
+      "chaoArquivo": "assets/terrain/centro/dirt.png",
+      "cliffArquivo": "assets/terrain/cliffs/brown-earth.png",
+      "grama": [
+        {
+          "id": "tuft",
+          "peso": 0.9
+        }
+      ],
+      "arvore": [
+        {
+          "id": "pine",
+          "peso": 1.5
+        },
+        {
+          "id": "tall-tree-dark-green",
+          "peso": 1.1
+        },
+        {
+          "id": "dried-volcanic-tree",
+          "peso": 1.15
+        }
+      ],
+      "pedra": [
+        {
+          "id": "brown-rock-a",
+          "peso": 1
+        },
+        {
+          "id": "brown-rock-b",
+          "peso": 1
+        },
+        {
+          "id": "brown-rock-c",
+          "peso": 1
+        },
+        {
+          "id": "brown-rock-d",
+          "peso": 1
+        },
+        {
+          "id": "brown-rock-e",
+          "peso": 1
+        },
+        {
+          "id": "mushroom-1",
+          "peso": 1
+        },
+        {
+          "id": "dirt-rock-a",
+          "peso": 1
+        },
+        {
+          "id": "dirt-rock-b",
+          "peso": 1
+        },
+        {
+          "id": "dirt-rock-c",
+          "peso": 1
+        },
+        {
+          "id": "dirt-rock-d",
+          "peso": 1
+        },
+        {
+          "id": "dirt-rock-m",
+          "peso": 1
+        },
+        {
+          "id": "big-rock",
+          "peso": 1
+        },
+        {
+          "id": "yellow-mushroom-a",
+          "peso": 1
+        },
+        {
+          "id": "earth-small-rock",
+          "peso": 1
+        },
+        {
+          "id": "earth-long-rock",
+          "peso": 1
+        },
+        {
+          "id": "earth-big-rock",
+          "peso": 1
+        },
+        {
+          "id": "small-volcanic-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-tall-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-rock-with-fume-holes",
+          "peso": 1
+        }
+      ],
+      "cristal": [
+        {
+          "id": "small-yellow-crystal",
+          "peso": 1
+        },
+        {
+          "id": "small-light-blue-crystal",
+          "peso": 1
+        },
+        {
+          "id": "light-blue-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-yellow-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "stone": {
+      "chao": "stone",
+      "chaoArquivo": "assets/terrain/centro/stone.png",
+      "cliffArquivo": "assets/terrain/cliffs/stone.png",
+      "grama": [],
+      "arvore": [
+        {
+          "id": "pine",
+          "peso": 1.5
+        },
+        {
+          "id": "dried-volcanic-tree",
+          "peso": 1.15
+        }
+      ],
+      "pedra": [
+        {
+          "id": "stone-rock-a",
+          "peso": 1
+        },
+        {
+          "id": "stone-rock-b",
+          "peso": 1
+        },
+        {
+          "id": "stone-rock-c",
+          "peso": 1
+        },
+        {
+          "id": "stone-rock-d",
+          "peso": 1
+        },
+        {
+          "id": "stone-rock-e",
+          "peso": 1
+        },
+        {
+          "id": "big-rock",
+          "peso": 1
+        },
+        {
+          "id": "small-black-meteorite",
+          "peso": 1
+        },
+        {
+          "id": "small-volcanic-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-tall-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-rock-with-fume-holes",
+          "peso": 1
+        }
+      ],
+      "cristal": [
+        {
+          "id": "small-red-crystal",
+          "peso": 1
+        },
+        {
+          "id": "large-light-blue-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-red-crystal",
+          "peso": 1
+        },
+        {
+          "id": "large-red-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "snow": {
+      "chao": "snow",
+      "chaoArquivo": "assets/terrain/centro/snow.png",
+      "cliffArquivo": "assets/terrain/cliffs/snow.png",
+      "grama": [
+        {
+          "id": "snow-grass",
+          "peso": 1.4
+        },
+        {
+          "id": "tall-snow-grass",
+          "peso": 1.2
+        },
+        {
+          "id": "ice-grass",
+          "peso": 1.3
+        }
+      ],
+      "arvore": [
+        {
+          "id": "tree-c",
+          "peso": 1.1
+        },
+        {
+          "id": "pine-snow",
+          "peso": 1.6
+        },
+        {
+          "id": "broadleaf-snow",
+          "peso": 1.2
+        },
+        {
+          "id": "tall-tree-water-green-w-snow",
+          "peso": 1.2
+        },
+        {
+          "id": "tall-tree-light-green-w-snow",
+          "peso": 1.1
+        },
+        {
+          "id": "tall-tree-full-snow",
+          "peso": 1.5
+        }
+      ],
+      "pedra": [
+        {
+          "id": "ice-small-rock",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "savanna": {
+      "chao": "orange",
+      "chaoArquivo": "assets/terrain/centro/orange.png",
+      "cliffArquivo": "assets/terrain/cliffs/savanna.png",
+      "grama": [
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        },
+        {
+          "id": "orange-daisy",
+          "peso": 1.2
+        }
+      ],
+      "arvore": [
+        {
+          "id": "savannah",
+          "peso": 1.8
+        }
+      ],
+      "pedra": [
+        {
+          "id": "dirt-rock-a",
+          "peso": 1
+        },
+        {
+          "id": "dirt-rock-b",
+          "peso": 1
+        },
+        {
+          "id": "dirt-rock-k",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "tundra": {
+      "chao": "dirty-snowy",
+      "chaoArquivo": "assets/terrain/centro/dirty-snowy.png",
+      "cliffArquivo": "assets/terrain/cliffs/tundra.png",
+      "grama": [
+        {
+          "id": "snow-grass",
+          "peso": 1.4
+        },
+        {
+          "id": "tall-snow-grass",
+          "peso": 1.2
+        },
+        {
+          "id": "ice-grass",
+          "peso": 1.3
+        }
+      ],
+      "arvore": [
+        {
+          "id": "tree-c",
+          "peso": 1.1
+        },
+        {
+          "id": "pine-snow",
+          "peso": 1.6
+        },
+        {
+          "id": "broadleaf-snow",
+          "peso": 1.2
+        },
+        {
+          "id": "tall-tree-water-green-w-snow",
+          "peso": 1.2
+        },
+        {
+          "id": "tall-tree-light-green-w-snow",
+          "peso": 1.1
+        },
+        {
+          "id": "tall-tree-full-snow",
+          "peso": 1.5
+        }
+      ],
+      "pedra": [
+        {
+          "id": "ice-small-rock",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "autum-forest": {
+      "chao": "yellow",
+      "chaoArquivo": "assets/terrain/centro/yellow.png",
+      "cliffArquivo": "assets/terrain/cliffs/autum-forest.png",
+      "grama": [
+        {
+          "id": "meadow",
+          "peso": 1
+        },
+        {
+          "id": "tuft",
+          "peso": 0.9
+        },
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        },
+        {
+          "id": "autumn-leaves",
+          "peso": 1.8
+        },
+        {
+          "id": "ruins-tall-grass",
+          "peso": 1
+        }
+      ],
+      "arvore": [
+        {
+          "id": "autumn-orange",
+          "peso": 1.4
+        },
+        {
+          "id": "autumn-yellow",
+          "peso": 1.4
+        },
+        {
+          "id": "autumn-red",
+          "peso": 1.3
+        },
+        {
+          "id": "tall-tree-autum-yellow",
+          "peso": 1.2
+        },
+        {
+          "id": "tall-tree-autumn-red",
+          "peso": 1.2
+        }
+      ],
+      "pedra": [
+        {
+          "id": "yellow-mushroom-a",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "honey-trees-flower-fields": {
+      "chao": "yellow",
+      "chaoArquivo": "assets/terrain/centro/yellow.png",
+      "cliffArquivo": "assets/terrain/cliffs/honey-trees-flower-fields.png",
+      "grama": [
+        {
+          "id": "meadow",
+          "peso": 1
+        },
+        {
+          "id": "tuft",
+          "peso": 0.9
+        },
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        },
+        {
+          "id": "purple-lily",
+          "peso": 1.4
+        },
+        {
+          "id": "orange-daisy",
+          "peso": 1.2
+        },
+        {
+          "id": "tri-flower",
+          "peso": 1.3
+        },
+        {
+          "id": "honey-flower",
+          "peso": 1.6
+        },
+        {
+          "id": "margarida-flower",
+          "peso": 1.5
+        },
+        {
+          "id": "pinko-flower",
+          "peso": 1.4
+        },
+        {
+          "id": "red-flower",
+          "peso": 1.4
+        }
+      ],
+      "arvore": [
+        {
+          "id": "tall-tree-pink-cherry",
+          "peso": 0.9
+        },
+        {
+          "id": "honey-pine-tree",
+          "peso": 1.5
+        },
+        {
+          "id": "honey-round-tree",
+          "peso": 1.6
+        },
+        {
+          "id": "honey-bushy-tree",
+          "peso": 1.4
+        },
+        {
+          "id": "bush-a-with-fruits",
+          "peso": 0.7
+        },
+        {
+          "id": "bush-a-without-fruits",
+          "peso": 0.7
+        }
+      ],
+      "pedra": [],
+      "cristal": [
+        {
+          "id": "small-pink-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-pink-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "ghost-forest": {
+      "chao": "ghost-lake",
+      "chaoArquivo": "assets/terrain/centro/ghost-lake.png",
+      "cliffArquivo": "assets/terrain/cliffs/ghost-forest.png",
+      "grama": [
+        {
+          "id": "sand-grass",
+          "peso": 1.5
+        },
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        },
+        {
+          "id": "purple-lily",
+          "peso": 1.4
+        },
+        {
+          "id": "ruins-tall-grass",
+          "peso": 1
+        },
+        {
+          "id": "ruins-grass",
+          "peso": 0.8
+        },
+        {
+          "id": "ruins-small-grass",
+          "peso": 0.8
+        }
+      ],
+      "arvore": [
+        {
+          "id": "tall-tree-autumn-red",
+          "peso": 1.2
+        },
+        {
+          "id": "tall-tree-leafless",
+          "peso": 1
+        }
+      ],
+      "pedra": [
+        {
+          "id": "small-black-meteorite",
+          "peso": 1
+        }
+      ],
+      "cristal": [
+        {
+          "id": "small-purple-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-purple-crystal",
+          "peso": 1
+        },
+        {
+          "id": "small-pink-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-pink-crystal",
+          "peso": 1
+        },
+        {
+          "id": "large-pink-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "jungle": {
+      "chao": "alt-grass",
+      "chaoArquivo": "assets/terrain/centro/alt-grass.png",
+      "cliffArquivo": "assets/terrain/cliffs/jungle.png",
+      "grama": [
+        {
+          "id": "jungle",
+          "peso": 1.4
+        },
+        {
+          "id": "junglyTall",
+          "peso": 1.5
+        }
+      ],
+      "arvore": [
+        {
+          "id": "large-broadleaf",
+          "peso": 1.1
+        },
+        {
+          "id": "japanese",
+          "peso": 1.5
+        },
+        {
+          "id": "palm",
+          "peso": 1.6
+        },
+        {
+          "id": "fat-palm",
+          "peso": 1.2
+        },
+        {
+          "id": "palm-tree",
+          "peso": 1.5
+        },
+        {
+          "id": "palm-tree-with-coconuts",
+          "peso": 1.45
+        },
+        {
+          "id": "large-palm-with-coconuts",
+          "peso": 1.55
+        },
+        {
+          "id": "large-palm-with-bananas",
+          "peso": 1.5
+        },
+        {
+          "id": "bush-a-with-fruits",
+          "peso": 0.7
+        },
+        {
+          "id": "bush-a-without-fruits",
+          "peso": 0.7
+        },
+        {
+          "id": "wide-tree-dark-green",
+          "peso": 1
+        },
+        {
+          "id": "wide-tree-dark-green-a",
+          "peso": 1
+        },
+        {
+          "id": "coconut-tree-left",
+          "peso": 1.4
+        },
+        {
+          "id": "coconut-tree-right",
+          "peso": 1.4
+        }
+      ],
+      "pedra": [
+        {
+          "id": "mushroom-1",
+          "peso": 1
+        },
+        {
+          "id": "big-mossy-rock",
+          "peso": 1
+        },
+        {
+          "id": "red-mushroom-b",
+          "peso": 1
+        }
+      ],
+      "cristal": [
+        {
+          "id": "small-green-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-green-crystal",
+          "peso": 1
+        },
+        {
+          "id": "large-green-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "palm-jungle": {
+      "chao": "alt-grass",
+      "chaoArquivo": "assets/terrain/centro/alt-grass.png",
+      "cliffArquivo": "assets/terrain/cliffs/palm-jungle.png",
+      "grama": [
+        {
+          "id": "jungle",
+          "peso": 1.4
+        },
+        {
+          "id": "junglyTall",
+          "peso": 1.5
+        },
+        {
+          "id": "sand-grass",
+          "peso": 1.5
+        }
+      ],
+      "arvore": [
+        {
+          "id": "palm",
+          "peso": 1.6
+        },
+        {
+          "id": "fat-palm",
+          "peso": 1.2
+        },
+        {
+          "id": "palm-tree",
+          "peso": 1.5
+        },
+        {
+          "id": "palm-tree-with-coconuts",
+          "peso": 1.45
+        },
+        {
+          "id": "large-palm-with-coconuts",
+          "peso": 1.55
+        },
+        {
+          "id": "large-palm-with-bananas",
+          "peso": 1.5
+        },
+        {
+          "id": "bush-a-with-fruits",
+          "peso": 0.7
+        },
+        {
+          "id": "bush-a-without-fruits",
+          "peso": 0.7
+        },
+        {
+          "id": "coconut-tree-left",
+          "peso": 1.4
+        },
+        {
+          "id": "coconut-tree-right",
+          "peso": 1.4
+        },
+        {
+          "id": "desert-palm-to-left",
+          "peso": 1.35
+        },
+        {
+          "id": "desert-palm-to-right",
+          "peso": 1.35
+        }
+      ],
+      "pedra": [
+        {
+          "id": "mushroom-1",
+          "peso": 1
+        },
+        {
+          "id": "big-mossy-rock",
+          "peso": 1
+        },
+        {
+          "id": "red-mushroom-b",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "marsh": {
+      "chao": "alt-grass",
+      "chaoArquivo": "assets/terrain/centro/alt-grass.png",
+      "cliffArquivo": "assets/terrain/cliffs/marsh.png",
+      "grama": [
+        {
+          "id": "jungle",
+          "peso": 1.4
+        },
+        {
+          "id": "junglyTall",
+          "peso": 1.5
+        }
+      ],
+      "arvore": [
+        {
+          "id": "bush-a-with-fruits",
+          "peso": 0.7
+        },
+        {
+          "id": "bush-a-without-fruits",
+          "peso": 0.7
+        }
+      ],
+      "pedra": [],
+      "cristal": []
+    },
+    "faroeste-desert": {
+      "chao": "sand-ground",
+      "chaoArquivo": "assets/terrain/centro/sand-ground.png",
+      "cliffArquivo": "assets/terrain/cliffs/faroeste-desert.png",
+      "grama": [
+        {
+          "id": "sand-grass",
+          "peso": 1.5
+        },
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        },
+        {
+          "id": "small-cactus",
+          "peso": 1.1
+        }
+      ],
+      "arvore": [
+        {
+          "id": "palm",
+          "peso": 1.6
+        },
+        {
+          "id": "cactus",
+          "peso": 1.7
+        },
+        {
+          "id": "coconut-tree-left",
+          "peso": 1.4
+        },
+        {
+          "id": "coconut-tree-right",
+          "peso": 1.4
+        },
+        {
+          "id": "desert-palm-to-left",
+          "peso": 1.35
+        },
+        {
+          "id": "desert-palm-to-right",
+          "peso": 1.35
+        },
+        {
+          "id": "round-small-cactus",
+          "peso": 0.85
+        },
+        {
+          "id": "round-small-cactus-2",
+          "peso": 0.8
+        },
+        {
+          "id": "round-small-cactus-3",
+          "peso": 0.8
+        },
+        {
+          "id": "round-small-cactus-4",
+          "peso": 0.75
+        }
+      ],
+      "pedra": [
+        {
+          "id": "dirt-rock-k",
+          "peso": 1
+        },
+        {
+          "id": "earth-small-rock",
+          "peso": 1
+        },
+        {
+          "id": "earth-long-rock",
+          "peso": 1
+        },
+        {
+          "id": "earth-big-rock",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "amber-rock": {
+      "chao": "yellow-rock",
+      "chaoArquivo": "assets/terrain/centro/yellow-rock.png",
+      "cliffArquivo": "assets/terrain/cliffs/amber-rock.png",
+      "grama": [
+        {
+          "id": "sand-grass",
+          "peso": 1.5
+        },
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        },
+        {
+          "id": "small-cactus",
+          "peso": 1.1
+        }
+      ],
+      "arvore": [
+        {
+          "id": "cactus",
+          "peso": 1.7
+        },
+        {
+          "id": "round-small-cactus",
+          "peso": 0.85
+        },
+        {
+          "id": "round-small-cactus-2",
+          "peso": 0.8
+        },
+        {
+          "id": "round-small-cactus-3",
+          "peso": 0.8
+        },
+        {
+          "id": "round-small-cactus-4",
+          "peso": 0.75
+        },
+        {
+          "id": "dried-volcanic-tree",
+          "peso": 1.15
+        }
+      ],
+      "pedra": [
+        {
+          "id": "dirt-rock-k",
+          "peso": 1
+        },
+        {
+          "id": "big-rock",
+          "peso": 1
+        },
+        {
+          "id": "yellow-mushroom-a",
+          "peso": 1
+        },
+        {
+          "id": "earth-small-rock",
+          "peso": 1
+        },
+        {
+          "id": "earth-long-rock",
+          "peso": 1
+        },
+        {
+          "id": "earth-big-rock",
+          "peso": 1
+        },
+        {
+          "id": "small-volcanic-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-tall-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-rock-with-fume-holes",
+          "peso": 1
+        }
+      ],
+      "cristal": [
+        {
+          "id": "small-yellow-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-yellow-crystal",
+          "peso": 1
+        },
+        {
+          "id": "large-yellow-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "rift-ground": {
+      "chao": "reverse-world",
+      "chaoArquivo": "assets/terrain/centro/reverse-world.png",
+      "cliffArquivo": "assets/terrain/cliffs/rift-ground.png",
+      "grama": [
+        {
+          "id": "purple-lily",
+          "peso": 1.4
+        },
+        {
+          "id": "ruins-tall-grass",
+          "peso": 1
+        },
+        {
+          "id": "ruins-grass",
+          "peso": 0.8
+        },
+        {
+          "id": "ruins-small-grass",
+          "peso": 0.8
+        }
+      ],
+      "arvore": [
+        {
+          "id": "tall-tree-water-green",
+          "peso": 1.2
+        },
+        {
+          "id": "tall-tree-leafless",
+          "peso": 1
+        }
+      ],
+      "pedra": [
+        {
+          "id": "small-black-meteorite",
+          "peso": 1
+        }
+      ],
+      "cristal": [
+        {
+          "id": "small-purple-crystal",
+          "peso": 1
+        },
+        {
+          "id": "tall-purple-crystal",
+          "peso": 1
+        },
+        {
+          "id": "large-purple-crystal",
+          "peso": 1
+        }
+      ]
+    },
+    "pewter-massif": {
+      "chao": "brown-rock",
+      "chaoArquivo": "assets/terrain/centro/brown-rock.png",
+      "cliffArquivo": "assets/terrain/cliffs/pewter-massif.png",
+      "grama": [
+        {
+          "id": "green",
+          "peso": 1.2
+        },
+        {
+          "id": "greeny",
+          "peso": 1.15
+        },
+        {
+          "id": "meadow",
+          "peso": 1
+        },
+        {
+          "id": "tuft",
+          "peso": 0.9
+        },
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        }
+      ],
+      "arvore": [
+        {
+          "id": "honey-pine-tree",
+          "peso": 1.5
+        },
+        {
+          "id": "honey-bushy-tree",
+          "peso": 1.4
+        },
+        {
+          "id": "dried-volcanic-tree",
+          "peso": 1.15
+        }
+      ],
+      "pedra": [
+        {
+          "id": "small-volcanic-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-tall-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-rock-with-fume-holes",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "moon-ridge": {
+      "chao": "bluish-rock",
+      "chaoArquivo": "assets/terrain/centro/bluish-rock.png",
+      "cliffArquivo": "assets/terrain/cliffs/moon-ridge.png",
+      "grama": [
+        {
+          "id": "green",
+          "peso": 1.2
+        },
+        {
+          "id": "greeny",
+          "peso": 1.15
+        },
+        {
+          "id": "tuft",
+          "peso": 0.9
+        },
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        },
+        {
+          "id": "ice-grass",
+          "peso": 1.3
+        }
+      ],
+      "arvore": [],
+      "pedra": [],
+      "cristal": []
+    },
+    "tunnel-hills": {
+      "chao": "dark-rock",
+      "chaoArquivo": "assets/terrain/centro/dark-rock.png",
+      "cliffArquivo": "assets/terrain/cliffs/tunnel-hills.png",
+      "grama": [
+        {
+          "id": "green",
+          "peso": 1.2
+        },
+        {
+          "id": "greeny",
+          "peso": 1.15
+        },
+        {
+          "id": "tuft",
+          "peso": 0.9
+        },
+        {
+          "id": "dry-grass",
+          "peso": 1.3
+        }
+      ],
+      "arvore": [
+        {
+          "id": "dried-volcanic-tree",
+          "peso": 1.15
+        }
+      ],
+      "pedra": [
+        {
+          "id": "small-volcanic-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-tall-rock",
+          "peso": 1
+        },
+        {
+          "id": "volcanic-rock-with-fume-holes",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    },
+    "johto-past": {
+      "chao": "gen2-grass",
+      "chaoArquivo": "assets/terrain/centro/gen2-grass.png",
+      "cliffArquivo": "assets/terrain/cliffs/johto-past.png",
+      "grama": [
+        {
+          "id": "gen2-grass-1",
+          "peso": 1.4
+        }
+      ],
+      "arvore": [
+        {
+          "id": "gen2-broadleaf-tree",
+          "peso": 1.35
+        },
+        {
+          "id": "gen2-pine-tree",
+          "peso": 1.2
+        },
+        {
+          "id": "gen2-small-tree",
+          "peso": 1.05
+        },
+        {
+          "id": "gen2-sapling-tree",
+          "peso": 0.85
+        }
+      ],
+      "pedra": [
+        {
+          "id": "gen2-dirt-rock",
+          "peso": 1
+        }
+      ],
+      "cristal": []
+    }
+  }
+}

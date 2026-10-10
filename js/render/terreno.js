@@ -7,12 +7,12 @@ import {
   TERRENO_2D_MARGEM,
   TILE,
   TILE_ART,
-  VEG_MATA_ESCALA,
 } from "../config.js";
 import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { cssBioma } from "../mundo/bioma/tinta.js";
+import { kitDoRelevo } from "../mundo/bioma/catalogo.js";
 import {
   obterAabbCarregado,
   obterBloco,
@@ -20,6 +20,7 @@ import {
 } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { usarGrassOnDirt, usarTiles } from "./atlas.js";
+import { desenhoDoProp, imagemDoProp } from "./propSprite.js";
 import { coletarPecasColuna } from "./camadasVoxel2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
@@ -389,12 +390,14 @@ function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {
   if (queda < 1) return;
   const tiles = usarTiles(_atlas);
   if (tiles) desenharFaceSulSingle(ctx, _atlas, cx, cy, z, queda, destacar);
-  else desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar);
+  else   desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar);
   const px = tiles ? Math.round(mundoParaTelaX(cx)) : mundoParaTelaX(cx);
   const topY = tiles ? Math.round(mundoParaTelaY(cy, z)) : mundoParaTelaY(cy, z);
   const w = TILE * ESCALA;
   const h = queda * FACE_H * ESCALA;
-  lavarBioma(ctx, px, topY + w - 1, w, h, cx, cy, true);
+  if (!_atlas?.cliffs?.[kitDoRelevo(cx, cy)]) {
+    lavarBioma(ctx, px, topY + w - 1, w, h, cx, cy, true);
+  }
 }
 
 function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
@@ -466,26 +469,15 @@ function desenharProp(ctx, prop, z) {
 }
 
 function desenharPropReal(ctx, prop, z) {
+  const img = imagemDoProp(prop, _atlas);
+  if (!img) return false;
+  const { escala, pe } = desenhoDoProp(prop);
+  const dw = img.width * ESCALA * escala;
+  const dh = img.height * ESCALA * escala;
   const px = mundoParaTelaX(prop.x);
   const py = mundoParaTelaY(prop.y, z);
-
-  if (prop.tipo === "arvore" && _atlas.arvore) {
-    const img = _atlas.arvore;
-    const dw = img.width * ESCALA;
-    const dh = img.height * ESCALA;
-    ctx.drawImage(img, px - dw * 0.5, py - dh + 2 * ESCALA, dw, dh);
-    return true;
-  }
-
-  if (prop.tipo === "mata" && _atlas.mata) {
-    const img = _atlas.mata;
-    const dw = img.width * ESCALA * VEG_MATA_ESCALA;
-    const dh = img.height * ESCALA * VEG_MATA_ESCALA;
-    ctx.drawImage(img, px - dw * 0.5, py - dh + ESCALA, dw, dh);
-    return true;
-  }
-
-  return false;
+  ctx.drawImage(img, px - dw * 0.5, py - dh + pe * ESCALA, dw, dh);
+  return true;
 }
 
 function desenharPropProcedural(ctx, prop, z) {

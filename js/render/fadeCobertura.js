@@ -10,13 +10,12 @@ import {
   FADE_COBERTURA_SOB_TETO,
   FADE_COBERTURA_VEL,
   TILE,
-  VEG_MATA_ESCALA,
 } from "../config.js";
 import { tetoSobreCabeca } from "../fisica/colisao.js";
 import { PROPS } from "../mundo/mapaDemo.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { alturaEm, quedaVisualFace } from "../mundo/altura.js";
-import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
+import { caixaDoProp } from "./propSprite.js";
 import {
   chaveEntidade,
   chaveFaceLateral,
@@ -290,37 +289,18 @@ function aabbLateral(cx, cy, z, queda, lado) {
 function aabbProp(prop, z, atlas) {
   const px = mundoParaTelaX(prop.x);
   const py = mundoParaTelaY(prop.y, z);
+  const caixa = caixaDoProp(prop, px, py, atlas);
+  if (caixa) return caixa;
 
   if (prop.tipo === "arvore") {
-    const img = atlas?.arvore;
-    if (img) {
-      const dw = img.width * ESCALA;
-      const dh = img.height * ESCALA;
-      return {
-        x0: px - dw * 0.5,
-        y0: py - dh + 2 * ESCALA,
-        x1: px + dw * 0.5,
-        y1: py + 2 * ESCALA,
-      };
-    }
     return { x0: px - 14, y0: py - 34, x1: px + 14, y1: py + 2 };
   }
-
-  if (prop.tipo === "mata") {
-    const img = atlas?.mata;
-    if (img) {
-      const dw = img.width * ESCALA * VEG_MATA_ESCALA;
-      const dh = img.height * ESCALA * VEG_MATA_ESCALA;
-      return {
-        x0: px - dw * 0.5,
-        y0: py - dh + ESCALA,
-        x1: px + dw * 0.5,
-        y1: py + ESCALA,
-      };
-    }
+  if (prop.tipo === "mata" || prop.tipo === "grama") {
     return { x0: px - 10, y0: py - 16, x1: px + 10, y1: py + 2 };
   }
-
+  if (prop.tipo === "pedra" || prop.tipo === "cristal") {
+    return { x0: px - 10, y0: py - 16, x1: px + 10, y1: py + 2 };
+  }
   return null;
 }
 

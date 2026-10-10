@@ -22,6 +22,7 @@ import { iniciarStamina } from "./fisica/stamina.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
 import { carregarCatalogo } from "./mundo/bioma/catalogo.js";
+import { carregarKits } from "./mundo/bioma/kits.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
 import {
   atualizarStreaming,
@@ -31,6 +32,7 @@ import {
 } from "./mundo/voxel/storeMundo.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
+import { carregarVisuaisKits } from "./render/visuaisKit.js";
 import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
 import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
@@ -88,10 +90,18 @@ function redimensionarCena() {
 async function iniciar() {
   iniciarTeclado();
   redimensionarCena();
-  atlas = await montarAtlas(CAMINHOS);
+  await carregarKits();
+  const visuaisKits = await Promise.all([
+    montarAtlas(CAMINHOS),
+    carregarVisuaisKits(),
+    carregarCatalogo(),
+  ]);
+  atlas = visuaisKits[0];
+  atlas.sprites = visuaisKits[1].sprites;
+  atlas.centros = visuaisKits[1].centros;
+  atlas.cliffs = visuaisKits[1].cliffs;
   window.__atlas = atlas;
 
-  await carregarCatalogo();
   iniciarMundoAoRedor(SPAWN.x, SPAWN.y);
   // Nav só invalida em edição de bloco — streaming não deve rebuildar (era ~18s).
 

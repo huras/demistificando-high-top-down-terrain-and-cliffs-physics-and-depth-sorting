@@ -86,7 +86,9 @@ function extrairCliffSeamless(atlas) {
  */
 export function canvasParaTextura(fonte, { repeat = false } = {}) {
   if (!fonte) return null;
-  const tex = new THREE.CanvasTexture(fonte);
+  const tex = fonte instanceof HTMLCanvasElement
+    ? new THREE.CanvasTexture(fonte)
+    : new THREE.Texture(fonte);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.magFilter = THREE.NearestFilter;
   tex.minFilter = THREE.NearestFilter;
@@ -100,6 +102,12 @@ export function canvasParaTextura(fonte, { repeat = false } = {}) {
     tex.wrapT = THREE.ClampToEdgeWrapping;
   }
   return tex;
+}
+
+/** Cliff opaco a partir de uma folha no layout grass-on-dirt. */
+export function texturaCliffDeFolha(img) {
+  const canvas = extrairCliffSeamless({ grassOnDirt: img });
+  return canvasParaTextura(canvas, { repeat: true });
 }
 
 /**
