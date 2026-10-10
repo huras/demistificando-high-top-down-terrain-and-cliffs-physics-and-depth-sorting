@@ -50,9 +50,12 @@ export function mundoParaTelaX(x) {
   return x * TILE * ESCALA;
 }
 
-/** Fórmula-chave: Y da tela = profundidade − elevação. */
+/**
+ * Y da tela = profundidade − elevação.
+ * hopLift é fração de bloco (escalada, pulo, mantle) e usa a mesma altura do degrau.
+ */
 export function mundoParaTelaY(y, z, hopLift = 0) {
-  return (y * TILE - z * FACE_H - hopLift * TILE) * ESCALA;
+  return (y * TILE - (z + hopLift) * FACE_H) * ESCALA;
 }
 
 export function aplicarCamera(ctx, camera) {

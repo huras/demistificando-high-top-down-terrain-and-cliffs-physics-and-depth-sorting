@@ -3,7 +3,7 @@
   "escalaRegiao": 180,
   "semente": 0,
   "metrosPorBloco": 48,
-  "metrosPorCelula": 1000,
+  "metrosPorCelula": 2000,
   "origemMetros": -200,
   "biomas": [
     {
