@@ -10,6 +10,7 @@ import {
   FADE_COBERTURA_SOB_TETO,
   FADE_COBERTURA_VEL,
   TILE,
+  VEG_MATA_ESCALA,
 } from "../config.js";
 import { tetoSobreCabeca } from "../fisica/colisao.js";
 import { PROPS } from "../mundo/mapaDemo.js";
@@ -308,8 +309,8 @@ function aabbProp(prop, z, atlas) {
   if (prop.tipo === "mata") {
     const img = atlas?.mata;
     if (img) {
-      const dw = img.width * ESCALA * 1.5;
-      const dh = img.height * ESCALA * 1.5;
+      const dw = img.width * ESCALA * VEG_MATA_ESCALA;
+      const dh = img.height * ESCALA * VEG_MATA_ESCALA;
       return {
         x0: px - dw * 0.5,
         y0: py - dh + ESCALA,

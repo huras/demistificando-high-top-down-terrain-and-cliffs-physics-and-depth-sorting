@@ -7,6 +7,7 @@ import {
   TERRENO_2D_MARGEM,
   TILE,
   TILE_ART,
+  VEG_MATA_ESCALA,
 } from "../config.js";
 import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
@@ -478,8 +479,8 @@ function desenharPropReal(ctx, prop, z) {
 
   if (prop.tipo === "mata" && _atlas.mata) {
     const img = _atlas.mata;
-    const dw = img.width * ESCALA * 1.5;
-    const dh = img.height * ESCALA * 1.5;
+    const dw = img.width * ESCALA * VEG_MATA_ESCALA;
+    const dh = img.height * ESCALA * VEG_MATA_ESCALA;
     ctx.drawImage(img, px - dw * 0.5, py - dh + ESCALA, dw, dh);
     return true;
   }

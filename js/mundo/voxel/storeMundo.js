@@ -1,4 +1,11 @@
-import { CHUNK_XZ, CHUNK_Y, RAIO_STREAM, SEED_MUNDO } from "../../config.js";
+import {
+  CHUNK_XZ,
+  CHUNK_Y,
+  RAIO_STREAM,
+  RAIO_STREAM_MAX,
+  RAIO_STREAM_MIN,
+  SEED_MUNDO,
+} from "../../config.js";
 import { aplicarPatchDemo, ALTURAS } from "../regioes/mapaDemoPatch.js";
 import {
   baseTopoLocal,
@@ -227,22 +234,40 @@ export function blocoSolidoEm(wx, wy, wz) {
   return ehSolido(obterBloco(wx, wy, wz));
 }
 
+let raioAtivo = RAIO_STREAM;
+
+export function obterRaioStream() {
+  return raioAtivo;
+}
+
+/** Troca o disco carregado. O próximo streaming aplica mesmo sem andar. */
+export function definirRaioStream(raio) {
+  const n = Math.max(RAIO_STREAM_MIN, Math.min(RAIO_STREAM_MAX, raio | 0));
+  if (n !== raioAtivo) {
+    raioAtivo = n;
+    atualizarStreaming._raio = -1;
+  }
+  return raioAtivo;
+}
+
 /**
  * Mantém disco de chunks em torno do jogador.
  */
-export function atualizarStreaming(px, py, raio = RAIO_STREAM) {
+export function atualizarStreaming(px, py, raio = raioAtivo) {
   const { cx: pcx, cy: pcy } = mundoParaChunk(px, py);
 
-  // Early-out: mesmo chunk âncora e já carregado — evita Set/loop todo frame.
+  // Early-out: mesmo chunk âncora, mesmo raio e já carregado — evita Set/loop todo frame.
   if (
     atualizarStreaming._pcx === pcx &&
     atualizarStreaming._pcy === pcy &&
+    atualizarStreaming._raio === raio &&
     chunks.size > 0
   ) {
     return aabbCarregado;
   }
   atualizarStreaming._pcx = pcx;
   atualizarStreaming._pcy = pcy;
+  atualizarStreaming._raio = raio;
 
   const precisos = new Set();
 
@@ -278,7 +303,7 @@ export function obterAabbCarregado() {
 
 /** Carrega região do patch demo + vizinhança inicial. */
 export function iniciarMundoAoRedor(px, py) {
-  atualizarStreaming(px, py, RAIO_STREAM);
+  atualizarStreaming(px, py, raioAtivo);
 }
 
 export function listarChunksSujos() {

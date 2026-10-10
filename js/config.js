@@ -164,12 +164,11 @@ export const CAMINHOS = {
 export const VISUAL_REAL_PADRAO = true;
 
 /**
- * Billboard 3D (árvore / mata). Tamanho mundo = (px do PNG / TILE) × escala,
- * o mesmo recorte do desenho 2D. Cutout no passe opaco (sem soft-alpha).
+ * Árvore e mata, 2D e 3D. Tamanho mundo = (px do PNG / TILE) × escala.
+ * Cutout no passe opaco (sem soft-alpha).
  */
 export const VEG_ALPHA_TEST = 0.12;
 export const VEG_ARVORE_ESCALA = 1;
-/** Metade do recorte 2D (1,5×): no mundo 3D o tufo lia o dobro. */
 export const VEG_MATA_ESCALA = 0.75;
 /** Afundamento do pé em células — 2D soma 2 px (árvore) e 1 px (mata) na tela. */
 export const VEG_ARVORE_PE = 2 / TILE;
@@ -230,7 +229,10 @@ export const ROLE_CLIFF_CENTER = ROLE_EDGE_S;
 /** Voxel / mundo infinito. */
 export const CHUNK_XZ = 16;
 export const CHUNK_Y = 64;
+/** Disco de chunks em volta do jogador. 5 ≈ 80 blocos. */
 export const RAIO_STREAM = 5;
+export const RAIO_STREAM_MIN = 0;
+export const RAIO_STREAM_MAX = 10;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 6;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */

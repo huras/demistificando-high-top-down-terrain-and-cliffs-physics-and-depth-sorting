@@ -1,4 +1,4 @@
-import { CAMINHOS, ZOOM_PASSO } from "./config.js";
+import { CAMINHOS, CHUNK_XZ, RAIO_STREAM_MAX, RAIO_STREAM_MIN, ZOOM_PASSO } from "./config.js";
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
@@ -16,7 +16,9 @@ import { carregarCatalogo } from "./mundo/bioma/catalogo.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
 import {
   atualizarStreaming,
+  definirRaioStream,
   iniciarMundoAoRedor,
+  obterRaioStream,
 } from "./mundo/voxel/storeMundo.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
@@ -92,6 +94,7 @@ async function iniciar() {
   redimensionarCena();
 
   ligarHudCompanheiro(agente, CAPS_PADRAO);
+  ligarRaioStream();
   ligarAjudaAtalhos();
   ligarControleModo(document.getElementById("btn-modo-3d"));
   aoMudarModo(aoTrocarModo);
@@ -185,6 +188,28 @@ async function iniciar() {
 
   ultimo = performance.now();
   requestAnimationFrame(loop);
+}
+
+function ligarRaioStream() {
+  const input = document.getElementById("raio-stream");
+  const valor = document.getElementById("raio-stream-valor");
+  if (!input) return;
+  input.min = String(RAIO_STREAM_MIN);
+  input.max = String(RAIO_STREAM_MAX);
+  input.value = String(obterRaioStream());
+
+  const aplicar = () => {
+    const n = definirRaioStream(Number(input.value));
+    input.value = String(n);
+    if (valor) {
+      valor.textContent =
+        n === 0 ? "só este chunk" : `${n} · ${n * CHUNK_XZ} blocos`;
+    }
+    if (corpo) atualizarStreaming(corpo.x, corpo.y);
+  };
+
+  input.addEventListener("input", aplicar);
+  aplicar();
 }
 
 function garantir3d() {

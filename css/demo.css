@@ -369,6 +369,27 @@ body[data-modo="3d"] #canvas-3d.palco__camada--ativa {
   accent-color: var(--destaque);
 }
 
+.raio-stream {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.88rem;
+  color: var(--texto);
+}
+
+.raio-stream input {
+  width: 100%;
+  accent-color: var(--destaque);
+}
+
+.raio-stream span {
+  font-family: var(--fonte-mono);
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+  white-space: nowrap;
+}
+
 .estado--comp {
   margin-top: 4px;
 }
