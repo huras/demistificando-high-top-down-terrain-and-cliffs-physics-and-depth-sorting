@@ -99,26 +99,17 @@ function alturaContinua(bioma, wx, wy, seed, catalogo) {
   return (metros - base) / mpb;
 }
 
-/** Altura em blocos, já com mistura de borda e degrau. */
+/** Altura em blocos do bioma mais próximo, sem média na borda. */
 export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   const reg = amostrarRegiao(wx, wy, catalogo, seed);
   if (!reg) return 4;
-  const ha = alturaContinua(reg.a, wx, wy, seed, catalogo);
-  const hb = alturaContinua(reg.b, wx, wy, seed, catalogo);
-  const mistura = ha * reg.dominio + hb * (1 - reg.dominio);
-  const degrau =
-    reg.dominio > 0.85
-      ? reg.a.degrau
-      : reg.dominio < 0.15
-        ? reg.b.degrau
-        : Math.max(Number(reg.a.degrau) || 1, Number(reg.b.degrau) || 1);
-  return snap(mistura, degrau);
+  return snap(alturaContinua(reg.a, wx, wy, seed, catalogo), reg.a.degrau);
 }
 
 export function biomaDominante(wx, wy, catalogo = dados, seed = semente) {
   const reg = amostrarRegiao(wx, wy, catalogo, seed);
   if (!reg) return null;
-  return reg.dominio >= 0.5 ? reg.a : reg.b;
+  return reg.a;
 }
 
 export function superficieDoRelevo(wx, wy, catalogo = dados, seed = semente) {

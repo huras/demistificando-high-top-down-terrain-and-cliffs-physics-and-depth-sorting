@@ -11,6 +11,7 @@ import {
 import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
+import { cssBioma } from "../mundo/bioma/tinta.js";
 import {
   obterAabbCarregado,
   obterBloco,
@@ -317,12 +318,24 @@ function empilharFaces(
   }
 }
 
+function lavarBioma(ctx, x, y, w, h, wx, wy, parede) {
+  if (w <= 0 || h <= 0) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "source-atop";
+  ctx.globalAlpha *= parede ? 0.74 : 0.6;
+  ctx.fillStyle = cssBioma(wx, wy, parede, 1);
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+
 function desenharTopo(ctx, cx, cy, z) {
-  if (usarTiles(_atlas)) {
-    desenharTopoReal(ctx, cx, cy, z);
-    return;
-  }
-  desenharTopoProcedural(ctx, cx, cy, z);
+  const tiles = usarTiles(_atlas);
+  if (tiles) desenharTopoReal(ctx, cx, cy, z);
+  else desenharTopoProcedural(ctx, cx, cy, z);
+  const s = TILE * ESCALA;
+  const px = tiles ? Math.round(mundoParaTelaX(cx)) : mundoParaTelaX(cx);
+  const py = tiles ? Math.round(mundoParaTelaY(cy, z)) : mundoParaTelaY(cy, z);
+  lavarBioma(ctx, px, py, s, s, cx, cy, false);
 }
 
 function desenharTopoProcedural(ctx, cx, cy, z) {
@@ -372,11 +385,15 @@ function desenharTopoReal(ctx, cx, cy, z) {
 }
 
 function desenharFaceSul(ctx, cx, cy, z, queda, destacar = false) {
-  if (usarTiles(_atlas)) {
-    desenharFaceSulSingle(ctx, _atlas, cx, cy, z, queda, destacar);
-    return;
-  }
-  desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar);
+  if (queda < 1) return;
+  const tiles = usarTiles(_atlas);
+  if (tiles) desenharFaceSulSingle(ctx, _atlas, cx, cy, z, queda, destacar);
+  else desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar);
+  const px = tiles ? Math.round(mundoParaTelaX(cx)) : mundoParaTelaX(cx);
+  const topY = tiles ? Math.round(mundoParaTelaY(cy, z)) : mundoParaTelaY(cy, z);
+  const w = TILE * ESCALA;
+  const h = queda * FACE_H * ESCALA;
+  lavarBioma(ctx, px, topY + w - 1, w, h, cx, cy, true);
 }
 
 function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
@@ -408,11 +425,20 @@ function desenharFaceSulProcedural(ctx, cx, cy, z, queda, destacar = false) {
 }
 
 function desenharFaceLateral(ctx, cx, cy, z, queda, lado) {
+  if (queda < 1) return;
   if (usarTiles(_atlas)) {
+    if (usarGrassOnDirt(_atlas)) return;
     desenharFaceLateralSingle(ctx, _atlas, cx, cy, z, queda, lado);
-    return;
+  } else {
+    desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado);
   }
-  desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado);
+  const px = mundoParaTelaX(cx);
+  const topY = mundoParaTelaY(cy, z);
+  const s = TILE * ESCALA;
+  const faixa = Math.max(5, ESCALA * 3);
+  const x = lado === "w" ? px : px + s - faixa;
+  const h = queda * FACE_H * ESCALA;
+  lavarBioma(ctx, x, topY + s - 1, faixa, h, cx, cy, true);
 }
 
 function desenharFaceLateralProcedural(ctx, cx, cy, z, queda, lado) {

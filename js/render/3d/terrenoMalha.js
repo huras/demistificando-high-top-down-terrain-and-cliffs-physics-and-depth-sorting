@@ -20,7 +20,7 @@ import {
   paraCadaChunk,
 } from "../../mundo/voxel/storeMundo.js";
 import { BLOCO, ehSolido } from "../../mundo/voxel/tiposBloco.js";
-import { coresDoTopo } from "../paleta.js";
+import { hexBioma, rgbBioma } from "../../mundo/bioma/tinta.js";
 import {
   avancarMateriaisAgua,
   liberarMateriaisAgua,
@@ -72,11 +72,28 @@ function pintarVertices(geo, corTopo, corFace) {
   geo.setAttribute("color", new THREE.BufferAttribute(cores, 3));
 }
 
-function corFacePorZ(z) {
-  if (z <= 1) return "#6e4a2e";
-  if (z <= 3) return "#8b6340";
-  if (z <= 8) return "#a67c52";
-  return "#9a9088";
+function pintarPlano(geo, rgb) {
+  if (!geo || !rgb) return geo;
+  const n = geo.attributes.position.count;
+  const cores = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    cores[i * 3] = rgb[0];
+    cores[i * 3 + 1] = rgb[1];
+    cores[i * 3 + 2] = rgb[2];
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(cores, 3));
+  return geo;
+}
+
+function misturarTinta(material, forca) {
+  material.vertexColors = true;
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <color_fragment>",
+      `diffuseColor.rgb = mix(diffuseColor.rgb, vColor, ${forca.toFixed(2)});`,
+    );
+  };
+  material.customProgramCacheKey = () => `tinta-bioma-${forca}`;
 }
 
 function mesclarLista(geos) {
@@ -380,7 +397,7 @@ function geoBevelBorda(wx, wy, wz, lateraisExpostas) {
   return { top, laterais };
 }
 
-function caixaLedge(wx, wy, wzTopo, dir) {
+function caixaLedge(wx, wy, wzTopo, dir, corTopo, corFace) {
   let geo;
   const y = wzTopo - LEDGE_H; // totalmente abaixo do plano do topo
   if (dir === "s") {
@@ -396,7 +413,7 @@ function caixaLedge(wx, wy, wzTopo, dir) {
     geo = new THREE.BoxGeometry(0.18, LEDGE_H, 1);
     geo.translate(wx + 0.09, y + LEDGE_H * 0.5, wy + 0.5);
   }
-  pintarVertices(geo, "#c4a574", "#8a6a40");
+  pintarVertices(geo, corTopo, corFace);
   return geo;
 }
 
@@ -780,14 +797,14 @@ function emitirColunaSolida(wx, wy, zSurf, loteGrama, loteTerra, loteFaces, lote
     if (cortesL.length > 0) {
       const yTopo = lz + 1 - INSET_TOPO;
       const tris = topoComCortesConvexos(wx, wy, yTopo, cortesL);
-      for (let i = 0; i < tris.length; i++) extrasTop.push(tris[i]);
+      for (let i = 0; i < tris.length; i++) extrasTop.push(pintarPlano(tris[i], loteTop._rgb));
       for (let i = 0; i < cortesL.length; i++) {
-        faces.push(triMitraConvexo(wx, wy, lz, cortesL[i].dir, cortesL[i].i));
+        faces.push(pintarPlano(triMitraConvexo(wx, wy, lz, cortesL[i].dir, cortesL[i].i), loteFaces._rgb));
       }
     } else {
       pushTopoLote(loteTop, wx, wy, zSurf);
       for (let i = 0; i < laterais.length; i++) {
-        ledges.push(caixaLedge(wx, wy, zSurf, laterais[i].nome));
+        ledges.push(caixaLedge(wx, wy, zSurf, laterais[i].nome, hexBioma(wx, wy, false), hexBioma(wx, wy, true)));
       }
     }
   }
@@ -813,9 +830,9 @@ function* construirGeosChunk(chunk) {
   const aos = [];
   const aguas = [];
   const quedas = [];
-  const loteGrama = criarLote(false);
-  const loteTerra = criarLote(false);
-  const loteFaces = criarLote(false);
+  const loteGrama = criarLote(true);
+  const loteTerra = criarLote(true);
+  const loteFaces = criarLote(true);
   const loteAo = criarLote(false);
   const loteCubos = criarLote(true);
   garantirFluxoChunk(chunk);
@@ -830,6 +847,11 @@ function* construirGeosChunk(chunk) {
       if ((_colunas++ & 7) === 7) yield;
       const wx = baseX + lx;
       const wy = baseY + ly;
+      const rgbTopo = rgbBioma(wx, wy, false);
+      const rgbParede = rgbBioma(wx, wy, true);
+      loteGrama._rgb = rgbTopo;
+      loteTerra._rgb = rgbTopo;
+      loteFaces._rgb = rgbParede;
       const zSurf = alturaEm(wx, wy);
       let colunaSimples = zSurf > 0 && !colunaTemArInterno(wx, wy);
       if (colunaSimples) {
@@ -885,15 +907,15 @@ function* construirGeosChunk(chunk) {
               // Canto L: corta o topo de A + triângulo de mitra
               const extrasTop = loteTop === loteTerra ? topsTerra : topsGrama;
               for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
-                extrasTop.push(t);
+                extrasTop.push(pintarPlano(t, loteTop._rgb));
               }
               for (const c of cortesL) {
-                faces.push(triMitraConvexo(wx, wy, lz, c.dir, c.i));
+                faces.push(pintarPlano(triMitraConvexo(wx, wy, lz, c.dir, c.i), loteFaces._rgb));
               }
             } else {
               pushTopoLote(loteTop, wx, wy, lz + 1);
               for (const lat of lateraisAr) {
-                ledges.push(caixaLedge(wx, wy, lz + 1, lat));
+                ledges.push(caixaLedge(wx, wy, lz + 1, lat, hexBioma(wx, wy, false), hexBioma(wx, wy, true)));
               }
             }
           } else if (d.nome === "d") {
@@ -931,7 +953,7 @@ function* construirGeosChunk(chunk) {
           y0 = base < 0 ? zSurf - h : base;
           y1 = y0 + h;
         }
-        pushCuboLote(loteCubos, wx, wy, y0, y1, coresDoTopo(zSurf).a, corFacePorZ(zSurf));
+        pushCuboLote(loteCubos, wx, wy, y0, y1, hexBioma(wx, wy, false), hexBioma(wx, wy, true));
       }
 
       const ia = ly * CHUNK_XZ + lx;
@@ -1062,7 +1084,7 @@ export function criarTerrenoMalha(atlas = null) {
     terra: null,
     cliff: null,
     ledge: new THREE.MeshStandardMaterial({
-      color: 0xa67c52,
+      color: 0xffffff,
       roughness: 0.85,
       metalness: 0.05,
       vertexColors: true,
@@ -1116,6 +1138,9 @@ export function criarTerrenoMalha(atlas = null) {
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
     });
+    misturarTinta(materiais.grama, 0.62);
+    misturarTinta(materiais.terra, 0.62);
+    misturarTinta(materiais.cliff, 0.8);
   }
 
   function liberarGrupoChunk(entry) {
