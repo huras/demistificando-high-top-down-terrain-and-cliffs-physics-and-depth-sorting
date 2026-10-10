@@ -1,4 +1,13 @@
-import { CAMINHOS, CHUNK_XZ, RAIO_STREAM_MAX, RAIO_STREAM_MIN, ZOOM_PASSO } from "./config.js";
+import {
+  CAMINHOS,
+  CHUNK_XZ,
+  PASSO_MALHA_SUAVE,
+  RAIO_STREAM_MAX,
+  RAIO_STREAM_MIN,
+  RAIO_SUAVE_MAX,
+  RAIO_SUAVE_MIN,
+  ZOOM_PASSO,
+} from "./config.js";
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
@@ -30,6 +39,7 @@ import {
   ativarInputRelativoCamera,
   desativarInputRelativoCamera,
 } from "./render/3d/adaptadorInput3d.js";
+import { definirRaioSuave, obterRaioSuave } from "./render/3d/terrenoSuave.js";
 import {
   ajustarZoom3d,
   atualizarEDesenhar3d,
@@ -190,7 +200,37 @@ async function iniciar() {
   requestAnimationFrame(loop);
 }
 
+function textoRaioSuave(n) {
+  if (n === 0) return "desligado";
+  if (n <= obterRaioStream()) return "sem anel";
+  return `${n} · ${n * CHUNK_XZ} blocos`;
+}
+
+function ligarRaioSuave() {
+  const input = document.getElementById("raio-suave");
+  const valor = document.getElementById("raio-suave-valor");
+  const dica = document.getElementById("raio-suave-dica");
+  if (dica) {
+    dica.textContent = `Fora dos blocos, uma malha espaçada (vértices a cada ${PASSO_MALHA_SUAVE} blocos) cobre até esse raio.`;
+  }
+  if (!input) return () => {};
+  input.min = String(RAIO_SUAVE_MIN);
+  input.max = String(RAIO_SUAVE_MAX);
+  input.value = String(obterRaioSuave());
+
+  const aplicar = () => {
+    const n = definirRaioSuave(Number(input.value));
+    input.value = String(n);
+    if (valor) valor.textContent = textoRaioSuave(n);
+  };
+
+  input.addEventListener("input", aplicar);
+  aplicar();
+  return aplicar;
+}
+
 function ligarRaioStream() {
+  const atualizarSuave = ligarRaioSuave();
   const input = document.getElementById("raio-stream");
   const valor = document.getElementById("raio-stream-valor");
   if (!input) return;
@@ -205,6 +245,7 @@ function ligarRaioStream() {
       valor.textContent =
         n === 0 ? "só este chunk" : `${n} · ${n * CHUNK_XZ} blocos`;
     }
+    atualizarSuave();
     if (corpo) atualizarStreaming(corpo.x, corpo.y);
   };
 

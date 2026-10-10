@@ -233,6 +233,12 @@ export const CHUNK_Y = 64;
 export const RAIO_STREAM = 5;
 export const RAIO_STREAM_MIN = 0;
 export const RAIO_STREAM_MAX = 10;
+/** Disco externo da malha suave, em chunks. 0 desliga. 12 ≈ 192 blocos. */
+export const RAIO_SUAVE = 12;
+export const RAIO_SUAVE_MIN = 0;
+export const RAIO_SUAVE_MAX = 20;
+/** Distância entre vértices da malha suave, em blocos. */
+export const PASSO_MALHA_SUAVE = 8;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 6;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */

@@ -3,6 +3,7 @@ import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
 import { ALTURA_BLOCO, ASA_DELTA_DESCIDA, CAMERA3D_DIST_MAX, CHUNK_XZ, RAIO_STREAM } from "../../config.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
+import { criarTerrenoSuave, obterRaioSuave } from "./terrenoSuave.js";
 import {
   ajustarDistancia,
   aplicarOlharMouse,
@@ -25,7 +26,7 @@ const NEVOA_FAR = 85;
 
 function aplicarNevoa(raio) {
   if (!estado?.scene.fog) return;
-  const escala = Math.max(raio, 1) / RAIO_STREAM;
+  const escala = Math.max(raio, obterRaioSuave(), 1) / RAIO_STREAM;
   const fog = estado.scene.fog;
   fog.near = NEVOA_NEAR * escala;
   fog.far = NEVOA_FAR * escala;
@@ -104,6 +105,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const terreno = criarTerrenoMalha(atlas);
   scene.add(terreno.grupo);
 
+  const terrenoSuave = criarTerrenoSuave();
+  terreno.grupo.add(terrenoSuave.mesh);
+
   const vegetacao = criarVegetacaoBillboard3d();
   scene.add(vegetacao.grupo);
 
@@ -137,6 +141,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     sol,
     rim,
     terreno,
+    terrenoSuave,
     vegetacao,
     personagem,
     agente3d,
@@ -240,6 +245,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   sincronizarVisualTerreno(atlas);
   aplicarNevoa(obterRaioStream());
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
+  estado.terrenoSuave?.tick(corpo.x, corpo.y);
   seguirAlvo3d(estado.camera3d, corpo, dt);
 
   const yaw = yawCamera(estado.camera3d);
