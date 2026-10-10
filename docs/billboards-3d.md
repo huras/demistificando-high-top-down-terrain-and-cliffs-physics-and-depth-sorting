@@ -30,20 +30,20 @@ A luz tem de ser atualizada antes dos sprites. Se inverter, a cor fica um frame 
 
 `recolherGrupos` junta `PROPS` do demo e a vegetação de bioma (`todaVegetacao`). A chave do lote é `prop.sprite`, ou o `tipo` se não houver sprite. Cada chave vira um `InstancedMesh` com no máximo 4096 instâncias. Um draw call por sprite, não por planta.
 
-O quad é um `PlaneGeometry(1, 1)` com o pivô no pé (`translate(0, 0.5, 0)`). A escala da instância é o tamanho em células:
+O quad é um `PlaneGeometry(1, 1)` com a base da imagem em y local 0 (`translate(0, 0.5, 0)`). A escala da instância é o tamanho em células:
 
 ```
 largura = (px de largura / TILE) × escala
 altura  = (px de altura  / TILE) × escala
 ```
 
-| Tipo | Escala | Pé (afunda no chão) |
-|---|---|---|
-| `arvore` | `VEG_ARVORE_ESCALA` (1) | `VEG_ARVORE_PE` (2/TILE) |
-| `mata`, `grama` e o resto | `VEG_MATA_ESCALA` (0.75) | `VEG_MATA_PE` (1/TILE) |
-| `pedra`, `cristal` | 1 | `VEG_MATA_PE` |
+| Tipo | Escala |
+|---|---|
+| `arvore` | `VEG_ARVORE_ESCALA` (1) |
+| `mata`, `grama` e o resto | `VEG_MATA_ESCALA` (0.75) |
+| `pedra`, `cristal` | 1 |
 
-A altura do pé é `alturaEm` da célula vezes `ALTURA_BLOCO`. O 2D usa a mesma escala de mata (`VEG_MATA_ESCALA`) em `terreno.js` e no fade de cobertura.
+O chão da célula é `alturaEm` vezes `ALTURA_BLOCO`. O pé que encosta nele é a última linha opaca do PNG (`pivoPe.js`, alpha ≥ 24), não a borda da imagem. O cartão desce `(1 - pivotY) × altura` em unidades de célula, sem multiplicar por `ALTURA_BLOCO`. O 2D usa a mesma fração e a mesma escala de mata (`VEG_MATA_ESCALA`) em `terreno.js` e no fade de cobertura.
 
 A textura é o PNG do atlas, `NearestFilter`, sem mipmap. `alphaTest` (`VEG_ALPHA_TEST`, 0.12) recorta o transparente no passe opaco. Sem atlas, o lote não é criado.
 
@@ -89,4 +89,4 @@ O personagem não usa esse shader. `SpriteMaterial` não recebe luz de cena. `ap
 
 ## Personagem
 
-`THREE.Sprite` com pivô no pé (`center` 0.5, 0) e altura 1.25. O sheet de 64×64 é copiado para um canvas por frame (linha = facing relativo à câmera, coluna = passo da animação). `castShadow` fica desligado. A sombra no chão é a elipse de [`sombraContato3d.js`](../js/render/3d/sombraContato3d.js), não a silhueta do sprite. Debaixo d'água, um segundo sprite faz o véu, cortado por um plano na superfície.
+`THREE.Sprite` com altura 1.25. O `center` é o pé opaco do quadro (`pivotX`, `1 - pivotY`), medido no sheet de 64×64 a cada frame (linha = facing relativo à câmera, coluna = passo da animação). `castShadow` fica desligado. A sombra no chão é a elipse de [`sombraContato3d.js`](../js/render/3d/sombraContato3d.js), não a silhueta do sprite. Debaixo d'água, um segundo sprite faz o véu, cortado por um plano na superfície.

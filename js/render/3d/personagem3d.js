@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, JOGADOR_FRAME } from "../../config.js";
+import { pivoDoFrame } from "../pivoPe.js";
 import { colunaAgua } from "../../mundo/agua/fluxo.js";
 import { criarAsaDelta3d } from "./asaDelta3d.js";
 import { linhaFacingDoCorpo } from "./facingCamera3d.js";
@@ -102,6 +103,10 @@ export function criarPersonagem3d(opts = {}) {
       JOGADOR_FRAME,
     );
     tex.needsUpdate = true;
+    const pivo = pivoDoFrame(sheet, col, linha, JOGADOR_FRAME);
+    const centroY = 1 - pivo.y;
+    sprite.center.set(pivo.x, centroY);
+    veu.center.set(pivo.x, centroY);
   }
 
   function definirSprite(img) {

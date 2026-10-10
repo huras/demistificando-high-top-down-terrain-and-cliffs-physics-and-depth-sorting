@@ -471,12 +471,12 @@ function desenharProp(ctx, prop, z) {
 function desenharPropReal(ctx, prop, z) {
   const img = imagemDoProp(prop, _atlas);
   if (!img) return false;
-  const { escala, pe } = desenhoDoProp(prop);
+  const { escala, pivotY } = desenhoDoProp(prop, img);
   const dw = img.width * ESCALA * escala;
   const dh = img.height * ESCALA * escala;
   const px = mundoParaTelaX(prop.x);
   const py = mundoParaTelaY(prop.y, z);
-  ctx.drawImage(img, px - dw * 0.5, py - dh + pe * ESCALA, dw, dh);
+  ctx.drawImage(img, px - dw * 0.5, py - dh * pivotY, dw, dh);
   return true;
 }
 

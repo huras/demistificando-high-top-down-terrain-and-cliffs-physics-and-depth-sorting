@@ -6,11 +6,10 @@ import {
   TILE,
   VEG_ALPHA_TEST,
   VEG_ARVORE_ESCALA,
-  VEG_ARVORE_PE,
   VEG_MATA_ESCALA,
-  VEG_MATA_PE,
   VEG_YAW_EPS,
 } from "../../config.js";
+import { pivoDaImagem } from "../pivoPe.js";
 import { alturaEm } from "../../mundo/altura.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { todaVegetacao } from "../../mundo/bioma/propsBioma.js";
@@ -24,9 +23,9 @@ import { onDirty } from "../../mundo/voxel/storeMundo.js";
 const CAP_INSTANCIAS = 4096;
 
 function estiloDe(prop) {
-  if (prop.tipo === "arvore") return { escala: VEG_ARVORE_ESCALA, pe: VEG_ARVORE_PE };
-  if (prop.tipo === "pedra" || prop.tipo === "cristal") return { escala: 1, pe: VEG_MATA_PE };
-  return { escala: VEG_MATA_ESCALA, pe: VEG_MATA_PE };
+  if (prop.tipo === "arvore") return VEG_ARVORE_ESCALA;
+  if (prop.tipo === "pedra" || prop.tipo === "cristal") return 1;
+  return VEG_MATA_ESCALA;
 }
 
 function chaveDe(prop) {
@@ -41,12 +40,10 @@ function recolherGrupos() {
     if (!chave) return;
     let grupo = grupos.get(chave);
     if (!grupo) {
-      const est = estiloDe(prop);
       grupo = {
         chave,
         amostra: prop,
-        escala: est.escala,
-        pe: est.pe,
+        escala: estiloDe(prop),
         itens: [],
       };
       grupos.set(chave, grupo);
@@ -185,7 +182,7 @@ export function criarVegetacaoBillboard3d() {
       itens: def.itens,
       largura,
       altura,
-      pe: def.pe,
+      pivotY: pivoDaImagem(img).y,
     };
     lotes.set(def.chave, lote);
     return lote;
@@ -206,7 +203,7 @@ export function criarVegetacaoBillboard3d() {
       const { largura, altura } = medidasDe(img, def.escala);
       lote.largura = largura;
       lote.altura = altura;
-      lote.pe = def.pe;
+      lote.pivotY = pivoDaImagem(img).y;
       lote.itens = def.itens;
       lote.mesh.count = def.itens.length;
       lote.mesh.visible = def.itens.length > 0;
@@ -227,12 +224,13 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function escreverMesh(mesh, itens, largura, altura, pe, yaw, limites) {
+  function escreverMesh(mesh, itens, largura, altura, pivotY, yaw, limites) {
     if (!mesh) return;
+    const afunda = (1 - pivotY) * altura;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
       const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
-      dummy.position.set(p.x, (base - pe) * ALTURA_BLOCO, p.y);
+      dummy.position.set(p.x, base * ALTURA_BLOCO - afunda, p.y);
       dummy.rotation.set(0, yaw, 0);
       dummy.scale.set(largura, altura, 1);
       dummy.updateMatrix();
@@ -248,9 +246,9 @@ export function criarVegetacaoBillboard3d() {
   function escrever(yaw, yawSol, recalcularLimites) {
     if (recalcularLimites) sincronizarLotes(recolherGrupos());
     for (const lote of lotes.values()) {
-      const { mesh, sombra, itens, largura, altura, pe } = lote;
-      escreverMesh(mesh, itens, largura, altura, pe, yaw, recalcularLimites);
-      escreverMesh(sombra, itens, largura, altura, pe, yawSol, recalcularLimites);
+      const { mesh, sombra, itens, largura, altura, pivotY } = lote;
+      escreverMesh(mesh, itens, largura, altura, pivotY ?? 1, yaw, recalcularLimites);
+      escreverMesh(sombra, itens, largura, altura, pivotY ?? 1, yawSol, recalcularLimites);
     }
   }
 

@@ -2,7 +2,7 @@
  * Lâmina e cachoeira no high top-down.
  * O topo fica entre o chão (cy+0.97) e o sprite (cy+0.971).
  */
-import { ESCALA, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
+import { ESCALA, TILE } from "../config.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { cssAgua } from "../mundo/agua/amostra.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
@@ -216,14 +216,10 @@ function desenharQueda(ctx, cx, cy, col) {
 }
 
 /** Cobre as pernas abaixo da linha d'água. Chamar depois do sprite. */
-export function cobrirPernasAgua(ctx, corpo) {
+export function cobrirPernasAgua(ctx, corpo, rect) {
   const agua = amostraDoCorpo(corpo);
-  if (!agua || agua.imersao < 0.12) return;
-  const dw = JOGADOR_FRAME * JOGADOR_ESCALA * ESCALA;
-  const dh = dw;
-  const px = mundoParaTelaX(corpo.x) - dw * 0.5;
-  const py = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift) - dh + 2 * ESCALA;
-  const peY = py + dh;
+  if (!agua || agua.imersao < 0.12 || !rect) return;
+  const { px, py, dw, peY } = rect;
   const aguaY = mundoParaTelaY(corpo.y, agua.superficie, 0);
   const y0 = Math.max(py, aguaY);
   const h = peY - y0;

@@ -21,17 +21,17 @@ function quadro(h, zenite, horizonte, chao, sol, exposicao, ambiente, hemi, estr
 }
 
 const CHAVES = [
-  quadro(0, 0x070b18, 0x1c3358, 0x10151c, 0xc9d7f2, 0.56, 0.07, 0.15, 1),
-  quadro(4.6, 0x10182e, 0x6a3a4c, 0x2a1c22, 0xffa07a, 0.62, 0.08, 0.18, 0.62),
+  quadro(0, 0x16243c, 0x3a5a88, 0x2c3a50, 0xd5e4ff, 0.82, 0.34, 0.42, 1),
+  quadro(4.6, 0x1a2844, 0x6a4458, 0x322830, 0xffa07a, 0.78, 0.22, 0.28, 0.55),
   quadro(6.15, 0x2a4d88, 0xff9468, 0xc88870, 0xffc49a, 0.9, 0.18, 0.28, 0.08),
   quadro(7.6, 0x2d6cba, 0xf0c2a0, 0xd0b8a4, 0xffe2c4, 1.02, 0.24, 0.34, 0),
   quadro(10, 0x2f74c8, 0xb7e2f8, 0xc5c0b0, 0xfff3dd, 1.08, 0.3, 0.4, 0),
   quadro(13, 0x2a6ec2, 0x9ad4f5, 0xb9c6c4, 0xfff7ea, 1.1, 0.32, 0.42, 0),
   quadro(16.3, 0x3a6aab, 0xffb07a, 0xe2b08a, 0xffc896, 1.12, 0.28, 0.36, 0),
   quadro(18.15, 0x243e78, 0xff8a5c, 0xc47a62, 0xffc48a, 0.96, 0.22, 0.26, 0.02),
-  quadro(19.7, 0x12182c, 0x3a2848, 0x1a1422, 0xe8c4d8, 0.66, 0.08, 0.16, 0.42),
-  quadro(22.2, 0x080c18, 0x1a3054, 0x10151c, 0xc9d7f2, 0.56, 0.07, 0.15, 0.92),
-  quadro(24, 0x070b18, 0x1c3358, 0x10151c, 0xc9d7f2, 0.56, 0.07, 0.15, 1),
+  quadro(19.7, 0x1c3050, 0x4a4060, 0x2a2434, 0xe8c4d8, 0.8, 0.2, 0.28, 0.35),
+  quadro(22.2, 0x16243c, 0x3a5a88, 0x2c3a50, 0xd5e4ff, 0.82, 0.34, 0.42, 0.85),
+  quadro(24, 0x16243c, 0x3a5a88, 0x2c3a50, 0xd5e4ff, 0.82, 0.34, 0.42, 1),
 ];
 
 const COR_LUA = linear(0xd0def8);
@@ -132,10 +132,10 @@ export function avaliarVisual(hora, clima) {
   saida.exposicao *= 1 - clima.pesoNeblina * 0.28;
   saida.ambiente = saida.ambiente * (0.75 + 0.25 * clima.sol) + clima.pesoNeblina * 0.05;
   saida.hemi *= 0.7 + 0.3 * (1 - clima.pesoNeblina);
-  saida.fill = 0.08 + pesoDia * 0.22 * clima.sol;
-  saida.rim = 0.06 + (1 - Math.min(1, Math.abs(saida.dirSol.y) * 1.4)) * 0.42 * pesoDia;
+  saida.fill = 0.22 + pesoDia * 0.08 * clima.sol;
+  saida.rim = 0.12 + (1 - Math.min(1, Math.abs(saida.dirSol.y) * 1.4)) * 0.42 * pesoDia;
 
-  const base = 0.18 + pesoDia * 1.55;
+  const base = 0.72 + pesoDia * 1.01;
   const mulNoite = 1 - pesoDia * (1 - clima.sol);
   saida.intensidadeSol = base * mulNoite;
 

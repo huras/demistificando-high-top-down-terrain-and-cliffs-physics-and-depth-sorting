@@ -2,6 +2,7 @@ import { ESCALA, FACE_H, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.j
 import { cobrirPernasAgua } from "./agua2d.js";
 import { desenharAsaDelta } from "./asaDeltaVisual.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
+import { pivoDoFrame } from "./pivoPe.js";
 import { chaveEntidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
 import { CORES } from "./paleta.js";
 import { empilharSombras } from "./sombra.js";
@@ -64,17 +65,39 @@ function desenharBordaCelula(ctx, cx, cy, z) {
   ctx.strokeRect(px + 1.5, py + 1.5, s - 3, s - 3);
 }
 
-export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
-  const sheet = atlas.jogador;
+function quadroDoCorpo(corpo) {
   const frame = JOGADOR_FRAME;
   const linha = corpo.facing | 0;
   const ciclo = [0, 1, 0, 3];
   const col = corpo.andando ? ciclo[Math.floor(corpo.animT * 8) % 4] : 0;
-  const dw = frame * JOGADOR_ESCALA * ESCALA;
-  const dh = frame * JOGADOR_ESCALA * ESCALA;
+  return { frame, linha, col };
+}
 
-  const px = mundoParaTelaX(corpo.x) - dw * 0.5;
-  const py = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift) - dh + 2 * ESCALA;
+/** Retângulo na tela com o pé opaco em (footX, footY). */
+export function retanguloDoPersonagem(atlas, corpo) {
+  const sheet = atlas?.jogador || null;
+  const { frame, linha, col } = quadroDoCorpo(corpo);
+  const dw = frame * JOGADOR_ESCALA * ESCALA;
+  const dh = dw;
+  const pivo = sheet ? pivoDoFrame(sheet, col, linha, frame) : { x: 0.5, y: 1 };
+  const footX = mundoParaTelaX(corpo.x);
+  const footY = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift);
+  return {
+    sheet,
+    frame,
+    linha,
+    col,
+    dw,
+    dh,
+    px: footX - pivo.x * dw,
+    py: footY - pivo.y * dh,
+    peY: footY,
+  };
+}
+
+export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
+  const rect = retanguloDoPersonagem(atlas, corpo);
+  const { sheet, frame, linha, col, dw, dh, px, py } = rect;
 
   ctx.save();
   ctx.imageSmoothingEnabled = false;
@@ -91,7 +114,7 @@ export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
     dh,
   );
   ctx.restore();
-  cobrirPernasAgua(ctx, corpo);
+  cobrirPernasAgua(ctx, corpo, rect);
 
   if (corpo.planando) {
     const ax = mundoParaTelaX(corpo.x);

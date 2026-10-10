@@ -4,11 +4,10 @@ import {
   TILE,
   VEG_ALPHA_TEST,
   VEG_ARVORE_ESCALA,
-  VEG_ARVORE_PE,
   VEG_MATA_ESCALA,
-  VEG_MATA_PE,
   VEG_YAW_EPS,
 } from "../config.js";
+import { pivoDaImagem } from "../render/pivoPe.js";
 import { avaliarGrafo } from "../mundo/bioma/grafo.js";
 import {
   arquivoSprite,
@@ -250,9 +249,9 @@ function montarRelevo(bioma, catalogo, seed) {
 }
 
 function estiloDe(classe) {
-  if (classe === "arvore") return { escala: VEG_ARVORE_ESCALA, pe: VEG_ARVORE_PE };
-  if (classe === "pedra" || classe === "cristal") return { escala: 1, pe: VEG_MATA_PE };
-  return { escala: VEG_MATA_ESCALA, pe: VEG_MATA_PE };
+  if (classe === "arvore") return VEG_ARVORE_ESCALA;
+  if (classe === "pedra" || classe === "cristal") return 1;
+  return VEG_MATA_ESCALA;
 }
 
 function plantaNaCelula(bioma, ix, iz, seed) {
@@ -293,7 +292,7 @@ function loteSprite(id, classe) {
   tex.minFilter = THREE.NearestFilter;
   tex.generateMipmaps = false;
   tex.needsUpdate = true;
-  const est = estiloDe(classe);
+  const escala = estiloDe(classe);
   const pw = fonte.naturalWidth || fonte.width || TILE;
   const ph = fonte.naturalHeight || fonte.height || TILE;
   const material = new THREE.MeshStandardMaterial({
@@ -314,9 +313,9 @@ function loteSprite(id, classe) {
     material,
     depth,
     textura: tex,
-    largura: (pw / TILE) * est.escala,
-    altura: (ph / TILE) * est.escala,
-    pe: est.pe,
+    largura: (pw / TILE) * escala,
+    altura: (ph / TILE) * escala,
+    pivotY: pivoDaImagem(fonte).y,
   };
   materiaisSprite.set(id, lote);
   return lote;
@@ -351,7 +350,9 @@ function montarProps(bioma, alturas, seed) {
       const jx = (hash2(wx, wz, seed + 42) - 0.5) * 0.55;
       const jz = (hash2(wx, wz, seed + 77) - 0.5) * 0.55;
       const variacao = 0.86 + hash2(wx, wz, seed + 19) * 0.28;
-      const y = alturas[iz * LADO + ix] * ALTURA_BLOCO - lote.pe * ALTURA_BLOCO;
+      const y =
+        alturas[iz * LADO + ix] * ALTURA_BLOCO -
+        (1 - lote.pivotY) * lote.altura * variacao;
       grupo.itens.push({ x: ix + 0.5 + jx, y, z: iz + 0.5 + jz, s: variacao });
     }
   }

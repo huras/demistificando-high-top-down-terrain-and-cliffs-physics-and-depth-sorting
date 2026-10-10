@@ -170,9 +170,6 @@ export const VISUAL_REAL_PADRAO = true;
 export const VEG_ALPHA_TEST = 0.12;
 export const VEG_ARVORE_ESCALA = 1;
 export const VEG_MATA_ESCALA = 0.75;
-/** Afundamento do pé em células — 2D soma 2 px (árvore) e 1 px (mata) na tela. */
-export const VEG_ARVORE_PE = 2 / TILE;
-export const VEG_MATA_PE = 1 / TILE;
 /** Só reescreve instanceMatrix se o yaw mudou mais que isto (rad). */
 export const VEG_YAW_EPS = 0.001;
 
