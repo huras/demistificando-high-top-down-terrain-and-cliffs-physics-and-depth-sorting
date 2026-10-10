@@ -71,47 +71,68 @@
 
       <aside class="painel" id="painel">
         <section class="painel__bloco">
-          <h2>Modelo mental</h2>
-          <p class="painel__dica">
-            Em high top-down, o <strong>Y da tela</strong> carrega duas coisas ao mesmo tempo:
-            profundidade (norte/sul) e elevação (altura do cubo).
-            Cores: <span style="color:#5aad3a">z1</span> /
-            <span style="color:#c4b14a">z2</span> /
-            <span style="color:#d9a35c">z3+</span> /
-            <span style="color:#e8e8f0">cume</span>.
-          </p>
-          <p class="painel__dica">
-            Voxels podem ter ar interno. <code>alturaEm</code> = topo da coluna; sob overhang a física
-            usa a <strong>camada da elevação</strong> (chão sob o deck ou o deck). Ponte = andar em cima
-            <em>e</em> passar por baixo.
-          </p>
+          <h2>
+            Modelo mental
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Explicação de modelo mental" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <p>
+                  Em high top-down, o <strong>Y da tela</strong> carrega duas coisas ao mesmo tempo:
+                  profundidade (norte/sul) e elevação (altura do cubo).
+                  Cores: <span style="color:#5aad3a">z1</span> /
+                  <span style="color:#c4b14a">z2</span> /
+                  <span style="color:#d9a35c">z3+</span> /
+                  <span style="color:#e8e8f0">cume</span>.
+                </p>
+                <p>
+                  Voxels podem ter ar interno. <code>alturaEm</code> = topo da coluna; sob overhang a física
+                  usa a <strong>camada da elevação</strong> (chão sob o deck ou o deck). Ponte = andar em cima
+                  <em>e</em> passar por baixo.
+                </p>
+              </span>
+            </span>
+          </h2>
           <pre class="formula" id="formula-tela">screenY = y·TILE − z·FACE − hop</pre>
           <pre class="formula" id="formula-sort">sortKey = y + z·ε</pre>
         </section>
 
         <section class="painel__bloco">
-          <h2>Coluna vs overhang</h2>
-          <p class="painel__dica">
-            Coluna sólida: faces 2D descem o Δheightmap inteiro (cliff).
-            Overhang/deck: laje <strong>sólida</strong> — passa por baixo sem colidir; bate a cabeça no
-            underside; só pousa em cima caindo de cima (não é plataforma one-way). Faces 2D usam a
-            espessura do topo. Em 3D tiles há fundo; em cubos vira laje, não pilar.
-          </p>
+          <h2>
+            Coluna vs overhang
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Explicação de coluna e overhang" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <p>
+                  Coluna sólida: faces 2D descem o Δheightmap inteiro (cliff).
+                  Overhang/deck: laje <strong>sólida</strong> — passa por baixo sem colidir; bate a cabeça no
+                  underside; só pousa em cima caindo de cima (não é plataforma one-way). Faces 2D usam a
+                  espessura do topo. Em 3D tiles há fundo; em cubos vira laje, não pilar.
+                </p>
+              </span>
+            </span>
+          </h2>
         </section>
 
         <section class="painel__bloco">
           <h2>Stream</h2>
-          <label class="raio-stream" for="raio-stream">
-            Blocos
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="raio-stream">Blocos</label>
+            </div>
+            <span class="controle__valor" id="raio-stream-valor">5 · 80 blocos</span>
             <input id="raio-stream" type="range" min="0" max="10" step="1" value="5" />
-            <span id="raio-stream-valor">5 · 80 blocos</span>
-          </label>
-          <label class="raio-stream" for="raio-suave">
-            Suave
+          </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="raio-suave">Suave</label>
+              <span class="info">
+                <button type="button" class="info__btn" aria-label="Explicação da malha suave" aria-expanded="false">?</button>
+                <span class="info__balao" id="raio-suave-dica" role="tooltip" hidden>Fora dos blocos, uma malha espaçada cobre até esse raio.</span>
+              </span>
+            </div>
+            <span class="controle__valor" id="raio-suave-valor">12 · 192 blocos</span>
             <input id="raio-suave" type="range" min="0" max="20" step="1" value="12" />
-            <span id="raio-suave-valor">12 · 192 blocos</span>
-          </label>
-          <p class="painel__dica" id="raio-suave-dica"></p>
+          </div>
         </section>
 
         <section class="painel__bloco">
@@ -133,8 +154,15 @@
         </section>
 
         <section class="painel__bloco">
-          <h2>Companheiro</h2>
-          <p class="painel__dica">Capacidades do pathfinding — desligar reconstrói o grafo. Água igual ao jogador: vau, nado e cachoeira.</p>
+          <h2>
+            Companheiro
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Explicação do companheiro" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <p>Capacidades do pathfinding — desligar reconstrói o grafo. Água igual ao jogador: vau, nado e cachoeira.</p>
+              </span>
+            </span>
+          </h2>
           <div class="caps" id="caps-companheiro">
             <label class="caps__item"><input type="checkbox" id="cap-pular" checked /> Jump</label>
             <label class="caps__item"><input type="checkbox" id="cap-escalar" checked /> Climb</label>
@@ -152,30 +180,44 @@
         </section>
 
         <section class="painel__bloco">
-          <h2>Regras de colisão</h2>
-          <ul class="regras">
-            <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint (no voo = desce)</li>
-            <li><kbd>E</kbd> — gruda / solta a face (2D e 3D)</li>
-            <li><kbd>F</kbd> — fly on/off; <kbd>Space</kbd> sobe no voo</li>
-            <li>3D: click no viewport = mouse-look (Esc libera)</li>
-            <li><kbd>Space</kbd> — pulo; 2º toque no ar — asa-delta; na parede — solta; no fundo — braçada</li>
-            <li>Água rasa — anda mais devagar. Água funda — nada na superfície (stamina). <kbd>E</kbd> sobe a cachoeira.</li>
-            <li>Topo + subir — mantle; base + descer — pousa; stamina 0 — cai</li>
-          </ul>
+          <h2>
+            Regras de colisão
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Regras de colisão" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <ul>
+                  <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint (no voo = desce)</li>
+                  <li><kbd>E</kbd> — gruda / solta a face (2D e 3D)</li>
+                  <li><kbd>F</kbd> — fly on/off; <kbd>Space</kbd> sobe no voo</li>
+                  <li>3D: click no viewport = mouse-look (Esc libera)</li>
+                  <li><kbd>Space</kbd> — pulo; 2º toque no ar — asa-delta; na parede — solta; no fundo — braçada</li>
+                  <li>Água rasa — anda mais devagar. Água funda — nada na superfície (stamina). <kbd>E</kbd> sobe a cachoeira.</li>
+                  <li>Topo + subir — mantle; base + descer — pousa; stamina 0 — cai</li>
+                </ul>
+              </span>
+            </span>
+          </h2>
         </section>
 
         <section class="painel__bloco">
-          <h2>Prova no mapa</h2>
-          <ol class="prova">
-            <li>Você spawna ao <strong>norte</strong> do terraço amarelo — deve estar <em>atrás</em> da face.</li>
-            <li>Ande para o <strong>sul</strong> do terraço — fica <em>na frente</em> da face.</li>
-            <li>Na face: <kbd>E</kbd> gruda; segure lateral ao virar o canto — não solta; solte e <kbd>S</kbd> de novo pra descer.</li>
-            <li>No topo: suba pra <em>mantle</em> — continue segurando pra entrar no platô; Space solta.</li>
-            <li>Leste: duas montanhas — <strong>CUME×1</strong> (norte 1 passo) e <strong>CUME×2</strong> (norte 2 passos); <strong>MURO×16</strong> nas faces leste dos cumes.</li>
-            <li>Entre os cumes: ande na <strong>PONTE</strong> (em cima) e passe por baixo no vale (<strong>VOID↓</strong>). Compare 2D × 3D tiles × cubos. Companheiro cruza o deck a pé com Asa-delta off.</li>
-            <li>Mirante/torre alta: Space×2 → asa-delta até o chão.</li>
-            <li>Sul, placa <strong>LAGO</strong>: vau na margem, nado no centro, rio raso e cachoeira descendo a escada.</li>
-          </ol>
+          <h2>
+            Prova no mapa
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Prova no mapa" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <ol>
+                  <li>Você spawna ao <strong>norte</strong> do terraço amarelo — deve estar <em>atrás</em> da face.</li>
+                  <li>Ande para o <strong>sul</strong> do terraço — fica <em>na frente</em> da face.</li>
+                  <li>Na face: <kbd>E</kbd> gruda; segure lateral ao virar o canto — não solta; solte e <kbd>S</kbd> de novo pra descer.</li>
+                  <li>No topo: suba pra <em>mantle</em> — continue segurando pra entrar no platô; Space solta.</li>
+                  <li>Leste: duas montanhas — <strong>CUME×1</strong> (norte 1 passo) e <strong>CUME×2</strong> (norte 2 passos); <strong>MURO×16</strong> nas faces leste dos cumes.</li>
+                  <li>Entre os cumes: ande na <strong>PONTE</strong> (em cima) e passe por baixo no vale (<strong>VOID↓</strong>). Compare 2D × 3D tiles × cubos. Companheiro cruza o deck a pé com Asa-delta off.</li>
+                  <li>Mirante/torre alta: Space×2 → asa-delta até o chão.</li>
+                  <li>Sul, placa <strong>LAGO</strong>: vau na margem, nado no centro, rio raso e cachoeira descendo a escada.</li>
+                </ol>
+              </span>
+            </span>
+          </h2>
         </section>
       </aside>
     </main>
