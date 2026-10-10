@@ -88,11 +88,23 @@ function pintarPlano(geo, rgb) {
   return geo;
 }
 
-/** Bloco pinta por cima do terreno suave, sem teste de profundidade contra ele. */
+/**
+ * O bloco marca o stencil e testa profundidade de verdade.
+ * O terreno suave vem depois e recusa esse pixel, então o bloco fica na frente
+ * mesmo quando o suave está mais perto da câmera. Personagem, água e árvore
+ * continuam no teste de profundidade normal.
+ */
 function naFrenteDoSuave(material) {
-  if (!material) return material;
+  if (!material || material.transparent) return material;
   material.depthTest = true;
-  material.depthFunc = THREE.Always;
+  material.depthWrite = true;
+  material.depthFunc = THREE.LessEqualDepth;
+  material.stencilWrite = true;
+  material.stencilRef = 1;
+  material.stencilFunc = THREE.AlwaysStencilFunc;
+  material.stencilFail = THREE.KeepStencilOp;
+  material.stencilZFail = THREE.KeepStencilOp;
+  material.stencilZPass = THREE.ReplaceStencilOp;
   return material;
 }
 

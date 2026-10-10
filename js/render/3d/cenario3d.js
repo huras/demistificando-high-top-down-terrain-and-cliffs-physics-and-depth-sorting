@@ -60,6 +60,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     canvas,
     antialias: true,
     alpha: false,
+    stencil: true,
     powerPreference: "high-performance",
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));

@@ -35,8 +35,21 @@ function misturarTinta(material, forca) {
   aplicarSombraNuvem(material);
 }
 
+/** Desenha só onde o bloco não marcou o stencil. O mesh vem depois dos chunks. */
+function atrasDoBloco(material) {
+  material.depthTest = true;
+  material.depthWrite = true;
+  material.stencilWrite = true;
+  material.stencilRef = 1;
+  material.stencilFunc = THREE.NotEqualStencilFunc;
+  material.stencilFail = THREE.KeepStencilOp;
+  material.stencilZFail = THREE.KeepStencilOp;
+  material.stencilZPass = THREE.KeepStencilOp;
+  return material;
+}
+
 function materialSolido() {
-  return aplicarSombraNuvem(new THREE.MeshStandardMaterial({
+  return atrasDoBloco(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.82,
     metalness: 0.04,
@@ -44,7 +57,7 @@ function materialSolido() {
     polygonOffset: true,
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 2,
-  }));
+  })));
 }
 
 function materialComTile() {
@@ -58,7 +71,7 @@ function materialComTile() {
     polygonOffsetUnits: 2,
   });
   misturarTinta(mat, 0.62);
-  return mat;
+  return atrasDoBloco(mat);
 }
 
 /**
@@ -196,7 +209,7 @@ export function criarTerrenoSuave() {
 function criarMesh(nome, material) {
   const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
   mesh.name = nome;
-  mesh.renderOrder = 0;
+  mesh.renderOrder = 2;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   mesh.visible = false;
