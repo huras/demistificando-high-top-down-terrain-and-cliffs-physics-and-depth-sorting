@@ -8,7 +8,6 @@ import {
 } from "../../config.js";
 import { alturaDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { rgbBioma } from "../../mundo/bioma/tinta.js";
-import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 
 let raioAtivo = RAIO_SUAVE;
 
@@ -22,8 +21,8 @@ export function definirRaioSuave(raio) {
 }
 
 /**
- * Anel de relevo em volta dos chunks. Um vértice a cada PASSO blocos.
- * A malha nova entra aos poucos para não travar o frame.
+ * Relevo espaçado até o raio suave.
+ * O trecho em cima de um chunk de blocos só sai depois que esse mesh já foi desenhado.
  */
 export function criarTerrenoSuave() {
   const material = new THREE.MeshStandardMaterial({
@@ -44,10 +43,14 @@ export function criarTerrenoSuave() {
   let ancoraY = 1e9;
   let ancoraCx = 1e9;
   let ancoraCy = 1e9;
-  let raioBlocos = -1;
   let raioSuave = -1;
-  /** @type {Generator<void, THREE.BufferGeometry | null> | null} */
+  /** @type {Generator<void, {pos:number[], cor:number[], quads:object[]} | null> | null} */
   let trabalho = null;
+  /** @type {{pos:number[], cor:number[], quads:object[]} | null} */
+  let dados = null;
+  let assinatura = null;
+  /** Chunks que já estavam na cena no frame anterior. */
+  let vistosAntes = new Set();
 
   function trocar(geo) {
     const antiga = mesh.geometry;
@@ -61,41 +64,70 @@ export function criarTerrenoSuave() {
     if (antiga && antiga !== mesh.geometry) antiga.dispose();
   }
 
-  function tick(px, py) {
+  function instalar(novos) {
+    dados = novos?.quads?.length ? novos : null;
+    assinatura = null;
+    if (!dados) {
+      trocar(null);
+      return;
+    }
+    trocar(criarGeometria(dados));
+  }
+
+  function aplicarExibidos(estaveis) {
+    if (!dados) return;
+    const sig = chaveExibidos(estaveis);
+    if (sig === assinatura) return;
+    assinatura = sig;
+    const idx = [];
+    for (const q of dados.quads) {
+      if (quadCoberto(q, estaveis)) continue;
+      idx.push(q.i0, q.i2, q.i1, q.i1, q.i2, q.i3);
+    }
+    if (!idx.length) {
+      mesh.visible = false;
+      return;
+    }
+    mesh.visible = true;
+    mesh.geometry.setIndex(idx);
+  }
+
+  function tick(px, py, exibidos) {
     const ax = Math.round(px / PASSO_MALHA_SUAVE) * PASSO_MALHA_SUAVE;
     const ay = Math.round(py / PASSO_MALHA_SUAVE) * PASSO_MALHA_SUAVE;
     const cx = Math.floor(px / CHUNK_XZ);
     const cy = Math.floor(py / CHUNK_XZ);
-    const blocos = obterRaioStream();
     const suave = obterRaioSuave();
-    if (
-      ax !== ancoraX ||
-      ay !== ancoraY ||
-      cx !== ancoraCx ||
-      cy !== ancoraCy ||
-      blocos !== raioBlocos ||
-      suave !== raioSuave
-    ) {
+    if (ax !== ancoraX || ay !== ancoraY || cx !== ancoraCx || cy !== ancoraCy || suave !== raioSuave) {
       ancoraX = ax;
       ancoraY = ay;
       ancoraCx = cx;
       ancoraCy = cy;
-      raioBlocos = blocos;
       raioSuave = suave;
-      trabalho = suave > blocos ? gerarMalha(px, py, blocos, suave) : null;
-      if (!trabalho) trocar(null);
+      trabalho = suave > 0 ? gerarMalha(px, py, suave) : null;
+      if (suave <= 0) instalar(null);
     }
-    if (!trabalho) return;
-    const t0 = performance.now();
-    let passo;
-    while (performance.now() - t0 < 3) {
-      passo = trabalho.next();
-      if (passo.done) break;
+    if (trabalho) {
+      const t0 = performance.now();
+      let passo;
+      while (performance.now() - t0 < 3) {
+        passo = trabalho.next();
+        if (passo.done) break;
+      }
+      if (passo?.done) {
+        instalar(passo.value ?? null);
+        trabalho = null;
+      }
     }
-    if (passo?.done) {
-      trocar(passo.value ?? null);
-      trabalho = null;
+
+    const estaveis = new Set();
+    if (exibidos) {
+      for (const k of exibidos) {
+        if (vistosAntes.has(k)) estaveis.add(k);
+      }
+      vistosAntes = exibidos;
     }
+    aplicarExibidos(estaveis);
   }
 
   return {
@@ -103,25 +135,54 @@ export function criarTerrenoSuave() {
     tick,
     liberar() {
       trabalho = null;
+      dados = null;
       mesh.geometry?.dispose();
       material.dispose();
     },
   };
 }
 
-function chunkNoDisco(wx, wy, pcx, pcy, raio2) {
-  const dx = Math.floor(wx / CHUNK_XZ) - pcx;
-  const dy = Math.floor(wy / CHUNK_XZ) - pcy;
-  return dx * dx + dy * dy <= raio2;
+function chaveExibidos(set) {
+  if (!set.size) return "";
+  return [...set].sort().join("|");
 }
 
-function* gerarMalha(px, py, raioBlocos, raioSuave) {
+function quadCoberto(quad, estaveis) {
+  if (!quad.chunks.length) return false;
+  for (let i = 0; i < quad.chunks.length; i++) {
+    if (!estaveis.has(quad.chunks[i])) return false;
+  }
+  return true;
+}
+
+function chunksDoQuad(x, y, passo) {
+  const cx0 = Math.floor(x / CHUNK_XZ);
+  const cy0 = Math.floor(y / CHUNK_XZ);
+  const cx1 = Math.floor((x + passo - 0.001) / CHUNK_XZ);
+  const cy1 = Math.floor((y + passo - 0.001) / CHUNK_XZ);
+  const lista = [];
+  for (let cy = cy0; cy <= cy1; cy++) {
+    for (let cx = cx0; cx <= cx1; cx++) lista.push(`${cx},${cy}`);
+  }
+  return lista;
+}
+
+function criarGeometria(dados) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(dados.pos, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(dados.cor, 3));
+  const todos = [];
+  for (const q of dados.quads) todos.push(q.i0, q.i2, q.i1, q.i1, q.i2, q.i3);
+  geo.setIndex(todos);
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function* gerarMalha(px, py, raioSuave) {
   const passo = PASSO_MALHA_SUAVE;
   const alcance = raioSuave * CHUNK_XZ;
   const alcance2 = alcance * alcance;
-  const pcx = Math.floor(px / CHUNK_XZ);
-  const pcy = Math.floor(py / CHUNK_XZ);
-  const raio2 = raioBlocos * raioBlocos + 1;
   const x0 = Math.floor((px - alcance) / passo) * passo;
   const y0 = Math.floor((py - alcance) / passo) * passo;
   const x1 = Math.ceil((px + alcance) / passo) * passo;
@@ -129,7 +190,7 @@ function* gerarMalha(px, py, raioBlocos, raioSuave) {
 
   const pos = [];
   const cor = [];
-  const idx = [];
+  const quads = [];
   const mapa = new Map();
 
   function vertice(wx, wy) {
@@ -151,22 +212,15 @@ function* gerarMalha(px, py, raioBlocos, raioSuave) {
       const mx = x + passo * 0.5 - px;
       const my = y + passo * 0.5 - py;
       if (mx * mx + my * my > alcance2) continue;
-      if (chunkNoDisco(x + passo * 0.5, y + passo * 0.5, pcx, pcy, raio2)) continue;
       const i0 = vertice(x, y);
       const i1 = vertice(x + passo, y);
       const i2 = vertice(x, y + passo);
       const i3 = vertice(x + passo, y + passo);
-      idx.push(i0, i2, i1, i1, i2, i3);
+      quads.push({ i0, i1, i2, i3, chunks: chunksDoQuad(x, y, passo) });
       if ((++feitos & 47) === 0) yield;
     }
   }
 
-  if (!idx.length) return null;
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3));
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  geo.computeBoundingSphere();
-  return geo;
+  if (!quads.length) return null;
+  return { pos, cor, quads };
 }

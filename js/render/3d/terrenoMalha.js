@@ -1380,6 +1380,21 @@ export function criarTerrenoMalha(atlas = null) {
       }
     },
     tickMalha,
+    /** Chunks cujo mesh de blocos já está no grupo visível. */
+    chunksExibidos() {
+      const set = new Set();
+      const cubos = modoCubos && grupoCubos.visible;
+      const real = !modoCubos && grupoReal.visible;
+      if (!cubos && !real) return set;
+      for (const [key, entry] of meshesPorChunk) {
+        if (cubos) {
+          if (entry.cubos) set.add(key);
+        } else if (entry.real.children.length > 0) {
+          set.add(key);
+        }
+      }
+      return set;
+    },
     reconstruirSujados,
     reconstruirTudo,
     liberar() {

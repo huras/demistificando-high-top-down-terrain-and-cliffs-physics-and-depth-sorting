@@ -245,7 +245,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   sincronizarVisualTerreno(atlas);
   aplicarNevoa(obterRaioStream());
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
-  estado.terrenoSuave?.tick(corpo.x, corpo.y);
+  estado.terrenoSuave?.tick(corpo.x, corpo.y, estado.terreno.chunksExibidos?.());
   seguirAlvo3d(estado.camera3d, corpo, dt);
 
   const yaw = yawCamera(estado.camera3d);
