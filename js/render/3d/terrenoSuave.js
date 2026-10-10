@@ -6,8 +6,9 @@ import {
   RAIO_SUAVE_MAX,
   RAIO_SUAVE_MIN,
 } from "../../config.js";
-import { alturaDoRelevo } from "../../mundo/bioma/catalogo.js";
+import { alturaDoRelevo, superficieDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { rgbBioma } from "../../mundo/bioma/tinta.js";
+import { BLOCO } from "../../mundo/voxel/tiposBloco.js";
 
 let raioAtivo = RAIO_SUAVE;
 
@@ -20,39 +21,76 @@ export function definirRaioSuave(raio) {
   return raioAtivo;
 }
 
-/**
- * Relevo espaçado até o raio suave.
- * O trecho em cima de um chunk de blocos só sai depois que esse mesh já foi desenhado.
- */
-export function criarTerrenoSuave() {
-  const material = new THREE.MeshStandardMaterial({
+/** Mesma mistura dos topos de bloco: tile + tinta do bioma. */
+function misturarTinta(material, forca) {
+  material.vertexColors = true;
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <color_fragment>",
+      `diffuseColor.rgb = mix(diffuseColor.rgb, vColor, ${forca.toFixed(2)});`,
+    );
+  };
+  material.customProgramCacheKey = () => `tinta-bioma-${forca}`;
+}
+
+function materialSolido() {
+  return new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.82,
+    metalness: 0.04,
     vertexColors: true,
-    roughness: 0.92,
-    metalness: 0.02,
     polygonOffset: true,
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 2,
   });
-  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
-  mesh.name = "terreno-suave";
-  mesh.castShadow = false;
-  mesh.receiveShadow = false;
-  mesh.visible = false;
+}
+
+function materialComTile() {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.88,
+    metalness: 0.04,
+    vertexColors: true,
+    polygonOffset: true,
+    polygonOffsetFactor: 2,
+    polygonOffsetUnits: 2,
+  });
+  misturarTinta(mat, 0.62);
+  return mat;
+}
+
+/**
+ * Relevo espaçado até o raio suave.
+ * Some só no miolo dos chunks já desenhados. O anel de fora deles fica por baixo,
+ * para o encontro com os blocos não precisar fechar.
+ */
+export function criarTerrenoSuave() {
+  const mats = {
+    grama: { cubos: materialSolido(), real: materialComTile() },
+    terra: { cubos: materialSolido(), real: materialComTile() },
+  };
+  const grupo = new THREE.Group();
+  grupo.name = "terreno-suave";
+  const meshGrama = criarMesh("terreno-suave-grama", mats.grama.cubos);
+  const meshTerra = criarMesh("terreno-suave-terra", mats.terra.cubos);
+  grupo.add(meshGrama, meshTerra);
 
   let ancoraX = 1e9;
   let ancoraY = 1e9;
   let ancoraCx = 1e9;
   let ancoraCy = 1e9;
   let raioSuave = -1;
-  /** @type {Generator<void, {pos:number[], cor:number[], quads:object[]} | null> | null} */
+  /** @type {Generator<void, object | null> | null} */
   let trabalho = null;
-  /** @type {{pos:number[], cor:number[], quads:object[]} | null} */
+  /** @type {{grama: object, terra: object} | null} */
   let dados = null;
   let assinatura = null;
   /** Chunks que já estavam na cena no frame anterior. */
   let vistosAntes = new Set();
+  let modoReal = false;
+  let texturasProntas = false;
 
-  function trocar(geo) {
+  function trocar(mesh, geo) {
     const antiga = mesh.geometry;
     if (geo) {
       mesh.geometry = geo;
@@ -65,13 +103,10 @@ export function criarTerrenoSuave() {
   }
 
   function instalar(novos) {
-    dados = novos?.quads?.length ? novos : null;
+    dados = novos?.grama?.quads?.length || novos?.terra?.quads?.length ? novos : null;
     assinatura = null;
-    if (!dados) {
-      trocar(null);
-      return;
-    }
-    trocar(criarGeometria(dados));
+    trocar(meshGrama, dados?.grama?.quads?.length ? criarGeometria(dados.grama) : null);
+    trocar(meshTerra, dados?.terra?.quads?.length ? criarGeometria(dados.terra) : null);
   }
 
   function aplicarExibidos(estaveis) {
@@ -79,17 +114,8 @@ export function criarTerrenoSuave() {
     const sig = chaveExibidos(estaveis);
     if (sig === assinatura) return;
     assinatura = sig;
-    const idx = [];
-    for (const q of dados.quads) {
-      if (quadCoberto(q, estaveis)) continue;
-      idx.push(q.i0, q.i2, q.i1, q.i1, q.i2, q.i3);
-    }
-    if (!idx.length) {
-      mesh.visible = false;
-      return;
-    }
-    mesh.visible = true;
-    mesh.geometry.setIndex(idx);
+    recortar(meshGrama, dados.grama, estaveis);
+    recortar(meshTerra, dados.terra, estaveis);
   }
 
   function tick(px, py, exibidos) {
@@ -130,16 +156,48 @@ export function criarTerrenoSuave() {
     aplicarExibidos(estaveis);
   }
 
+  function aplicarTexturas(tex) {
+    texturasProntas = !!(tex?.grama);
+    mats.grama.real.map = tex?.grama ?? null;
+    mats.terra.real.map = tex?.terra || tex?.grama || null;
+    mats.grama.real.needsUpdate = true;
+    mats.terra.real.needsUpdate = true;
+    if (modoReal) aplicarVisual(true);
+  }
+
+  function aplicarVisual(usarTilesFlag) {
+    const real = !!(usarTilesFlag && texturasProntas);
+    if (real === modoReal && meshGrama.material === (real ? mats.grama.real : mats.grama.cubos)) return;
+    modoReal = real;
+    meshGrama.material = real ? mats.grama.real : mats.grama.cubos;
+    meshTerra.material = real ? mats.terra.real : mats.terra.cubos;
+  }
+
   return {
-    mesh,
+    mesh: grupo,
     tick,
+    aplicarTexturas,
+    aplicarVisual,
     liberar() {
       trabalho = null;
       dados = null;
-      mesh.geometry?.dispose();
-      material.dispose();
+      meshGrama.geometry?.dispose();
+      meshTerra.geometry?.dispose();
+      mats.grama.cubos.dispose();
+      mats.grama.real.dispose();
+      mats.terra.cubos.dispose();
+      mats.terra.real.dispose();
     },
   };
+}
+
+function criarMesh(nome, material) {
+  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+  mesh.name = nome;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.visible = false;
+  return mesh;
 }
 
 function chaveExibidos(set) {
@@ -147,12 +205,39 @@ function chaveExibidos(set) {
   return [...set].sort().join("|");
 }
 
+/** Miolo: o chunk e os oito vizinhos já estão na tela. A anel de fora não entra aqui. */
+function chunkMiolo(key, estaveis) {
+  const i = key.indexOf(",");
+  const cx = Number(key.slice(0, i));
+  const cy = Number(key.slice(i + 1));
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (!estaveis.has(`${cx + dx},${cy + dy}`)) return false;
+    }
+  }
+  return true;
+}
+
 function quadCoberto(quad, estaveis) {
   if (!quad.chunks.length) return false;
   for (let i = 0; i < quad.chunks.length; i++) {
-    if (!estaveis.has(quad.chunks[i])) return false;
+    if (!chunkMiolo(quad.chunks[i], estaveis)) return false;
   }
   return true;
+}
+
+function recortar(mesh, parte, estaveis) {
+  if (!parte?.quads?.length || !mesh.geometry?.getAttribute("position")) {
+    mesh.visible = false;
+    return;
+  }
+  const idx = [];
+  for (const q of parte.quads) {
+    if (quadCoberto(q, estaveis)) continue;
+    idx.push(q.i0, q.i2, q.i1, q.i1, q.i2, q.i3);
+  }
+  mesh.visible = idx.length > 0;
+  if (idx.length) mesh.geometry.setIndex(idx);
 }
 
 function chunksDoQuad(x, y, passo) {
@@ -167,12 +252,19 @@ function chunksDoQuad(x, y, passo) {
   return lista;
 }
 
-function criarGeometria(dados) {
+/** Mesma escolha do topo do bloco: terra/pedra, ou coluna com 2 ou mais de altura. */
+function usaTerraTopo(wx, wy, altura) {
+  const id = superficieDoRelevo(wx, wy);
+  return id === BLOCO.TERRA || id === BLOCO.PEDRA || altura >= 2;
+}
+
+function criarGeometria(parte) {
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(dados.pos, 3));
-  geo.setAttribute("color", new THREE.Float32BufferAttribute(dados.cor, 3));
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(parte.pos, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(parte.cor, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(parte.uv, 2));
   const todos = [];
-  for (const q of dados.quads) todos.push(q.i0, q.i2, q.i1, q.i1, q.i2, q.i3);
+  for (const q of parte.quads) todos.push(q.i0, q.i2, q.i1, q.i1, q.i2, q.i3);
   geo.setIndex(todos);
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
@@ -188,21 +280,30 @@ function* gerarMalha(px, py, raioSuave) {
   const x1 = Math.ceil((px + alcance) / passo) * passo;
   const y1 = Math.ceil((py + alcance) / passo) * passo;
 
-  const pos = [];
-  const cor = [];
-  const quads = [];
-  const mapa = new Map();
+  const cache = new Map();
+  const grama = balde();
+  const terra = balde();
 
-  function vertice(wx, wy) {
+  function amostra(wx, wy) {
     const k = `${wx},${wy}`;
-    let i = mapa.get(k);
-    if (i !== undefined) return i;
-    i = pos.length / 3;
-    mapa.set(k, i);
+    let a = cache.get(k);
+    if (a) return a;
     const h = alturaDoRelevo(wx, wy);
-    const [r, g, b] = rgbBioma(wx, wy, false);
-    pos.push(wx, h - 0.05, wy);
-    cor.push(r, g, b);
+    a = { h, cor: rgbBioma(wx, wy, false) };
+    cache.set(k, a);
+    return a;
+  }
+
+  function por(destino, wx, wy) {
+    const k = `${wx},${wy}`;
+    let i = destino.mapa.get(k);
+    if (i !== undefined) return i;
+    const a = amostra(wx, wy);
+    i = destino.pos.length / 3;
+    destino.mapa.set(k, i);
+    destino.pos.push(wx, a.h - 0.05, wy);
+    destino.uv.push(wx, -wy);
+    destino.cor.push(a.cor[0], a.cor[1], a.cor[2]);
     return i;
   }
 
@@ -212,15 +313,27 @@ function* gerarMalha(px, py, raioSuave) {
       const mx = x + passo * 0.5 - px;
       const my = y + passo * 0.5 - py;
       if (mx * mx + my * my > alcance2) continue;
-      const i0 = vertice(x, y);
-      const i1 = vertice(x + passo, y);
-      const i2 = vertice(x, y + passo);
-      const i3 = vertice(x + passo, y + passo);
-      quads.push({ i0, i1, i2, i3, chunks: chunksDoQuad(x, y, passo) });
+      const hs = [
+        amostra(x, y).h,
+        amostra(x + passo, y).h,
+        amostra(x, y + passo).h,
+        amostra(x + passo, y + passo).h,
+      ];
+      const media = (hs[0] + hs[1] + hs[2] + hs[3]) * 0.25;
+      const destino = usaTerraTopo(x + passo * 0.5, y + passo * 0.5, media) ? terra : grama;
+      const i0 = por(destino, x, y);
+      const i1 = por(destino, x + passo, y);
+      const i2 = por(destino, x, y + passo);
+      const i3 = por(destino, x + passo, y + passo);
+      destino.quads.push({ i0, i1, i2, i3, chunks: chunksDoQuad(x, y, passo) });
       if ((++feitos & 47) === 0) yield;
     }
   }
 
-  if (!quads.length) return null;
-  return { pos, cor, quads };
+  if (!grama.quads.length && !terra.quads.length) return null;
+  return { grama, terra };
+}
+
+function balde() {
+  return { pos: [], cor: [], uv: [], quads: [], mapa: new Map() };
 }

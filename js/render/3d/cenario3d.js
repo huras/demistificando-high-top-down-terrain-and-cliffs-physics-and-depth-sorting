@@ -107,6 +107,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
 
   const terrenoSuave = criarTerrenoSuave();
   terreno.grupo.add(terrenoSuave.mesh);
+  terrenoSuave.aplicarTexturas(terreno.obterTexturasTopo?.());
 
   const vegetacao = criarVegetacaoBillboard3d();
   scene.add(vegetacao.grupo);
@@ -161,10 +162,13 @@ export function iniciarCenario3d(canvas, atlas = null) {
 function aplicarAtlasNaCena(atlas) {
   if (!estado) return;
   estado.terreno.aplicarAtlas?.(atlas);
+  estado.terrenoSuave?.aplicarTexturas?.(estado.terreno.obterTexturasTopo?.());
   estado.vegetacao?.aplicarAtlas?.(atlas);
   estado.personagem.definirSprite?.(atlas?.jogador ?? null);
   estado.agente3d.definirSprite?.(atlas?.jogador ?? null);
-  estado.terreno.aplicarVisual(usarTiles(atlas));
+  const tiles = usarTiles(atlas);
+  estado.terreno.aplicarVisual(tiles);
+  estado.terrenoSuave?.aplicarVisual?.(tiles);
 }
 
 function criarMarcadorAlvoEscalada() {
@@ -217,7 +221,9 @@ export function obterCenario3d() {
 
 export function sincronizarVisualTerreno(atlas) {
   if (!estado) return;
-  estado.terreno.aplicarVisual(usarTiles(atlas));
+  const tiles = usarTiles(atlas);
+  estado.terreno.aplicarVisual(tiles);
+  estado.terrenoSuave?.aplicarVisual?.(tiles);
 }
 
 export function ajustarZoom3d(fator) {

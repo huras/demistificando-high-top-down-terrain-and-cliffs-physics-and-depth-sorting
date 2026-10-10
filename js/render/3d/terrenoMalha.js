@@ -1380,6 +1380,11 @@ export function criarTerrenoMalha(atlas = null) {
       }
     },
     tickMalha,
+    /** Texturas de topo já usadas nos blocos. Não descartar daqui. */
+    obterTexturasTopo() {
+      if (!texturas?.pronto) return null;
+      return { grama: texturas.grama, terra: texturas.terra || texturas.grama };
+    },
     /** Chunks cujo mesh de blocos já está no grupo visível. */
     chunksExibidos() {
       const set = new Set();
