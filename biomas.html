@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Editor de biomas</title>
   <link rel="stylesheet" href="css/bioma-editor.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
   <header class="topo">
@@ -40,17 +48,23 @@
   </div>
 
   <footer class="previas">
-    <figure>
-      <canvas id="prev-regiao" width="200" height="160"></canvas>
-      <figcaption>Regiões</figcaption>
-    </figure>
-    <figure>
-      <canvas id="prev-relevo" width="200" height="160"></canvas>
-      <figcaption>Relevo misturado</figcaption>
-    </figure>
-    <figure>
-      <canvas id="prev-bioma" width="200" height="160"></canvas>
-      <figcaption>Só este bioma</figcaption>
+    <div class="previas__mapas">
+      <figure>
+        <canvas id="prev-regiao" width="200" height="160"></canvas>
+        <figcaption>Regiões</figcaption>
+      </figure>
+      <figure>
+        <canvas id="prev-relevo" width="200" height="160"></canvas>
+        <figcaption>Relevo misturado</figcaption>
+      </figure>
+      <figure>
+        <canvas id="prev-bioma" width="200" height="160"></canvas>
+        <figcaption>Só este bioma</figcaption>
+      </figure>
+    </div>
+    <figure class="previa-3d">
+      <canvas id="prev-3d" aria-label="Prévia 3D do bioma. Arraste para girar, scroll para zoom."></canvas>
+      <figcaption>Arraste para girar · scroll para zoom · direito para mover</figcaption>
     </figure>
   </footer>
 

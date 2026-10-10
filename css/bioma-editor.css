@@ -244,28 +244,77 @@ button, input, select {
 .porta--saida i { right: 2px; }
 
 .previas {
-  display: flex;
-  gap: 18px;
-  padding: 8px 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+  height: clamp(300px, 36vh, 420px);
+  padding: 10px 14px 12px;
   border-top: 1px solid var(--borda);
   background: #18211c;
+}
+
+.previas__mapas {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
 }
 
 .previas figure {
   margin: 0;
 }
 
-.previas canvas {
+.previas__mapas canvas {
   display: block;
-  width: 200px;
-  height: 160px;
+  width: 150px;
+  height: 78px;
   border: 1px solid var(--borda);
   image-rendering: pixelated;
   background: #0c100e;
 }
 
-.previas figcaption {
-  font-size: 0.75rem;
+.previas__mapas figcaption {
+  font-size: 0.72rem;
   color: var(--suave);
-  margin-top: 4px;
+  margin-top: 2px;
+}
+
+.previa-3d {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--borda);
+  background: #0c100e;
+}
+
+.previa-3d canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  image-rendering: auto;
+}
+
+.previa-3d canvas.arrastando {
+  cursor: grabbing;
+}
+
+.previa-3d figcaption {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(12, 16, 14, 0.55);
+  color: #d7efe0;
+  font-size: 0.72rem;
+  pointer-events: none;
 }

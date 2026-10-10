@@ -5,6 +5,7 @@ import {
 } from "../mundo/bioma/catalogo.js";
 import { avaliarGrafo } from "../mundo/bioma/grafo.js";
 import { carregarKits, idsDeKit } from "../mundo/bioma/kits.js";
+import { atualizarPreviewBioma, iniciarPreviewBioma } from "./preview3d.js";
 
 const PORTAS = {
   constante: { entradas: [], saidas: ["Out"] },
@@ -547,6 +548,11 @@ function pintarPreviews() {
       ctxB.fillRect(px * cel, py * cel, cel, cel);
     }
   }
+  atualizarPreviewBioma({
+    bioma,
+    catalogo: dados,
+    seed,
+  });
 }
 
 function pintarPaleta() {
@@ -630,6 +636,12 @@ window.addEventListener("keydown", (ev) => {
 });
 
 await carregarKits();
+try {
+  await iniciarPreviewBioma(document.getElementById("prev-3d"));
+} catch (erro) {
+  console.error(erro);
+  definirStatus("Prévia 3D indisponível.");
+}
 const resposta = await fetch("biomas/mundo.json", { cache: "no-store" });
 dados = await resposta.json();
 pintarPaleta();
