@@ -1,446 +1,846 @@
 {
-  "versao": 1,
-  "escalaRegiao": 220,
+  "versao": 2,
+  "escalaRegiao": 180,
   "semente": 0,
+  "metrosPorBloco": 48,
+  "metrosPorCelula": 1000,
+  "origemMetros": -200,
   "biomas": [
     {
-      "id": "planicie",
-      "nome": "Planície",
-      "cor": "#5aaa45",
+      "id": "plains_a",
+      "nome": "Plains (A)",
+      "cor": "#59a659",
+      "pisoMetros": 5,
+      "faixaMetros": 150,
+      "modo": "unity",
       "superficie": "grama",
-      "arvore": 0.01,
-      "mata": 0.045,
+      "arvore": 0.008,
+      "mata": 0.05,
       "transicao": 18,
       "degrau": 1,
       "nos": [
         {
-          "id": "base",
-          "tipo": "constante",
+          "id": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "tipo": "perlin",
           "x": 36,
-          "y": 48,
-          "valor": 4
+          "y": 36,
+          "amplitude": 1,
+          "escala": 0.5,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 5,
+          "persistencia": 1,
+          "lacunarity": 2,
+          "offsetX": 15.55,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 5
         },
         {
-          "id": "ruido",
-          "tipo": "ruido",
-          "x": 36,
-          "y": 168,
-          "frequencia": 0.028,
-          "oitavas": 3,
-          "semente": 11,
-          "ganho": 2.2
+          "id": "e2268026-1307-485f-86f8-934a35c467f7",
+          "tipo": "mascara",
+          "x": 484,
+          "y": 204,
+          "amplitude": 1,
+          "limiar": 0.48,
+          "suavidade": 0,
+          "inverter": false
         },
         {
-          "id": "soma",
-          "tipo": "somar",
-          "x": 280,
-          "y": 96
-        },
-        {
-          "id": "saida",
+          "id": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "tipo": "saida",
-          "x": 420,
-          "y": 96
-        }
-      ],
-      "ligacoes": [
-        {
-          "de": "base",
-          "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "A"
+          "x": 1260,
+          "y": 204,
+          "amplitude": 1,
+          "semNormalizar": false
         },
         {
-          "de": "ruido",
-          "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "B"
-        },
-        {
-          "de": "soma",
-          "portaDe": "Out",
-          "para": "saida",
-          "portaPara": "In"
-        }
-      ]
-    },
-    {
-      "id": "floresta",
-      "nome": "Floresta",
-      "cor": "#1f6b32",
-      "superficie": "grama",
-      "arvore": 0.055,
-      "mata": 0.1,
-      "transicao": 10,
-      "degrau": 1,
-      "nos": [
-        {
-          "id": "base",
-          "tipo": "constante",
-          "x": 36,
-          "y": 48,
-          "valor": 6
-        },
-        {
-          "id": "ruido",
-          "tipo": "ruido",
-          "x": 36,
-          "y": 168,
-          "frequencia": 0.045,
-          "oitavas": 4,
-          "semente": 29,
-          "ganho": 7
-        },
-        {
-          "id": "soma",
-          "tipo": "somar",
-          "x": 280,
-          "y": 96
-        },
-        {
-          "id": "saida",
-          "tipo": "saida",
-          "x": 420,
-          "y": 96
-        }
-      ],
-      "ligacoes": [
-        {
-          "de": "base",
-          "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "A"
-        },
-        {
-          "de": "ruido",
-          "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "B"
-        },
-        {
-          "de": "soma",
-          "portaDe": "Out",
-          "para": "saida",
-          "portaPara": "In"
-        }
-      ]
-    },
-    {
-      "id": "chapada",
-      "nome": "Chapada",
-      "cor": "#8fa35a",
-      "superficie": "grama",
-      "arvore": 0.006,
-      "mata": 0.025,
-      "transicao": 5,
-      "degrau": 4,
-      "nos": [
-        {
-          "id": "base",
-          "tipo": "constante",
-          "x": 36,
-          "y": 48,
-          "valor": 22
-        },
-        {
-          "id": "ruido",
-          "tipo": "ruido",
-          "x": 36,
-          "y": 168,
-          "frequencia": 0.016,
+          "id": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "tipo": "perlin",
+          "x": 53,
+          "y": 551,
+          "amplitude": 1,
+          "escala": 2,
+          "escalaU": 1,
+          "escalaV": 1,
           "oitavas": 2,
-          "semente": 41,
-          "ganho": 2.4
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 1.25,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
         },
         {
-          "id": "soma",
-          "tipo": "somar",
-          "x": 280,
-          "y": 96
+          "id": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "tipo": "perlin",
+          "x": 484,
+          "y": 574,
+          "amplitude": 1,
+          "escala": 2,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 1,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 100,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
         },
         {
-          "id": "saida",
-          "tipo": "saida",
-          "x": 420,
-          "y": 96
+          "id": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "tipo": "mistura",
+          "x": 860,
+          "y": 330,
+          "amplitude": 1,
+          "mistura": 0.75
         }
       ],
       "ligacoes": [
         {
-          "de": "base",
+          "de": "9130548d-7aab-44f6-b8c9-79d7326f414b",
           "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "A"
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Mask"
         },
         {
-          "de": "ruido",
+          "de": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaDe": "Out",
-          "para": "soma",
+          "para": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
+          "portaPara": "In"
+        },
+        {
+          "de": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "B"
         },
         {
-          "de": "soma",
+          "de": "a7503935-e526-438e-9cd0-7b07e49bd715",
           "portaDe": "Out",
-          "para": "saida",
-          "portaPara": "In"
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Source"
+        },
+        {
+          "de": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaPara": "A"
         }
       ]
     },
     {
-      "id": "deserto",
-      "nome": "Deserto",
-      "cor": "#d2b15a",
+      "id": "desert_a",
+      "nome": "Desert A",
+      "cor": "#d1d988",
+      "pisoMetros": 120,
+      "faixaMetros": 300,
+      "modo": "unity",
       "superficie": "terra",
       "arvore": 0.002,
-      "mata": 0.008,
+      "mata": 0.006,
       "transicao": 16,
       "degrau": 1,
       "nos": [
         {
-          "id": "base",
-          "tipo": "constante",
+          "id": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "tipo": "perlin",
           "x": 36,
-          "y": 48,
-          "valor": 3
+          "y": 36,
+          "amplitude": 1,
+          "escala": 4,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 5,
+          "persistencia": 0.22,
+          "lacunarity": 2,
+          "offsetX": 15.55,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
         },
         {
-          "id": "ruido",
-          "tipo": "ruido",
-          "x": 36,
-          "y": 168,
-          "frequencia": 0.09,
-          "oitavas": 2,
-          "semente": 53,
-          "ganho": 4.5
+          "id": "e2268026-1307-485f-86f8-934a35c467f7",
+          "tipo": "mascara",
+          "x": 484,
+          "y": 204,
+          "amplitude": 1,
+          "limiar": 0.23,
+          "suavidade": 0.6,
+          "inverter": false
         },
         {
-          "id": "soma",
-          "tipo": "somar",
-          "x": 280,
-          "y": 96
-        },
-        {
-          "id": "saida",
+          "id": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "tipo": "saida",
-          "x": 420,
-          "y": 96
+          "x": 1260,
+          "y": 204,
+          "amplitude": 1,
+          "semNormalizar": false
+        },
+        {
+          "id": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "tipo": "perlin",
+          "x": 53,
+          "y": 551,
+          "amplitude": 1,
+          "escala": 2,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 2,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 1.25,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "tipo": "perlin",
+          "x": 484,
+          "y": 574,
+          "amplitude": 1,
+          "escala": 3,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 1,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 100,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "tipo": "mistura",
+          "x": 860,
+          "y": 330,
+          "amplitude": 1,
+          "mistura": 0.65
         }
       ],
       "ligacoes": [
         {
-          "de": "base",
+          "de": "9130548d-7aab-44f6-b8c9-79d7326f414b",
           "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "A"
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Mask"
         },
         {
-          "de": "ruido",
+          "de": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "B"
-        },
-        {
-          "de": "soma",
-          "portaDe": "Out",
-          "para": "saida",
+          "para": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "portaPara": "In"
+        },
+        {
+          "de": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaPara": "B"
         }
       ]
     },
     {
-      "id": "gelo",
-      "nome": "Gelo",
-      "cor": "#c5dce8",
-      "superficie": "grama",
-      "arvore": 0,
+      "id": "Canyons_a",
+      "nome": "Canyon (A)",
+      "cor": "#672f03",
+      "pisoMetros": 80,
+      "faixaMetros": 320,
+      "modo": "unity",
+      "superficie": "terra",
+      "arvore": 0.004,
       "mata": 0.012,
       "transicao": 8,
-      "degrau": 2,
+      "degrau": 1,
       "nos": [
         {
-          "id": "base",
-          "tipo": "constante",
+          "id": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "tipo": "perlin",
           "x": 36,
-          "y": 48,
-          "valor": 12
+          "y": 36,
+          "amplitude": 1,
+          "escala": 1.75,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 5,
+          "persistencia": 0.22,
+          "lacunarity": 2,
+          "offsetX": 15.55,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 2
         },
         {
-          "id": "ruido",
-          "tipo": "ruido",
-          "x": 36,
-          "y": 168,
-          "frequencia": 0.012,
-          "oitavas": 2,
-          "semente": 67,
-          "ganho": 4
+          "id": "e2268026-1307-485f-86f8-934a35c467f7",
+          "tipo": "mascara",
+          "x": 484,
+          "y": 204,
+          "amplitude": 1,
+          "limiar": 0.72,
+          "suavidade": 0,
+          "inverter": false
         },
         {
-          "id": "soma",
-          "tipo": "somar",
-          "x": 280,
-          "y": 96
-        },
-        {
-          "id": "saida",
+          "id": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "tipo": "saida",
-          "x": 420,
-          "y": 96
+          "x": 1260,
+          "y": 204,
+          "amplitude": 1,
+          "semNormalizar": false
+        },
+        {
+          "id": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "tipo": "perlin",
+          "x": 53,
+          "y": 551,
+          "amplitude": 1,
+          "escala": 1,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 2,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 1.25,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "tipo": "perlin",
+          "x": 484,
+          "y": 574,
+          "amplitude": 1,
+          "escala": 2,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 1,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 100,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "tipo": "mistura",
+          "x": 860,
+          "y": 330,
+          "amplitude": 1,
+          "mistura": 0.18
         }
       ],
       "ligacoes": [
         {
-          "de": "base",
+          "de": "a7503935-e526-438e-9cd0-7b07e49bd715",
           "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "A"
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Source"
         },
         {
-          "de": "ruido",
+          "de": "9130548d-7aab-44f6-b8c9-79d7326f414b",
           "portaDe": "Out",
-          "para": "soma",
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Mask"
+        },
+        {
+          "de": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaDe": "Out",
+          "para": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
+          "portaPara": "In"
+        },
+        {
+          "de": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "B"
         },
         {
-          "de": "soma",
+          "de": "e2268026-1307-485f-86f8-934a35c467f7",
           "portaDe": "Out",
-          "para": "saida",
-          "portaPara": "In"
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaPara": "A"
         }
       ]
     },
     {
-      "id": "vulcao",
-      "nome": "Vulcão",
-      "cor": "#c45a28",
+      "id": "rocky_peaks_a",
+      "nome": "Rocky Peaks A",
+      "cor": "#373737",
+      "pisoMetros": 100,
+      "faixaMetros": 2450,
+      "modo": "unity",
       "superficie": "pedra",
       "arvore": 0,
       "mata": 0,
-      "transicao": 6,
-      "degrau": 2,
+      "transicao": 8,
+      "degrau": 1,
       "nos": [
         {
-          "id": "base",
-          "tipo": "constante",
+          "id": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "tipo": "perlin",
           "x": 36,
           "y": 36,
-          "valor": 10
-        },
-        {
-          "id": "ruido",
-          "tipo": "ruido",
-          "x": 36,
-          "y": 160,
-          "frequencia": 0.02,
+          "amplitude": 1,
+          "escala": 0.5,
+          "escalaU": 1,
+          "escalaV": 1,
           "oitavas": 3,
-          "semente": 83,
-          "ganho": 14
+          "persistencia": 0.56,
+          "lacunarity": 2,
+          "offsetX": 15.55,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 1
         },
         {
-          "id": "soma",
-          "tipo": "somar",
-          "x": 260,
-          "y": 80
+          "id": "e2268026-1307-485f-86f8-934a35c467f7",
+          "tipo": "mascara",
+          "x": 484,
+          "y": 204,
+          "amplitude": 1,
+          "limiar": 0.53,
+          "suavidade": 1,
+          "inverter": false
         },
         {
-          "id": "cratera",
-          "tipo": "cratera",
-          "x": 460,
-          "y": 80,
-          "limiar": 18,
-          "profundidade": 1.3
-        },
-        {
-          "id": "saida",
+          "id": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "tipo": "saida",
-          "x": 680,
-          "y": 96
+          "x": 1260,
+          "y": 204,
+          "amplitude": 1,
+          "semNormalizar": false
+        },
+        {
+          "id": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "tipo": "perlin",
+          "x": 53,
+          "y": 551,
+          "amplitude": 0.25,
+          "escala": 4,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 2,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 1.25,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "tipo": "perlin",
+          "x": 484,
+          "y": 574,
+          "amplitude": 0.25,
+          "escala": 8,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 1,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 100,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "tipo": "mistura",
+          "x": 860,
+          "y": 330,
+          "amplitude": 1,
+          "mistura": 0.44
         }
       ],
       "ligacoes": [
         {
-          "de": "base",
+          "de": "9130548d-7aab-44f6-b8c9-79d7326f414b",
           "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "A"
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Mask"
         },
         {
-          "de": "ruido",
+          "de": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
           "portaDe": "Out",
-          "para": "soma",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaPara": "B"
         },
         {
-          "de": "soma",
+          "de": "a7503935-e526-438e-9cd0-7b07e49bd715",
           "portaDe": "Out",
-          "para": "cratera",
-          "portaPara": "In"
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Source"
         },
         {
-          "de": "cratera",
+          "de": "e2268026-1307-485f-86f8-934a35c467f7",
           "portaDe": "Out",
-          "para": "saida",
+          "para": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "portaPara": "In"
         }
       ]
     },
     {
-      "id": "pantano",
-      "nome": "Pântano",
-      "cor": "#3e6b52",
+      "id": "Ice_Hight_Steps_a",
+      "nome": "Ice Hight Steps (A)",
+      "cor": "#e5e3e3",
+      "pisoMetros": 420,
+      "faixaMetros": 1780,
+      "modo": "unity",
       "superficie": "grama",
-      "arvore": 0.012,
-      "mata": 0.16,
+      "arvore": 0,
+      "mata": 0.004,
+      "transicao": 6,
+      "degrau": 1,
+      "nos": [
+        {
+          "id": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "tipo": "perlin",
+          "x": 36,
+          "y": 36,
+          "amplitude": 1,
+          "escala": 0.75,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 5,
+          "persistencia": 0.22,
+          "lacunarity": 2,
+          "offsetX": 15.55,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 16
+        },
+        {
+          "id": "e2268026-1307-485f-86f8-934a35c467f7",
+          "tipo": "mascara",
+          "x": 484,
+          "y": 204,
+          "amplitude": 1,
+          "limiar": 0.72,
+          "suavidade": 0,
+          "inverter": false
+        },
+        {
+          "id": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
+          "tipo": "saida",
+          "x": 1260,
+          "y": 204,
+          "amplitude": 1,
+          "semNormalizar": false
+        },
+        {
+          "id": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "tipo": "perlin",
+          "x": 53,
+          "y": 551,
+          "amplitude": 1,
+          "escala": 1,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 2,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 1.25,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "tipo": "perlin",
+          "x": 484,
+          "y": 574,
+          "amplitude": 1,
+          "escala": 2,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 1,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 100,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "tipo": "mistura",
+          "x": 860,
+          "y": 330,
+          "amplitude": 1,
+          "mistura": 0.18
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "portaDe": "Out",
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Source"
+        },
+        {
+          "de": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "portaDe": "Out",
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Mask"
+        },
+        {
+          "de": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaDe": "Out",
+          "para": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
+          "portaPara": "In"
+        },
+        {
+          "de": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaPara": "B"
+        },
+        {
+          "de": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaPara": "A"
+        }
+      ]
+    },
+    {
+      "id": "Ice_Canyons_a",
+      "nome": "Ice Canyon (A)",
+      "cor": "#ffffff",
+      "pisoMetros": 420,
+      "faixaMetros": 1780,
+      "modo": "unity",
+      "superficie": "grama",
+      "arvore": 0,
+      "mata": 0.004,
+      "transicao": 8,
+      "degrau": 1,
+      "nos": [
+        {
+          "id": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "tipo": "perlin",
+          "x": 36,
+          "y": 36,
+          "amplitude": 1,
+          "escala": 0.75,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 5,
+          "persistencia": 0.22,
+          "lacunarity": 2,
+          "offsetX": 15.55,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 8
+        },
+        {
+          "id": "e2268026-1307-485f-86f8-934a35c467f7",
+          "tipo": "mascara",
+          "x": 484,
+          "y": 204,
+          "amplitude": 1,
+          "limiar": 0.72,
+          "suavidade": 0,
+          "inverter": false
+        },
+        {
+          "id": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
+          "tipo": "saida",
+          "x": 1260,
+          "y": 204,
+          "amplitude": 1,
+          "semNormalizar": false
+        },
+        {
+          "id": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "tipo": "perlin",
+          "x": 53,
+          "y": 551,
+          "amplitude": 1,
+          "escala": 1,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 2,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 1.25,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "tipo": "perlin",
+          "x": 484,
+          "y": 574,
+          "amplitude": 0.25,
+          "escala": 2,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 1,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 100,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "tipo": "mistura",
+          "x": 860,
+          "y": 330,
+          "amplitude": 1,
+          "mistura": 0.18
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "portaDe": "Out",
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Source"
+        },
+        {
+          "de": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "portaDe": "Out",
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Mask"
+        },
+        {
+          "de": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaDe": "Out",
+          "para": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
+          "portaPara": "In"
+        },
+        {
+          "de": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaPara": "B"
+        },
+        {
+          "de": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaPara": "A"
+        }
+      ]
+    },
+    {
+      "id": "ocean_a",
+      "nome": "Ocean A",
+      "cor": "#001fdd",
+      "pisoMetros": -200,
+      "faixaMetros": 150,
+      "modo": "unity",
+      "superficie": "grama",
+      "arvore": 0,
+      "mata": 0,
       "transicao": 22,
       "degrau": 1,
       "nos": [
         {
-          "id": "base",
-          "tipo": "constante",
+          "id": "a7503935-e526-438e-9cd0-7b07e49bd715",
+          "tipo": "perlin",
           "x": 36,
-          "y": 48,
-          "valor": 2
+          "y": 36,
+          "amplitude": 1,
+          "escala": 4,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 5,
+          "persistencia": 0.22,
+          "lacunarity": 2,
+          "offsetX": 15.55,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
         },
         {
-          "id": "ruido",
-          "tipo": "ruido",
-          "x": 36,
-          "y": 168,
-          "frequencia": 0.06,
-          "oitavas": 2,
-          "semente": 97,
-          "ganho": 1.2
+          "id": "e2268026-1307-485f-86f8-934a35c467f7",
+          "tipo": "mascara",
+          "x": 484,
+          "y": 204,
+          "amplitude": 1,
+          "limiar": 0.23,
+          "suavidade": 0.6,
+          "inverter": false
         },
         {
-          "id": "soma",
-          "tipo": "somar",
-          "x": 280,
-          "y": 96
-        },
-        {
-          "id": "saida",
+          "id": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "tipo": "saida",
-          "x": 420,
-          "y": 96
+          "x": 1260,
+          "y": 204,
+          "amplitude": 1,
+          "semNormalizar": false
+        },
+        {
+          "id": "9130548d-7aab-44f6-b8c9-79d7326f414b",
+          "tipo": "perlin",
+          "x": 53,
+          "y": 551,
+          "amplitude": 1,
+          "escala": 2,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 2,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 1.25,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "tipo": "perlin",
+          "x": 484,
+          "y": 574,
+          "amplitude": 1,
+          "escala": 2,
+          "escalaU": 1,
+          "escalaV": 1,
+          "oitavas": 1,
+          "persistencia": 0.5,
+          "lacunarity": 2,
+          "offsetX": 100,
+          "offsetY": 0,
+          "inverter": false,
+          "degraus": 0
+        },
+        {
+          "id": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "tipo": "mistura",
+          "x": 860,
+          "y": 330,
+          "amplitude": 1,
+          "mistura": 0.65
         }
       ],
       "ligacoes": [
         {
-          "de": "base",
+          "de": "9130548d-7aab-44f6-b8c9-79d7326f414b",
           "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "A"
+          "para": "e2268026-1307-485f-86f8-934a35c467f7",
+          "portaPara": "Mask"
         },
         {
-          "de": "ruido",
+          "de": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
           "portaDe": "Out",
-          "para": "soma",
-          "portaPara": "B"
-        },
-        {
-          "de": "soma",
-          "portaDe": "Out",
-          "para": "saida",
+          "para": "4d259705-a912-49d5-aea3-e8c12a4e5be7",
           "portaPara": "In"
+        },
+        {
+          "de": "a801fdd5-12e0-4506-a66a-7b387fbd75f2",
+          "portaDe": "Out",
+          "para": "25b05d56-01a3-40b2-ae53-5befc57b9d78",
+          "portaPara": "B"
         }
       ]
     }

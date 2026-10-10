@@ -8,8 +8,12 @@ import { avaliarGrafo } from "../mundo/bioma/grafo.js";
 const PORTAS = {
   constante: { entradas: [], saidas: ["Out"] },
   ruido: { entradas: [], saidas: ["Out"] },
+  perlin: { entradas: [], saidas: ["Out"] },
+  queda: { entradas: [], saidas: ["Out"] },
   somar: { entradas: ["A", "B"], saidas: ["Out"] },
   multiplicar: { entradas: ["A", "B"], saidas: ["Out"] },
+  mistura: { entradas: ["A", "B"], saidas: ["Out"] },
+  mascara: { entradas: ["Source", "Mask"], saidas: ["Out"] },
   terraco: { entradas: ["In"], saidas: ["Out"] },
   achatar: { entradas: ["In"], saidas: ["Out"] },
   limitar: { entradas: ["In"], saidas: ["Out"] },
@@ -20,8 +24,12 @@ const PORTAS = {
 const ROTULOS = {
   constante: "Constante",
   ruido: "Ruído",
+  perlin: "Perlin",
+  queda: "Queda",
   somar: "Somar",
   multiplicar: "Multiplicar",
+  mistura: "Mistura",
+  mascara: "Máscara",
   terraco: "Terraço",
   achatar: "Achatar",
   limitar: "Limitar",
@@ -68,6 +76,38 @@ function criarNo(tipo) {
     x: 80 + (biomaAtual().nos.length % 5) * 28,
     y: 80 + (biomaAtual().nos.length % 4) * 36,
   };
+  if (tipo === "perlin") {
+    no.escala = 2;
+    no.escalaU = 1;
+    no.escalaV = 1;
+    no.oitavas = 4;
+    no.persistencia = 0.5;
+    no.lacunarity = 2;
+    no.offsetX = 0;
+    no.offsetY = 0;
+    no.degraus = 0;
+    no.inverter = false;
+    no.amplitude = 1;
+  }
+  if (tipo === "queda") {
+    no.centroU = 0.5;
+    no.centroV = 0.5;
+    no.raioInterno = 0;
+    no.raioExterno = 0.5;
+    no.expoente = 1;
+    no.inverter = false;
+    no.amplitude = 1;
+  }
+  if (tipo === "mistura") {
+    no.mistura = 0.5;
+    no.amplitude = 1;
+  }
+  if (tipo === "mascara") {
+    no.limiar = 0.5;
+    no.suavidade = 0;
+    no.inverter = false;
+    no.amplitude = 1;
+  }
   if (tipo === "constante") no.valor = 4;
   if (tipo === "ruido") {
     no.frequencia = 0.03;
@@ -352,6 +392,38 @@ function pintarInspector() {
   titulo.style.fontSize = "0.95rem";
   inspectorEl.append(titulo);
 
+  if (no.tipo === "perlin") {
+    inspectorEl.append(
+      campo("Escala", no.escala, (v) => { no.escala = v; }),
+      campo("Escala U", no.escalaU, (v) => { no.escalaU = v; }),
+      campo("Escala V", no.escalaV, (v) => { no.escalaV = v; }),
+      campo("Oitavas", no.oitavas, (v) => { no.oitavas = v; }),
+      campo("Persistência", no.persistencia, (v) => { no.persistencia = v; }),
+      campo("Lacunarity", no.lacunarity, (v) => { no.lacunarity = v; }),
+      campo("Offset X", no.offsetX, (v) => { no.offsetX = v; }),
+      campo("Offset Y", no.offsetY, (v) => { no.offsetY = v; }),
+      campo("Degraus", no.degraus, (v) => { no.degraus = v; }),
+      campo("Amplitude", no.amplitude, (v) => { no.amplitude = v; }),
+    );
+  }
+  if (no.tipo === "queda") {
+    inspectorEl.append(
+      campo("Centro U", no.centroU, (v) => { no.centroU = v; }),
+      campo("Centro V", no.centroV, (v) => { no.centroV = v; }),
+      campo("Raio interno", no.raioInterno, (v) => { no.raioInterno = v; }),
+      campo("Raio externo", no.raioExterno, (v) => { no.raioExterno = v; }),
+      campo("Expoente", no.expoente, (v) => { no.expoente = v; }),
+    );
+  }
+  if (no.tipo === "mistura") {
+    inspectorEl.append(campo("Mistura", no.mistura, (v) => { no.mistura = v; }));
+  }
+  if (no.tipo === "mascara") {
+    inspectorEl.append(
+      campo("Limiar", no.limiar, (v) => { no.limiar = v; }),
+      campo("Suavidade", no.suavidade, (v) => { no.suavidade = v; }),
+    );
+  }
   if (no.tipo === "constante") {
     inspectorEl.append(campo("Valor", no.valor, (v) => { no.valor = v; }));
   }
@@ -419,7 +491,7 @@ function pintarPreviews() {
       ctxR.fillStyle = dom?.cor || "#333";
       ctxR.fillRect(px, py, cel, cel);
       const h = alturaDoRelevo(wx, wy, dados, seed);
-      const t = Math.max(0, Math.min(1, h / 32));
+      const t = Math.max(0, Math.min(1, h / 60));
       const c = Math.floor(30 + t * 210);
       ctxH.fillStyle = `rgb(${c},${Math.floor(c * 0.86)},${Math.floor(80 + t * 40)})`;
       ctxH.fillRect(px, py, cel, cel);
@@ -432,7 +504,10 @@ function pintarPreviews() {
   const alturas = new Float32Array(cols * rows);
   for (let py = 0; py < rows; py++) {
     for (let px = 0; px < cols; px++) {
-      const h = avaliarGrafo(bioma, px * 4, py * 4, seed);
+      const h = avaliarGrafo(bioma, px * 10, py * 10, seed, {
+        metrosPorBloco: Number(dados.metrosPorBloco) || 48,
+        metrosPorCelula: Number(dados.metrosPorCelula) || 1000,
+      });
       alturas[py * cols + px] = h;
       if (h < min) min = h;
       if (h > max) max = h;

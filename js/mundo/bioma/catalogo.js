@@ -76,15 +76,35 @@ export function amostrarRegiao(wx, wy, catalogo = dados, seed = semente) {
 function snap(h, degrau) {
   const d = Math.max(1, Number(degrau) || 1);
   const q = Math.round(h / d) * d;
-  return Math.max(1, Math.min(40, q));
+  return Math.max(1, Math.min(60, q));
+}
+
+function contexto(catalogo) {
+  return {
+    metrosPorBloco: Number(catalogo?.metrosPorBloco) || 48,
+    metrosPorCelula: Number(catalogo?.metrosPorCelula) || 1000,
+  };
+}
+
+/** Blocos. Grafo Unity (0..1) vira metros e depois blocos, com a mesma escala para todos. */
+function alturaContinua(bioma, wx, wy, seed, catalogo) {
+  const n = avaliarGrafo(bioma, wx, wy, seed, contexto(catalogo));
+  if (bioma?.modo !== "unity") return n;
+  const piso = Number(bioma.pisoMetros) || 0;
+  const faixa = Number(bioma.faixaMetros) || 1;
+  const metros = piso + Math.max(0, Math.min(1, n)) * faixa;
+  const origem = Number(catalogo?.origemMetros);
+  const base = Number.isFinite(origem) ? origem : -200;
+  const mpb = Number(catalogo?.metrosPorBloco) || 48;
+  return (metros - base) / mpb;
 }
 
 /** Altura em blocos, já com mistura de borda e degrau. */
 export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   const reg = amostrarRegiao(wx, wy, catalogo, seed);
   if (!reg) return 4;
-  const ha = avaliarGrafo(reg.a, wx, wy, seed);
-  const hb = avaliarGrafo(reg.b, wx, wy, seed);
+  const ha = alturaContinua(reg.a, wx, wy, seed, catalogo);
+  const hb = alturaContinua(reg.b, wx, wy, seed, catalogo);
   const mistura = ha * reg.dominio + hb * (1 - reg.dominio);
   const degrau =
     reg.dominio > 0.85
