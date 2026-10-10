@@ -32,9 +32,15 @@ export function obterSementeBioma() {
   return semente;
 }
 
+function suave01(t) {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * (3 - 2 * x);
+}
+
 /**
  * Duas regiões mais próximas (Voronoi com centro jitterado).
- * dominio = 1 no miolo de A, cai na borda até 0.
+ * dominio = peso de A: 1 no miolo, 0.5 na borda.
+ * Na borda os dois lados valem metade, senão a faixa vira A, B, A, B.
  */
 export function amostrarRegiao(wx, wy, catalogo = dados, seed = semente) {
   const biomas = catalogo?.biomas || [];
@@ -75,7 +81,8 @@ export function amostrarRegiao(wx, wy, catalogo = dados, seed = semente) {
     (Math.max(1, Number(melhor.bioma.transicao) || 8) +
       Math.max(1, Number(segundo.bioma.transicao) || 8)) *
     0.5;
-  const dominio = Math.max(0, Math.min(1, (db - da) / largura));
+  const perto = suave01((db - da) / largura);
+  const dominio = 0.5 + 0.5 * perto;
   return { a: melhor.bioma, b: segundo.bioma, dominio };
 }
 
@@ -105,11 +112,15 @@ function alturaContinua(bioma, wx, wy, seed, catalogo) {
   return (metros - base) / mpb;
 }
 
-/** Altura em blocos do bioma mais próximo, sem média na borda. */
+/** Altura em blocos. Na faixa da borda, A e B se misturam; no miolo fica o degrau do bioma. */
 export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   const reg = amostrarRegiao(wx, wy, catalogo, seed);
   if (!reg) return 4;
-  return snap(alturaContinua(reg.a, wx, wy, seed, catalogo), reg.a.degrau);
+  const ha = alturaContinua(reg.a, wx, wy, seed, catalogo);
+  const hb = alturaContinua(reg.b, wx, wy, seed, catalogo);
+  const mistura = ha * reg.dominio + hb * (1 - reg.dominio);
+  const degrau = reg.dominio > 0.92 ? reg.a.degrau : 1;
+  return snap(mistura, degrau);
 }
 
 export function biomaDominante(wx, wy, catalogo = dados, seed = semente) {

@@ -1,4 +1,4 @@
-import { biomaDominante } from "./catalogo.js";
+import { amostrarRegiao } from "./catalogo.js";
 
 /**
  * Os dois gelos do Unity são quase brancos e somem em cima da grama.
@@ -11,17 +11,35 @@ const COR_VISUAL = {
 
 let cacheX = 1e9;
 let cacheY = 1e9;
-let cacheBioma = null;
+let cacheRgb = [0.49, 0.81, 0.42];
 
-function biomaEm(wx, wy) {
+function corDe(bioma) {
+  const hex = (bioma && COR_VISUAL[bioma.id]) || bioma?.cor || "#7dce6a";
+  const [r, g, b] = rgbDeHex(hex);
+  return [r / 255, g / 255, b / 255];
+}
+
+function misturaEm(wx, wy) {
   const x = wx | 0;
   const y = wy | 0;
   if (x !== cacheX || y !== cacheY) {
     cacheX = x;
     cacheY = y;
-    cacheBioma = biomaDominante(x, y);
+    const reg = amostrarRegiao(x, y);
+    if (!reg) {
+      cacheRgb = [0.49, 0.81, 0.42];
+    } else {
+      const a = corDe(reg.a);
+      const b = corDe(reg.b);
+      const t = reg.dominio;
+      cacheRgb = [
+        a[0] * t + b[0] * (1 - t),
+        a[1] * t + b[1] * (1 - t),
+        a[2] * t + b[2] * (1 - t),
+      ];
+    }
   }
-  return cacheBioma;
+  return cacheRgb;
 }
 
 function rgbDeHex(hex) {
@@ -39,13 +57,11 @@ function hexDe(r, g, b) {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-/** Cor do bioma em 0..1. Parede um pouco mais escura que o topo. */
+/** Cor do bioma em 0..1. Na borda, mistura com o vizinho. Parede um pouco mais escura. */
 export function rgbBioma(wx, wy, parede = false) {
-  const b = biomaEm(wx, wy);
-  const hex = (b && COR_VISUAL[b.id]) || b?.cor || "#7dce6a";
-  const [r, g, bb] = rgbDeHex(hex);
+  const [r, g, b] = misturaEm(wx, wy);
   const esc = parede ? 0.78 : 1;
-  return [(r / 255) * esc, (g / 255) * esc, (bb / 255) * esc];
+  return [r * esc, g * esc, b * esc];
 }
 
 export function hexBioma(wx, wy, parede = false) {
