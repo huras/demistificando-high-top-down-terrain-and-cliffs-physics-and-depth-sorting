@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { JOGADOR_FRAME } from "../../config.js";
+import { ALTURA_BLOCO, JOGADOR_FRAME } from "../../config.js";
 import { colunaAgua } from "../../mundo/agua/fluxo.js";
 import { criarAsaDelta3d } from "./asaDelta3d.js";
 import { linhaFacingDoCorpo } from "./facingCamera3d.js";
@@ -121,12 +121,12 @@ export function criarPersonagem3d(opts = {}) {
     atualizar(corpoEstado, camera = null, yawCam = 0) {
       const elev =
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
-      grupo.position.set(corpoEstado.x, elev, corpoEstado.y);
+      grupo.position.set(corpoEstado.x, elev * ALTURA_BLOCO, corpoEstado.y);
 
       const agua = colunaAgua(corpoEstado.x, corpoEstado.y);
       const imerso = agua.superficie > 0 && elev < agua.superficie - 0.05;
       veu.visible = imerso && sprite.visible;
-      if (imerso) planoVeu.constant = agua.superficie;
+      if (imerso) planoVeu.constant = agua.superficie * ALTURA_BLOCO;
 
       const yaw =
         yawCam != null && Number.isFinite(yawCam)

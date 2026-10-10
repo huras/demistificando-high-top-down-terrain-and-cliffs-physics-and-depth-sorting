@@ -1,4 +1,9 @@
-import { ALCANCE_EDICAO, CHUNK_Y } from "../../config.js";
+import {
+  ALCANCE_EDICAO,
+  ALTURA_BLOCO,
+  CAMERA3D_OLHAR_Y,
+  CHUNK_Y,
+} from "../../config.js";
 import { obterBloco } from "./storeMundo.js";
 import { ehLiquido, ehSolido } from "./tiposBloco.js";
 
@@ -136,18 +141,38 @@ export function direcaoCamera3d(camera) {
 }
 
 /**
- * Ray a partir dos olhos do jogador na direção da câmera 3D.
+ * Ray da cruz (forward da câmera). Origem projetada nos olhos
+ * para não acertar bloco entre a câmera e o corpo — inclusive para cima.
  * Three: (x, y_altura, z_horiz) ↔ mundo (x, y_horiz, z_altura).
  */
 export function alvoBloco3d(corpo, camera3d, maxDist = ALCANCE_EDICAO) {
-  const elev = (corpo.elevacao ?? corpo.z ?? 0) + 1.2;
   const cam = camera3d.cam ?? camera3d;
   cam.updateMatrixWorld?.(true);
   const m = cam.matrixWorld.elements;
+  const cx = m[12];
+  const cAlt = m[13];
+  const cz = m[14];
   const fwx = -m[8];
-  const fwAltura = -m[9];
-  const fwHorizY = -m[10];
-  return raycastVoxel(corpo.x, corpo.y, elev, fwx, fwHorizY, fwAltura, maxDist);
+  const fwAlt = -m[9];
+  const fwZ = -m[10];
+
+  const pes = corpo.elevacao ?? corpo.z ?? 0;
+  const olhoAlt = pes * ALTURA_BLOCO + CAMERA3D_OLHAR_Y;
+  const aoOlhoX = corpo.x - cx;
+  const aoOlhoAlt = olhoAlt - cAlt;
+  const aoOlhoZ = corpo.y - cz;
+  let t = aoOlhoX * fwx + aoOlhoAlt * fwAlt + aoOlhoZ * fwZ;
+  if (!(t > 0.2)) t = 0.2;
+
+  return raycastVoxel(
+    cx + fwx * t,
+    cz + fwZ * t,
+    (cAlt + fwAlt * t) / ALTURA_BLOCO,
+    fwx,
+    fwZ,
+    fwAlt / ALTURA_BLOCO,
+    maxDist,
+  );
 }
 
 /** Expõe vizinho ar na face atingida (pra highlight). */

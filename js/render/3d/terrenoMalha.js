@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
+  ALTURA_BLOCO,
   CHUNK_XZ,
   CHUNK_Y,
   MESH_CHUNKS_POR_FRAME,
@@ -1025,6 +1026,7 @@ function construirProps() {
 export function criarTerrenoMalha(atlas = null) {
   const grupo = new THREE.Group();
   grupo.name = "terreno";
+  grupo.scale.set(1, ALTURA_BLOCO, 1);
 
   const grupoCubos = new THREE.Group();
   grupoCubos.name = "terreno-cubos";

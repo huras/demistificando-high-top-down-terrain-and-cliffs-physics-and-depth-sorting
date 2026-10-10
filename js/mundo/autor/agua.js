@@ -22,7 +22,12 @@ export function celulaAguaDemo(wx, wy) {
     if (x >= 8 && x <= 14) return { piso: 6, a0: 6, a1: 7 };
     return { piso: 7 };
   }
-  if (y === 41 && x >= 8 && x <= 14) return { piso: 1, a0: 4, a1: 7 };
+  // Queda sem piso: um sólido em z=1 desenhava grama na frente do lago
+  // e abria um vão entre a cortina de cima e a água de baixo.
+  if (y === 41 && x >= 6 && x <= 16) {
+    if (x >= 8 && x <= 14) return { piso: 0, a0: 4, a1: 7 };
+    return { piso: 7 };
+  }
 
   if (x >= 6 && x <= 18 && y >= 42 && y <= 52) {
     const inlet = y === 42 && x >= 8 && x <= 14;
@@ -60,19 +65,31 @@ export function aplicarAguaDemo(chunk) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const spec = celulaAguaDemo(baseX + lx, baseY + ly);
       if (!spec) continue;
-      const piso = Math.max(1, Math.min(CHUNK_Y - 1, spec.piso | 0));
-      for (let lz = 0; lz < piso; lz++) {
-        const id = idPiso(lz, piso);
-        if ((obterLocal(chunk, lx, ly, lz) | 0) !== id) {
-          definirLocal(chunk, lx, ly, lz, id);
-          tocado = true;
+      const pisoBruto = spec.piso | 0;
+      const piso =
+        pisoBruto <= 0 ? 0 : Math.max(1, Math.min(CHUNK_Y - 1, pisoBruto));
+      if (piso <= 0) {
+        const limpo = Math.max(1, (spec.a1 | 0) || 1);
+        for (let lz = 0; lz <= limpo && lz < CHUNK_Y; lz++) {
+          if ((obterLocal(chunk, lx, ly, lz) | 0) !== BLOCO.AR) {
+            definirLocal(chunk, lx, ly, lz, BLOCO.AR);
+            tocado = true;
+          }
         }
-      }
-      const topoLimpo = Math.max(piso, (spec.a1 | 0) || piso);
-      for (let lz = piso; lz <= topoLimpo && lz < CHUNK_Y; lz++) {
-        if ((obterLocal(chunk, lx, ly, lz) | 0) !== BLOCO.AR) {
-          definirLocal(chunk, lx, ly, lz, BLOCO.AR);
-          tocado = true;
+      } else {
+        for (let lz = 0; lz < piso; lz++) {
+          const id = idPiso(lz, piso);
+          if ((obterLocal(chunk, lx, ly, lz) | 0) !== id) {
+            definirLocal(chunk, lx, ly, lz, id);
+            tocado = true;
+          }
+        }
+        const topoLimpo = Math.max(piso, (spec.a1 | 0) || piso);
+        for (let lz = piso; lz <= topoLimpo && lz < CHUNK_Y; lz++) {
+          if ((obterLocal(chunk, lx, ly, lz) | 0) !== BLOCO.AR) {
+            definirLocal(chunk, lx, ly, lz, BLOCO.AR);
+            tocado = true;
+          }
         }
       }
       if (spec.a0 == null || spec.a1 == null) continue;

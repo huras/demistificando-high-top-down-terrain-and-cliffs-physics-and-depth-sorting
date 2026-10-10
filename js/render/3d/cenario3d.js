@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
-import { ASA_DELTA_DESCIDA } from "../../config.js";
+import { ALTURA_BLOCO, ASA_DELTA_DESCIDA } from "../../config.js";
 import {
   ajustarDistancia,
   aplicarOlharMouse,
@@ -182,7 +182,7 @@ function criarMarcadorAlvoEscalada() {
       mesh.visible = true;
       const pulso = 0.92 + 0.08 * Math.sin(performance.now() * 0.006);
       mesh.scale.setScalar(pulso);
-      mesh.position.set(alvo.x, (alvo.vz ?? alvo.z) + 0.04, alvo.y);
+      mesh.position.set(alvo.x, (alvo.vz ?? alvo.z) * ALTURA_BLOCO + 0.04, alvo.y);
     },
   };
 }
@@ -232,6 +232,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.hoverTile?.atualizar();
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const elevVis = elev * ALTURA_BLOCO;
   const planando = !!corpo.planando;
   const voando = !!corpo.voando;
   estado.ventoAsa.atualizar(dt, {
@@ -247,9 +248,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     lift: Math.max(0, elev - (corpo.z ?? 0)),
   });
 
-  estado.sol.target.position.set(corpo.x, elev, corpo.y);
-  estado.sol.position.set(corpo.x + 28, elev + 42, corpo.y + 18);
-  estado.rim.position.set(corpo.x + 2, elev + 8, corpo.y - 18);
+  estado.sol.target.position.set(corpo.x, elevVis, corpo.y);
+  estado.sol.position.set(corpo.x + 28, elevVis + 42, corpo.y + 18);
+  estado.rim.position.set(corpo.x + 2, elevVis + 8, corpo.y - 18);
 
   estado.renderer.render(estado.scene, estado.camera3d.cam);
   return estado;

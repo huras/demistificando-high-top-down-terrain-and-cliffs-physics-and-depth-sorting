@@ -1,0 +1,271 @@
+:root {
+  --bg: #121814;
+  --painel: #1b2420;
+  --borda: #314038;
+  --texto: #e7f2ea;
+  --suave: #93a89a;
+  --destaque: #7dce6a;
+  --fio: #8fd18a;
+  --fonte: "Segoe UI", "Candara", "Trebuchet MS", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--texto);
+  font-family: var(--fonte);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+button, input, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+.topo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--borda);
+  background: #18211c;
+}
+
+.topo h1 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.topo__nota {
+  margin: 0;
+  color: var(--suave);
+  font-size: 0.82rem;
+  flex: 1;
+}
+
+.topo__voltar {
+  color: var(--destaque);
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+
+.topo button, .coluna__acoes button, .paleta button {
+  border: 1px solid var(--borda);
+  background: #243028;
+  color: var(--texto);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+#salvar {
+  border-color: var(--destaque);
+  color: var(--destaque);
+  font-weight: 650;
+}
+
+.topo__status {
+  min-width: 12rem;
+  font-size: 0.82rem;
+  color: var(--suave);
+}
+
+.miolo {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px 1fr 260px;
+}
+
+.coluna {
+  border-right: 1px solid var(--borda);
+  padding: 10px;
+  overflow: auto;
+  background: var(--painel);
+}
+
+#inspector {
+  border-right: 0;
+  border-left: 1px solid var(--borda);
+}
+
+.coluna__acoes {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.lista {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.lista button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--texto);
+  border-radius: 6px;
+  padding: 7px 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lista button.ativo {
+  border-color: var(--destaque);
+  background: #243228;
+}
+
+.amostra {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--suave);
+  margin-bottom: 8px;
+}
+
+.campo input, .campo select {
+  background: #121814;
+  border: 1px solid var(--borda);
+  border-radius: 5px;
+  padding: 5px 7px;
+}
+
+.grafo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.paleta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--borda);
+}
+
+.quadro {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  background:
+    linear-gradient(#243028 1px, transparent 1px),
+    linear-gradient(90deg, #243028 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-color: #101612;
+}
+
+#fios {
+  position: absolute;
+  inset: 0;
+  width: 1600px;
+  height: 900px;
+  pointer-events: none;
+}
+
+#nos {
+  position: relative;
+  width: 1600px;
+  height: 900px;
+}
+
+.no {
+  position: absolute;
+  width: 168px;
+  background: #1c2822;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+}
+
+.no.selecionado {
+  border-color: var(--destaque);
+}
+
+.no__titulo {
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: grab;
+  border-bottom: 1px solid var(--borda);
+}
+
+.no__corpo {
+  position: relative;
+  min-height: 28px;
+  padding: 6px 0;
+}
+
+.porta {
+  position: relative;
+  height: 18px;
+  font-size: 0.72rem;
+  color: var(--suave);
+}
+
+.porta--entrada { padding-left: 14px; text-align: left; }
+.porta--saida { padding-right: 14px; text-align: right; }
+
+.porta i {
+  position: absolute;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d7efe0;
+  border: 1px solid #0d120f;
+  cursor: crosshair;
+}
+
+.porta--entrada i { left: 2px; }
+.porta--saida i { right: 2px; }
+
+.previas {
+  display: flex;
+  gap: 18px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--borda);
+  background: #18211c;
+}
+
+.previas figure {
+  margin: 0;
+}
+
+.previas canvas {
+  display: block;
+  width: 200px;
+  height: 160px;
+  border: 1px solid var(--borda);
+  image-rendering: pixelated;
+  background: #0c100e;
+}
+
+.previas figcaption {
+  font-size: 0.75rem;
+  color: var(--suave);
+  margin-top: 4px;
+}

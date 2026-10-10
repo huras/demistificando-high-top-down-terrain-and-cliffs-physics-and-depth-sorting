@@ -137,15 +137,21 @@ function atualizarSuperficieColuna(chunk, lx, ly) {
  * Preenche coluna com `zTopo` unidades sólidas (blocos 0..zTopo-1).
  * Superfície caminhável = zTopo (igual ao heightmap antigo).
  */
-export function preencherColunaSolida(chunk, lx, ly, zTopo) {
+export function preencherColunaSolida(chunk, lx, ly, zTopo, superficie = BLOCO.GRAMA) {
   const z = Math.max(0, Math.min(CHUNK_Y, zTopo | 0));
+  const topo =
+    superficie === BLOCO.PEDRA || superficie === BLOCO.TERRA
+      ? superficie
+      : BLOCO.GRAMA;
   for (let lz = 0; lz < CHUNK_Y; lz++) {
     chunk.blocos[indiceLocal(lx, ly, lz)] = BLOCO.AR;
   }
   for (let lz = 0; lz < z; lz++) {
     let id = BLOCO.PEDRA;
-    if (lz === z - 1) id = z <= 1 ? BLOCO.GRAMA : BLOCO.TERRA;
-    else if (lz >= z - 3 && z > 1) id = BLOCO.TERRA;
+    if (lz === z - 1) {
+      id = topo === BLOCO.GRAMA ? (z <= 1 ? BLOCO.GRAMA : BLOCO.TERRA) : topo;
+    }
+    else if (topo !== BLOCO.PEDRA && lz >= z - 3 && z > 1) id = BLOCO.TERRA;
     chunk.blocos[indiceLocal(lx, ly, lz)] = id;
   }
   atualizarSuperficieColuna(chunk, lx, ly);

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { ALTURA_BLOCO } from "../../config.js";
 
 const MAX_RISCOS = 32;
 const CAMADAS = Object.freeze([
@@ -183,7 +184,7 @@ export function criarVentoAsa3d() {
       const a = vidaAlpha(p.life, p.maxLife) * cam.a * gFade;
       if (a < 0.01) continue;
 
-      const yWorld = elevBase + lift * LIFT_Y + p.z * LIFT_Y;
+      const yWorld = (elevBase + lift * LIFT_Y + p.z * LIFT_Y) * ALTURA_BLOCO;
       const len = Math.max(0.08, p.len * estica);
       const mote = len < 0.12;
 

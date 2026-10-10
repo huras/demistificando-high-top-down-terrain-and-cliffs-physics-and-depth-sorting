@@ -13,6 +13,7 @@ import {
 } from "../config.js";
 import { tetoSobreCabeca } from "../fisica/colisao.js";
 import { PROPS } from "../mundo/mapaDemo.js";
+import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { alturaEm, quedaVisualFace } from "../mundo/altura.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
@@ -234,9 +235,21 @@ function marcarPecasCobrindo(corpo, atlas) {
     if (sk <= sortPlayer) continue;
     const box = aabbProp(prop, z, atlas);
     if (!box) continue;
-    if (aabbTocaCirculo(box, zona)) {
+      if (aabbTocaCirculo(box, zona)) {
       cobrindoAgora.add(chaveFadeProp(i));
     }
+  }
+
+  const plantas = vegetacaoNaArea(x0, y0, x1, y1);
+  for (let i = 0; i < plantas.length; i++) {
+    const prop = plantas[i];
+    const z = alturaEm(Math.floor(prop.x), Math.floor(prop.y));
+    if (z <= zMinFade) continue;
+    const sk = chaveEntidade(prop.y, z);
+    if (sk <= sortPlayer) continue;
+    const box = aabbProp(prop, z, atlas);
+    if (!box) continue;
+    if (aabbTocaCirculo(box, zona)) cobrindoAgora.add(`pb:${prop.id}`);
   }
 }
 

@@ -12,6 +12,7 @@ import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { iniciarStamina } from "./fisica/stamina.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
+import { carregarCatalogo } from "./mundo/bioma/catalogo.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
 import {
   atualizarStreaming,
@@ -77,6 +78,7 @@ async function iniciar() {
   atlas = await montarAtlas(CAMINHOS);
   window.__atlas = atlas;
 
+  await carregarCatalogo();
   iniciarMundoAoRedor(SPAWN.x, SPAWN.y);
   // Nav só invalida em edição de bloco — streaming não deve rebuildar (era ~18s).
 

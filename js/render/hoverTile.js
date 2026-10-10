@@ -1,7 +1,7 @@
 /**
  * Highlight do tile sob o cursor — 2D outline + marcador 3D reutilizado.
  */
-import { ESCALA, FACE_H, TILE } from "../config.js";
+import { ALTURA_BLOCO, ESCALA, FACE_H, TILE } from "../config.js";
 import { obterHoverBloco, textoHoverBloco } from "../entrada/hoverBloco.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 
@@ -94,7 +94,7 @@ export function desenharLabelHoverHud(ctx, canvasW, canvasH, mira3d = false) {
  * @param {typeof import("three")} THREE
  */
 export function criarMarcadorHover3d(THREE) {
-  const geo = new THREE.BoxGeometry(1.02, 1.02, 1.02);
+  const geo = new THREE.BoxGeometry(1.02, 1.02 * ALTURA_BLOCO, 1.02);
   const edges = new THREE.EdgesGeometry(geo);
   geo.dispose();
 
@@ -116,7 +116,10 @@ export function criarMarcadorHover3d(THREE) {
     opacity: 0.12,
     depthWrite: false,
   });
-  const fill = new THREE.Mesh(new THREE.BoxGeometry(1.01, 1.01, 1.01), fillMat);
+  const fill = new THREE.Mesh(
+    new THREE.BoxGeometry(1.01, 1.01 * ALTURA_BLOCO, 1.01),
+    fillMat,
+  );
   fill.renderOrder = 2;
   lines.add(fill);
 
@@ -136,7 +139,7 @@ export function criarMarcadorHover3d(THREE) {
       const k = h.x + "," + h.y + "," + h.z;
       if (k !== lastKey) {
         // Three: (x, altura, y_mundo)
-        lines.position.set(h.x + 0.5, h.z + 0.5, h.y + 0.5);
+        lines.position.set(h.x + 0.5, (h.z + 0.5) * ALTURA_BLOCO, h.y + 0.5);
         lastKey = k;
       }
       lines.visible = true;

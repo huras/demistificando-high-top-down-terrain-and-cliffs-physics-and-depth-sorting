@@ -1,6 +1,11 @@
-/** Constantes da demo — 1 degrau = 1 face de cubo (leitura Minecraft). */
+/**
+ * Célula horizontal = 1. Altura do bloco = metade do lado.
+ * A simulação conta degraus (1 bloco = 1); a tela e o 3D espremem só o eixo vertical.
+ */
+export const ALTURA_BLOCO = 0.5;
 export const TILE = 16;
-export const FACE_H = 16;
+/** Pixels de um degrau, antes do ESCALA. */
+export const FACE_H = TILE * ALTURA_BLOCO;
 export const ESCALA = 2;
 export const EPS_SORT = 0.001;
 
@@ -134,7 +139,8 @@ export const CAMERA3D_SUAVIDADE_Y = 6;
 export const CAMERA3D_ROT_VEL = 2.4;
 /** Mouse-look 3D (rad por pixel). */
 export const CAMERA3D_MOUSE_SENS = 0.0022;
-export const CAMERA3D_PITCH_MIN = -0.55;
+/** Negativo = mirar para cima (~-77°). A câmera não desce no chão. */
+export const CAMERA3D_PITCH_MIN = -1.35;
 export const CAMERA3D_PITCH_MAX = 1.15;
 
 export const CAMINHOS = {
@@ -163,7 +169,8 @@ export const VISUAL_REAL_PADRAO = true;
  */
 export const VEG_ALPHA_TEST = 0.12;
 export const VEG_ARVORE_ESCALA = 1;
-export const VEG_MATA_ESCALA = 1.5;
+/** Metade do recorte 2D (1,5×): no mundo 3D o tufo lia o dobro. */
+export const VEG_MATA_ESCALA = 0.75;
 /** Afundamento do pé em células — 2D soma 2 px (árvore) e 1 px (mata) na tela. */
 export const VEG_ARVORE_PE = 2 / TILE;
 export const VEG_MATA_PE = 1 / TILE;

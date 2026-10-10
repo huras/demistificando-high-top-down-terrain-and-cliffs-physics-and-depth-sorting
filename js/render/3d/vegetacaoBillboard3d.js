@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {
+  ALTURA_BLOCO,
   TILE,
   VEG_ALPHA_TEST,
   VEG_ARVORE_ESCALA,
@@ -10,6 +11,7 @@ import {
 } from "../../config.js";
 import { alturaEm } from "../../mundo/altura.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
+import { todaVegetacao } from "../../mundo/bioma/propsBioma.js";
 import { onDirty } from "../../mundo/voxel/storeMundo.js";
 
 /**
@@ -34,12 +36,24 @@ const CATALOGO = [
   },
 ];
 
-for (let i = 0; i < PROPS.length; i++) {
-  const prop = PROPS[i];
+const CAP_INSTANCIAS = 4096;
+
+function recolherItens() {
+  const plantas = todaVegetacao();
   for (let t = 0; t < CATALOGO.length; t++) {
-    if (CATALOGO[t].tipo === prop.tipo) CATALOGO[t].itens.push(prop);
+    const def = CATALOGO[t];
+    const itens = [];
+    for (let i = 0; i < PROPS.length; i++) {
+      if (PROPS[i].tipo === def.tipo) itens.push(PROPS[i]);
+    }
+    for (let i = 0; i < plantas.length; i++) {
+      if (plantas[i].tipo === def.tipo) itens.push(plantas[i]);
+    }
+    def.itens = itens.length > CAP_INSTANCIAS ? itens.slice(0, CAP_INSTANCIAS) : itens;
   }
 }
+
+recolherItens();
 
 function medidasDe(img, escala) {
   const pw = img.naturalWidth || img.width || TILE;
@@ -48,21 +62,6 @@ function medidasDe(img, escala) {
     largura: (pw / TILE) * escala,
     altura: (ph / TILE) * escala,
   };
-}
-
-function tocaProp(aabb) {
-  if (!aabb || aabb.x0 == null) return true;
-  for (let t = 0; t < CATALOGO.length; t++) {
-    const itens = CATALOGO[t].itens;
-    for (let i = 0; i < itens.length; i++) {
-      const cx = Math.floor(itens[i].x);
-      const cy = Math.floor(itens[i].y);
-      if (cx >= aabb.x0 && cx <= aabb.x1 && cy >= aabb.y0 && cy <= aabb.y1) {
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 function yawDiferente(atual, aplicado) {
@@ -129,13 +128,13 @@ export function criarVegetacaoBillboard3d() {
       side: THREE.DoubleSide,
     });
 
-    const mesh = new THREE.InstancedMesh(geo, material, def.itens.length);
+    const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
     mesh.name = `veg-${def.tipo}`;
     mesh.castShadow = true;
     mesh.receiveShadow = false;
     mesh.customDepthMaterial = depth;
     mesh.frustumCulled = true;
-    mesh.count = def.itens.length;
+    mesh.count = Math.min(def.itens.length, CAP_INSTANCIAS);
     grupo.add(mesh);
 
     const lote = {
@@ -155,19 +154,28 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function escrever(yaw, recalcularLimites) {
+    if (recalcularLimites) {
+      recolherItens();
+      for (const lote of lotes.values()) {
+        const def = CATALOGO.find((c) => c.tipo === lote.tipo);
+        lote.itens = def ? def.itens : lote.itens;
+        lote.mesh.count = lote.itens.length;
+        lote.mesh.visible = lote.itens.length > 0;
+      }
+    }
     for (const lote of lotes.values()) {
       const { mesh, itens, largura, altura, pe } = lote;
       for (let i = 0; i < itens.length; i++) {
         const p = itens[i];
         const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
-        dummy.position.set(p.x, base - pe, p.y);
+        dummy.position.set(p.x, (base - pe) * ALTURA_BLOCO, p.y);
         dummy.rotation.set(0, yaw, 0);
         dummy.scale.set(largura, altura, 1);
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
       }
       mesh.instanceMatrix.needsUpdate = true;
-      if (recalcularLimites) {
+      if (recalcularLimites && itens.length) {
         mesh.computeBoundingBox();
         mesh.computeBoundingSphere();
       }
@@ -183,6 +191,7 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function aplicarAtlas(atlas) {
+    recolherItens();
     for (let t = 0; t < CATALOGO.length; t++) {
       const def = CATALOGO[t];
       if (!def.itens.length) continue;
@@ -225,8 +234,8 @@ export function criarVegetacaoBillboard3d() {
     escrever(yaw, recalcular);
   }
 
-  const cancelarDirty = onDirty((aabb) => {
-    if (tocaProp(aabb)) alturasSujas = true;
+  const cancelarDirty = onDirty(() => {
+    alturasSujas = true;
   });
 
   return {

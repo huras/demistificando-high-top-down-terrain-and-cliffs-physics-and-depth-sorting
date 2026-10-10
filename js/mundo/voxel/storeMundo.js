@@ -11,6 +11,7 @@ import {
   superficieBaixaLocal,
   superficieLocal,
 } from "./chunk.js";
+import { limparPropsChunk } from "../bioma/propsBioma.js";
 import { gerarChunkProcedural } from "./gerarChunk.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
 
@@ -91,6 +92,7 @@ export function descarregarChunk(cx, cy) {
   marcarChunkVizinhosSujos(cx, cy);
   invalidarFluxoVizinhos(cx, cy);
   chunks.delete(k);
+  limparPropsChunk(cx, cy);
   emitirDirty({
     x0: cx * CHUNK_XZ,
     y0: cy * CHUNK_XZ,

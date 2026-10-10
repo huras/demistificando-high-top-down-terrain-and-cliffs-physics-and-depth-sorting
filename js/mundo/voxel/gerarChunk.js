@@ -1,6 +1,9 @@
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
+import { alturaDoRelevo, plantaDoRelevo, superficieDoRelevo } from "../bioma/catalogo.js";
+import { definirPropsChunk } from "../bioma/propsBioma.js";
+import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
-import { fbm2, valueNoise3 } from "./ruido.js";
+import { valueNoise3 } from "./ruido.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
 
 /**
@@ -17,10 +20,9 @@ export function gerarChunkProcedural(chunk, seed) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
       const wy = baseY + ly;
-      const n = fbm2(wx * 0.035, wy * 0.035, seed);
-      const h = Math.max(1, Math.min(28, Math.floor(3 + n * 14)));
+      const h = alturaDoRelevo(wx, wy);
       alturas[ly * CHUNK_XZ + lx] = h;
-      preencherColunaSolida(chunk, lx, ly, h);
+      preencherColunaSolida(chunk, lx, ly, h, superficieDoRelevo(wx, wy));
     }
   }
 
@@ -70,10 +72,7 @@ export function gerarChunkProcedural(chunk, seed) {
           hViz = alturas[ny * CHUNK_XZ + nx];
         } else {
           // Fora do chunk: estima com o mesmo ruído
-          const wx = baseX + nx;
-          const wy = baseY + ny;
-          const n = fbm2(wx * 0.035, wy * 0.035, seed);
-          hViz = Math.max(1, Math.min(28, Math.floor(3 + n * 14)));
+          hViz = alturaDoRelevo(baseX + nx, baseY + ny);
         }
         if (h - hViz < 3) continue;
 
@@ -97,6 +96,33 @@ export function gerarChunkProcedural(chunk, seed) {
       if (!ehSolido(chunk.blocos[i])) chunk.blocos[i] = BLOCO.PEDRA;
     }
   }
+
+  const props = [];
+  for (let ly = 0; ly < CHUNK_XZ; ly++) {
+    for (let lx = 0; lx < CHUNK_XZ; lx++) {
+      const wx = baseX + lx;
+      const wy = baseY + ly;
+      if (wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
+      const h = alturas[ly * CHUNK_XZ + lx];
+      let cliff = false;
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const nx = lx + dx;
+        const ny = ly + dy;
+        if (nx < 0 || ny < 0 || nx >= CHUNK_XZ || ny >= CHUNK_XZ) continue;
+        if (h - alturas[ny * CHUNK_XZ + nx] >= 2) cliff = true;
+      }
+      if (cliff) continue;
+      const tipo = plantaDoRelevo(wx, wy);
+      if (!tipo) continue;
+      props.push({ id: `v${wx}_${wy}`, x: wx + 0.5, y: wy + 0.5, tipo });
+    }
+  }
+  definirPropsChunk(chunk.cx, chunk.cy, props);
 
   recalcularSuperficies(chunk);
   chunk.gerado = true;

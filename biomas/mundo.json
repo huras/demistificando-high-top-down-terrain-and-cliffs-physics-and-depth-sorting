@@ -1,0 +1,448 @@
+{
+  "versao": 1,
+  "escalaRegiao": 220,
+  "semente": 0,
+  "biomas": [
+    {
+      "id": "planicie",
+      "nome": "Planície",
+      "cor": "#5aaa45",
+      "superficie": "grama",
+      "arvore": 0.01,
+      "mata": 0.045,
+      "transicao": 18,
+      "degrau": 1,
+      "nos": [
+        {
+          "id": "base",
+          "tipo": "constante",
+          "x": 36,
+          "y": 48,
+          "valor": 4
+        },
+        {
+          "id": "ruido",
+          "tipo": "ruido",
+          "x": 36,
+          "y": 168,
+          "frequencia": 0.028,
+          "oitavas": 3,
+          "semente": 11,
+          "ganho": 2.2
+        },
+        {
+          "id": "soma",
+          "tipo": "somar",
+          "x": 280,
+          "y": 96
+        },
+        {
+          "id": "saida",
+          "tipo": "saida",
+          "x": 420,
+          "y": 96
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "base",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "A"
+        },
+        {
+          "de": "ruido",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "B"
+        },
+        {
+          "de": "soma",
+          "portaDe": "Out",
+          "para": "saida",
+          "portaPara": "In"
+        }
+      ]
+    },
+    {
+      "id": "floresta",
+      "nome": "Floresta",
+      "cor": "#1f6b32",
+      "superficie": "grama",
+      "arvore": 0.055,
+      "mata": 0.1,
+      "transicao": 10,
+      "degrau": 1,
+      "nos": [
+        {
+          "id": "base",
+          "tipo": "constante",
+          "x": 36,
+          "y": 48,
+          "valor": 6
+        },
+        {
+          "id": "ruido",
+          "tipo": "ruido",
+          "x": 36,
+          "y": 168,
+          "frequencia": 0.045,
+          "oitavas": 4,
+          "semente": 29,
+          "ganho": 7
+        },
+        {
+          "id": "soma",
+          "tipo": "somar",
+          "x": 280,
+          "y": 96
+        },
+        {
+          "id": "saida",
+          "tipo": "saida",
+          "x": 420,
+          "y": 96
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "base",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "A"
+        },
+        {
+          "de": "ruido",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "B"
+        },
+        {
+          "de": "soma",
+          "portaDe": "Out",
+          "para": "saida",
+          "portaPara": "In"
+        }
+      ]
+    },
+    {
+      "id": "chapada",
+      "nome": "Chapada",
+      "cor": "#8fa35a",
+      "superficie": "grama",
+      "arvore": 0.006,
+      "mata": 0.025,
+      "transicao": 5,
+      "degrau": 4,
+      "nos": [
+        {
+          "id": "base",
+          "tipo": "constante",
+          "x": 36,
+          "y": 48,
+          "valor": 22
+        },
+        {
+          "id": "ruido",
+          "tipo": "ruido",
+          "x": 36,
+          "y": 168,
+          "frequencia": 0.016,
+          "oitavas": 2,
+          "semente": 41,
+          "ganho": 2.4
+        },
+        {
+          "id": "soma",
+          "tipo": "somar",
+          "x": 280,
+          "y": 96
+        },
+        {
+          "id": "saida",
+          "tipo": "saida",
+          "x": 420,
+          "y": 96
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "base",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "A"
+        },
+        {
+          "de": "ruido",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "B"
+        },
+        {
+          "de": "soma",
+          "portaDe": "Out",
+          "para": "saida",
+          "portaPara": "In"
+        }
+      ]
+    },
+    {
+      "id": "deserto",
+      "nome": "Deserto",
+      "cor": "#d2b15a",
+      "superficie": "terra",
+      "arvore": 0.002,
+      "mata": 0.008,
+      "transicao": 16,
+      "degrau": 1,
+      "nos": [
+        {
+          "id": "base",
+          "tipo": "constante",
+          "x": 36,
+          "y": 48,
+          "valor": 3
+        },
+        {
+          "id": "ruido",
+          "tipo": "ruido",
+          "x": 36,
+          "y": 168,
+          "frequencia": 0.09,
+          "oitavas": 2,
+          "semente": 53,
+          "ganho": 4.5
+        },
+        {
+          "id": "soma",
+          "tipo": "somar",
+          "x": 280,
+          "y": 96
+        },
+        {
+          "id": "saida",
+          "tipo": "saida",
+          "x": 420,
+          "y": 96
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "base",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "A"
+        },
+        {
+          "de": "ruido",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "B"
+        },
+        {
+          "de": "soma",
+          "portaDe": "Out",
+          "para": "saida",
+          "portaPara": "In"
+        }
+      ]
+    },
+    {
+      "id": "gelo",
+      "nome": "Gelo",
+      "cor": "#c5dce8",
+      "superficie": "grama",
+      "arvore": 0,
+      "mata": 0.012,
+      "transicao": 8,
+      "degrau": 2,
+      "nos": [
+        {
+          "id": "base",
+          "tipo": "constante",
+          "x": 36,
+          "y": 48,
+          "valor": 12
+        },
+        {
+          "id": "ruido",
+          "tipo": "ruido",
+          "x": 36,
+          "y": 168,
+          "frequencia": 0.012,
+          "oitavas": 2,
+          "semente": 67,
+          "ganho": 4
+        },
+        {
+          "id": "soma",
+          "tipo": "somar",
+          "x": 280,
+          "y": 96
+        },
+        {
+          "id": "saida",
+          "tipo": "saida",
+          "x": 420,
+          "y": 96
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "base",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "A"
+        },
+        {
+          "de": "ruido",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "B"
+        },
+        {
+          "de": "soma",
+          "portaDe": "Out",
+          "para": "saida",
+          "portaPara": "In"
+        }
+      ]
+    },
+    {
+      "id": "vulcao",
+      "nome": "Vulcão",
+      "cor": "#c45a28",
+      "superficie": "pedra",
+      "arvore": 0,
+      "mata": 0,
+      "transicao": 6,
+      "degrau": 2,
+      "nos": [
+        {
+          "id": "base",
+          "tipo": "constante",
+          "x": 36,
+          "y": 36,
+          "valor": 10
+        },
+        {
+          "id": "ruido",
+          "tipo": "ruido",
+          "x": 36,
+          "y": 160,
+          "frequencia": 0.02,
+          "oitavas": 3,
+          "semente": 83,
+          "ganho": 14
+        },
+        {
+          "id": "soma",
+          "tipo": "somar",
+          "x": 260,
+          "y": 80
+        },
+        {
+          "id": "cratera",
+          "tipo": "cratera",
+          "x": 460,
+          "y": 80,
+          "limiar": 18,
+          "profundidade": 1.3
+        },
+        {
+          "id": "saida",
+          "tipo": "saida",
+          "x": 680,
+          "y": 96
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "base",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "A"
+        },
+        {
+          "de": "ruido",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "B"
+        },
+        {
+          "de": "soma",
+          "portaDe": "Out",
+          "para": "cratera",
+          "portaPara": "In"
+        },
+        {
+          "de": "cratera",
+          "portaDe": "Out",
+          "para": "saida",
+          "portaPara": "In"
+        }
+      ]
+    },
+    {
+      "id": "pantano",
+      "nome": "Pântano",
+      "cor": "#3e6b52",
+      "superficie": "grama",
+      "arvore": 0.012,
+      "mata": 0.16,
+      "transicao": 22,
+      "degrau": 1,
+      "nos": [
+        {
+          "id": "base",
+          "tipo": "constante",
+          "x": 36,
+          "y": 48,
+          "valor": 2
+        },
+        {
+          "id": "ruido",
+          "tipo": "ruido",
+          "x": 36,
+          "y": 168,
+          "frequencia": 0.06,
+          "oitavas": 2,
+          "semente": 97,
+          "ganho": 1.2
+        },
+        {
+          "id": "soma",
+          "tipo": "somar",
+          "x": 280,
+          "y": 96
+        },
+        {
+          "id": "saida",
+          "tipo": "saida",
+          "x": 420,
+          "y": 96
+        }
+      ],
+      "ligacoes": [
+        {
+          "de": "base",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "A"
+        },
+        {
+          "de": "ruido",
+          "portaDe": "Out",
+          "para": "soma",
+          "portaPara": "B"
+        },
+        {
+          "de": "soma",
+          "portaDe": "Out",
+          "para": "saida",
+          "portaPara": "In"
+        }
+      ]
+    }
+  ]
+}

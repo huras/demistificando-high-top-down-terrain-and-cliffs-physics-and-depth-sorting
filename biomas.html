@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editor de biomas</title>
+  <link rel="stylesheet" href="css/bioma-editor.css" />
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Editor de biomas</h1>
+    <p class="topo__nota">Mesma grama e mesma árvore. O que muda é o relevo, a borda e a densidade.</p>
+    <button type="button" id="salvar">Salvar</button>
+    <span id="status" class="topo__status"></span>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna" id="coluna-biomas">
+      <div class="coluna__acoes">
+        <button type="button" id="novo-bioma">Novo</button>
+        <button type="button" id="apagar-bioma">Apagar</button>
+      </div>
+      <ul class="lista" id="lista"></ul>
+      <label class="campo">
+        Escala da região
+        <input id="escala" type="number" min="32" step="10" />
+      </label>
+    </aside>
+
+    <section class="grafo">
+      <div class="paleta" id="paleta"></div>
+      <div class="quadro" id="quadro">
+        <svg id="fios"></svg>
+        <div id="nos"></div>
+      </div>
+    </section>
+
+    <aside class="coluna" id="inspector"></aside>
+  </div>
+
+  <footer class="previas">
+    <figure>
+      <canvas id="prev-regiao" width="200" height="160"></canvas>
+      <figcaption>Regiões</figcaption>
+    </figure>
+    <figure>
+      <canvas id="prev-relevo" width="200" height="160"></canvas>
+      <figcaption>Relevo misturado</figcaption>
+    </figure>
+    <figure>
+      <canvas id="prev-bioma" width="200" height="160"></canvas>
+      <figcaption>Só este bioma</figcaption>
+    </figure>
+  </footer>
+
+  <script type="module" src="js/bioma/editor.js"></script>
+</body>
+</html>

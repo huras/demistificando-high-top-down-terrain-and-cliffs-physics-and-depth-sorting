@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { ALTURA_BLOCO } from "../../config.js";
 import { alturaEm } from "../../mundo/altura.js";
 
 /** Knobs alinhados ao GROUND_OVAL_SHADOW do Pokemon AI. */
@@ -137,7 +138,11 @@ export function criarSombraContato3d() {
         baixo.visible = false;
         alto.material.opacity = BASE_ALPHA * 0.85;
         alto.scale.set(RX, 1, RY);
-        alto.position.set(sx, zChao - elevGrupo + LIFT_Y, sz + SOUTH_BIAS);
+        alto.position.set(
+          sx,
+          (zChao - elevGrupo) * ALTURA_BLOCO + LIFT_Y,
+          sz + SOUTH_BIAS,
+        );
         return;
       }
 
@@ -154,7 +159,7 @@ export function criarSombraContato3d() {
       alto.visible = alpha > 0.04;
       alto.material.opacity = Math.max(0.06, alpha);
       alto.scale.set(RX * shrink, 1, RY * shrink);
-      alto.position.set(0, solo - elev + LIFT_Y, SOUTH_BIAS);
+      alto.position.set(0, (solo - elev) * ALTURA_BLOCO + LIFT_Y, SOUTH_BIAS);
 
       const { baixos, zBaixo } = coletarToposPerto(x, y, solo);
       if (baixos.length && zBaixo !== null && solo > zBaixo) {
@@ -164,7 +169,7 @@ export function criarSombraContato3d() {
         baixo.scale.set(RX * 0.85 * shrink, 1, RY * 0.85 * shrink);
         baixo.position.set(
           proj.x - x,
-          proj.z - elev + LIFT_Y,
+          (proj.z - elev) * ALTURA_BLOCO + LIFT_Y,
           proj.y - y + SOUTH_BIAS,
         );
       } else {

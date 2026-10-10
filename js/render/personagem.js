@@ -1,4 +1,4 @@
-import { ESCALA, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
+import { ESCALA, FACE_H, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
 import { cobrirPernasAgua } from "./agua2d.js";
 import { desenharAsaDelta } from "./asaDeltaVisual.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
@@ -102,12 +102,12 @@ export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
 
 export function formulasPersonagem(corpo) {
   const elev = corpo.elevacao ?? corpo.z + (corpo.hopLift || 0);
-  const screenY = corpo.y * TILE - elev * TILE;
+  const screenY = corpo.y * TILE - elev * FACE_H;
   const sortKey = chaveEntidade(corpo.y, corpo.z);
   return {
     screenY,
     sortKey,
-    textoTela: `screenY = ${corpo.y.toFixed(2)}·${TILE} − elev ${elev.toFixed(2)}·${TILE} = ${screenY.toFixed(1)}`,
+    textoTela: `screenY = ${corpo.y.toFixed(2)}·${TILE} − elev ${elev.toFixed(2)}·${FACE_H} = ${screenY.toFixed(1)}`,
     textoSort: `sortKey = entidade(${corpo.y.toFixed(2)}, z${corpo.z}) = ${sortKey.toFixed(4)}`,
   };
 }

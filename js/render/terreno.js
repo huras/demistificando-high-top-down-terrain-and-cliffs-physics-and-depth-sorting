@@ -10,6 +10,7 @@ import {
 } from "../config.js";
 import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
+import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import {
   obterAabbCarregado,
   obterBloco,
@@ -220,6 +221,26 @@ export function empilharTerreno(
       0,
       (ctx) =>
         desenharComFadeCobertura(ctx, fadeProp, () =>
+          desenharProp(ctx, prop, z),
+        ),
+      TIE_PROP,
+      z,
+    );
+  }
+
+  const plantas = vegetacaoNaArea(x0, y0, x1, y1);
+  for (let i = 0; i < plantas.length; i++) {
+    const prop = plantas[i];
+    const px = Math.floor(prop.x);
+    const py = Math.floor(prop.y);
+    const z = alturaEm(px, py);
+    if (tetoCaverna != null && z > tetoCaverna) continue;
+    empilhar(
+      scratch,
+      chaveEntidade(prop.y, z),
+      0,
+      (ctx) =>
+        desenharComFadeCobertura(ctx, `pb:${prop.id}`, () =>
           desenharProp(ctx, prop, z),
         ),
       TIE_PROP,
