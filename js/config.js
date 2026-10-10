@@ -68,10 +68,10 @@ export const VOO_POUSO_EPS = 0.2;
 
 /**
  * Pulo Mario: segurar Space = gravidade leve; soltar = corta vz.
- * Hold ≈ v²/(2·g_hold) ≈ 1.24 → sobe +1 (single cliff); tap = hop curto.
- * Apex mais rápido: t≈v/g_hold ≈ 0.39s (antes ~0.46s).
+ * Hold ≈ v²/(2·g_hold) ≈ 1.49 (20% acima de 1.24). Tap = hop curto.
+ * Apex: t≈v/g_hold ≈ 0.42s.
  */
-export const PULO_VELOCIDADE = 6.4;
+export const PULO_VELOCIDADE = 6.4 * Math.sqrt(1.2);
 export const GRAVIDADE = 24;
 export const GRAVIDADE_PULO_SEGURANDO = 16.5;
 export const PULO_CORTE_SOLTAR = 0.42;

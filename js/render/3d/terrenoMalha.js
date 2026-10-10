@@ -88,6 +88,14 @@ function pintarPlano(geo, rgb) {
   return geo;
 }
 
+/** Bloco pinta por cima do terreno suave, sem teste de profundidade contra ele. */
+function naFrenteDoSuave(material) {
+  if (!material) return material;
+  material.depthTest = true;
+  material.depthFunc = THREE.Always;
+  return material;
+}
+
 function misturarTinta(material, forca) {
   material.vertexColors = true;
   material.onBeforeCompile = (shader) => {
@@ -98,6 +106,7 @@ function misturarTinta(material, forca) {
   };
   material.customProgramCacheKey = () => `tinta-bioma-${forca}`;
   aplicarSombraNuvem(material);
+  naFrenteDoSuave(material);
 }
 
 function mesclarLista(geos) {
@@ -1089,24 +1098,24 @@ export function criarTerrenoMalha(atlas = null) {
   const matAgua = obterMaterialLago();
   const matQueda = obterMaterialQueda();
 
-  const matCubos = aplicarSombraNuvem(new THREE.MeshStandardMaterial({
+  const matCubos = naFrenteDoSuave(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.82,
     metalness: 0.04,
     flatShading: true,
-  }));
-  const matCubosSmooth = aplicarSombraNuvem(new THREE.MeshStandardMaterial({
+  })));
+  const matCubosSmooth = naFrenteDoSuave(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.72,
     metalness: 0.06,
     flatShading: false,
-  }));
+  })));
 
   const materiais = {
     grama: null,
     terra: null,
     cliff: null,
-    ledge: aplicarSombraNuvem(new THREE.MeshStandardMaterial({
+    ledge: naFrenteDoSuave(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
       color: 0xffffff,
       roughness: 0.85,
       metalness: 0.05,
@@ -1114,8 +1123,8 @@ export function criarTerrenoMalha(atlas = null) {
       polygonOffset: true,
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
-    })),
-    ao: new THREE.MeshBasicMaterial({
+    }))),
+    ao: naFrenteDoSuave(new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
       opacity: AO_OPACITY,
@@ -1123,13 +1132,13 @@ export function criarTerrenoMalha(atlas = null) {
       polygonOffset: true,
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1,
-    }),
-    props: aplicarSombraNuvem(new THREE.MeshStandardMaterial({
+    })),
+    props: naFrenteDoSuave(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: 0.8,
       metalness: 0.04,
       flatShading: true,
-    })),
+    }))),
   };
 
   /** @type {Map<string, {cubos:THREE.Mesh, real:THREE.Group}>} */
@@ -1200,7 +1209,7 @@ export function criarTerrenoMalha(atlas = null) {
     });
     materiaisKit.set(chave, { mat, tex });
     aplicarSombraNuvem(mat);
-    return mat;
+    return naFrenteDoSuave(mat);
   }
 
   function liberarGrupoChunk(entry) {
