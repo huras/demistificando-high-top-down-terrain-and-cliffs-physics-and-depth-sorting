@@ -6,8 +6,11 @@ import { preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
 import { valueNoise3 } from "./ruido.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
 
+/** Desligado para isolar o relevo do bioma (coluna sólida, sem bloco solto). */
+const GERAR_CAVERNAS = false;
+
 /**
- * Terreno procedural: colunas + cavernas caminháveis (piso + teto + boca em cliff).
+ * Terreno procedural: colunas do bioma. Caverna só se GERAR_CAVERNAS.
  */
 export function gerarChunkProcedural(chunk, seed) {
   const baseX = chunk.cx * CHUNK_XZ;
@@ -27,7 +30,7 @@ export function gerarChunkProcedural(chunk, seed) {
   }
 
   // Cavernas: túneis horizontais com altura ≥ 3 e piso sólido
-  for (let ly = 0; ly < CHUNK_XZ; ly++) {
+  if (GERAR_CAVERNAS) for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const h = alturas[ly * CHUNK_XZ + lx];
       if (h < 8) continue;
@@ -55,7 +58,7 @@ export function gerarChunkProcedural(chunk, seed) {
   }
 
   // Bocas: se a coluna é bem mais alta que o vizinho e tem caverna baixa, abre face
-  for (let ly = 0; ly < CHUNK_XZ; ly++) {
+  if (GERAR_CAVERNAS) for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const h = alturas[ly * CHUNK_XZ + lx];
       if (h < 8) continue;
