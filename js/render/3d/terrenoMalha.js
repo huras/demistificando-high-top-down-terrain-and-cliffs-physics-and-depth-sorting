@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
   ALTURA_BLOCO,
@@ -97,6 +98,7 @@ function misturarTinta(material, forca) {
     );
   };
   material.customProgramCacheKey = () => `tinta-bioma-${forca}`;
+  aplicarSombraNuvem(material);
 }
 
 function mesclarLista(geos) {
@@ -1088,24 +1090,24 @@ export function criarTerrenoMalha(atlas = null) {
   const matAgua = obterMaterialLago();
   const matQueda = obterMaterialQueda();
 
-  const matCubos = new THREE.MeshStandardMaterial({
+  const matCubos = aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.82,
     metalness: 0.04,
     flatShading: true,
-  });
-  const matCubosSmooth = new THREE.MeshStandardMaterial({
+  }));
+  const matCubosSmooth = aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.72,
     metalness: 0.06,
     flatShading: false,
-  });
+  }));
 
   const materiais = {
     grama: null,
     terra: null,
     cliff: null,
-    ledge: new THREE.MeshStandardMaterial({
+    ledge: aplicarSombraNuvem(new THREE.MeshStandardMaterial({
       color: 0xffffff,
       roughness: 0.85,
       metalness: 0.05,
@@ -1113,7 +1115,7 @@ export function criarTerrenoMalha(atlas = null) {
       polygonOffset: true,
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
-    }),
+    })),
     ao: new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
@@ -1123,12 +1125,12 @@ export function criarTerrenoMalha(atlas = null) {
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1,
     }),
-    props: new THREE.MeshStandardMaterial({
+    props: aplicarSombraNuvem(new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: 0.8,
       metalness: 0.04,
       flatShading: true,
-    }),
+    })),
   };
 
   /** @type {Map<string, {cubos:THREE.Mesh, real:THREE.Group}>} */
@@ -1198,6 +1200,7 @@ export function criarTerrenoMalha(atlas = null) {
       polygonOffsetUnits: tipo === "parede" ? 1 : 0,
     });
     materiaisKit.set(chave, { mat, tex });
+    aplicarSombraNuvem(mat);
     return mat;
   }
 

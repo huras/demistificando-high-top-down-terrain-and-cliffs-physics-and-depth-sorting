@@ -52,6 +52,8 @@
               <li><span class="ajuda-atalhos__teclas"><kbd>T</kbd></span> visual real / cubos</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>3</kbd></span> modo 3D</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>scroll</kbd> <kbd>+</kbd><kbd>-</kbd></span> zoom</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>[</kbd> <kbd>]</kbd></span> hora do dia (3D)</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>G</kbd></span> clima (3D)</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>`</kbd></span> debug pivôs</li>
               <li><span class="ajuda-atalhos__teclas">click</span> mouse-look (3D)</li>
               <li><span class="ajuda-atalhos__teclas">LMB · RMB</span> quebra / coloca bloco</li>
@@ -133,6 +135,44 @@
             <span class="controle__valor" id="raio-suave-valor">12 · 192 blocos</span>
             <input id="raio-suave" type="range" min="0" max="20" step="1" value="12" />
           </div>
+        </section>
+
+        <section class="painel__bloco">
+          <h2>
+            Céu
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Explicação do céu" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <p>
+                  Amanhecer, dia, tarde e noite no mesmo domo. Nuvens e sombra do chão
+                  usam o mesmo mapa: a sombra é projetada na direção do sol, como em BOTW.
+                  <kbd>[</kbd> <kbd>]</kbd> mudam a hora. <kbd>G</kbd> troca o clima.
+                </p>
+              </span>
+            </span>
+          </h2>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="ceu-hora">Hora</label>
+            </div>
+            <span class="controle__valor" id="ceu-hora-valor">09:21 · Dia</span>
+            <input id="ceu-hora" type="range" min="0" max="24" step="0.01" value="9.35" />
+          </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="ceu-clima">Clima</label>
+            </div>
+            <select id="ceu-clima">
+              <option value="limpo">Limpo</option>
+              <option value="chuva">Chuva</option>
+              <option value="areia">Tempestade de areia</option>
+              <option value="nevasca">Nevasca</option>
+            </select>
+          </div>
+          <label class="ceu-ciclo" for="ceu-ciclo">
+            <input id="ceu-ciclo" type="checkbox" checked />
+            Ciclo automático
+          </label>
         </section>
 
         <section class="painel__bloco">

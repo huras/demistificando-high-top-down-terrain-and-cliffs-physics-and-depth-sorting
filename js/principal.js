@@ -16,6 +16,7 @@ import {
   ligarPonteiro3d,
 } from "./entrada/ponteiro3d.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
+import { alternarClima, avancarHora } from "./render/3d/ceu/controleCeu.js";
 import { atualizarAgente, criarAgente, resetarNav } from "./fisica/agente.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { iniciarStamina } from "./fisica/stamina.js";
@@ -37,6 +38,7 @@ import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
 import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
 import { ligarDicasPainel } from "./ui/dicasPainel.js";
+import { ligarPainelCeu, sincronizarPainelCeu } from "./ui/painelCeu.js";
 import { ligarHudCompanheiro, atualizarHudCompanheiro } from "./ui/hudCompanheiro.js";
 import {
   ativarInputRelativoCamera,
@@ -116,6 +118,7 @@ async function iniciar() {
 
   ligarHudCompanheiro(agente, CAPS_PADRAO);
   ligarRaioStream();
+  ligarPainelCeu();
   ligarDicasPainel();
   ligarAjudaAtalhos();
   ligarControleModo(document.getElementById("btn-modo-3d"));
@@ -295,6 +298,11 @@ function sincronizarCamadas(modo) {
   document.body.dataset.modo = modo;
 }
 
+function campoFocado() {
+  const tag = document.activeElement?.tagName;
+  return tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+}
+
 function loop(agora) {
   const dt = Math.min(0.05, (agora - ultimo) / 1000);
   ultimo = agora;
@@ -303,9 +311,18 @@ function loop(agora) {
   if (teclaAgora("KeyT")) alternarVisual(atlas);
   if (teclaAgora("Digit3") || teclaAgora("Numpad3")) alternarModo();
 
+  const horaMenos = teclaAgora("BracketLeft");
+  const horaMais = teclaAgora("BracketRight");
+  const climaTecla = teclaAgora("KeyG");
+
   const modo = obterModo();
   if (modo === "3d") {
     garantir3d();
+    if (!campoFocado()) {
+      if (horaMenos) avancarHora(-0.5);
+      if (horaMais) avancarHora(0.5);
+      if (climaTecla) alternarClima();
+    }
     const mouse = consumirMovimentoMouse();
     olharCamera3d(mouse.dx, mouse.dy);
     if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
@@ -325,6 +342,7 @@ function loop(agora) {
   atualizarAgente(agente, corpo, dt);
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();
+  sincronizarPainelCeu();
 
   try {
     if (modo === "3d") {

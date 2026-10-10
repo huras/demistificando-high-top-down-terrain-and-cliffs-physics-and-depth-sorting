@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import {
   CHUNK_XZ,
   PASSO_MALHA_SUAVE,
@@ -31,10 +32,11 @@ function misturarTinta(material, forca) {
     );
   };
   material.customProgramCacheKey = () => `tinta-bioma-${forca}`;
+  aplicarSombraNuvem(material);
 }
 
 function materialSolido() {
-  return new THREE.MeshStandardMaterial({
+  return aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.82,
     metalness: 0.04,
@@ -42,7 +44,7 @@ function materialSolido() {
     polygonOffset: true,
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 2,
-  });
+  }));
 }
 
 function materialComTile() {

@@ -4,6 +4,7 @@ import { colunaAgua } from "../../mundo/agua/fluxo.js";
 import { criarAsaDelta3d } from "./asaDelta3d.js";
 import { linhaFacingDoCorpo } from "./facingCamera3d.js";
 import { criarSombraContato3d } from "./sombraContato3d.js";
+import { fatorSombraMundo } from "./ceu/mapaNuvem.js";
 
 const ALTURA_SPRITE = 1.25;
 
@@ -36,6 +37,7 @@ export function criarPersonagem3d(opts = {}) {
     sizeAttenuation: true,
   });
   if (opts.tint != null) spriteMat.color.setHex(opts.tint);
+  const corBase = spriteMat.color.clone();
 
   const sprite = new THREE.Sprite(spriteMat);
   sprite.center.set(0.5, 0);
@@ -122,6 +124,8 @@ export function criarPersonagem3d(opts = {}) {
       const elev =
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
       grupo.position.set(corpoEstado.x, elev * ALTURA_BLOCO, corpoEstado.y);
+      const sombraNuvem = fatorSombraMundo(corpoEstado.x, grupo.position.y, corpoEstado.y);
+      spriteMat.color.copy(corBase).multiplyScalar(0.58 + 0.42 * sombraNuvem);
 
       const agua = colunaAgua(corpoEstado.x, corpoEstado.y);
       const imerso = agua.superficie > 0 && elev < agua.superficie - 0.05;

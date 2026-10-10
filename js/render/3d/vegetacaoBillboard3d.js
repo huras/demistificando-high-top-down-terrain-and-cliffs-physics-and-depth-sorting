@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import {
   ALTURA_BLOCO,
   TILE,
@@ -122,7 +123,7 @@ export function criarVegetacaoBillboard3d() {
 
     const { largura, altura } = medidasDe(img, def.escala);
     const tex = criarTextura(img);
-    const material = new THREE.MeshStandardMaterial({
+    const material = aplicarSombraNuvem(new THREE.MeshStandardMaterial({
       map: tex,
       roughness: 0.92,
       metalness: 0,
@@ -131,7 +132,7 @@ export function criarVegetacaoBillboard3d() {
       depthWrite: true,
       depthTest: true,
       side: THREE.FrontSide,
-    });
+    }));
     const depth = new THREE.MeshDepthMaterial({
       depthPacking: THREE.RGBADepthPacking,
       map: tex,

@@ -5,6 +5,7 @@
  * A faixa branca desliza por cima do sprite, como a corrente antiga.
  */
 import * as THREE from "three";
+import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 
 const CEL = 16;
 const LAGO_URL = "assets/terrain/lake-autotile.png";
@@ -125,8 +126,8 @@ function carregar(url) {
 
 const texLago = texturaPixel(canvasChato("#7ec8e3"));
 const texQueda = texturaPixel(canvasChato("#9fd4ea"));
-const matLago = materialFolha(texLago, 1, 0.78, 0, "agua-lago-centro");
-const matQueda = materialFolha(texQueda, 1, 0.92, 1, "agua-queda-centro");
+const matLago = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-centro"));
+const matQueda = aplicarSombraNuvem(materialFolha(texQueda, 1, 0.92, 1, "agua-queda-centro"));
 
 carregar(LAGO_URL).then((img) => {
   if (!img) return;

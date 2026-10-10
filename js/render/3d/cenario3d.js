@@ -17,6 +17,7 @@ import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
+import { criarCeu } from "./ceu/ceu.js";
 
 let estado = null;
 
@@ -27,9 +28,11 @@ const NEVOA_FAR = 85;
 function aplicarNevoa(raio) {
   if (!estado?.scene.fog) return;
   const escala = Math.max(raio, obterRaioSuave(), 1) / RAIO_STREAM;
+  estado.nevoaBase.near = NEVOA_NEAR * escala;
+  estado.nevoaBase.far = NEVOA_FAR * escala;
   const fog = estado.scene.fog;
-  fog.near = NEVOA_NEAR * escala;
-  fog.far = NEVOA_FAR * escala;
+  fog.near = estado.nevoaBase.near;
+  fog.far = estado.nevoaBase.far;
   const cam = estado.camera3d.cam;
   const farCam = Math.max(200, fog.far + CAMERA3D_DIST_MAX + CHUNK_XZ);
   if (cam.far !== farCam) {
@@ -134,6 +137,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const hoverTile = criarMarcadorHover3d(THREE);
   scene.add(hoverTile.mesh);
 
+  const ceu = criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim });
+
   estado = {
     canvas,
     renderer,
@@ -149,6 +154,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
     ventoAsa,
     alvoEscalada,
     hoverTile,
+    ceu,
+    nevoaBase: { near: NEVOA_NEAR, far: NEVOA_FAR },
+    _alvoCeu: new THREE.Vector3(),
     pronto: true,
     distanciaNormalizada: () => distanciaNormalizada(camera3d),
     yaw: () => yawCamera(camera3d),
@@ -281,9 +289,12 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     lift: Math.max(0, elev - (corpo.z ?? 0)),
   });
 
-  estado.sol.target.position.set(corpo.x, elevVis, corpo.y);
-  estado.sol.position.set(corpo.x + 28, elevVis + 42, corpo.y + 18);
-  estado.rim.position.set(corpo.x + 2, elevVis + 8, corpo.y - 18);
+  estado._alvoCeu.set(corpo.x, elevVis, corpo.y);
+  estado.ceu.atualizar(dt, {
+    camera: estado.camera3d.cam,
+    alvo: estado._alvoCeu,
+    nevoa: estado.nevoaBase,
+  });
 
   estado.renderer.render(estado.scene, estado.camera3d.cam);
   return estado;
