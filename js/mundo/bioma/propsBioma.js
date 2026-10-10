@@ -35,3 +35,8 @@ export function todaVegetacao() {
   }
   return saida;
 }
+
+/** Chunks que já têm a lista de props do perto. O impostor distante sai desses. */
+export function chunksComProps() {
+  return new Set(porChunk.keys());
+}

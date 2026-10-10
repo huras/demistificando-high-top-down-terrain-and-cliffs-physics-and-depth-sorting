@@ -15,6 +15,7 @@ import {
 import { criarPersonagem3d } from "./personagem3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
+import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
@@ -115,6 +116,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const vegetacao = criarVegetacaoBillboard3d();
   scene.add(vegetacao.grupo);
 
+  const vegetacaoDistante = criarVegetacaoDistante();
+  scene.add(vegetacaoDistante.grupo);
+
   const personagem = criarPersonagem3d({
     nome: "personagem",
     sprite: atlas?.jogador ?? null,
@@ -149,6 +153,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     terreno,
     terrenoSuave,
     vegetacao,
+    vegetacaoDistante,
     personagem,
     agente3d,
     ventoAsa,
@@ -172,6 +177,7 @@ function aplicarAtlasNaCena(atlas) {
   estado.terreno.aplicarAtlas?.(atlas);
   estado.terrenoSuave?.aplicarTexturas?.(estado.terreno.obterTexturasTopo?.());
   estado.vegetacao?.aplicarAtlas?.(atlas);
+  estado.vegetacaoDistante?.aplicarAtlas?.(atlas);
   estado.personagem.definirSprite?.(atlas?.jogador ?? null);
   estado.agente3d.definirSprite?.(atlas?.jogador ?? null);
   const tiles = usarTiles(atlas);
@@ -273,6 +279,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   const yaw = yawCamera(estado.camera3d);
   estado.vegetacao?.atualizar?.(yaw);
+  estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw);
   estado.personagem.atualizar(corpo, estado.camera3d.cam, yaw);
   if (agente && estado.agente3d) {
     estado.agente3d.atualizar(agente, estado.camera3d.cam, yaw);

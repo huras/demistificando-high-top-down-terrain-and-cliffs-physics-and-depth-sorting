@@ -9,7 +9,7 @@ import {
   VEG_MATA_ESCALA,
   VEG_YAW_EPS,
 } from "../../config.js";
-import { pivoDaImagem } from "../pivoPe.js";
+import { fracaoBaseDoProp } from "../pivoProfundidade.js";
 import { alturaEm } from "../../mundo/altura.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { todaVegetacao } from "../../mundo/bioma/propsBioma.js";
@@ -17,7 +17,7 @@ import { onDirty } from "../../mundo/voxel/storeMundo.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
- * Quad com pivô no pé e billboard só no yaw (o pitch não deita o sprite).
+ * Quad com origem no depth-sort e billboard só no yaw (o pitch não deita o sprite).
  */
 
 const CAP_INSTANCIAS = 4096;
@@ -76,9 +76,6 @@ export function criarVegetacaoBillboard3d() {
   grupo.name = "vegetacao-billboard";
   grupo.visible = false;
 
-  const geo = new THREE.PlaneGeometry(1, 1);
-  geo.translate(0, 0.5, 0);
-
   const dummy = new THREE.Object3D();
   /** @type {Map<string, object>} */
   const lotes = new Map();
@@ -107,6 +104,14 @@ export function criarVegetacaoBillboard3d() {
     lote.matSombra?.dispose();
     lote.depth.dispose();
     lote.textura.dispose();
+    lote.geo?.dispose();
+  }
+
+  function geometriaNaRaiz(fracaoBase) {
+    const geo = new THREE.PlaneGeometry(1, 1);
+    const p = Number.isFinite(fracaoBase) ? fracaoBase : 0;
+    geo.translate(0, 0.5 - p, 0);
+    return geo;
   }
 
   function criarTextura(img) {
@@ -144,6 +149,7 @@ export function criarVegetacaoBillboard3d() {
       side: THREE.DoubleSide,
     });
 
+    const geo = geometriaNaRaiz(fracaoBaseDoProp(def.amostra));
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
     mesh.name = `veg-${def.chave}`;
     mesh.castShadow = false;
@@ -182,7 +188,7 @@ export function criarVegetacaoBillboard3d() {
       itens: def.itens,
       largura,
       altura,
-      pivotY: pivoDaImagem(img).y,
+      geo,
     };
     lotes.set(def.chave, lote);
     return lote;
@@ -203,7 +209,6 @@ export function criarVegetacaoBillboard3d() {
       const { largura, altura } = medidasDe(img, def.escala);
       lote.largura = largura;
       lote.altura = altura;
-      lote.pivotY = pivoDaImagem(img).y;
       lote.itens = def.itens;
       lote.mesh.count = def.itens.length;
       lote.mesh.visible = def.itens.length > 0;
@@ -224,13 +229,12 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function escreverMesh(mesh, itens, largura, altura, pivotY, yaw, limites) {
+  function escreverMesh(mesh, itens, largura, altura, yaw, limites) {
     if (!mesh) return;
-    const afunda = (1 - pivotY) * altura;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
       const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
-      dummy.position.set(p.x, base * ALTURA_BLOCO - afunda, p.y);
+      dummy.position.set(p.x, base * ALTURA_BLOCO, p.y);
       dummy.rotation.set(0, yaw, 0);
       dummy.scale.set(largura, altura, 1);
       dummy.updateMatrix();
@@ -246,9 +250,9 @@ export function criarVegetacaoBillboard3d() {
   function escrever(yaw, yawSol, recalcularLimites) {
     if (recalcularLimites) sincronizarLotes(recolherGrupos());
     for (const lote of lotes.values()) {
-      const { mesh, sombra, itens, largura, altura, pivotY } = lote;
-      escreverMesh(mesh, itens, largura, altura, pivotY ?? 1, yaw, recalcularLimites);
-      escreverMesh(sombra, itens, largura, altura, pivotY ?? 1, yawSol, recalcularLimites);
+      const { mesh, sombra, itens, largura, altura } = lote;
+      escreverMesh(mesh, itens, largura, altura, yaw, recalcularLimites);
+      escreverMesh(sombra, itens, largura, altura, yawSol, recalcularLimites);
     }
   }
 
@@ -306,7 +310,6 @@ export function criarVegetacaoBillboard3d() {
       cancelarDirty();
       for (const lote of lotes.values()) soltarLote(lote);
       lotes.clear();
-      geo.dispose();
     },
   };
 }

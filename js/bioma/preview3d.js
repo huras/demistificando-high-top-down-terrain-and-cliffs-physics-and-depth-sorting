@@ -7,7 +7,7 @@ import {
   VEG_MATA_ESCALA,
   VEG_YAW_EPS,
 } from "../config.js";
-import { pivoDaImagem } from "../render/pivoPe.js";
+import { fracaoBaseDe } from "../render/pivoProfundidade.js";
 import { avaliarGrafo } from "../mundo/bioma/grafo.js";
 import {
   arquivoSprite,
@@ -43,8 +43,6 @@ let disco = null;
 /** @type {THREE.Group | null} */
 let grupoProps = null;
 /** @type {THREE.PlaneGeometry | null} */
-let geoCartaz = null;
-
 let visuais = null;
 let pronto = false;
 let vivo = false;
@@ -315,7 +313,7 @@ function loteSprite(id, classe) {
     textura: tex,
     largura: (pw / TILE) * escala,
     altura: (ph / TILE) * escala,
-    pivotY: pivoDaImagem(fonte).y,
+    fracaoBase: fracaoBaseDe(id, classe),
   };
   materiaisSprite.set(id, lote);
   return lote;
@@ -326,6 +324,7 @@ function limparProps() {
   for (let i = grupoProps.children.length - 1; i >= 0; i--) {
     const obj = grupoProps.children[i];
     grupoProps.remove(obj);
+    obj.geometry?.dispose();
     obj.dispose?.();
   }
 }
@@ -350,15 +349,15 @@ function montarProps(bioma, alturas, seed) {
       const jx = (hash2(wx, wz, seed + 42) - 0.5) * 0.55;
       const jz = (hash2(wx, wz, seed + 77) - 0.5) * 0.55;
       const variacao = 0.86 + hash2(wx, wz, seed + 19) * 0.28;
-      const y =
-        alturas[iz * LADO + ix] * ALTURA_BLOCO -
-        (1 - lote.pivotY) * lote.altura * variacao;
+      const y = alturas[iz * LADO + ix] * ALTURA_BLOCO;
       grupo.itens.push({ x: ix + 0.5 + jx, y, z: iz + 0.5 + jz, s: variacao });
     }
   }
 
   for (const grupo of grupos.values()) {
-    const mesh = new THREE.InstancedMesh(geoCartaz, grupo.lote.material, grupo.itens.length);
+    const geo = new THREE.PlaneGeometry(1, 1);
+    geo.translate(0, 0.5 - grupo.lote.fracaoBase, 0);
+    const mesh = new THREE.InstancedMesh(geo, grupo.lote.material, grupo.itens.length);
     mesh.castShadow = true;
     mesh.receiveShadow = false;
     mesh.customDepthMaterial = grupo.lote.depth;
@@ -614,8 +613,6 @@ export async function iniciarPreviewBioma(elemento) {
   disco.receiveShadow = true;
   cena.add(disco);
 
-  geoCartaz = new THREE.PlaneGeometry(1, 1);
-  geoCartaz.translate(0, 0.5, 0);
   grupoProps = new THREE.Group();
   cena.add(grupoProps);
 

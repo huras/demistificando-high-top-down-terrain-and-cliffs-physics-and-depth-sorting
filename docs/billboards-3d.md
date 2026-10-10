@@ -30,7 +30,7 @@ A luz tem de ser atualizada antes dos sprites. Se inverter, a cor fica um frame 
 
 `recolherGrupos` junta `PROPS` do demo e a vegetação de bioma (`todaVegetacao`). A chave do lote é `prop.sprite`, ou o `tipo` se não houver sprite. Cada chave vira um `InstancedMesh` com no máximo 4096 instâncias. Um draw call por sprite, não por planta.
 
-O quad é um `PlaneGeometry(1, 1)` com a base da imagem em y local 0 (`translate(0, 0.5, 0)`). A escala da instância é o tamanho em células:
+O quad é um `PlaneGeometry(1, 1)`. A origem local fica no depth-sort do Pokemon AI (`pivoProfundidade.js`): fração da altura a partir da base da imagem. O yaw da câmera gira em volta desse ponto. O que fica abaixo da origem entra no chão. A escala da instância é o tamanho em células:
 
 ```
 largura = (px de largura / TILE) × escala
@@ -43,7 +43,7 @@ altura  = (px de altura  / TILE) × escala
 | `mata`, `grama` e o resto | `VEG_MATA_ESCALA` (0.75) |
 | `pedra`, `cristal` | 1 |
 
-O chão da célula é `alturaEm` vezes `ALTURA_BLOCO`. O pé que encosta nele é a última linha opaca do PNG (`pivoPe.js`, alpha ≥ 24), não a borda da imagem. O cartão desce `(1 - pivotY) × altura` em unidades de célula, sem multiplicar por `ALTURA_BLOCO`. O 2D usa a mesma fração e a mesma escala de mata (`VEG_MATA_ESCALA`) em `terreno.js` e no fade de cobertura.
+A posição da instância é o chão da célula (`alturaEm` vezes `ALTURA_BLOCO`). A raiz do cartão é esse depth-sort, não a borda da imagem. O 2D usa a mesma fração e a mesma escala de mata (`VEG_MATA_ESCALA`) em `terreno.js` e no fade de cobertura.
 
 A textura é o PNG do atlas, `NearestFilter`, sem mipmap. `alphaTest` (`VEG_ALPHA_TEST`, 0.12) recorta o transparente no passe opaco. Sem atlas, o lote não é criado.
 

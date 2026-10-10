@@ -236,6 +236,10 @@ export const RAIO_SUAVE_MIN = 0;
 export const RAIO_SUAVE_MAX = 20;
 /** Distância entre vértices da malha suave, em blocos. */
 export const PASSO_MALHA_SUAVE = 8;
+/** Chunks de impostor além do disco de blocos, sem passar do raio suave. */
+export const IMPOSTOR_ANEL = 4;
+/** Árvores billboard no anel. As mais perto ficam se passar disso. */
+export const IMPOSTOR_CAP = 256;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 6;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */
