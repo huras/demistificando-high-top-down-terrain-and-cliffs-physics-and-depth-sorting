@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
-import { ALTURA_BLOCO, ASA_DELTA_DESCIDA } from "../../config.js";
+import { ALTURA_BLOCO, ASA_DELTA_DESCIDA, CAMERA3D_DIST_MAX, CHUNK_XZ, RAIO_STREAM } from "../../config.js";
+import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import {
   ajustarDistancia,
   aplicarOlharMouse,
@@ -17,6 +18,24 @@ import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 
 let estado = null;
+
+/** Nevoeiro calibrado no raio 5 (disco de ~80 blocos). */
+const NEVOA_NEAR = 36;
+const NEVOA_FAR = 85;
+
+function aplicarNevoa(raio) {
+  if (!estado?.scene.fog) return;
+  const escala = Math.max(raio, 1) / RAIO_STREAM;
+  const fog = estado.scene.fog;
+  fog.near = NEVOA_NEAR * escala;
+  fog.far = NEVOA_FAR * escala;
+  const cam = estado.camera3d.cam;
+  const farCam = Math.max(200, fog.far + CAMERA3D_DIST_MAX + CHUNK_XZ);
+  if (cam.far !== farCam) {
+    cam.far = farCam;
+    cam.updateProjectionMatrix();
+  }
+}
 
 /**
  * Inicializa cena Three.js uma vez (fica quente entre toggles).
@@ -219,6 +238,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   if (!estado) return null;
 
   sincronizarVisualTerreno(atlas);
+  aplicarNevoa(obterRaioStream());
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
   seguirAlvo3d(estado.camera3d, corpo, dt);
 
