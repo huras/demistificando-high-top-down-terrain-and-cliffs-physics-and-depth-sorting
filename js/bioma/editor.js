@@ -3,7 +3,7 @@ import {
   alturaDoRelevo,
   biomaDominante,
 } from "../mundo/bioma/catalogo.js";
-import { avaliarGrafo } from "../mundo/bioma/grafo.js";
+import { amostrarNos, avaliarGrafo } from "../mundo/bioma/grafo.js";
 import { carregarKits, idsDeKit } from "../mundo/bioma/kits.js";
 import { atualizarPreviewBioma, iniciarPreviewBioma } from "./preview3d.js";
 
@@ -54,6 +54,12 @@ let indice = 0;
 let noSelecionado = null;
 /** @type {{ de: string, portaDe: string, x: number, y: number } | null} */
 let fioArraste = null;
+let previewPedido = 0;
+
+const PREVIA_NO_LARGURA = 64;
+const PREVIA_NO_ALTURA = 36;
+const PREVIA_NO_EXTENSAO_X = 500;
+const PREVIA_NO_EXTENSAO_Y = 400;
 
 function biomaAtual() {
   return dados.biomas[indice];
@@ -174,6 +180,13 @@ function pintarNos() {
     titulo.addEventListener("pointerdown", (ev) => comecarArrasteNo(ev, no));
     el.append(titulo);
 
+    const previa = document.createElement("canvas");
+    previa.className = "no__previa";
+    previa.width = PREVIA_NO_LARGURA;
+    previa.height = PREVIA_NO_ALTURA;
+    previa.dataset.previa = no.id;
+    el.append(previa);
+
     const corpo = document.createElement("div");
     corpo.className = "no__corpo";
     for (let p = 0; p < portas.entradas.length; p++) {
@@ -191,6 +204,7 @@ function pintarNos() {
     });
     nosEl.append(el);
   }
+  pedirPreviews();
 }
 
 function portaEl(idNo, nome, lado) {
@@ -274,7 +288,6 @@ function comecarArrasteNo(ev, no) {
   const soltar = () => {
     window.removeEventListener("pointermove", mover);
     window.removeEventListener("pointerup", soltar);
-    pintarPreviews();
   };
   window.addEventListener("pointermove", mover);
   window.addEventListener("pointerup", soltar);
@@ -323,7 +336,7 @@ function soltarFio(idNo, porta) {
   });
   fioArraste = null;
   pintarFios();
-  pintarPreviews();
+  pedirPreviews();
 }
 
 function campo(rotulo, valor, aoMudar, tipo = "number") {
@@ -337,7 +350,7 @@ function campo(rotulo, valor, aoMudar, tipo = "number") {
   input.addEventListener("input", () => {
     aoMudar(tipo === "number" ? Number(input.value) : input.value);
     pintarLista();
-    pintarPreviews();
+    pedirPreviews();
   });
   label.append(input);
   return label;
@@ -391,7 +404,7 @@ function pintarInspector() {
   }
   kitSelect.addEventListener("change", () => {
     bioma.kit = kitSelect.value || null;
-    pintarPreviews();
+    pedirPreviews();
   });
   kitLabel.append(kitSelect);
   inspectorEl.append(kitLabel);
@@ -498,6 +511,41 @@ function pintarInspector() {
   }
 }
 
+function pedirPreviews() {
+  if (previewPedido) return;
+  previewPedido = requestAnimationFrame(() => {
+    previewPedido = 0;
+    pintarPreviews();
+  });
+}
+
+function pintarMiniatura(canvas, valores) {
+  const w = canvas.width;
+  const h = canvas.height;
+  if (!valores || valores.length !== w * h) return;
+  const ctx = canvas.getContext("2d");
+  const img = ctx.createImageData(w, h);
+  const data = img.data;
+  let min = valores[0];
+  let max = valores[0];
+  for (let i = 1; i < valores.length; i++) {
+    const v = valores[i];
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  const faixa = max - min;
+  const chapado = faixa < 0.00001;
+  for (let i = 0; i < valores.length; i++) {
+    const c = chapado ? 128 : Math.floor(20 + ((valores[i] - min) / faixa) * 220);
+    const o = i * 4;
+    data[o] = c;
+    data[o + 1] = c;
+    data[o + 2] = c;
+    data[o + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 function pintarPreviews() {
   const seed = sementeAtual();
   const regiao = document.getElementById("prev-regiao");
@@ -548,6 +596,25 @@ function pintarPreviews() {
       ctxB.fillRect(px * cel, py * cel, cel, cel);
     }
   }
+  const amostras = amostrarNos(
+    bioma,
+    PREVIA_NO_LARGURA,
+    PREVIA_NO_ALTURA,
+    seed,
+    {
+      metrosPorBloco: Number(dados.metrosPorBloco) || 48,
+      metrosPorCelula: Number(dados.metrosPorCelula) || 1000,
+    },
+    {
+      x: PREVIA_NO_EXTENSAO_X / PREVIA_NO_LARGURA,
+      y: PREVIA_NO_EXTENSAO_Y / PREVIA_NO_ALTURA,
+    },
+  );
+  const miniaturas = nosEl.querySelectorAll("canvas.no__previa");
+  for (let i = 0; i < miniaturas.length; i++) {
+    const canvas = miniaturas[i];
+    pintarMiniatura(canvas, amostras.get(canvas.dataset.previa));
+  }
   atualizarPreviewBioma({
     bioma,
     catalogo: dados,
@@ -574,10 +641,7 @@ function pintarTudo() {
   pintarLista();
   pintarNos();
   pintarInspector();
-  requestAnimationFrame(() => {
-    pintarFios();
-    pintarPreviews();
-  });
+  requestAnimationFrame(() => pintarFios());
 }
 
 document.getElementById("salvar").addEventListener("click", async () => {
@@ -617,7 +681,7 @@ document.getElementById("apagar-bioma").addEventListener("click", () => {
 
 escalaEl.addEventListener("input", () => {
   dados.escalaRegiao = Math.max(32, Number(escalaEl.value) || 220);
-  pintarPreviews();
+  pedirPreviews();
 });
 
 window.addEventListener("keydown", (ev) => {

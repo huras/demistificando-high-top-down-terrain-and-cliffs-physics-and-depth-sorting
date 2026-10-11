@@ -213,6 +213,17 @@ button, input, select {
   border-bottom: 1px solid var(--borda);
 }
 
+.no__previa {
+  display: block;
+  width: calc(100% - 12px);
+  height: 52px;
+  margin: 6px 6px 2px;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  background: #0c100e;
+  image-rendering: pixelated;
+}
+
 .no__corpo {
   position: relative;
   min-height: 28px;

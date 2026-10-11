@@ -26,12 +26,12 @@ function acharNo(bioma, id) {
   return null;
 }
 
-function entrada(bioma, idNo, porta, wx, wy, seed, pilha, ctx) {
+function entrada(bioma, idNo, porta, wx, wy, seed, pilha, ctx, cache) {
   const ligacoes = bioma.ligacoes || [];
   for (let i = 0; i < ligacoes.length; i++) {
     const l = ligacoes[i];
     if (l.para === idNo && l.portaPara === porta) {
-      return avaliarNo(bioma, l.de, wx, wy, seed, pilha, ctx);
+      return avaliarNo(bioma, l.de, wx, wy, seed, pilha, ctx, cache);
     }
   }
   return 0;
@@ -45,7 +45,8 @@ function uvMundo(wx, wy, ctx) {
   return { u, v, uTile: u - Math.floor(u), vTile: v - Math.floor(v) };
 }
 
-function avaliarNo(bioma, id, wx, wy, seed, pilha, ctx) {
+function avaliarNo(bioma, id, wx, wy, seed, pilha, ctx, cache) {
+  if (cache?.has(id)) return cache.get(id);
   if (!pilha.add(id)) return 0;
   try {
     const no = acharNo(bioma, id);
@@ -85,24 +86,24 @@ function avaliarNo(bioma, id, wx, wy, seed, pilha, ctx) {
       }
       case "somar":
         valor =
-          entrada(bioma, id, "A", wx, wy, seed, pilha, ctx) +
-          entrada(bioma, id, "B", wx, wy, seed, pilha, ctx);
+          entrada(bioma, id, "A", wx, wy, seed, pilha, ctx, cache) +
+          entrada(bioma, id, "B", wx, wy, seed, pilha, ctx, cache);
         break;
       case "multiplicar":
         valor =
-          entrada(bioma, id, "A", wx, wy, seed, pilha, ctx) *
-          entrada(bioma, id, "B", wx, wy, seed, pilha, ctx);
+          entrada(bioma, id, "A", wx, wy, seed, pilha, ctx, cache) *
+          entrada(bioma, id, "B", wx, wy, seed, pilha, ctx, cache);
         break;
       case "mistura": {
-        const a = entrada(bioma, id, "A", wx, wy, seed, pilha, ctx);
-        const b = entrada(bioma, id, "B", wx, wy, seed, pilha, ctx);
+        const a = entrada(bioma, id, "A", wx, wy, seed, pilha, ctx, cache);
+        const b = entrada(bioma, id, "B", wx, wy, seed, pilha, ctx, cache);
         const t = Math.max(0, Math.min(1, Number(no.mistura) || 0));
         valor = a + (b - a) * t;
         break;
       }
       case "mascara": {
-        const src = entrada(bioma, id, "Source", wx, wy, seed, pilha, ctx);
-        const mIn = entrada(bioma, id, "Mask", wx, wy, seed, pilha, ctx);
+        const src = entrada(bioma, id, "Source", wx, wy, seed, pilha, ctx, cache);
+        const mIn = entrada(bioma, id, "Mask", wx, wy, seed, pilha, ctx, cache);
         const thr = Math.max(0, Math.min(1, Number(no.limiar) ?? 0.5));
         const sm = Math.max(0, Math.min(1, Number(no.suavidade) || 0));
         let dentro;
@@ -118,20 +119,20 @@ function avaliarNo(bioma, id, wx, wy, seed, pilha, ctx) {
         break;
       }
       case "terraco": {
-        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx);
+        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx, cache);
         const d = Math.max(1, Number(no.degrau) || 1);
         valor = Math.round(v / d) * d;
         break;
       }
       case "achatar": {
-        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx);
+        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx, cache);
         const alvo = Number(no.alvo) || 0;
         const forca = Math.max(0, Math.min(1, Number(no.forca) || 0));
         valor = v + (alvo - v) * forca;
         break;
       }
       case "limitar": {
-        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx);
+        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx, cache);
         const minimo = Number(no.minimo);
         const maximo = Number(no.maximo);
         const lo = Number.isFinite(minimo) ? minimo : 0;
@@ -140,7 +141,7 @@ function avaliarNo(bioma, id, wx, wy, seed, pilha, ctx) {
         break;
       }
       case "cratera": {
-        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx);
+        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx, cache);
         const limiar = Number(no.limiar);
         const t = Number.isFinite(limiar) ? limiar : 18;
         if (v <= t) valor = v;
@@ -152,7 +153,7 @@ function avaliarNo(bioma, id, wx, wy, seed, pilha, ctx) {
         break;
       }
       case "saida": {
-        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx);
+        const v = entrada(bioma, id, "In", wx, wy, seed, pilha, ctx, cache);
         valor = no.semNormalizar ? v : Math.max(0, Math.min(1, v));
         break;
       }
@@ -160,10 +161,43 @@ function avaliarNo(bioma, id, wx, wy, seed, pilha, ctx) {
         valor = 0;
     }
     const amp = Number(no.amplitude);
-    return valor * (Number.isFinite(amp) ? amp : 1);
+    const resultado = valor * (Number.isFinite(amp) ? amp : 1);
+    if (cache) cache.set(id, resultado);
+    return resultado;
   } finally {
     pilha.delete(id);
   }
+}
+
+/**
+ * Avalia cada nó numa grade. Cada ponto calcula o grafo uma vez.
+ * passo pode ser um número ou { x, y } em blocos por amostra.
+ * @returns {Map<string, Float32Array>}
+ */
+export function amostrarNos(bioma, largura, altura, seed, ctx, passo = 10) {
+  const buffers = new Map();
+  const nos = bioma?.nos;
+  if (!nos?.length) return buffers;
+  const w = Math.max(1, largura | 0);
+  const h = Math.max(1, altura | 0);
+  const passoX = typeof passo === "number" ? passo : Number(passo?.x) || 10;
+  const passoY = typeof passo === "number" ? passo : Number(passo?.y) || passoX;
+  for (let i = 0; i < nos.length; i++) {
+    buffers.set(nos[i].id, new Float32Array(w * h));
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const cache = new Map();
+      const pilha = new Set();
+      const wx = x * passoX;
+      const wy = y * passoY;
+      for (let i = 0; i < nos.length; i++) {
+        const id = nos[i].id;
+        buffers.get(id)[y * w + x] = avaliarNo(bioma, id, wx, wy, seed, pilha, ctx, cache);
+      }
+    }
+  }
+  return buffers;
 }
 
 function suave(a, b, x) {
