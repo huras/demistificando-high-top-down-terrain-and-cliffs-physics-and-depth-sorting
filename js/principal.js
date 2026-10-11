@@ -52,6 +52,7 @@ import {
   ajustarZoom3d,
   atualizarEDesenhar3d,
   definirMira3d,
+  entrarVistaCena,
   iniciarCenario3d,
   olharCamera3d,
   obterCenario3d,
@@ -59,6 +60,10 @@ import {
   redimensionarCenario3d,
   resetarCamera3d,
 } from "./render/3d/cenario3d.js";
+import { aplicarScrollCena, enquadrarSelecaoCena } from "./cena/cameraCena.js";
+import { alternarModoCena, aoMudarCena, definirModoCena, estaEmCena } from "./cena/modoCena.js";
+import { ligarHierarquiaCena, sincronizarHierarquiaCena } from "./ui/cena/hierarquia.js";
+import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.js";
 
 const canvas = document.getElementById("canvas");
 const canvas3d = document.getElementById("canvas-3d");
@@ -127,8 +132,19 @@ async function iniciar() {
   ligarPainelCamera();
   ligarDicasPainel();
   ligarAjudaAtalhos();
+  ligarHierarquiaCena();
+  ligarInspetorCena();
   ligarControleModo(document.getElementById("btn-modo-3d"));
   aoMudarModo(aoTrocarModo);
+  aoMudarCena((ativo) => {
+    if (ativo) {
+      document.exitPointerLock?.();
+      desligarPonteiro3d();
+      entrarVistaCena(corpo);
+    } else if (obterModo() === "3d") {
+      ligarPonteiro3d(canvas3d);
+    }
+  });
   sincronizarCamadas(obterModo());
   if (obterModo() === "3d") aoTrocarModo("3d");
 
@@ -144,6 +160,10 @@ async function iniciar() {
 
   const onWheel = (ev) => {
     ev.preventDefault();
+    if (obterModo() === "3d" && estaEmCena()) {
+      aplicarScrollCena(ev.deltaY);
+      return;
+    }
     const fator = ev.deltaY < 0 ? ZOOM_PASSO : 1 / ZOOM_PASSO;
     if (obterModo() === "3d") ajustarZoom3d(fator);
     else ajustarZoom(camera, fator);
@@ -283,6 +303,7 @@ function garantir3d() {
 }
 
 function aoTrocarModo(modo) {
+  if (modo !== "3d") definirModoCena(false);
   sincronizarCamadas(modo);
   if (modo === "3d") {
     const cen = garantir3d();
@@ -331,14 +352,19 @@ function loop(agora) {
       if (horaMenos) avancarHora(-0.5);
       if (horaMais) avancarHora(0.5);
       if (climaTecla) alternarClima();
+      if (teclaAgora("KeyC")) alternarModoCena();
+      if (estaEmCena() && teclaAgora("Escape")) definirModoCena(false);
+      if (estaEmCena() && teclaAgora("KeyF")) enquadrarSelecaoCena();
     }
-    const mouse = consumirMovimentoMouse();
-    definirMira3d(botaoDireitoSegurado());
-    olharCamera3d(mouse.dx, mouse.dy);
-    if (consumirCliqueEsquerdo()) pedirTiro3d();
-    if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
-    if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
-      ajustarZoom3d(1 / ZOOM_PASSO);
+    if (!estaEmCena()) {
+      const mouse = consumirMovimentoMouse();
+      definirMira3d(botaoDireitoSegurado());
+      olharCamera3d(mouse.dx, mouse.dy);
+      if (consumirCliqueEsquerdo()) pedirTiro3d();
+      if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
+      if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
+        ajustarZoom3d(1 / ZOOM_PASSO);
+      }
     }
   } else {
     if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom(camera, ZOOM_PASSO);
@@ -355,6 +381,8 @@ function loop(agora) {
   atualizarHoverBloco();
   sincronizarPainelCeu();
   sincronizarPainelCamera();
+  sincronizarHierarquiaCena();
+  sincronizarInspetorCena(dt);
 
   try {
     if (modo === "3d") {
@@ -366,6 +394,7 @@ function loop(agora) {
         camera3d: cen,
         debug,
         modoVisual,
+        emCena: estaEmCena(),
       });
     } else {
       desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, agente });

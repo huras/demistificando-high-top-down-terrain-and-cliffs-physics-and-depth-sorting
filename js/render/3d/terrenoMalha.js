@@ -21,6 +21,7 @@ import {
   paraCadaChunk,
 } from "../../mundo/voxel/storeMundo.js";
 import { BLOCO, ehSolido } from "../../mundo/voxel/tiposBloco.js";
+import { registrarObjetoCena, removerObjetoCena } from "../../cena/registroCena.js";
 import { hexBioma } from "../../mundo/bioma/tinta.js";
 import { kitDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
@@ -1224,8 +1225,27 @@ export function criarTerrenoMalha(atlas = null) {
     return naFrenteDoSuave(mat);
   }
 
+  function soltarRegistro(objeto) {
+    const id = objeto?.userData?.cenaId;
+    if (id) removerObjetoCena(id);
+  }
+
+  function publicarMalha(mesh, pasta) {
+    if (!mesh?.name) return;
+    registrarObjetoCena(mesh, {
+      id: mesh.name,
+      pasta,
+      rotulo: mesh.name,
+      tipo: "malha",
+    });
+  }
+
   function liberarGrupoChunk(entry) {
     if (!entry) return;
+    soltarRegistro(entry.agua);
+    soltarRegistro(entry.queda);
+    soltarRegistro(entry.cubos);
+    soltarRegistro(entry.real);
     if (entry.agua) {
       grupoAgua.remove(entry.agua);
       entry.agua.geometry?.dispose();
@@ -1317,10 +1337,16 @@ export function criarTerrenoMalha(atlas = null) {
 
     grupoReal.add(entry.real);
     meshesPorChunk.set(key, entry);
+    publicarMalha(entry.cubos, "Terreno");
+    publicarMalha(entry.real, "Terreno");
+    publicarMalha(entry.agua, "Água");
+    publicarMalha(entry.queda, "Água");
     limparSujo(chunk);
   }
 
   function reconstruirProps() {
+    soltarRegistro(meshProps);
+    soltarRegistro(meshPropsCubos);
     if (meshProps) {
       grupoReal.remove(meshProps);
       meshProps.geometry?.dispose();
@@ -1347,6 +1373,8 @@ export function criarTerrenoMalha(atlas = null) {
     meshPropsCubos.receiveShadow = true;
     meshPropsCubos.renderOrder = 1;
     grupoCubos.add(meshPropsCubos);
+    publicarMalha(meshProps, "Terreno");
+    publicarMalha(meshPropsCubos, "Terreno");
   }
 
   function reconstruirTudo() {

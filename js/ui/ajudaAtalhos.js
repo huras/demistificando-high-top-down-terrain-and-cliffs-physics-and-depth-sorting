@@ -1,6 +1,8 @@
 /**
  * Popover de atalhos no header (hover / focus / click + Escape).
  */
+import { consumirTecla } from "../entrada/teclado.js";
+
 export function ligarAjudaAtalhos() {
   const raiz = document.getElementById("ajuda-atalhos");
   const btn = document.getElementById("btn-ajuda-controles");
@@ -47,6 +49,7 @@ export function ligarAjudaAtalhos() {
 
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" && estaAberto()) {
+      consumirTecla("Escape");
       fechar();
       btn.blur();
     }

@@ -57,6 +57,12 @@ export function teclaAgora(codigo) {
   return true;
 }
 
+/** Marca a borda como já usada (ex.: Escape fechou a ajuda). */
+export function consumirTecla(codigo) {
+  if (!acabouDePressionar.has(codigo)) return;
+  consumidos.add(codigo);
+}
+
 /** Transforma o vetor WASD (ex.: relativo à câmera 3D). */
 let adaptadorVetor = null;
 

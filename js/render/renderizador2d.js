@@ -150,7 +150,7 @@ function desenharMira(ctx, largura, altura) {
 /**
  * Só HUD por cima do WebGL (canvas 2d transparente).
  */
-export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVisual }) {
+export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVisual, emCena = false }) {
   const zoom = camera3d?.distanciaNormalizada?.() ?? 1;
   const ocl = atualizarPainel(corpo, zoom, modoVisual, "3d");
 
@@ -159,10 +159,27 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
 
   desenharOverlayAjuda(ctx, { zoom }, debug, null, modoVisual, "3d");
   desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
-  desenharLabelHoverHud(ctx, canvas.width, canvas.height, true);
-  if ((camera3d?.camera3d?.blend ?? 0) > 0.35) {
-    desenharMira(ctx, canvas.width, canvas.height);
+  if (emCena) {
+    desenharTagCena(ctx, canvas.width);
+  } else {
+    desenharLabelHoverHud(ctx, canvas.width, canvas.height, true);
+    if ((camera3d?.camera3d?.blend ?? 0) > 0.35) {
+      desenharMira(ctx, canvas.width, canvas.height);
+    }
   }
 
   return { ocl, modoVisual };
+}
+
+function desenharTagCena(ctx, largura) {
+  ctx.save();
+  ctx.font = "600 13px Segoe UI, sans-serif";
+  const texto = "Cena";
+  const w = ctx.measureText(texto).width + 18;
+  const x = Math.max(12, (largura - w) * 0.5);
+  ctx.fillStyle = "rgba(15, 20, 16, 0.78)";
+  ctx.fillRect(x, 10, w, 22);
+  ctx.fillStyle = "#7dce6a";
+  ctx.fillText(texto, x + 9, 25);
+  ctx.restore();
 }

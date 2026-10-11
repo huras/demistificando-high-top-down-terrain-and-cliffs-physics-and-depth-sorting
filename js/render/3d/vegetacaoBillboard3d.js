@@ -13,6 +13,8 @@ import { fracaoBaseDoProp } from "../pivoProfundidade.js";
 import { alturaEm } from "../../mundo/altura.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { todaVegetacao } from "../../mundo/bioma/propsBioma.js";
+import { registrarObjetoCena, removerObjetoCena, marcarAuxiliar } from "../../cena/registroCena.js";
+import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
 import { onDirty } from "../../mundo/voxel/storeMundo.js";
 
 /**
@@ -94,6 +96,7 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function soltarLote(lote) {
+    removerObjetoCena(lote.mesh?.userData?.cenaId);
     grupo.remove(lote.mesh);
     lote.mesh.dispatchEvent({ type: "dispose" });
     if (lote.sombra) {
@@ -191,6 +194,15 @@ export function criarVegetacaoBillboard3d() {
       geo,
     };
     lotes.set(def.chave, lote);
+    usarRaycastBillboard(mesh, () => lote);
+    registrarObjetoCena(mesh, {
+      id: mesh.name,
+      pasta: "Vegetação",
+      rotulo: mesh.name,
+      tipo: "instâncias",
+      obterInstancia: (i) => lote.itens[i] || null,
+    });
+    marcarAuxiliar(sombra);
     return lote;
   }
 

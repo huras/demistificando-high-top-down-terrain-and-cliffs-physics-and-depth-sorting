@@ -2,6 +2,7 @@
  * Input de edição de blocos (2D mouse + 3D click com pointer lock).
  */
 import { obterModo } from "../modoJogo.js";
+import { estaEmCena } from "../cena/modoCena.js";
 import { alvoBloco2d, alvoBloco3d } from "../mundo/voxel/alvoBloco.js";
 import { colocarBloco, quebrarBloco } from "../mundo/voxel/editar.js";
 import { ESCALA, FACE_H, TILE } from "../config.js";
@@ -50,7 +51,7 @@ function aoMouseDown2d(ev) {
 }
 
 function aoMouseDown3d(ev) {
-  if (obterModo() !== "3d") return;
+  if (obterModo() !== "3d" || estaEmCena()) return;
   if (!ponteiroTravado()) return;
   if (ev.button !== 0) return;
   if (botaoDireitoSegurado()) return;

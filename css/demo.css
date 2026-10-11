@@ -540,3 +540,242 @@ body[data-modo="3d"] #canvas-3d.palco__camada--ativa {
     border-top: none;
   }
 }
+
+#btn-cena {
+  display: none;
+}
+
+body[data-modo="3d"] #btn-cena {
+  display: inline-block;
+}
+
+.cena-ui {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+body[data-modo="3d"][data-cena="ativa"] .cena-ui {
+  display: block;
+}
+
+.cena-painel {
+  pointer-events: auto;
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: min(240px, 32vw);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: rgba(15, 20, 16, 0.88);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  color: var(--texto);
+}
+
+.cena-painel--esq {
+  left: 8px;
+}
+
+.cena-painel--dir {
+  right: 8px;
+}
+
+.cena-painel__topo {
+  padding: 8px 10px 0;
+}
+
+.cena-painel__topo h2 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.cena-busca {
+  margin: 8px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  background: var(--codigo);
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 6px 8px;
+}
+
+.cena-busca:focus {
+  outline: 1px solid var(--destaque);
+}
+
+.cena-lista {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.cena-lista__trilho {
+  position: relative;
+  width: 100%;
+}
+
+.cena-linha {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 22px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.cena-linha:hover {
+  background: rgba(125, 206, 106, 0.12);
+}
+
+.cena-linha--pasta {
+  color: var(--texto-suave);
+  font-weight: 650;
+}
+
+.cena-linha--ativa {
+  background: rgba(125, 206, 106, 0.22);
+  color: #e8ffe0;
+}
+
+.cena-inspetor {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px 12px;
+}
+
+.cena-vazio {
+  margin: 8px 0 0;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.cena-attrs {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.cena-attrs dt {
+  margin: 0;
+  color: var(--texto-suave);
+}
+
+.cena-attrs dd {
+  margin: 0;
+  font-family: var(--fonte-mono);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.cena-rodape {
+  position: absolute;
+  left: calc(min(240px, 32vw) + 20px);
+  bottom: 12px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.cena-eixos {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  perspective: 180px;
+}
+
+.cena-eixos__giro {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.cena-eixos__haste {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 2px;
+  border-radius: 1px;
+  transform-origin: left center;
+}
+
+.cena-eixos__haste--x {
+  background: #e06a62;
+}
+
+.cena-eixos__haste--y {
+  background: #7dce6a;
+  transform: rotateZ(-90deg);
+}
+
+.cena-eixos__haste--z {
+  background: #6aa8e0;
+  transform: rotateY(90deg);
+}
+
+.cena-eixos__faces {
+  display: grid;
+  grid-template-columns: repeat(4, 1.7rem);
+  gap: 3px;
+}
+
+.cena-eixos__face {
+  appearance: none;
+  height: 1.45rem;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  background: rgba(15, 20, 16, 0.88);
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.cena-eixos__face--y {
+  grid-column: 2;
+}
+
+.cena-eixos__face:hover {
+  color: var(--texto);
+  border-color: var(--destaque);
+}
+
+.cena-vel {
+  margin: 0 0 2px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(15, 20, 16, 0.78);
+  color: var(--texto-suave);
+  font-family: var(--fonte-mono);
+  font-size: 0.72rem;
+}

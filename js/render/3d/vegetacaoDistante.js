@@ -17,6 +17,8 @@ import { COLUNAS, LINHAS } from "../../mundo/regioes/mapaDemoPatch.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { obterRaioSuave } from "./terrenoSuave.js";
 import { fracaoBaseDoProp } from "../pivoProfundidade.js";
+import { registrarObjetoCena, removerObjetoCena } from "../../cena/registroCena.js";
+import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
 
 /**
  * Árvores billboard em todo o disco suave, fora dos chunks de bloco.
@@ -46,6 +48,7 @@ export function criarVegetacaoDistante() {
   }
 
   function soltarLote(lote) {
+    removerObjetoCena(lote.mesh?.userData?.cenaId);
     grupo.remove(lote.mesh);
     lote.material.dispose();
     lote.textura.dispose();
@@ -101,8 +104,16 @@ export function criarVegetacaoDistante() {
     mesh.frustumCulled = true;
     mesh.count = 0;
     grupo.add(mesh);
-    const lote = { sprite, mesh, material, textura: tex, geo, img, itens: [] };
+    const lote = { sprite, mesh, material, textura: tex, geo, img, itens: [], largura: 1, altura: 1 };
     lotes.set(sprite, lote);
+    usarRaycastBillboard(mesh, () => lote);
+    registrarObjetoCena(mesh, {
+      id: mesh.name,
+      pasta: "Vegetação",
+      rotulo: mesh.name,
+      tipo: "instâncias",
+      obterInstancia: (i) => lote.itens[i] || null,
+    });
     return lote;
   }
 
@@ -112,6 +123,8 @@ export function criarVegetacaoDistante() {
       const img = lote.img;
       const { largura, altura } = medidasDe(img);
       const itens = lote.itens;
+      lote.largura = largura;
+      lote.altura = altura;
       lote.mesh.count = itens.length;
       lote.mesh.visible = itens.length > 0;
       if (!itens.length) continue;

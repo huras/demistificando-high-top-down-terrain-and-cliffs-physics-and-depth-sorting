@@ -23,6 +23,18 @@ import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
+import { estaEmCena } from "../../cena/modoCena.js";
+import {
+  atualizarCameraCena,
+  entrarCameraCena,
+  ligarCameraCena,
+  obterCameraCena,
+  redimensionarCameraCena,
+  sincronizarFarCena,
+  yawDaCamera,
+} from "../../cena/cameraCena.js";
+import { registrarObjetoCena, verCamadaAuxiliar } from "../../cena/registroCena.js";
+import { atualizarRealceCena, ligarSelecaoCena } from "../../cena/selecaoCena.js";
 
 let estado = null;
 let tiroPendente = false;
@@ -45,6 +57,7 @@ function aplicarNevoa(raio) {
     cam.far = farCam;
     cam.updateProjectionMatrix();
   }
+  sincronizarFarCena(farCam);
 }
 
 /**
@@ -82,14 +95,18 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.fog = new THREE.Fog(0x2a221c, 36, 85);
 
   const camera3d = criarCamera3d(largura / altura);
+  verCamadaAuxiliar(camera3d.cam);
 
   const hemi = new THREE.HemisphereLight(0xf5e6c8, 0x292524, 0.35);
+  hemi.name = "luz-ceu";
   scene.add(hemi);
 
   const ambient = new THREE.AmbientLight(0xc4b5a5, 0.32);
+  ambient.name = "luz-ambiente";
   scene.add(ambient);
 
   const sol = new THREE.DirectionalLight(0xffe4c4, 1.55);
+  sol.name = "luz-sol";
   sol.position.set(28, 42, 18);
   sol.castShadow = true;
   sol.shadow.mapSize.set(1024, 1024);
@@ -105,10 +122,12 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.add(sol.target);
 
   const fill = new THREE.DirectionalLight(0x9db4c8, 0.42);
+  fill.name = "luz-preenchimento";
   fill.position.set(-20, 12, -10);
   scene.add(fill);
 
   const rim = new THREE.DirectionalLight(0xf0a060, 0.58);
+  rim.name = "luz-contorno";
   rim.position.set(2, 8, -18);
   scene.add(rim);
 
@@ -142,12 +161,15 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.add(ventoAsa.objeto);
 
   const alvoEscalada = criarMarcadorAlvoEscalada();
+  alvoEscalada.mesh.name = "alvo-escalada";
   scene.add(alvoEscalada.mesh);
 
   const hoverTile = criarMarcadorHover3d(THREE);
+  hoverTile.mesh.name = "hover-bloco";
   scene.add(hoverTile.mesh);
 
   const ceu = criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim });
+  verCamadaAuxiliar(sol.shadow.camera);
 
   const rig = criarRigCamera3d();
   scene.add(rig.grupo);
@@ -181,9 +203,97 @@ export function iniciarCenario3d(canvas, atlas = null) {
     yaw: () => yawCamera(camera3d),
   };
 
+  publicarObjetosCena(scene, {
+    hemi,
+    ambient,
+    sol,
+    fill,
+    rim,
+    personagem,
+    agente3d,
+    ventoAsa,
+    alvoEscalada,
+    hoverTile,
+    rig,
+    flechas,
+  });
+  ligarCameraCena(canvas);
+  ligarSelecaoCena(scene);
+
   if (atlas) aplicarAtlasNaCena(atlas);
 
   return estado;
+}
+
+function publicarObjetosCena(scene, refs) {
+  const luz = (objeto, rotulo) => registrarObjetoCena(objeto, {
+    id: objeto.name,
+    pasta: "Luzes",
+    rotulo,
+    tipo: "luz",
+  });
+  luz(refs.hemi, "céu");
+  luz(refs.ambient, "ambiente");
+  luz(refs.sol, "sol");
+  luz(refs.fill, "preenchimento");
+  luz(refs.rim, "contorno");
+
+  registrarObjetoCena(refs.personagem.grupo, {
+    id: "personagem",
+    pasta: "Personagens",
+    rotulo: "personagem",
+    tipo: "personagem",
+    segue: true,
+  });
+  registrarObjetoCena(refs.agente3d.grupo, {
+    id: "agente",
+    pasta: "Personagens",
+    rotulo: "agente",
+    tipo: "personagem",
+    segue: true,
+  });
+
+  const marcar = (objeto, pasta, tipo, auxiliar = false) => {
+    if (!objeto?.name) return;
+    registrarObjetoCena(objeto, {
+      id: objeto.name,
+      pasta,
+      rotulo: objeto.name,
+      tipo,
+      auxiliar,
+    });
+  };
+  marcar(scene.getObjectByName("ceu-domo"), "Céu", "céu", true);
+  marcar(scene.getObjectByName("ceu-precipitacao"), "Céu", "céu", true);
+  marcar(scene.getObjectByName("ceu-relampago"), "Céu", "céu", true);
+  marcar(refs.ventoAsa.objeto, "Marcadores", "efeito", true);
+  marcar(refs.rig.grupo, "Marcadores", "gizmo", true);
+  marcar(refs.alvoEscalada.mesh, "Marcadores", "marcador");
+  marcar(refs.hoverTile.mesh, "Marcadores", "marcador");
+  marcar(refs.flechas.grupo, "Marcadores", "flechas");
+}
+
+function anotarEstadoSim(grupo, sim) {
+  if (!grupo || !sim) return;
+  grupo.userData.estadoSim = {
+    x: sim.x,
+    y: sim.y,
+    z: sim.z,
+    acao: sim.acao || "",
+    voando: !!sim.voando,
+    escalando: !!sim.escalando,
+    nadando: !!sim.nadando,
+    planando: !!sim.planando,
+  };
+}
+
+export function entrarVistaCena(corpo) {
+  if (!estado || !corpo) return;
+  const elev = (corpo.elevacao ?? corpo.z ?? 0) * ALTURA_BLOCO;
+  entrarCameraCena(
+    estado.camera3d.cam,
+    estado._alvoCeu.set(corpo.x, elev + 1.1, corpo.y),
+  );
 }
 
 function aplicarAtlasNaCena(atlas) {
@@ -302,18 +412,25 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   const elev = corpo.elevacao ?? corpo.z ?? 0;
   const elevVis = elev * ALTURA_BLOCO;
   estado._alvoCeu.set(corpo.x, elevVis, corpo.y);
+
+  const emCena = estaEmCena();
+  const camRender = emCena ? obterCameraCena() : estado.camera3d.cam;
+  if (emCena) atualizarCameraCena(dt);
+  const yaw = emCena ? yawDaCamera(camRender) : yawCamera(estado.camera3d);
+
   estado.ceu.atualizar(dt, {
-    camera: estado.camera3d.cam,
+    camera: camRender,
     alvo: estado._alvoCeu,
     nevoa: estado.nevoaBase,
   });
 
-  const yaw = yawCamera(estado.camera3d);
   estado.vegetacao?.atualizar?.(yaw);
   estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw);
-  estado.personagem.atualizar(corpo, estado.camera3d.cam, yaw);
+  anotarEstadoSim(estado.personagem.grupo, corpo);
+  estado.personagem.atualizar(corpo, camRender, yaw);
   if (agente && estado.agente3d) {
-    estado.agente3d.atualizar(agente, estado.camera3d.cam, yaw);
+    anotarEstadoSim(estado.agente3d.grupo, agente);
+    estado.agente3d.atualizar(agente, camRender, yaw);
   }
   estado.alvoEscalada.atualizar(corpo, dt);
   estado.hoverTile?.atualizar();
@@ -333,7 +450,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     lift: Math.max(0, elev - (corpo.z ?? 0)),
   });
 
-  estado.renderer.render(estado.scene, estado.camera3d.cam);
+  atualizarRealceCena();
+  estado.renderer.render(estado.scene, camRender);
   return estado;
 }
 
@@ -342,4 +460,5 @@ export function redimensionarCenario3d(w, h) {
   estado.renderer.setSize(w, h, false);
   estado.camera3d.cam.aspect = w / h;
   estado.camera3d.cam.updateProjectionMatrix();
+  redimensionarCameraCena(w, h);
 }

@@ -45,6 +45,7 @@ import {
 import { iniciarStamina, regenerarStamina } from "./stamina.js";
 import { resolverMovimentoPosMantle } from "./travaInputEscalada.js";
 import { atualizarVoo, entrarVoo, estaVoando, sairVoo } from "./voo.js";
+import { entradaJogadorSuspensa } from "../cena/modoCena.js";
 
 export function criarCorpo(spawn) {
   const corpo = {
@@ -94,6 +95,10 @@ export function criarCorpo(spawn) {
 }
 
 export function atualizarMovimento(corpo, dt) {
+  if (entradaJogadorSuspensa()) {
+    simularSemInput(corpo, dt);
+    return;
+  }
   let { dx, dy } = vetorMovimento();
 
   // F: toggle fly (não drena stamina)
@@ -214,6 +219,48 @@ export function atualizarMovimento(corpo, dt) {
     atualizarNoAr(corpo, dx, dy, dt);
   }
 
+  regenerarStamina(corpo, dt);
+}
+
+function simularSemInput(corpo, dt) {
+  if (estaVoando(corpo)) {
+    corpo.correndo = false;
+    atualizarVoo(corpo, 0, 0, false, false, dt, VELOCIDADE_MAX);
+    regenerarStamina(corpo, dt);
+    return;
+  }
+
+  if (corpo.mantle) {
+    const ainda = atualizarMantle(corpo, dt);
+    corpo.andando = false;
+    if (ainda) return;
+  }
+
+  if (corpo.escalando && corpo.escalada) {
+    corpo.hopLift = atualizarEscalada(corpo, dt, 0, 0);
+    if (corpo.escalando || corpo.mantle) {
+      corpo.andando = false;
+      corpo.vx = 0;
+      corpo.vy = 0;
+      return;
+    }
+  }
+
+  let dx = 0;
+  let dy = 0;
+  if (!corpo.escalando) {
+    ({ dx, dy } = resolverMovimentoPosMantle(corpo, dx, dy));
+  }
+  if (corpo.puloBufferT > 0) corpo.puloBufferT = Math.max(0, corpo.puloBufferT - dt);
+  corpo.correndo = false;
+
+  if (corpo.nadando && !corpo.escalando && !corpo.voando) {
+    atualizarNado(corpo, dx, dy, dt);
+    return;
+  }
+
+  if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt);
+  else atualizarNoAr(corpo, dx, dy, dt);
   regenerarStamina(corpo, dt);
 }
 

@@ -10,6 +10,7 @@ import {
 import { alturaDoRelevo, superficieDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { rgbBioma } from "../../mundo/bioma/tinta.js";
 import { BLOCO } from "../../mundo/voxel/tiposBloco.js";
+import { registrarObjetoCena } from "../../cena/registroCena.js";
 
 let raioAtivo = RAIO_SUAVE;
 
@@ -89,6 +90,18 @@ export function criarTerrenoSuave() {
   const meshGrama = criarMesh("terreno-suave-grama", mats.grama.cubos);
   const meshTerra = criarMesh("terreno-suave-terra", mats.terra.cubos);
   grupo.add(meshGrama, meshTerra);
+  registrarObjetoCena(meshGrama, {
+    id: meshGrama.name,
+    pasta: "Terreno",
+    rotulo: meshGrama.name,
+    tipo: "relevo",
+  });
+  registrarObjetoCena(meshTerra, {
+    id: meshTerra.name,
+    pasta: "Terreno",
+    rotulo: meshTerra.name,
+    tipo: "relevo",
+  });
 
   let ancoraX = 1e9;
   let ancoraY = 1e9;

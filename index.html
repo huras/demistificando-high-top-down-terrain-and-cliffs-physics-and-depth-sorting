@@ -25,6 +25,9 @@
         <button type="button" id="btn-modo-3d" class="btn-modo" aria-pressed="true">
           Voltar 2D
         </button>
+        <button type="button" id="btn-cena" class="btn-modo" aria-pressed="false">
+          Cena
+        </button>
         <a class="btn-modo" href="biomas.html">Biomas</a>
         <div class="ajuda-atalhos" id="ajuda-atalhos">
           <button
@@ -51,6 +54,10 @@
               <li><span class="ajuda-atalhos__teclas"><kbd>F</kbd></span> fly on/off</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>T</kbd></span> visual real / cubos</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>3</kbd></span> modo 3D</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>C</kbd></span> vista de cena (3D)</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>RMB</kbd> <kbd>WASD</kbd></span> na cena: olhar e voar</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>Q</kbd> <kbd>E</kbd></span> na cena: desce / sobe</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>F</kbd> <kbd>Esc</kbd></span> na cena: enquadrar / voltar</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>scroll</kbd> <kbd>+</kbd><kbd>-</kbd></span> zoom</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>[</kbd> <kbd>]</kbd></span> hora do dia (3D)</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>G</kbd></span> clima (3D)</li>
@@ -70,6 +77,39 @@
         <div class="palco__viewport">
           <canvas id="canvas-3d" class="palco__camada palco__camada--ativa" width="1280" height="720"></canvas>
           <canvas id="canvas" class="palco__camada palco__camada--hud" width="1280" height="720"></canvas>
+          <div class="cena-ui" id="cena-ui">
+            <section class="cena-painel cena-painel--esq" aria-label="Hierarquia">
+              <header class="cena-painel__topo"><h2>Hierarquia</h2></header>
+              <input id="cena-busca" class="cena-busca" type="search" placeholder="Buscar" autocomplete="off" spellcheck="false" />
+              <div class="cena-lista" id="cena-lista">
+                <div class="cena-lista__trilho" id="cena-lista-trilho"></div>
+              </div>
+            </section>
+            <section class="cena-painel cena-painel--dir" aria-label="Atributos">
+              <header class="cena-painel__topo"><h2>Atributos</h2></header>
+              <div class="cena-inspetor" id="cena-inspetor">
+                <p class="cena-vazio">Nenhum objeto selecionado.</p>
+              </div>
+            </section>
+            <div class="cena-rodape" id="cena-rodape">
+              <div class="cena-eixos" id="cena-eixos">
+                <div class="cena-eixos__giro" id="cena-eixos-giro" aria-hidden="true">
+                  <span class="cena-eixos__haste cena-eixos__haste--x"></span>
+                  <span class="cena-eixos__haste cena-eixos__haste--y"></span>
+                  <span class="cena-eixos__haste cena-eixos__haste--z"></span>
+                </div>
+                <div class="cena-eixos__faces">
+                  <button type="button" class="cena-eixos__face cena-eixos__face--y" data-eixo="py">+Y</button>
+                  <button type="button" class="cena-eixos__face" data-eixo="nx">−X</button>
+                  <button type="button" class="cena-eixos__face" data-eixo="nz">−Z</button>
+                  <button type="button" class="cena-eixos__face" data-eixo="px">+X</button>
+                  <button type="button" class="cena-eixos__face" data-eixo="pz">+Z</button>
+                  <button type="button" class="cena-eixos__face cena-eixos__face--y" data-eixo="ny">−Y</button>
+                </div>
+              </div>
+              <p class="cena-vel" id="cena-vel">10.0 u/s</p>
+            </div>
+          </div>
         </div>
       </div>
 

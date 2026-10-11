@@ -3,6 +3,7 @@
  */
 import { ESCALA, FACE_H, TILE } from "../config.js";
 import { obterModo } from "../modoJogo.js";
+import { estaEmCena } from "../cena/modoCena.js";
 import { alvoBloco2d, alvoBloco3d } from "../mundo/voxel/alvoBloco.js";
 import { nomeBloco } from "../mundo/voxel/tiposBloco.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
@@ -85,7 +86,7 @@ export function atualizarHoverBloco() {
   const corpo = obterCorpo();
 
   if (modo === "3d") {
-    if (!ponteiroTravado() || !corpo) {
+    if (estaEmCena() || !ponteiroTravado() || !corpo) {
       aplicarHover(null);
       sujo = false;
       return hover;
