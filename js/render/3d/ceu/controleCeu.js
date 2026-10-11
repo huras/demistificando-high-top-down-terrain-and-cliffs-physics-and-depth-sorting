@@ -1,5 +1,23 @@
 /** Estado do céu que existe antes da cena 3D (o painel mexe aqui). */
 
+import {
+  INCLINACAO_SOL_MAX,
+  INCLINACAO_SOL_MIN,
+  INCLINACAO_SOL_PADRAO,
+  ROTACAO_SOL_MAX,
+  ROTACAO_SOL_MIN,
+  ROTACAO_SOL_PADRAO,
+} from "./parametros.js";
+
+export {
+  INCLINACAO_SOL_MAX,
+  INCLINACAO_SOL_MIN,
+  INCLINACAO_SOL_PADRAO,
+  ROTACAO_SOL_MAX,
+  ROTACAO_SOL_MIN,
+  ROTACAO_SOL_PADRAO,
+};
+
 export const CLIMAS = ["limpo", "chuva", "areia", "nevasca"];
 
 const NOMES = {
@@ -12,11 +30,19 @@ const NOMES = {
 let hora = 9.35;
 let ciclo = true;
 let clima = "limpo";
+let inclinacaoSol = INCLINACAO_SOL_PADRAO;
+let rotacaoSol = ROTACAO_SOL_PADRAO;
 
 function enrolar(h) {
   let x = h % 24;
   if (x < 0) x += 24;
   return x;
+}
+
+function limitar(n, min, max, fallback) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return fallback;
+  return Math.min(max, Math.max(min, x));
 }
 
 export function obterHora() {
@@ -76,8 +102,18 @@ export function textoHora(h = hora) {
   return `${hh}:${mm} · ${nomeFase(h)}`;
 }
 
+export function definirInclinacaoSol(graus) {
+  inclinacaoSol = limitar(graus, INCLINACAO_SOL_MIN, INCLINACAO_SOL_MAX, INCLINACAO_SOL_PADRAO);
+  return inclinacaoSol;
+}
+
+export function definirRotacaoSol(graus) {
+  rotacaoSol = limitar(graus, ROTACAO_SOL_MIN, ROTACAO_SOL_MAX, ROTACAO_SOL_PADRAO);
+  return rotacaoSol;
+}
+
 export function obterControleCeu() {
-  return { hora, ciclo, clima };
+  return { hora, ciclo, clima, inclinacao: inclinacaoSol, rotacao: rotacaoSol };
 }
 
 /** Avança o relógio se o ciclo automático estiver ligado. */

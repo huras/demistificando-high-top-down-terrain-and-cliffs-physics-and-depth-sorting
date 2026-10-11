@@ -1,7 +1,9 @@
+import { FRAG_POCA, FRAG_POCA_SAIDA, ligarUniformsPoca } from "./pocaChao.js";
 import { uniformsNuvem } from "./parametros.js";
 
 const MARCA = "sombraNuvem";
 let avisou = false;
+let avisouPoca = false;
 
 const VERT_COMUM = `
 varying vec3 vMundoCeu;
@@ -80,11 +82,15 @@ export function aplicarSombraNuvem(material) {
   material.onBeforeCompile = (shader, renderer) => {
     if (anterior) anterior.call(material, shader, renderer);
     ligarUniforms(shader);
+    ligarUniformsPoca(shader);
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>\n${VERT_COMUM}`)
       .replace("#include <worldpos_vertex>", VERT_MUNDO);
 
-    let frag = shader.fragmentShader.replace("#include <common>", `#include <common>\n${FRAG_COMUM}`);
+    let frag = shader.fragmentShader.replace(
+      "#include <common>",
+      `#include <common>\n${FRAG_COMUM}\n${FRAG_POCA}`,
+    );
     if (frag.includes("#include <roughnessmap_fragment>")) {
       frag = frag.replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${FRAG_LUZ}`);
     }
@@ -94,11 +100,17 @@ export function aplicarSombraNuvem(material) {
       avisou = true;
       console.warn("ceu: shader sem totalDiffuse, sombra de nuvem não entrou");
     }
+    if (!material.transparent && frag.includes("#include <opaque_fragment>")) {
+      frag = frag.replace("#include <opaque_fragment>", `${FRAG_POCA_SAIDA}\n#include <opaque_fragment>`);
+    } else if (!material.transparent && !avisouPoca) {
+      avisouPoca = true;
+      console.warn("ceu: shader sem opaque_fragment, poça não entrou");
+    }
     shader.fragmentShader = frag;
   };
   material.customProgramCacheKey = function chaveSombra() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|sombra-nuvem`;
+    return `${base}|sombra-nuvem|poca`;
   };
   return material;
 }

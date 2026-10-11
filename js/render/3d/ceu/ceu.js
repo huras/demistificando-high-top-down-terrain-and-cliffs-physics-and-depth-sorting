@@ -21,6 +21,7 @@ import {
   ESCALA_NUVEM,
   uniformsNuvem,
 } from "./parametros.js";
+import { atualizarPoca } from "./pocaChao.js";
 import { criarPrecipitacao } from "./precipitacao.js";
 import { atualizarLuzBillboard } from "./luzBillboard.js";
 import { criarRelampago } from "./relampago.js";
@@ -116,7 +117,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     const seguro = Math.min(Math.max(dt || 0, 0), 0.05);
     const hora = avancarCiclo(seguro, DURACAO_DIA);
     const clima = avaliarClima(seguro);
-    const visual = avaliarVisual(hora, clima);
+    const visual = avaliarVisual(hora, clima, obterControleCeu());
     const pesoCirrus = smooth(0.2, 0.5, clima.limiar) * (0.25 + visual.brilhoSol * 0.75);
 
     aplicarNuvemPasso(visual, clima, seguro);
@@ -125,7 +126,8 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
 
     const flash = relampago.atualizar(seguro, clima.raio, alvo);
     atmosfera.atualizar(visual, camera, flash * 0.55, pesoCirrus, seguro);
-    precipitacao.atualizar(clima, dirVento, seguro);
+    precipitacao.atualizar(clima, dirVento, seguro, camera, renderer);
+    atualizarPoca(seguro, clima.chuva, visual);
     renderer.toneMappingExposure = visual.exposicao * (1 + flash * 1.35);
   }
 

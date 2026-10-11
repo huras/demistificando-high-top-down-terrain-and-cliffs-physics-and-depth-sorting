@@ -501,6 +501,128 @@ function geoDoLote(lote) {
   return geo;
 }
 
+function insetTronco() {
+  return Math.max(0, Math.min(0.45, TRONCO_INSET));
+}
+
+function pushTri(lote, a, b, c) {
+  const ab = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+  const bc = Math.hypot(c.x - b.x, c.y - b.y, c.z - b.z);
+  const ca = Math.hypot(a.x - c.x, a.y - c.y, a.z - c.z);
+  if (ab < 1e-6 || bc < 1e-6 || ca < 1e-6) return;
+  const ux = b.x - a.x;
+  const uy = b.y - a.y;
+  const uz = b.z - a.z;
+  const vx = c.x - a.x;
+  const vy = c.y - a.y;
+  const vz = c.z - a.z;
+  let nx = uy * vz - uz * vy;
+  let ny = uz * vx - ux * vz;
+  let nz = ux * vy - uy * vx;
+  const len = Math.hypot(nx, ny, nz) || 1;
+  lote._n = [nx / len, ny / len, nz / len];
+  lote.pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+  lote.uv.push(0, 0, 1, 0, 0.5, 1);
+  const n = lote._n;
+  for (let k = 0; k < 3; k++) lote.nor.push(n[0], n[1], n[2]);
+  if (lote.cor && lote._rgb) {
+    const r = lote._rgb[0];
+    const g = lote._rgb[1];
+    const b = lote._rgb[2];
+    for (let k = 0; k < 3; k++) lote.cor.push(r, g, b);
+  }
+}
+
+function pushTriParaFora(lote, a, b, c, nx, ny, nz) {
+  const ux = b.x - a.x;
+  const uy = b.y - a.y;
+  const uz = b.z - a.z;
+  const vx = c.x - a.x;
+  const vy = c.y - a.y;
+  const vz = c.z - a.z;
+  const cx = uy * vz - uz * vy;
+  const cy = uz * vx - ux * vz;
+  const cz = ux * vy - uy * vx;
+  if (cx * nx + cy * ny + cz * nz < 0) pushTri(lote, a, c, b);
+  else pushTri(lote, a, b, c);
+}
+
+function valoresUnicos(valores) {
+  valores.sort((a, b) => a - b);
+  const out = [];
+  for (let i = 0; i < valores.length; i++) {
+    if (!out.length || Math.abs(valores[i] - out[out.length - 1]) > 1e-4) out.push(valores[i]);
+  }
+  return out;
+}
+
+/**
+ * O vizinho encostado nessa aresta chanfra um lado perpendicular e o topo
+ * dele cai exatamente na altura da aresta. O vértice do chanfro tem que
+ * existir na aresta, senão a cunha fica aberta.
+ */
+function cortesNoVizinho(wx, wy, yAresta, dx, dy) {
+  const i = insetTronco();
+  if (i <= 0) return [];
+  const nx = wx + dx;
+  const ny = wy + dy;
+  const h = alturaEm(nx, ny);
+  if (Math.abs(h - yAresta) > 0.02) return [];
+  const cortes = [];
+  if (dx === 0) {
+    if (alturaEm(nx - 1, ny) < h) cortes.push(wx + i);
+    if (alturaEm(nx + 1, ny) < h) cortes.push(wx + 1 - i);
+    return cortes;
+  }
+  if (alturaEm(nx, ny - 1) < h) cortes.push(wy + i);
+  if (alturaEm(nx, ny + 1) < h) cortes.push(wy + 1 - i);
+  return cortes;
+}
+
+function faixaComCortes(inicio, fim, cortes) {
+  const lo = Math.min(inicio, fim);
+  const hi = Math.max(inicio, fim);
+  const dentro = [];
+  for (let i = 0; i < cortes.length; i++) {
+    if (cortes[i] > lo + 1e-4 && cortes[i] < hi - 1e-4) dentro.push(cortes[i]);
+  }
+  const eixo = valoresUnicos([lo, ...dentro, hi]);
+  if (inicio > fim) eixo.reverse();
+  return eixo;
+}
+
+function comPasso(pontos) {
+  const out = new Array(pontos.length);
+  for (let i = 0; i < pontos.length; i++) out[i] = { x: pontos[i].x, y: pontos[i].y, z: pontos[i].z, t: i };
+  return out;
+}
+
+/** Costura duas polilinhas no mesmo sentido. O primeiro triângulo segue base[0] → base[1] → topo[0]. */
+function costurar(lote, base, topo) {
+  if (base.length < 2 || topo.length < 2) return;
+  const baixo = comPasso(base);
+  const cima = comPasso(topo);
+  let ib = 0;
+  let it = 0;
+  while (ib < baixo.length - 1 || it < cima.length - 1) {
+    const acabaBase = ib >= baixo.length - 1;
+    const acabaTopo = it >= cima.length - 1;
+    const tBase = acabaBase ? Infinity : baixo[ib + 1].t;
+    const tTopo = acabaTopo ? Infinity : cima[it + 1].t;
+    if (!acabaBase && (acabaTopo || tBase <= tTopo)) {
+      pushTri(lote, baixo[ib], baixo[ib + 1], cima[it]);
+      ib++;
+    } else if (!acabaTopo) {
+      pushTri(lote, baixo[ib], cima[it + 1], cima[it]);
+      it++;
+    } else break;
+  }
+}
+
+function maisAlto(wx, wy, superficie, dx, dy) {
+  return alturaEm(wx + dx, wy + dy) > superficie + 0.01;
+}
+
 function pushLivre(lote, a, b, c, d) {
   const ux = b.x - a.x;
   const uy = b.y - a.y;
@@ -708,9 +830,10 @@ function planoQueda(wx, wy, y0, y1, dir) {
 }
 
 function empurrarBevel(loteTop, loteFaces, wx, wy, wz, lateraisExpostas) {
-  const i = Math.max(0, Math.min(0.45, TRONCO_INSET));
+  const i = insetTronco();
   const y0 = wz;
   const y1 = wz + 1 - INSET_TOPO;
+  const superficie = wz + 1;
   const exp = new Set(lateraisExpostas);
   const iS = exp.has("s") ? i : 0;
   const iN = exp.has("n") ? i : 0;
@@ -722,63 +845,172 @@ function empurrarBevel(loteTop, loteFaces, wx, wy, wz, lateraisExpostas) {
   const ne = { x: wx + 1 - iE, y: y1, z: wy + iN };
   pushLivre(loteTop, nw, sw, se, ne);
   if (exp.has("s")) {
-    pushLivre(
+    const xs = faixaComCortes(wx, wx + 1, cortesNoVizinho(wx, wy, y0, 0, 1));
+    const zTopo = wy + 1 - iS;
+    costurar(
       loteFaces,
-      { x: wx, y: y0, z: wy + 1 },
-      { x: wx + 1, y: y0, z: wy + 1 },
-      { x: wx + 1 - iE, y: y1, z: wy + 1 - iS },
-      { x: wx + iW, y: y1, z: wy + 1 - iS },
+      xs.map((x) => ({ x, y: y0, z: wy + 1 })),
+      [
+        { x: wx + iW, y: y1, z: zTopo },
+        { x: wx + 1 - iE, y: y1, z: zTopo },
+      ],
     );
+    // Cunha no plano do vizinho mais alto: o chanfro puxa o topo e a quina cheia fica aberta.
+    if (iW === 0 && iS > 0 && maisAlto(wx, wy, superficie, -1, 0)) {
+      pushTriParaFora(
+        loteFaces,
+        { x: wx, y: y0, z: wy + 1 },
+        { x: wx, y: y1, z: wy + 1 },
+        { x: wx, y: y1, z: wy + 1 - iS },
+        1, 0, 0,
+      );
+    }
+    if (iE === 0 && iS > 0 && maisAlto(wx, wy, superficie, 1, 0)) {
+      pushTriParaFora(
+        loteFaces,
+        { x: wx + 1, y: y0, z: wy + 1 },
+        { x: wx + 1, y: y1, z: wy + 1 - iS },
+        { x: wx + 1, y: y1, z: wy + 1 },
+        -1, 0, 0,
+      );
+    }
   }
   if (exp.has("n")) {
-    pushLivre(
+    const xs = faixaComCortes(wx + 1, wx, cortesNoVizinho(wx, wy, y0, 0, -1));
+    const zTopo = wy + iN;
+    costurar(
       loteFaces,
-      { x: wx + 1, y: y0, z: wy },
-      { x: wx, y: y0, z: wy },
-      { x: wx + iW, y: y1, z: wy + iN },
-      { x: wx + 1 - iE, y: y1, z: wy + iN },
+      xs.map((x) => ({ x, y: y0, z: wy })),
+      [
+        { x: wx + 1 - iE, y: y1, z: zTopo },
+        { x: wx + iW, y: y1, z: zTopo },
+      ],
     );
+    if (iE === 0 && iN > 0 && maisAlto(wx, wy, superficie, 1, 0)) {
+      pushTriParaFora(
+        loteFaces,
+        { x: wx + 1, y: y0, z: wy },
+        { x: wx + 1, y: y1, z: wy },
+        { x: wx + 1, y: y1, z: wy + iN },
+        -1, 0, 0,
+      );
+    }
+    if (iW === 0 && iN > 0 && maisAlto(wx, wy, superficie, -1, 0)) {
+      pushTriParaFora(
+        loteFaces,
+        { x: wx, y: y0, z: wy },
+        { x: wx, y: y1, z: wy + iN },
+        { x: wx, y: y1, z: wy },
+        1, 0, 0,
+      );
+    }
   }
   if (exp.has("e")) {
-    pushLivre(
+    const zs = faixaComCortes(wy + 1, wy, cortesNoVizinho(wx, wy, y0, 1, 0));
+    const xTopo = wx + 1 - iE;
+    costurar(
       loteFaces,
-      { x: wx + 1, y: y0, z: wy + 1 },
-      { x: wx + 1, y: y0, z: wy },
-      { x: wx + 1 - iE, y: y1, z: wy + iN },
-      { x: wx + 1 - iE, y: y1, z: wy + 1 - iS },
+      zs.map((z) => ({ x: wx + 1, y: y0, z })),
+      [
+        { x: xTopo, y: y1, z: wy + 1 - iS },
+        { x: xTopo, y: y1, z: wy + iN },
+      ],
     );
+    if (iS === 0 && iE > 0 && maisAlto(wx, wy, superficie, 0, 1)) {
+      pushTriParaFora(
+        loteFaces,
+        { x: wx + 1, y: y0, z: wy + 1 },
+        { x: wx + 1 - iE, y: y1, z: wy + 1 },
+        { x: wx + 1, y: y1, z: wy + 1 },
+        0, 0, -1,
+      );
+    }
+    if (iN === 0 && iE > 0 && maisAlto(wx, wy, superficie, 0, -1)) {
+      pushTriParaFora(
+        loteFaces,
+        { x: wx + 1, y: y0, z: wy },
+        { x: wx + 1, y: y1, z: wy },
+        { x: wx + 1 - iE, y: y1, z: wy },
+        0, 0, 1,
+      );
+    }
   }
   if (exp.has("w")) {
-    pushLivre(
+    const zs = faixaComCortes(wy, wy + 1, cortesNoVizinho(wx, wy, y0, -1, 0));
+    const xTopo = wx + iW;
+    costurar(
       loteFaces,
-      { x: wx, y: y0, z: wy },
-      { x: wx, y: y0, z: wy + 1 },
-      { x: wx + iW, y: y1, z: wy + 1 - iS },
-      { x: wx + iW, y: y1, z: wy + iN },
+      zs.map((z) => ({ x: wx, y: y0, z })),
+      [
+        { x: xTopo, y: y1, z: wy + iN },
+        { x: xTopo, y: y1, z: wy + 1 - iS },
+      ],
+    );
+    if (iN === 0 && iW > 0 && maisAlto(wx, wy, superficie, 0, -1)) {
+      pushTriParaFora(
+        loteFaces,
+        { x: wx, y: y0, z: wy },
+        { x: wx + iW, y: y1, z: wy },
+        { x: wx, y: y1, z: wy },
+        0, 0, 1,
+      );
+    }
+    if (iS === 0 && iW > 0 && maisAlto(wx, wy, superficie, 0, 1)) {
+      pushTriParaFora(
+        loteFaces,
+        { x: wx, y: y0, z: wy + 1 },
+        { x: wx, y: y1, z: wy + 1 },
+        { x: wx + iW, y: y1, z: wy + 1 },
+        0, 0, -1,
+      );
+    }
+  }
+}
+
+function emitirRetangulo(lote, nome, wx, wy, ya, yb) {
+  if (yb - ya <= 1e-4) return;
+  if (nome === "s") {
+    const xsBaixo = faixaComCortes(wx, wx + 1, cortesNoVizinho(wx, wy, ya, 0, 1));
+    const xsCima = faixaComCortes(wx, wx + 1, cortesNoVizinho(wx, wy, yb, 0, 1));
+    costurar(
+      lote,
+      xsBaixo.map((x) => ({ x, y: ya, z: wy + 1 })),
+      xsCima.map((x) => ({ x, y: yb, z: wy + 1 })),
+    );
+  } else if (nome === "n") {
+    const xsBaixo = faixaComCortes(wx + 1, wx, cortesNoVizinho(wx, wy, ya, 0, -1));
+    const xsCima = faixaComCortes(wx + 1, wx, cortesNoVizinho(wx, wy, yb, 0, -1));
+    costurar(
+      lote,
+      xsBaixo.map((x) => ({ x, y: ya, z: wy })),
+      xsCima.map((x) => ({ x, y: yb, z: wy })),
+    );
+  } else if (nome === "e") {
+    const zsBaixo = faixaComCortes(wy + 1, wy, cortesNoVizinho(wx, wy, ya, 1, 0));
+    const zsCima = faixaComCortes(wy + 1, wy, cortesNoVizinho(wx, wy, yb, 1, 0));
+    costurar(
+      lote,
+      zsBaixo.map((z) => ({ x: wx + 1, y: ya, z })),
+      zsCima.map((z) => ({ x: wx + 1, y: yb, z })),
+    );
+  } else {
+    const zsBaixo = faixaComCortes(wy, wy + 1, cortesNoVizinho(wx, wy, ya, -1, 0));
+    const zsCima = faixaComCortes(wy, wy + 1, cortesNoVizinho(wx, wy, yb, -1, 0));
+    costurar(
+      lote,
+      zsBaixo.map((z) => ({ x: wx, y: ya, z })),
+      zsCima.map((z) => ({ x: wx, y: yb, z })),
     );
   }
 }
 
 function pushParede(lote, nome, wx, wy, y0, y1) {
-  const h = y1 - y0;
-  if (h <= 1e-4) return;
-  const uv = [0, h, 0, 0, 1, h, 0, 0, 1, 0, 1, h];
-  if (nome === "s") {
-    lote._n = [0, 0, 1];
-    const z = wy + 1;
-    q6(lote, [wx, y1, z, wx, y0, z, wx + 1, y1, z, wx, y0, z, wx + 1, y0, z, wx + 1, y1, z], uv);
-  } else if (nome === "n") {
-    lote._n = [0, 0, -1];
-    const z = wy;
-    q6(lote, [wx + 1, y1, z, wx + 1, y0, z, wx, y1, z, wx + 1, y0, z, wx, y0, z, wx, y1, z], uv);
-  } else if (nome === "e") {
-    lote._n = [1, 0, 0];
-    const x = wx + 1;
-    q6(lote, [x, y0, wy, x, y1, wy, x, y1, wy + 1, x, y0, wy, x, y1, wy + 1, x, y0, wy + 1], [0, 0, 0, h, 1, h, 0, 0, 1, h, 1, 0]);
-  } else {
-    lote._n = [-1, 0, 0];
-    const x = wx;
-    q6(lote, [x, y0, wy + 1, x, y1, wy + 1, x, y1, wy, x, y0, wy + 1, x, y1, wy, x, y0, wy], [0, 0, 0, h, 1, h, 0, 0, 1, h, 1, 0]);
+  if (y1 - y0 <= 1e-4) return;
+  const marcas = [y0];
+  for (let y = Math.floor(y0) + 1; y < y1 - 1e-4; y++) marcas.push(y);
+  marcas.push(y1);
+  for (let i = 0; i < marcas.length - 1; i++) {
+    emitirRetangulo(lote, nome, wx, wy, marcas[i], marcas[i + 1]);
   }
 }
 

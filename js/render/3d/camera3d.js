@@ -18,6 +18,7 @@ import {
   CAMERA3D_PITCH_ORBITA,
   CAMERA3D_PIVO_MAX,
   CAMERA3D_PIVO_MIN,
+  CAMERA3D_PROJECAO_SUAVIDADE,
   CAMERA3D_ROT_VEL,
   CAMERA3D_SUAVIDADE_Y,
   CHUNK_Y,
@@ -29,8 +30,13 @@ import { ehSolido } from "../../mundo/voxel/tiposBloco.js";
 
 export function criarCamera3d(aspect) {
   const cam = new THREE.PerspectiveCamera(50, aspect, 0.1, 200);
+  const orto = new THREE.OrthographicCamera(-aspect, aspect, 1, -1, 0.1, 200);
   return {
     cam,
+    _orto: orto,
+    _projPersp: new THREE.Matrix4(),
+    projecao: "perspectiva",
+    projBlend: 0,
     modo: "orbita",
     mecanismo: "livre",
     mostrarRig: false,
@@ -81,6 +87,10 @@ export function definirMecanismo(camera3d, mecanismo) {
 
 export function definirMostrarRig(camera3d, ativo) {
   camera3d.mostrarRig = !!ativo;
+}
+
+export function definirProjecao(camera3d, projecao) {
+  camera3d.projecao = projecao === "orto" ? "orto" : "perspectiva";
 }
 
 export function definirModoCamera(camera3d, modo) {
@@ -199,9 +209,53 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
   camera3d.cam.position.copy(camera3d._pos);
   camera3d.cam.lookAt(camera3d._look);
   camera3d.cam.updateMatrixWorld(true);
+  aplicarProjecao(camera3d, dt);
 
   const e = camera3d.cam.matrixWorld.elements;
   camera3d.direcaoTiro.set(-e[8], -e[9], -e[10]).normalize();
+}
+
+/**
+ * Ortográfica enquadra a mesma altura no ponto de mira.
+ * A mistura deixa o achatamento aparecer em vez de pular.
+ */
+function aplicarProjecao(camera3d, dt) {
+  const persp = camera3d.cam;
+  const orto = camera3d._orto;
+  const dist = Math.max(0.5, persp.position.distanceTo(camera3d._look));
+  const meiaAltura = Math.tan((persp.fov * Math.PI) / 360) * dist;
+  const meiaLargura = meiaAltura * persp.aspect;
+
+  orto.position.copy(persp.position);
+  orto.quaternion.copy(persp.quaternion);
+  orto.up.copy(persp.up);
+  orto.left = -meiaLargura;
+  orto.right = meiaLargura;
+  orto.top = meiaAltura;
+  orto.bottom = -meiaAltura;
+  orto.near = persp.near;
+  orto.far = persp.far;
+  orto.zoom = 1;
+
+  persp.updateProjectionMatrix();
+  orto.updateProjectionMatrix();
+  camera3d._projPersp.copy(persp.projectionMatrix);
+
+  const alvo = camera3d.projecao === "orto" ? 1 : 0;
+  const t = 1 - Math.exp(-CAMERA3D_PROJECAO_SUAVIDADE * dt);
+  camera3d.projBlend += (alvo - camera3d.projBlend) * t;
+  if (camera3d.projBlend < 0.001) {
+    camera3d.projBlend = 0;
+    return;
+  }
+  if (camera3d.projBlend > 0.999) camera3d.projBlend = 1;
+
+  const origem = camera3d._projPersp.elements;
+  const destino = orto.projectionMatrix.elements;
+  const saida = persp.projectionMatrix.elements;
+  const u = camera3d.projBlend;
+  for (let i = 0; i < 16; i++) saida[i] = origem[i] + (destino[i] - origem[i]) * u;
+  persp.projectionMatrixInverse.copy(persp.projectionMatrix).invert();
 }
 
 /** Yaw horizontal da câmera (rad) para strafe WASD. */

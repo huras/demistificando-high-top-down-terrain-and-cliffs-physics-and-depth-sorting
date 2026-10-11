@@ -5,9 +5,10 @@ import { criarChunk, definirLocal, obterLocal, preencherColunaSolida } from "../
 import { instalarChunk } from "../mundo/voxel/storeMundo.js";
 import { BLOCO, ehSolido } from "../mundo/voxel/tiposBloco.js";
 import { malharChunk } from "../render/3d/terrenoMalha.js";
+import { consumirRecorteFaces } from "./recorteFaces.js";
 
-const N = 7;
-const ORIGEM = 4;
+let N = 7;
+let ORIGEM = 4;
 const TOL_SOLDA = 0.006;
 const Y_CHAO = 0.02;
 
@@ -127,6 +128,8 @@ const estado = {
   wire: false,
   celulas: true,
   beiral: false,
+  anel: null,
+  rotulo: null,
 };
 
 let pontos = [];
@@ -151,7 +154,7 @@ renderer.toneMappingExposure = 1.05;
 renderer.setClearColor(0x121814, 1);
 
 const cena = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 200);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 800);
 const controles = new OrbitControls(camera, canvas);
 controles.enableDamping = true;
 controles.dampingFactor = 0.08;
@@ -165,13 +168,15 @@ const sol = new THREE.DirectionalLight(0xfff4e0, 1.35);
 sol.position.set(6, 14, 4);
 cena.add(sol);
 
-const chao = new THREE.GridHelper(N + 2, N + 2, 0x3d5248, 0x243028);
-chao.position.set(ORIGEM + N * 0.5, -0.012, ORIGEM + N * 0.5);
-cena.add(chao);
-cena.add(spriteTexto("N", ORIGEM + N * 0.5, 0.15, ORIGEM - 0.85));
-cena.add(spriteTexto("S", ORIGEM + N * 0.5, 0.15, ORIGEM + N + 0.35));
-cena.add(spriteTexto("L", ORIGEM + N + 0.45, 0.15, ORIGEM + N * 0.5));
-cena.add(spriteTexto("O", ORIGEM - 0.95, 0.15, ORIGEM + N * 0.5));
+let chao = null;
+const marcaN = spriteTexto("N", 0, 0.15, 0);
+const marcaS = spriteTexto("S", 0, 0.15, 0);
+const marcaL = spriteTexto("L", 0, 0.15, 0);
+const marcaO = spriteTexto("O", 0, 0.15, 0);
+cena.add(marcaN);
+cena.add(marcaS);
+cena.add(marcaL);
+cena.add(marcaO);
 
 const raiz = new THREE.Group();
 cena.add(raiz);
@@ -268,8 +273,35 @@ function matrizDe(linhas) {
   return linhas.map((s) => [...s].map((ch) => (ch === "." ? 0 : Number(ch))));
 }
 
+function reposicionarMarcadores() {
+  if (chao) {
+    cena.remove(chao);
+    chao.geometry.dispose();
+    const mats = Array.isArray(chao.material) ? chao.material : [chao.material];
+    for (let i = 0; i < mats.length; i++) mats[i].dispose();
+  }
+  chao = new THREE.GridHelper(N + 2, N + 2, 0x3d5248, 0x243028);
+  chao.position.set(ORIGEM + N * 0.5, -0.012, ORIGEM + N * 0.5);
+  cena.add(chao);
+  marcaN.position.set(ORIGEM + N * 0.5, 0.15, ORIGEM - 0.85);
+  marcaS.position.set(ORIGEM + N * 0.5, 0.15, ORIGEM + N + 0.35);
+  marcaL.position.set(ORIGEM + N + 0.45, 0.15, ORIGEM + N * 0.5);
+  marcaO.position.set(ORIGEM - 0.95, 0.15, ORIGEM + N * 0.5);
+}
+
+function definirJanela(n) {
+  N = n | 0;
+  ORIGEM = Math.max(1, Math.floor((CHUNK_XZ - N) / 2));
+  if (ORIGEM + N + 1 > CHUNK_XZ) ORIGEM = Math.max(0, CHUNK_XZ - N - 1);
+  gradeEl.style.gridTemplateColumns = `26px repeat(${N}, minmax(0, 1fr))`;
+  reposicionarMarcadores();
+}
+
 function aplicarPreset(preset, manterCamera) {
+  definirJanela(preset.linhas.length);
   estado.presetId = preset.id;
+  estado.rotulo = null;
+  estado.anel = null;
   estado.foco = preset.foco || null;
   estado.alturas = matrizDe(preset.linhas);
   estado.furos = preset.furos ? preset.furos(estado.alturas) : [];
@@ -281,8 +313,25 @@ function aplicarPreset(preset, manterCamera) {
   reconstruir(manterCamera);
 }
 
+function aplicarRecorte(recorte) {
+  definirJanela(recorte.alturas.length);
+  estado.presetId = "aqui";
+  estado.rotulo = "Onde você está";
+  estado.anel = recorte.anel || [];
+  estado.foco = recorte.foco || null;
+  estado.alturas = recorte.alturas;
+  estado.furos = Array.isArray(recorte.furos) ? recorte.furos : [];
+  notaEl.textContent = recorte.nota || "";
+  for (const botao of presetsEl.querySelectorAll("button")) {
+    botao.setAttribute("aria-pressed", "false");
+  }
+  desenharGrade();
+  reconstruir(false);
+}
+
 function marcarPersonalizado() {
   estado.presetId = "personalizado";
+  estado.rotulo = null;
   estado.foco = null;
   notaEl.textContent = "Grade editada à mão. Shift+clique fura os blocos do meio da coluna.";
   for (const botao of presetsEl.querySelectorAll("button")) {
@@ -323,6 +372,18 @@ function temFuro(c, r) {
   return estado.furos.some((f) => f.c === c && f.r === r);
 }
 
+function pintarBotaoCelula(botao, h, marca) {
+  const t = Math.max(0, Math.min(1, h / 12));
+  botao.textContent = marca || String(h);
+  botao.style.background = `rgb(${Math.round(18 + t * 96)}, ${Math.round(36 + t * 150)}, ${Math.round(28 + t * 48)})`;
+  botao.style.color = h >= 4 ? "#102015" : "#e7f2ea";
+  botao.style.fontSize = h >= 10 ? "0.62rem" : "";
+  if (marca) botao.dataset.marca = "1";
+  else delete botao.dataset.marca;
+  if (temFuro(Number(botao.dataset.c), Number(botao.dataset.r))) botao.dataset.furo = "1";
+  else delete botao.dataset.furo;
+}
+
 function desenharGrade() {
   gradeEl.replaceChildren();
   const canto = document.createElement("span");
@@ -346,11 +407,7 @@ function desenharGrade() {
       botao.dataset.r = String(r);
       const h = estado.alturas[r][c];
       const marca = marcaDa(c, r);
-      botao.textContent = marca || String(h);
-      botao.style.background = `rgb(${18 + h * 8}, ${36 + h * 14}, ${28 + h * 6})`;
-      botao.style.color = h >= 4 ? "#102015" : "#e7f2ea";
-      if (marca) botao.dataset.marca = "1";
-      if (temFuro(c, r)) botao.dataset.furo = "1";
+      pintarBotaoCelula(botao, h, marca);
       botao.addEventListener("pointerdown", (ev) => {
         estado.pintando = true;
         estado.apagando = ev.button === 2;
@@ -370,15 +427,7 @@ function desenharGrade() {
 function atualizarBotao(c, r) {
   const botao = gradeEl.querySelector(`button[data-c="${c}"][data-r="${r}"]`);
   if (!botao) return;
-  const h = estado.alturas[r][c];
-  const marca = marcaDa(c, r);
-  botao.textContent = marca || String(h);
-  botao.style.background = `rgb(${18 + h * 8}, ${36 + h * 14}, ${28 + h * 6})`;
-  botao.style.color = h >= 4 ? "#102015" : "#e7f2ea";
-  if (marca) botao.dataset.marca = "1";
-  else delete botao.dataset.marca;
-  if (temFuro(c, r)) botao.dataset.furo = "1";
-  else delete botao.dataset.furo;
+  pintarBotaoCelula(botao, estado.alturas[r][c], marcaDa(c, r));
 }
 
 function marcaDa(c, r) {
@@ -521,6 +570,11 @@ function area2(a, b, c) {
   return cx * cx + cy * cy + cz * cz;
 }
 
+function pontoNoRecorte(p) {
+  const eps = 0.02;
+  return p.x >= ORIGEM - eps && p.z >= ORIGEM - eps && p.x <= ORIGEM + N + eps && p.z <= ORIGEM + N + eps;
+}
+
 function analisar(geos) {
   const verts = [];
   const grade = new Map();
@@ -571,6 +625,7 @@ function analisar(geos) {
     const pa = verts[item.a];
     const pb = verts[item.b];
     if (pa.y <= Y_CHAO && pb.y <= Y_CHAO) continue;
+    if (estado.anel && !pontoNoRecorte(pa) && !pontoNoRecorte(pb)) continue;
     abertas.push(item);
   }
 
@@ -639,6 +694,18 @@ function montarChunk() {
     const f = estado.furos[i];
     definirLocal(chunk, ORIGEM + f.c, ORIGEM + f.r, f.z, BLOCO.AR);
   }
+  if (estado.anel) {
+    for (let i = 0; i < estado.anel.length; i++) {
+      const cel = estado.anel[i];
+      const h = cel.h | 0;
+      if (h <= 0) continue;
+      preencherColunaSolida(chunk, ORIGEM + cel.c, ORIGEM + cel.r, h, BLOCO.GRAMA);
+      const furos = cel.furos || [];
+      for (let f = 0; f < furos.length; f++) {
+        definirLocal(chunk, ORIGEM + cel.c, ORIGEM + cel.r, furos[f], BLOCO.AR);
+      }
+    }
+  }
   instalarChunk(chunk);
   return chunk;
 }
@@ -682,7 +749,8 @@ function gaiolaDe(chunk) {
   ];
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
-      for (let lz = 0; lz < 12; lz++) {
+      if (estado.anel && (lx < ORIGEM || ly < ORIGEM || lx >= ORIGEM + N || ly >= ORIGEM + N)) continue;
+      for (let lz = 0; lz < CHUNK_Y; lz++) {
         if (!ehSolido(obterLocal(chunk, lx, ly, lz))) continue;
         for (let d = 0; d < dirs.length; d++) {
           const dir = dirs[d];
@@ -744,13 +812,7 @@ function listasDeCelulas(chunk) {
     for (let c = 0; c < N; c++) {
       const lx = ORIGEM + c;
       const ly = ORIGEM + r;
-      let topo = 0;
-      for (let lz = 11; lz >= 0; lz--) {
-        if (ehSolido(obterLocal(chunk, lx, ly, lz))) {
-          topo = lz + 1;
-          break;
-        }
-      }
+      const topo = estado.alturas[r][c] | 0;
       if (topo <= 0) continue;
       lista.push({
         tipo: "celula",
@@ -956,7 +1018,7 @@ function reconstruir(manterCamera) {
 
   const extra = sobreposicoes ? ` · ${sobreposicoes} arestas com 3+ triângulos` : "";
   const preset = PRESETS.find((p) => p.id === estado.presetId);
-  const titulo = preset ? preset.nome : "Personalizado";
+  const titulo = estado.rotulo || (preset ? preset.nome : "Personalizado");
   const palavra = grupos.length === 1 ? "fresta" : "frestas";
   statusEl.textContent = `${titulo} · inset ${TRONCO_INSET.toFixed(2)} · ${grupos.length} ${palavra} · ${tris} triângulos · ${pontos.length} pontos${extra}`;
 
@@ -1422,5 +1484,7 @@ window.addEventListener("keydown", (ev) => {
 
 new ResizeObserver(tamanho).observe(palco);
 tamanho();
-aplicarPreset(PRESETS[0], false);
+const recorteInicial = consumirRecorteFaces();
+if (recorteInicial) aplicarRecorte(recorteInicial);
+else aplicarPreset(PRESETS[0], false);
 requestAnimationFrame(quadro);

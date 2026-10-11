@@ -29,7 +29,7 @@
           Cena
         </button>
         <a class="btn-modo" href="biomas.html">Biomas</a>
-        <a class="btn-modo" href="faces.html">Faces</a>
+        <a class="btn-modo" id="btn-faces" href="faces.html">Faces</a>
         <div class="ajuda-atalhos" id="ajuda-atalhos">
           <button
             type="button"
@@ -189,6 +189,8 @@
                 <p>
                   Amanhecer, dia, tarde e noite no mesmo domo. Nuvens e sombra do chão
                   usam o mesmo mapa: a sombra é projetada na direção do sol, como em BOTW.
+                  A hora percorre o arco. A inclinação é o auge ao meio-dia.
+                  A rotação gira esse arco em volta do mundo.
                   <kbd>[</kbd> <kbd>]</kbd> mudam a hora. <kbd>G</kbd> troca o clima.
                 </p>
               </span>
@@ -200,6 +202,20 @@
             </div>
             <span class="controle__valor" id="ceu-hora-valor">09:21 · Dia</span>
             <input id="ceu-hora" type="range" min="0" max="24" step="0.01" value="9.35" />
+          </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="ceu-inclinacao">Inclinação</label>
+            </div>
+            <span class="controle__valor" id="ceu-inclinacao-valor">52°</span>
+            <input id="ceu-inclinacao" type="range" min="0" max="90" step="1" value="52" />
+          </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="ceu-rotacao">Rotação</label>
+            </div>
+            <span class="controle__valor" id="ceu-rotacao-valor">31.5°</span>
+            <input id="ceu-rotacao" type="range" min="0" max="360" step="0.5" value="31.5" />
           </div>
           <div class="controle">
             <div class="controle__topo">
@@ -227,6 +243,7 @@
                 <p>
                   A órbita gira só ao redor do personagem. A inclinação fica fixa.
                   Segurar o botão direito aproxima no ombro e libera o olhar para cima e para baixo.
+                  Perspectiva tem profundidade; ortográfica achata o mundo no mesmo enquadramento.
                 </p>
               </span>
             </span>
@@ -259,6 +276,15 @@
             <select id="cam-mecanismo">
               <option value="livre">Órbita livre</option>
               <option value="costas">Atrás do personagem</option>
+            </select>
+          </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="cam-projecao">Projeção</label>
+            </div>
+            <select id="cam-projecao">
+              <option value="perspectiva">Perspectiva</option>
+              <option value="orto">Ortográfica</option>
             </select>
           </div>
           <label class="ceu-ciclo" for="cam-rig">

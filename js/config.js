@@ -158,6 +158,8 @@ export const CAMERA3D_MIRA_PITCH_MIN = -0.85;
 export const CAMERA3D_MIRA_PITCH_MAX = 0.7;
 /** Alinha o yaw nas costas enquanto anda (mecanismo “costas”). */
 export const CAMERA3D_COSTAS_SUAVIDADE = 3.2;
+/** Mistura perspectiva → ortográfica. Mais baixo = a mudança dura mais. */
+export const CAMERA3D_PROJECAO_SUAVIDADE = 4;
 
 /** Flecha da mira (unidades Three / s). */
 export const FLECHA_VEL = 18;

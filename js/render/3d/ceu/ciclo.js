@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { INCLINACAO_SOL_PADRAO, ROTACAO_SOL_PADRAO } from "./parametros.js";
 
 const GRAUS = Math.PI / 180;
 
@@ -86,11 +87,16 @@ function amostrarChaves(hora) {
   saida.estrelas = a.estrelas + (b.estrelas - a.estrelas) * t;
 }
 
-/** Arco fixo: nasce em +X, auge ~52° (nunca zênite, pra sombra não sumir), põe em −X. */
-export function direcaoSol(hora, destino) {
+/** Arco do dia: nasce e se põe no horizonte; a inclinação é o auge ao meio-dia. */
+export function direcaoSol(
+  hora,
+  destino,
+  inclinacao = INCLINACAO_SOL_PADRAO,
+  rotacao = ROTACAO_SOL_PADRAO,
+) {
   const t = ((hora - 6) / 24) * Math.PI * 2;
-  const elev = Math.sin(t) * (52 * GRAUS);
-  const az = t + 0.55;
+  const elev = Math.sin(t) * (inclinacao * GRAUS);
+  const az = t + rotacao * GRAUS;
   const ce = Math.cos(elev);
   destino.set(ce * Math.cos(az), Math.sin(elev), ce * Math.sin(az));
   return destino;
@@ -105,10 +111,16 @@ function passo(a, b, x) {
  * Quadro do ciclo + grade do clima. Reusa os objetos de `saida`.
  * @param {number} hora
  * @param {object} clima resultado de avaliarClima
+ * @param {{ inclinacao?: number, rotacao?: number }} [orbita]
  */
-export function avaliarVisual(hora, clima) {
+export function avaliarVisual(hora, clima, orbita) {
   amostrarChaves(hora);
-  direcaoSol(hora, saida.dirSol);
+  direcaoSol(
+    hora,
+    saida.dirSol,
+    orbita?.inclinacao ?? INCLINACAO_SOL_PADRAO,
+    orbita?.rotacao ?? ROTACAO_SOL_PADRAO,
+  );
   saida.dirLua.set(-saida.dirSol.x, Math.max(0.15, -saida.dirSol.y), -saida.dirSol.z).normalize();
 
   const pesoDia = passo(-0.05, 0.28, saida.dirSol.y);

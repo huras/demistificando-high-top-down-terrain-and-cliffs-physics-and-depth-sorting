@@ -15,6 +15,7 @@ import {
   definirMecanismo,
   definirMostrarRig,
   definirPitchOrbita,
+  definirProjecao,
 } from "../render/3d/camera3d.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
 
@@ -25,8 +26,9 @@ export function ligarPainelCamera() {
   const dist = document.getElementById("cam-dist");
   const pitch = document.getElementById("cam-pitch");
   const mecanismo = document.getElementById("cam-mecanismo");
+  const projecao = document.getElementById("cam-projecao");
   const rig = document.getElementById("cam-rig");
-  if (!pivo || !dist || !pitch || !mecanismo || !rig) return;
+  if (!pivo || !dist || !pitch || !mecanismo || !projecao || !rig) return;
 
   const marcarArraste = () => {
     arrastando = true;
@@ -53,6 +55,9 @@ export function ligarPainelCamera() {
   mecanismo.addEventListener("change", () => {
     aplicar((cam) => definirMecanismo(cam, mecanismo.value));
   });
+  projecao.addEventListener("change", () => {
+    aplicar((cam) => definirProjecao(cam, projecao.value));
+  });
   rig.addEventListener("change", () => {
     aplicar((cam) => definirMostrarRig(cam, rig.checked));
   });
@@ -66,6 +71,7 @@ export function sincronizarPainelCamera() {
   const dist = document.getElementById("cam-dist");
   const pitch = document.getElementById("cam-pitch");
   const mecanismo = document.getElementById("cam-mecanismo");
+  const projecao = document.getElementById("cam-projecao");
   const rig = document.getElementById("cam-rig");
   if (!pivo || !dist || !pitch) return;
 
@@ -95,6 +101,9 @@ export function sincronizarPainelCamera() {
   }
   if (mecanismo && cam && document.activeElement !== mecanismo) {
     mecanismo.value = cam.mecanismo === "costas" ? "costas" : "livre";
+  }
+  if (projecao && cam && document.activeElement !== projecao) {
+    projecao.value = cam.projecao === "orto" ? "orto" : "perspectiva";
   }
   if (rig && cam) rig.checked = !!cam.mostrarRig;
 }

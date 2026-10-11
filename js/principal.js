@@ -26,6 +26,7 @@ import { tickFilaPath } from "./navegacao/filaPath.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
 import { carregarCatalogo } from "./mundo/bioma/catalogo.js";
 import { carregarKits } from "./mundo/bioma/kits.js";
+import { gravarRecorteAoRedor } from "./diagnostico/recorteFaces.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
 import {
   atualizarStreaming,
@@ -405,6 +406,19 @@ function loop(agora) {
 
   requestAnimationFrame(loop);
 }
+
+function ligarBotaoFaces() {
+  const link = document.getElementById("btn-faces");
+  if (!link) return;
+  link.addEventListener("click", (ev) => {
+    if (!corpo) return;
+    ev.preventDefault();
+    gravarRecorteAoRedor(corpo.x, corpo.y, corpo.elevacao ?? corpo.z ?? 0);
+    window.location.href = link.getAttribute("href") || "faces.html";
+  });
+}
+
+ligarBotaoFaces();
 
 iniciar().catch((err) => {
   console.error(err);
