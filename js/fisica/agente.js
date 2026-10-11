@@ -256,8 +256,7 @@ export function atualizarAgente(agente, lider, dt) {
     !agente.escalando &&
     !agente.mantle &&
     !estaVoando(agente) &&
-    agente.perfil?.podeEscalar ||
-    agente.perfil?.podeCachoeira
+    (agente.perfil?.podeEscalar || agente.perfil?.podeCachoeira)
   ) {
     if (estaPlanando(agente)) fecharAsaDelta(agente);
     if (tentarGrudarClimb(agente, ix, iy)) return;
