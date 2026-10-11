@@ -265,8 +265,16 @@ export const MESH_CHUNKS_POR_FRAME = 1;
 /**
  * Inset do bevel só em voxels de borda de cliff (suaviza a aresta).
  * 0 = desliga; lados colados a sólido ficam flush.
+ * `let` de propósito: a página de faces altera ao vivo e o mesher lê o valor na hora.
  */
-export const TRONCO_INSET = 0.12;
+export let TRONCO_INSET = 0.12;
+
+export function definirTroncoInset(valor) {
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return TRONCO_INSET;
+  TRONCO_INSET = Math.max(0, Math.min(0.45, n));
+  return TRONCO_INSET;
+}
 /** Raio (células) da grade de pathfinding em torno do centro. */
 export const NAV_RAIO = 28;
 /** Máx. pisos walkable por coluna no grafo de navegação. */

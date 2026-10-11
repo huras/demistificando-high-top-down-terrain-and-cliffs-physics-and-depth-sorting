@@ -115,6 +115,12 @@ export function obterChunk(cx, cy) {
   return chunks.get(chaveChunk(cx, cy)) ?? null;
 }
 
+/** Troca o chunk no mapa sem gerar relevo. A página de faces usa isso. */
+export function instalarChunk(chunk) {
+  chunks.set(chaveChunk(chunk.cx, chunk.cy), chunk);
+  return chunk;
+}
+
 export function paraCadaChunk(fn) {
   for (const chunk of chunks.values()) fn(chunk);
 }

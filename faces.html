@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faces dos voxels</title>
+  <link rel="stylesheet" href="css/faces.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Faces dos voxels</h1>
+    <p class="topo__nota" id="status">Carregando a malha real…</p>
+    <button type="button" id="copiar-relatorio">Copiar relatório</button>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna" id="coluna-config">
+      <section>
+        <h2>Configuração</h2>
+        <ul class="presets" id="presets"></ul>
+        <p class="nota" id="nota-preset"></p>
+      </section>
+
+      <section>
+        <h2>Chanfro</h2>
+        <label class="campo">
+          <span>Inset <strong id="inset-valor">0.12</strong></span>
+          <input id="inset" type="range" min="0" max="0.45" step="0.01" value="0.12" />
+        </label>
+        <p class="nota">0 desliga o chanfro. O jogo está em 0.12.</p>
+      </section>
+
+      <section>
+        <h2>Ver</h2>
+        <label class="marca"><input type="checkbox" id="ver-gaiola" checked /> Gaiola do cubo</label>
+        <label class="marca"><input type="checkbox" id="ver-wire" /> Arestas da malha</label>
+        <label class="marca"><input type="checkbox" id="ver-celulas" checked /> Nome da célula</label>
+        <label class="marca"><input type="checkbox" id="ver-beiral" /> Beiral</label>
+        <label class="campo">
+          Nomes dos pontos
+          <select id="modo-nomes">
+            <option value="frestas" selected>Só nas frestas</option>
+            <option value="cursor">Perto do cursor</option>
+            <option value="todos">Todos</option>
+          </select>
+        </label>
+      </section>
+
+      <section>
+        <h2>Grade</h2>
+        <p class="nota">Norte em cima. Clique pinta a altura. Direito apaga. Shift fura o miolo.</p>
+        <div class="alturas" id="alturas"></div>
+        <div class="grade-wrap">
+          <div class="grade-norte">Norte</div>
+          <div class="grade" id="grade"></div>
+        </div>
+      </section>
+
+      <section class="legenda">
+        <h2>Como falar o ponto</h2>
+        <p><code>D4.xi1.zi1.y4</code></p>
+        <ul>
+          <li><code>D4</code> célula: coluna D (leste), linha 4 (sul)</li>
+          <li><code>x0</code> face oeste · <code>x1</code> leste</li>
+          <li><code>xi0</code> inset a partir do oeste · <code>xi1</code> a partir do leste</li>
+          <li><code>z0</code> norte · <code>z1</code> sul · <code>zi0</code> / <code>zi1</code> o inset</li>
+          <li><code>y4</code> altura 4, topo do bloco que ocupa 3–4</li>
+        </ul>
+        <p class="nota">O nome usa a célula mais a noroeste que toca o ponto. Clique copia.</p>
+      </section>
+    </aside>
+
+    <div class="palco" id="palco">
+      <canvas id="vista"></canvas>
+      <canvas id="guias"></canvas>
+      <div class="rotulos" id="rotulos"></div>
+      <p class="palco__ajuda">Arrastar gira · direito move · scroll zoom · clique num ponto copia o nome · [ ] troca a configuração</p>
+      <p class="aviso" id="aviso" hidden></p>
+    </div>
+
+    <aside class="coluna coluna--frestas">
+      <section>
+        <h2>Ponto</h2>
+        <div id="painel-ponto" class="painel-ponto">
+          <p class="nota">Clique um ponto na malha ou na lista.</p>
+        </div>
+      </section>
+      <section class="frestas-sec">
+        <div class="frestas-cabeca">
+          <h2>Frestas</h2>
+          <button type="button" id="enquadrar-frestas">Enquadrar</button>
+        </div>
+        <p class="nota">Aresta da malha que só um triângulo usa, fora do chão. Isso é buraco.</p>
+        <ul class="frestas" id="frestas"></ul>
+      </section>
+    </aside>
+  </div>
+
+  <script type="module" src="js/diagnostico/faces.js"></script>
+</body>
+</html>

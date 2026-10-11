@@ -1058,6 +1058,11 @@ function drenarGeosChunk(chunk) {
   return passo.value;
 }
 
+/** Malha real de um chunk já instalado no store. A página de faces usa isso. */
+export function malharChunk(chunk) {
+  return drenarGeosChunk(chunk);
+}
+
 function geoProp(p) {
   if (p.sprite || p.tipo === "arvore" || p.tipo === "mata" || p.tipo === "grama" || p.tipo === "cristal") {
     return [];
