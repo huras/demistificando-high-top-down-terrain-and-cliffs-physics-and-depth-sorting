@@ -7,9 +7,8 @@ import {
   RAIO_SUAVE_MAX,
   RAIO_SUAVE_MIN,
 } from "../../config.js";
-import { alturaDoRelevo, nivelMarBlocos, superficieDoRelevo } from "../../mundo/bioma/catalogo.js";
+import { alturaDoRelevo, kitDoRelevo, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
 import { rgbBioma } from "../../mundo/bioma/tinta.js";
-import { BLOCO } from "../../mundo/voxel/tiposBloco.js";
 import { obterMaterialLagoLonge } from "./texturasAgua3d.js";
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
@@ -22,19 +21,6 @@ export function obterRaioSuave() {
 export function definirRaioSuave(raio) {
   raioAtivo = Math.max(RAIO_SUAVE_MIN, Math.min(RAIO_SUAVE_MAX, raio | 0));
   return raioAtivo;
-}
-
-/** Mesma mistura dos topos de bloco: tile + tinta do bioma. */
-function misturarTinta(material, forca) {
-  material.vertexColors = true;
-  material.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <color_fragment>",
-      `diffuseColor.rgb = mix(diffuseColor.rgb, vColor, ${forca.toFixed(2)});`,
-    );
-  };
-  material.customProgramCacheKey = () => `tinta-bioma-${forca}`;
-  aplicarSombraNuvem(material);
 }
 
 /** Desenha só onde o bloco não marcou o stencil. O mesh vem depois dos chunks. */
@@ -62,18 +48,17 @@ function materialSolido() {
   })));
 }
 
-function materialComTile() {
-  const mat = new THREE.MeshStandardMaterial({
+/** Mesmo acabamento do topo do bloco: textura do kit, sem tinta por cima. */
+function materialComTile(mapa) {
+  return atrasDoBloco(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     color: 0xffffff,
+    map: mapa || null,
     roughness: 0.88,
     metalness: 0.04,
-    vertexColors: true,
     polygonOffset: true,
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 2,
-  });
-  misturarTinta(mat, 0.62);
-  return atrasDoBloco(mat);
+  })));
 }
 
 /**
@@ -82,30 +67,17 @@ function materialComTile() {
  * para o encontro com os blocos não precisar fechar.
  */
 export function criarTerrenoSuave() {
-  const mats = {
-    grama: { cubos: materialSolido(), real: materialComTile() },
-    terra: { cubos: materialSolido(), real: materialComTile() },
-  };
+  const matCubos = materialSolido();
+  /** @type {Map<string, THREE.Material>} */
+  const reais = new Map();
+  /** @type {Map<string, THREE.Mesh>} */
+  const malhas = new Map();
   const grupo = new THREE.Group();
   grupo.name = "terreno-suave";
-  const meshGrama = criarMesh("terreno-suave-grama", mats.grama.cubos);
-  const meshTerra = criarMesh("terreno-suave-terra", mats.terra.cubos);
   const matAgua = atrasDoBloco(obterMaterialLagoLonge());
   const meshAgua = criarMesh("terreno-suave-agua", matAgua);
   meshAgua.renderOrder = 3;
-  grupo.add(meshGrama, meshTerra, meshAgua);
-  registrarObjetoCena(meshGrama, {
-    id: meshGrama.name,
-    pasta: "Terreno",
-    rotulo: meshGrama.name,
-    tipo: "relevo",
-  });
-  registrarObjetoCena(meshTerra, {
-    id: meshTerra.name,
-    pasta: "Terreno",
-    rotulo: meshTerra.name,
-    tipo: "relevo",
-  });
+  grupo.add(meshAgua);
   registrarObjetoCena(meshAgua, {
     id: meshAgua.name,
     pasta: "Terreno",
@@ -120,13 +92,42 @@ export function criarTerrenoSuave() {
   let raioSuave = -1;
   /** @type {Generator<void, object | null> | null} */
   let trabalho = null;
-  /** @type {{grama: object, terra: object} | null} */
+  /** @type {{ kits: Map<string, object>, agua: object } | null} */
   let dados = null;
+  /** @type {{ grama?: THREE.Texture, doKit?: (kit: string) => THREE.Texture | null } | null} */
+  let fonte = null;
   let assinatura = null;
   /** Chunks que já estavam na cena no frame anterior. */
   let vistosAntes = new Set();
   let modoReal = false;
   let texturasProntas = false;
+
+  function mapaDoKit(kit) {
+    return fonte?.doKit?.(kit) || fonte?.grama || null;
+  }
+
+  function materialReal(kit) {
+    let mat = reais.get(kit);
+    if (mat) return mat;
+    mat = materialComTile(mapaDoKit(kit));
+    reais.set(kit, mat);
+    return mat;
+  }
+
+  function malhaDoKit(kit) {
+    let mesh = malhas.get(kit);
+    if (mesh) return mesh;
+    mesh = criarMesh(`terreno-suave-${kit}`, matCubos);
+    malhas.set(kit, mesh);
+    grupo.add(mesh);
+    registrarObjetoCena(mesh, {
+      id: mesh.name,
+      pasta: "Terreno",
+      rotulo: mesh.name,
+      tipo: "relevo",
+    });
+    return mesh;
+  }
 
   function trocar(mesh, geo) {
     const antiga = mesh.geometry;
@@ -141,10 +142,31 @@ export function criarTerrenoSuave() {
   }
 
   function instalar(novos) {
-    dados = novos?.grama?.quads?.length || novos?.terra?.quads?.length || novos?.agua?.quads?.length ? novos : null;
+    const kits = novos?.kits;
+    let temChao = false;
+    if (kits) {
+      for (const parte of kits.values()) {
+        if (parte.quads.length) {
+          temChao = true;
+          break;
+        }
+      }
+    }
+    dados = temChao || novos?.agua?.quads?.length ? novos : null;
     assinatura = null;
-    trocar(meshGrama, dados?.grama?.quads?.length ? criarGeometria(dados.grama) : null);
-    trocar(meshTerra, dados?.terra?.quads?.length ? criarGeometria(dados.terra) : null);
+    const usados = new Set();
+    if (dados?.kits) {
+      for (const [kit, parte] of dados.kits) {
+        if (!parte.quads.length) continue;
+        usados.add(kit);
+        const mesh = malhaDoKit(kit);
+        trocar(mesh, criarGeometria(parte));
+        mesh.material = modoReal ? materialReal(kit) : matCubos;
+      }
+    }
+    for (const [kit, mesh] of malhas) {
+      if (!usados.has(kit)) trocar(mesh, null);
+    }
     trocar(meshAgua, dados?.agua?.quads?.length ? criarGeometria(dados.agua) : null);
   }
 
@@ -153,8 +175,12 @@ export function criarTerrenoSuave() {
     const sig = chaveExibidos(estaveis);
     if (sig === assinatura) return;
     assinatura = sig;
-    recortar(meshGrama, dados.grama, estaveis);
-    recortar(meshTerra, dados.terra, estaveis);
+    if (dados.kits) {
+      for (const [kit, parte] of dados.kits) {
+        const mesh = malhas.get(kit);
+        if (mesh) recortar(mesh, parte, estaveis);
+      }
+    }
     recortar(meshAgua, dados.agua, estaveis);
   }
 
@@ -197,20 +223,22 @@ export function criarTerrenoSuave() {
   }
 
   function aplicarTexturas(tex) {
-    texturasProntas = !!(tex?.grama);
-    mats.grama.real.map = tex?.grama ?? null;
-    mats.terra.real.map = tex?.terra || tex?.grama || null;
-    mats.grama.real.needsUpdate = true;
-    mats.terra.real.needsUpdate = true;
+    fonte = tex || null;
+    texturasProntas = !!(tex?.doKit || tex?.grama);
+    for (const [kit, mat] of reais) {
+      mat.map = mapaDoKit(kit);
+      mat.needsUpdate = true;
+    }
     if (modoReal) aplicarVisual(true);
   }
 
   function aplicarVisual(usarTilesFlag) {
     const real = !!(usarTilesFlag && texturasProntas);
-    if (real === modoReal && meshGrama.material === (real ? mats.grama.real : mats.grama.cubos)) return;
+    if (real === modoReal) return;
     modoReal = real;
-    meshGrama.material = real ? mats.grama.real : mats.grama.cubos;
-    meshTerra.material = real ? mats.terra.real : mats.terra.cubos;
+    for (const [kit, mesh] of malhas) {
+      mesh.material = real ? materialReal(kit) : matCubos;
+    }
   }
 
   return {
@@ -221,13 +249,12 @@ export function criarTerrenoSuave() {
     liberar() {
       trabalho = null;
       dados = null;
-      meshGrama.geometry?.dispose();
-      meshTerra.geometry?.dispose();
+      for (const mesh of malhas.values()) mesh.geometry?.dispose();
+      malhas.clear();
       meshAgua.geometry?.dispose();
-      mats.grama.cubos.dispose();
-      mats.grama.real.dispose();
-      mats.terra.cubos.dispose();
-      mats.terra.real.dispose();
+      matCubos.dispose();
+      for (const mat of reais.values()) mat.dispose();
+      reais.clear();
     },
   };
 }
@@ -294,12 +321,6 @@ function chunksDoQuad(x, y, passo) {
   return lista;
 }
 
-/** Mesma escolha do topo do bloco: terra/pedra, ou coluna com 2 ou mais de altura. */
-function usaTerraTopo(wx, wy, altura) {
-  const id = superficieDoRelevo(wx, wy);
-  return id === BLOCO.TERRA || id === BLOCO.PEDRA || altura >= 2;
-}
-
 function criarGeometria(parte) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(parte.pos, 3));
@@ -323,10 +344,19 @@ function* gerarMalha(px, py, raioSuave) {
   const y1 = Math.ceil((py + alcance) / passo) * passo;
 
   const cache = new Map();
-  const grama = balde();
-  const terra = balde();
+  /** @type {Map<string, object>} */
+  const kits = new Map();
   const agua = balde();
   const nivel = nivelMarBlocos();
+
+  function baldeKit(kit) {
+    let b = kits.get(kit);
+    if (!b) {
+      b = balde();
+      kits.set(kit, b);
+    }
+    return b;
+  }
 
   function amostra(wx, wy) {
     const k = `${wx},${wy}`;
@@ -346,6 +376,7 @@ function* gerarMalha(px, py, raioSuave) {
     i = destino.pos.length / 3;
     destino.mapa.set(k, i);
     destino.pos.push(wx, a.h - 0.05, wy);
+    // Um tile por bloco, igual ao UV 0–1 do topo do cubo.
     destino.uv.push(wx, -wy);
     destino.cor.push(a.cor[0], a.cor[1], a.cor[2]);
     return i;
@@ -378,8 +409,8 @@ function* gerarMalha(px, py, raioSuave) {
         amostra(x, y + passo).h,
         amostra(x + passo, y + passo).h,
       ];
-      const media = (hs[0] + hs[1] + hs[2] + hs[3]) * 0.25;
-      const destino = usaTerraTopo(x + passo * 0.5, y + passo * 0.5, media) ? terra : grama;
+      const kit = kitDoRelevo(x + passo * 0.5, y + passo * 0.5) || "_";
+      const destino = baldeKit(kit);
       const i0 = por(destino, x, y);
       const i1 = por(destino, x + passo, y);
       const i2 = por(destino, x, y + passo);
@@ -396,8 +427,15 @@ function* gerarMalha(px, py, raioSuave) {
     }
   }
 
-  if (!grama.quads.length && !terra.quads.length && !agua.quads.length) return null;
-  return { grama, terra, agua };
+  let temChao = false;
+  for (const parte of kits.values()) {
+    if (parte.quads.length) {
+      temChao = true;
+      break;
+    }
+  }
+  if (!temChao && !agua.quads.length) return null;
+  return { kits, agua };
 }
 
 function balde() {

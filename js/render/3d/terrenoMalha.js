@@ -1436,6 +1436,13 @@ export function criarTerrenoMalha(atlas = null) {
     materiaisKit.clear();
   }
 
+  function texturaTopoDoKit(kit) {
+    const chave = `topo:${kit}`;
+    if (!materiaisKit.has(chave)) materialKit(kit, "topo");
+    const item = materiaisKit.get(chave);
+    return item?.tex || item?.mat?.map || texturas?.grama || null;
+  }
+
   function materialKit(kit, tipo) {
     const chave = `${tipo}:${kit}`;
     const pronto = materiaisKit.get(chave);
@@ -1738,7 +1745,11 @@ export function criarTerrenoMalha(atlas = null) {
     /** Texturas de topo já usadas nos blocos. Não descartar daqui. */
     obterTexturasTopo() {
       if (!texturas?.pronto) return null;
-      return { grama: texturas.grama, terra: texturas.terra || texturas.grama };
+      return {
+        grama: texturas.grama,
+        terra: texturas.terra || texturas.grama,
+        doKit: texturaTopoDoKit,
+      };
     },
     /** Chunks cujo mesh de blocos já está no grupo visível. */
     chunksExibidos() {
