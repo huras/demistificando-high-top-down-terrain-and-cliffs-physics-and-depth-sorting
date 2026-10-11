@@ -494,6 +494,30 @@
     "large-pink-crystal": {
       "classe": "cristal",
       "arquivo": "assets/crystals/large-pink-crystal.png"
+    },
+    "cattail": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/cattail.png"
+    },
+    "lotus": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/lotus.png"
+    },
+    "seashell": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/seashell.png"
+    },
+    "coral-1": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/coral-1.png"
+    },
+    "alga-1": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/alga-1.png"
+    },
+    "alga-2": {
+      "classe": "grama",
+      "arquivo": "assets/vegetation/alga-2.png"
     }
   },
   "kits": {
@@ -1907,6 +1931,46 @@
           "peso": 1
         }
       ],
+      "cristal": []
+    },
+    "sandy-shelf": {
+      "chao": "sand",
+      "chaoArquivo": "assets/terrain/centro/sand.png",
+      "cliffArquivo": "assets/terrain/cliffs/dirty-sand.png",
+      "grama": [
+        { "id": "cattail", "peso": 1.4 },
+        { "id": "lotus", "peso": 1.2 },
+        { "id": "seashell", "peso": 0.8 },
+        { "id": "coral-1", "peso": 1 }
+      ],
+      "arvore": [],
+      "pedra": [],
+      "cristal": []
+    },
+    "kelp-forest": {
+      "chao": "dark-rock",
+      "chaoArquivo": "assets/terrain/centro/dark-rock.png",
+      "cliffArquivo": "assets/terrain/cliffs/tunnel-hills.png",
+      "grama": [
+        { "id": "alga-2", "peso": 1.5 },
+        { "id": "alga-1", "peso": 1.2 },
+        { "id": "coral-1", "peso": 1 }
+      ],
+      "arvore": [],
+      "pedra": [],
+      "cristal": []
+    },
+    "deep-trench": {
+      "chao": "stone",
+      "chaoArquivo": "assets/terrain/centro/stone.png",
+      "cliffArquivo": "assets/terrain/cliffs/stone.png",
+      "grama": [
+        { "id": "alga-1", "peso": 1.3 },
+        { "id": "coral-1", "peso": 1.1 },
+        { "id": "seashell", "peso": 0.7 }
+      ],
+      "arvore": [],
+      "pedra": [],
       "cristal": []
     }
   }

@@ -216,7 +216,8 @@ button, input, select {
 .no__previa {
   display: block;
   width: calc(100% - 12px);
-  height: 52px;
+  height: auto;
+  aspect-ratio: 1;
   margin: 6px 6px 2px;
   border: 1px solid var(--borda);
   border-radius: 4px;

@@ -171,7 +171,7 @@ function avaliarNo(bioma, id, wx, wy, seed, pilha, ctx, cache) {
 
 /**
  * Avalia cada nó numa grade. Cada ponto calcula o grafo uma vez.
- * passo pode ser um número ou { x, y } em blocos por amostra.
+ * passo pode ser um número ou { x, y, origemX, origemY } em blocos.
  * @returns {Map<string, Float32Array>}
  */
 export function amostrarNos(bioma, largura, altura, seed, ctx, passo = 10) {
@@ -182,6 +182,8 @@ export function amostrarNos(bioma, largura, altura, seed, ctx, passo = 10) {
   const h = Math.max(1, altura | 0);
   const passoX = typeof passo === "number" ? passo : Number(passo?.x) || 10;
   const passoY = typeof passo === "number" ? passo : Number(passo?.y) || passoX;
+  const origemX = typeof passo === "number" ? 0 : Number(passo?.origemX) || 0;
+  const origemY = typeof passo === "number" ? 0 : Number(passo?.origemY) || 0;
   for (let i = 0; i < nos.length; i++) {
     buffers.set(nos[i].id, new Float32Array(w * h));
   }
@@ -189,8 +191,8 @@ export function amostrarNos(bioma, largura, altura, seed, ctx, passo = 10) {
     for (let x = 0; x < w; x++) {
       const cache = new Map();
       const pilha = new Set();
-      const wx = x * passoX;
-      const wy = y * passoY;
+      const wx = origemX + x * passoX;
+      const wy = origemY + y * passoY;
       for (let i = 0; i < nos.length; i++) {
         const id = nos[i].id;
         buffers.get(id)[y * w + x] = avaliarNo(bioma, id, wx, wy, seed, pilha, ctx, cache);

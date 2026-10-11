@@ -1,5 +1,10 @@
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
-import { alturaDoRelevo, plantaDoRelevo, superficieDoRelevo } from "../bioma/catalogo.js";
+import {
+  alturaDoRelevo,
+  nivelMarBlocos,
+  plantaDoRelevo,
+  superficieDoRelevo,
+} from "../bioma/catalogo.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
@@ -15,6 +20,7 @@ const GERAR_CAVERNAS = false;
 export function gerarChunkProcedural(chunk, seed) {
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
+  const nivel = nivelMarBlocos();
 
   /** @type {Int16Array} */
   const alturas = new Int16Array(CHUNK_XZ * CHUNK_XZ);
@@ -26,6 +32,12 @@ export function gerarChunkProcedural(chunk, seed) {
       const h = alturaDoRelevo(wx, wy);
       alturas[ly * CHUNK_XZ + lx] = h;
       preencherColunaSolida(chunk, lx, ly, h, superficieDoRelevo(wx, wy));
+      if (h < nivel) {
+        const topo = Math.min(CHUNK_Y, nivel);
+        for (let lz = h; lz < topo; lz++) {
+          chunk.blocos[((ly * CHUNK_XZ + lx) * CHUNK_Y + lz) | 0] = BLOCO.AGUA;
+        }
+      }
     }
   }
 

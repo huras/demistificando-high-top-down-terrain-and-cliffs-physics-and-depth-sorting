@@ -1,20 +1,11 @@
 import { amostrarRegiao } from "./catalogo.js";
 
-/**
- * Os dois gelos do Unity são quase brancos e somem em cima da grama.
- * O azul claro só existe na tela, para separar um do outro.
- */
-const COR_VISUAL = {
-  Ice_Hight_Steps_a: "#d4e8f4",
-  Ice_Canyons_a: "#7eb4d4",
-};
-
 let cacheX = 1e9;
 let cacheY = 1e9;
 let cacheRgb = [0.49, 0.81, 0.42];
 
 function corDe(bioma) {
-  const hex = (bioma && COR_VISUAL[bioma.id]) || bioma?.cor || "#7dce6a";
+  const hex = bioma?.cor || "#7dce6a";
   const [r, g, b] = rgbDeHex(hex);
   return [r / 255, g / 255, b / 255];
 }

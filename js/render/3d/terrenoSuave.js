@@ -7,9 +7,10 @@ import {
   RAIO_SUAVE_MAX,
   RAIO_SUAVE_MIN,
 } from "../../config.js";
-import { alturaDoRelevo, superficieDoRelevo } from "../../mundo/bioma/catalogo.js";
+import { alturaDoRelevo, nivelMarBlocos, superficieDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { rgbBioma } from "../../mundo/bioma/tinta.js";
 import { BLOCO } from "../../mundo/voxel/tiposBloco.js";
+import { obterMaterialLagoLonge } from "./texturasAgua3d.js";
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
 let raioAtivo = RAIO_SUAVE;
@@ -89,7 +90,10 @@ export function criarTerrenoSuave() {
   grupo.name = "terreno-suave";
   const meshGrama = criarMesh("terreno-suave-grama", mats.grama.cubos);
   const meshTerra = criarMesh("terreno-suave-terra", mats.terra.cubos);
-  grupo.add(meshGrama, meshTerra);
+  const matAgua = atrasDoBloco(obterMaterialLagoLonge());
+  const meshAgua = criarMesh("terreno-suave-agua", matAgua);
+  meshAgua.renderOrder = 3;
+  grupo.add(meshGrama, meshTerra, meshAgua);
   registrarObjetoCena(meshGrama, {
     id: meshGrama.name,
     pasta: "Terreno",
@@ -101,6 +105,12 @@ export function criarTerrenoSuave() {
     pasta: "Terreno",
     rotulo: meshTerra.name,
     tipo: "relevo",
+  });
+  registrarObjetoCena(meshAgua, {
+    id: meshAgua.name,
+    pasta: "Terreno",
+    rotulo: meshAgua.name,
+    tipo: "agua",
   });
 
   let ancoraX = 1e9;
@@ -131,10 +141,11 @@ export function criarTerrenoSuave() {
   }
 
   function instalar(novos) {
-    dados = novos?.grama?.quads?.length || novos?.terra?.quads?.length ? novos : null;
+    dados = novos?.grama?.quads?.length || novos?.terra?.quads?.length || novos?.agua?.quads?.length ? novos : null;
     assinatura = null;
     trocar(meshGrama, dados?.grama?.quads?.length ? criarGeometria(dados.grama) : null);
     trocar(meshTerra, dados?.terra?.quads?.length ? criarGeometria(dados.terra) : null);
+    trocar(meshAgua, dados?.agua?.quads?.length ? criarGeometria(dados.agua) : null);
   }
 
   function aplicarExibidos(estaveis) {
@@ -144,6 +155,7 @@ export function criarTerrenoSuave() {
     assinatura = sig;
     recortar(meshGrama, dados.grama, estaveis);
     recortar(meshTerra, dados.terra, estaveis);
+    recortar(meshAgua, dados.agua, estaveis);
   }
 
   function tick(px, py, exibidos) {
@@ -211,6 +223,7 @@ export function criarTerrenoSuave() {
       dados = null;
       meshGrama.geometry?.dispose();
       meshTerra.geometry?.dispose();
+      meshAgua.geometry?.dispose();
       mats.grama.cubos.dispose();
       mats.grama.real.dispose();
       mats.terra.cubos.dispose();
@@ -312,6 +325,8 @@ function* gerarMalha(px, py, raioSuave) {
   const cache = new Map();
   const grama = balde();
   const terra = balde();
+  const agua = balde();
+  const nivel = nivelMarBlocos();
 
   function amostra(wx, wy) {
     const k = `${wx},${wy}`;
@@ -336,6 +351,21 @@ function* gerarMalha(px, py, raioSuave) {
     return i;
   }
 
+  function porAgua(wx, wy) {
+    const k = `${wx},${wy}`;
+    let i = agua.mapa.get(k);
+    if (i !== undefined) return i;
+    const a = amostra(wx, wy);
+    i = agua.pos.length / 3;
+    agua.mapa.set(k, i);
+    const prof = Math.max(0, nivel - a.h);
+    const esc = 1 - Math.min(1, prof / 8) * 0.4;
+    agua.pos.push(wx, nivel - 0.04, wy);
+    agua.uv.push(wx, -wy);
+    agua.cor.push(esc, esc, 1);
+    return i;
+  }
+
   let feitos = 0;
   for (let y = y0; y < y1; y += passo) {
     for (let x = x0; x < x1; x += passo) {
@@ -355,12 +385,19 @@ function* gerarMalha(px, py, raioSuave) {
       const i2 = por(destino, x, y + passo);
       const i3 = por(destino, x + passo, y + passo);
       destino.quads.push({ i0, i1, i2, i3, chunks: chunksDoQuad(x, y, passo) });
+      if (Math.min(hs[0], hs[1], hs[2], hs[3]) < nivel) {
+        const a0 = porAgua(x, y);
+        const a1 = porAgua(x + passo, y);
+        const a2 = porAgua(x, y + passo);
+        const a3 = porAgua(x + passo, y + passo);
+        agua.quads.push({ i0: a0, i1: a1, i2: a2, i3: a3, chunks: chunksDoQuad(x, y, passo) });
+      }
       if ((++feitos & 47) === 0) yield;
     }
   }
 
-  if (!grama.quads.length && !terra.quads.length) return null;
-  return { grama, terra };
+  if (!grama.quads.length && !terra.quads.length && !agua.quads.length) return null;
+  return { grama, terra, agua };
 }
 
 function balde() {

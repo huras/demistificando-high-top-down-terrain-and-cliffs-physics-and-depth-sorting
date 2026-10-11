@@ -24,6 +24,9 @@ const LADO = 48;
 const PASSO = 1;
 const ORIGEM = 8;
 
+/** Grade do demo 3D, em blocos. A miniatura do nó usa o dobro deste lado. */
+export const DEMO_3D = { lado: LADO, passo: PASSO, origem: ORIGEM };
+
 /** @type {HTMLCanvasElement | null} */
 let canvas = null;
 /** @type {THREE.WebGLRenderer | null} */
@@ -187,10 +190,14 @@ function montarRelevo(bioma, catalogo, seed) {
   maxBloco = 1;
   for (let iz = 0; iz < LADO; iz++) {
     for (let ix = 0; ix < LADO; ix++) {
-      const h = encaixar(
+      let h = encaixar(
         alturaBlocos(bioma, ORIGEM + ix * PASSO, ORIGEM + iz * PASSO, seed, catalogo),
         bioma.degrau,
       );
+      if (bioma?.camada === "mar") {
+        const nivel = Math.max(2, Math.round(Number(catalogo?.nivelMarBlocos) || 12));
+        h = Math.min(h, nivel - 1);
+      }
       alturas[iz * LADO + ix] = h;
       if (h < minBloco) minBloco = h;
       if (h > maxBloco) maxBloco = h;

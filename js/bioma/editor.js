@@ -5,7 +5,7 @@ import {
 } from "../mundo/bioma/catalogo.js";
 import { amostrarNos, avaliarGrafo } from "../mundo/bioma/grafo.js";
 import { carregarKits, idsDeKit } from "../mundo/bioma/kits.js";
-import { atualizarPreviewBioma, iniciarPreviewBioma } from "./preview3d.js";
+import { DEMO_3D, atualizarPreviewBioma, iniciarPreviewBioma } from "./preview3d.js";
 
 const PORTAS = {
   constante: { entradas: [], saidas: ["Out"] },
@@ -56,10 +56,8 @@ let noSelecionado = null;
 let fioArraste = null;
 let previewPedido = 0;
 
-const PREVIA_NO_LARGURA = 64;
-const PREVIA_NO_ALTURA = 36;
-const PREVIA_NO_EXTENSAO_X = 500;
-const PREVIA_NO_EXTENSAO_Y = 400;
+const PREVIA_NO_LADO = DEMO_3D.lado * 2;
+const PREVIA_NO_ORIGEM = DEMO_3D.origem - (DEMO_3D.lado * DEMO_3D.passo) / 2;
 
 function biomaAtual() {
   return dados.biomas[indice];
@@ -182,8 +180,8 @@ function pintarNos() {
 
     const previa = document.createElement("canvas");
     previa.className = "no__previa";
-    previa.width = PREVIA_NO_LARGURA;
-    previa.height = PREVIA_NO_ALTURA;
+    previa.width = PREVIA_NO_LADO;
+    previa.height = PREVIA_NO_LADO;
     previa.dataset.previa = no.id;
     el.append(previa);
 
@@ -598,16 +596,18 @@ function pintarPreviews() {
   }
   const amostras = amostrarNos(
     bioma,
-    PREVIA_NO_LARGURA,
-    PREVIA_NO_ALTURA,
+    PREVIA_NO_LADO,
+    PREVIA_NO_LADO,
     seed,
     {
       metrosPorBloco: Number(dados.metrosPorBloco) || 48,
       metrosPorCelula: Number(dados.metrosPorCelula) || 1000,
     },
     {
-      x: PREVIA_NO_EXTENSAO_X / PREVIA_NO_LARGURA,
-      y: PREVIA_NO_EXTENSAO_Y / PREVIA_NO_ALTURA,
+      x: DEMO_3D.passo,
+      y: DEMO_3D.passo,
+      origemX: PREVIA_NO_ORIGEM,
+      origemY: PREVIA_NO_ORIGEM,
     },
   );
   const miniaturas = nosEl.querySelectorAll("canvas.no__previa");

@@ -92,6 +92,18 @@ function snap(h, degrau) {
   return Math.max(1, Math.min(60, q));
 }
 
+/** Linha única do oceano, em blocos. A lâmina fica nessa cota no mundo inteiro. */
+export function nivelMarBlocos(catalogo = dados) {
+  const n = Number(catalogo?.nivelMarBlocos);
+  if (!Number.isFinite(n)) return 12;
+  return Math.max(2, Math.min(59, Math.round(n)));
+}
+
+function tetoMar(bioma, h, nivel) {
+  if (bioma?.camada !== "mar") return h;
+  return Math.min(h, nivel - 1);
+}
+
 function contexto(catalogo) {
   return {
     metrosPorBloco: Number(catalogo?.metrosPorBloco) || 48,
@@ -116,11 +128,14 @@ function alturaContinua(bioma, wx, wy, seed, catalogo) {
 export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   const reg = amostrarRegiao(wx, wy, catalogo, seed);
   if (!reg) return 4;
-  const ha = alturaContinua(reg.a, wx, wy, seed, catalogo);
-  const hb = alturaContinua(reg.b, wx, wy, seed, catalogo);
+  const nivel = nivelMarBlocos(catalogo);
+  const ha = tetoMar(reg.a, alturaContinua(reg.a, wx, wy, seed, catalogo), nivel);
+  const hb = tetoMar(reg.b, alturaContinua(reg.b, wx, wy, seed, catalogo), nivel);
   const mistura = ha * reg.dominio + hb * (1 - reg.dominio);
   const degrau = reg.dominio > 0.92 ? reg.a.degrau : 1;
-  return snap(mistura, degrau);
+  let h = snap(mistura, degrau);
+  if (reg.a.camada === "mar") h = Math.min(h, nivel - 1);
+  return h;
 }
 
 export function biomaDominante(wx, wy, catalogo = dados, seed = semente) {
@@ -153,6 +168,13 @@ export function plantaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   const b = biomaDominante(ix, iy, catalogo, seed);
   if (!b) return null;
   const kit = obterKit(b.kit);
+  if (b.camada === "mar") {
+    if (hash2(ix, iy, seed + 9006) < chanceGrama()) {
+      const sprite = sortearSprite(kit?.grama, hash2(ix, iy, seed + 9007));
+      if (sprite) return { classe: "grama", sprite };
+    }
+    return null;
+  }
   const arvore = Math.max(0, Number(b.arvore) || 0);
   if (hash2(ix, iy, seed + 9001) < arvore) {
     const sprite = sortearSprite(kit?.arvore, hash2(ix, iy, seed + 9002));

@@ -127,6 +127,7 @@ function carregar(url) {
 const texLago = texturaPixel(canvasChato("#7ec8e3"));
 const texQueda = texturaPixel(canvasChato("#9fd4ea"));
 const matLago = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-centro"));
+const matLagoLonge = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-longe"));
 const matQueda = aplicarSombraNuvem(materialFolha(texQueda, 1, 0.92, 1, "agua-queda-centro"));
 
 carregar(LAGO_URL).then((img) => {
@@ -141,7 +142,9 @@ carregar(LAGO_URL).then((img) => {
       sy: linha * CEL + f * LAGO_LINHAS * CEL,
     });
   }
-  aplicarFita(texLago, matLago, fita(img, amostras));
+  const folha = fita(img, amostras);
+  aplicarFita(texLago, matLago, folha);
+  aplicarFita(texLago, matLagoLonge, folha);
 });
 
 carregar(WF_URL).then((img) => {
@@ -161,6 +164,11 @@ export function obterMaterialLago() {
   return matLago;
 }
 
+/** Mesma lâmina do lago, programa próprio para o anel distante. */
+export function obterMaterialLagoLonge() {
+  return matLagoLonge;
+}
+
 export function obterMaterialQueda() {
   return matQueda;
 }
@@ -176,9 +184,10 @@ function quadro(segundos, periodo, quadros) {
 export function avancarMateriaisAgua(segundos) {
   const linha = segundos * LINHA_VEL;
   const faixa = linha - Math.floor(linha);
-  const lago = matLago.userData.shader;
-  if (lago) {
-    lago.uniforms.uQuadro.value = quadro(segundos, LAGO_FRAME_S, matLago.userData.quadros);
+  for (const mat of [matLago, matLagoLonge]) {
+    const lago = mat.userData.shader;
+    if (!lago) continue;
+    lago.uniforms.uQuadro.value = quadro(segundos, LAGO_FRAME_S, mat.userData.quadros);
     lago.uniforms.uLinha.value = faixa;
   }
   const queda = matQueda.userData.shader;
@@ -190,6 +199,7 @@ export function avancarMateriaisAgua(segundos) {
 
 export function liberarMateriaisAgua() {
   matLago.dispose();
+  matLagoLonge.dispose();
   matQueda.dispose();
   texLago.dispose();
   texQueda.dispose();
