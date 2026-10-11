@@ -11,7 +11,9 @@ import {
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
+  consumirCliqueEsquerdo,
   consumirMovimentoMouse,
+  botaoDireitoSegurado,
   desligarPonteiro3d,
   ligarPonteiro3d,
 } from "./entrada/ponteiro3d.js";
@@ -39,6 +41,7 @@ import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
 import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
 import { ligarDicasPainel } from "./ui/dicasPainel.js";
 import { ligarPainelCeu, sincronizarPainelCeu } from "./ui/painelCeu.js";
+import { ligarPainelCamera, sincronizarPainelCamera } from "./ui/painelCamera.js";
 import { ligarHudCompanheiro, atualizarHudCompanheiro } from "./ui/hudCompanheiro.js";
 import {
   ativarInputRelativoCamera,
@@ -48,9 +51,11 @@ import { definirRaioSuave, obterRaioSuave } from "./render/3d/terrenoSuave.js";
 import {
   ajustarZoom3d,
   atualizarEDesenhar3d,
+  definirMira3d,
   iniciarCenario3d,
   olharCamera3d,
   obterCenario3d,
+  pedirTiro3d,
   redimensionarCenario3d,
   resetarCamera3d,
 } from "./render/3d/cenario3d.js";
@@ -119,11 +124,13 @@ async function iniciar() {
   ligarHudCompanheiro(agente, CAPS_PADRAO);
   ligarRaioStream();
   ligarPainelCeu();
+  ligarPainelCamera();
   ligarDicasPainel();
   ligarAjudaAtalhos();
   ligarControleModo(document.getElementById("btn-modo-3d"));
   aoMudarModo(aoTrocarModo);
   sincronizarCamadas(obterModo());
+  if (obterModo() === "3d") aoTrocarModo("3d");
 
   const optsPonteiro = {
     canvas2d: canvas,
@@ -285,6 +292,8 @@ function aoTrocarModo(modo) {
   } else {
     desligarPonteiro3d();
     desativarInputRelativoCamera();
+    definirMira3d(false);
+    if (corpo) corpo.mirando = false;
     camera.pronta = false;
   }
 }
@@ -324,7 +333,9 @@ function loop(agora) {
       if (climaTecla) alternarClima();
     }
     const mouse = consumirMovimentoMouse();
+    definirMira3d(botaoDireitoSegurado());
     olharCamera3d(mouse.dx, mouse.dy);
+    if (consumirCliqueEsquerdo()) pedirTiro3d();
     if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
     if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
       ajustarZoom3d(1 / ZOOM_PASSO);
@@ -343,6 +354,7 @@ function loop(agora) {
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();
   sincronizarPainelCeu();
+  sincronizarPainelCamera();
 
   try {
     if (modo === "3d") {

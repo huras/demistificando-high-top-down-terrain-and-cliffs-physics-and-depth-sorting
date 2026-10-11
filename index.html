@@ -14,7 +14,7 @@
   }
   </script>
 </head>
-<body data-modo="2d">
+<body data-modo="3d">
   <div class="app">
     <header class="cabecalho">
       <div class="cabecalho__texto">
@@ -22,8 +22,8 @@
         <p>Física + depth sorting — tiles reais do jogo (T = cubos didáticos)</p>
       </div>
       <div class="cabecalho__controles">
-        <button type="button" id="btn-modo-3d" class="btn-modo" aria-pressed="false">
-          Jogar em 3D
+        <button type="button" id="btn-modo-3d" class="btn-modo" aria-pressed="true">
+          Voltar 2D
         </button>
         <a class="btn-modo" href="biomas.html">Biomas</a>
         <div class="ajuda-atalhos" id="ajuda-atalhos">
@@ -55,8 +55,10 @@
               <li><span class="ajuda-atalhos__teclas"><kbd>[</kbd> <kbd>]</kbd></span> hora do dia (3D)</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>G</kbd></span> clima (3D)</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>`</kbd></span> debug pivôs</li>
-              <li><span class="ajuda-atalhos__teclas">click</span> mouse-look (3D)</li>
-              <li><span class="ajuda-atalhos__teclas">LMB · RMB</span> quebra / coloca bloco</li>
+              <li><span class="ajuda-atalhos__teclas">mouse</span> girar ao redor (3D)</li>
+              <li><span class="ajuda-atalhos__teclas">RMB</span> mira no ombro (3D)</li>
+              <li><span class="ajuda-atalhos__teclas">LMB</span> flecha na mira · quebra bloco fora dela</li>
+              <li><span class="ajuda-atalhos__teclas">RMB</span> coloca bloco (2D)</li>
             </ul>
           </div>
         </div>
@@ -66,8 +68,8 @@
     <main class="principal">
       <div class="palco">
         <div class="palco__viewport">
-          <canvas id="canvas-3d" class="palco__camada palco__camada--oculta" width="1280" height="720"></canvas>
-          <canvas id="canvas" class="palco__camada palco__camada--ativa" width="1280" height="720"></canvas>
+          <canvas id="canvas-3d" class="palco__camada palco__camada--ativa" width="1280" height="720"></canvas>
+          <canvas id="canvas" class="palco__camada palco__camada--hud" width="1280" height="720"></canvas>
         </div>
       </div>
 
@@ -176,6 +178,55 @@
         </section>
 
         <section class="painel__bloco">
+          <h2>
+            Câmera
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Explicação da câmera" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <p>
+                  A órbita gira só ao redor do personagem. A inclinação fica fixa.
+                  Segurar o botão direito aproxima no ombro e libera o olhar para cima e para baixo.
+                </p>
+              </span>
+            </span>
+          </h2>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="cam-pivo">Altura do pivô</label>
+            </div>
+            <span class="controle__valor" id="cam-pivo-valor">1.15</span>
+            <input id="cam-pivo" type="range" min="0.4" max="2.6" step="0.05" value="1.15" />
+          </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="cam-dist">Distância</label>
+            </div>
+            <span class="controle__valor" id="cam-dist-valor">10</span>
+            <input id="cam-dist" type="range" min="4" max="28" step="0.1" value="10" />
+          </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="cam-pitch">Inclinação</label>
+            </div>
+            <span class="controle__valor" id="cam-pitch-valor">22°</span>
+            <input id="cam-pitch" type="range" min="-77" max="66" step="1" value="22" />
+          </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="cam-mecanismo">Mecanismo</label>
+            </div>
+            <select id="cam-mecanismo">
+              <option value="livre">Órbita livre</option>
+              <option value="costas">Atrás do personagem</option>
+            </select>
+          </div>
+          <label class="ceu-ciclo" for="cam-rig">
+            <input id="cam-rig" type="checkbox" />
+            Mostrar rig
+          </label>
+        </section>
+
+        <section class="painel__bloco">
           <h2>Estado ao vivo</h2>
           <dl class="estado" id="estado">
             <div><dt>x, y, z</dt><dd>—</dd></div>
@@ -189,7 +240,7 @@
             <div><dt>fps</dt><dd id="fps-status">—</dd></div>
             <div><dt>zoom</dt><dd id="zoom-status">1.00×</dd></div>
             <div><dt>visual</dt><dd id="visual-status">real</dd></div>
-            <div><dt>modo</dt><dd id="modo-status">2D</dd></div>
+            <div><dt>modo</dt><dd id="modo-status">3D</dd></div>
           </dl>
         </section>
 
@@ -229,7 +280,8 @@
                   <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint (no voo = desce)</li>
                   <li><kbd>E</kbd> — gruda / solta a face (2D e 3D)</li>
                   <li><kbd>F</kbd> — fly on/off; <kbd>Space</kbd> sobe no voo</li>
-                  <li>3D: click no viewport = mouse-look (Esc libera)</li>
+                  <li>3D: click trava o mouse e gira ao redor do personagem (Esc libera)</li>
+                  <li>3D: segurar o botão direito = mira; esquerdo na mira = flecha</li>
                   <li><kbd>Space</kbd> — pulo; 2º toque no ar — asa-delta; na parede — solta; no fundo — braçada</li>
                   <li>Água rasa — anda mais devagar. Água funda — nada na superfície (stamina). <kbd>E</kbd> sobe a cachoeira.</li>
                   <li>Topo + subir — mantle; base + descer — pousa; stamina 0 — cai</li>

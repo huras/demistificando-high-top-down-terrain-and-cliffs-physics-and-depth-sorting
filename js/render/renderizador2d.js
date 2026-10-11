@@ -127,6 +127,26 @@ function desenharPathAgente(ctx, agente) {
   ctx.restore();
 }
 
+function desenharMira(ctx, largura, altura) {
+  const cx = largura * 0.5;
+  const cy = altura * 0.5;
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 248, 230, 0.92)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+  ctx.moveTo(cx - 14, cy);
+  ctx.lineTo(cx - 5, cy);
+  ctx.moveTo(cx + 5, cy);
+  ctx.lineTo(cx + 14, cy);
+  ctx.moveTo(cx, cy - 14);
+  ctx.lineTo(cx, cy - 5);
+  ctx.moveTo(cx, cy + 5);
+  ctx.lineTo(cx, cy + 14);
+  ctx.stroke();
+  ctx.restore();
+}
+
 /**
  * Só HUD por cima do WebGL (canvas 2d transparente).
  */
@@ -140,6 +160,9 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
   desenharOverlayAjuda(ctx, { zoom }, debug, null, modoVisual, "3d");
   desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
   desenharLabelHoverHud(ctx, canvas.width, canvas.height, true);
+  if ((camera3d?.camera3d?.blend ?? 0) > 0.35) {
+    desenharMira(ctx, canvas.width, canvas.height);
+  }
 
   return { ocl, modoVisual };
 }

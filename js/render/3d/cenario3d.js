@@ -6,12 +6,16 @@ import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { criarTerrenoSuave, obterRaioSuave } from "./terrenoSuave.js";
 import {
   ajustarDistancia,
+  aplicarFacingMira,
   aplicarOlharMouse,
   criarCamera3d,
+  definirModoCamera,
   distanciaNormalizada,
   seguirAlvo3d,
   yawCamera,
 } from "./camera3d.js";
+import { criarFlechas3d } from "./flechas3d.js";
+import { criarRigCamera3d } from "./rigCamera3d.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
@@ -21,6 +25,7 @@ import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
 
 let estado = null;
+let tiroPendente = false;
 
 /** Nevoeiro calibrado no raio 5 (disco de ~80 blocos). */
 const NEVOA_NEAR = 36;
@@ -144,6 +149,12 @@ export function iniciarCenario3d(canvas, atlas = null) {
 
   const ceu = criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim });
 
+  const rig = criarRigCamera3d();
+  scene.add(rig.grupo);
+
+  const flechas = criarFlechas3d();
+  scene.add(flechas.grupo);
+
   estado = {
     canvas,
     renderer,
@@ -161,6 +172,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
     alvoEscalada,
     hoverTile,
     ceu,
+    rig,
+    flechas,
     nevoaBase: { near: NEVOA_NEAR, far: NEVOA_FAR },
     _alvoCeu: new THREE.Vector3(),
     pronto: true,
@@ -257,6 +270,16 @@ export function olharCamera3d(dx, dy) {
   aplicarOlharMouse(estado.camera3d, dx, dy);
 }
 
+export function definirMira3d(ativa) {
+  if (!estado) return;
+  definirModoCamera(estado.camera3d, ativa ? "mira" : "orbita");
+}
+
+export function pedirTiro3d() {
+  if (!estado || estado.camera3d.modo !== "mira") return;
+  tiroPendente = true;
+}
+
 /**
  * Atualiza câmera/personagem e renderiza um frame.
  */
@@ -268,6 +291,13 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
   estado.terrenoSuave?.tick(corpo.x, corpo.y, estado.terreno.chunksExibidos?.());
   seguirAlvo3d(estado.camera3d, corpo, dt);
+  aplicarFacingMira(corpo, estado.camera3d);
+  estado.rig?.atualizar(estado.camera3d);
+  if (tiroPendente) {
+    tiroPendente = false;
+    estado.flechas?.disparar(estado.camera3d, corpo);
+  }
+  estado.flechas?.atualizar(dt, corpo, estado.camera3d);
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;
   const elevVis = elev * ALTURA_BLOCO;

@@ -39,6 +39,17 @@ export function chaveEntidade(y, z = 0) {
   return chaveProfundidade(ySort, z);
 }
 
+/**
+ * Meio do vão entre o topo da célula (cy+0.97) e o piso da entidade nela (cy+0.971).
+ * O prop repinta só o que esse topo cobriu, ainda atrás de quem está de pé na fileira,
+ * da face (cy+0.99) e de um topo um bloco mais alto no mesmo cy.
+ */
+export function chaveSobreTopo(cy, z) {
+  const baixo = chaveTopo(cy, z);
+  const alto = chaveProfundidade(cy + 0.971, z);
+  return (baixo + alto) * 0.5;
+}
+
 export function criarListaProfundidade() {
   return { itens: [] };
 }

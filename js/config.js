@@ -133,8 +133,17 @@ export const CAMERA3D_DIST_MAX = 28;
 export const CAMERA3D_DIST_PADRAO = 10;
 export const CAMERA3D_ALTURA = 3.2;
 export const CAMERA3D_OLHAR_Y = 1.15;
+export const CAMERA3D_PIVO_MIN = 0.4;
+export const CAMERA3D_PIVO_MAX = 2.6;
+/** Pitch fixo da órbita (rad). O mouse só gira o yaw. */
+export const CAMERA3D_PITCH_ORBITA = 0.38;
 /** Suavidade só no follow vertical (Y). XZ é instantâneo. */
 export const CAMERA3D_SUAVIDADE_Y = 6;
+/** Quão rápido a câmera entra e sai da mira. */
+export const CAMERA3D_MIRA_SUAVIDADE = 10;
+/** Distância e deslocamento lateral da mira no ombro. */
+export const CAMERA3D_MIRA_DIST = 2.4;
+export const CAMERA3D_MIRA_OMBRO = 0.62;
 /** rad/s — fallback teclado (legado); mouse usa sensibilidade. */
 export const CAMERA3D_ROT_VEL = 2.4;
 /** Mouse-look 3D (rad por pixel). */
@@ -142,6 +151,17 @@ export const CAMERA3D_MOUSE_SENS = 0.0022;
 /** Negativo = mirar para cima (~-77°). A câmera não desce no chão. */
 export const CAMERA3D_PITCH_MIN = -1.35;
 export const CAMERA3D_PITCH_MAX = 1.15;
+/** Pitch da mira (mais fechado que a órbita). */
+export const CAMERA3D_MIRA_PITCH_MIN = -0.85;
+export const CAMERA3D_MIRA_PITCH_MAX = 0.7;
+/** Alinha o yaw nas costas enquanto anda (mecanismo “costas”). */
+export const CAMERA3D_COSTAS_SUAVIDADE = 3.2;
+
+/** Flecha da mira (unidades Three / s). */
+export const FLECHA_VEL = 18;
+export const FLECHA_GRAVIDADE = 12;
+export const FLECHA_VIDA = 5;
+export const FLECHA_MAX = 16;
 
 export const CAMINHOS = {
   jogador: "assets/people/gold.png",
@@ -236,9 +256,7 @@ export const RAIO_SUAVE_MIN = 0;
 export const RAIO_SUAVE_MAX = 20;
 /** Distância entre vértices da malha suave, em blocos. */
 export const PASSO_MALHA_SUAVE = 8;
-/** Chunks de impostor além do disco de blocos, sem passar do raio suave. */
-export const IMPOSTOR_ANEL = 4;
-/** Árvores billboard no anel. As mais perto ficam se passar disso. */
+/** Árvores billboard em todo o disco suave, fora dos chunks de bloco. */
 export const IMPOSTOR_CAP = 256;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 6;

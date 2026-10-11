@@ -7,7 +7,7 @@ import { colocarBloco, quebrarBloco } from "../mundo/voxel/editar.js";
 import { ESCALA, FACE_H, TILE } from "../config.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 import { invalidarHoverBloco } from "./hoverBloco.js";
-import { ponteiroTravado } from "./ponteiro3d.js";
+import { ponteiroTravado, botaoDireitoSegurado } from "./ponteiro3d.js";
 
 let canvas2d = null;
 let canvas3d = null;
@@ -52,24 +52,23 @@ function aoMouseDown2d(ev) {
 function aoMouseDown3d(ev) {
   if (obterModo() !== "3d") return;
   if (!ponteiroTravado()) return;
-  if (ev.button !== 0 && ev.button !== 2) return;
+  if (ev.button !== 0) return;
+  if (botaoDireitoSegurado()) return;
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d) return;
+  if (cen.camera3d.modo === "mira") return;
 
   const alvo = alvoBloco3d(corpo, cen.camera3d);
   if (!alvo) return;
 
   ev.preventDefault();
-  if (ev.button === 0) quebrarBloco(corpo, alvo);
-  else colocarBloco(corpo, { ...alvo });
+  quebrarBloco(corpo, alvo);
   invalidarHoverBloco();
 }
 
 function aoContextMenu(ev) {
-  if (obterModo() === "2d" || (obterModo() === "3d" && ponteiroTravado())) {
-    ev.preventDefault();
-  }
+  ev.preventDefault();
 }
 
 /**

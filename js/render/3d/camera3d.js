@@ -2,13 +2,22 @@ import * as THREE from "three";
 import {
   ALTURA_BLOCO,
   CAMERA3D_ALTURA,
+  CAMERA3D_COSTAS_SUAVIDADE,
   CAMERA3D_DIST_MAX,
   CAMERA3D_DIST_MIN,
   CAMERA3D_DIST_PADRAO,
+  CAMERA3D_MIRA_DIST,
+  CAMERA3D_MIRA_OMBRO,
+  CAMERA3D_MIRA_PITCH_MAX,
+  CAMERA3D_MIRA_PITCH_MIN,
+  CAMERA3D_MIRA_SUAVIDADE,
   CAMERA3D_MOUSE_SENS,
   CAMERA3D_OLHAR_Y,
   CAMERA3D_PITCH_MAX,
   CAMERA3D_PITCH_MIN,
+  CAMERA3D_PITCH_ORBITA,
+  CAMERA3D_PIVO_MAX,
+  CAMERA3D_PIVO_MIN,
   CAMERA3D_ROT_VEL,
   CAMERA3D_SUAVIDADE_Y,
   CHUNK_Y,
@@ -22,15 +31,27 @@ export function criarCamera3d(aspect) {
   const cam = new THREE.PerspectiveCamera(50, aspect, 0.1, 200);
   return {
     cam,
+    modo: "orbita",
+    mecanismo: "livre",
+    mostrarRig: false,
     distancia: CAMERA3D_DIST_PADRAO,
+    alturaPivo: CAMERA3D_OLHAR_Y,
     yaw: 0,
-    pitch: 0.38,
+    pitchOrbita: CAMERA3D_PITCH_ORBITA,
+    pitchMira: 0,
+    blend: 0,
     pronta: false,
+    pivo: new THREE.Vector3(),
+    direcaoTiro: new THREE.Vector3(0, 0, -1),
     _pos: new THREE.Vector3(),
     _alvo: new THREE.Vector3(),
     _look: new THREE.Vector3(),
     _lookY: null,
     _distClip: CAMERA3D_DIST_PADRAO,
+    _orbitaCam: new THREE.Vector3(),
+    _orbitaLook: new THREE.Vector3(),
+    _miraCam: new THREE.Vector3(),
+    _miraLook: new THREE.Vector3(),
   };
 }
 
@@ -40,6 +61,30 @@ export function ajustarDistancia(camera3d, fator) {
     CAMERA3D_DIST_MIN,
     CAMERA3D_DIST_MAX,
   );
+}
+
+export function definirDistancia(camera3d, valor) {
+  camera3d.distancia = clamp(valor, CAMERA3D_DIST_MIN, CAMERA3D_DIST_MAX);
+}
+
+export function definirAlturaPivo(camera3d, valor) {
+  camera3d.alturaPivo = clamp(valor, CAMERA3D_PIVO_MIN, CAMERA3D_PIVO_MAX);
+}
+
+export function definirPitchOrbita(camera3d, rad) {
+  camera3d.pitchOrbita = clamp(rad, CAMERA3D_PITCH_MIN, CAMERA3D_PITCH_MAX);
+}
+
+export function definirMecanismo(camera3d, mecanismo) {
+  camera3d.mecanismo = mecanismo === "costas" ? "costas" : "livre";
+}
+
+export function definirMostrarRig(camera3d, ativo) {
+  camera3d.mostrarRig = !!ativo;
+}
+
+export function definirModoCamera(camera3d, modo) {
+  camera3d.modo = modo === "mira" ? "mira" : "orbita";
 }
 
 /** Normaliza distância para exibir como “zoom” no painel (1 ≈ padrão). */
@@ -59,21 +104,24 @@ export function girarYaw(camera3d, sentido, dt) {
   camera3d.yaw += sentido * CAMERA3D_ROT_VEL * dt;
 }
 
-/** Mouse-look: dx/dy em pixels (movementX/Y). */
+/**
+ * Órbita: só o yaw (ao redor do personagem).
+ * Mira: yaw e pitch.
+ */
 export function aplicarOlharMouse(camera3d, dx, dy) {
   if (!dx && !dy) return;
   camera3d.yaw -= dx * CAMERA3D_MOUSE_SENS;
-  camera3d.pitch = clamp(
-    camera3d.pitch + dy * CAMERA3D_MOUSE_SENS,
-    CAMERA3D_PITCH_MIN,
-    CAMERA3D_PITCH_MAX,
+  if (camera3d.modo !== "mira") return;
+  camera3d.pitchMira = clamp(
+    camera3d.pitchMira + dy * CAMERA3D_MOUSE_SENS,
+    CAMERA3D_MIRA_PITCH_MIN,
+    CAMERA3D_MIRA_PITCH_MAX,
   );
 }
 
 /**
- * Terceira pessoa: XZ no corpo; altura do corpo suave; pitch imediato.
- * Mirar para cima sobe o alvo. Mirar para baixo sobe a câmera.
- * Clip suave contra sólidos (caverna / teto).
+ * Terceira pessoa na órbita; mira no ombro quando modo === "mira".
+ * O blend interpola distância, altura e offset lateral.
  */
 export function seguirAlvo3d(camera3d, corpo, dt) {
   if (!camera3d.pronta) {
@@ -81,10 +129,12 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
     camera3d.yaw = facingYaw + Math.PI;
   }
 
+  alinharCostas(camera3d, corpo, dt);
+
   const elev = corpo.elevacao ?? corpo.z + (corpo.hopLift || 0);
   const tx = corpo.x;
   const tz = corpo.y;
-  const tyAlvo = elev * ALTURA_BLOCO + CAMERA3D_OLHAR_Y;
+  const tyAlvo = elev * ALTURA_BLOCO + camera3d.alturaPivo;
 
   if (!camera3d.pronta || camera3d._lookY == null) {
     camera3d._lookY = tyAlvo;
@@ -93,33 +143,35 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
     camera3d._lookY += (tyAlvo - camera3d._lookY) * tY;
   }
   const tyBase = camera3d._lookY;
+  camera3d.pivo.set(tx, tyBase, tz);
 
-  const distDesejada = camera3d.distancia;
-  const cosP = Math.cos(camera3d.pitch);
-  const sinP = Math.sin(camera3d.pitch);
-  const sinY = Math.sin(camera3d.yaw);
-  const cosY = Math.cos(camera3d.yaw);
+  poseOrbita(camera3d, tx, tyBase, tz);
+  poseMira(camera3d, tx, tyBase, tz);
 
-  const alturaOmbro = CAMERA3D_ALTURA * 0.35;
-  // Pitch > 0: órbita para cima, mira no corpo.
-  // Pitch < 0: câmera fica no ombro e o ponto de mira sobe.
-  // Descer a câmera no chão faz o clip de sólido anular a mira para cima.
-  const olharCima = sinP < 0 ? -sinP * distDesejada : 0;
-  const olharBaixo = sinP > 0 ? sinP * distDesejada : 0;
-  const distH = distDesejada * Math.max(0.15, cosP);
+  const querMira = camera3d.modo === "mira" ? 1 : 0;
+  const tBlend = 1 - Math.exp(-CAMERA3D_MIRA_SUAVIDADE * dt);
+  camera3d.blend += (querMira - camera3d.blend) * tBlend;
+  const b = camera3d.blend;
 
-  const camOffX = sinY * distH;
-  const camOffY = alturaOmbro + olharBaixo;
-  const camOffZ = cosY * distH;
-  const distOff = Math.hypot(camOffX, camOffY, camOffZ) || 1;
+  const desejadoX = lerp(camera3d._orbitaCam.x, camera3d._miraCam.x, b);
+  const desejadoY = lerp(camera3d._orbitaCam.y, camera3d._miraCam.y, b);
+  const desejadoZ = lerp(camera3d._orbitaCam.z, camera3d._miraCam.z, b);
+  const lookX = lerp(camera3d._orbitaLook.x, camera3d._miraLook.x, b);
+  const lookY = lerp(camera3d._orbitaLook.y, camera3d._miraLook.y, b);
+  const lookZ = lerp(camera3d._orbitaLook.z, camera3d._miraLook.z, b);
+
+  const offX = desejadoX - tx;
+  const offY = desejadoY - tyBase;
+  const offZ = desejadoZ - tz;
+  const distOff = Math.hypot(offX, offY, offZ) || 1;
 
   const distLivre = distanciaAteSolido(
     tx,
     tyBase,
     tz,
-    camOffX / distOff,
-    camOffY / distOff,
-    camOffZ / distOff,
+    offX / distOff,
+    offY / distOff,
+    offZ / distOff,
     distOff,
   );
   const alvoClip = Math.min(distOff, Math.max(0.55, distLivre - 0.35));
@@ -132,22 +184,99 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
   const dist = Math.min(distOff, Math.max(0.45, camera3d._distClip));
   const escala = dist / distOff;
 
-  const desejadoX = tx + camOffX * escala;
-  const desejadoY = tyBase + camOffY * escala;
-  const desejadoZ = tz + camOffZ * escala;
+  const camX = tx + offX * escala;
+  const camY = tyBase + offY * escala;
+  const camZ = tz + offZ * escala;
 
   if (!camera3d.pronta) {
-    camera3d._pos.set(desejadoX, desejadoY, desejadoZ);
+    camera3d._pos.set(camX, camY, camZ);
     camera3d.pronta = true;
   } else {
-    camera3d._pos.x = desejadoX;
-    camera3d._pos.z = desejadoZ;
-    camera3d._pos.y = desejadoY;
+    camera3d._pos.set(camX, camY, camZ);
   }
 
-  camera3d._look.set(tx, tyBase + olharCima, tz);
+  camera3d._look.set(lookX, lookY, lookZ);
   camera3d.cam.position.copy(camera3d._pos);
   camera3d.cam.lookAt(camera3d._look);
+  camera3d.cam.updateMatrixWorld(true);
+
+  const e = camera3d.cam.matrixWorld.elements;
+  camera3d.direcaoTiro.set(-e[8], -e[9], -e[10]).normalize();
+}
+
+/** Yaw horizontal da câmera (rad) para strafe WASD. */
+export function yawCamera(camera3d) {
+  return camera3d.yaw;
+}
+
+/** Facing do sprite acompanha a mira, mesmo em strafe. */
+export function aplicarFacingMira(corpo, camera3d) {
+  if (!corpo) return;
+  if (camera3d.modo !== "mira" && camera3d.blend < 0.35) {
+    corpo.mirando = false;
+    return;
+  }
+  const sin = Math.sin(camera3d.yaw);
+  const cos = Math.cos(camera3d.yaw);
+  corpo.mirando = true;
+  corpo.dirX = -sin;
+  corpo.dirY = -cos;
+}
+
+function alinharCostas(camera3d, corpo, dt) {
+  if (camera3d.mecanismo !== "costas") return;
+  if (camera3d.modo === "mira") return;
+  const vx = corpo.vx || 0;
+  const vy = corpo.vy || 0;
+  if (Math.hypot(vx, vy) < 0.45) return;
+  const alvo = Math.atan2(-vx, -vy);
+  let diff = alvo - camera3d.yaw;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  const t = 1 - Math.exp(-CAMERA3D_COSTAS_SUAVIDADE * dt);
+  camera3d.yaw += diff * t;
+}
+
+function poseOrbita(camera3d, tx, tyBase, tz) {
+  const distDesejada = camera3d.distancia;
+  const pitch = camera3d.pitchOrbita;
+  const cosP = Math.cos(pitch);
+  const sinP = Math.sin(pitch);
+  const sinY = Math.sin(camera3d.yaw);
+  const cosY = Math.cos(camera3d.yaw);
+
+  const alturaOmbro = CAMERA3D_ALTURA * 0.35;
+  const olharCima = sinP < 0 ? -sinP * distDesejada : 0;
+  const olharBaixo = sinP > 0 ? sinP * distDesejada : 0;
+  const distH = distDesejada * Math.max(0.15, cosP);
+
+  camera3d._orbitaCam.set(
+    tx + sinY * distH,
+    tyBase + alturaOmbro + olharBaixo,
+    tz + cosY * distH,
+  );
+  camera3d._orbitaLook.set(tx, tyBase + olharCima, tz);
+}
+
+function poseMira(camera3d, tx, tyBase, tz) {
+  const pitch = camera3d.pitchMira;
+  const cosP = Math.cos(pitch);
+  const sinP = Math.sin(pitch);
+  const sinY = Math.sin(camera3d.yaw);
+  const cosY = Math.cos(camera3d.yaw);
+  const aimX = -sinY * cosP;
+  const aimY = -sinP;
+  const aimZ = -cosY * cosP;
+  const rightX = cosY;
+  const rightZ = -sinY;
+  const dist = CAMERA3D_MIRA_DIST;
+
+  const camX = tx + sinY * dist * cosP + rightX * CAMERA3D_MIRA_OMBRO;
+  const camY = tyBase + 0.35 + dist * Math.max(0, sinP) * 0.45;
+  const camZ = tz + cosY * dist * cosP + rightZ * CAMERA3D_MIRA_OMBRO;
+
+  camera3d._miraCam.set(camX, camY, camZ);
+  camera3d._miraLook.set(camX + aimX * 14, camY + aimY * 14, camZ + aimZ * 14);
 }
 
 /**
@@ -175,9 +304,8 @@ function distanciaAteSolido(ox, oy, oz, nx, ny, nz, distMax) {
   return livre;
 }
 
-/** Yaw horizontal da câmera (rad) para strafe WASD. */
-export function yawCamera(camera3d) {
-  return camera3d.yaw;
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
 function clamp(v, a, b) {

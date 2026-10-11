@@ -4,7 +4,6 @@ import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import {
   ALTURA_BLOCO,
   CHUNK_XZ,
-  IMPOSTOR_ANEL,
   IMPOSTOR_CAP,
   TILE,
   VEG_ALPHA_TEST,
@@ -20,7 +19,7 @@ import { obterRaioSuave } from "./terrenoSuave.js";
 import { fracaoBaseDoProp } from "../pivoProfundidade.js";
 
 /**
- * Árvores billboard na faixa além dos chunks de bloco.
+ * Árvores billboard em todo o disco suave, fora dos chunks de bloco.
  * Mesmo sorteio do perto. Sem card de grama e sem sombra no shadow map.
  */
 export function criarVegetacaoDistante() {
@@ -37,7 +36,6 @@ export function criarVegetacaoDistante() {
   let trabalho = null;
   let sigBanda = "";
   let sigProps = "";
-  let ancora = "";
   let geracao = 0;
   let geracaoPublicada = -1;
   let yawAplicado = null;
@@ -133,7 +131,7 @@ export function criarVegetacaoDistante() {
     grupo.visible = algum;
   }
 
-  function publicar(px, py, banda) {
+  function publicar(banda) {
     const props = chunksComProps();
     const todos = [];
     for (let i = 0; i < banda.lista.length; i++) {
@@ -144,18 +142,11 @@ export function criarVegetacaoDistante() {
       const arvores = salvo.arvores;
       for (let j = 0; j < arvores.length; j++) todos.push(arvores[j]);
     }
-    if (todos.length > IMPOSTOR_CAP) {
-      todos.sort((a, b) => {
-        const da = (a.x - px) * (a.x - px) + (a.y - py) * (a.y - py);
-        const db = (b.x - px) * (b.x - px) + (b.y - py) * (b.y - py);
-        return da - db;
-      });
-      todos.length = IMPOSTOR_CAP;
-    }
+    const escolhidas = espalhar(todos);
 
     const grupos = new Map();
-    for (let i = 0; i < todos.length; i++) {
-      const item = todos[i];
+    for (let i = 0; i < escolhidas.length; i++) {
+      const item = escolhidas[i];
       let lista = grupos.get(item.sprite);
       if (!lista) {
         lista = [];
@@ -234,17 +225,9 @@ export function criarVegetacaoDistante() {
     }
 
     const propsSig = assinaturaProps();
-    const ax = Math.round(px / 8);
-    const ay = Math.round(py / 8);
-    const ancoraNova = `${ax},${ay}`;
-    if (
-      geracao !== geracaoPublicada ||
-      propsSig !== sigProps ||
-      ancoraNova !== ancora
-    ) {
+    if (geracao !== geracaoPublicada || propsSig !== sigProps) {
       sigProps = propsSig;
-      ancora = ancoraNova;
-      publicar(px, py, banda);
+      publicar(banda);
     }
 
     const yaw = Number.isFinite(yawCam) ? yawCam : 0;
@@ -295,13 +278,12 @@ function tetoArvore() {
 
 function montarBanda(px, py) {
   const raioB = obterRaioStream();
-  const suave = obterRaioSuave();
-  const raioE = Math.min(suave, raioB + IMPOSTOR_ANEL);
+  const raioE = obterRaioSuave();
   const pcx = Math.floor(px / CHUNK_XZ);
   const pcy = Math.floor(py / CHUNK_XZ);
   const sig = `${pcx},${pcy},${raioB},${raioE}`;
   const lista = [];
-  if (!(suave > 0) || !(raioE > raioB)) return { sig, lista };
+  if (!(raioE > raioB)) return { sig, lista };
   const dentroB = raioB * raioB + 1;
   const dentroE = raioE * raioE + 1;
   for (let dy = -raioE; dy <= raioE; dy++) {
@@ -315,6 +297,48 @@ function montarBanda(px, py) {
   }
   lista.sort((a, b) => a.d2 - b.d2);
   return { sig, lista };
+}
+
+/**
+ * Um card por região antes de repetir região. O disco inteiro aparece,
+ * em vez de um anel só em volta do jogador.
+ */
+function espalhar(todos) {
+  if (todos.length <= IMPOSTOR_CAP) return todos;
+  const raioB = obterRaioStream();
+  const raioE = obterRaioSuave();
+  const area = Math.PI * Math.max(1, raioE * raioE - raioB * raioB) * CHUNK_XZ * CHUNK_XZ;
+  const lado = Math.max(CHUNK_XZ, Math.sqrt(area / IMPOSTOR_CAP));
+  const baldes = new Map();
+  for (let i = 0; i < todos.length; i++) {
+    const item = todos[i];
+    const k = `${Math.floor(item.x / lado)},${Math.floor(item.y / lado)}`;
+    let lista = baldes.get(k);
+    if (!lista) {
+      lista = [];
+      baldes.set(k, lista);
+    }
+    lista.push(item);
+  }
+  const chaves = [...baldes.keys()].sort();
+  for (let i = 0; i < chaves.length; i++) {
+    baldes.get(chaves[i]).sort((a, b) => hash2(a.x | 0, a.y | 0, 1) - hash2(b.x | 0, b.y | 0, 1));
+  }
+  const saida = [];
+  let rodada = 0;
+  while (saida.length < IMPOSTOR_CAP) {
+    let avancou = false;
+    for (let i = 0; i < chaves.length; i++) {
+      const lista = baldes.get(chaves[i]);
+      if (rodada >= lista.length) continue;
+      saida.push(lista[rodada]);
+      avancou = true;
+      if (saida.length >= IMPOSTOR_CAP) break;
+    }
+    if (!avancou) break;
+    rodada += 1;
+  }
+  return saida;
 }
 
 function arvoresDoChunk(cx, cy) {

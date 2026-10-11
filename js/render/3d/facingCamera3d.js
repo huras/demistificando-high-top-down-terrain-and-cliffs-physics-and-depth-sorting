@@ -34,6 +34,9 @@ export function linhaFacingCamera(dirX, dirY, yawCam) {
  * Preferência: velocidade se andando; senão dirX/dirY do corpo.
  */
 export function linhaFacingDoCorpo(corpo, yawCam) {
+  if (corpo.mirando) {
+    return linhaFacingCamera(corpo.dirX || 0, corpo.dirY || 1, yawCam);
+  }
   const vx = corpo.vx ?? 0;
   const vy = corpo.vy ?? 0;
   const spd = Math.hypot(vx, vy);

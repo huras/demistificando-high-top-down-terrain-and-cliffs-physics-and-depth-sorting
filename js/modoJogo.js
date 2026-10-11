@@ -1,5 +1,5 @@
 /** Modo de visualização / jogo: "2d" | "3d". */
-let modo = "2d";
+let modo = "3d";
 const ouvintes = new Set();
 
 export function obterModo() {

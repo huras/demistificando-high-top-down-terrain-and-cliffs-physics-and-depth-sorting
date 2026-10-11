@@ -20,7 +20,7 @@ import {
 } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { usarGrassOnDirt, usarTiles } from "./atlas.js";
-import { desenhoDoProp, imagemDoProp } from "./propSprite.js";
+import { caixaDoProp, desenhoDoProp, imagemDoProp } from "./propSprite.js";
 import { coletarPecasColuna } from "./camadasVoxel2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import {
@@ -39,6 +39,7 @@ import {
   chaveEntidade,
   chaveFaceLateral,
   chaveFaceSul,
+  chaveSobreTopo,
   chaveTopo,
   empilhar,
 } from "./ordenacaoProfundidade.js";
@@ -123,7 +124,9 @@ export function empilharTerreno(
     "," +
     faceCy +
     "|" +
-    _geracaoMundo;
+    _geracaoMundo +
+    "|" +
+    seloImagensProp(atlas);
 
   if (chave === _cacheTerreno.chave && _cacheTerreno.itens.length) {
     anexarItens(lista, _cacheTerreno.itens);
@@ -217,18 +220,7 @@ export function empilharTerreno(
     if (px < x0 || px > x1 || py < y0 - 2 || py > y1 + 2) continue;
     const z = alturaEm(px, py);
     if (tetoCaverna != null && z > tetoCaverna) continue;
-    const fadeProp = chaveFadeProp(i);
-    empilhar(
-      scratch,
-      chaveEntidade(prop.y, z),
-      0,
-      (ctx) =>
-        desenharComFadeCobertura(ctx, fadeProp, () =>
-          desenharProp(ctx, prop, z),
-        ),
-      TIE_PROP,
-      z,
-    );
+    empilharProp(scratch, prop, z, chaveFadeProp(i), tetoCaverna);
   }
 
   const plantas = vegetacaoNaArea(x0, y0, x1, y1);
@@ -238,20 +230,154 @@ export function empilharTerreno(
     const py = Math.floor(prop.y);
     const z = alturaEm(px, py);
     if (tetoCaverna != null && z > tetoCaverna) continue;
+    empilharProp(scratch, prop, z, `pb:${prop.id}`, tetoCaverna);
+  }
+
+  anexarItens(lista, scratch.itens);
+}
+
+/**
+ * Quantas imagens de prop já têm largura. Entra na chave do cache:
+ * um rebuild com PNG 0×0 não pode gravar "não cruza" para sempre.
+ * Quando todas estão prontas, a contagem de chaves basta.
+ */
+let _seloAtlas = null;
+let _seloContagem = -1;
+let _seloProntas = -1;
+let _seloValor = 0;
+
+function seloImagensProp(atlas) {
+  if (!atlas) return 0;
+  const sprites = atlas.sprites;
+  let contagem = 0;
+  if (sprites) {
+    for (const id in sprites) {
+      if (Object.prototype.hasOwnProperty.call(sprites, id)) contagem++;
+    }
+  }
+  const extra = (imagemPronta(atlas.arvore) ? 2 : 0) | (imagemPronta(atlas.mata) ? 1 : 0);
+  if (
+    atlas === _seloAtlas &&
+    contagem === _seloContagem &&
+    _seloProntas === contagem &&
+    extra === (_seloValor & 3)
+  ) {
+    return _seloValor;
+  }
+  let prontas = 0;
+  if (sprites) {
+    for (const id in sprites) {
+      if (!Object.prototype.hasOwnProperty.call(sprites, id)) continue;
+      if (imagemPronta(sprites[id])) prontas++;
+    }
+  }
+  _seloAtlas = atlas;
+  _seloContagem = contagem;
+  _seloProntas = prontas;
+  _seloValor = (prontas << 2) | extra;
+  return _seloValor;
+}
+
+function imagemPronta(img) {
+  return (img?.naturalWidth || img?.width || 0) > 0;
+}
+
+/** Draw base na chave da entidade, mais um restore por fileira de topo que corta o sprite. */
+function empilharProp(lista, prop, z, fadeChave, tetoCaverna) {
+  const desenhar = (ctx) =>
+    desenharComFadeCobertura(ctx, fadeChave, () => desenharProp(ctx, prop, z));
+  empilhar(lista, chaveEntidade(prop.y, z), 0, desenhar, TIE_PROP, z);
+  if (prop.tipo === "placa") return;
+  empilharRestoreSobreTopos(lista, prop, z, desenhar, tetoCaverna);
+}
+
+/**
+ * Repinta o sprite só dentro dos topos de mesmo z que desenham depois dele.
+ * Um item por fileira, no vão de chaveSobreTopo, para o personagem nessa
+ * fileira e a face do cliff continuarem por cima.
+ */
+function empilharRestoreSobreTopos(lista, prop, z, desenhar, tetoCaverna) {
+  const px = mundoParaTelaX(prop.x);
+  const py = mundoParaTelaY(prop.y, z);
+  const caixa = caixaDoProp(prop, px, py, _atlas);
+  if (!caixa || caixa.x1 <= caixa.x0 || caixa.y1 <= caixa.y0) return;
+
+  const s = TILE * ESCALA;
+  const chaveBase = chaveEntidade(prop.y, z);
+  const x0 = Math.floor(caixa.x0 / s);
+  const x1 = Math.floor((caixa.x1 - 1e-4) / s);
+  const yMund0 = (caixa.y0 / ESCALA + z * FACE_H) / TILE;
+  const yMund1 = (caixa.y1 / ESCALA + z * FACE_H) / TILE;
+  let cy0 = Math.floor(yMund0);
+  const cy1 = Math.floor(yMund1 - 1e-4);
+  const cyMin = Math.floor(prop.y) + 1;
+  if (cy0 < cyMin) cy0 = cyMin;
+  if (cy0 > cy1 || x0 > x1) return;
+
+  for (let cy = cy0; cy <= cy1; cy++) {
+    if (!(chaveTopo(cy, z) > chaveBase)) continue;
+    let celulas = null;
+    for (let cx = x0; cx <= x1; cx++) {
+      if (!retangulosCruzam(caixa, retanguloTopo(cx, cy, z, s))) continue;
+      if (!colunaTemTopo(cx, cy, z, tetoCaverna)) continue;
+      if (!celulas) celulas = [];
+      celulas.push({ cx, cy, z });
+    }
+    if (!celulas) continue;
+    const clipados = celulas;
     empilhar(
-      scratch,
-      chaveEntidade(prop.y, z),
+      lista,
+      chaveSobreTopo(cy, z),
       0,
-      (ctx) =>
-        desenharComFadeCobertura(ctx, `pb:${prop.id}`, () =>
-          desenharProp(ctx, prop, z),
-        ),
+      (ctx) => {
+        ctx.save();
+        clipToposProp(ctx, clipados, s);
+        desenhar(ctx);
+        ctx.restore();
+      },
       TIE_PROP,
       z,
     );
   }
+}
 
-  anexarItens(lista, scratch.itens);
+function colunaTemTopo(cx, cy, z, tetoCaverna) {
+  if (tetoCaverna != null && z > tetoCaverna) return false;
+  const topos = coletarPecasColuna(cx, cy).topos;
+  for (let i = 0; i < topos.length; i++) {
+    if (topos[i] === z) return true;
+  }
+  return false;
+}
+
+function retanguloTopo(cx, cy, z, s) {
+  let px = mundoParaTelaX(cx);
+  let py = mundoParaTelaY(cy, z);
+  if (usarTiles(_atlas)) {
+    px = Math.round(px);
+    py = Math.round(py);
+  }
+  return { x0: px, y0: py, x1: px + s, y1: py + s };
+}
+
+function retangulosCruzam(a, b) {
+  return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+}
+
+function clipToposProp(ctx, celulas, s) {
+  ctx.beginPath();
+  const arredondar = usarTiles(_atlas);
+  for (let i = 0; i < celulas.length; i++) {
+    const t = celulas[i];
+    let px = mundoParaTelaX(t.cx);
+    let py = mundoParaTelaY(t.cy, t.z);
+    if (arredondar) {
+      px = Math.round(px);
+      py = Math.round(py);
+    }
+    ctx.rect(px, py, s, s);
+  }
+  ctx.clip();
 }
 
 /** Empilha faces S/W/E; em caverna corta no teto. */
