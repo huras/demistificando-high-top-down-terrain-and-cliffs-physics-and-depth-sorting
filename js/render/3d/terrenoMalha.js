@@ -24,6 +24,8 @@ import { BLOCO, ehSolido } from "../../mundo/voxel/tiposBloco.js";
 import { registrarObjetoCena, removerObjetoCena } from "../../cena/registroCena.js";
 import { hexBioma } from "../../mundo/bioma/tinta.js";
 import { kitDoRelevo } from "../../mundo/bioma/catalogo.js";
+import { manchaSplat, urlPele } from "../../mundo/bioma/detalhe.js";
+import { aplicarPeleSplat } from "./peleSplat.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
 import {
   avancarMateriaisAgua,
@@ -467,8 +469,32 @@ const LADOS_COL = [
   { nome: "w", dx: -1, dy: 0 },
 ];
 
-function criarLote(comCor) {
-  return { pos: [], uv: [], nor: [], cor: comCor ? [] : null, _rgb: null, _n: [0, 1, 0] };
+function criarLote(comCor, comSplat) {
+  return {
+    pos: [],
+    uv: [],
+    nor: [],
+    cor: comCor ? [] : null,
+    splat: comSplat ? [] : null,
+    _splat: 0,
+    _rgb: null,
+    _n: [0, 1, 0],
+  };
+}
+
+function empurrarSplat(lote, n) {
+  if (!lote.splat) return;
+  const v = lote._splat || 0;
+  for (let i = 0; i < n; i++) lote.splat.push(v);
+}
+
+function comSplat(geo, peso) {
+  if (!geo?.attributes?.position) return geo;
+  const n = geo.attributes.position.count;
+  const valores = new Float32Array(n);
+  if (peso) valores.fill(peso);
+  geo.setAttribute("splat", new THREE.Float32BufferAttribute(valores, 1));
+  return geo;
 }
 
 function q6(lote, coords, uvs) {
@@ -489,6 +515,7 @@ function q6(lote, coords, uvs) {
     const b = lote._rgb[2];
     for (let i = 0; i < 6; i++) lote.cor.push(r, g, b);
   }
+  empurrarSplat(lote, 6);
 }
 
 function geoDoLote(lote) {
@@ -498,6 +525,9 @@ function geoDoLote(lote) {
   geo.setAttribute("uv", new THREE.Float32BufferAttribute(lote.uv, 2));
   geo.setAttribute("normal", new THREE.Float32BufferAttribute(lote.nor, 3));
   if (lote.cor) geo.setAttribute("color", new THREE.Float32BufferAttribute(lote.cor, 3));
+  if (lote.splat && lote.splat.length === lote.pos.length / 3) {
+    geo.setAttribute("splat", new THREE.Float32BufferAttribute(lote.splat, 1));
+  }
   return geo;
 }
 
@@ -531,6 +561,7 @@ function pushTri(lote, a, b, c) {
     const b = lote._rgb[2];
     for (let k = 0; k < 3; k++) lote.cor.push(r, g, b);
   }
+  empurrarSplat(lote, 3);
 }
 
 function pushTriParaFora(lote, a, b, c, nx, ny, nz) {
@@ -646,11 +677,18 @@ function finalizarLote(lote, extras) {
   const geo = geoDoLote(lote);
   if (!extras.length) return geo;
   if (geo) extras.push(geo);
+  if (lote.splat) {
+    for (let i = 0; i < extras.length; i++) {
+      const g = extras[i];
+      if (g && !g.getAttribute("splat")) comSplat(g, 0);
+    }
+  }
   return mesclarLista(extras);
 }
 
 /** Topo 1×1 em y, UV igual ao PlaneGeometry rotacionado. */
 function pushTopoLote(lote, wx, wy, y) {
+  lote._splat = manchaSplat(wx, wy, kitDoRelevo(wx, wy) || "").peso;
   lote._n = [0, 1, 0];
   q6(
     lote,
@@ -830,6 +868,7 @@ function planoQueda(wx, wy, y0, y1, dir) {
 }
 
 function empurrarBevel(loteTop, loteFaces, wx, wy, wz, lateraisExpostas) {
+  loteTop._splat = manchaSplat(wx, wy, kitDoRelevo(wx, wy) || "").peso;
   const i = insetTronco();
   const y0 = wz;
   const y1 = wz + 1 - INSET_TOPO;
@@ -1055,7 +1094,10 @@ function emitirColunaSolida(wx, wy, zSurf, loteGrama, loteTerra, loteFaces, lote
     if (cortesL.length > 0) {
       const yTopo = lz + 1 - INSET_TOPO;
       const tris = topoComCortesConvexos(wx, wy, yTopo, cortesL);
-      for (let i = 0; i < tris.length; i++) extrasTop.push(pintarPlano(tris[i], loteTop._rgb));
+              const pesoMancha = manchaSplat(wx, wy, kitDoRelevo(wx, wy) || "_").peso;
+              for (let i = 0; i < tris.length; i++) {
+                extrasTop.push(comSplat(pintarPlano(tris[i], loteTop._rgb), pesoMancha));
+              }
       for (let i = 0; i < cortesL.length; i++) {
         faces.push(pintarPlano(triMitraConvexo(wx, wy, lz, cortesL[i].dir, cortesL[i].i), loteFaces._rgb));
       }
@@ -1090,7 +1132,7 @@ function* construirGeosChunk(chunk) {
   function sacoDe(mapa, kit) {
     let saco = mapa.get(kit);
     if (!saco) {
-      saco = { lote: criarLote(false), extras: [] };
+      saco = { lote: criarLote(false, mapa === sacosTopo), extras: [] };
       mapa.set(kit, saco);
     }
     return saco;
@@ -1172,8 +1214,9 @@ function* construirGeosChunk(chunk) {
             } else if (cortesL.length > 0) {
               // Canto L: corta o topo de A + triângulo de mitra
               const extrasTop = loteTop === loteTerra ? topsTerra : topsGrama;
+              const pesoMancha = manchaSplat(wx, wy, kitDoRelevo(wx, wy) || "_").peso;
               for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
-                extrasTop.push(pintarPlano(t, loteTop._rgb));
+                extrasTop.push(comSplat(pintarPlano(t, loteTop._rgb), pesoMancha));
               }
               for (const c of cortesL) {
                 faces.push(pintarPlano(triMitraConvexo(wx, wy, lz, c.dir, c.i), loteFaces._rgb));
@@ -1465,6 +1508,7 @@ export function criarTerrenoMalha(atlas = null) {
       polygonOffsetUnits: tipo === "parede" ? 1 : 0,
     });
     materiaisKit.set(chave, { mat, tex });
+    if (tipo === "topo") aplicarPeleSplat(mat, urlPele(kit));
     aplicarSombraNuvem(mat);
     return naFrenteDoSuave(mat);
   }

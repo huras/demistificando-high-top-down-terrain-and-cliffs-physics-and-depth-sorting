@@ -2,12 +2,7 @@ import { SEED_MUNDO } from "../../config.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { hash2 } from "../voxel/ruido.js";
 import { avaliarGrafo } from "./grafo.js";
-import {
-  chanceGrama,
-  chancePedra,
-  obterKit,
-  sortearSprite,
-} from "./kits.js";
+import { plantaNoBioma } from "./detalhe.js";
 
 /** @type {object | null} */
 let dados = null;
@@ -158,42 +153,11 @@ export function superficieDoRelevo(wx, wy, catalogo = dados, seed = semente) {
 }
 
 /**
- * Prop procedural da célula. Árvore na taxa do bioma; pedra/cristal raras;
- * grama no miolo. Determinístico.
+ * Prop da célula. A porta e o sprite vêm de detalhe.js.
  * @returns {{ classe: string, sprite: string } | null}
  */
 export function plantaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
-  const ix = wx | 0;
-  const iy = wy | 0;
-  const b = biomaDominante(ix, iy, catalogo, seed);
+  const b = biomaDominante(wx | 0, wy | 0, catalogo, seed);
   if (!b) return null;
-  const kit = obterKit(b.kit);
-  if (b.camada === "mar") {
-    if (hash2(ix, iy, seed + 9006) < chanceGrama()) {
-      const sprite = sortearSprite(kit?.grama, hash2(ix, iy, seed + 9007));
-      if (sprite) return { classe: "grama", sprite };
-    }
-    return null;
-  }
-  const arvore = Math.max(0, Number(b.arvore) || 0);
-  if (hash2(ix, iy, seed + 9001) < arvore) {
-    const sprite = sortearSprite(kit?.arvore, hash2(ix, iy, seed + 9002));
-    if (sprite) return { classe: "arvore", sprite };
-    return null;
-  }
-  if (hash2(ix, iy, seed + 9003) < chancePedra()) {
-    const pedras = kit?.pedra || [];
-    const cristais = kit?.cristal || [];
-    const lista = pedras.concat(cristais);
-    const sprite = sortearSprite(lista, hash2(ix, iy, seed + 9004));
-    if (sprite) {
-      const cristal = cristais.some((item) => item.id === sprite);
-      return { classe: cristal ? "cristal" : "pedra", sprite };
-    }
-  }
-  if (hash2(ix, iy, seed + 9006) < chanceGrama()) {
-    const sprite = sortearSprite(kit?.grama, hash2(ix, iy, seed + 9007));
-    if (sprite) return { classe: "grama", sprite };
-  }
-  return null;
+  return plantaNoBioma(b, wx, wy);
 }

@@ -25,6 +25,7 @@ import { iniciarStamina } from "./fisica/stamina.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
 import { carregarCatalogo } from "./mundo/bioma/catalogo.js";
+import { carregarDetalhe } from "./mundo/bioma/detalhe.js";
 import { carregarKits } from "./mundo/bioma/kits.js";
 import { gravarRecorteAoRedor } from "./diagnostico/recorteFaces.js";
 import { SPAWN } from "./mundo/mapaDemo.js";
@@ -108,6 +109,7 @@ async function iniciar() {
     montarAtlas(CAMINHOS),
     carregarVisuaisKits(),
     carregarCatalogo(),
+    carregarDetalhe(),
   ]);
   atlas = visuaisKits[0];
   atlas.sprites = visuaisKits[1].sprites;

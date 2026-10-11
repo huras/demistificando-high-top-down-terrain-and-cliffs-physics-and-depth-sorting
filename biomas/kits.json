@@ -1940,8 +1940,8 @@
       "grama": [
         { "id": "cattail", "peso": 1.4 },
         { "id": "lotus", "peso": 1.2 },
-        { "id": "seashell", "peso": 0.8 },
-        { "id": "coral-1", "peso": 1 }
+        { "id": "coral-1", "peso": 1.4 },
+        { "id": "seashell", "peso": 1.1 }
       ],
       "arvore": [],
       "pedra": [],
@@ -1952,9 +1952,9 @@
       "chaoArquivo": "assets/terrain/centro/dark-rock.png",
       "cliffArquivo": "assets/terrain/cliffs/tunnel-hills.png",
       "grama": [
-        { "id": "alga-2", "peso": 1.5 },
-        { "id": "alga-1", "peso": 1.2 },
-        { "id": "coral-1", "peso": 1 }
+        { "id": "alga-1", "peso": 1.5 },
+        { "id": "alga-2", "peso": 1.3 },
+        { "id": "coral-1", "peso": 1.4 }
       ],
       "arvore": [],
       "pedra": [],
@@ -1965,9 +1965,9 @@
       "chaoArquivo": "assets/terrain/centro/stone.png",
       "cliffArquivo": "assets/terrain/cliffs/stone.png",
       "grama": [
-        { "id": "alga-1", "peso": 1.3 },
-        { "id": "coral-1", "peso": 1.1 },
-        { "id": "seashell", "peso": 0.7 }
+        { "id": "alga-1", "peso": 1.5 },
+        { "id": "coral-1", "peso": 1.4 },
+        { "id": "seashell", "peso": 1.1 }
       ],
       "arvore": [],
       "pedra": [],

@@ -10,7 +10,7 @@ import {
   VEG_ARVORE_ESCALA,
   VEG_YAW_EPS,
 } from "../../config.js";
-import { alturaDoRelevo, obterCatalogo, obterSementeBioma, plantaDoRelevo } from "../../mundo/bioma/catalogo.js";
+import { alturaDoRelevo, plantaDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { chunksComProps } from "../../mundo/bioma/propsBioma.js";
 import { hash2 } from "../../mundo/voxel/ruido.js";
 import { COLUNAS, LINHAS } from "../../mundo/regioes/mapaDemoPatch.js";
@@ -297,16 +297,6 @@ function assinaturaProps() {
   return [...props].sort().join("|");
 }
 
-function tetoArvore() {
-  const biomas = obterCatalogo()?.biomas || [];
-  let teto = 0;
-  for (let i = 0; i < biomas.length; i++) {
-    const n = Number(biomas[i].arvore) || 0;
-    if (n > teto) teto = n;
-  }
-  return teto;
-}
-
 function montarBanda(px, py) {
   const raioB = obterRaioStream();
   const raioE = obterRaioSuave();
@@ -375,10 +365,7 @@ function espalhar(todos) {
 function arvoresDoChunk(cx, cy) {
   const baseX = cx * CHUNK_XZ;
   const baseY = cy * CHUNK_XZ;
-  const seed = obterSementeBioma();
-  const teto = tetoArvore();
   const arvores = [];
-  if (!(teto > 0)) return arvores;
   const alturas = new Float32Array(CHUNK_XZ * CHUNK_XZ);
   const tem = new Uint8Array(CHUNK_XZ * CHUNK_XZ);
   const alturaLocal = (lx, ly) => {
@@ -393,7 +380,6 @@ function arvoresDoChunk(cx, cy) {
       const wx = baseX + lx;
       const wy = baseY + ly;
       if (wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
-      if (hash2(wx, wy, seed + 9001) >= teto) continue;
       const planta = plantaDoRelevo(wx, wy);
       if (!planta || planta.classe !== "arvore") continue;
       if (ehCliff(lx, ly, alturaLocal)) continue;

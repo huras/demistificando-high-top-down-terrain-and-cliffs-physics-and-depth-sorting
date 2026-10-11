@@ -9,13 +9,8 @@ import {
 } from "../config.js";
 import { pivoDaImagem } from "../render/pivoPe.js";
 import { avaliarGrafo } from "../mundo/bioma/grafo.js";
-import {
-  arquivoSprite,
-  chanceGrama,
-  chancePedra,
-  obterKit,
-  sortearSprite,
-} from "../mundo/bioma/kits.js";
+import { arquivoSprite, obterKit } from "../mundo/bioma/kits.js";
+import { plantaNoBioma } from "../mundo/bioma/detalhe.js";
 import { hash2 } from "../mundo/voxel/ruido.js";
 import { carregarVisuaisKits } from "../render/visuaisKit.js";
 import { canvasParaTextura, texturaCliffDeFolha } from "../render/3d/texturasTerreno3d.js";
@@ -259,29 +254,10 @@ function estiloDe(classe) {
   return VEG_MATA_ESCALA;
 }
 
-function plantaNaCelula(bioma, ix, iz, seed) {
-  const kit = obterKit(bioma.kit);
+function plantaNaCelula(bioma, ix, iz) {
   const wx = ORIGEM + ix * PASSO;
   const wz = ORIGEM + iz * PASSO;
-  const arvore = Math.max(0, Number(bioma.arvore) || 0);
-  if (hash2(wx, wz, seed + 9001) < arvore) {
-    const sprite = sortearSprite(kit?.arvore, hash2(wx, wz, seed + 9002));
-    if (sprite) return { classe: "arvore", sprite };
-    return null;
-  }
-  if (hash2(wx, wz, seed + 9003) < chancePedra()) {
-    const lista = (kit?.pedra || []).concat(kit?.cristal || []);
-    const sprite = sortearSprite(lista, hash2(wx, wz, seed + 9004));
-    if (sprite) {
-      const cristal = (kit?.cristal || []).some((item) => item.id === sprite);
-      return { classe: cristal ? "cristal" : "pedra", sprite };
-    }
-  }
-  if (hash2(wx, wz, seed + 9006) < chanceGrama()) {
-    const sprite = sortearSprite(kit?.grama, hash2(wx, wz, seed + 9007));
-    if (sprite) return { classe: "grama", sprite };
-  }
-  return null;
+  return plantaNoBioma(bioma, wx, wz);
 }
 
 function loteSprite(id, classe) {
@@ -342,7 +318,7 @@ function montarProps(bioma, alturas, seed) {
   const grupos = new Map();
   for (let iz = 0; iz < LADO; iz++) {
     for (let ix = 0; ix < LADO; ix++) {
-      const planta = plantaNaCelula(bioma, ix, iz, seed);
+      const planta = plantaNaCelula(bioma, ix, iz);
       if (!planta) continue;
       const lote = loteSprite(planta.sprite, planta.classe);
       if (!lote) continue;

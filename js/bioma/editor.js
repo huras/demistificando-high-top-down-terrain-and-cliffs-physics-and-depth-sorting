@@ -4,7 +4,8 @@ import {
   biomaDominante,
 } from "../mundo/bioma/catalogo.js";
 import { amostrarNos, avaliarGrafo } from "../mundo/bioma/grafo.js";
-import { carregarKits, idsDeKit } from "../mundo/bioma/kits.js";
+import { carregarDetalhe, definirDetalhe, obterDetalhe } from "../mundo/bioma/detalhe.js";
+import { carregarKits, idsDeKit, obterKit } from "../mundo/bioma/kits.js";
 import { DEMO_3D, atualizarPreviewBioma, iniciarPreviewBioma } from "./preview3d.js";
 
 const PORTAS = {
@@ -354,6 +355,91 @@ function campo(rotulo, valor, aoMudar, tipo = "number") {
   return label;
 }
 
+function tituloSecao(texto) {
+  const h = document.createElement("h2");
+  h.textContent = texto;
+  h.style.fontSize = "0.95rem";
+  return h;
+}
+
+function campoDetalhe(rotulo, valor, aoMudar) {
+  return campo(rotulo, valor, (v) => {
+    aoMudar(v);
+    definirDetalhe(obterDetalhe());
+  });
+}
+
+function pintarDetalhe(bioma) {
+  const detalhe = obterDetalhe();
+  if (!detalhe) return;
+  inspectorEl.append(tituloSecao("Portas do mundo"));
+  const grama = detalhe.grama || (detalhe.grama = {});
+  const arvore = detalhe.arvore || (detalhe.arvore = {});
+  const mar = detalhe.mar || (detalhe.mar = {});
+  inspectorEl.append(
+    campoDetalhe("Grama limiar", grama.limiar, (v) => { grama.limiar = v; }),
+    campoDetalhe("Grama densidade", grama.densidade, (v) => { grama.densidade = v; }),
+    campoDetalhe("Grama escala", grama.escala, (v) => { grama.escala = v; }),
+    campoDetalhe("Grama oitavas", grama.oitavas, (v) => { grama.oitavas = v; }),
+    campoDetalhe("Grama semente", grama.semente, (v) => { grama.semente = v; }),
+    campoDetalhe("Árvore limiar", arvore.limiar, (v) => { arvore.limiar = v; }),
+    campoDetalhe("Árvore densidade", arvore.densidade, (v) => { arvore.densidade = v; }),
+    campoDetalhe("Árvore escala", arvore.escala, (v) => { arvore.escala = v; }),
+    campoDetalhe("Árvore oitavas", arvore.oitavas, (v) => { arvore.oitavas = v; }),
+    campoDetalhe("Árvore semente", arvore.semente, (v) => { arvore.semente = v; }),
+    campoDetalhe("Mar densidade", mar.densidade, (v) => { mar.densidade = v; }),
+  );
+
+  const id = bioma.id;
+  const kit = obterKit(bioma.kit || id);
+  const pesos = detalhe.pesosGrama || (detalhe.pesosGrama = {});
+  const doBioma = pesos[id] || (pesos[id] = {});
+  const gramas = kit?.grama || [];
+  if (gramas.length) {
+    inspectorEl.append(tituloSecao("Pesos da grama"));
+    for (let i = 0; i < gramas.length; i++) {
+      const sprite = gramas[i].id;
+      if (!sprite) continue;
+      const atual = Object.prototype.hasOwnProperty.call(doBioma, sprite) ? doBioma[sprite] : 1;
+      inspectorEl.append(campoDetalhe(sprite, atual, (v) => { doBioma[sprite] = v; }));
+    }
+  }
+
+  const ruido = detalhe.ruidoGrama?.[id];
+  if (ruido) {
+    const sprites = Object.keys(ruido);
+    if (sprites.length) inspectorEl.append(tituloSecao("Ruído da grama"));
+    for (let i = 0; i < sprites.length; i++) {
+      const spec = ruido[sprites[i]];
+      inspectorEl.append(
+        campoDetalhe(`${sprites[i]} canal`, spec.canal, (v) => { spec.canal = v; }),
+        campoDetalhe(`${sprites[i]} freq`, spec.freq, (v) => { spec.freq = v; }),
+        campoDetalhe(`${sprites[i]} limiar`, spec.limiar, (v) => { spec.limiar = v; }),
+        campoDetalhe(`${sprites[i]} oitavas`, spec.oitavas, (v) => { spec.oitavas = v; }),
+      );
+    }
+  }
+
+  const splat = (detalhe.splat || (detalhe.splat = {}))[id] || (detalhe.splat[id] = {});
+  inspectorEl.append(tituloSecao("Mancha do chão"));
+  inspectorEl.append(
+    campoDetalhe("Canal", splat.canal, (v) => { splat.canal = v; }),
+    campoDetalhe("Frequência", splat.freq, (v) => { splat.freq = v; }),
+    campoDetalhe("Limiar", splat.limiar, (v) => { splat.limiar = v; }),
+    campoDetalhe("Oitavas", splat.oitavas, (v) => { splat.oitavas = v; }),
+  );
+
+  const pedras = (detalhe.pedras || []).filter((p) => p.biomas?.includes(id));
+  if (pedras.length) inspectorEl.append(tituloSecao("Pedras"));
+  for (let i = 0; i < pedras.length; i++) {
+    const pedra = pedras[i];
+    inspectorEl.append(
+      campoDetalhe(`${pedra.id} freq`, pedra.freq, (v) => { pedra.freq = v; }),
+      campoDetalhe(`${pedra.id} limiar`, pedra.limiar, (v) => { pedra.limiar = v; }),
+    );
+  }
+}
+
 function pintarInspector() {
   const bioma = biomaAtual();
   inspectorEl.innerHTML = "";
@@ -421,6 +507,8 @@ function pintarInspector() {
       bioma.degrau = v;
     }),
   );
+
+  pintarDetalhe(bioma);
 
   const no = bioma.nos.find((n) => n.id === noSelecionado);
   if (!no) return;
@@ -654,7 +742,17 @@ document.getElementById("salvar").addEventListener("click", async () => {
     });
     const corpo = await res.json();
     if (!res.ok || !corpo.ok) throw new Error(corpo.erro || "falha ao salvar");
-    definirStatus("Salvo em biomas/mundo.json. Recarrega o jogo.");
+    const detalhe = obterDetalhe();
+    if (detalhe) {
+      const resDetalhe = await fetch("/api/detalhe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(detalhe),
+      });
+      const corpoDetalhe = await resDetalhe.json();
+      if (!resDetalhe.ok || !corpoDetalhe.ok) throw new Error(corpoDetalhe.erro || "falha ao salvar o detalhe");
+    }
+    definirStatus("Salvo em biomas/mundo.json e biomas/detalhe.json. Recarrega o jogo.");
   } catch (erro) {
     definirStatus(String(erro.message || erro));
   }
@@ -700,6 +798,7 @@ window.addEventListener("keydown", (ev) => {
 });
 
 await carregarKits();
+await carregarDetalhe();
 try {
   await iniciarPreviewBioma(document.getElementById("prev-3d"));
 } catch (erro) {
