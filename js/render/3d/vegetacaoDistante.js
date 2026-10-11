@@ -16,7 +16,7 @@ import { hash2 } from "../../mundo/voxel/ruido.js";
 import { COLUNAS, LINHAS } from "../../mundo/regioes/mapaDemoPatch.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { obterRaioSuave } from "./terrenoSuave.js";
-import { fracaoBaseDoProp } from "../pivoProfundidade.js";
+import { pivoDaImagem } from "../pivoPe.js";
 import { registrarObjetoCena, removerObjetoCena } from "../../cena/registroCena.js";
 import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
 
@@ -76,7 +76,7 @@ export function criarVegetacaoDistante() {
     };
   }
 
-  function montarLote(sprite, amostra, img) {
+  function montarLote(sprite, _amostra, img) {
     const anterior = lotes.get(sprite);
     if (anterior) soltarLote(anterior);
     const tex = criarTextura(img);
@@ -95,8 +95,8 @@ export function criarVegetacaoDistante() {
       ),
     );
     const geo = new THREE.PlaneGeometry(1, 1);
-    const p = fracaoBaseDoProp(amostra);
-    geo.translate(0, 0.5 - (Number.isFinite(p) ? p : 0), 0);
+    geo.translate(0, 0.5, 0);
+    const pivotY = pivoDaImagem(img).y;
     const mesh = new THREE.InstancedMesh(geo, material, IMPOSTOR_CAP);
     mesh.name = `impostor-${sprite}`;
     mesh.castShadow = false;
@@ -104,7 +104,18 @@ export function criarVegetacaoDistante() {
     mesh.frustumCulled = true;
     mesh.count = 0;
     grupo.add(mesh);
-    const lote = { sprite, mesh, material, textura: tex, geo, img, itens: [], largura: 1, altura: 1 };
+    const lote = {
+      sprite,
+      mesh,
+      material,
+      textura: tex,
+      geo,
+      img,
+      itens: [],
+      largura: 1,
+      altura: 1,
+      pivotY,
+    };
     lotes.set(sprite, lote);
     usarRaycastBillboard(mesh, () => lote);
     registrarObjetoCena(mesh, {
@@ -131,7 +142,8 @@ export function criarVegetacaoDistante() {
       algum = true;
       for (let i = 0; i < itens.length; i++) {
         const p = itens[i];
-        dummy.position.set(p.x, p.h * ALTURA_BLOCO, p.y);
+        const afunda = (1 - (lote.pivotY ?? 1)) * altura;
+        dummy.position.set(p.x, p.h * ALTURA_BLOCO - afunda, p.y);
         dummy.rotation.set(0, yaw, 0);
         dummy.scale.set(largura, altura, 1);
         dummy.updateMatrix();

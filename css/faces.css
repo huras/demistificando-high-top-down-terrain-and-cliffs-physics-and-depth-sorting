@@ -284,7 +284,18 @@ button, input, select {
   background: rgba(90, 24, 16, 0.92);
 }
 
-.rotulo--ativo, .rotulo--hover {
+.rotulo--marca {
+  color: #102015;
+  background: #ffe08a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.grade button[data-marca="1"] {
+  outline: 2px solid #ffe08a;
+  color: #ffe08a;
+  font-weight: 700;
+}
   color: #102015;
   background: var(--destaque);
 }

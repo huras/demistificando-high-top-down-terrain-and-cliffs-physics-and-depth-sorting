@@ -13,6 +13,13 @@ const Y_CHAO = 0.02;
 
 const PRESETS = [
   {
+    id: "exemplo-a",
+    nome: "Voxel a",
+    nota: "O seu exemplo. Linha 1 é a primeira linha do diagrama. a é o bloco da camada 1 em C2 (amarelo). Camada 2 só existe em A–B, linhas 2 a 4.",
+    linhas: ["2222000", "3322000", "3311000", "3311000", "1111000", "0000000", "0000000"],
+    foco: { c: 2, r: 1, z: 1, nome: "a" },
+  },
+  {
     id: "plano",
     nome: "Plano",
     nota: "Tudo na mesma altura. Serve de controle: não deve pintar fresta.",
@@ -107,9 +114,10 @@ const palco = $("palco");
 const canvas = $("vista");
 
 const estado = {
-  presetId: PRESETS[3].id,
+  presetId: "exemplo-a",
   alturas: [],
   furos: [],
+  foco: null,
   tinta: 4,
   pintando: false,
   apagando: false,
@@ -123,6 +131,7 @@ const estado = {
 
 let pontos = [];
 let celulas = [];
+let marcas = [];
 let grupos = [];
 let selecionado = null;
 let frestaAtiva = null;
@@ -211,6 +220,14 @@ const matPontoFresta = new THREE.PointsMaterial({
   sizeAttenuation: true,
   depthTest: false,
 });
+const matMarcaLinha = new THREE.LineBasicMaterial({ color: 0xffe08a, depthTest: false });
+const matMarcaMiolo = new THREE.MeshBasicMaterial({
+  color: 0xffe08a,
+  transparent: true,
+  opacity: 0.22,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+});
 
 const nuvemNormais = new THREE.Points(new THREE.BufferGeometry(), matPonto);
 const nuvemFrestas = new THREE.Points(new THREE.BufferGeometry(), matPontoFresta);
@@ -253,6 +270,7 @@ function matrizDe(linhas) {
 
 function aplicarPreset(preset, manterCamera) {
   estado.presetId = preset.id;
+  estado.foco = preset.foco || null;
   estado.alturas = matrizDe(preset.linhas);
   estado.furos = preset.furos ? preset.furos(estado.alturas) : [];
   notaEl.textContent = preset.nota;
@@ -265,6 +283,7 @@ function aplicarPreset(preset, manterCamera) {
 
 function marcarPersonalizado() {
   estado.presetId = "personalizado";
+  estado.foco = null;
   notaEl.textContent = "Grade editada à mão. Shift+clique fura os blocos do meio da coluna.";
   for (const botao of presetsEl.querySelectorAll("button")) {
     botao.setAttribute("aria-pressed", "false");
@@ -279,7 +298,7 @@ function desenharPresets() {
     botao.type = "button";
     botao.dataset.id = preset.id;
     botao.textContent = preset.nome;
-    botao.addEventListener("click", () => aplicarPreset(preset, true));
+    botao.addEventListener("click", () => aplicarPreset(preset, !preset.foco));
     item.appendChild(botao);
     presetsEl.appendChild(item);
   }
@@ -326,9 +345,11 @@ function desenharGrade() {
       botao.dataset.c = String(c);
       botao.dataset.r = String(r);
       const h = estado.alturas[r][c];
-      botao.textContent = String(h);
+      const marca = marcaDa(c, r);
+      botao.textContent = marca || String(h);
       botao.style.background = `rgb(${18 + h * 8}, ${36 + h * 14}, ${28 + h * 6})`;
       botao.style.color = h >= 4 ? "#102015" : "#e7f2ea";
+      if (marca) botao.dataset.marca = "1";
       if (temFuro(c, r)) botao.dataset.furo = "1";
       botao.addEventListener("pointerdown", (ev) => {
         estado.pintando = true;
@@ -350,11 +371,20 @@ function atualizarBotao(c, r) {
   const botao = gradeEl.querySelector(`button[data-c="${c}"][data-r="${r}"]`);
   if (!botao) return;
   const h = estado.alturas[r][c];
-  botao.textContent = String(h);
+  const marca = marcaDa(c, r);
+  botao.textContent = marca || String(h);
   botao.style.background = `rgb(${18 + h * 8}, ${36 + h * 14}, ${28 + h * 6})`;
   botao.style.color = h >= 4 ? "#102015" : "#e7f2ea";
+  if (marca) botao.dataset.marca = "1";
+  else delete botao.dataset.marca;
   if (temFuro(c, r)) botao.dataset.furo = "1";
   else delete botao.dataset.furo;
+}
+
+function marcaDa(c, r) {
+  const foco = estado.foco;
+  if (!foco || foco.c !== c || foco.r !== r) return null;
+  return foco.nome;
 }
 
 function pintarCelula(c, r, furar) {
@@ -667,6 +697,47 @@ function gaiolaDe(chunk) {
   return geo;
 }
 
+function marcasDoFoco() {
+  const foco = estado.foco;
+  if (!foco) return [];
+  return [{
+    tipo: "marca",
+    nome: foco.nome,
+    x: ORIGEM + foco.c + 0.5,
+    y: foco.z + 0.72,
+    z: ORIGEM + foco.r + 0.5,
+  }];
+}
+
+function adicionarMarca(foco) {
+  const caixa = new THREE.BoxGeometry(1.05, 1.05, 1.05);
+  const arestas = new THREE.EdgesGeometry(caixa);
+  caixa.dispose();
+  const linhas = new THREE.LineSegments(arestas, matMarcaLinha);
+  linhas.position.set(ORIGEM + foco.c + 0.5, foco.z + 0.5, ORIGEM + foco.r + 0.5);
+  linhas.renderOrder = 8;
+  raiz.add(linhas);
+  const miolo = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.98, 0.98), matMarcaMiolo);
+  miolo.position.copy(linhas.position);
+  miolo.renderOrder = 3;
+  raiz.add(miolo);
+}
+
+function enquadrarPerto(foco) {
+  const cx = ORIGEM + foco.c + 0.5;
+  const cy = foco.z + 0.5;
+  const cz = ORIGEM + foco.r + 0.5;
+  const perto = [];
+  for (let i = 0; i < pontos.length; i++) {
+    const p = pontos[i];
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    const dz = p.z - cz;
+    if (dx * dx + dy * dy + dz * dz < 2.4 * 2.4) perto.push(p);
+  }
+  enquadrar(perto.length ? perto : [{ x: cx, y: cy, z: cz }]);
+}
+
 function listasDeCelulas(chunk) {
   const lista = [];
   for (let r = 0; r < N; r++) {
@@ -854,11 +925,13 @@ function reconstruir(manterCamera) {
   tris = analise.tris;
   sobreposicoes = analise.sobreposicoes;
   celulas = listasDeCelulas(chunk);
+  marcas = marcasDoFoco();
 
   if (estado.gaiola) {
     const linhas = new THREE.LineSegments(gaiolaDe(chunk), matGaiola);
     raiz.add(linhas);
   }
+  if (estado.foco) adicionarMarca(estado.foco);
 
   const malhaTubos = tubos(grupos, pontos);
   if (malhaTubos) raiz.add(malhaTubos);
@@ -887,7 +960,10 @@ function reconstruir(manterCamera) {
   const palavra = grupos.length === 1 ? "fresta" : "frestas";
   statusEl.textContent = `${titulo} · inset ${TRONCO_INSET.toFixed(2)} · ${grupos.length} ${palavra} · ${tris} triângulos · ${pontos.length} pontos${extra}`;
 
-  if (!manterCamera) enquadrar(pontos.length ? pontos : celulas);
+  if (!manterCamera) {
+    if (estado.foco) enquadrarPerto(estado.foco);
+    else enquadrar(pontos.length ? pontos : celulas);
+  }
 }
 
 function desenharFrestas() {
@@ -1073,6 +1149,7 @@ function projetar(x, y, z) {
 }
 
 function classeDo(item) {
+  if (item.p.tipo === "marca") return "rotulo rotulo--marca";
   if (item.p === selecionado) return "rotulo rotulo--ativo";
   if (item.p === hover) return "rotulo rotulo--hover";
   if (item.p.tipo === "celula") return "rotulo rotulo--celula";
@@ -1124,6 +1201,20 @@ function atualizarRotulos() {
   };
   por(selecionado, 0);
   por(hover, 0);
+  for (let i = 0; i < marcas.length; i++) por(marcas[i], 0);
+  if (estado.foco) {
+    const foco = estado.foco;
+    const cx = ORIGEM + foco.c + 0.5;
+    const cy = foco.z + 0.5;
+    const cz = ORIGEM + foco.r + 0.5;
+    for (let i = 0; i < pontos.length; i++) {
+      const p = pontos[i];
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const dz = p.z - cz;
+      if (dx * dx + dy * dy + dz * dz < 1.35 * 1.35) por(p, 1);
+    }
+  }
   if (estado.modoNomes === "frestas" || estado.modoNomes === "todos") {
     for (let i = 0; i < pontos.length; i++) if (pontos[i].fresta) por(pontos[i], 1);
   }
@@ -1201,7 +1292,7 @@ function atualizarRotulos() {
       ev.stopPropagation();
       const alvo = el._alvo;
       if (!alvo) return;
-      if (alvo.tipo === "celula") {
+      if (alvo.tipo === "celula" || alvo.tipo === "marca") {
         enquadrar([{ x: alvo.x, y: alvo.y, z: alvo.z }]);
         return;
       }
@@ -1325,11 +1416,11 @@ window.addEventListener("keydown", (ev) => {
     const i = PRESETS.findIndex((p) => p.id === estado.presetId);
     const passo = ev.key === "]" ? 1 : -1;
     const prox = PRESETS[(i + passo + PRESETS.length) % PRESETS.length];
-    aplicarPreset(prox, true);
+    aplicarPreset(prox, !prox.foco);
   }
 });
 
 new ResizeObserver(tamanho).observe(palco);
 tamanho();
-aplicarPreset(PRESETS[3], false);
+aplicarPreset(PRESETS[0], false);
 requestAnimationFrame(quadro);

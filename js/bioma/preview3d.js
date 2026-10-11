@@ -7,7 +7,7 @@ import {
   VEG_MATA_ESCALA,
   VEG_YAW_EPS,
 } from "../config.js";
-import { fracaoBaseDe } from "../render/pivoProfundidade.js";
+import { pivoDaImagem } from "../render/pivoPe.js";
 import { avaliarGrafo } from "../mundo/bioma/grafo.js";
 import {
   arquivoSprite,
@@ -313,7 +313,7 @@ function loteSprite(id, classe) {
     textura: tex,
     largura: (pw / TILE) * escala,
     altura: (ph / TILE) * escala,
-    fracaoBase: fracaoBaseDe(id, classe),
+    pivotY: pivoDaImagem(fonte).y,
   };
   materiaisSprite.set(id, lote);
   return lote;
@@ -349,14 +349,16 @@ function montarProps(bioma, alturas, seed) {
       const jx = (hash2(wx, wz, seed + 42) - 0.5) * 0.55;
       const jz = (hash2(wx, wz, seed + 77) - 0.5) * 0.55;
       const variacao = 0.86 + hash2(wx, wz, seed + 19) * 0.28;
-      const y = alturas[iz * LADO + ix] * ALTURA_BLOCO;
+      const y =
+        alturas[iz * LADO + ix] * ALTURA_BLOCO -
+        (1 - lote.pivotY) * lote.altura * variacao;
       grupo.itens.push({ x: ix + 0.5 + jx, y, z: iz + 0.5 + jz, s: variacao });
     }
   }
 
   for (const grupo of grupos.values()) {
     const geo = new THREE.PlaneGeometry(1, 1);
-    geo.translate(0, 0.5 - grupo.lote.fracaoBase, 0);
+    geo.translate(0, 0.5, 0);
     const mesh = new THREE.InstancedMesh(geo, grupo.lote.material, grupo.itens.length);
     mesh.castShadow = true;
     mesh.receiveShadow = false;

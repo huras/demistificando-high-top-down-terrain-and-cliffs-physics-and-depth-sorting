@@ -1,5 +1,5 @@
 import { ESCALA, VEG_ARVORE_ESCALA, VEG_MATA_ESCALA } from "../config.js";
-import { fracaoBaseDoProp } from "./pivoProfundidade.js";
+import { pivoDaImagem } from "./pivoPe.js";
 
 /** Imagem do prop: sprite do kit, ou árvore/mata do mapa autoral. */
 export function imagemDoProp(prop, atlas) {
@@ -10,30 +10,27 @@ export function imagemDoProp(prop, atlas) {
   return null;
 }
 
-/**
- * Escala do tipo e fração da base até a raiz (depth-sort).
- * A raiz fica no chão; o que está abaixo dela entra no terreno.
- */
-export function desenhoDoProp(prop) {
+/** Escala do tipo e fração Y do pé opaco (1 = base da imagem). */
+export function desenhoDoProp(prop, img) {
   let escala = VEG_MATA_ESCALA;
   if (prop?.tipo === "arvore") escala = VEG_ARVORE_ESCALA;
   else if (prop?.tipo === "pedra" || prop?.tipo === "cristal") escala = 1;
   return {
     escala,
-    fracaoBase: fracaoBaseDoProp(prop),
+    pivotY: img ? pivoDaImagem(img).y : 1,
   };
 }
 
 export function caixaDoProp(prop, px, py, atlas) {
   const img = imagemDoProp(prop, atlas);
   if (!img) return null;
-  const { escala, fracaoBase } = desenhoDoProp(prop);
+  const { escala, pivotY } = desenhoDoProp(prop, img);
   const dw = img.width * ESCALA * escala;
   const dh = img.height * ESCALA * escala;
   return {
     x0: px - dw * 0.5,
-    y0: py - dh * (1 - fracaoBase),
+    y0: py - dh * pivotY,
     x1: px + dw * 0.5,
-    y1: py + dh * fracaoBase,
+    y1: py + dh * (1 - pivotY),
   };
 }
