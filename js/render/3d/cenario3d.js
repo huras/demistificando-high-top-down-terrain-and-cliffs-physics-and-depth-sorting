@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
-import { ALTURA_BLOCO, ASA_DELTA_DESCIDA, CAMERA3D_DIST_MAX, CHUNK_XZ, RAIO_STREAM } from "../../config.js";
+import { ALTURA_BLOCO, ASA_DELTA_DESCIDA, BILLBOARD_INCLINACAO, CAMERA3D_DIST_MAX, CHUNK_XZ, RAIO_STREAM } from "../../config.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { criarTerrenoSuave, obterRaioSuave } from "./terrenoSuave.js";
 import {
@@ -424,8 +424,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     nevoa: estado.nevoaBase,
   });
 
-  estado.vegetacao?.atualizar?.(yaw);
-  estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw);
+  const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
+  estado.vegetacao?.atualizar?.(yaw, inclinacao);
+  estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw, inclinacao);
   anotarEstadoSim(estado.personagem.grupo, corpo);
   estado.personagem.atualizar(corpo, camRender, yaw);
   if (agente && estado.agente3d) {

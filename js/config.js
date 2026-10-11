@@ -135,8 +135,10 @@ export const CAMERA3D_ALTURA = 3.2;
 export const CAMERA3D_OLHAR_Y = 1.15;
 export const CAMERA3D_PIVO_MIN = 0.4;
 export const CAMERA3D_PIVO_MAX = 2.6;
-/** Pitch fixo da órbita (rad). O mouse só gira o yaw. */
-export const CAMERA3D_PITCH_ORBITA = 0.38;
+/** Pitch fixo da órbita (rad). O mouse só gira o yaw. 45° olhando para baixo. */
+export const CAMERA3D_PITCH_ORBITA = Math.PI / 4;
+/** Inclinação do cartão na terceira pessoa (rad). Negativo deita o topo para trás. */
+export const BILLBOARD_INCLINACAO = -Math.PI / 4;
 /** Suavidade só no follow vertical (Y). XZ é instantâneo. */
 export const CAMERA3D_SUAVIDADE_Y = 6;
 /** Quão rápido a câmera entra e sai da mira. */

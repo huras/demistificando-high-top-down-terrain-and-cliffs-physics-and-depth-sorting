@@ -30,6 +30,8 @@ export function criarVegetacaoDistante() {
   grupo.visible = false;
 
   const dummy = new THREE.Object3D();
+  dummy.rotation.order = "YXZ";
+  dummy.rotation.order = "YXZ";
   /** @type {Map<string, { arvores: object[] }>} */
   const cache = new Map();
   /** @type {Map<string, object>} */
@@ -41,6 +43,7 @@ export function criarVegetacaoDistante() {
   let geracao = 0;
   let geracaoPublicada = -1;
   let yawAplicado = null;
+  let inclinacaoAplicada = 0;
 
   function imagemDe(sprite) {
     if (!atlasAtual || !sprite) return null;
@@ -128,7 +131,7 @@ export function criarVegetacaoDistante() {
     return lote;
   }
 
-  function escrever(yaw) {
+  function escrever(yaw, inclinacao) {
     let algum = false;
     for (const lote of lotes.values()) {
       const img = lote.img;
@@ -144,7 +147,7 @@ export function criarVegetacaoDistante() {
         const p = itens[i];
         const afunda = (1 - (lote.pivotY ?? 1)) * altura;
         dummy.position.set(p.x, p.h * ALTURA_BLOCO - afunda, p.y);
-        dummy.rotation.set(0, yaw, 0);
+        dummy.rotation.set(inclinacao, yaw, 0);
         dummy.scale.set(largura, altura, 1);
         dummy.updateMatrix();
         lote.mesh.setMatrixAt(i, dummy.matrix);
@@ -229,7 +232,7 @@ export function criarVegetacaoDistante() {
     }
   }
 
-  function tick(px, py, yawCam) {
+  function tick(px, py, yawCam, inclinacao = 0) {
     const banda = montarBanda(px, py);
     if (banda.sig !== sigBanda) {
       sigBanda = banda.sig;
@@ -256,9 +259,12 @@ export function criarVegetacaoDistante() {
     }
 
     const yaw = Number.isFinite(yawCam) ? yawCam : 0;
-    if (yawAplicado == null || yawDiferente(yaw, yawAplicado)) {
+    const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
+    const mudouTilt = Math.abs(tilt - inclinacaoAplicada) > VEG_YAW_EPS;
+    if (yawAplicado == null || yawDiferente(yaw, yawAplicado) || mudouTilt) {
       yawAplicado = yaw;
-      escrever(yaw);
+      inclinacaoAplicada = tilt;
+      escrever(yaw, tilt);
     }
   }
 

@@ -65,9 +65,9 @@ flowchart LR
   sombra --> chao
 ```
 
-**Visível** (`veg-<sprite>`): yaw da câmera, `castShadow = false`. `MeshStandardMaterial` com a textura. O pé fica no chão em qualquer pitch porque só o Y gira.
+**Visível** (`veg-<sprite>`): yaw da câmera, `castShadow = false`. `MeshStandardMaterial` com a textura. Na terceira pessoa o cartão também gira −45° no X (`BILLBOARD_INCLINACAO`), deitando o topo para trás, no mesmo ângulo do pitch padrão da órbita. O pé continua no chão porque a origem da geometria é a base. Na mira o blend da câmera zera essa inclinação e o cartão fica em pé.
 
-`PlaneGeometry` nasce olhando para +Z. `rotation.y = yaw` da câmera aponta essa face para a câmera: o yaw 0 da câmera deixa o olho em +Z.
+`PlaneGeometry` nasce olhando para +Z. A ordem é `YXZ`: primeiro o yaw aponta a face para a câmera, depois o X deita o cartão. O X negativo leva o topo para longe da câmera, e a face olha para cima, de encontro à órbita.
 
 **Sombra** (`veg-sombra-<sprite>`): mesma posição e escala, yaw de `yawCartaoSol()`. `castShadow = true`. No passe de cor não aparece (`colorWrite` e `depthWrite` desligados). `frustumCulled = false` porque o volume das instâncias não pode ser o quad unitário na origem — isso cullava o lote inteiro e a sombra sumia.
 

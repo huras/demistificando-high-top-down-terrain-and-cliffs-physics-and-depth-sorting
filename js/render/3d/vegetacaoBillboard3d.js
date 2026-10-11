@@ -20,7 +20,7 @@ import { onDirty } from "../../mundo/voxel/storeMundo.js";
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
  * Quad com a base da imagem em y local 0. O pé opaco encosta no chão.
- * Billboard só no yaw (o pitch não deita o sprite).
+ * Yaw segue a câmera. Na terceira pessoa o cartão deita no X; na mira fica em pé.
  */
 
 const CAP_INSTANCIAS = 4096;
@@ -80,12 +80,15 @@ export function criarVegetacaoBillboard3d() {
   grupo.visible = false;
 
   const dummy = new THREE.Object3D();
+  dummy.rotation.order = "YXZ";
+  dummy.rotation.order = "YXZ";
   /** @type {Map<string, object>} */
   const lotes = new Map();
   let atlasAtual = null;
 
   let yawAplicado = null;
   let yawSolAplicado = null;
+  let inclinacaoAplicada = 0;
   let alturasSujas = true;
 
   function imagemDe(prop) {
@@ -244,14 +247,14 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function escreverMesh(mesh, itens, largura, altura, pivotY, yaw, limites) {
+  function escreverMesh(mesh, itens, largura, altura, pivotY, yaw, inclinacao, limites) {
     if (!mesh) return;
     const afunda = (1 - (pivotY ?? 1)) * altura;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
       const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
       dummy.position.set(p.x, base * ALTURA_BLOCO - afunda, p.y);
-      dummy.rotation.set(0, yaw, 0);
+      dummy.rotation.set(inclinacao, yaw, 0);
       dummy.scale.set(largura, altura, 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
@@ -263,12 +266,12 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function escrever(yaw, yawSol, recalcularLimites) {
+  function escrever(yaw, yawSol, inclinacao, recalcularLimites) {
     if (recalcularLimites) sincronizarLotes(recolherGrupos());
     for (const lote of lotes.values()) {
       const { mesh, sombra, itens, largura, altura, pivotY } = lote;
-      escreverMesh(mesh, itens, largura, altura, pivotY ?? 1, yaw, recalcularLimites);
-      escreverMesh(sombra, itens, largura, altura, pivotY ?? 1, yawSol, recalcularLimites);
+      escreverMesh(mesh, itens, largura, altura, pivotY ?? 1, yaw, inclinacao, recalcularLimites);
+      escreverMesh(sombra, itens, largura, altura, pivotY ?? 1, yawSol, 0, recalcularLimites);
     }
   }
 
@@ -286,7 +289,7 @@ export function criarVegetacaoBillboard3d() {
     sincronizarVisivel();
     alturasSujas = true;
     if (grupo.visible && yawAplicado != null) {
-      escrever(yawAplicado, yawCartaoSol(), true);
+      escrever(yawAplicado, yawCartaoSol(), inclinacaoAplicada, true);
       alturasSujas = false;
     }
   }
@@ -294,22 +297,25 @@ export function criarVegetacaoBillboard3d() {
   function reconstruir() {
     alturasSujas = true;
     if (!grupo.visible || yawAplicado == null) return;
-    escrever(yawAplicado, yawCartaoSol(), true);
+    escrever(yawAplicado, yawCartaoSol(), inclinacaoAplicada, true);
     alturasSujas = false;
   }
 
-  function atualizar(yawCam) {
+  function atualizar(yawCam, inclinacao = 0) {
     if (!atlasAtual) return;
     const yaw = Number.isFinite(yawCam) ? yawCam : 0;
+    const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
     const mudouYaw = yawDiferente(yaw, yawAplicado);
     const yawSol = yawCartaoSol();
     const mudouSol = yawDiferente(yawSol, yawSolAplicado);
-    if (!mudouYaw && !mudouSol && !alturasSujas) return;
+    const mudouTilt = Math.abs(tilt - inclinacaoAplicada) > VEG_YAW_EPS;
+    if (!mudouYaw && !mudouSol && !mudouTilt && !alturasSujas) return;
     const recalcular = alturasSujas || yawAplicado == null;
     yawAplicado = yaw;
     yawSolAplicado = yawSol;
+    inclinacaoAplicada = tilt;
     alturasSujas = false;
-    escrever(yaw, yawSol, recalcular);
+    escrever(yaw, yawSol, tilt, recalcular);
     sincronizarVisivel();
   }
 
