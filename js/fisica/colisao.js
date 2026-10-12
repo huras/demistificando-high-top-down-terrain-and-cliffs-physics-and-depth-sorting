@@ -7,7 +7,7 @@ import {
 import { dentroDoMapa } from "../mundo/altura.js";
 import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { ehSolido } from "../mundo/voxel/tiposBloco.js";
-import { ocupado } from "./obstaculos.js";
+import { invadeDisco } from "./obstaculos.js";
 
 /**
  * Walk height (= face acima do sólido) sob elevRef na coluna.
@@ -99,13 +99,13 @@ export function moverComColisao(corpo, dx, dy, modo = "andar") {
 
   if (dx !== 0) {
     const nx = x + dx;
-    if (cantosLivres(nx, y, elev, r, modo, elev) && (!chao || !ocupado(nx, y, elev, r, corpo))) {
+    if (cantosLivres(nx, y, elev, r, modo, elev) && (!chao || !invadeDisco(nx, y, elev, r))) {
       x = nx;
     }
   }
   if (dy !== 0) {
     const ny = y + dy;
-    if (cantosLivres(x, ny, elev, r, modo, elev) && (!chao || !ocupado(x, ny, elev, r, corpo))) {
+    if (cantosLivres(x, ny, elev, r, modo, elev) && (!chao || !invadeDisco(x, ny, elev, r))) {
       y = ny;
     }
   }

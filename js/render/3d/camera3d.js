@@ -135,8 +135,7 @@ export function aplicarOlharMouse(camera3d, dx, dy) {
  */
 export function seguirAlvo3d(camera3d, corpo, dt) {
   if (!camera3d.pronta) {
-    const facingYaw = Math.atan2(corpo.dirX || 0, corpo.dirY || 1);
-    camera3d.yaw = facingYaw + Math.PI;
+    camera3d.yaw = Math.atan2(corpo.dirX || 0, corpo.dirY || 1);
   }
 
   alinharCostas(camera3d, corpo, dt);

@@ -1,4 +1,5 @@
 import { POKEMON } from "../config.js";
+import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
 import { soltarEscalada } from "../fisica/escalada.js";
@@ -29,7 +30,7 @@ function escolherMeta(ator) {
     const raio = 2 + Math.random() * (ator.raioTerritorio - 2);
     const x = ator.casaX + Math.cos(ang) * raio;
     const y = ator.casaY + Math.sin(ang) * raio;
-    if (!noTerritorio(ator, x, y)) continue;
+    if (!noTerritorio(ator, x, y) || ehCidade(x, y)) continue;
     const hz = alturaSobPes(x, y, z + 1.2);
     if (hz === z) {
       ator.metaX = x;

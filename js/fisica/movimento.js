@@ -83,6 +83,7 @@ export function criarCorpo(spawn) {
     _glideTempo: 0,
     _glideYaw: 0,
     _glideBank: 0,
+    ancora: true,
     acao: "parado",
     animT: 0,
     andando: false,

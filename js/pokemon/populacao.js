@@ -3,6 +3,7 @@ import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { SPAWN } from "../mundo/mapaDemo.js";
+import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
@@ -116,7 +117,7 @@ function garantirLar(cx, cy, indice) {
   const oy = 1 + (hash(cx, cy, 30 + indice) % (CHUNK_XZ - 2));
   const x = cx * CHUNK_XZ + ox + 0.5;
   const y = cy * CHUNK_XZ + oy + 0.5;
-  if (Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN) {
+  if (ehCidade(x, y) || Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN) {
     lares.set(id, null);
     return null;
   }
@@ -323,6 +324,7 @@ function tentarGrama(corpo) {
   if (chave === celulaGrama) return;
   if (corpo.pulando || corpo.planando || corpo.escalando || corpo.voando) return;
   celulaGrama = chave;
+  if (ehCidade(cx, cy)) return;
   if (!pisouGrama(cx, cy)) return;
   if (cooldownGrama > 0) return;
   if (Math.random() >= POKEMON.CHANCE_GRAMA) return;
@@ -330,6 +332,7 @@ function tentarGrama(corpo) {
   const cel = celulaDeGrama(corpo.x, corpo.y, POKEMON.RAIO_AGRO * 0.75);
   const x = cel ? cel.x : corpo.x + (Math.random() < 0.5 ? -2.5 : 2.5);
   const y = cel ? cel.y : corpo.y + (Math.random() < 0.5 ? -1.5 : 1.5);
+  if (ehCidade(x, y)) return;
   const z = pisoSeco(Math.floor(x), Math.floor(y)) || (corpo.elevacao ?? corpo.z ?? 0);
   const base = POOL[Math.floor(Math.random() * POOL.length)];
   const nivel = nivelNoPonto(x, y);

@@ -74,6 +74,22 @@ function aplicar(corpo, x, y) {
   return true;
 }
 
+/** Empurra o corpo para fora. Se a frente está fechada, escorrega para o lado. */
+function ceder(corpo, nx, ny, folga) {
+  const lados = [
+    [nx, ny],
+    [ny, -nx],
+    [-ny, nx],
+  ];
+  for (let i = 0; i < lados.length; i++) {
+    const ux = lados[i][0];
+    const uy = lados[i][1];
+    const len = Math.hypot(ux, uy) || 1;
+    if (aplicar(corpo, corpo.x + (ux / len) * folga, corpo.y + (uy / len) * folga)) return true;
+  }
+  return false;
+}
+
 /** Desfaz sobreposição de quem já nasceu em cima do outro. Não usa o passo de andar. */
 function sairDaBase(corpo) {
   const elev = corpo.elevacao ?? corpo.z ?? 0;
@@ -134,7 +150,15 @@ export function despenetrarCorpos() {
         }
         const nx = dx / d;
         const ny = dy / d;
-        const folga = min - d;
+        const folga = min - d + 0.02;
+        if (a.ancora && !b.ancora) {
+          if (ceder(b, nx, ny, folga) || aplicar(a, a.x - nx * folga, a.y - ny * folga)) mexeu = true;
+          continue;
+        }
+        if (b.ancora && !a.ancora) {
+          if (ceder(a, -nx, -ny, folga) || aplicar(b, b.x + nx * folga, b.y + ny * folga)) mexeu = true;
+          continue;
+        }
         const meio = folga * 0.5;
         const aMeio = aplicar(a, a.x - nx * meio, a.y - ny * meio);
         const bMeio = aplicar(b, b.x + nx * meio, b.y + ny * meio);

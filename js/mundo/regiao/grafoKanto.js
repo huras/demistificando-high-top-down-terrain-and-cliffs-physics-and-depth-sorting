@@ -218,3 +218,7 @@ export function zonaNoMundo(wx, wy) {
   if (wx < 0 || wy < 0 || wx >= EXTENSAO_KANTO || wy >= EXTENSAO_KANTO) return null;
   return zonaEm((wx / AREA_KANTO) | 0, (wy / AREA_KANTO) | 0);
 }
+
+export function ehCidade(wx, wy) {
+  return zonaNoMundo(wx, wy)?.tipo === "cidade";
+}

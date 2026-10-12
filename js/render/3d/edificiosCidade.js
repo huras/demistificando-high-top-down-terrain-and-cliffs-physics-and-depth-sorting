@@ -24,7 +24,7 @@ function yawDaRua(mx, my) {
 }
 
 function modeloDoPapel(papel, variante) {
-  if (papel === "casa") return CASAS[variante] || CASAS[0];
+  if (papel === "casa") return CASAS[((variante % CASAS.length) + CASAS.length) % CASAS.length];
   if (papel === "centro" || papel === "loja" || papel === "lab") return papel;
   return null;
 }
@@ -157,11 +157,11 @@ function montarCidade(moldes, def) {
     const id = modeloDoPapel(v.papel, v.variante);
     const molde = id ? moldes.get(id) : null;
     if (!molde) continue;
-    const inst = molde.grupo.clone(true);
     const mx = (v.x0 + v.x1) * 0.5;
     const my = (v.y0 + v.y1) * 0.5;
-    inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
+    const inst = molde.grupo.clone(true);
     inst.rotation.y = yawDaRua(mx, my);
+    inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
     grupo.add(inst);
   }
   const poste = moldes.get("poste");
@@ -184,13 +184,14 @@ function montarCidade(moldes, def) {
 export function criarEdificiosCidade() {
   const grupo = new THREE.Group();
   grupo.name = "edificios-cidade";
-  const ids = ["centro", "loja", "lab", "poste", ...CASAS];
-  Promise.all(ids.map((id) => carregarObj(id).then((raiz) => [id, raiz])))
+  const ids = ["centro", "loja", "lab", "poste"].concat(CASAS);
+  const cargas = ids.map((id) => carregarObj(id).then((raiz) => [id, { grupo: raiz }]));
+  Promise.all(cargas)
     .then((pares) => {
       const moldes = new Map();
       for (let i = 0; i < pares.length; i++) {
-        const [id, raiz] = pares[i];
-        const medido = preparar(raiz, 1);
+        const [id, item] = pares[i];
+        const medido = preparar(item.grupo, 1);
         const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
         medido.grupo.scale.setScalar(escala);
         moldes.set(id, medido);
