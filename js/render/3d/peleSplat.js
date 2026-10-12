@@ -27,8 +27,8 @@ function texturaPele(url) {
   tex.magFilter = THREE.NearestFilter;
   tex.minFilter = THREE.NearestFilter;
   tex.generateMipmaps = false;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
   img.onload = () => {
     tex.needsUpdate = true;
   };
@@ -49,20 +49,20 @@ export function aplicarPeleSplat(material, url) {
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
-        "#include <common>\nattribute float splat;\nvarying float vSplat;",
+        "#include <common>\nattribute float splat;\nattribute vec2 peleUv;\nvarying float vSplat;\nvarying vec2 vPeleUv;",
       )
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvSplat = splat;");
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvSplat = splat;\nvPeleUv = peleUv;");
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform sampler2D uPele;\nvarying float vSplat;",
+        "#include <common>\nuniform sampler2D uPele;\nvarying float vSplat;\nvarying vec2 vPeleUv;",
       )
       .replace(
         "#include <map_fragment>",
         `#include <map_fragment>
 #ifdef USE_MAP
 {
-  vec4 corPele = texture2D(uPele, vMapUv);
+  vec4 corPele = texture2D(uPele, vPeleUv);
   diffuseColor.rgb = mix(diffuseColor.rgb, corPele.rgb, vSplat * corPele.a);
 }
 #endif`,

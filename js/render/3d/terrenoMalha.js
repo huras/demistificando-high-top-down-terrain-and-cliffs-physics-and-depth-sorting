@@ -24,8 +24,9 @@ import { BLOCO, ehSolido } from "../../mundo/voxel/tiposBloco.js";
 import { registrarObjetoCena, removerObjetoCena } from "../../cena/registroCena.js";
 import { hexBioma } from "../../mundo/bioma/tinta.js";
 import { kitDoRelevo } from "../../mundo/bioma/catalogo.js";
-import { manchaSplat, urlPele } from "../../mundo/bioma/detalhe.js";
+import { urlPele } from "../../mundo/bioma/detalhe.js";
 import { aplicarPeleSplat } from "./peleSplat.js";
+import { pecasNoMundo } from "./peleAutotile.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
 import {
   avancarMateriaisAgua,
@@ -476,6 +477,7 @@ function criarLote(comCor, comSplat) {
     nor: [],
     cor: comCor ? [] : null,
     splat: comSplat ? [] : null,
+    pele: comSplat ? [] : null,
     _splat: 0,
     _rgb: null,
     _n: [0, 1, 0],
@@ -494,10 +496,13 @@ function comSplat(geo, peso) {
   const valores = new Float32Array(n);
   if (peso) valores.fill(peso);
   geo.setAttribute("splat", new THREE.Float32BufferAttribute(valores, 1));
+  if (!geo.getAttribute("peleUv")) {
+    geo.setAttribute("peleUv", new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
+  }
   return geo;
 }
 
-function q6(lote, coords, uvs) {
+function q6(lote, coords, uvs, peleUvs) {
   lote.pos.push(
     coords[0], coords[1], coords[2],
     coords[3], coords[4], coords[5],
@@ -516,6 +521,10 @@ function q6(lote, coords, uvs) {
     for (let i = 0; i < 6; i++) lote.cor.push(r, g, b);
   }
   empurrarSplat(lote, 6);
+  if (lote.pele) {
+    if (peleUvs) lote.pele.push(...peleUvs);
+    else for (let i = 0; i < 12; i++) lote.pele.push(0);
+  }
 }
 
 function geoDoLote(lote) {
@@ -527,6 +536,9 @@ function geoDoLote(lote) {
   if (lote.cor) geo.setAttribute("color", new THREE.Float32BufferAttribute(lote.cor, 3));
   if (lote.splat && lote.splat.length === lote.pos.length / 3) {
     geo.setAttribute("splat", new THREE.Float32BufferAttribute(lote.splat, 1));
+  }
+  if (lote.pele && lote.pele.length === (lote.pos.length / 3) * 2) {
+    geo.setAttribute("peleUv", new THREE.Float32BufferAttribute(lote.pele, 2));
   }
   return geo;
 }
@@ -562,6 +574,7 @@ function pushTri(lote, a, b, c) {
     for (let k = 0; k < 3; k++) lote.cor.push(r, g, b);
   }
   empurrarSplat(lote, 3);
+  if (lote.pele) for (let k = 0; k < 6; k++) lote.pele.push(0);
 }
 
 function pushTriParaFora(lote, a, b, c, nx, ny, nz) {
@@ -686,15 +699,69 @@ function finalizarLote(lote, extras) {
   return mesclarLista(extras);
 }
 
-/** Topo 1×1 em y, UV igual ao PlaneGeometry rotacionado. */
-function pushTopoLote(lote, wx, wy, y) {
-  lote._splat = manchaSplat(wx, wy, kitDoRelevo(wx, wy) || "").peso;
+function uvsRet(u0, v0, u1, v1) {
+  return [u0, v1, u0, v0, u1, v1, u0, v0, u1, v0, u1, v1];
+}
+
+function clipPeca(peca, x0, z0, x1, z1) {
+  const ix0 = Math.max(peca.x0, x0);
+  const iz0 = Math.max(peca.z0, z0);
+  const ix1 = Math.min(peca.x1, x1);
+  const iz1 = Math.min(peca.z1, z1);
+  if (ix1 - ix0 < 1e-4 || iz1 - iz0 < 1e-4) return null;
+  const tx0 = (ix0 - peca.x0) / (peca.x1 - peca.x0);
+  const tx1 = (ix1 - peca.x0) / (peca.x1 - peca.x0);
+  const tz0 = (iz0 - peca.z0) / (peca.z1 - peca.z0);
+  const tz1 = (iz1 - peca.z0) / (peca.z1 - peca.z0);
+  const mistura = (a, b, t) => a + (b - a) * t;
+  return {
+    x0: ix0,
+    z0: iz0,
+    x1: ix1,
+    z1: iz1,
+    bu0: mistura(peca.bu0, peca.bu1, tx0),
+    bu1: mistura(peca.bu0, peca.bu1, tx1),
+    bv1: mistura(peca.bv1, peca.bv0, tz0),
+    bv0: mistura(peca.bv1, peca.bv0, tz1),
+    pu0: mistura(peca.pu0, peca.pu1, tx0),
+    pu1: mistura(peca.pu0, peca.pu1, tx1),
+    pv1: mistura(peca.pv1, peca.pv0, tz0),
+    pv0: mistura(peca.pv1, peca.pv0, tz1),
+  };
+}
+
+function pushQuadChao(lote, x0, y, z0, x1, z1, peca, splat) {
+  lote._splat = splat;
   lote._n = [0, 1, 0];
   q6(
     lote,
-    [wx, y, wy, wx, y, wy + 1, wx + 1, y, wy, wx, y, wy + 1, wx + 1, y, wy + 1, wx + 1, y, wy],
-    [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1],
+    [x0, y, z0, x0, y, z1, x1, y, z0, x0, y, z1, x1, y, z1, x1, y, z0],
+    uvsRet(peca.bu0, peca.bv0, peca.bu1, peca.bv1),
+    splat ? uvsRet(peca.pu0, peca.pv0, peca.pu1, peca.pv1) : null,
   );
+}
+
+function emitirTopo(lote, wx, wy, y, x0, z0, x1, z1) {
+  const pecas = pecasNoMundo(wx, wy);
+  if (!pecas) {
+    pushQuadChao(lote, wx + x0, y, wy + z0, wx + x1, wy + z1, {
+      bu0: x0,
+      bv0: 1 - z1,
+      bu1: x1,
+      bv1: 1 - z0,
+    }, 0);
+    return;
+  }
+  for (let i = 0; i < pecas.length; i++) {
+    const recorte = clipPeca(pecas[i], x0, z0, x1, z1);
+    if (!recorte) continue;
+    pushQuadChao(lote, wx + recorte.x0, y, wy + recorte.z0, wx + recorte.x1, wy + recorte.z1, recorte, 1);
+  }
+}
+
+/** Topo 1×1 em y, UV igual ao PlaneGeometry rotacionado. */
+function pushTopoLote(lote, wx, wy, y) {
+  emitirTopo(lote, wx, wy, y, 0, 0, 1, 1);
 }
 
 function pushFaceSul(lote, wx, wy, wz) {
@@ -868,7 +935,6 @@ function planoQueda(wx, wy, y0, y1, dir) {
 }
 
 function empurrarBevel(loteTop, loteFaces, wx, wy, wz, lateraisExpostas) {
-  loteTop._splat = manchaSplat(wx, wy, kitDoRelevo(wx, wy) || "").peso;
   const i = insetTronco();
   const y0 = wz;
   const y1 = wz + 1 - INSET_TOPO;
@@ -878,11 +944,7 @@ function empurrarBevel(loteTop, loteFaces, wx, wy, wz, lateraisExpostas) {
   const iN = exp.has("n") ? i : 0;
   const iE = exp.has("e") ? i : 0;
   const iW = exp.has("w") ? i : 0;
-  const nw = { x: wx + iW, y: y1, z: wy + iN };
-  const sw = { x: wx + iW, y: y1, z: wy + 1 - iS };
-  const se = { x: wx + 1 - iE, y: y1, z: wy + 1 - iS };
-  const ne = { x: wx + 1 - iE, y: y1, z: wy + iN };
-  pushLivre(loteTop, nw, sw, se, ne);
+  emitirTopo(loteTop, wx, wy, y1, iW, iN, 1 - iE, 1 - iS);
   if (exp.has("s")) {
     const xs = faixaComCortes(wx, wx + 1, cortesNoVizinho(wx, wy, y0, 0, 1));
     const zTopo = wy + 1 - iS;
@@ -1094,9 +1156,8 @@ function emitirColunaSolida(wx, wy, zSurf, loteGrama, loteTerra, loteFaces, lote
     if (cortesL.length > 0) {
       const yTopo = lz + 1 - INSET_TOPO;
       const tris = topoComCortesConvexos(wx, wy, yTopo, cortesL);
-              const pesoMancha = manchaSplat(wx, wy, kitDoRelevo(wx, wy) || "_").peso;
               for (let i = 0; i < tris.length; i++) {
-                extrasTop.push(comSplat(pintarPlano(tris[i], loteTop._rgb), pesoMancha));
+                extrasTop.push(comSplat(pintarPlano(tris[i], loteTop._rgb), 0));
               }
       for (let i = 0; i < cortesL.length; i++) {
         faces.push(pintarPlano(triMitraConvexo(wx, wy, lz, cortesL[i].dir, cortesL[i].i), loteFaces._rgb));
@@ -1214,9 +1275,8 @@ function* construirGeosChunk(chunk) {
             } else if (cortesL.length > 0) {
               // Canto L: corta o topo de A + triângulo de mitra
               const extrasTop = loteTop === loteTerra ? topsTerra : topsGrama;
-              const pesoMancha = manchaSplat(wx, wy, kitDoRelevo(wx, wy) || "_").peso;
               for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
-                extrasTop.push(comSplat(pintarPlano(t, loteTop._rgb), pesoMancha));
+                extrasTop.push(comSplat(pintarPlano(t, loteTop._rgb), 0));
               }
               for (const c of cortesL) {
                 faces.push(pintarPlano(triMitraConvexo(wx, wy, lz, c.dir, c.i), loteFaces._rgb));

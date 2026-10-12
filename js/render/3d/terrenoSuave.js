@@ -8,7 +8,7 @@ import {
   RAIO_SUAVE_MIN,
 } from "../../config.js";
 import { alturaDoRelevo, amostrarRegiao, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
-import { manchaSplat, urlPele } from "../../mundo/bioma/detalhe.js";
+import { cruSplat, urlPele } from "../../mundo/bioma/detalhe.js";
 import { obterKits } from "../../mundo/bioma/kits.js";
 import { imagemPele } from "./peleSplat.js";
 import { rgbBioma } from "../../mundo/bioma/tinta.js";
@@ -198,10 +198,12 @@ varying float vSplat;`,
 );
 diffuseColor *= sampledDiffuseColor;
 {
+  vec2 bloco = fract(vMapUv);
+  vec2 uvMiolo = mix(vec2(0.34375, 0.7578125), vec2(0.65625, 0.9921875), bloco);
   float peso = clamp(vPeso, 0.0, 1.0);
   vec4 corPele = mix(
-    texture(uPeles, vec3(vMapUv, vCelulas.y)),
-    texture(uPeles, vec3(vMapUv, vCelulas.x)),
+    texture(uPeles, vec3(uvMiolo, vCelulas.y)),
+    texture(uPeles, vec3(uvMiolo, vCelulas.x)),
     peso
   );
   diffuseColor.rgb = mix(diffuseColor.rgb, corPele.rgb, vSplat * corPele.a);
@@ -533,9 +535,7 @@ function* gerarMalha(px, py, raioSuave) {
     destino.uv.push(wx, -wy);
     destino.cor.push(a.cor[0], a.cor[1], a.cor[2]);
     destino.bioma.push(celulaDe(a.par.a), celulaDe(a.par.b), a.par.peso);
-    const sa = manchaSplat(wx, wy, a.par.a).peso;
-    const sb = a.par.b === a.par.a ? sa : manchaSplat(wx, wy, a.par.b).peso;
-    destino.splat.push(sb * (1 - a.par.peso) + sa * a.par.peso);
+    destino.splat.push(cruSplat(wx, wy, a.par.a) ? 1 : 0);
     return i;
   }
 

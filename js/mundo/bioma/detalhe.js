@@ -104,7 +104,7 @@ function sementeCanal(canal, sal) {
 function lembrar(chave, calcular) {
   if (cache.has(chave)) return cache.get(chave);
   const valor = calcular();
-  if (cache.size > 12000) cache.clear();
+  if (cache.size > 80000) cache.clear();
   cache.set(chave, valor);
   return valor;
 }
@@ -403,18 +403,20 @@ export function plantaNoBioma(bioma, wx, wy) {
   return { classe: "grama", sprite };
 }
 
+export function nomePele(biomaId) {
+  return dados?.splat?.[biomaId]?.pele || "";
+}
+
 export function urlPele(biomaId) {
-  const nome = dados?.splat?.[biomaId]?.pele;
+  const nome = nomePele(biomaId);
   if (!nome) return "";
   return dados?.peles?.[nome] || "";
 }
 
-/** 1 se a mancha de splat cobre a célula. pele é o índice no atlas (0 = nenhuma). */
-export function manchaSplat(wx, wy, biomaId) {
+/** Porta crua do FBM, antes do filtro de vizinhança. */
+export function cruSplat(wx, wy, biomaId) {
   const spec = dados?.splat?.[biomaId];
-  if (!spec?.pele) return { peso: 0, pele: 0 };
-  const pele = indicePele.get(spec.pele) || 0;
-  if (!pele) return { peso: 0, pele: 0 };
+  if (!spec?.pele || !dados?.peles?.[spec.pele]) return false;
   const campo = campoDe(
     {
       canal: spec.canal,
@@ -426,7 +428,5 @@ export function manchaSplat(wx, wy, biomaId) {
     },
     SEMENTE_SPLAT,
   );
-  const n = amostraCampo(wx | 0, wy | 0, campo);
-  if (n < campo.limiar) return { peso: 0, pele };
-  return { peso: 1, pele };
+  return amostraCampo(wx | 0, wy | 0, campo) >= campo.limiar;
 }
