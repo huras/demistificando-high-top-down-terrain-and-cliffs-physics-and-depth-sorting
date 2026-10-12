@@ -2,8 +2,10 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { extrairCatalogo } from "./js/pokemon/extrairCatalogo.mjs";
 
 const raiz = path.dirname(fileURLToPath(import.meta.url));
+const raizRef = path.resolve(raiz, "..", "Pokemon AI");
 const porta = 4177;
 
 const tipos = {
@@ -12,9 +14,30 @@ const tipos = {
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
+  ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
 };
+
+const EXT_REF = new Set([".png", ".json", ".webp"]);
+
+function caminhoNaRaiz(base, rel) {
+  if (!rel || rel.includes("\0")) return null;
+  const cheio = path.resolve(base, rel);
+  const relativo = path.relative(base, cheio);
+  if (relativo.startsWith("..") || path.isAbsolute(relativo)) return null;
+  return cheio;
+}
+
+function caminhoRef(pathname) {
+  let rel = decodeURIComponent(pathname).replace(/^\/ref\/?/, "");
+  if (!rel || rel.includes("..")) return null;
+  const cheio = caminhoNaRaiz(raizRef, rel);
+  if (!cheio) return null;
+  const ext = path.extname(cheio).toLowerCase();
+  if (!EXT_REF.has(ext)) return null;
+  return cheio;
+}
 
 function caminhoSeguro(pathname) {
   let rel = decodeURIComponent(pathname);
@@ -101,6 +124,40 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (
+    (req.method === "GET" || req.method === "HEAD") &&
+    url.pathname === "/ref/catalogo.json"
+  ) {
+    extrairCatalogo(raizRef)
+      .then((cat) => {
+        const corpo = JSON.stringify(cat);
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+        });
+        res.end(req.method === "HEAD" ? undefined : corpo);
+      })
+      .catch((erro) => {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro?.message || erro) }));
+      });
+    return;
+  }
+
+  if (
+    (req.method === "GET" || req.method === "HEAD") &&
+    url.pathname.startsWith("/ref/")
+  ) {
+    const arquivoRef = caminhoRef(url.pathname);
+    if (!arquivoRef) {
+      res.writeHead(403);
+      res.end();
+      return;
+    }
+    enviarArquivo(req, res, arquivoRef);
+    return;
+  }
+
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405);
     res.end();
@@ -113,7 +170,10 @@ const servidor = http.createServer((req, res) => {
     res.end();
     return;
   }
+  enviarArquivo(req, res, arquivo);
+});
 
+function enviarArquivo(req, res, arquivo) {
   fs.stat(arquivo, (err, st) => {
     if (err || !st.isFile()) {
       res.writeHead(404);
@@ -131,7 +191,7 @@ const servidor = http.createServer((req, res) => {
     }
     fs.createReadStream(arquivo).pipe(res);
   });
-});
+}
 
 servidor.listen(porta, () => {
   console.log(`http://localhost:${porta}`);

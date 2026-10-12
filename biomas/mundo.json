@@ -1715,7 +1715,7 @@
       "arvore": 0.002,
       "mata": 0,
       "transicao": 14,
-      "degrau": 2,
+      "degrau": 5,
       "camada": "terra",
       "nos": [
         {
@@ -1750,7 +1750,7 @@
           "offsetX": 33.9,
           "offsetY": 82.7,
           "inverter": false,
-          "degraus": 0
+          "degraus": 2
         },
         {
           "id": "tunnel-hills-mistura",

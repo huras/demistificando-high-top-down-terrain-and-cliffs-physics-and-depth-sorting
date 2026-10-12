@@ -312,3 +312,37 @@ export const FADE_COBERTURA_DELTA_Z_MIN = 2;
 export const FADE_COBERTURA_SOB_TETO = true;
 /** Cor de fundo na visão de caverna 2D (sem mundo exterior). */
 export const CAVERNA_2D_FUNDO = "#07060a";
+
+/**
+ * Selvagens, party e combate. Números alinhados ao overworld de referência
+ * (grama 0.14 / 2.5s / 4 ativos, desmaio 60s, aviso 7, agro 9).
+ */
+export const POKEMON = Object.freeze({
+  CHANCE_GRAMA: 0.14,
+  COOLDOWN_GRAMA: 2.5,
+  MAX_GRAMA: 4,
+  MAX_MORADORES: 12,
+  RAIO_SIM: 28,
+  RAIO_MANTER: 34,
+  RAIO_LARES: 40,
+  FOLGA_SPAWN: 14,
+  RAIO_TERRITORIO: 10,
+  RAIO_AVISO: 7,
+  RAIO_AGRO: 9,
+  RAIO_SOLTA: 13.5,
+  ESPERA_MIN: 1.2,
+  ESPERA_MAX: 3.8,
+  RESPAWN: 60,
+  RESPAWN_CAPTURA: 12,
+  SHINY: 0.01,
+  HOSTIL: 0.35,
+  PARTY_MAX: 6,
+  BOLAS: 20,
+  RAIO_PICKUP: 1.5,
+  PROJETEIS_MAX: 32,
+  DROPS_MAX: 48,
+  CACHE_ATLAS: 24,
+  CACHE_RETRATO: 64,
+  VEL_AGRO: 4.2,
+  VEL_ROAM: 1.45,
+});

@@ -19,6 +19,8 @@ import {
 } from "./ordenacaoProfundidade.js";
 import { empilharAlvoEscalada } from "./alvoEscalada.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
+import { empilharPokemon } from "../pokemon/render2d.js";
+import { desenharHudPokemon, projetar2d, projetar3d } from "../pokemon/hud.js";
 import { avancarTempoAgua, empilharAgua2d } from "./agua2d.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
@@ -57,6 +59,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   empilharAlvoEscalada(lista, corpo, dt);
   if (agente) empilharAgente(lista, atlas, agente);
   empilharPersonagem(lista, atlas, corpo);
+  empilharPokemon(lista);
   desenharLista(lista, ctx);
   desenharHoverTile2d(ctx);
 
@@ -67,6 +70,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
 
   desenharOverlayAjuda(ctx, camera, debug, ocl, modoVisual, "2d");
   desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
+  desenharHudPokemon(ctx, projetar2d(camera), corpo);
   desenharLabelHoverHud(ctx, canvas.width, canvas.height);
 
   return { ocl, modoVisual };
@@ -159,6 +163,8 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
 
   desenharOverlayAjuda(ctx, { zoom }, debug, null, modoVisual, "3d");
   desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
+  const cam = emCena ? null : camera3d?.camRender;
+  desenharHudPokemon(ctx, projetar3d(cam, canvas.width, canvas.height), corpo);
   if (emCena) {
     desenharTagCena(ctx, canvas.width);
   } else {

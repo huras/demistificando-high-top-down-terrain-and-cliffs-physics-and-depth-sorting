@@ -66,6 +66,8 @@ import { aplicarScrollCena, enquadrarSelecaoCena } from "./cena/cameraCena.js";
 import { alternarModoCena, aoMudarCena, definirModoCena, estaEmCena } from "./cena/modoCena.js";
 import { ligarHierarquiaCena, sincronizarHierarquiaCena } from "./ui/cena/hierarquia.js";
 import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.js";
+import { carregarDados } from "./pokemon/dados.js";
+import { ligarPokemon, tickPokemon } from "./pokemon/sistema.js";
 
 const canvas = document.getElementById("canvas");
 const canvas3d = document.getElementById("canvas-3d");
@@ -137,6 +139,13 @@ async function iniciar() {
   ligarAjudaAtalhos();
   ligarHierarquiaCena();
   ligarInspetorCena();
+  try {
+    const cat = await carregarDados();
+    ligarPokemon();
+    console.info(`Pokémon: ${cat.especies} espécies, ${cat.golpes} golpes`);
+  } catch (erro) {
+    console.error("Pokémon não carregou", erro);
+  }
   ligarControleModo(document.getElementById("btn-modo-3d"));
   aoMudarModo(aoTrocarModo);
   aoMudarCena((ativo) => {
@@ -380,6 +389,7 @@ function loop(agora) {
   atualizarMovimento(corpo, dt);
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);
+  tickPokemon(corpo, dt);
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();
   sincronizarPainelCeu();

@@ -35,6 +35,7 @@ import {
 } from "../../cena/cameraCena.js";
 import { registrarObjetoCena, verCamadaAuxiliar } from "../../cena/registroCena.js";
 import { atualizarRealceCena, ligarSelecaoCena } from "../../cena/selecaoCena.js";
+import { atualizarPokemon3d, ligarPokemon3d } from "../../pokemon/render3d.js";
 
 let estado = null;
 let tiroPendente = false;
@@ -93,6 +94,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1512);
   scene.fog = new THREE.Fog(0x2a221c, 36, 85);
+  ligarPokemon3d(scene);
 
   const camera3d = criarCamera3d(largura / altura);
   verCamadaAuxiliar(camera3d.cam);
@@ -415,6 +417,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   const emCena = estaEmCena();
   const camRender = emCena ? obterCameraCena() : estado.camera3d.cam;
+  estado.camRender = camRender;
   if (emCena) atualizarCameraCena(dt);
   const yaw = emCena ? yawDaCamera(camRender) : yawCamera(estado.camera3d);
 
@@ -451,6 +454,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     lift: Math.max(0, elev - (corpo.z ?? 0)),
   });
 
+  atualizarPokemon3d();
   atualizarRealceCena();
   estado.renderer.render(estado.scene, camRender);
   return estado;
