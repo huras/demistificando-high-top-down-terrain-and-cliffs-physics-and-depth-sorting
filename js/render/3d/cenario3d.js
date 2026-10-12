@@ -450,7 +450,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     vy: corpo.vy ?? 0,
     fx: corpo.dirX ?? 0,
     fy: corpo.dirY ?? 1,
-    queda: planando ? ASA_DELTA_DESCIDA : voando ? 2.5 : 0,
+    queda: planando ? (corpo._glideQueda ?? ASA_DELTA_DESCIDA) : voando ? 2.5 : 0,
     lift: Math.max(0, elev - (corpo.z ?? 0)),
   });
 

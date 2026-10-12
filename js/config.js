@@ -90,6 +90,10 @@ export const ASA_DELTA_LIFT_MIN = 0.12;
 export const ASA_DELTA_VEL_MUL = 1.2;
 export const ASA_DELTA_ACEL_AR = 22;
 export const ASA_DELTA_ATRITO_AR = 0.5;
+/** Shift no planar e no voo: velocidade horizontal × isto. */
+export const ASA_DELTA_CORRIDA_MUL = 3;
+/** Ctrl esquerdo no planar: descida × isto. */
+export const ASA_DELTA_DESCIDA_CTRL_MUL = 3;
 
 /** Escalada grudada (BOTW) — células/s na face. */
 export const ESCALADA_VEL = 1.85;

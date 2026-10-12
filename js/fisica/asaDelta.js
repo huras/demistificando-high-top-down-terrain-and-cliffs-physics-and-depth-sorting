@@ -2,7 +2,9 @@ import {
   ASA_DELTA_ABRIR_APOS,
   ASA_DELTA_ACEL_AR,
   ASA_DELTA_ATRITO_AR,
+  ASA_DELTA_CORRIDA_MUL,
   ASA_DELTA_DESCIDA,
+  ASA_DELTA_DESCIDA_CTRL_MUL,
   ASA_DELTA_LIFT_MIN,
   ASA_DELTA_VEL_MUL,
   VELOCIDADE_MAX,
@@ -66,14 +68,20 @@ export function tratarInputAsaDelta(corpo, apertouSpace) {
   return abrirAsaDelta(corpo);
 }
 
-/** Queda lenta + yaw/bank; pousa ao tocar o chão. */
-export function atualizarAsaDelta(corpo, dt) {
+/** Queda lenta + yaw/bank; pousa ao tocar o chão. Ctrl esquerdo desce mais rápido. */
+export function atualizarAsaDelta(corpo, dt, descer = false) {
   if (!estaPlanando(corpo) || !(dt > 0)) return false;
 
   corpo._glideTempo = (corpo._glideTempo ?? 0) + dt;
   tickYawAsaDelta(corpo, dt);
 
-  corpo.vz = -ASA_DELTA_DESCIDA;
+  const correndo = !!corpo.correndo;
+  let descida = ASA_DELTA_DESCIDA;
+  if (descer) descida *= ASA_DELTA_DESCIDA_CTRL_MUL;
+  else if (correndo) descida = 0;
+  corpo._glideQueda = descida;
+  corpo._glideDesce = !!descer;
+  corpo.vz = -descida;
   const elevAntes = corpo.elevacao;
   corpo._elevAnterior = elevAntes;
   corpo.elevacao += corpo.vz * dt;
@@ -84,7 +92,10 @@ export function atualizarAsaDelta(corpo, dt) {
   corpo.z = zChao > 0 ? zChao : 0;
   corpo.hopLift = corpo.elevacao - corpo.z;
   corpo.pulando = true;
-  corpo.acao = "asa-delta";
+  if (correndo && descer) corpo.acao = "asa-delta sprint+desce";
+  else if (correndo) corpo.acao = "asa-delta sprint";
+  else if (descer) corpo.acao = "asa-delta desce";
+  else corpo.acao = "asa-delta";
 
   if (zChao > 0 && corpo.elevacao <= zChao + 0.05) {
     corpo.planando = false;
@@ -99,11 +110,12 @@ export function atualizarAsaDelta(corpo, dt) {
   return false;
 }
 
-/** Steer no ar com knobs de asa (mais solto que o hop). */
-export function atualizarCorridaAsaDelta(corpo, dx, dy, dt) {
-  const acel = ASA_DELTA_ACEL_AR;
+/** Steer no ar com knobs de asa (mais solto que o hop). Correndo = × ASA_DELTA_CORRIDA_MUL. */
+export function atualizarCorridaAsaDelta(corpo, dx, dy, dt, correndo = false) {
+  const mul = correndo ? ASA_DELTA_CORRIDA_MUL : 1;
+  const acel = ASA_DELTA_ACEL_AR * mul;
   const atrito = ASA_DELTA_ATRITO_AR;
-  const vmax = VELOCIDADE_MAX * ASA_DELTA_VEL_MUL;
+  const vmax = VELOCIDADE_MAX * ASA_DELTA_VEL_MUL * mul;
   const temInput = dx !== 0 || dy !== 0;
 
   if (temInput) {

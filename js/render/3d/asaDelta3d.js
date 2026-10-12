@@ -181,7 +181,7 @@ export function criarAsaDelta3d() {
       grupo.rotation.y = -yaw;
       const bank = corpoEstado._glideBank ?? 0;
       grupo.rotation.z = bank * 0.22;
-      grupo.rotation.x = voando && !planando ? -0.12 : 0;
+      grupo.rotation.x = voando && !planando ? -0.12 : corpoEstado._glideDesce ? 0.32 : 0;
 
       if (voando && !planando) {
         matVela.color.setHex(0xffe080);

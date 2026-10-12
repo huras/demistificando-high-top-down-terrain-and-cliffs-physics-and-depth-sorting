@@ -1,4 +1,4 @@
-import { RAIO_CORPO, VELOCIDADE_MAX, VELOCIDADE_SPRINT } from "../config.js";
+import { ASA_DELTA_CORRIDA_MUL, RAIO_CORPO, VELOCIDADE_MAX, VELOCIDADE_SPRINT } from "../config.js";
 import {
   teclaAgora,
   teclaBaixa,
@@ -119,9 +119,13 @@ export function atualizarMovimento(corpo, dt) {
       corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
     }
     const sobe = teclaBaixa("Space");
-    const desce = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
-    corpo.correndo = false;
-    atualizarVoo(corpo, dx, dy, sobe, desce, dt, VELOCIDADE_MAX);
+    const desce = teclaBaixa("ControlLeft");
+    corpo.correndo = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+    const velVoo = corpo.correndo ? VELOCIDADE_MAX * ASA_DELTA_CORRIDA_MUL : VELOCIDADE_MAX;
+    const aindaVoo = atualizarVoo(corpo, dx, dy, sobe, desce, dt, velVoo);
+    if (aindaVoo && corpo.correndo && desce) corpo.acao = "voando sprint+desce";
+    else if (aindaVoo && corpo.correndo) corpo.acao = "voando sprint";
+    else if (aindaVoo && desce) corpo.acao = "voando desce";
     regenerarStamina(corpo, dt);
     return;
   }
@@ -199,14 +203,13 @@ export function atualizarMovimento(corpo, dt) {
     corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
   }
 
-  const shift =
-    teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+  const shift = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+  const planando = estaPlanando(corpo);
   corpo.correndo =
-    !!shift &&
-    corpo.noChao &&
+    shift &&
     !corpo.escalando &&
     !corpo.mantle &&
-    (dx !== 0 || dy !== 0);
+    (planando || (corpo.noChao && (dx !== 0 || dy !== 0)));
 
   if (corpo.nadando && !corpo.escalando && !corpo.voando) {
     atualizarNado(corpo, dx, dy, dt);
@@ -215,7 +218,7 @@ export function atualizarMovimento(corpo, dt) {
 
   if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt);
   else {
-    corpo.correndo = false;
+    if (!planando) corpo.correndo = false;
     atualizarNoAr(corpo, dx, dy, dt);
   }
 
@@ -344,9 +347,11 @@ function atualizarNoChao(corpo, dx, dy, dt) {
 }
 
 function atualizarNoAr(corpo, dx, dy, dt) {
-  if (estaPlanando(corpo)) {
-    atualizarCorridaAsaDelta(corpo, dx, dy, dt);
+  const planando = estaPlanando(corpo);
+  if (planando) {
+    atualizarCorridaAsaDelta(corpo, dx, dy, dt, corpo.correndo);
   } else {
+    corpo.correndo = false;
     atualizarCorrida(corpo, dx, dy, dt, false);
   }
 
@@ -364,8 +369,8 @@ function atualizarNoAr(corpo, dx, dy, dt) {
 
   liberarCorpoAereo(corpo);
 
-  if (estaPlanando(corpo)) {
-    atualizarAsaDelta(corpo, dt);
+  if (planando) {
+    atualizarAsaDelta(corpo, dt, teclaBaixa("ControlLeft"));
   } else {
     atualizarAereo(corpo, dt);
   }

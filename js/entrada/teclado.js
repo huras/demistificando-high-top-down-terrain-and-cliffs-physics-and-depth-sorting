@@ -24,6 +24,7 @@ export function iniciarTeclado() {
         "KeyF",
         "ShiftLeft",
         "ShiftRight",
+        "ControlLeft",
       ].includes(k)
     ) {
       ev.preventDefault();
