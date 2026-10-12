@@ -160,7 +160,7 @@ function montarCidade(moldes, def) {
     const mx = (v.x0 + v.x1) * 0.5;
     const my = (v.y0 + v.y1) * 0.5;
     const inst = molde.grupo.clone(true);
-    inst.rotation.y = yawDaRua(mx, my);
+    inst.rotation.y = v.papel === "casa" ? 0 : yawDaRua(mx, my);
     inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
     grupo.add(inst);
   }
@@ -170,7 +170,6 @@ function montarCidade(moldes, def) {
     for (let i = 0; i < pontos.length; i++) {
       const inst = poste.grupo.clone(true);
       inst.position.set(ox + pontos[i][0], ALTURA_PRACA, oy + pontos[i][1]);
-      inst.rotation.y = (i & 3) * (Math.PI / 2);
       grupo.add(inst);
     }
   }
