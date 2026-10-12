@@ -1,4 +1,6 @@
-import { SPAWN } from "../mundo/mapaDemo.js";
+import { USAR_PATCH_DEMO } from "../config.js";
+import { SPAWN as SPAWN_DEMO } from "../mundo/mapaDemo.js";
+import { SPAWN_PALLET } from "../mundo/regiao/spawnKanto.js";
 import { tickPassivo, aplicarNivel } from "./ator.js";
 import { atualizarCaptura } from "./captura.js";
 import { impactoProjetil, tentarGolpe } from "./combate/executor.js";
@@ -23,6 +25,7 @@ import { tickVisual } from "./sprites.js";
 
 let agora = 0;
 let ligado = false;
+const RESPAWN = USAR_PATCH_DEMO ? SPAWN_DEMO : SPAWN_PALLET;
 
 const treinador = {
   faccao: "treinador",
@@ -114,13 +117,33 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   tickFlutuantes(passo);
 
   if (treinador.hp <= 0) {
-    corpo.x = SPAWN.x;
-    corpo.y = SPAWN.y;
-    corpo.z = SPAWN.z;
-    corpo.elevacao = SPAWN.z;
+    corpo.x = RESPAWN.x;
+    corpo.y = RESPAWN.y;
+    corpo.z = RESPAWN.z;
+    corpo.elevacao = RESPAWN.z;
     corpo.vx = 0;
     corpo.vy = 0;
     corpo.vz = 0;
+    corpo.pulando = false;
+    corpo.planando = false;
+    corpo.escalando = false;
+    corpo.voando = false;
+    corpo.nadando = false;
+    corpo.afogandoT = 0;
+    corpo.noChao = true;
+    corpo.hopLift = 0;
+    corpo.pulo = null;
+    corpo.escalada = null;
+    corpo.mantle = null;
+    corpo.puloCortado = false;
+    corpo.coyoteT = 0;
+    corpo.puloBufferT = 0;
+    corpo.tempoAr = 0;
+    corpo._renasceu = true;
+    treinador.x = RESPAWN.x;
+    treinador.y = RESPAWN.y;
+    treinador.z = RESPAWN.z;
+    treinador.elevacao = RESPAWN.z;
     treinador.hp = treinador.hpMax;
     treinador.morto = false;
     treinador.iframe = 2.5;

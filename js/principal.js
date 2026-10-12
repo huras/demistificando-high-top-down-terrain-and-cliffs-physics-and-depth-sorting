@@ -407,6 +407,33 @@ function loop(agora) {
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);
   tickPokemon(corpo, dt, agente.perfil);
+  if (corpo._renasceu) {
+    corpo._renasceu = false;
+    agente.x = corpo.x - 1.1;
+    agente.y = corpo.y + 0.9;
+    agente.z = corpo.z;
+    agente.elevacao = corpo.z;
+    agente.vx = 0;
+    agente.vy = 0;
+    agente.vz = 0;
+    agente.hopLift = 0;
+    agente.noChao = true;
+    agente.pulando = false;
+    agente.planando = false;
+    agente.voando = false;
+    agente.escalando = false;
+    agente.nadando = false;
+    agente.afogandoT = 0;
+    agente.escalada = null;
+    agente.mantle = null;
+    agente.puloCortado = false;
+    agente.coyoteT = 0;
+    agente.tempoAr = 0;
+    resetarNav(agente);
+    camera.pronta = false;
+    resetarCamera3d();
+    atualizarStreaming(corpo.x, corpo.y);
+  }
   despenetrarCorpos();
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();
