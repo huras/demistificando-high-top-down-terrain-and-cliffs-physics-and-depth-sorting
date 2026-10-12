@@ -779,3 +779,35 @@ body[data-modo="3d"][data-cena="ativa"] .cena-ui {
   font-family: var(--fonte-mono);
   font-size: 0.72rem;
 }
+
+.mapa-kanto {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.mapa-kanto canvas {
+  width: 128px;
+  height: 128px;
+  image-rendering: pixelated;
+  border: 2px solid rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+  background: #143e66;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.mapa-kanto__nome {
+  margin: 0;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(15, 20, 16, 0.78);
+  color: var(--texto);
+  font-family: var(--fonte-mono);
+  font-size: 0.72rem;
+}

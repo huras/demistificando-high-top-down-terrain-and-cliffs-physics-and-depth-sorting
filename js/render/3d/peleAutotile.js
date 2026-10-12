@@ -4,6 +4,7 @@
  */
 import { kitDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { cruSplat, nomePele } from "../../mundo/bioma/detalhe.js";
+import { ehCaminhoKanto } from "../../mundo/regiao/amostraKanto.js";
 
 const COLS = 3;
 const ROWS = 4;
@@ -59,8 +60,9 @@ export function pesoSplat(wx, wy) {
   const y = wy | 0;
   const chave = `${x},${y}`;
   if (cachePeso.has(chave)) return cachePeso.get(chave);
-  const cru = cruEm(x, y);
-  const peso = cru && (cruEm(x - 1, y) || cruEm(x + 1, y) || cruEm(x, y - 1) || cruEm(x, y + 1)) ? 1 : 0;
+  const cru = ehCaminhoKanto(x, y) || cruEm(x, y);
+  const vizinho = (nx, ny) => ehCaminhoKanto(nx, ny) || cruEm(nx, ny);
+  const peso = cru && (vizinho(x - 1, y) || vizinho(x + 1, y) || vizinho(x, y - 1) || vizinho(x, y + 1)) ? 1 : 0;
   return guardar(cachePeso, chave, peso);
 }
 

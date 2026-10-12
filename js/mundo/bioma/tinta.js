@@ -1,4 +1,5 @@
-import { amostrarRegiao } from "./catalogo.js";
+import { amostrarRegiao, biomaDominante } from "./catalogo.js";
+import { dentroDoKanto } from "../regiao/amostraKanto.js";
 
 let cacheX = 1e9;
 let cacheY = 1e9;
@@ -16,18 +17,23 @@ function misturaEm(wx, wy) {
   if (x !== cacheX || y !== cacheY) {
     cacheX = x;
     cacheY = y;
-    const reg = amostrarRegiao(x, y);
-    if (!reg) {
-      cacheRgb = [0.49, 0.81, 0.42];
+    if (dentroDoKanto(x, y)) {
+      const bioma = biomaDominante(x, y);
+      cacheRgb = bioma ? corDe(bioma) : [0.49, 0.81, 0.42];
     } else {
-      const a = corDe(reg.a);
-      const b = corDe(reg.b);
-      const t = reg.dominio;
-      cacheRgb = [
-        a[0] * t + b[0] * (1 - t),
-        a[1] * t + b[1] * (1 - t),
-        a[2] * t + b[2] * (1 - t),
-      ];
+      const reg = amostrarRegiao(x, y);
+      if (!reg) {
+        cacheRgb = [0.49, 0.81, 0.42];
+      } else {
+        const a = corDe(reg.a);
+        const b = corDe(reg.b);
+        const t = reg.dominio;
+        cacheRgb = [
+          a[0] * t + b[0] * (1 - t),
+          a[1] * t + b[1] * (1 - t),
+          a[2] * t + b[2] * (1 - t),
+        ];
+      }
     }
   }
   return cacheRgb;

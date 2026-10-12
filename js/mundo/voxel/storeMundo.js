@@ -5,6 +5,7 @@ import {
   RAIO_STREAM_MAX,
   RAIO_STREAM_MIN,
   SEED_MUNDO,
+  USAR_PATCH_DEMO,
 } from "../../config.js";
 import { aplicarPatchDemo, ALTURAS } from "../regioes/mapaDemoPatch.js";
 import {
@@ -71,7 +72,7 @@ export function carregarChunk(cx, cy) {
 
   chunk = criarChunk(cx, cy);
   gerarChunkProcedural(chunk, seed);
-  aplicarPatchDemo(chunk, ALTURAS);
+  if (USAR_PATCH_DEMO) aplicarPatchDemo(chunk, ALTURAS);
   aplicarEditsNoChunk(chunk);
   chunk.gerado = true;
   chunk.sujo = true;

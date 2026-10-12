@@ -1,13 +1,14 @@
-import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
+import { CHUNK_XZ, CHUNK_Y, USAR_PATCH_DEMO } from "../../config.js";
 import {
   alturaDoRelevo,
   nivelMarBlocos,
   plantaDoRelevo,
   superficieDoRelevo,
 } from "../bioma/catalogo.js";
+import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
-import { preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
+import { definirLocal, preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
 import { valueNoise3 } from "./ruido.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
 
@@ -32,6 +33,13 @@ export function gerarChunkProcedural(chunk, seed) {
       const h = alturaDoRelevo(wx, wy);
       alturas[ly * CHUNK_XZ + lx] = h;
       preencherColunaSolida(chunk, lx, ly, h, superficieDoRelevo(wx, wy));
+      if (dentroDoKanto(wx, wy)) {
+        const extra = amostraKanto(wx, wy).predio;
+        if (extra > 0) {
+          const topo = Math.min(CHUNK_Y, h + extra);
+          for (let lz = h; lz < topo; lz++) definirLocal(chunk, lx, ly, lz, BLOCO.PEDRA);
+        }
+      }
       if (h < nivel) {
         const topo = Math.min(CHUNK_Y, nivel);
         for (let lz = h; lz < topo; lz++) {
@@ -117,7 +125,7 @@ export function gerarChunkProcedural(chunk, seed) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
       const wy = baseY + ly;
-      if (wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
+      if (USAR_PATCH_DEMO && wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
       const h = alturas[ly * CHUNK_XZ + lx];
       let cliff = false;
       for (const [dx, dy] of [

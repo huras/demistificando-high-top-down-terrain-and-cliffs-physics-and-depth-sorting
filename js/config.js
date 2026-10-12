@@ -260,7 +260,9 @@ export const ROLE_OUT_SE_UNDER = 17;
 /** @deprecated */
 export const ROLE_CLIFF_CENTER = ROLE_EDGE_S;
 
-/** Voxel / mundo infinito. */
+/** Voxel / mundo infinito. O patch demo só entra com ?demo=1. */
+export const USAR_PATCH_DEMO =
+  typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
 export const CHUNK_XZ = 16;
 export const CHUNK_Y = 64;
 /** Disco de chunks em volta do jogador. 5 ≈ 80 blocos. */
