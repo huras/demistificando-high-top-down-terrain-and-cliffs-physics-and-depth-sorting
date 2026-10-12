@@ -41,8 +41,6 @@ import {
 import { canvasParaTextura, criarTexturasTerreno3d } from "./texturasTerreno3d.js";
 
 const LEDGE_H = 0.12;
-const AO_OPACITY = 0.32;
-const AO_QUEDA_MIN = 2;
 /** Aresta da face vertical ligeiramente abaixo do topo — evita z-fight. */
 const INSET_TOPO = 0.002;
 
@@ -114,6 +112,31 @@ function naFrenteDoSuave(material) {
   material.stencilZFail = THREE.KeepStencilOp;
   material.stencilZPass = THREE.ReplaceStencilOp;
   return material;
+}
+
+/** O topo horizontal não entra no mapa do sol. A face de cima em grade virava quadrado escuro. */
+function profundidadeSemTopo() {
+  const mat = new THREE.MeshDepthMaterial({
+    depthPacking: THREE.RGBADepthPacking,
+  });
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vNormalSombra;")
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+vNormalSombra = normalize(mat3(modelMatrix) * normal);`,
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vNormalSombra;")
+      .replace(
+        "#include <clipping_planes_fragment>",
+        `#include <clipping_planes_fragment>
+if (vNormalSombra.y > 0.65) discard;`,
+      );
+  };
+  mat.customProgramCacheKey = () => "sombra-sem-topo";
+  return mat;
 }
 
 function misturarTinta(material, forca) {
@@ -447,23 +470,6 @@ function caixaLedge(wx, wy, wzTopo, dir, corTopo, corFace) {
     geo.translate(wx + 0.09, y + LEDGE_H * 0.5, wy + 0.5);
   }
   pintarVertices(geo, corTopo, corFace);
-  return geo;
-}
-
-function planoAo(wx, wy, yChao, dir, queda) {
-  const profundidade = Math.min(0.55, 0.22 + queda * 0.06);
-  const geo = new THREE.PlaneGeometry(0.92, profundidade);
-  geo.rotateX(-Math.PI / 2);
-  const y = yChao + 0.015;
-  if (dir === "s") geo.translate(wx + 0.5, y, wy + 1 + profundidade * 0.5);
-  else if (dir === "n") geo.translate(wx + 0.5, y, wy - profundidade * 0.5);
-  else if (dir === "e") {
-    geo.rotateY(Math.PI / 2);
-    geo.translate(wx + 1 + profundidade * 0.5, y, wy + 0.5);
-  } else {
-    geo.rotateY(Math.PI / 2);
-    geo.translate(wx - profundidade * 0.5, y, wy + 0.5);
-  }
   return geo;
 }
 
@@ -1196,28 +1202,8 @@ function pushParede(lote, nome, wx, wy, y0, y1) {
   }
 }
 
-function pushAo(lote, wx, wy, yChao, dir, queda) {
-  const p = Math.min(0.55, 0.22 + queda * 0.06);
-  const y = yChao + 0.015;
-  const x0 = wx + 0.04;
-  const x1 = wx + 0.96;
-  const z0 = wy + 0.04;
-  const z1 = wy + 0.96;
-  lote._n = [0, 1, 0];
-  if (dir === "s") {
-    q6(lote, [x0, y, wy + 1, x0, y, wy + 1 + p, x1, y, wy + 1, x0, y, wy + 1 + p, x1, y, wy + 1 + p, x1, y, wy + 1], UV_FACE);
-  } else if (dir === "n") {
-    q6(lote, [x1, y, wy, x1, y, wy - p, x0, y, wy, x1, y, wy - p, x0, y, wy - p, x0, y, wy], UV_FACE);
-  } else if (dir === "e") {
-    q6(lote, [wx + 1, y, z1, wx + 1 + p, y, z1, wx + 1, y, z0, wx + 1 + p, y, z1, wx + 1 + p, y, z0, wx + 1, y, z0], UV_FACE);
-  } else {
-    q6(lote, [wx, y, z0, wx - p, y, z0, wx, y, z1, wx - p, y, z0, wx - p, y, z1, wx, y, z1], UV_FACE);
-  }
-}
-
 function* construirGeosChunk(chunk) {
   const ledges = [];
-  const aos = [];
   const aguas = [];
   const quedas = [];
   const sacosTopo = new Map();
@@ -1230,7 +1216,6 @@ function* construirGeosChunk(chunk) {
     }
     return saco;
   }
-  const loteAo = criarLote(false);
   const loteCubos = criarLote(true);
   const grade = gradeDoChunk(chunk.cx, chunk.cy);
   const nCel = CHUNK_XZ * CHUNK_XZ;
@@ -1324,20 +1309,8 @@ function* construirGeosChunk(chunk) {
               UV_FACE,
             );
           } else {
-            if (ehBordaCliff && lateraisAr.includes(d.nome)) {
-              const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
-              const queda = lz + 1 - vizSurf;
-              if (queda >= AO_QUEDA_MIN && vizSurf > 0) {
-                pushAo(loteAo, wx, wy, vizSurf, d.nome, queda);
-              }
-              continue;
-            }
+            if (ehBordaCliff && lateraisAr.includes(d.nome)) continue;
             PUSH_FACE[d.nome](loteFaces, wx, wy, lz);
-            const vizSurf = alturaEm(wx + d.dx, wy + d.dy);
-            const queda = lz + 1 - vizSurf;
-            if (queda >= AO_QUEDA_MIN && vizSurf > 0) {
-              pushAo(loteAo, wx, wy, vizSurf, d.nome, queda);
-            }
           }
         }
       }
@@ -1430,7 +1403,7 @@ function* construirGeosChunk(chunk) {
         emitirTopo(sacoTopo.lote, wx, wy, y, 0, 0, 1, 1);
         continue;
       }
-      const { cap, quedas: quedasBorda } = carimbarBorda(
+      const { cap } = carimbarBorda(
         sacoTopo.lote,
         sacoParede.lote,
         grade,
@@ -1444,12 +1417,6 @@ function* construirGeosChunk(chunk) {
       );
       if (splat && cap.x1 - cap.x0 > 1e-4 && cap.z1 - cap.z0 > 1e-4) {
         emitirTopo(sacoTopo.lote, wx, wy, y, cap.x0, cap.z0, cap.x1, cap.z1);
-      }
-      for (let k = 0; k < quedasBorda.length; k++) {
-        const queda = quedasBorda[k];
-        if (queda.queda >= AO_QUEDA_MIN && queda.yBase > 0) {
-          pushAo(loteAo, wx, wy, queda.yBase, queda.nome, queda.queda);
-        }
       }
     }
   }
@@ -1469,7 +1436,6 @@ function* construirGeosChunk(chunk) {
     topos,
     paredes,
     geoLedges: mesclarLista(ledges),
-    geoAo: finalizarLote(loteAo, aos),
     geoCubos: geoDoLote(loteCubos),
     geoAgua: mesclarLista(aguas),
     geoQueda: mesclarLista(quedas),
@@ -1541,6 +1507,7 @@ export function criarTerrenoMalha(atlas = null) {
 
   const matAgua = obterMaterialLago();
   const matQueda = obterMaterialQueda();
+  const depthCubos = profundidadeSemTopo();
 
   const matCubos = naFrenteDoSuave(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     vertexColors: true,
@@ -1568,15 +1535,6 @@ export function criarTerrenoMalha(atlas = null) {
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
     }))),
-    ao: naFrenteDoSuave(new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: AO_OPACITY,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
-    })),
     props: naFrenteDoSuave(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: 0.8,
@@ -1731,6 +1689,7 @@ export function criarTerrenoMalha(atlas = null) {
       const mesh = new THREE.Mesh(geos.geoCubos, matCubos);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
+      mesh.customDepthMaterial = depthCubos;
       mesh.name = `cubos-${key}`;
       mesh.renderOrder = 1;
       grupoCubos.add(mesh);
@@ -1763,8 +1722,8 @@ export function criarTerrenoMalha(atlas = null) {
       }
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = nome;
-      mesh.castShadow = opts.shadow !== false;
-      mesh.receiveShadow = opts.shadow !== false;
+      mesh.castShadow = opts.cast != null ? opts.cast : opts.shadow !== false;
+      mesh.receiveShadow = opts.receive != null ? opts.receive : opts.shadow !== false;
       mesh.renderOrder = 1 + (opts.order || 0);
       entry.real.add(mesh);
     }
@@ -1773,18 +1732,19 @@ export function criarTerrenoMalha(atlas = null) {
       const topos = geos.topos || [];
       const paredes = geos.paredes || [];
       for (let i = 0; i < topos.length; i++) {
-        add(topos[i].geo, materialKit(topos[i].kit, "topo"), `tops-${topos[i].kit}`);
+        add(topos[i].geo, materialKit(topos[i].kit, "topo"), `tops-${topos[i].kit}`, {
+          cast: false,
+          receive: true,
+        });
       }
       for (let i = 0; i < paredes.length; i++) {
         add(paredes[i].geo, materialKit(paredes[i].kit, "parede"), `faces-${paredes[i].kit}`);
       }
-      add(geos.geoLedges, materiais.ledge, "ledges");
-      add(geos.geoAo, materiais.ao, "ao", { shadow: false, order: 1 });
+      add(geos.geoLedges, materiais.ledge, "ledges", { cast: false, receive: true });
     } else {
       for (const item of geos.topos || []) item.geo?.dispose();
       for (const item of geos.paredes || []) item.geo?.dispose();
       geos.geoLedges?.dispose();
-      geos.geoAo?.dispose();
     }
 
     grupoReal.add(entry.real);
@@ -1983,8 +1943,8 @@ export function criarTerrenoMalha(atlas = null) {
       meshesPorChunk.clear();
       matCubos.dispose();
       matCubosSmooth.dispose();
+      depthCubos.dispose();
       materiais.ledge.dispose();
-      materiais.ao.dispose();
       materiais.props.dispose();
       materiais.grama?.dispose();
       materiais.terra?.dispose();

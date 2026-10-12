@@ -43,7 +43,10 @@ export function andar(ator, ix, iy, vel, dt) {
   const dx = nx * vel * dt;
   const dy = ny * vel * dt;
   let ok = tentar(ator, dx, dy);
-  if (!ok) ok = tentar(ator, dx, 0) || tentar(ator, 0, dy);
+  if (!ok) {
+    ok = tentar(ator, dx, 0);
+    if (!ok) ok = tentar(ator, 0, dy);
+  }
   if (ok) {
     ator.dirX = nx;
     ator.dirY = ny;

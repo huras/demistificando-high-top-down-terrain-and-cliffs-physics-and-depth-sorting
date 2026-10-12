@@ -56,6 +56,25 @@ import {
   sairVoo,
 } from "./voo.js";
 
+function degrauDeUm(agente, ix, iy) {
+  if (!agente.noChao || !agente.perfil?.podePular) return false;
+  if (agente.escalando || agente.voando || agente.planando) return false;
+  const len = Math.hypot(ix, iy);
+  if (len < 1e-4) return false;
+  const nx = ix / len;
+  const ny = iy / len;
+  const base = Math.round(agente.z ?? agente.elevacao ?? 0);
+  for (const dist of [0.5, 0.85]) {
+    const zFrente = alturaSobPes(
+      agente.x + nx * dist,
+      agente.y + ny * dist,
+      base + 1.6,
+    );
+    if (zFrente === base + 1) return true;
+  }
+  return false;
+}
+
 function distPlanar(agente, nav) {
   if (!nav?.planarAlvo) return 0;
   return Math.hypot(
@@ -157,19 +176,50 @@ export function criarAgente(spawn, perfil = PERFIL_COMPANHEIRO) {
   return agente;
 }
 
+/** Completa campos de locomoção para um corpo que vai seguir como o companheiro. */
+export function garantirCorpoLocomocao(corpo, perfil) {
+  if (!corpo) return;
+  if (perfil) corpo.perfil = perfil;
+  if (corpo._loco) return;
+  corpo._loco = true;
+  if (corpo.vz == null) corpo.vz = 0;
+  if (corpo.noChao == null) corpo.noChao = true;
+  if (corpo.pulando == null) corpo.pulando = false;
+  if (corpo.planando == null) corpo.planando = false;
+  if (corpo.voando == null) corpo.voando = false;
+  if (corpo.nadando == null) corpo.nadando = false;
+  if (corpo.escalando == null) corpo.escalando = false;
+  if (corpo.escalada == null) corpo.escalada = null;
+  if (corpo.hopLift == null) corpo.hopLift = 0;
+  if (corpo.coyoteT == null) corpo.coyoteT = 0;
+  if (corpo.puloCortado == null) corpo.puloCortado = false;
+  if (corpo.segurarPulo == null) corpo.segurarPulo = false;
+  if (corpo.puloBufferT == null) corpo.puloBufferT = 0;
+  if (corpo.tempoAr == null) corpo.tempoAr = 0;
+  if (corpo.mantle == null) corpo.mantle = null;
+  if (corpo.correndo == null) corpo.correndo = false;
+  if (corpo.afogandoT == null) corpo.afogandoT = 0;
+  if (corpo.aguaProf == null) corpo.aguaProf = 0;
+  if (corpo.aguaCaindo == null) corpo.aguaCaindo = 0;
+  if (corpo._climbInX == null) corpo._climbInX = 0;
+  if (corpo._climbInY == null) corpo._climbInY = -1;
+  if (corpo.stamina == null) iniciarStamina(corpo);
+  garantirNav(corpo);
+}
+
 export { resetarNav };
 
 /**
  * Segue o líder via pathfinding (sem teleporte).
  * Velocidade = AGENTE_VEL_MUL × walk/sprint do líder.
  */
-export function atualizarAgente(agente, lider, dt) {
+export function atualizarAgente(agente, lider, dt, velPedido = 0) {
   if (!agente || !lider) return;
 
   const podeCorrer = agente.perfil?.podeCorrer !== false;
   const velLider =
     podeCorrer && lider.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
-  const velMax = velLider * AGENTE_VEL_MUL;
+  const velMax = velPedido > 0 ? velPedido : velLider * AGENTE_VEL_MUL;
 
   const {
     ix,
@@ -275,8 +325,9 @@ export function atualizarAgente(agente, lider, dt) {
     !estaVoando(agente) &&
     querAsaHeuristica(agente, querPlanar || soltouPraAsa || !!soltarParede, false);
 
+  const lip = degrauDeUm(agente, ix, iy);
   if (
-    querPulo &&
+    (querPulo || lip) &&
     !lancarGlide &&
     !querEscalar &&
     !querVoar &&
@@ -437,7 +488,7 @@ export function atualizarAgente(agente, lider, dt) {
       }
       if (estaPlanando(agente) && !soltarAsa && !querEscalar) {
         atualizarNoArPlanando(agente, ix, iy, dt);
-      } else if (!agente.escalando) {
+      } else if (!agente.escalando && !agente.noChao) {
         agente.acao = agente.vz > 0.4 ? "pulando" : "caindo";
       }
     }

@@ -102,6 +102,20 @@ export function direcao8(dx, dy) {
 }
 
 /**
+ * Mesma convenção do facing Ragnarok: yaw 0 = câmera ao sul, olhando o norte.
+ * A direção do mundo vira direção na tela antes de escolher a linha do sheet.
+ */
+export function direcao8Camera(dx, dy, yawCam) {
+  if (!dx && !dy) return null;
+  if (!yawCam) return direcao8(dx, dy);
+  const sin = Math.sin(yawCam);
+  const cos = Math.cos(yawCam);
+  const telaDir = dx * cos - dy * sin;
+  const telaFrente = -dx * sin - dy * cos;
+  return direcao8(telaDir, -telaFrente);
+}
+
+/**
  * Pé em (footX, footY), na base do recorte opaco — igual ao personagem.
  * O pivô X continua o da célula, pra o corpo não escorregar entre quadros.
  * O atlas só tem o recorte; ele entra na célula em (trimX, trimY).

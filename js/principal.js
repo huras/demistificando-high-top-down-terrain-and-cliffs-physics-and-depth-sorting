@@ -399,7 +399,7 @@ function loop(agora) {
   atualizarMovimento(corpo, dt);
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);
-  tickPokemon(corpo, dt);
+  tickPokemon(corpo, dt, agente.perfil);
   despenetrarCorpos();
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();

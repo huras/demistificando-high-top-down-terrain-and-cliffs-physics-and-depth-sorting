@@ -82,7 +82,7 @@ export function ligarPokemon() {
   return true;
 }
 
-export function tickPokemon(corpo, dt) {
+export function tickPokemon(corpo, dt, perfilSeguidor) {
   if (!ligado || !corpo) return;
   const passo = Math.min(0.05, dt);
   agora += passo;
@@ -94,7 +94,7 @@ export function tickPokemon(corpo, dt) {
 
   atualizarPopulacao(corpo, passo, agora);
   definirCorposAtores(listarSolidosPokemon());
-  atualizarParty(corpo, passo, agora);
+  atualizarParty(corpo, passo, agora, perfilSeguidor);
   const mon = pokemonDeployado();
   const selvagens = selvagensAtivos();
   atualizarIa(selvagens, mon, treinador, passo);

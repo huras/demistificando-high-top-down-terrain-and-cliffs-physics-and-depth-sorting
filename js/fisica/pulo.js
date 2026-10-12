@@ -201,11 +201,58 @@ export function empurrarForaDePisoAlto(corpo, zMaxPiso) {
 }
 
 /**
+ * Pulo de 1 bloco: o canto já passou da altura da borda, mas o centro ainda
+ * está no piso de baixo. Sobe para o tile em vez de ser empurrado de volta.
+ */
+export function montarDegrauNoAr(corpo) {
+  if (!corpo || corpo.noChao || corpo.escalando || corpo.planando || corpo.voando || corpo.mantle) {
+    return false;
+  }
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const zPe = alturaSobPes(corpo.x, corpo.y, elev);
+  if (zPe <= 0) return false;
+  const raio = Math.max(RAIO_CORPO, corpo.raioCorpo || 0);
+  const vx = corpo.vx || corpo.dirX || 0;
+  const vy = corpo.vy || corpo.dirY || 0;
+  let melhor = null;
+  let melhorDot = -Infinity;
+  for (const [px, py] of [
+    [corpo.x - RAIO_CORPO, corpo.y - RAIO_CORPO],
+    [corpo.x + RAIO_CORPO, corpo.y - RAIO_CORPO],
+    [corpo.x - RAIO_CORPO, corpo.y + RAIO_CORPO],
+    [corpo.x + RAIO_CORPO, corpo.y + RAIO_CORPO],
+  ]) {
+    const cx = Math.floor(px);
+    const cy = Math.floor(py);
+    if (!dentroDoMapa(cx, cy)) continue;
+    const hz = chaoSobElevacao(cx, cy, elev + 0.35);
+    if (hz !== zPe + 1) continue;
+    if (elev < hz - 0.25 || elev > hz + 0.6) continue;
+    const dot = (cx + 0.5 - corpo.x) * vx + (cy + 0.5 - corpo.y) * vy;
+    if (dot < melhorDot) continue;
+    melhorDot = dot;
+    melhor = { cx, cy, hz };
+  }
+  if (!melhor || melhorDot < 0) return false;
+  const m = raio + 0.04;
+  const x0 = corpo.x;
+  const y0 = corpo.y;
+  if (corpo.x < melhor.cx + m) corpo.x = melhor.cx + m;
+  else if (corpo.x > melhor.cx + 1 - m) corpo.x = melhor.cx + 1 - m;
+  if (corpo.y < melhor.cy + m) corpo.y = melhor.cy + m;
+  else if (corpo.y > melhor.cy + 1 - m) corpo.y = melhor.cy + 1 - m;
+  if (corpo.x === x0 && corpo.y === y0) return false;
+  if (elev < melhor.hz) corpo.elevacao = melhor.hz;
+  return true;
+}
+
+/**
  * Só resolve penetração em sólido.
  * Não empurra piso alto genérico aqui — isso impede pular pro degrau +1.
  * O push de beirada fica no walk-off (`empurrarForaDePisoAlto`).
  */
 export function liberarCorpoAereo(corpo) {
+  if (montarDegrauNoAr(corpo)) return;
   if (cantoPenetraSolido(corpo)) empurrarForaDeCliff(corpo);
 }
 

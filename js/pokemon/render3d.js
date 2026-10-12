@@ -4,7 +4,7 @@ import { criarSombraContato3d } from "../render/3d/sombraContato3d.js";
 import { obterBola } from "./captura.js";
 import { projeteisVivos } from "./combate/projeteis.js";
 import { dropsNoChao } from "./drops.js";
-import { blitQuadro, quadroDe, garantirAtlas } from "./sprites.js";
+import { blitQuadro, quadroDe, garantirAtlas, direcao8Camera } from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 
 const PX_MUNDO = 1.2 / 32;
@@ -145,7 +145,7 @@ function pegarLivre() {
   return null;
 }
 
-export function atualizarPokemon3d() {
+export function atualizarPokemon3d(yawCam = 0) {
   if (!cena || !pokemonLigado()) return;
   const lista = atoresVisiveis();
   const vistos = new Set();
@@ -164,9 +164,16 @@ export function atualizarPokemon3d() {
     const elev = (ator.elevacao ?? ator.z ?? 0) + (ator.hopLift || 0);
     slot.grupo.position.set(ator.x, elev * ALTURA_BLOCO, ator.y);
     const pack = garantirAtlas(ator.especie.dex, ator.shiny);
+    const visual = ator.visual;
+    const dirMundo = visual?.dir;
+    if (visual) {
+      const rel = direcao8Camera(ator.dirX || 0, ator.dirY || 0, yawCam);
+      if (rel != null) visual.dir = rel;
+    }
     const fr = quadroDe(ator, pack);
     if (fr && pack.img && pack.estado === "pronto") pintar(slot, ator, fr, pack);
     else fallback(slot, ator);
+    if (visual && dirMundo != null) visual.dir = dirMundo;
     slot.sombra.atualizar(
       { x: ator.x, y: ator.y, z: ator.z, noChao: true, elevacao: ator.z },
       elev,

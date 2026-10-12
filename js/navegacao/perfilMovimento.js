@@ -20,6 +20,21 @@ export const PERFIL_COMPANHEIRO = Object.freeze({
   quedaMax: 2,
 });
 
+/** Pokémon no chão: caminha, contorna base e pula um bloco. */
+export const PERFIL_A_PE = Object.freeze({
+  id: "a-pe",
+  podePular: true,
+  podeEscalar: false,
+  podePlanar: false,
+  podeCorrer: true,
+  podeVoar: false,
+  podeVadear: true,
+  podeNadar: false,
+  podeCachoeira: false,
+  quedaMaxAndar: 1,
+  quedaMax: 1,
+});
+
 /** Exemplo futuro: NPC que planeja rotas de escalada. */
 export const PERFIL_ESCALADOR = Object.freeze({
   id: "escalador",

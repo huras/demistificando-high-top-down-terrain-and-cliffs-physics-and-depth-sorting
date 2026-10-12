@@ -1,7 +1,9 @@
 import { POKEMON } from "../config.js";
+import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
+import { resetarNav } from "../navegacao/seguirCaminho.js";
+import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
-import { andar } from "./locomocao.js";
 
 const party = [];
 let deployado = 0;
@@ -80,7 +82,7 @@ export function itensBolsa() {
   return bolsa;
 }
 
-export function atualizarParty(corpo, dt, agora) {
+export function atualizarParty(corpo, dt, agora, perfil) {
   const mon = pokemonNoCampo();
   if (mon?.morto && mon.mortoAte > 0 && agora >= mon.mortoAte) {
     const z = corpo.elevacao ?? corpo.z ?? mon.z;
@@ -96,27 +98,12 @@ export function atualizarParty(corpo, dt, agora) {
     mon.elevacao = z;
     mon._colocado = true;
   }
-  const dx = corpo.dirX || 0;
-  const dy = corpo.dirY || 1;
-  const len = Math.hypot(dx, dy) || 1;
-  const metaX = corpo.x - (dx / len) * 1.25;
-  const metaY = corpo.y - (dy / len) * 1.25;
-  const dist = Math.hypot(metaX - mon.x, metaY - mon.y);
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;
-  if (dist > 7) {
-    mon.x = metaX;
-    mon.y = metaY;
-    mon.z = z;
-    mon.elevacao = z;
-    mon.andando = false;
-    return;
+  const usar = perfil || PERFIL_COMPANHEIRO;
+  if (mon.perfil !== usar) {
+    mon.perfil = usar;
+    resetarNav(mon);
   }
-  if (dist > 0.85) {
-    const vel = dist > 3 ? POKEMON.VEL_AGRO * 1.15 : POKEMON.VEL_ROAM * 2.2;
-    andar(mon, metaX - mon.x, metaY - mon.y, vel, dt);
-  } else {
-    mon.andando = false;
-    mon.dirX = dx / len;
-    mon.dirY = dy / len;
-  }
+  garantirCorpoLocomocao(mon, usar);
+  atualizarAgente(mon, corpo, dt);
 }

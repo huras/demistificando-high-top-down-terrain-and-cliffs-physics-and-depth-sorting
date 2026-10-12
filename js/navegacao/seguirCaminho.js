@@ -89,6 +89,30 @@ function perseguirLiderAlto(agente, lider, liderZ, dist, nav) {
   const dyL = lider.y - agente.y;
   const dL = Math.hypot(dxL, dyL) || 1;
 
+  // Degrau de 1 bloco é pulo. Escalar essa face gruda e recomeça no mesmo lugar.
+  if (
+    perfil.podePular &&
+    liderZ >= elevAg + 0.5 &&
+    liderZ <= elevAg + 1.05
+  ) {
+    nav.path = null;
+    nav.climbAlvo = null;
+    nav.vooAlvo = null;
+    nav.planarAlvo = null;
+    nav.puloAlvo = { x: lider.x, y: lider.y, z: liderZ };
+    nav.estado = "seguindo";
+    return {
+      ix: dxL / dL,
+      iy: dyL / dL,
+      querPulo: true,
+      querPlanar: false,
+      querEscalar: false,
+      querVoar: false,
+      soltarAsa: false,
+      soltarParede: false,
+    };
+  }
+
   if (perfil.podeEscalar || perfil.podeCachoeira) {
     const face = encontrarFacePerto(agente.x, agente.y, elevAg);
     const queda = !!face?.cachoeira;

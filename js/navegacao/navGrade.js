@@ -145,11 +145,14 @@ export function obterNavGrade(perfil, ax = null, ay = null, gx = null, gy = null
   const dist = Math.hypot(gCx - aCx, gCy - aCy);
   const raio = Math.min(48, Math.max(NAV_RAIO, Math.ceil(dist * 0.5) + 12));
   const box = limitesGrade(midX, midY, raio);
-  if (
-    trabalhoNav &&
-    trabalhoNav.perfilId === perfil.id &&
-    caixaCobre(trabalhoNav, aCx, aCy, gCx, gCy)
-  ) {
+  if (trabalhoNav) {
+    if (
+      trabalhoNav.perfilId === perfil.id &&
+      caixaCobre(trabalhoNav, aCx, aCy, gCx, gCy)
+    ) {
+      return null;
+    }
+    // Uma grade por vez. Descartar a que está no meio reinicia o pulo para sempre.
     return null;
   }
 

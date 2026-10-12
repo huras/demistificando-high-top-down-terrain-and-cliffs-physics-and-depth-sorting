@@ -1,12 +1,12 @@
 import { POKEMON } from "../config.js";
+import { alturaSobPes } from "../fisica/colisao.js";
+import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
+import { soltarEscalada } from "../fisica/escalada.js";
+import { cancelarPath } from "../navegacao/filaPath.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
-import { cancelarPath, obterResultadoPath, solicitarPath } from "../navegacao/filaPath.js";
-import { TIPO_WALK } from "../navegacao/navGrade.js";
+import { garantirNav } from "../navegacao/seguirCaminho.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
-import { andar } from "./locomocao.js";
 import { velocidadeDe } from "./ator.js";
-
-let donoPath = null;
 
 function dist2(a, b) {
   const dx = a.x - b.x;
@@ -22,19 +22,47 @@ function noTerritorio(ator, x, y) {
 }
 
 function escolherMeta(ator) {
-  for (let i = 0; i < 6; i++) {
+  const z = Math.round(ator.z ?? ator.elevacao ?? 1);
+  let reserva = null;
+  for (let i = 0; i < 8; i++) {
     const ang = Math.random() * Math.PI * 2;
     const raio = 2 + Math.random() * (ator.raioTerritorio - 2);
     const x = ator.casaX + Math.cos(ang) * raio;
     const y = ator.casaY + Math.sin(ang) * raio;
-    if (noTerritorio(ator, x, y)) {
+    if (!noTerritorio(ator, x, y)) continue;
+    const hz = alturaSobPes(x, y, z + 1.2);
+    if (hz === z) {
       ator.metaX = x;
       ator.metaY = y;
       return;
     }
+    if (reserva == null && (hz === z + 1 || hz === z - 1)) reserva = { x, y };
   }
-  ator.metaX = ator.casaX;
-  ator.metaY = ator.casaY;
+  const meta = reserva || { x: ator.casaX, y: ator.casaY };
+  ator.metaX = meta.x;
+  ator.metaY = meta.y;
+}
+
+function marcarAncora(ator) {
+  ator._ancoraT = 0;
+  ator._ax = ator.x;
+  ator._ay = ator.y;
+  ator._az = ator.z ?? ator.elevacao ?? 0;
+  ator._ae = ator.elevacao ?? ator.z ?? 0;
+}
+
+function desistirMeta(ator) {
+  if (ator.escalando) soltarEscalada(ator, { impulso: false, pousarBase: true });
+  cancelarPath(ator.id);
+  const nav = garantirNav(ator);
+  nav.estado = "idle";
+  nav.path = null;
+  nav.climbAlvo = null;
+  ator.roam = "waiting";
+  ator.espera = 0.35;
+  ator.andando = false;
+  if (ator.noChao && !ator.pulando) ator.acao = "parado";
+  marcarAncora(ator);
 }
 
 function entrarAgro(ator, alvo) {
@@ -70,50 +98,19 @@ function soltarAgro(ator, alvo) {
   return dist2(ator, alvo) > POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA;
 }
 
-function seguirCaminho(ator, dt) {
-  const res = obterResultadoPath(ator.id);
-  const cells = res?.estado === "pronto" ? res.path?.cells : null;
-  if (!cells?.length) return false;
-  if (ator.navVersao !== res.versao && res.versao != null) {
-    ator.navIdx = 0;
-    ator.navVersao = res.versao;
-  }
-  while (ator.navIdx < cells.length) {
-    const c = cells[ator.navIdx];
-    const dx = c.cx + 0.5 - ator.x;
-    const dy = c.cy + 0.5 - ator.y;
-    if (dx * dx + dy * dy < 0.45) {
-      ator.navIdx++;
-      continue;
-    }
-    if ((c.tipo | 0) !== TIPO_WALK && ator.navIdx > 0) return false;
-    const dz = (c.z || ator.z) - ator.z;
-    if (Math.abs(dz) > 1.2) return false;
-    andar(ator, dx, dy, velocidadeDe(ator, true), dt);
-    return true;
-  }
-  return false;
-}
-
-function pedirCaminho(ator, alvo) {
-  if (donoPath && donoPath !== ator.id) {
-    const outro = obterResultadoPath(donoPath);
-    if (outro && outro.estado !== "pronto") return;
-  }
-  donoPath = ator.id;
-  ator.navIdx = 0;
-  ator.navVersao++;
-  solicitarPath(
-    ator.id,
-    PERFIL_COMPANHEIRO,
-    ator.x,
-    ator.y,
-    alvo.x,
-    alvo.y,
-    ator.navVersao,
-    ator.elevacao,
-    alvo.z ?? alvo.elevacao ?? null,
+/** Mesmo seguidor do companheiro: pula, escala e não teleporta. */
+export function irPara(ator, gx, gy, gz, vel, dt) {
+  if (!ator.perfil?.podeEscalar) ator.perfil = PERFIL_COMPANHEIRO;
+  garantirCorpoLocomocao(ator, ator.perfil);
+  const zBase = ator.elevacao ?? ator.z ?? 0;
+  const zAlvo = gz != null && gz > 0 ? gz : alturaSobPes(gx, gy, zBase + 12);
+  atualizarAgente(
+    ator,
+    { x: gx, y: gy, z: zAlvo > 0 ? zAlvo : zBase, elevacao: zAlvo > 0 ? zAlvo : zBase },
+    dt,
+    vel,
   );
+  return !!(ator.andando || ator.pulando || ator.escalando || ator.voando || ator.planando || ator.mantle);
 }
 
 function vagar(ator, dt) {
@@ -123,45 +120,43 @@ function vagar(ator, dt) {
     if (ator.espera <= 0) {
       escolherMeta(ator);
       ator.roam = "moving";
+      marcarAncora(ator);
     }
     return;
   }
   const dx = ator.metaX - ator.x;
   const dy = ator.metaY - ator.y;
   if (!noTerritorio(ator, ator.metaX, ator.metaY)) escolherMeta(ator);
-  if (dx * dx + dy * dy < 1) {
+  if (dx * dx + dy * dy < 1 && ator.noChao && !ator.pulando && !ator.escalando) {
     ator.roam = "waiting";
     ator.espera = POKEMON.ESPERA_MIN + Math.random() * (POKEMON.ESPERA_MAX - POKEMON.ESPERA_MIN);
     ator.andando = false;
+    ator.acao = "parado";
     return;
   }
-  const andou = andar(ator, dx, dy, velocidadeDe(ator, false), dt);
-  if (!andou) {
-    ator.roam = "waiting";
-    ator.espera = 0.6;
+  if (ator._ancoraT == null) marcarAncora(ator);
+  irPara(ator, ator.metaX, ator.metaY, null, velocidadeDe(ator, false), dt);
+  const elev = ator.elevacao ?? ator.z ?? 0;
+  const progXY = Math.hypot(ator.x - ator._ax, ator.y - ator._ay);
+  const progZ = Math.abs((ator.z ?? 0) - ator._az);
+  const subindoParede = ator.escalando && elev - ator._ae > 0.3;
+  if (progXY > 0.45 || progZ >= 0.9 || subindoParede) {
+    marcarAncora(ator);
+    return;
   }
+  ator._ancoraT += dt;
+  if (ator._ancoraT > 1.3) desistirMeta(ator);
 }
 
 function perseguir(ator, alvo, dt) {
-  ator.replanejar -= dt;
-  const moved = Math.hypot(ator.x - ator.ultimoX, ator.y - ator.ultimoY);
-  if (moved < 0.15) ator.presoT += dt;
-  else ator.presoT = 0;
-  ator.ultimoX = ator.x;
-  ator.ultimoY = ator.y;
-
-  const dx = alvo.x - ator.x;
-  const dy = alvo.y - ator.y;
-  const alvoAndou =
-    ator._alvoX != null && Math.hypot(alvo.x - ator._alvoX, alvo.y - ator._alvoY) > 2;
-  if (ator.replanejar <= 0 || alvoAndou) {
-    ator.replanejar = 0.3;
-    ator._alvoX = alvo.x;
-    ator._alvoY = alvo.y;
-    if (ator.presoT > 0.45) pedirCaminho(ator, alvo);
-  }
-  if (ator.presoT > 0.45 && seguirCaminho(ator, dt)) return;
-  andar(ator, dx, dy, velocidadeDe(ator, true), dt);
+  irPara(
+    ator,
+    alvo.x,
+    alvo.y,
+    alvo.z ?? alvo.elevacao,
+    velocidadeDe(ator, true),
+    dt,
+  );
 }
 
 function atualizarUm(ator, party, jogador, dt) {
@@ -203,7 +198,9 @@ function atualizarUm(ator, party, jogador, dt) {
         ator.roam = "waiting";
         ator.espera = 0.4;
         cancelarPath(ator.id);
-        if (donoPath === ator.id) donoPath = null;
+        const nav = garantirNav(ator);
+        nav.estado = "idle";
+        nav.path = null;
       }
       ator.andando = false;
       return;
@@ -232,7 +229,7 @@ function atualizarUm(ator, party, jogador, dt) {
     ator.alvo = alvo;
     const d = Math.sqrt(melhor);
     if (d > 1.15) {
-      const andou = andar(ator, alvo.x - ator.x, alvo.y - ator.y, velocidadeDe(ator, true), dt);
+      const andou = irPara(ator, alvo.x, alvo.y, alvo.z ?? alvo.elevacao, velocidadeDe(ator, true), dt);
       ator.presoT = andou ? 0 : ator.presoT + dt;
       if (ator.presoT > 0.75) {
         ator._ignora = alvo.id;

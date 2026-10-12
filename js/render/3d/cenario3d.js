@@ -452,7 +452,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     lift: Math.max(0, elev - (corpo.z ?? 0)),
   });
 
-  atualizarPokemon3d();
+  atualizarPokemon3d(yaw);
   atualizarRealceCena();
   estado.renderer.render(estado.scene, camRender);
   return estado;
