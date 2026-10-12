@@ -90,6 +90,10 @@ export const ASA_DELTA_LIFT_MIN = 0.12;
 export const ASA_DELTA_VEL_MUL = 1.2;
 export const ASA_DELTA_ACEL_AR = 22;
 export const ASA_DELTA_ATRITO_AR = 0.5;
+/** Shift no planar: velocidade horizontal × isto. */
+export const ASA_DELTA_CORRIDA_MUL = 3;
+/** Ctrl esquerdo no planar: descida × isto. */
+export const ASA_DELTA_DESCIDA_CTRL_MUL = 3;
 
 /** Escalada grudada (BOTW) — células/s na face. */
 export const ESCALADA_VEL = 1.85;
@@ -247,7 +251,9 @@ export const ROLE_OUT_SE_UNDER = 17;
 /** @deprecated */
 export const ROLE_CLIFF_CENTER = ROLE_EDGE_S;
 
-/** Voxel / mundo infinito. */
+/** Voxel / mundo infinito. O patch demo só entra com ?demo=1. */
+export const USAR_PATCH_DEMO =
+  typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
 export const CHUNK_XZ = 16;
 export const CHUNK_Y = 64;
 /** Disco de chunks em volta do jogador. 5 ≈ 80 blocos. */

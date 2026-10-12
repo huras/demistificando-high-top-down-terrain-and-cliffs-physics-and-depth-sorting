@@ -49,7 +49,8 @@
           >
             <ul class="ajuda-atalhos__lista">
               <li><span class="ajuda-atalhos__teclas"><kbd>WASD</kbd></span> andar / strafe (3D)</li>
-              <li><span class="ajuda-atalhos__teclas"><kbd>Shift</kbd></span> sprint · no voo = desce</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>Shift</kbd></span> sprint · no planar = 3× velocidade · no voo = desce</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>Ctrl</kbd> esquerdo</span> no planar = desce mais rápido</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>Space</kbd></span> pular · 2× asa-delta · no voo = sobe · no nado = braçada</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>E</kbd></span> grudar / soltar face · sobe a cachoeira</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>F</kbd></span> fly on/off</li>
@@ -79,6 +80,10 @@
         <div class="palco__viewport">
           <canvas id="canvas-3d" class="palco__camada palco__camada--ativa" width="1280" height="720"></canvas>
           <canvas id="canvas" class="palco__camada palco__camada--hud" width="1280" height="720"></canvas>
+          <div class="mapa-kanto" id="mapa-kanto">
+            <canvas id="mapa-kanto-tela" width="128" height="128" aria-label="Mapa de Kanto"></canvas>
+            <p class="mapa-kanto__nome" id="mapa-kanto-nome">Pallet</p>
+          </div>
           <div class="cena-ui" id="cena-ui">
             <section class="cena-painel cena-painel--esq" aria-label="Hierarquia">
               <header class="cena-painel__topo"><h2>Hierarquia</h2></header>
@@ -345,7 +350,7 @@
               <button type="button" class="info__btn" aria-label="Regras de colisão" aria-expanded="false">?</button>
               <span class="info__balao" role="tooltip" hidden>
                 <ul>
-                  <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint (no voo = desce)</li>
+                  <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint (no planar = 3×; no voo = desce); <kbd>Ctrl</kbd> esquerdo — desce no planar</li>
                   <li><kbd>E</kbd> — gruda / solta a face (2D e 3D)</li>
                   <li><kbd>F</kbd> — fly on/off; <kbd>Space</kbd> sobe no voo</li>
                   <li>3D: click trava o mouse e gira ao redor do personagem (Esc libera)</li>

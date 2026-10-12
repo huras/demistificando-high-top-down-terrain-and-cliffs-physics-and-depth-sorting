@@ -7,7 +7,8 @@ import {
   RAIO_SUAVE_MAX,
   RAIO_SUAVE_MIN,
 } from "../../config.js";
-import { alturaDoRelevo, amostrarRegiao, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
+import { alturaDoRelevo, amostrarRegiao, kitDoRelevo, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
+import { dentroDoKanto } from "../../mundo/regiao/amostraKanto.js";
 import { cruSplat, urlPele } from "../../mundo/bioma/detalhe.js";
 import { obterKits } from "../../mundo/bioma/kits.js";
 import { imagemPele } from "./peleSplat.js";
@@ -75,6 +76,10 @@ function celulaDe(kit) {
  * o peso é o do kit que vem primeiro no nome, para interpolar sem cruzar índice.
  */
 function parNoPonto(wx, wy) {
+  if (dentroDoKanto(wx, wy)) {
+    const kit = kitDoRelevo(wx, wy) || "_";
+    return { a: kit, b: kit, peso: 1 };
+  }
   const reg = amostrarRegiao(wx, wy);
   let a = reg?.a?.kit || "_";
   let b = reg?.b?.kit || a;

@@ -7,6 +7,7 @@ import {
   RAIO_SUAVE_MAX,
   RAIO_SUAVE_MIN,
   ZOOM_PASSO,
+  USAR_PATCH_DEMO,
 } from "./config.js";
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
@@ -28,7 +29,8 @@ import { carregarCatalogo } from "./mundo/bioma/catalogo.js";
 import { carregarDetalhe } from "./mundo/bioma/detalhe.js";
 import { carregarKits } from "./mundo/bioma/kits.js";
 import { gravarRecorteAoRedor } from "./diagnostico/recorteFaces.js";
-import { SPAWN } from "./mundo/mapaDemo.js";
+import { SPAWN as SPAWN_DEMO } from "./mundo/mapaDemo.js";
+import { SPAWN_PALLET } from "./mundo/regiao/spawnKanto.js";
 import {
   atualizarStreaming,
   definirRaioStream,
@@ -41,6 +43,7 @@ import { carregarVisuaisKits } from "./render/visuaisKit.js";
 import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
 import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
+import { ligarMapaKanto, atualizarMapaKanto } from "./ui/mapaKanto.js";
 import { ligarDicasPainel } from "./ui/dicasPainel.js";
 import { ligarPainelCeu, sincronizarPainelCeu } from "./ui/painelCeu.js";
 import { ligarPainelCamera, sincronizarPainelCamera } from "./ui/painelCamera.js";
@@ -69,6 +72,7 @@ import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.j
 import { carregarDados } from "./pokemon/dados.js";
 import { ligarPokemon, tickPokemon } from "./pokemon/sistema.js";
 
+const SPAWN = USAR_PATCH_DEMO ? SPAWN_DEMO : SPAWN_PALLET;
 const canvas = document.getElementById("canvas");
 const canvas3d = document.getElementById("canvas-3d");
 const viewport = document.querySelector(".palco__viewport");
@@ -137,6 +141,8 @@ async function iniciar() {
   ligarPainelCamera();
   ligarDicasPainel();
   ligarAjudaAtalhos();
+  ligarMapaKanto();
+  atualizarMapaKanto(SPAWN.x, SPAWN.y);
   ligarHierarquiaCena();
   ligarInspetorCena();
   try {
@@ -386,6 +392,7 @@ function loop(agora) {
   }
 
   atualizarStreaming(corpo.x, corpo.y);
+  atualizarMapaKanto(corpo.x, corpo.y);
   atualizarMovimento(corpo, dt);
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);

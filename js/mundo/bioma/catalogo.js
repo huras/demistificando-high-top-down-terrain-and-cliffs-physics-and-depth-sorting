@@ -1,4 +1,5 @@
 import { SEED_MUNDO } from "../../config.js";
+import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { hash2 } from "../voxel/ruido.js";
 import { avaliarGrafo } from "./grafo.js";
@@ -121,6 +122,7 @@ function alturaContinua(bioma, wx, wy, seed, catalogo) {
 
 /** Altura em blocos. Na faixa da borda, A e B se misturam; no miolo fica o degrau do bioma. */
 export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
+  if (dentroDoKanto(wx, wy)) return amostraKanto(wx, wy).h;
   const reg = amostrarRegiao(wx, wy, catalogo, seed);
   if (!reg) return 4;
   const nivel = nivelMarBlocos(catalogo);
@@ -134,6 +136,7 @@ export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
 }
 
 export function biomaDominante(wx, wy, catalogo = dados, seed = semente) {
+  if (dentroDoKanto(wx, wy)) return amostraKanto(wx, wy).bioma;
   const reg = amostrarRegiao(wx, wy, catalogo, seed);
   if (!reg) return null;
   return reg.a;
@@ -157,6 +160,7 @@ export function superficieDoRelevo(wx, wy, catalogo = dados, seed = semente) {
  * @returns {{ classe: string, sprite: string } | null}
  */
 export function plantaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
+  if (dentroDoKanto(wx, wy)) return amostraKanto(wx, wy).planta;
   const b = biomaDominante(wx | 0, wy | 0, catalogo, seed);
   if (!b) return null;
   return plantaNoBioma(b, wx, wy);
