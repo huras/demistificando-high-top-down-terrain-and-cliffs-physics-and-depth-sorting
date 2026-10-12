@@ -6,7 +6,8 @@ let ligado = false;
 let acumuladoX = 0;
 let acumuladoY = 0;
 let direito = false;
-let esquerdoAgora = false;
+let esquerdo = false;
+let soltouEsquerdo = false;
 let elementoAlvo = null;
 
 function aoMover(ev) {
@@ -18,16 +19,22 @@ function aoMover(ev) {
 function aoBotaoBaixo(ev) {
   if (document.pointerLockElement !== elementoAlvo) return;
   if (ev.button === 2) direito = true;
-  if (ev.button === 0) esquerdoAgora = true;
+  if (ev.button === 0) esquerdo = true;
 }
 
 function aoBotaoCima(ev) {
   if (ev.button === 2) direito = false;
+  if (ev.button === 0) {
+    if (esquerdo) soltouEsquerdo = true;
+    esquerdo = false;
+  }
 }
 
 function aoTravaMudou() {
   if (document.pointerLockElement !== elementoAlvo) {
     direito = false;
+    esquerdo = false;
+    soltouEsquerdo = false;
     acumuladoX = 0;
     acumuladoY = 0;
   }
@@ -70,7 +77,8 @@ export function desligarPonteiro3d() {
   acumuladoX = 0;
   acumuladoY = 0;
   direito = false;
-  esquerdoAgora = false;
+  esquerdo = false;
+  soltouEsquerdo = false;
 }
 
 /** Consome deltas do frame (pixels). */
@@ -91,9 +99,14 @@ export function botaoDireitoSegurado() {
   return direito && ponteiroTravado();
 }
 
-/** True uma vez por clique esquerdo com o ponteiro travado. */
-export function consumirCliqueEsquerdo() {
-  const disparo = esquerdoAgora && ponteiroTravado();
-  esquerdoAgora = false;
-  return disparo;
+/** Botão esquerdo segurado, só com o mouse travado no viewport. */
+export function botaoEsquerdoSegurado() {
+  return esquerdo && ponteiroTravado();
+}
+
+/** True uma vez ao soltar o esquerdo com o ponteiro travado. */
+export function consumirSolturaEsquerda() {
+  const soltou = soltouEsquerdo && ponteiroTravado();
+  soltouEsquerdo = false;
+  return soltou;
 }

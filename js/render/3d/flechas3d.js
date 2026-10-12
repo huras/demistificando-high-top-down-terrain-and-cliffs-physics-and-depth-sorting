@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import {
   ALTURA_BLOCO,
+  FLECHA_CARGA_TEMPO,
   FLECHA_GRAVIDADE,
   FLECHA_MAX,
   FLECHA_VEL,
+  FLECHA_VEL_MIN,
   FLECHA_VIDA,
 } from "../../config.js";
 import { raycastVoxel } from "../../mundo/voxel/alvoBloco.js";
@@ -20,19 +22,21 @@ export function criarFlechas3d() {
 
   const geo = new THREE.CylinderGeometry(0.018, 0.012, 0.72, 5);
   geo.rotateX(Math.PI / 2);
+  geo.rotateY(Math.PI);
   const mat = new THREE.MeshStandardMaterial({
     color: 0xd7c4a3,
     roughness: 0.55,
     metalness: 0.05,
   });
 
-  const arco = criarArco();
+  const arco = criarArco(mat);
   grupo.add(arco.grupo);
 
   /** @type {{mesh: THREE.Mesh, vel: THREE.Vector3, vida: number, presa: boolean}[]} */
   const ativas = [];
+  let carga = 0;
 
-  function disparar(camera3d, corpo) {
+  function disparar(camera3d, corpo, forca = 1) {
     if (!camera3d || camera3d.modo !== "mira") return;
     const origem = poseArco(corpo, camera3d);
     const mesh = obterMesh();
@@ -43,25 +47,44 @@ export function criarFlechas3d() {
     if (_dir.lengthSq() < 1e-6) _dir.set(0, 0, -1);
     _dir.normalize();
 
+    const t = Math.min(1, Math.max(0, forca));
+    const velocidade = FLECHA_VEL_MIN + (FLECHA_VEL - FLECHA_VEL_MIN) * t;
     const vel = new THREE.Vector3(
-      _dir.x * FLECHA_VEL + (corpo.vx || 0) * 0.35,
-      _dir.y * FLECHA_VEL,
-      _dir.z * FLECHA_VEL + (corpo.vy || 0) * 0.35,
+      _dir.x * velocidade + (corpo.vx || 0) * 0.35,
+      _dir.y * velocidade,
+      _dir.z * velocidade + (corpo.vy || 0) * 0.35,
     );
 
     mesh.lookAt(mesh.position.x + vel.x, mesh.position.y + vel.y, mesh.position.z + vel.z);
     ativas.push({ mesh, vel, vida: FLECHA_VIDA, presa: false });
   }
 
-  function atualizar(dt, corpo, camera3d) {
+  function atualizar(dt, corpo, camera3d, entrada = {}) {
     const mirando = !!camera3d && (camera3d.modo === "mira" || camera3d.blend > 0.25);
+    const naMira = !!camera3d && camera3d.modo === "mira";
+
+    if (entrada.soltou && naMira) {
+      disparar(camera3d, corpo, Math.max(carga, 0.18));
+      carga = 0;
+    } else if (entrada.segurando && naMira) {
+      carga = Math.min(1, carga + dt / FLECHA_CARGA_TEMPO);
+    } else if (!entrada.segurando) {
+      carga = 0;
+    }
+
     if (corpo && camera3d && mirando) {
       const pose = poseArco(corpo, camera3d);
       arco.grupo.visible = true;
       arco.grupo.position.set(pose.x, pose.y, pose.z);
-      arco.grupo.rotation.set(camera3d.pitchMira * 0.85, camera3d.yaw, 0);
+      _look.set(pose.x, pose.y, pose.z).add(camera3d.direcaoTiro);
+      arco.grupo.lookAt(_look);
+      const puxar = (naMira ? carga : 0) * 0.36;
+      arco.corda.position.z = -puxar;
+      arco.nock.position.z = -puxar + 0.36;
+      arco.nock.visible = naMira;
     } else {
       arco.grupo.visible = false;
+      carga = 0;
     }
 
     for (let i = ativas.length - 1; i >= 0; i--) {
@@ -114,6 +137,7 @@ export function criarFlechas3d() {
     grupo,
     disparar,
     atualizar,
+    carga: () => carga,
     liberar() {
       geo.dispose();
       mat.dispose();
@@ -155,24 +179,36 @@ function poseArco(corpo, camera3d) {
   };
 }
 
-function criarArco() {
+function criarArco(matFlecha) {
   const grupo = new THREE.Group();
   grupo.visible = false;
+  grupo.rotation.order = "XYZ";
   const madeira = new THREE.MeshStandardMaterial({
     color: 0x8a5a32,
     roughness: 0.72,
   });
   const cordaMat = new THREE.MeshBasicMaterial({ color: 0xf3efe4 });
-  const arco = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.028, 6, 20, Math.PI), madeira);
-  arco.rotation.y = Math.PI / 2;
+  const geoArco = new THREE.TorusGeometry(0.46, 0.028, 6, 20, Math.PI);
+  geoArco.rotateZ(-Math.PI / 2);
+  geoArco.rotateY(-Math.PI / 2);
+  const arco = new THREE.Mesh(geoArco, madeira);
   grupo.add(arco);
   const corda = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.9, 4), cordaMat);
   grupo.add(corda);
+  const geoNock = new THREE.CylinderGeometry(0.012, 0.02, 0.72, 5);
+  geoNock.rotateX(Math.PI / 2);
+  const nock = new THREE.Mesh(geoNock, matFlecha);
+  nock.castShadow = true;
+  nock.visible = false;
+  grupo.add(nock);
   return {
     grupo,
+    corda,
+    nock,
     liberar() {
       arco.geometry.dispose();
       corda.geometry.dispose();
+      geoNock.dispose();
       madeira.dispose();
       cordaMat.dispose();
     },

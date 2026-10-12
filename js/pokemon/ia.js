@@ -3,7 +3,7 @@ import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import { cancelarPath, obterResultadoPath, solicitarPath } from "../navegacao/filaPath.js";
 import { TIPO_WALK } from "../navegacao/navGrade.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
-import { andar, separar } from "./locomocao.js";
+import { andar } from "./locomocao.js";
 import { velocidadeDe } from "./ator.js";
 
 let donoPath = null;
@@ -256,12 +256,4 @@ export function atualizarIa(selvagens, mon, jogador, dt) {
   const party = { mon, selvagens };
   for (let i = 0; i < selvagens.length; i++) atualizarUm(selvagens[i], party, jogador, dt);
   if (mon) atualizarUm(mon, party, jogador, dt);
-  const todos = mon ? selvagens.concat(mon) : selvagens;
-  for (let i = 0; i < todos.length; i++) {
-  if (todos[i].morto || todos[i].capturado) continue;
-  for (let j = i + 1; j < todos.length; j++) {
-    if (todos[j].morto || todos[j].capturado) continue;
-    separar(todos[i], todos[j], dt);
-  }
-  }
 }

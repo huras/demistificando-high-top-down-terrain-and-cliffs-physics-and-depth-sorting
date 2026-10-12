@@ -1,7 +1,7 @@
 /**
- * Peças locais 0..1, alocadas uma vez.
- * Cada triângulo: x,y,z, nx,ny,nz, oclusão.
- * y = 0 é o piso andável. A parede começa em -QUEDA_LABIO.
+ * Superfície da célula numa grade fixa.
+ * Os dois lados de uma aresta usam os mesmos parâmetros, então a solda fecha.
+ * y da quina sai só das quatro alturas que se encontram ali.
  */
 
 export const SUL = 1;
@@ -11,176 +11,103 @@ export const OESTE = 8;
 
 export const LABIO = 0.2;
 export const QUEDA_LABIO = 0.16;
+export const PASSOS = [0, LABIO, 1 - LABIO, 1];
 
 const OC_TOPO = 1;
 const OC_LABIO = 0.86;
-const OC_CANTO = 0.78;
 export const OC_PAREDE = 0.72;
 
-const PASSO = 7;
-
-function ponto(dest, p, nx, ny, nz, oc) {
-  dest.push(p[0], p[1], p[2], nx, ny, nz, oc);
+function yCanto(h, hX, hZ, hXZ) {
+  const desceX = hX < h;
+  const desceZ = hZ < h;
+  const contPeloX = hX === h && hXZ < hX;
+  const contPeloZ = hZ === h && hXZ < hZ;
+  if (desceX || desceZ || contPeloX || contPeloZ) return h - QUEDA_LABIO;
+  return h;
 }
 
-function soltar(dest, a, b, c, ox, oy, oz, oc) {
-  let nx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]);
-  let ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
-  let nz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
-  const len = Math.hypot(nx, ny, nz);
-  if (len < 1e-8) return;
-  if (nx * ox + ny * oy + nz * oz < 0) {
-    const troca = b;
-    b = c;
-    c = troca;
-    nx = -nx;
-    ny = -ny;
-    nz = -nz;
+function yMeio(h, hLado) {
+  return hLado < h ? h - QUEDA_LABIO : h;
+}
+
+/** Alturas absolutas da grade 4×4. viz é o 3×3 com o centro em [4]. */
+export function alturasGrade(viz) {
+  const h = viz[4];
+  const ys = new Float64Array(16);
+  const canto = [
+    yCanto(h, viz[3], viz[1], viz[0]),
+    yCanto(h, viz[5], viz[1], viz[2]),
+    yCanto(h, viz[3], viz[7], viz[6]),
+    yCanto(h, viz[5], viz[7], viz[8]),
+  ];
+  for (let iz = 0; iz < 4; iz++) {
+    for (let ix = 0; ix < 4; ix++) {
+      let y = h;
+      if (ix === 0 && iz === 0) y = canto[0];
+      else if (ix === 3 && iz === 0) y = canto[1];
+      else if (ix === 0 && iz === 3) y = canto[2];
+      else if (ix === 3 && iz === 3) y = canto[3];
+      else if (iz === 0) y = yMeio(h, viz[1]);
+      else if (iz === 3) y = yMeio(h, viz[7]);
+      else if (ix === 0) y = yMeio(h, viz[3]);
+      else if (ix === 3) y = yMeio(h, viz[5]);
+      ys[iz * 4 + ix] = y;
+    }
   }
-  nx /= len;
-  ny /= len;
-  nz /= len;
-  ponto(dest, a, nx, ny, nz, oc);
-  ponto(dest, b, nx, ny, nz, oc);
-  ponto(dest, c, nx, ny, nz, oc);
+  return ys;
 }
 
-function faixa(dest, a, b, c, d, ox, oy, oz, oc) {
-  soltar(dest, a, b, c, ox, oy, oz, oc);
-  soltar(dest, b, d, c, ox, oy, oz, oc);
+export function celulaPlana(viz) {
+  const h = viz[4];
+  const ys = alturasGrade(viz);
+  for (let i = 0; i < ys.length; i++) {
+    if (ys[i] !== h) return false;
+  }
+  return true;
 }
 
-function canto(dest, interno, p, q, extremo, ox, oy, oz, oc) {
-  soltar(dest, interno, p, extremo, ox, oy, oz, oc);
-  soltar(dest, interno, extremo, q, ox, oy, oz, oc);
+function ponto(ys, ix, iz) {
+  return { x: PASSOS[ix], y: ys[iz * 4 + ix], z: PASSOS[iz] };
 }
 
-function montar(mascara) {
-  const iS = mascara & SUL ? LABIO : 0;
-  const iN = mascara & NORTE ? LABIO : 0;
-  const iE = mascara & LESTE ? LABIO : 0;
-  const iW = mascara & OESTE ? LABIO : 0;
-  const q = QUEDA_LABIO;
+/**
+ * Quads da superfície. `topo` fica na textura do chão, `saia` na do penhasco.
+ * Cada quad: quatro pontos em ordem (x0,z0), (x0,z1), (x1,z0), (x1,z1).
+ */
+export function quadsDaCelula(viz) {
+  const h = viz[4];
+  const ys = alturasGrade(viz);
   const topo = [];
-  const labio = [];
-  const x0 = iW;
-  const z0 = iN;
-  const x1 = 1 - iE;
-  const z1 = 1 - iS;
-
-  if (x1 - x0 > 1e-4 && z1 - z0 > 1e-4) {
-    faixa(
-      topo,
-      [x0, 0, z0],
-      [x0, 0, z1],
-      [x1, 0, z0],
-      [x1, 0, z1],
-      0, 1, 0,
-      OC_TOPO,
-    );
+  const saia = [];
+  for (let iz = 0; iz < 3; iz++) {
+    for (let ix = 0; ix < 3; ix++) {
+      const q = [ponto(ys, ix, iz), ponto(ys, ix, iz + 1), ponto(ys, ix + 1, iz), ponto(ys, ix + 1, iz + 1)];
+      let baixo = false;
+      for (let i = 0; i < 4; i++) {
+        if (q[i].y < h - 1e-4) baixo = true;
+      }
+      (baixo ? saia : topo).push(q);
+    }
   }
-
-  if (iS && x1 - x0 > 1e-4) {
-    faixa(
-      labio,
-      [x0, 0, z1],
-      [x0, -q, 1],
-      [x1, 0, z1],
-      [x1, -q, 1],
-      0, 1, 1,
-      OC_LABIO,
-    );
-  }
-  if (iN && x1 - x0 > 1e-4) {
-    faixa(
-      labio,
-      [x1, 0, z0],
-      [x1, -q, 0],
-      [x0, 0, z0],
-      [x0, -q, 0],
-      0, 1, -1,
-      OC_LABIO,
-    );
-  }
-  if (iE && z1 - z0 > 1e-4) {
-    faixa(
-      labio,
-      [x1, 0, z0],
-      [1, -q, z0],
-      [x1, 0, z1],
-      [1, -q, z1],
-      1, 1, 0,
-      OC_LABIO,
-    );
-  }
-  if (iW && z1 - z0 > 1e-4) {
-    faixa(
-      labio,
-      [x0, 0, z1],
-      [0, -q, z1],
-      [x0, 0, z0],
-      [0, -q, z0],
-      -1, 1, 0,
-      OC_LABIO,
-    );
-  }
-
-  if (iS && iE) {
-    canto(
-      labio,
-      [x1, 0, z1],
-      [x1, -q, 1],
-      [1, -q, z1],
-      [1, -q, 1],
-      1, 1, 1,
-      OC_CANTO,
-    );
-  }
-  if (iS && iW) {
-    canto(
-      labio,
-      [x0, 0, z1],
-      [0, -q, z1],
-      [x0, -q, 1],
-      [0, -q, 1],
-      -1, 1, 1,
-      OC_CANTO,
-    );
-  }
-  if (iN && iE) {
-    canto(
-      labio,
-      [x1, 0, z0],
-      [1, -q, z0],
-      [x1, -q, 0],
-      [1, -q, 0],
-      1, 1, -1,
-      OC_CANTO,
-    );
-  }
-  if (iN && iW) {
-    canto(
-      labio,
-      [x0, 0, z0],
-      [x0, -q, 0],
-      [0, -q, z0],
-      [0, -q, 0],
-      -1, 1, -1,
-      OC_CANTO,
-    );
-  }
-
-  return {
-    x0,
-    z0,
-    x1,
-    z1,
-    topo: Float32Array.from(topo),
-    labio: Float32Array.from(labio),
-  };
+  return { topo, saia, h };
 }
 
-/** Índice = máscara dos 4 vizinhos mais baixos. */
-export const PECAS = Array.from({ length: 16 }, (_, mascara) => montar(mascara));
+const LADO = {
+  n: { ix: [0, 1, 2, 3], iz: [0, 0, 0, 0] },
+  s: { ix: [0, 1, 2, 3], iz: [3, 3, 3, 3] },
+  w: { ix: [0, 0, 0, 0], iz: [0, 1, 2, 3] },
+  e: { ix: [3, 3, 3, 3], iz: [0, 1, 2, 3] },
+};
 
-export const PASSO_VERTICE = PASSO;
+/** Quatro pontos da aresta, no sentido crescente de x (n/s) ou de z (w/e). */
+export function pontosLado(viz, lado) {
+  const ys = alturasGrade(viz);
+  const spec = LADO[lado];
+  const pts = [];
+  for (let i = 0; i < 4; i++) pts.push(ponto(ys, spec.ix[i], spec.iz[i]));
+  return pts;
+}
+
+export function oclusaoDe(y, h) {
+  return y < h - 1e-4 ? OC_LABIO : OC_TOPO;
+}

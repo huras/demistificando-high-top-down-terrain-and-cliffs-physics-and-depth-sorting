@@ -27,7 +27,8 @@ import { kitDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { urlPele } from "../../mundo/bioma/detalhe.js";
 import { aplicarPeleSplat } from "./peleSplat.js";
 import { pecasNoMundo, pesoSplat } from "./peleAutotile.js";
-import { carimbarBorda, carimbarPlano } from "./pecas/carimbar.js";
+import { PASSOS } from "./pecas/catalogo.js";
+import { carimbarBorda, carimbarPlano, planaNo } from "./pecas/carimbar.js";
 import { fundirChao } from "./pecas/fundir.js";
 import { alturaLocal, gradeDoChunk, mascaraLocal } from "./pecas/mascara.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
@@ -756,21 +757,86 @@ function pushQuadChao(lote, x0, y, z0, x1, z1, peca, splat) {
   );
 }
 
+function noPasso(t) {
+  const frac = t - Math.floor(t + 1e-4);
+  for (let k = 0; k < PASSOS.length; k++) {
+    if (Math.abs(frac - PASSOS[k]) < 1e-4) return true;
+  }
+  return Math.abs(frac) < 1e-4;
+}
+
+function amostrasGrade(a, b) {
+  if (!noPasso(a) || !noPasso(b)) return [a, b];
+  const pts = [a, b];
+  const i0 = Math.floor(a);
+  const i1 = Math.ceil(b);
+  for (let base = i0; base <= i1; base++) {
+    for (let k = 0; k < PASSOS.length; k++) {
+      const t = base + PASSOS[k];
+      if (t > a + 1e-4 && t < b - 1e-4) pts.push(t);
+    }
+  }
+  pts.sort((p, q) => p - q);
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    if (!out.length || pts[i] - out[out.length - 1] > 1e-4) out.push(pts[i]);
+  }
+  return out;
+}
+
+function subdividirChao(lote, wx, wy, y, x0, z0, x1, z1, peca) {
+  const xs = amostrasGrade(x0, x1);
+  const zs = amostrasGrade(z0, z1);
+  const largura = x1 - x0 || 1;
+  const altura = z1 - z0 || 1;
+  const mistura = (a, b, t) => a + (b - a) * t;
+  for (let iz = 0; iz < zs.length - 1; iz++) {
+    for (let ix = 0; ix < xs.length - 1; ix++) {
+      const xa = xs[ix];
+      const xb = xs[ix + 1];
+      const za = zs[iz];
+      const zb = zs[iz + 1];
+      const tx0 = (xa - x0) / largura;
+      const tx1 = (xb - x0) / largura;
+      const tz0 = (za - z0) / altura;
+      const tz1 = (zb - z0) / altura;
+      const bu0 = peca ? mistura(peca.bu0, peca.bu1, tx0) : xa;
+      const bu1 = peca ? mistura(peca.bu0, peca.bu1, tx1) : xb;
+      const bv0 = peca ? mistura(peca.bv1, peca.bv0, tz1) : 1 - zb;
+      const bv1 = peca ? mistura(peca.bv1, peca.bv0, tz0) : 1 - za;
+      pushQuadChao(
+        lote,
+        wx + xa,
+        y,
+        wy + za,
+        wx + xb,
+        wy + zb,
+        {
+          bu0,
+          bv0,
+          bu1,
+          bv1,
+          pu0: peca ? mistura(peca.pu0, peca.pu1, tx0) : 0,
+          pu1: peca ? mistura(peca.pu0, peca.pu1, tx1) : 0,
+          pv0: peca ? mistura(peca.pv1, peca.pv0, tz1) : 0,
+          pv1: peca ? mistura(peca.pv1, peca.pv0, tz0) : 0,
+        },
+        peca ? 1 : 0,
+      );
+    }
+  }
+}
+
 function emitirTopo(lote, wx, wy, y, x0, z0, x1, z1) {
   const pecas = pecasNoMundo(wx, wy);
   if (!pecas) {
-    pushQuadChao(lote, wx + x0, y, wy + z0, wx + x1, wy + z1, {
-      bu0: x0,
-      bv0: 1 - z1,
-      bu1: x1,
-      bv1: 1 - z0,
-    }, 0);
+    subdividirChao(lote, wx, wy, y, x0, z0, x1, z1, null);
     return;
   }
   for (let i = 0; i < pecas.length; i++) {
     const recorte = clipPeca(pecas[i], x0, z0, x1, z1);
     if (!recorte) continue;
-    pushQuadChao(lote, wx + recorte.x0, y, wy + recorte.z0, wx + recorte.x1, wy + recorte.z1, recorte, 1);
+    subdividirChao(lote, wx, wy, y, recorte.x0, recorte.z0, recorte.x1, recorte.z1, recorte);
   }
 }
 
@@ -1329,7 +1395,10 @@ function* construirGeosChunk(chunk) {
     if (!simplesCel[i] || mascaraCel[i] !== 0) continue;
     const lx = i % CHUNK_XZ;
     const ly = (i / CHUNK_XZ) | 0;
-    if (pesoSplat(baseX + lx, baseY + ly) === 1) continue;
+    const wx = baseX + lx;
+    const wy = baseY + ly;
+    if (pesoSplat(wx, wy) === 1) continue;
+    if (!planaNo(grade, lx, ly, wx, wy)) continue;
     fundivel[i] = 1;
   }
   const planos = fundirChao(CHUNK_XZ, fundivel, alturaCel, kitsCel);
@@ -1355,11 +1424,12 @@ function* construirGeosChunk(chunk) {
       const sacoTopo = sacoDe(sacosTopo, kit);
       const sacoParede = sacoDe(sacosParede, kit);
       const m = mascaraCel[i];
-      if (m === 0) {
+      const splat = pesoSplat(wx, wy) === 1;
+      const plana = m === 0 && planaNo(grade, lx, ly, wx, wy);
+      if (plana) {
         emitirTopo(sacoTopo.lote, wx, wy, y, 0, 0, 1, 1);
         continue;
       }
-      const splat = pesoSplat(wx, wy) === 1;
       const { cap, quedas: quedasBorda } = carimbarBorda(
         sacoTopo.lote,
         sacoParede.lote,
@@ -1571,14 +1641,18 @@ export function criarTerrenoMalha(atlas = null) {
     const chave = "parede:*";
     const pronto = materiaisKit.get(chave);
     if (pronto) return pronto.mat;
-    const mat = new THREE.MeshBasicMaterial({
+    const mat = new THREE.MeshStandardMaterial({
       map: texturas?.penhasco || texturas?.cliff || null,
       color: 0xffffff,
+      roughness: 0.92,
+      metalness: 0.02,
+      vertexColors: true,
       polygonOffset: true,
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
     });
     materiaisKit.set(chave, { mat, tex: null });
+    aplicarSombraNuvem(mat);
     return naFrenteDoSuave(mat);
   }
 

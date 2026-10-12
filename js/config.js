@@ -10,6 +10,11 @@ export const ESCALA = 2;
 export const EPS_SORT = 0.001;
 
 export const RAIO_CORPO = 0.28;
+/** Disco do Pokémon no chão. Soma com o do outro corpo. */
+export const RAIO_POKEMON = 0.34;
+/** Base do tronco e da pedra. A copa continua só visual. */
+export const RAIO_BASE_ARVORE = 0.36;
+export const RAIO_BASE_PEDRA = 0.44;
 /** Altura do corpo em células (pés → topo da cabeça) pra AABB voxel. */
 export const ALTURA_CORPO = 1.7;
 
@@ -165,8 +170,10 @@ export const CAMERA3D_COSTAS_SUAVIDADE = 3.2;
 /** Mistura perspectiva → ortográfica. Mais baixo = a mudança dura mais. */
 export const CAMERA3D_PROJECAO_SUAVIDADE = 4;
 
-/** Flecha da mira (unidades Three / s). */
+/** Flecha da mira (unidades Three / s). Toque curto sai fraco; a carga chega em FLECHA_VEL. */
 export const FLECHA_VEL = 18;
+export const FLECHA_VEL_MIN = 6;
+export const FLECHA_CARGA_TEMPO = 0.85;
 export const FLECHA_GRAVIDADE = 12;
 export const FLECHA_VIDA = 5;
 export const FLECHA_MAX = 16;

@@ -7,6 +7,7 @@ import {
 import { dentroDoMapa } from "../mundo/altura.js";
 import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { ehSolido } from "../mundo/voxel/tiposBloco.js";
+import { ocupado } from "./obstaculos.js";
 
 /**
  * Walk height (= face acima do sólido) sob elevRef na coluna.
@@ -90,18 +91,23 @@ export function podeEntrar(cx, cy, zAtual, modo = "andar", elevacao = zAtual) {
  */
 export function moverComColisao(corpo, dx, dy, modo = "andar") {
   let { x, y, z } = corpo;
-  const r = RAIO_CORPO;
+  const r = corpo.raioCorpo > 0 ? corpo.raioCorpo : RAIO_CORPO;
   const x0 = x;
   const y0 = y;
   const elev = corpo.elevacao ?? z;
+  const chao = modo === "andar";
 
   if (dx !== 0) {
     const nx = x + dx;
-    if (cantosLivres(nx, y, elev, r, modo, elev)) x = nx;
+    if (cantosLivres(nx, y, elev, r, modo, elev) && (!chao || !ocupado(nx, y, elev, r, corpo))) {
+      x = nx;
+    }
   }
   if (dy !== 0) {
     const ny = y + dy;
-    if (cantosLivres(x, ny, elev, r, modo, elev)) y = ny;
+    if (cantosLivres(x, ny, elev, r, modo, elev) && (!chao || !ocupado(x, ny, elev, r, corpo))) {
+      y = ny;
+    }
   }
 
   return {
@@ -138,6 +144,10 @@ export function moverAereo(corpo, dx, dy, elevacao) {
     bloqueouX: dx !== 0 && x === x0,
     bloqueouY: dy !== 0 && y === y0,
   };
+}
+
+export function espacoVoxelLivre(x, y, elev, raio, modo = "andar") {
+  return cantosLivres(x, y, elev, raio, modo, elev);
 }
 
 function cantosLivres(x, y, z, r, modo, elevacao) {

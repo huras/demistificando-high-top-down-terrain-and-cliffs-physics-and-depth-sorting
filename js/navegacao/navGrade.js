@@ -19,6 +19,7 @@ import {
   VELOCIDADE_MAX,
 } from "../config.js";
 import { listarPisosWalkable } from "../fisica/colisao.js";
+import { centroNaBase } from "../fisica/obstaculos.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import {
   alturasLocomocao,
@@ -256,6 +257,7 @@ function* construirGrade(perfil, centroX, centroY, raio) {
           for (const zB of pisosB) {
             const edge = classificarAresta(zA, zB, perfil, diag);
             if (!edge) continue;
+            if (edge.tipo === TIPO_WALK && centroNaBase(nx, ny, zB)) continue;
             const mult = multiplicadorAgua(
               aguaDe(cx, cy),
               aguaDe(nx, ny),

@@ -17,6 +17,7 @@ import {
   pokemonDeployado,
   pokemonNoCampo,
 } from "./party.js";
+import { definirCorposAtores } from "../fisica/obstaculos.js";
 import { atualizarPopulacao, selvagensAtivos } from "./populacao.js";
 import { tickVisual } from "./sprites.js";
 
@@ -92,6 +93,7 @@ export function tickPokemon(corpo, dt) {
   if (treinador.iframe > 0) treinador.iframe = Math.max(0, treinador.iframe - passo);
 
   atualizarPopulacao(corpo, passo, agora);
+  definirCorposAtores(listarSolidosPokemon());
   atualizarParty(corpo, passo, agora);
   const mon = pokemonDeployado();
   const selvagens = selvagensAtivos();
@@ -124,6 +126,19 @@ export function tickPokemon(corpo, dt) {
     treinador.iframe = 2.5;
     flutuar(treinador, "desmaiou", "#fca5a5");
   }
+}
+
+export function listarSolidosPokemon() {
+  if (!ligado) return [];
+  const saida = [];
+  const selvagens = selvagensAtivos();
+  for (let i = 0; i < selvagens.length; i++) {
+    const a = selvagens[i];
+    if (!a.morto && !a.capturado) saida.push(a);
+  }
+  const mon = pokemonNoCampo();
+  if (mon && !mon.morto && !mon.capturado) saida.push(mon);
+  return saida;
 }
 
 export function atoresVisiveis() {

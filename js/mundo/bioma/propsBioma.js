@@ -1,3 +1,5 @@
+import { indexarBases, limparBases } from "../../fisica/obstaculos.js";
+
 /** Vegetação procedural por chunk carregado. */
 
 /** @type {Map<string, object[]>} */
@@ -9,10 +11,12 @@ function chave(cx, cy) {
 
 export function definirPropsChunk(cx, cy, lista) {
   porChunk.set(chave(cx, cy), lista || []);
+  indexarBases(cx, cy, lista);
 }
 
 export function limparPropsChunk(cx, cy) {
   porChunk.delete(chave(cx, cy));
+  limparBases(cx, cy);
 }
 
 export function vegetacaoNaArea(x0, y0, x1, y1) {

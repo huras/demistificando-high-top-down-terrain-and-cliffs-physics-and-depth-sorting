@@ -11,9 +11,10 @@ import {
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
-  consumirCliqueEsquerdo,
-  consumirMovimentoMouse,
   botaoDireitoSegurado,
+  botaoEsquerdoSegurado,
+  consumirMovimentoMouse,
+  consumirSolturaEsquerda,
   desligarPonteiro3d,
   ligarPonteiro3d,
 } from "./entrada/ponteiro3d.js";
@@ -21,6 +22,7 @@ import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
 import { alternarClima, avancarHora } from "./render/3d/ceu/controleCeu.js";
 import { atualizarAgente, criarAgente, resetarNav } from "./fisica/agente.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
+import { definirCorposAtores, definirCorposFixos } from "./fisica/obstaculos.js";
 import { iniciarStamina } from "./fisica/stamina.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
@@ -54,11 +56,11 @@ import {
   ajustarZoom3d,
   atualizarEDesenhar3d,
   definirMira3d,
+  definirPuxadaFlecha,
   entrarVistaCena,
   iniciarCenario3d,
   olharCamera3d,
   obterCenario3d,
-  pedirTiro3d,
   redimensionarCenario3d,
   resetarCamera3d,
 } from "./render/3d/cenario3d.js";
@@ -67,7 +69,8 @@ import { alternarModoCena, aoMudarCena, definirModoCena, estaEmCena } from "./ce
 import { ligarHierarquiaCena, sincronizarHierarquiaCena } from "./ui/cena/hierarquia.js";
 import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.js";
 import { carregarDados } from "./pokemon/dados.js";
-import { ligarPokemon, tickPokemon } from "./pokemon/sistema.js";
+import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
+import { despenetrarCorpos } from "./pokemon/locomocao.js";
 
 const canvas = document.getElementById("canvas");
 const canvas3d = document.getElementById("canvas-3d");
@@ -128,6 +131,7 @@ async function iniciar() {
     y: SPAWN.y + 0.9,
     z: SPAWN.z,
   });
+  definirCorposFixos([corpo, agente]);
   camera = criarCamera(canvas.width, canvas.height);
   redimensionarCena();
 
@@ -372,13 +376,18 @@ function loop(agora) {
       const mouse = consumirMovimentoMouse();
       definirMira3d(botaoDireitoSegurado());
       olharCamera3d(mouse.dx, mouse.dy);
-      if (consumirCliqueEsquerdo()) pedirTiro3d();
+      definirPuxadaFlecha(botaoEsquerdoSegurado(), consumirSolturaEsquerda());
       if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
       if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
         ajustarZoom3d(1 / ZOOM_PASSO);
       }
+    } else {
+      consumirSolturaEsquerda();
+      definirPuxadaFlecha(false, false);
     }
   } else {
+    consumirSolturaEsquerda();
+    definirPuxadaFlecha(false, false);
     if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom(camera, ZOOM_PASSO);
     if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
       ajustarZoom(camera, 1 / ZOOM_PASSO);
@@ -386,10 +395,12 @@ function loop(agora) {
   }
 
   atualizarStreaming(corpo.x, corpo.y);
+  definirCorposAtores(listarSolidosPokemon());
   atualizarMovimento(corpo, dt);
   tickFilaPath();
   atualizarAgente(agente, corpo, dt);
   tickPokemon(corpo, dt);
+  despenetrarCorpos();
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();
   sincronizarPainelCeu();

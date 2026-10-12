@@ -39,6 +39,8 @@ export {
 };
 
 const DIST_LUZ = 72;
+/** Piso do volume. Abaixo disso a sombra fica mais perto que o terreno visível. */
+const ALCANCE_SOMBRA_MIN = 34;
 const vento = new THREE.Vector2();
 const dirVento = new THREE.Vector2(0.82, 0.57).normalize();
 const corFill = new THREE.Color();
@@ -56,15 +58,8 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
 
   sol.castShadow = true;
   sol.shadow.mapSize.set(2048, 2048);
-  sol.shadow.camera.near = 8;
-  sol.shadow.camera.far = 140;
-  sol.shadow.camera.left = -34;
-  sol.shadow.camera.right = 34;
-  sol.shadow.camera.top = 34;
-  sol.shadow.camera.bottom = -34;
-  sol.shadow.bias = -0.00022;
-  sol.shadow.normalBias = 0.045;
-  sol.shadow.camera.updateProjectionMatrix();
+  let alcanceSombra = ALCANCE_SOMBRA_MIN;
+  aplicarAlcanceSombra(sol, alcanceSombra);
 
   const atmosfera = criarAtmosfera();
   const precipitacao = criarPrecipitacao();
@@ -74,7 +69,8 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
 
   function aplicarLuzes(visual, alvo) {
     const dir = visual.dirLuz;
-    sol.position.set(alvo.x + dir.x * DIST_LUZ, alvo.y + dir.y * DIST_LUZ, alvo.z + dir.z * DIST_LUZ);
+    const recuo = Math.max(DIST_LUZ, alcanceSombra + 16);
+    sol.position.set(alvo.x + dir.x * recuo, alvo.y + dir.y * recuo, alvo.z + dir.z * recuo);
     sol.target.position.set(alvo.x, alvo.y, alvo.z);
     sol.intensity = visual.intensidadeSol;
     sol.color.copy(visual.lua).lerp(visual.sol, visual.pesoDia);
@@ -113,8 +109,13 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     if (scene.background?.isColor) scene.background.copy(visual.neblina);
   }
 
-  function atualizar(dt, { camera, alvo, nevoa }) {
+  function atualizar(dt, { camera, alvo, nevoa, raioBlocos }) {
     const seguro = Math.min(Math.max(dt || 0, 0), 0.05);
+    const meio = Math.max(ALCANCE_SOMBRA_MIN, raioBlocos || 0);
+    if (meio !== alcanceSombra) {
+      alcanceSombra = meio;
+      aplicarAlcanceSombra(sol, meio);
+    }
     const hora = avancarCiclo(seguro, DURACAO_DIA);
     const clima = avaliarClima(seguro);
     const visual = avaliarVisual(hora, clima, obterControleCeu());
@@ -154,6 +155,25 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
   }
 
   return { atualizar };
+}
+
+/**
+ * Abre o volume da sombra até o disco de blocos. A resolução do mapa fica em 2048:
+ * o texel fica maior, a sombra chega mais longe.
+ */
+function aplicarAlcanceSombra(sol, meio) {
+  const cam = sol.shadow.camera;
+  const recuo = Math.max(DIST_LUZ, meio + 16);
+  cam.left = -meio;
+  cam.right = meio;
+  cam.top = meio;
+  cam.bottom = -meio;
+  cam.near = 1;
+  cam.far = recuo + meio + 40;
+  cam.updateProjectionMatrix();
+  const texel = (meio * 2) / sol.shadow.mapSize.x;
+  sol.shadow.normalBias = texel * 1.5;
+  sol.shadow.bias = -(texel * 0.35) / (cam.far - cam.near);
 }
 
 function smooth(a, b, x) {

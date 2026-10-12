@@ -1,4 +1,4 @@
-import { POKEMON } from "../config.js";
+import { POKEMON, RAIO_POKEMON } from "../config.js";
 import { golpe } from "./dados.js";
 import { totalParaNivel } from "./experiencia.js";
 import { calcularStats, escalaRecarga, escalaVelocidade } from "./tipos.js";
@@ -95,6 +95,7 @@ export function criarAtor(opts) {
     casaY: opts.casaY ?? opts.y,
     casaZ: opts.casaZ ?? opts.z,
     raioTerritorio: opts.raioTerritorio ?? POKEMON.RAIO_TERRITORIO,
+    raioCorpo: RAIO_POKEMON,
     modo: "roam",
     roam: "waiting",
     espera: 0.4,

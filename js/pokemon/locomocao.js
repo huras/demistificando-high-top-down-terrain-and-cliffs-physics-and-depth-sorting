@@ -1,5 +1,10 @@
-import { alturaSobPes, moverComColisao } from "../fisica/colisao.js";
+import { RAIO_CORPO } from "../config.js";
+import { alturaSobPes, espacoVoxelLivre, moverComColisao } from "../fisica/colisao.js";
+import { corposSolidos, discoInvasor, invadeDisco } from "../fisica/obstaculos.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
+
+const PASSOS_SEPARAR = 3;
+const FOLGA_PISO = 1.05;
 
 function chaoValido(x, y, elev) {
   const chao = alturaSobPes(x, y, elev + 0.45);
@@ -49,13 +54,96 @@ export function andar(ator, ix, iy, vel, dt) {
   return ok;
 }
 
-export function separar(a, b, dt) {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const d2 = dx * dx + dy * dy;
-  const min = 0.72;
-  if (d2 <= 1e-6 || d2 >= min * min) return;
-  const d = Math.sqrt(d2);
-  const empurra = ((min - d) * 0.5 * Math.min(1, dt * 8)) / d;
-  andar(a, -dx, -dy, empurra / Math.max(dt, 1e-4), dt);
+function raioDe(corpo) {
+  return corpo.raioCorpo > 0 ? corpo.raioCorpo : RAIO_CORPO;
+}
+
+function cabe(corpo, x, y) {
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const r = raioDe(corpo);
+  return espacoVoxelLivre(x, y, elev, r) && !invadeDisco(x, y, elev, r);
+}
+
+function aplicar(corpo, x, y) {
+  if (!cabe(corpo, x, y)) return false;
+  corpo.x = x;
+  corpo.y = y;
+  return true;
+}
+
+/** Desfaz sobreposição de quem já nasceu em cima do outro. Não usa o passo de andar. */
+function sairDaBase(corpo) {
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const r = raioDe(corpo);
+  const disco = discoInvasor(corpo.x, corpo.y, elev, r);
+  if (!disco) return false;
+  let dx = corpo.x - disco.x;
+  let dy = corpo.y - disco.y;
+  let d = Math.hypot(dx, dy);
+  const falta = r + disco.r - d + 0.02;
+  if (d < 1e-4) {
+    dx = 0;
+    dy = 1;
+    d = 1;
+  }
+  const ux = dx / d;
+  const uy = dy / d;
+  const candidatos = [
+    [ux, uy],
+    [-uy, ux],
+    [uy, -ux],
+    [-ux, -uy],
+  ];
+  for (let i = 0; i < candidatos.length; i++) {
+    const [cx, cy] = candidatos[i];
+    if (aplicar(corpo, corpo.x + cx * falta, corpo.y + cy * falta)) return true;
+  }
+  return false;
+}
+
+export function despenetrarCorpos() {
+  const lista = corposSolidos();
+  for (let i = 0; i < lista.length; i++) {
+    if (lista[i].morto || lista[i].capturado) continue;
+    sairDaBase(lista[i]);
+  }
+  for (let passo = 0; passo < PASSOS_SEPARAR; passo++) {
+    let mexeu = false;
+    for (let i = 0; i < lista.length; i++) {
+      const a = lista[i];
+      if (a.morto || a.capturado) continue;
+      for (let j = i + 1; j < lista.length; j++) {
+        const b = lista[j];
+        if (b.morto || b.capturado) continue;
+        const ea = a.elevacao ?? a.z ?? 0;
+        const eb = b.elevacao ?? b.z ?? 0;
+        if (Math.abs(ea - eb) > FOLGA_PISO) continue;
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        const d2 = dx * dx + dy * dy;
+        const min = raioDe(a) + raioDe(b);
+        if (d2 >= min * min) continue;
+        let d = Math.sqrt(d2);
+        if (d < 1e-4) {
+          dx = 1;
+          dy = 0;
+          d = 1;
+        }
+        const nx = dx / d;
+        const ny = dy / d;
+        const folga = min - d;
+        const meio = folga * 0.5;
+        const aMeio = aplicar(a, a.x - nx * meio, a.y - ny * meio);
+        const bMeio = aplicar(b, b.x + nx * meio, b.y + ny * meio);
+        if (aMeio || bMeio) {
+          mexeu = true;
+          continue;
+        }
+        if (aplicar(a, a.x - nx * folga, a.y - ny * folga) || aplicar(b, b.x + nx * folga, b.y + ny * folga)) {
+          mexeu = true;
+        }
+      }
+    }
+    if (!mexeu) break;
+  }
 }

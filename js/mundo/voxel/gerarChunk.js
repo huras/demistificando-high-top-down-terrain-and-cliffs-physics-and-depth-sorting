@@ -138,6 +138,7 @@ export function gerarChunkProcedural(chunk, seed) {
         id: `v${wx}_${wy}`,
         x: wx + 0.5,
         y: wy + 0.5,
+        z: h,
         tipo: planta.classe,
         sprite: planta.sprite,
       });

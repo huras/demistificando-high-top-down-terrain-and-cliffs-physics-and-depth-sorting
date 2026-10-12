@@ -38,7 +38,7 @@ import { atualizarRealceCena, ligarSelecaoCena } from "../../cena/selecaoCena.js
 import { atualizarPokemon3d, ligarPokemon3d } from "../../pokemon/render3d.js";
 
 let estado = null;
-let tiroPendente = false;
+const puxada = { segurando: false, soltou: false };
 
 /** Nevoeiro calibrado no raio 5 (disco de ~80 blocos). */
 const NEVOA_NEAR = 36;
@@ -387,9 +387,9 @@ export function definirMira3d(ativa) {
   definirModoCamera(estado.camera3d, ativa ? "mira" : "orbita");
 }
 
-export function pedirTiro3d() {
-  if (!estado || estado.camera3d.modo !== "mira") return;
-  tiroPendente = true;
+export function definirPuxadaFlecha(segurando, soltou) {
+  puxada.segurando = !!segurando;
+  if (soltou) puxada.soltou = true;
 }
 
 /**
@@ -405,11 +405,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   seguirAlvo3d(estado.camera3d, corpo, dt);
   aplicarFacingMira(corpo, estado.camera3d);
   estado.rig?.atualizar(estado.camera3d);
-  if (tiroPendente) {
-    tiroPendente = false;
-    estado.flechas?.disparar(estado.camera3d, corpo);
-  }
-  estado.flechas?.atualizar(dt, corpo, estado.camera3d);
+  estado.flechas?.atualizar(dt, corpo, estado.camera3d, puxada);
+  puxada.soltou = false;
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;
   const elevVis = elev * ALTURA_BLOCO;
@@ -425,6 +422,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     camera: camRender,
     alvo: estado._alvoCeu,
     nevoa: estado.nevoaBase,
+    raioBlocos: obterRaioStream() * CHUNK_XZ,
   });
 
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));

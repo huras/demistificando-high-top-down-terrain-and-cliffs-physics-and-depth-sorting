@@ -131,7 +131,7 @@ function desenharPathAgente(ctx, agente) {
   ctx.restore();
 }
 
-function desenharMira(ctx, largura, altura) {
+function desenharMira(ctx, largura, altura, carga = 0) {
   const cx = largura * 0.5;
   const cy = altura * 0.5;
   ctx.save();
@@ -148,6 +148,13 @@ function desenharMira(ctx, largura, altura) {
   ctx.moveTo(cx, cy + 5);
   ctx.lineTo(cx, cy + 14);
   ctx.stroke();
+  if (carga > 0.02) {
+    ctx.strokeStyle = carga > 0.98 ? "rgba(255, 214, 102, 0.95)" : "rgba(255, 248, 230, 0.9)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * carga);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -170,7 +177,7 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
   } else {
     desenharLabelHoverHud(ctx, canvas.width, canvas.height, true);
     if ((camera3d?.camera3d?.blend ?? 0) > 0.35) {
-      desenharMira(ctx, canvas.width, canvas.height);
+      desenharMira(ctx, canvas.width, canvas.height, camera3d?.flechas?.carga?.() ?? 0);
     }
   }
 
