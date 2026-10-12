@@ -1,0 +1,32 @@
+newmtl fs_a
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka fs_a.png
+map_Kd fs_a.png
+map_d fs_a.png
+newmtl fs_ax
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka fs_ax.png
+map_Kd fs_ax.png
+map_d fs_ax.png
+newmtl fs_ay
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka fs_ay.png
+map_Kd fs_ay.png
+map_d fs_ay.png
+newmtl kage
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 0.2903226
+Tr 0.2903226
+map_Ka kage.png
+map_Kd kage.png
+map_d kage.png

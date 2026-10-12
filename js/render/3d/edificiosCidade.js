@@ -1,0 +1,224 @@
+import * as THREE from "three";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
+import { CHUNK_XZ } from "../../config.js";
+import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
+import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
+import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
+import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
+import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
+
+const FOLGA = 0.96;
+const LADO_X = 6;
+const LADO_Z = 5;
+const ALTURA_POSTE = 3.6;
+const MEIO_RUA = 3.5;
+const PASSO_POSTE = 10;
+const CASAS = ["casa-bark", "casa-amigo", "casa-cherry", "casa-guia"];
+
+function yawDaRua(mx, my) {
+  const dx = mx - 64;
+  const dy = my - 64;
+  if (Math.abs(dy) <= Math.abs(dx)) return dy > 0 ? Math.PI : 0;
+  return dx > 0 ? -Math.PI / 2 : Math.PI / 2;
+}
+
+function modeloDoPapel(papel, variante) {
+  if (papel === "casa") return CASAS[variante] || CASAS[0];
+  if (papel === "centro" || papel === "loja" || papel === "lab") return papel;
+  return null;
+}
+
+function carregarObj(id) {
+  const base = `assets/models/cidade/${id}/`;
+  return new Promise((resolve, reject) => {
+    const mtl = new MTLLoader();
+    mtl.setResourcePath(base);
+    mtl.load(
+      `${base}modelo.mtl`,
+      (mats) => {
+        mats.preload();
+        const obj = new OBJLoader();
+        obj.setMaterials(mats);
+        obj.load(`${base}modelo.obj`, resolve, undefined, reject);
+      },
+      undefined,
+      reject,
+    );
+  });
+}
+
+function consertarNormais(geo) {
+  const normal = geo.getAttribute("normal");
+  if (!normal) {
+    geo.computeVertexNormals();
+    return;
+  }
+  const arr = normal.array;
+  for (let i = 0; i < arr.length; i++) {
+    if (Number.isFinite(arr[i])) continue;
+    geo.computeVertexNormals();
+    return;
+  }
+}
+
+function ajustarMaterial(mat) {
+  const lista = Array.isArray(mat) ? mat : [mat];
+  for (let i = 0; i < lista.length; i++) {
+    const m = lista[i];
+    if (!m) continue;
+    const novo = new THREE.MeshLambertMaterial({
+      map: m.map || null,
+      color: 0xffffff,
+      alphaTest: 0.2,
+      side: THREE.FrontSide,
+    });
+    if (novo.map) {
+      novo.map.colorSpace = THREE.SRGBColorSpace;
+      novo.map.magFilter = THREE.NearestFilter;
+      novo.map.minFilter = THREE.NearestFilter;
+      novo.map.generateMipmaps = false;
+      novo.map.needsUpdate = true;
+    }
+    lista[i] = novo;
+    m.dispose();
+  }
+  return Array.isArray(mat) ? lista : lista[0];
+}
+
+function preparar(raiz, escala) {
+  raiz.traverse((filho) => {
+    if (!filho.isMesh) return;
+    const nome = (filho.material?.name || "").toLowerCase();
+    if (nome === "h_kage" || nome === "kage") {
+      filho.visible = false;
+      return;
+    }
+    consertarNormais(filho.geometry);
+    filho.material = ajustarMaterial(filho.material);
+    filho.castShadow = true;
+    filho.receiveShadow = true;
+  });
+  raiz.updateMatrixWorld(true);
+  const caixa = new THREE.Box3().setFromObject(raiz);
+  const grupo = new THREE.Group();
+  raiz.position.set(
+    -((caixa.min.x + caixa.max.x) * 0.5),
+    -caixa.min.y,
+    -((caixa.min.z + caixa.max.z) * 0.5),
+  );
+  grupo.add(raiz);
+  grupo.scale.setScalar(escala);
+  return {
+    grupo,
+    sx: caixa.max.x - caixa.min.x,
+    sz: caixa.max.z - caixa.min.z,
+    sy: caixa.max.y - caixa.min.y,
+  };
+}
+
+function escalaDoLote(medido) {
+  return Math.min(LADO_X / medido.sx, LADO_Z / medido.sz) * FOLGA;
+}
+
+function postesDoLayout(layout) {
+  const fp = layout.fp;
+  const lista = [];
+  const margem = MEIO_RUA + 0.8;
+  function livre(x, y) {
+    if (Math.abs(x - 64) < 8 && Math.abs(y - 64) < 8) return false;
+    const volumes = layout.volumes;
+    for (let i = 0; i < volumes.length; i++) {
+      const v = volumes[i];
+      if (x >= v.x0 - 0.4 && x < v.x1 + 0.4 && y >= v.y0 - 0.4 && y < v.y1 + 0.4) return false;
+    }
+    return true;
+  }
+  for (let x = Math.ceil(fp.x0) + 4; x < fp.x1 - 2; x += PASSO_POSTE) {
+    if (livre(x + 0.5, 64 - margem)) lista.push([x + 0.5, 64 - margem]);
+    if (livre(x + 0.5, 64 + margem)) lista.push([x + 0.5, 64 + margem]);
+  }
+  for (let y = Math.ceil(fp.y0) + 4; y < fp.y1 - 2; y += PASSO_POSTE) {
+    if (livre(64 - margem, y + 0.5)) lista.push([64 - margem, y + 0.5]);
+    if (livre(64 + margem, y + 0.5)) lista.push([64 + margem, y + 0.5]);
+  }
+  return lista;
+}
+
+function montarCidade(moldes, def) {
+  const layout = montarLayout(def);
+  const grupo = new THREE.Group();
+  grupo.name = `cidade-${def.key}`;
+  const ox = def.ax * AREA_KANTO;
+  const oy = def.ay * AREA_KANTO;
+  const volumes = layout.volumes;
+  for (let i = 0; i < volumes.length; i++) {
+    const v = volumes[i];
+    const id = modeloDoPapel(v.papel, v.variante);
+    const molde = id ? moldes.get(id) : null;
+    if (!molde) continue;
+    const inst = molde.grupo.clone(true);
+    const mx = (v.x0 + v.x1) * 0.5;
+    const my = (v.y0 + v.y1) * 0.5;
+    inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
+    inst.rotation.y = yawDaRua(mx, my);
+    grupo.add(inst);
+  }
+  const poste = moldes.get("poste");
+  if (poste) {
+    const pontos = postesDoLayout(layout);
+    for (let i = 0; i < pontos.length; i++) {
+      const inst = poste.grupo.clone(true);
+      inst.position.set(ox + pontos[i][0], ALTURA_PRACA, oy + pontos[i][1]);
+      inst.rotation.y = (i & 3) * (Math.PI / 2);
+      grupo.add(inst);
+    }
+  }
+  return {
+    grupo,
+    cx: ox + 64,
+    cy: oy + 64,
+  };
+}
+
+export function criarEdificiosCidade() {
+  const grupo = new THREE.Group();
+  grupo.name = "edificios-cidade";
+  const ids = ["centro", "loja", "lab", "poste", ...CASAS];
+  Promise.all(ids.map((id) => carregarObj(id).then((raiz) => [id, raiz])))
+    .then((pares) => {
+      const moldes = new Map();
+      for (let i = 0; i < pares.length; i++) {
+        const [id, raiz] = pares[i];
+        const medido = preparar(raiz, 1);
+        const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
+        medido.grupo.scale.setScalar(escala);
+        moldes.set(id, medido);
+      }
+      for (let i = 0; i < CIDADES_KANTO.length; i++) {
+        const cidade = montarCidade(moldes, CIDADES_KANTO[i]);
+        grupo.add(cidade.grupo);
+        grupo.userData.cidades = grupo.userData.cidades || [];
+        grupo.userData.cidades.push(cidade);
+      }
+    })
+    .catch((erro) => {
+      console.error("modelos da cidade", erro);
+    });
+
+  return {
+    grupo,
+    atualizar(px, py) {
+      const cidades = grupo.userData.cidades;
+      if (!cidades) return;
+      const alcance = (obterRaioStream() + 2) * CHUNK_XZ + 96;
+      const limite = alcance * alcance;
+      for (let i = 0; i < cidades.length; i++) {
+        const c = cidades[i];
+        const dx = px - c.cx;
+        const dy = py - c.cy;
+        c.grupo.visible = dx * dx + dy * dy < limite;
+      }
+    },
+  };
+}

@@ -250,6 +250,7 @@ function calcular(x, y) {
     rua,
     floresta,
     predio: predio ? predio.altura : 0,
+    modelo: !!(predio && (predio.papel === "casa" || predio.papel === "centro" || predio.papel === "loja" || predio.papel === "lab")),
     nome: zona.nome,
   };
 }

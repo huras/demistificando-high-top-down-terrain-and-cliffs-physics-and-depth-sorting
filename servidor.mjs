@@ -17,6 +17,8 @@ const tipos = {
   ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
+  ".obj": "text/plain; charset=utf-8",
+  ".mtl": "text/plain; charset=utf-8",
 };
 
 const EXT_REF = new Set([".png", ".json", ".webp"]);

@@ -31,6 +31,7 @@ import { PASSOS } from "./pecas/catalogo.js";
 import { carimbarBorda, carimbarPlano, planaNo } from "./pecas/carimbar.js";
 import { fundirChao } from "./pecas/fundir.js";
 import { alturaLocal, gradeDoChunk, mascaraLocal } from "./pecas/mascara.js";
+import { amostraKanto } from "../../mundo/regiao/amostraKanto.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
 import {
   avancarMateriaisAgua,
@@ -1202,6 +1203,21 @@ function pushParede(lote, nome, wx, wy, y0, y1) {
   }
 }
 
+/** O modelo 3D ocupa o lote. A malha fica no chão; a coluna sólida continua a colisão. */
+function rebaixarModelo(grade, cx, cy) {
+  const n = CHUNK_XZ + 2;
+  const x0 = cx * CHUNK_XZ - 1;
+  const y0 = cy * CHUNK_XZ - 1;
+  for (let y = 0; y < n; y++) {
+    const wy = y0 + y;
+    const linha = y * n;
+    for (let x = 0; x < n; x++) {
+      const amostra = amostraKanto(x0 + x, wy);
+      if (amostra?.modelo) grade[linha + x] = amostra.h;
+    }
+  }
+}
+
 function* construirGeosChunk(chunk) {
   const ledges = [];
   const aguas = [];
@@ -1218,6 +1234,7 @@ function* construirGeosChunk(chunk) {
   }
   const loteCubos = criarLote(true);
   const grade = gradeDoChunk(chunk.cx, chunk.cy);
+  rebaixarModelo(grade, chunk.cx, chunk.cy);
   const nCel = CHUNK_XZ * CHUNK_XZ;
   const alturaCel = new Int16Array(nCel);
   const mascaraCel = new Uint8Array(nCel);

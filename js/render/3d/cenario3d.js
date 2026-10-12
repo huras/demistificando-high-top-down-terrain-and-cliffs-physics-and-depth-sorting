@@ -18,6 +18,7 @@ import { criarFlechas3d } from "./flechas3d.js";
 import { criarRigCamera3d } from "./rigCamera3d.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
+import { criarEdificiosCidade } from "./edificiosCidade.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
@@ -136,6 +137,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const terreno = criarTerrenoMalha(atlas);
   scene.add(terreno.grupo);
 
+  const edificios = criarEdificiosCidade();
+  terreno.grupo.add(edificios.grupo);
+
   const terrenoSuave = criarTerrenoSuave();
   terreno.grupo.add(terrenoSuave.mesh);
   terrenoSuave.aplicarTexturas(terreno.obterTexturasTopo?.());
@@ -188,6 +192,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     rim,
     terreno,
     terrenoSuave,
+    edificios,
     vegetacao,
     vegetacaoDistante,
     personagem,
@@ -401,6 +406,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   sincronizarVisualTerreno(atlas);
   aplicarNevoa(obterRaioStream());
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
+  estado.edificios?.atualizar?.(corpo.x, corpo.y);
   estado.terrenoSuave?.tick(corpo.x, corpo.y, estado.terreno.chunksExibidos?.());
   seguirAlvo3d(estado.camera3d, corpo, dt);
   aplicarFacingMira(corpo, estado.camera3d);

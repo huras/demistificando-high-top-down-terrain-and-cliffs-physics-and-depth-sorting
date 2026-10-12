@@ -19,10 +19,17 @@ const GRADE = Object.freeze({
   city: Object.freeze({ col: 7, lin: 7 }),
 });
 
+/** Mesma ordem de `edificiosCidade.js`. A altura fecha o telhado do modelo. */
+const ALTURA_CASA = Object.freeze([6, 6, 5, 6]);
+
+export function varianteCasa(indice) {
+  return indice % 4;
+}
+
 const ALTURA = Object.freeze({
-  casa: 4,
-  centro: 5,
-  loja: 4,
+  casa: 6,
+  centro: 4,
+  loja: 5,
   ginasio: 6,
   lab: 5,
   museu: 5,
@@ -113,13 +120,15 @@ export function montarLayout(def) {
   for (let i = 0; i < n; i++) {
     const lote = ordem[i];
     const papel = papelDe(def, i, n);
+    const variante = papel === "casa" ? varianteCasa(i) : 0;
     volumes.push({
       x0: lote.x0,
       y0: lote.y0,
       x1: lote.x1,
       y1: lote.y1,
-      altura: ALTURA[papel] || ALTURA.casa,
+      altura: papel === "casa" ? ALTURA_CASA[variante] : ALTURA[papel] || ALTURA.casa,
       papel,
+      variante,
     });
   }
   return { fp, volumes };
