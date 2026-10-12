@@ -1,7 +1,6 @@
 import {
   LESTE,
   NORTE,
-  OC_PAREDE,
   OESTE,
   PASSO_VERTICE,
   PECAS,
@@ -46,6 +45,20 @@ export function carimbarTris(lote, tris, wx, wy, y) {
   }
 }
 
+/** Lábio na textura do penhasco. U acompanha a face, V acompanha a altura. Sem oclusão. */
+function carimbarPenhasco(lote, tris, wx, wy, y) {
+  const passo = PASSO_VERTICE;
+  for (let i = 0; i < tris.length; i += passo) {
+    const x = wx + tris[i];
+    const altura = y + tris[i + 1];
+    const z = wy + tris[i + 2];
+    const nx = tris[i + 3];
+    const nz = tris[i + 5];
+    const u = Math.abs(nz) >= Math.abs(nx) ? x : z;
+    empurrar(lote, x, altura, z, nx, tris[i + 4], nz, u, altura, 1);
+  }
+}
+
 /** Quad do chão fundido. UV global, um tile por bloco. */
 export function carimbarPlano(lote, x0, z0, x1, z1, y) {
   lote._n = [0, 1, 0];
@@ -64,7 +77,7 @@ export function carimbarPlano(lote, x0, z0, x1, z1, y) {
 }
 
 function parede(lote, nome, wx, wy, yBase, yTopo) {
-  const oc = OC_PAREDE;
+  const oc = 1;
   if (nome === "s") {
     const z = wy + 1;
     empurrar(lote, wx, yTopo, z, 0, 0, 1, 0, yTopo, oc);
@@ -107,7 +120,7 @@ function parede(lote, nome, wx, wy, yBase, yTopo) {
 export function carimbarBorda(loteTopo, loteParede, grade, lx, ly, wx, wy, y, mascara, comCap) {
   const atual = PECAS[idDaPeca(mascara)];
   if (comCap && atual.topo.length) carimbarTris(loteTopo, atual.topo, wx, wy, y);
-  if (atual.labio.length) carimbarTris(loteTopo, atual.labio, wx, wy, y);
+  if (atual.labio.length) carimbarPenhasco(loteParede, atual.labio, wx, wy, y);
   const quedas = [];
   for (let i = 0; i < LADOS.length; i++) {
     const lado = LADOS[i];

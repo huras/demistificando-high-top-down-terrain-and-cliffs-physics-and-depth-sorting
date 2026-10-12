@@ -63,6 +63,7 @@ export async function montarAtlas(caminhos = CAMINHOS) {
     cliffDuploRaw,
     mata,
     arvore,
+    penhascoDs,
   ] = await Promise.all([
     carregarImagem(caminhos.jogador),
     tentarCarregar(caminhos.grama),
@@ -72,6 +73,7 @@ export async function montarAtlas(caminhos = CAMINHOS) {
     tentarCarregar(caminhos.cliffDuplo),
     tentarCarregar(caminhos.mata),
     tentarCarregar(caminhos.arvore),
+    tentarCarregar(caminhos.penhascoDs),
   ]);
 
   const grassOnDirt = grassOnDirtRaw
@@ -100,6 +102,7 @@ export async function montarAtlas(caminhos = CAMINHOS) {
     cliffDuplo,
     mata,
     arvore,
+    penhascoDs,
     terrenoPronto,
     visualReal: terrenoPronto && VISUAL_REAL_PADRAO,
   };

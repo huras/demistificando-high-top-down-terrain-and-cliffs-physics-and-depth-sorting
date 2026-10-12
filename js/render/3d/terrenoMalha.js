@@ -37,7 +37,7 @@ import {
   obterMaterialLago,
   obterMaterialQueda,
 } from "./texturasAgua3d.js";
-import { canvasParaTextura, criarTexturasTerreno3d, texturaCliffDeFolha } from "./texturasTerreno3d.js";
+import { canvasParaTextura, criarTexturasTerreno3d } from "./texturasTerreno3d.js";
 
 const LEDGE_H = 0.12;
 const AO_OPACITY = 0.32;
@@ -1567,30 +1567,38 @@ export function criarTerrenoMalha(atlas = null) {
     return item?.tex || item?.mat?.map || texturas?.grama || null;
   }
 
+  function materialPenhasco() {
+    const chave = "parede:*";
+    const pronto = materiaisKit.get(chave);
+    if (pronto) return pronto.mat;
+    const mat = new THREE.MeshBasicMaterial({
+      map: texturas?.penhasco || texturas?.cliff || null,
+      color: 0xffffff,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    });
+    materiaisKit.set(chave, { mat, tex: null });
+    return naFrenteDoSuave(mat);
+  }
+
   function materialKit(kit, tipo) {
+    if (tipo === "parede") return materialPenhasco();
     const chave = `${tipo}:${kit}`;
     const pronto = materiaisKit.get(chave);
     if (pronto) return pronto.mat;
     const meta = obterKit(kit);
     let tex = null;
-    if (tipo === "topo") {
-      const img = meta?.chao ? visuais?.centros?.[meta.chao] : null;
-      if (img) tex = canvasParaTextura(img, { repeat: true });
-    } else {
-      const img = visuais?.cliffs?.[kit];
-      if (img) tex = texturaCliffDeFolha(img);
-    }
+    const img = meta?.chao ? visuais?.centros?.[meta.chao] : null;
+    if (img) tex = canvasParaTextura(img, { repeat: true });
     const mat = new THREE.MeshStandardMaterial({
-      map: tex || (tipo === "topo" ? texturas?.grama : texturas?.cliff),
-      roughness: tipo === "topo" ? 0.88 : 0.88,
+      map: tex || texturas?.grama,
+      roughness: 0.88,
       metalness: 0.04,
       vertexColors: true,
-      polygonOffset: tipo === "parede",
-      polygonOffsetFactor: tipo === "parede" ? 1 : 0,
-      polygonOffsetUnits: tipo === "parede" ? 1 : 0,
     });
     materiaisKit.set(chave, { mat, tex });
-    if (tipo === "topo") aplicarPeleSplat(mat, urlPele(kit));
+    aplicarPeleSplat(mat, urlPele(kit));
     aplicarSombraNuvem(mat);
     return naFrenteDoSuave(mat);
   }

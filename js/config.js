@@ -184,6 +184,8 @@ export const CAMINHOS = {
   /** Fallback legado 5×N. */
   cliffSimples: "assets/terrain/cliff-autotile.png",
   cliffDuplo: "assets/terrain/double-cliff-autotile.png",
+  /** Rocha 32×32 do tileset de overworld. Uma textura para todo penhasco, sem tinta. */
+  penhascoDs: "assets/terrain/penhasco-ds.png",
   mata: "assets/vegetation/green-grass.png",
   arvore: "assets/trees/broadleaf.png",
 };

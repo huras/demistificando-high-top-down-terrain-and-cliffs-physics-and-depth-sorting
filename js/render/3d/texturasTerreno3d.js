@@ -130,6 +130,7 @@ export function criarTexturasTerreno3d(atlas) {
   const grama = canvasParaTextura(gramaCanvas, { repeat: true });
   const terra = canvasParaTextura(terraCanvas, { repeat: true });
   const cliff = canvasParaTextura(cliffCanvas, { repeat: true });
+  const penhasco = canvasParaTextura(atlas?.penhascoDs, { repeat: true });
 
   const pronto = !!(grama && cliff);
 
@@ -137,11 +138,13 @@ export function criarTexturasTerreno3d(atlas) {
     grama,
     terra: terra || grama,
     cliff,
+    penhasco,
     pronto,
     liberar() {
       grama?.dispose();
       if (terra && terra !== grama) terra.dispose();
       cliff?.dispose();
+      penhasco?.dispose();
     },
   };
 }
