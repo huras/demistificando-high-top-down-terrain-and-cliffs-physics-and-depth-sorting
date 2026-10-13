@@ -38,8 +38,12 @@ import {
   atualizarStreaming,
   definirRaioStream,
   iniciarMundoAoRedor,
+  marcarChunkSujo,
   obterRaioStream,
+  paraCadaChunk,
 } from "./mundo/voxel/storeMundo.js";
+import { aplicarCascaNoChunk, carregarCascasCidade } from "./mundo/cidade/cascaCasa.js";
+import { invalidarNavCache } from "./navegacao/navGrade.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
 import { carregarVisuaisKits } from "./render/visuaisKit.js";
@@ -128,6 +132,13 @@ async function iniciar() {
   window.__atlas = atlas;
 
   iniciarMundoAoRedor(SPAWN.x, SPAWN.y);
+  carregarCascasCidade().then((ok) => {
+    if (!ok) return;
+    paraCadaChunk((chunk) => {
+      if (aplicarCascaNoChunk(chunk)) marcarChunkSujo(chunk);
+    });
+    invalidarNavCache();
+  });
   // Nav só invalida em edição de bloco — streaming não deve rebuildar (era ~18s).
 
   corpo = criarCorpo(SPAWN);

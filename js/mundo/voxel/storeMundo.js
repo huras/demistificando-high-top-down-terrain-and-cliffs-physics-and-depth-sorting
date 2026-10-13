@@ -313,6 +313,22 @@ export function iniciarMundoAoRedor(px, py) {
   atualizarStreaming(px, py, raioAtivo);
 }
 
+/** A malha rele o chunk sem desenhar a casca da casa. */
+export function marcarChunkSujo(chunk) {
+  if (!chunk) return;
+  chunk.sujo = true;
+  chunk.rev = (chunk.rev | 0) + 1;
+  invalidarFluxo(chunk);
+  emitirDirty({
+    x0: chunk.cx * CHUNK_XZ,
+    y0: chunk.cy * CHUNK_XZ,
+    x1: chunk.cx * CHUNK_XZ + CHUNK_XZ - 1,
+    y1: chunk.cy * CHUNK_XZ + CHUNK_XZ - 1,
+    z0: 0,
+    z1: CHUNK_Y - 1,
+  });
+}
+
 export function listarChunksSujos() {
   const out = [];
   for (const chunk of chunks.values()) {

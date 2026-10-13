@@ -6,6 +6,7 @@ import {
   superficieDoRelevo,
 } from "../bioma/catalogo.js";
 import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
+import { aplicarCascaNoChunk, cascasProntas } from "../cidade/cascaCasa.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { definirLocal, preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
@@ -34,8 +35,9 @@ export function gerarChunkProcedural(chunk, seed) {
       alturas[ly * CHUNK_XZ + lx] = h;
       preencherColunaSolida(chunk, lx, ly, h, superficieDoRelevo(wx, wy));
       if (dentroDoKanto(wx, wy)) {
-        const extra = amostraKanto(wx, wy).predio;
-        if (extra > 0) {
+        const amostra = amostraKanto(wx, wy);
+        const extra = amostra.predio;
+        if (extra > 0 && !(cascasProntas() && amostra.modelo)) {
           const topo = Math.min(CHUNK_Y, h + extra);
           for (let lz = h; lz < topo; lz++) definirLocal(chunk, lx, ly, lz, BLOCO.PEDRA);
         }
@@ -154,6 +156,7 @@ export function gerarChunkProcedural(chunk, seed) {
   }
   definirPropsChunk(chunk.cx, chunk.cy, props);
 
+  if (cascasProntas()) aplicarCascaNoChunk(chunk);
   recalcularSuperficies(chunk);
   chunk.gerado = true;
   chunk.sujo = true;

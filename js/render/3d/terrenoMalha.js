@@ -1203,7 +1203,7 @@ function pushParede(lote, nome, wx, wy, y0, y1) {
   }
 }
 
-/** O modelo 3D ocupa o lote. A malha fica no chão; a coluna sólida continua a colisão. */
+/** O modelo 3D ocupa o lote. A malha fica no chão; a casca não desenha laje. */
 function rebaixarModelo(grade, cx, cy) {
   const n = CHUNK_XZ + 2;
   const x0 = cx * CHUNK_XZ - 1;
@@ -1267,10 +1267,12 @@ function* construirGeosChunk(chunk) {
       alturaCel[ia] = zSurf;
       mascaraCel[ia] = mascaraLocal(grade, lx, ly);
       kitsCel[ia] = kit;
-      let colunaSimples = zSurf > 0 && !colunaTemArInterno(wx, wy);
-      if (colunaSimples) {
+      const modelo = !!amostraKanto(wx, wy)?.modelo;
+      let colunaSimples = zSurf > 0 && (modelo || !colunaTemArInterno(wx, wy));
+      if (colunaSimples && !modelo) {
         for (let i = 0; i < LADOS_COL.length; i++) {
           const d = LADOS_COL[i];
+          if (amostraKanto(wx + d.dx, wy + d.dy)?.modelo) continue;
           if (colunaTemArInterno(wx + d.dx, wy + d.dy)) {
             colunaSimples = false;
             break;
@@ -1335,7 +1337,7 @@ function* construirGeosChunk(chunk) {
       if (zSurf > 0) {
         let y0 = 0;
         let y1 = Math.max(0.08, zSurf);
-        if (colunaTemArInterno(wx, wy)) {
+        if (!modelo && colunaTemArInterno(wx, wy)) {
           const h = Math.max(0.08, espessuraTopo(wx, wy));
           const base = baseTopoEm(wx, wy);
           y0 = base < 0 ? zSurf - h : base;
