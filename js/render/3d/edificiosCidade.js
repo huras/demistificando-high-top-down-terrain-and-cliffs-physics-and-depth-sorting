@@ -19,8 +19,31 @@ const MEIO_RUA = 3.5;
 const PASSO_POSTE = 10;
 const CASAS = ["casa-bark", "casa-amigo", "casa-cherry", "casa-guia"];
 const _ponto = new THREE.Vector3();
+const COR_JANELA = 0xb9d7ff;
+const materiaisJanela = [];
 let materialFlare = null;
 let materialGlobo = null;
+
+function materialDaJanela(mapa) {
+  if (mapa) {
+    mapa.colorSpace = THREE.SRGBColorSpace;
+    mapa.magFilter = THREE.NearestFilter;
+    mapa.minFilter = THREE.NearestFilter;
+    mapa.generateMipmaps = false;
+    mapa.needsUpdate = true;
+  }
+  const mat = new THREE.MeshLambertMaterial({
+    name: "h_mado",
+    map: mapa || null,
+    color: 0xffffff,
+    emissive: COR_JANELA,
+    emissiveMap: mapa || null,
+    emissiveIntensity: 1,
+  });
+  aplicarLuzCidade(mat);
+  materiaisJanela.push(mat);
+  return mat;
+}
 
 function materialDoFlare(mapa) {
   if (materialFlare) {
@@ -202,6 +225,14 @@ function preparar(raiz, escala) {
       filho.renderOrder = 2;
       return;
     }
+    if (nome === "h_mado") {
+      const mapa = filho.material?.map || null;
+      filho.material?.dispose?.();
+      filho.material = materialDaJanela(mapa);
+      filho.castShadow = true;
+      filho.receiveShadow = true;
+      return;
+    }
     if (nome === "tkwa_sl2l") {
       consertarNormais(filho.geometry);
       const mapa = filho.material?.map || null;
@@ -226,6 +257,7 @@ function preparar(raiz, escala) {
   );
   grupo.add(raiz);
   grupo.scale.setScalar(escala);
+  grupo.userData.janelas = centrosJanela(grupo);
   return {
     grupo,
     sx: caixa.max.x - caixa.min.x,
@@ -238,8 +270,29 @@ function escalaDoLote(medido) {
   return Math.min(LADO_X / medido.sx, LADO_Z / medido.sz) * FOLGA;
 }
 
+function centrosJanela(grupo) {
+  grupo.updateMatrixWorld(true);
+  const caixa = new THREE.Box3();
+  const tmp = new THREE.Box3();
+  let achou = false;
+  grupo.traverse((filho) => {
+    if (!filho.isMesh) return;
+    if ((filho.material?.name || "").toLowerCase() !== "h_mado") return;
+    tmp.setFromObject(filho);
+    if (!achou) {
+      caixa.copy(tmp);
+      achou = true;
+    } else caixa.union(tmp);
+  });
+  if (!achou || caixa.isEmpty()) return [];
+  const c = caixa.getCenter(new THREE.Vector3());
+  grupo.worldToLocal(c);
+  return [{ x: c.x, y: c.y, z: c.z, cor: "#b9d7ff", raio: 1.15, intensidade: 1.2 }];
+}
+
 function pendurarLuzes(inst, id, dono) {
-  const pontos = pontosDoModelo(id);
+  let pontos = pontosDoModelo(id);
+  if (!pontos.length) pontos = inst.userData.janelas || [];
   if (!pontos.length) return;
   inst.userData.modeloLuz = id;
   inst.userData.donoLuz = dono;
@@ -351,7 +404,9 @@ export function criarEdificiosCidade() {
   return {
     grupo,
     atualizar(px, py) {
-      if (materialFlare) materialFlare.opacity = obterPesoNoite();
+      const pesoNoite = obterPesoNoite();
+      if (materialFlare) materialFlare.opacity = pesoNoite;
+      for (let j = 0; j < materiaisJanela.length; j++) materiaisJanela[j].emissiveIntensity = pesoNoite;
       const cidades = grupo.userData.cidades;
       if (!cidades) return;
       const alcance = (obterRaioStream() + 2) * CHUNK_XZ + 96;

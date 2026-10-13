@@ -8,7 +8,7 @@ const TEXEL = METROS / LADO;
 const LIMITE = 2.2;
 
 const PERFIL_POSTE = { raio: 8, ganho: 0.22, cor: 0xffc56a, curva: 4 };
-const PERFIL_CASA = { raio: 5.5, ganho: 0.45, cor: 0xffb080, curva: 2 };
+const PERFIL_CASA = { raio: 8, ganho: 0.22, cor: 0xffffff, curva: 4 };
 
 const dados = new Float32Array(LADO * LADO * 4);
 const pesos = new Float32Array(LADO * LADO);
