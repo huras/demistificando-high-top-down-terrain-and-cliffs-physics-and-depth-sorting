@@ -8,6 +8,9 @@ import { blitQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } fro
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
 import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
+import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
+import { aplicarCorSprite } from "../render/3d/ceu/luzBillboard.js";
+import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
 
 const PX_MUNDO = 1.2 / 32;
 const LADO = 256;
@@ -18,6 +21,8 @@ const CAP_TIRO = 32;
 const CAP_DROP = 48;
 const MAX_BRILHO = 4;
 const _mundo = new THREE.Vector3();
+const _luzCidade = new THREE.Color();
+const _branco = new THREE.Color(1, 1, 1);
 
 let cena = null;
 let atores = [];
@@ -127,7 +132,6 @@ function pintar(slot, ator, fr, pack) {
   slot.ctx.clearRect(0, 0, LADO, LADO);
   blitQuadro(slot.ctx, pack.img, pack.atlasW, pack.atlasH, fr, PE_X, PE_Y, 1);
   slot.tex.needsUpdate = true;
-  slot.mat.color.set("#ffffff");
   ancorar(slot);
 }
 
@@ -211,6 +215,9 @@ export function atualizarPokemon3d(yawCam = 0) {
       elev,
     );
     aplicarBrilho(slot, ator, offsetY);
+    const py = slot.grupo.position.y;
+    amostrarLuzCidade(ator.x, py + 0.6, ator.y, _luzCidade);
+    aplicarCorSprite(slot.mat, _branco, fatorSombraMundo(ator.x, py, ator.y), _luzCidade);
   }
   for (const [id, slot] of porId) {
     if (vistos.has(id)) continue;

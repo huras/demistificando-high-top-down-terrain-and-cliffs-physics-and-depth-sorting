@@ -7,8 +7,8 @@ const PASSO = 8;
 const TEXEL = METROS / LADO;
 const LIMITE = 2.2;
 
-const PERFIL_POSTE = { raio: 8, ganho: 0.22, cor: 0xffc56a, curva: 4 };
-const PERFIL_CASA = { raio: 8, ganho: 0.22, cor: 0xffffff, curva: 4 };
+const PERFIL_POSTE = { raio: 16, ganho: 0.12, cor: 0xffc56a, curva: 4 };
+const PERFIL_CASA = { raio: 8, ganho: 0.12, cor: 0xffffff, curva: 4 };
 
 const dados = new Float32Array(LADO * LADO * 4);
 const pesos = new Float32Array(LADO * LADO);
@@ -67,8 +67,8 @@ vec4 mundoLuzV = vec4(transformed, 1.0);
 vMundoLuz = (modelMatrix * mundoLuzV).xyz;
 `;
 const FRAG_SOMA_LOCAL = "vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz);";
-const FRAG_LAMBERT = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) * diffuseColor.rgb + totalEmissiveRadiance;";
-const FRAG_PHONG = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) * diffuseColor.rgb + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;";
+const FRAG_LAMBERT = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) * diffuseColor.rgb * 4.0 + totalEmissiveRadiance;";
+const FRAG_PHONG = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) * diffuseColor.rgb * 4.0 + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;";
 let avisouSoma = false;
 
 function somarLuzNoFragmento(frag) {
@@ -113,7 +113,7 @@ export function aplicarLuzCidade(material) {
   };
   material.customProgramCacheKey = function chaveLuzCidade() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-cidade`;
+    return `${base}|luz-cidade|clareia`;
   };
   return material;
 }
@@ -216,4 +216,47 @@ export function resolverMapaChao(camX, camZ) {
   assinatura = assinaturaNova;
   uniformsLuzCidade.uOrigemLuzCidade.value.set(ox, oz);
   estampar(ox, oz);
+}
+
+function suave(a, b, x) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a || 1)));
+  return t * t * (3 - 2 * t);
+}
+
+const _amostra = new THREE.Color();
+
+/** Luz da cidade no ponto, no mesmo espaço do chão. Sprites não recebem a cena. */
+export function amostrarLuzCidade(x, y, z, destino = _amostra) {
+  const peso = obterPesoNoite();
+  if (peso <= 0.001 || !Number.isFinite(origemX)) {
+    destino.setRGB(0, 0, 0);
+    return destino;
+  }
+  const u = (x - origemX) / METROS;
+  const v = (z - origemZ) / METROS;
+  if (u <= 0 || v <= 0 || u >= 1 || v >= 1) {
+    destino.setRGB(0, 0, 0);
+    return destino;
+  }
+  const fx = u * LADO - 0.5;
+  const fy = v * LADO - 0.5;
+  const x0 = Math.max(0, Math.floor(fx));
+  const y0 = Math.max(0, Math.floor(fy));
+  const x1 = Math.min(LADO - 1, x0 + 1);
+  const y1 = Math.min(LADO - 1, y0 + 1);
+  const tx = Math.max(0, Math.min(1, fx - x0));
+  const ty = Math.max(0, Math.min(1, fy - y0));
+  const i00 = (y0 * LADO + x0) * 4;
+  const i10 = (y0 * LADO + x1) * 4;
+  const i01 = (y1 * LADO + x0) * 4;
+  const i11 = (y1 * LADO + x1) * 4;
+  const lerpa = (canal) => {
+    const a = dados[i00 + canal] + (dados[i10 + canal] - dados[i00 + canal]) * tx;
+    const b = dados[i01 + canal] + (dados[i11 + canal] - dados[i01 + canal]) * tx;
+    return a + (b - a) * ty;
+  };
+  const queda = 1 - suave(6, 18, Math.abs(y - lerpa(3)));
+  const ganho = queda * peso;
+  destino.setRGB(lerpa(0) * ganho, lerpa(1) * ganho, lerpa(2) * ganho);
+  return destino;
 }

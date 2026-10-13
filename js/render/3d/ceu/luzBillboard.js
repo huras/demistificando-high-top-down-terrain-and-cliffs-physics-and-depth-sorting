@@ -60,12 +60,25 @@ export function yawCartaoSol() {
  * Sprite sem luz de cena (personagem): mesma cor que o cartão virado pro sol,
  * com a sombra de nuvem no mesmo peso do terreno.
  */
-export function aplicarCorSprite(material, corBase, sombraNuvem) {
+export function aplicarCorSprite(material, corBase, sombraNuvem, luzExtra) {
   const s = Math.max(0, Math.min(1, sombraNuvem ?? 1));
   const pesoIndireta = 1 - (1 - s) * 0.42;
   _out.copy(direta).multiplyScalar(s);
   _ind.copy(indireta).multiplyScalar(pesoIndireta);
   _out.add(_ind).multiply(corBase);
+  if (luzExtra) {
+    const pico = Math.max(luzExtra.r, luzExtra.g, luzExtra.b);
+    if (pico > 0.001) {
+      const clarear = Math.min(1.05, pico * 6.5);
+      const inv = 1 / pico;
+      _out.r += clarear * (0.72 + 0.28 * luzExtra.r * inv);
+      _out.g += clarear * (0.72 + 0.28 * luzExtra.g * inv);
+      _out.b += clarear * (0.72 + 0.28 * luzExtra.b * inv);
+      _out.r = Math.min(_out.r, 1.35);
+      _out.g = Math.min(_out.g, 1.35);
+      _out.b = Math.min(_out.b, 1.35);
+    }
+  }
   material.color.copy(_out);
 }
 

@@ -40,6 +40,7 @@ function materialDaJanela(mapa) {
     emissiveMap: mapa || null,
     emissiveIntensity: 1,
   });
+  aplicarLuzCidade(mat);
   materiaisJanela.push(mat);
   return mat;
 }
@@ -173,6 +174,7 @@ function ajustarMaterial(mat) {
       novo.map.needsUpdate = true;
     }
     lista[i] = novo;
+    aplicarLuzCidade(novo);
     m.dispose();
   }
   return Array.isArray(mat) ? lista : lista[0];
