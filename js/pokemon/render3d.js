@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ALTURA_BLOCO } from "../config.js";
+import { ALTURA_BLOCO, TILE } from "../config.js";
 import { criarSombraContato3d } from "../render/3d/sombraContato3d.js";
 import { obterBola } from "./captura.js";
 import { projeteisVivos } from "./combate/projeteis.js";
@@ -12,7 +12,8 @@ import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
 import { aplicarCorSprite } from "../render/3d/ceu/luzBillboard.js";
 import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
 
-const PX_MUNDO = 1.2 / 32;
+/** 1 px do quadro = 1/TILE voxel, igual à árvore e ao tile do Pokémon AI. */
+const PX_MUNDO = 1 / TILE;
 const LADO = 256;
 const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;

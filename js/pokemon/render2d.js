@@ -8,7 +8,8 @@ import { blitQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js"
 import { atoresVisiveis } from "./sistema.js";
 import { COR_TIPO } from "./tipos.js";
 
-const PX = 1.85;
+/** Na tela, 1 px de arte vira ESCALA px: o voxel mede TILE×ESCALA, então o mundo fica px/TILE. */
+const PX = ESCALA;
 
 function desenharSombra(ctx, x, y, escala) {
   ctx.save();

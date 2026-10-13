@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ALTURA_BLOCO, JOGADOR_FRAME } from "../../config.js";
+import { ALTURA_BLOCO, ALTURA_SPRITE_JOGADOR, JOGADOR_FRAME } from "../../config.js";
 import { pivoDoFrame } from "../pivoPe.js";
 import { colunaAgua } from "../../mundo/agua/fluxo.js";
 import { criarAsaDelta3d } from "./asaDelta3d.js";
@@ -9,7 +9,6 @@ import { aplicarCorSprite } from "./ceu/luzBillboard.js";
 import { fatorSombraMundo } from "./ceu/mapaNuvem.js";
 import { amostrarLuzCidade } from "./luzes/mapaChao.js";
 
-const ALTURA_SPRITE = 1.25;
 const _luzCidade = new THREE.Color();
 
 /**
@@ -45,7 +44,7 @@ export function criarPersonagem3d(opts = {}) {
 
   const sprite = new THREE.Sprite(spriteMat);
   sprite.center.set(0.5, 0);
-  sprite.scale.set(ALTURA_SPRITE, ALTURA_SPRITE, 1);
+  sprite.scale.set(ALTURA_SPRITE_JOGADOR, ALTURA_SPRITE_JOGADOR, 1);
   sprite.renderOrder = 3;
   sprite.castShadow = false;
   sprite.receiveShadow = false;
@@ -66,7 +65,7 @@ export function criarPersonagem3d(opts = {}) {
   });
   const veu = new THREE.Sprite(veuMat);
   veu.center.set(0.5, 0);
-  veu.scale.set(ALTURA_SPRITE, ALTURA_SPRITE, 1);
+  veu.scale.set(ALTURA_SPRITE_JOGADOR, ALTURA_SPRITE_JOGADOR, 1);
   veu.renderOrder = 4;
   veu.castShadow = false;
   veu.receiveShadow = false;
@@ -133,7 +132,7 @@ export function criarPersonagem3d(opts = {}) {
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
       grupo.position.set(corpoEstado.x, elev * ALTURA_BLOCO, corpoEstado.y);
       const sombraNuvem = fatorSombraMundo(corpoEstado.x, grupo.position.y, corpoEstado.y);
-      amostrarLuzCidade(grupo.position.x, grupo.position.y + 0.7, grupo.position.z, _luzCidade);
+      amostrarLuzCidade(grupo.position.x, grupo.position.y + ALTURA_SPRITE_JOGADOR * 0.56, grupo.position.z, _luzCidade);
       aplicarCorSprite(spriteMat, corBase, sombraNuvem, _luzCidade);
 
       const agua = colunaAgua(corpoEstado.x, corpoEstado.y);

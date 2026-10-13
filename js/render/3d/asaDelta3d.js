@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { ALTURA_SPRITE_JOGADOR } from "../../config.js";
 
 /** Mesma geometria unitária do asaDeltaVisual 2D (nariz = +X). */
 const VELA = [
@@ -19,7 +20,7 @@ const TRAVES = [
 
 const PERSPECTIVA_Y = 0.44;
 const ESCALA = 0.9;
-const ATTACH = Object.freeze({ x: 0, y: 1.05, z: -0.05 });
+const ATTACH = Object.freeze({ x: 0, y: ALTURA_SPRITE_JOGADOR * 0.84, z: -0.05 });
 
 function shapeVela() {
   const s = new THREE.Shape();

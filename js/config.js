@@ -212,6 +212,12 @@ export const VEG_YAW_EPS = 0.001;
 
 export const JOGADOR_FRAME = 64;
 export const JOGADOR_ESCALA = 0.5;
+/**
+ * Quadro do jogador no mundo (voxels).
+ * 64 × 0.5 / 16 = 2, o mesmo tile de 16px do overworld do Pokémon AI.
+ * Árvore e detalhe já usam (px / TILE) × escala.
+ */
+export const ALTURA_SPRITE_JOGADOR = (JOGADOR_FRAME * JOGADOR_ESCALA) / TILE;
 
 /**
  * Sheets processados.
