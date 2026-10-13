@@ -67,8 +67,8 @@ vec4 mundoLuzV = vec4(transformed, 1.0);
 vMundoLuz = (modelMatrix * mundoLuzV).xyz;
 `;
 const FRAG_SOMA_LOCAL = "vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz);";
-const FRAG_LAMBERT = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) + totalEmissiveRadiance;";
-const FRAG_PHONG = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;";
+const FRAG_LAMBERT = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) * diffuseColor.rgb + totalEmissiveRadiance;";
+const FRAG_PHONG = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) * diffuseColor.rgb + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;";
 let avisouSoma = false;
 
 function somarLuzNoFragmento(frag) {
