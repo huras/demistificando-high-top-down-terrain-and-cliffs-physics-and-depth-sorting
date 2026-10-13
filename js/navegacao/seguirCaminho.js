@@ -11,7 +11,26 @@ import {
   obterResultadoPath,
   solicitarPath,
 } from "./filaPath.js";
-import { TIPO_CLIMB, TIPO_GLIDE, TIPO_JUMP, TIPO_NADO, TIPO_VOO, pisoMaisProximo } from "./navGrade.js";
+import { TIPO_CLIMB, TIPO_GLIDE, TIPO_JUMP, TIPO_NADO, TIPO_VOO, TIPO_WALK, pisoMaisProximo } from "./navGrade.js";
+
+function lembrarRumo(nav, ix, iy) {
+  if (!ix && !iy) return;
+  nav.rumoX = ix;
+  nav.rumoY = iy;
+}
+
+function miraAFrente(nav, idx, z) {
+  let frente = idx;
+  const limite = Math.min(nav.path.cells.length - 1, idx + 4);
+  while (frente < limite) {
+    const prox = nav.path.cells[frente + 1];
+    if (prox.tipo !== TIPO_WALK) break;
+    if (Math.abs((prox.z | 0) - (z | 0)) > 0) break;
+    frente++;
+  }
+  const alvo = nav.path.cells[frente];
+  return { x: alvo.cx + 0.5, y: alvo.cy + 0.5 };
+}
 
 function idleNav(extras = {}) {
   return {
@@ -552,10 +571,10 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     !voando &&
     !naParede
   ) {
-    const dx = lider.x - agente.x;
-    const dy = lider.y - agente.y;
-    const d = Math.hypot(dx, dy) || 1;
-    return idleNav({ ix: dx / d, iy: dy / d });
+    if ((nav.rumoX || nav.rumoY) && nav.pathAplicadoVersao >= 0) {
+      return idleNav({ ix: nav.rumoX, iy: nav.rumoY });
+    }
+    return idleNav();
   }
 
   if (nav.estado === "semCaminho") {
@@ -583,7 +602,16 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     const folgaZ = Math.abs((agente.elevacao ?? agente.z ?? 0) - zWpHere);
     const noPiso = agente.nadando ? folgaZ < 1.2 : folgaZ < 0.85;
     const apoiado = !!agente.noChao || !!agente.nadando;
-    if (Math.hypot(tx - agente.x, ty - agente.y) < raio && apoiado && noPiso) {
+    let passouTrecho = false;
+    if (wp.tipo === TIPO_WALK && nav.idx < nav.path.cells.length - 1) {
+      const nxt = nav.path.cells[nav.idx + 1];
+      const segX = nxt.cx + 0.5 - tx;
+      const segY = nxt.cy + 0.5 - ty;
+      const along = (agente.x - tx) * segX + (agente.y - ty) * segY;
+      const seg2 = segX * segX + segY * segY;
+      passouTrecho = seg2 > 1e-4 && along > seg2 * 0.45;
+    }
+    if ((Math.hypot(tx - agente.x, ty - agente.y) < raio && apoiado && noPiso) || passouTrecho) {
       nav.idx++;
       continue;
     }
@@ -631,6 +659,10 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
   const dx = tx - agente.x;
   const dy = ty - agente.y;
   const d = Math.hypot(dx, dy) || 1;
+  const mira = wp.tipo === TIPO_WALK ? miraAFrente(nav, nav.idx, wp.z | 0) : { x: tx, y: ty };
+  const ax = mira.x - agente.x;
+  const ay = mira.y - agente.y;
+  const ad = Math.hypot(ax, ay) || 1;
 
   const elevAg = agente.elevacao ?? agente.z;
   const zWp = zDoWaypoint(wp, elevAg);
@@ -764,7 +796,8 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
       elevAg,
       zGoal,
     );
-    return idleNav({ ix: dx / d, iy: dy / d });
+    lembrarRumo(nav, ax / ad, ay / ad);
+    return idleNav({ ix: ax / ad, iy: ay / ad });
   }
 
   let querPulo = false;
@@ -787,9 +820,10 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     }
   }
 
+  lembrarRumo(nav, ax / ad, ay / ad);
   return {
-    ix: dx / d,
-    iy: dy / d,
+    ix: ax / ad,
+    iy: ay / ad,
     querPulo,
     querPlanar: querPlanar || soltarParede,
     querEscalar,

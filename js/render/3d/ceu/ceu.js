@@ -24,6 +24,7 @@ import {
 import { atualizarPoca } from "./pocaChao.js";
 import { criarPrecipitacao } from "./precipitacao.js";
 import { atualizarLuzBillboard } from "./luzBillboard.js";
+import { definirPesoNoite } from "../luzes/pool.js";
 import { criarRelampago } from "./relampago.js";
 
 export {
@@ -96,6 +97,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     rim.target.position.set(alvo.x, alvo.y, alvo.z);
 
     atualizarLuzBillboard({ sol, ambient, hemi, fill, rim });
+    definirPesoNoite(1 - visual.pesoDia);
   }
 
   function aplicarNevoa(visual, clima, nevoa) {

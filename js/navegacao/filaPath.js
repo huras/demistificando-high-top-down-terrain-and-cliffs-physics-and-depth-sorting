@@ -69,7 +69,6 @@ export function solicitarPath(
   if (
     existente &&
     !existente.busca?.pronto &&
-    existente.startKey === startKey &&
     existente.goalKey === goalKey &&
     existente.perfilId === perfil.id
   ) {

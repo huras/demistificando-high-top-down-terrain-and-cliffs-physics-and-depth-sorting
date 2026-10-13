@@ -270,9 +270,9 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0) {
   }
 
   if (ix !== 0 || iy !== 0) {
-    // 8 dirs: ambos os eixos podem ficar ativos (igual WASD diagonal)
-    agente.dirX = Math.sign(ix);
-    agente.dirY = Math.sign(iy);
+    const rumo = Math.hypot(ix, iy) || 1;
+    agente.dirX = ix / rumo;
+    agente.dirY = iy / rumo;
     agente.facing = facingDeDir(ix, iy);
   }
 
@@ -435,8 +435,9 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0) {
     }
 
     const dist = Math.hypot(lider.x - agente.x, lider.y - agente.y);
+    agente.correndo = velMax >= VELOCIDADE_SPRINT - 0.05;
     agente.andando = movendo && dist > AGENTE_DIST_PARAR;
-    if (agente.andando) agente.animT += dt;
+    if (agente.andando) agente.animT += dt * (agente.correndo ? 1.35 : 1);
 
     if (nav?.estado === "semCaminho") agente.acao = "sem-caminho";
     else if (nav?.estado === "buscando") agente.acao = "buscando-path";

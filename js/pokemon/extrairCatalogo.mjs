@@ -26,10 +26,14 @@ export function extrairCatalogo(raizRef) {
 
 async function montar(raizRef) {
   const base = path.join(raizRef, "src", "data", "pokemon");
-  const [especiesMod, golpesMod] = await Promise.all([
+  const escalaMod = path.join(raizRef, "src", "sprites", "pmd", "pmdScale.js");
+  const [especiesMod, golpesMod, pmdEscala] = await Promise.all([
     import(pathToFileURL(path.join(base, "index.js")).href),
     import(pathToFileURL(path.join(base, "moves.js")).href),
+    import(pathToFileURL(escalaMod).href),
   ]);
+  const escalaDe = pmdEscala.getPmdVisualScale;
+  const offsetDe = pmdEscala.getPmdYOffset;
 
   const especies = {};
   const chaves = Object.keys(especiesMod.SPECIES);
@@ -59,6 +63,8 @@ async function montar(raizRef) {
       spe: stats.spe | 0,
       captura: especiesMod.getSpeciesCatchRate(sp.key, 45),
       cor: sp.color || "#9ca3af",
+      escala: numeroOu(escalaDe(sp.dex), 1),
+      offsetY: numeroOu(offsetDe(sp.dex), 0),
       learnset: learn,
     };
   }
@@ -85,4 +91,9 @@ async function montar(raizRef) {
   }
 
   return { especies, golpes };
+}
+
+function numeroOu(valor, fallback) {
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : fallback;
 }

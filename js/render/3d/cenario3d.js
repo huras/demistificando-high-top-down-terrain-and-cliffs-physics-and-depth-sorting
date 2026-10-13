@@ -24,6 +24,8 @@ import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
+import { comecarQuadroLuzes, criarPoolLuzes, resolverLuzes } from "./luzes/pool.js";
+import { comecarMapaChao, resolverMapaChao } from "./luzes/mapaChao.js";
 import { estaEmCena } from "../../cena/modoCena.js";
 import {
   atualizarCameraCena,
@@ -96,6 +98,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.background = new THREE.Color(0x1a1512);
   scene.fog = new THREE.Fog(0x2a221c, 36, 85);
   ligarPokemon3d(scene);
+  criarPoolLuzes(scene);
 
   const camera3d = criarCamera3d(largura / altura);
   verCamadaAuxiliar(camera3d.cam);
@@ -406,6 +409,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   sincronizarVisualTerreno(atlas);
   aplicarNevoa(obterRaioStream());
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
+  comecarQuadroLuzes();
+  comecarMapaChao();
   estado.edificios?.atualizar?.(corpo.x, corpo.y);
   estado.terrenoSuave?.tick(corpo.x, corpo.y, estado.terreno.chunksExibidos?.());
   seguirAlvo3d(estado.camera3d, corpo, dt);
@@ -459,6 +464,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   });
 
   atualizarPokemon3d(yaw);
+  const camPos = estado.camera3d.cam.position;
+  resolverLuzes(camPos.x, camPos.y, camPos.z, estado.scene.fog?.far ?? 90);
+  resolverMapaChao(camPos.x, camPos.z);
   atualizarRealceCena();
   estado.renderer.render(estado.scene, camRender);
   return estado;

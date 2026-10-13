@@ -1,32 +1,38 @@
+# Blender MTL File: 'None'
+# Material Count: 3
+
 newmtl tkwa_sl2
-Ka 0.972549 0.972549 0.972549
-Kd 0.7843137 0.7843137 0.7843137
-d 1
-Tr 1
-map_Ka tkwa_sl2.png
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.784314 0.784314 0.784314
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
 map_Kd tkwa_sl2.png
 map_d tkwa_sl2.png
+
 newmtl tkwa_sl2l
-Ka 0.972549 0.972549 0.972549
-Kd 0.7843137 0.7843137 0.7843137
-d 1
-Tr 1
-map_Ka tkwa_sl2l.png
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.784314 0.784314 0.784314
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
 map_Kd tkwa_sl2l.png
 map_d tkwa_sl2l.png
-newmtl tkwa_sl2w
-Ka 0.972549 0.972549 0.972549
-Kd 0.7843137 0.7843137 0.7843137
-d 1
-Tr 1
-map_Ka tkwa_sl2w.png
-map_Kd tkwa_sl2w.png
-map_d tkwa_sl2w.png
+
 newmtl tkwa_sl3
-Ka 0.972549 0.972549 0.972549
-Kd 0.7843137 0.7843137 0.7843137
-d 1
-Tr 1
-map_Ka tkwa_sl3.png
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.784314 0.784314 0.784314
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
 map_Kd tkwa_sl3.png
 map_d tkwa_sl3.png

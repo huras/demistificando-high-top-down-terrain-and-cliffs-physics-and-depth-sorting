@@ -4,8 +4,10 @@ import { criarSombraContato3d } from "../render/3d/sombraContato3d.js";
 import { obterBola } from "./captura.js";
 import { projeteisVivos } from "./combate/projeteis.js";
 import { dropsNoChao } from "./drops.js";
-import { blitQuadro, quadroDe, garantirAtlas, direcao8Camera } from "./sprites.js";
+import { blitQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
+import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
+import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
 
 const PX_MUNDO = 1.2 / 32;
 const LADO = 256;
@@ -14,6 +16,8 @@ const PE_Y = LADO - 64;
 const CAP_ATOR = 20;
 const CAP_TIRO = 32;
 const CAP_DROP = 48;
+const MAX_BRILHO = 4;
+const _mundo = new THREE.Vector3();
 
 let cena = null;
 let atores = [];
@@ -38,16 +42,6 @@ function texturaPonto() {
   pontoTex.minFilter = THREE.NearestFilter;
   pontoTex.colorSpace = THREE.SRGBColorSpace;
   return pontoTex;
-}
-
-function cinza(ctx, w, h) {
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const y = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
-    d[i] = d[i + 1] = d[i + 2] = y * 0.85;
-  }
-  ctx.putImageData(img, 0, 0);
 }
 
 function criarAtorSlot() {
@@ -75,9 +69,16 @@ function criarAtorSlot() {
   grupo.add(sprite);
   const sombra = criarSombraContato3d();
   grupo.add(sombra.grupo);
+  const brilhos = [];
+  for (let i = 0; i < MAX_BRILHO; i++) {
+    const brilho = criarCartaoLuz("#fff1d0", 0.6);
+    brilho.visible = false;
+    grupo.add(brilho);
+    brilhos.push(brilho);
+  }
   grupo.visible = false;
   cena.add(grupo);
-  return { grupo, canvas, ctx, tex, mat, sprite, sombra, chave: "", livre: true };
+  return { grupo, canvas, ctx, tex, mat, sprite, sombra, brilhos, chave: "", livre: true };
 }
 
 function criarPonto(cor) {
@@ -98,6 +99,7 @@ function criarPonto(cor) {
 export function ligarPokemon3d(scene) {
   if (cena) return;
   cena = scene;
+  carregarCatalogoLuzes();
   for (let i = 0; i < CAP_ATOR; i++) atores.push(criarAtorSlot());
   for (let i = 0; i < CAP_TIRO; i++) tiros.push(criarPonto("#ffffff"));
   for (let i = 0; i < CAP_DROP; i++) drops.push(criarPonto("#fbbf24"));
@@ -107,8 +109,14 @@ export function ligarPokemon3d(scene) {
 
 function ancorar(slot) {
   slot.sprite.center.set(PE_X / LADO, (LADO - PE_Y) / LADO);
-  slot.sprite.scale.set(LADO * PX_MUNDO, LADO * PX_MUNDO, 1);
   slot.sprite.visible = true;
+}
+
+function aplicarMedida(slot, ator) {
+  const { escala, offsetY } = medidaSprite(ator);
+  slot.sprite.position.y = -offsetY;
+  slot.sprite.scale.set(LADO * PX_MUNDO * escala, LADO * PX_MUNDO * escala, 1);
+  return offsetY;
 }
 
 function pintar(slot, ator, fr, pack) {
@@ -118,7 +126,6 @@ function pintar(slot, ator, fr, pack) {
   slot.ctx.imageSmoothingEnabled = false;
   slot.ctx.clearRect(0, 0, LADO, LADO);
   blitQuadro(slot.ctx, pack.img, pack.atlasW, pack.atlasH, fr, PE_X, PE_Y, 1);
-  if (ator.morto) cinza(slot.ctx, LADO, LADO);
   slot.tex.needsUpdate = true;
   slot.mat.color.set("#ffffff");
   ancorar(slot);
@@ -131,11 +138,35 @@ function fallback(slot, ator) {
   slot.ctx.clearRect(0, 0, LADO, LADO);
   slot.ctx.fillStyle = ator.especie.cor || "#94a3b8";
   slot.ctx.beginPath();
-  slot.ctx.arc(PE_X, PE_Y - 18, 14, 0, Math.PI * 2);
-  slot.ctx.fill();
-  if (ator.morto) cinza(slot.ctx, LADO, LADO);
-  slot.tex.needsUpdate = true;
+    slot.ctx.arc(PE_X, PE_Y - 18, 14, 0, Math.PI * 2);
+    slot.ctx.fill();
+    slot.tex.needsUpdate = true;
   ancorar(slot);
+}
+
+function aplicarBrilho(slot, ator, offsetY) {
+  const pontos = ator.morto ? [] : pontosDoModelo(ator.especie?.key);
+  const n = Math.min(pontos.length, slot.brilhos.length);
+  for (let i = 0; i < slot.brilhos.length; i++) {
+    const brilho = slot.brilhos[i];
+    if (i >= n) {
+      brilho.visible = false;
+      continue;
+    }
+    const p = pontos[i];
+    brilho.visible = true;
+    brilho.position.set(p.x, p.y - offsetY, 0.02);
+    brilho.material.color.set(p.cor);
+    const lado = Math.max(0.35, p.raio * 0.85);
+    brilho.scale.set(lado, lado, 1);
+  }
+  if (!n) return;
+  slot.grupo.updateWorldMatrix(true, false);
+  for (let i = 0; i < n; i++) {
+    const p = pontos[i];
+    _mundo.set(p.x, p.y - offsetY, 0).applyMatrix4(slot.grupo.matrixWorld);
+    oferecerLuz(ator.id, _mundo.x, _mundo.y, _mundo.z, p.cor, p.raio, p.intensidade);
+  }
 }
 
 function pegarLivre() {
@@ -173,17 +204,20 @@ export function atualizarPokemon3d(yawCam = 0) {
     const fr = quadroDe(ator, pack);
     if (fr && pack.img && pack.estado === "pronto") pintar(slot, ator, fr, pack);
     else fallback(slot, ator);
+    const offsetY = aplicarMedida(slot, ator);
     if (visual && dirMundo != null) visual.dir = dirMundo;
     slot.sombra.atualizar(
       { x: ator.x, y: ator.y, z: ator.z, noChao: true, elevacao: ator.z },
       elev,
     );
+    aplicarBrilho(slot, ator, offsetY);
   }
   for (const [id, slot] of porId) {
     if (vistos.has(id)) continue;
     slot.grupo.visible = false;
     slot.livre = true;
     slot.chave = "";
+    for (let b = 0; b < slot.brilhos.length; b++) slot.brilhos[b].visible = false;
     porId.delete(id);
   }
 

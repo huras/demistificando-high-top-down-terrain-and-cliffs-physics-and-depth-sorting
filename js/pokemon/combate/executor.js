@@ -3,6 +3,7 @@ import { golpeBasico, recargaDe } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano } from "../tipos.js";
 import { soltarProjetil } from "./projeteis.js";
+import { marcarPose } from "../sprites.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
 
@@ -17,7 +18,7 @@ function inimigo(a, b) {
 }
 
 function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos) {
-  if (!alvo || alvo.morto || alvo.capturado || alvo.iframe > 0) return;
+  if (!alvo || alvo.morto || alvo.capturado || alvo.iframe > 0 || alvo.invulneravel) return;
   if (!inimigo(atacante, alvo)) return;
   const { dano, efet } = calcularDano(atacante, alvo, poder, tipo, categoria);
   if (efet === 0 || dano <= 0) {
@@ -27,8 +28,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos) {
   }
   alvo.hp -= dano;
   alvo.iframe = 0.15;
-  alvo.pose = "Hurt";
-  alvo.poseAte = agora + 0.32;
+  marcarPose(alvo, "Hurt", agora);
   efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
   if (alvo.faccao === "selvagem") {
     alvo.pendenteAtacante = atacante;
@@ -107,14 +107,12 @@ function executar(ator, slot, alvo, agora, efeitos) {
       ator.velMulAte = agora + 4;
       efeitos.flutuar(ator, def.nome, "#93c5fd");
     }
-    ator.pose = "Attack";
-    ator.poseAte = agora + 0.4;
+    marcarPose(ator, "Attack", agora);
     return;
   }
 
   if (def.forma === "projectile" || def.forma === "arc") {
-    ator.pose = "Shoot";
-    ator.poseAte = agora + 0.45;
+    marcarPose(ator, "Shoot", agora);
     soltarProjetil({
       x: ator.x + ator.dirX * 0.4,
       y: ator.y + ator.dirY * 0.4,
@@ -134,8 +132,7 @@ function executar(ator, slot, alvo, agora, efeitos) {
   }
 
   if (def.forma === "radius") {
-    ator.pose = "Attack";
-    ator.poseAte = agora + 0.4;
+    marcarPose(ator, "Attack", agora);
     const raio = Math.max(2.2, def.alcance || 2.2);
     const perto = atoresPerto(ator.x, ator.y, raio);
     for (let i = 0; i < perto.length; i++) {
@@ -144,8 +141,7 @@ function executar(ator, slot, alvo, agora, efeitos) {
     return;
   }
 
-  ator.pose = "Attack";
-  ator.poseAte = agora + 0.35;
+  marcarPose(ator, "Attack", agora);
   ator.hopLift = Math.max(ator.hopLift, 0.42);
   if (alvo) aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos);
 }

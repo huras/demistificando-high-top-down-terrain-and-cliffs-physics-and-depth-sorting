@@ -7,6 +7,9 @@ import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
+import { carregarCatalogoLuzes, pontosDoModelo } from "./luzes/catalogo.js";
+import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
+import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
@@ -15,6 +18,73 @@ const ALTURA_POSTE = 3.6;
 const MEIO_RUA = 3.5;
 const PASSO_POSTE = 10;
 const CASAS = ["casa-bark", "casa-amigo", "casa-cherry", "casa-guia"];
+const _ponto = new THREE.Vector3();
+let materialFlare = null;
+let materialGlobo = null;
+
+function materialDoFlare(mapa) {
+  if (materialFlare) {
+    if (mapa && materialFlare.map !== mapa) mapa.dispose?.();
+    return materialFlare;
+  }
+  if (mapa) {
+    mapa.colorSpace = THREE.SRGBColorSpace;
+    mapa.magFilter = THREE.LinearFilter;
+    mapa.minFilter = THREE.LinearMipmapLinearFilter;
+    mapa.generateMipmaps = true;
+    mapa.wrapS = THREE.ClampToEdgeWrapping;
+    mapa.wrapT = THREE.ClampToEdgeWrapping;
+    mapa.needsUpdate = true;
+  }
+  materialFlare = new THREE.MeshBasicMaterial({
+    name: "tkwa_sl3",
+    map: mapa || null,
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    side: THREE.DoubleSide,
+    fog: false,
+  });
+  materialFlare.addEventListener("dispose", () => {
+    materialFlare = null;
+  });
+  return materialFlare;
+}
+
+function materialDoGlobo(mapa) {
+  if (materialGlobo) {
+    if (mapa && materialGlobo.map !== mapa) mapa.dispose?.();
+    return materialGlobo;
+  }
+  if (mapa) {
+    mapa.colorSpace = THREE.SRGBColorSpace;
+    mapa.magFilter = THREE.NearestFilter;
+    mapa.minFilter = THREE.NearestFilter;
+    mapa.generateMipmaps = false;
+    mapa.needsUpdate = true;
+  }
+  materialGlobo = new THREE.MeshPhongMaterial({
+    name: "tkwa_sl2l",
+    map: mapa || null,
+    color: 0x3a3a3a,
+    emissive: 0xffffff,
+    emissiveMap: mapa || null,
+    emissiveIntensity: 1,
+    specular: 0xffffff,
+    shininess: 64,
+  });
+  materialGlobo.addEventListener("dispose", () => {
+    materialGlobo = null;
+  });
+  aplicarLuzCidade(materialGlobo);
+  return materialGlobo;
+}
+
+export const MODELOS_CIDADE = ["centro", "loja", "lab", "poste"].concat(CASAS);
 
 function yawDaRua(mx, my) {
   const dx = mx - 64;
@@ -81,17 +151,64 @@ function ajustarMaterial(mat) {
       novo.map.needsUpdate = true;
     }
     lista[i] = novo;
+    aplicarLuzCidade(novo);
     m.dispose();
   }
   return Array.isArray(mat) ? lista : lista[0];
 }
 
+function partirMultiMaterial(mesh) {
+  const mats = mesh.material;
+  if (!Array.isArray(mats) || !mesh.geometry?.groups?.length || !mesh.parent) return;
+  const geo = mesh.geometry;
+  const grupos = geo.groups;
+  for (let i = 0; i < grupos.length; i++) {
+    const grupo = grupos[i];
+    const mat = mats[grupo.materialIndex];
+    if (!mat) continue;
+    const parteGeo = geo.clone();
+    parteGeo.clearGroups();
+    parteGeo.setDrawRange(grupo.start, grupo.count);
+    const parte = new THREE.Mesh(parteGeo, mat);
+    parte.name = mat.name || mesh.name;
+    parte.position.copy(mesh.position);
+    parte.quaternion.copy(mesh.quaternion);
+    parte.scale.copy(mesh.scale);
+    mesh.parent.add(parte);
+  }
+  mesh.parent.remove(mesh);
+  geo.dispose();
+}
+
 function preparar(raiz, escala) {
+  const multi = [];
+  raiz.traverse((filho) => {
+    if (filho.isMesh && Array.isArray(filho.material)) multi.push(filho);
+  });
+  for (let i = 0; i < multi.length; i++) partirMultiMaterial(multi[i]);
   raiz.traverse((filho) => {
     if (!filho.isMesh) return;
     const nome = (filho.material?.name || "").toLowerCase();
     if (nome === "h_kage" || nome === "kage") {
       filho.visible = false;
+      return;
+    }
+    if (nome === "tkwa_sl3") {
+      const mapa = filho.material?.map || null;
+      filho.material?.dispose?.();
+      filho.material = materialDoFlare(mapa);
+      filho.castShadow = false;
+      filho.receiveShadow = false;
+      filho.renderOrder = 2;
+      return;
+    }
+    if (nome === "tkwa_sl2l") {
+      consertarNormais(filho.geometry);
+      const mapa = filho.material?.map || null;
+      filho.material?.dispose?.();
+      filho.material = materialDoGlobo(mapa);
+      filho.castShadow = true;
+      filho.receiveShadow = true;
       return;
     }
     consertarNormais(filho.geometry);
@@ -119,6 +236,29 @@ function preparar(raiz, escala) {
 
 function escalaDoLote(medido) {
   return Math.min(LADO_X / medido.sx, LADO_Z / medido.sz) * FOLGA;
+}
+
+function pendurarLuzes(inst, id, dono) {
+  const pontos = pontosDoModelo(id);
+  if (!pontos.length) return;
+  inst.userData.modeloLuz = id;
+  inst.userData.donoLuz = dono;
+  inst.userData.pontosLuz = pontos;
+  for (let i = 0; i < pontos.length; i++) {
+    const p = pontos[i];
+    const cartao = criarCartaoLuz(p.cor, p.raio);
+    cartao.position.set(p.x, p.y, p.z);
+    inst.add(cartao);
+  }
+}
+
+export function carregarMoldeCidade(id) {
+  return carregarObj(id).then((raiz) => {
+    const medido = preparar(raiz, 1);
+    const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
+    medido.grupo.scale.setScalar(escala);
+    return medido.grupo;
+  });
 }
 
 function postesDoLayout(layout) {
@@ -162,6 +302,7 @@ function montarCidade(moldes, def) {
     const inst = molde.grupo.clone(true);
     inst.rotation.y = v.papel === "casa" ? 0 : yawDaRua(mx, my);
     inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
+    pendurarLuzes(inst, id, `${def.key}:${i}`);
     grupo.add(inst);
   }
   const poste = moldes.get("poste");
@@ -170,6 +311,7 @@ function montarCidade(moldes, def) {
     for (let i = 0; i < pontos.length; i++) {
       const inst = poste.grupo.clone(true);
       inst.position.set(ox + pontos[i][0], ALTURA_PRACA, oy + pontos[i][1]);
+      pendurarLuzes(inst, "poste", `${def.key}:poste:${i}`);
       grupo.add(inst);
     }
   }
@@ -183,10 +325,10 @@ function montarCidade(moldes, def) {
 export function criarEdificiosCidade() {
   const grupo = new THREE.Group();
   grupo.name = "edificios-cidade";
-  const ids = ["centro", "loja", "lab", "poste"].concat(CASAS);
+  const ids = MODELOS_CIDADE;
   const cargas = ids.map((id) => carregarObj(id).then((raiz) => [id, { grupo: raiz }]));
-  Promise.all(cargas)
-    .then((pares) => {
+  Promise.all([Promise.all(cargas), carregarCatalogoLuzes()])
+    .then(([pares]) => {
       const moldes = new Map();
       for (let i = 0; i < pares.length; i++) {
         const [id, item] = pares[i];
@@ -209,6 +351,7 @@ export function criarEdificiosCidade() {
   return {
     grupo,
     atualizar(px, py) {
+      if (materialFlare) materialFlare.opacity = obterPesoNoite();
       const cidades = grupo.userData.cidades;
       if (!cidades) return;
       const alcance = (obterRaioStream() + 2) * CHUNK_XZ + 96;
@@ -217,7 +360,28 @@ export function criarEdificiosCidade() {
         const c = cidades[i];
         const dx = px - c.cx;
         const dy = py - c.cy;
-        c.grupo.visible = dx * dx + dy * dy < limite;
+        const visivel = dx * dx + dy * dy < limite;
+        c.grupo.visible = visivel;
+        if (!visivel) continue;
+        const filhos = c.grupo.children;
+        for (let f = 0; f < filhos.length; f++) {
+          const inst = filhos[f];
+          const pontos = inst.userData.pontosLuz;
+          if (!pontos) continue;
+          inst.updateWorldMatrix(true, false);
+          for (let p = 0; p < pontos.length; p++) {
+            const ponto = pontos[p];
+            _ponto.set(ponto.x, ponto.y, ponto.z).applyMatrix4(inst.matrixWorld);
+            oferecerLuzChao(
+              inst.userData.modeloLuz,
+              _ponto.x,
+              _ponto.y,
+              _ponto.z,
+              ponto.cor,
+              ponto.intensidade,
+            );
+          }
+        }
       }
     },
   };

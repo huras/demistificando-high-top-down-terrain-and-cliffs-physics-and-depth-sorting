@@ -1,6 +1,7 @@
 import { POKEMON } from "../config.js";
 
-const QUER = new Set(["Idle", "Walk", "Attack", "Shoot", "Hurt"]);
+const QUER = new Set(["Idle", "Walk", "Attack", "Shoot", "Hurt", "Strike", "Sleep", "FlapAround"]);
+const POSE_GOLPE = new Set(["Attack", "Shoot", "Hurt", "Strike"]);
 const cache = new Map();
 const fila = [];
 let emVoo = 0;
@@ -97,8 +98,7 @@ export function direcao8(dx, dy) {
   if (!dx && !dy) return null;
   const a = Math.atan2(dy, dx);
   let d = Math.round((a - Math.PI / 2) / (Math.PI / 4));
-  d = ((d % 8) + 8) % 8;
-  return (8 - d) % 8;
+  return ((d % 8) + 8) % 8;
 }
 
 /**
@@ -140,16 +140,67 @@ export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala) {
   );
 }
 
+export function medidaSprite(ator) {
+  const escala = Number(ator?.especie?.escala);
+  const offsetY = Number(ator?.especie?.offsetY);
+  return {
+    escala: escala > 0 ? escala : 1,
+    offsetY: Number.isFinite(offsetY) ? offsetY : 0,
+  };
+}
+
+function duracaoFaixa(pack, nome) {
+  const spec = pack?.anims?.[nome];
+  if (!spec) return 0.55;
+  const n = spec.frameCount || spec.durations?.length || 1;
+  let ms = 0;
+  for (let i = 0; i < n; i++) ms += spec.durations?.[i] || spec.durations?.[0] || 80;
+  return Math.max(0.2, ms / 1000);
+}
+
+function faixaDoGolpe(pack, nome) {
+  if (nome === "Attack" && pack?.anims && !pack.anims.Attack && pack.anims.Strike) return "Strike";
+  return nome;
+}
+
+export function marcarPose(ator, nome, agora) {
+  const pack = garantirAtlas(ator.especie?.dex, ator.shiny);
+  const faixa = faixaDoGolpe(pack, nome);
+  ator.pose = faixa;
+  ator.poseMedida = !!pack?.anims?.[faixa];
+  ator.poseAte = agora + duracaoFaixa(pack, faixa);
+}
+
+function voa(ator) {
+  if ((ator.hopLift || 0) > 0.05) return true;
+  if (!ator.andando) return false;
+  const tipos = ator.tipos || ator.especie?.tipos;
+  if (!tipos) return false;
+  for (let i = 0; i < tipos.length; i++) {
+    if (tipos[i] === "flying") return true;
+  }
+  return false;
+}
+
+function escolherFaixa(ator, pack, agora) {
+  if (ator.morto) return pack.anims?.Sleep ? "Sleep" : "Idle";
+  if (agora < ator.poseAte && POSE_GOLPE.has(ator.pose)) return faixaDoGolpe(pack, ator.pose);
+  if (voa(ator) && pack.anims?.FlapAround) return "FlapAround";
+  if (ator.andando && pack.anims?.Walk) return "Walk";
+  return "Idle";
+}
+
 export function tickVisual(ator, dt, agora) {
   if (!ator.visual) ator.visual = { anim: "Idle", dir: 0, frame: 0, t: 0 };
   const v = ator.visual;
   const d = direcao8(ator.dirX, ator.dirY);
   if (d != null) v.dir = d;
-  let anim = "Idle";
-  if (!ator.morto && agora < ator.poseAte && (ator.pose === "Attack" || ator.pose === "Shoot" || ator.pose === "Hurt")) {
-    anim = ator.pose;
-  } else if (!ator.morto && ator.andando) anim = "Walk";
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
+  let anim = escolherFaixa(ator, pack, agora);
+  if (POSE_GOLPE.has(anim) && pack.anims?.[anim] && !ator.poseMedida) {
+    ator.poseMedida = true;
+    ator.poseAte = agora + duracaoFaixa(pack, anim);
+  }
   if (!pack.anims?.[anim]) anim = pack.anims?.Idle ? "Idle" : anim;
   if (v.anim !== anim) {
     v.anim = anim;
@@ -158,19 +209,17 @@ export function tickVisual(ator, dt, agora) {
   }
   const spec = pack.anims?.[v.anim];
   if (!spec) return pack;
-  if (ator.morto) {
-    v.frame = 0;
-    v.t = 0;
-    return pack;
-  }
-  const durMs = spec.durations[v.frame] || 80;
+  const durMs = spec.durations[v.frame] || spec.durations[0] || 80;
   v.t += dt;
   if (v.t >= durMs / 1000) {
     v.t = 0;
     v.frame++;
     if (v.frame >= spec.frameCount) {
       v.frame = 0;
-      if (anim === "Attack" || anim === "Shoot" || anim === "Hurt") ator.poseAte = 0;
+      if (POSE_GOLPE.has(anim)) {
+        ator.poseAte = 0;
+        ator.poseMedida = false;
+      }
     }
   }
   return pack;

@@ -1,39 +1,42 @@
+import { ESCALA, TILE } from "../config.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
 import { obterBola } from "./captura.js";
 import { dropsNoChao } from "./drops.js";
 import { projeteisVivos } from "./combate/projeteis.js";
-import { blitQuadro, quadroDe, garantirAtlas } from "./sprites.js";
+import { blitQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
 import { atoresVisiveis } from "./sistema.js";
 import { COR_TIPO } from "./tipos.js";
 
 const PX = 1.85;
 
-function desenharSombra(ctx, x, y) {
+function desenharSombra(ctx, x, y, escala) {
   ctx.save();
   ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
   ctx.beginPath();
-  ctx.ellipse(x, y, 11, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y, 11 * escala, 5 * escala, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
 
 function desenharCorpo(ctx, ator) {
-  const footX = mundoParaTelaX(ator.x);
-  const footY = mundoParaTelaY(ator.y, ator.z, ator.hopLift || 0);
-  desenharSombra(ctx, footX, footY);
+  const { escala, offsetY } = medidaSprite(ator);
+  const chaoX = mundoParaTelaX(ator.x);
+  const chaoY = mundoParaTelaY(ator.y, ator.z, ator.hopLift || 0);
+  const footX = chaoX;
+  const footY = chaoY + offsetY * TILE * ESCALA;
+  desenharSombra(ctx, chaoX, chaoY, escala);
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
   const fr = quadroDe(ator, pack);
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  if (ator.morto) ctx.filter = "grayscale(1) brightness(0.82)";
   if (fr && pack.img && pack.estado === "pronto") {
-    blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX);
+    blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala);
   } else {
     const cor = ator.especie.cor || COR_TIPO[ator.tipos?.[0]] || "#94a3b8";
     ctx.fillStyle = cor;
     ctx.beginPath();
-    ctx.arc(footX, footY - 16, 12, 0, Math.PI * 2);
+    ctx.arc(footX, footY - 16 * escala, 12 * escala, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();

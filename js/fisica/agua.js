@@ -199,7 +199,7 @@ export function atualizarNado(corpo, dx, dy, dt) {
     corpo.elevacao += corpo.vz * dt;
     if (corpo.elevacao < agua.pisoQueda) corpo.elevacao = agua.pisoQueda;
     corpo.acao = "cachoeira";
-  } else if ((corpo.stamina ?? 0) <= 1e-4) {
+  } else if ((corpo.stamina ?? 0) <= 1e-4 && !corpo.invulneravel) {
     corpo.afogandoT = (corpo.afogandoT || 0) + dt;
     const linha = agua.caindo ? agua.pisoQueda : agua.superficie;
     const alvo = linha - 1.15;

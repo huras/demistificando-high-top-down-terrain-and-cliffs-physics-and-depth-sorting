@@ -1,5 +1,6 @@
 import { FRAG_POCA, FRAG_POCA_SAIDA, ligarUniformsPoca } from "./pocaChao.js";
 import { uniformsNuvem } from "./parametros.js";
+import { GLSL_LUZ_CIDADE, ligarUniformsLuzCidade } from "../luzes/mapaChao.js";
 
 const MARCA = "sombraNuvem";
 let avisou = false;
@@ -30,6 +31,7 @@ float sombraNuvem() {
   float sombra = mix(cobertura, cobertura2, 0.45);
   return mix(1.0, 1.0 - uForcaSombra, sombra);
 }
+${GLSL_LUZ_CIDADE}
 `;
 
 const VERT_MUNDO = `
@@ -53,7 +55,7 @@ const FRAG_SOMA = `
 float sombraN = sombraNuvem();
 reflectedLight.directDiffuse *= sombraN;
 reflectedLight.indirectDiffuse *= mix(1.0, sombraN, 0.42);
-vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
+vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoCeu);
 `;
 
 function ligarUniforms(shader) {
@@ -65,6 +67,7 @@ function ligarUniforms(shader) {
   shader.uniforms.uLimiarNuvem = uniformsNuvem.uLimiarNuvem;
   shader.uniforms.uForcaSombra = uniformsNuvem.uForcaSombra;
   shader.uniforms.uUmidade = uniformsNuvem.uUmidade;
+  ligarUniformsLuzCidade(shader);
 }
 
 /**
@@ -110,7 +113,7 @@ export function aplicarSombraNuvem(material) {
   };
   material.customProgramCacheKey = function chaveSombra() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|sombra-nuvem|poca`;
+    return `${base}|sombra-nuvem|poca|luz-cidade`;
   };
   return material;
 }

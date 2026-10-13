@@ -65,6 +65,13 @@ const efeitos = {
   },
 };
 
+export function definirInvulneravel(ativo) {
+  treinador.invulneravel = !!ativo;
+  if (!ativo) return;
+  treinador.morto = false;
+  if (treinador.hp <= 0) treinador.hp = treinador.hpMax;
+}
+
 export function pokemonLigado() {
   return ligado;
 }
@@ -116,7 +123,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   for (let i = 0; i < visiveis.length; i++) tickVisual(visiveis[i], passo, agora);
   tickFlutuantes(passo);
 
-  if (treinador.hp <= 0) {
+  if (treinador.hp <= 0 && !treinador.invulneravel) {
     corpo.x = RESPAWN.x;
     corpo.y = RESPAWN.y;
     corpo.z = RESPAWN.z;

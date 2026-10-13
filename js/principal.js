@@ -26,6 +26,7 @@ import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { definirCorposAtores, definirCorposFixos } from "./fisica/obstaculos.js";
 import { iniciarStamina } from "./fisica/stamina.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
+import { atualizarPasseio, ligarBotaoPasseio, passeioAtivo } from "./debug/passeioKanto.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
 import { carregarCatalogo } from "./mundo/bioma/catalogo.js";
 import { carregarDetalhe } from "./mundo/bioma/detalhe.js";
@@ -157,6 +158,7 @@ async function iniciar() {
     console.error("Pokémon não carregou", erro);
   }
   ligarControleModo(document.getElementById("btn-modo-3d"));
+  ligarBotaoPasseio(document.getElementById("btn-passeio"), corpo);
   aoMudarModo(aoTrocarModo);
   aoMudarCena((ativo) => {
     if (ativo) {
@@ -403,8 +405,9 @@ function loop(agora) {
   atualizarStreaming(corpo.x, corpo.y);
   definirCorposAtores(listarSolidosPokemon());
   atualizarMapaKanto(corpo.x, corpo.y);
-  atualizarMovimento(corpo, dt);
+  if (!passeioAtivo()) atualizarMovimento(corpo, dt);
   tickFilaPath();
+  if (passeioAtivo()) atualizarPasseio(corpo, dt);
   atualizarAgente(agente, corpo, dt);
   tickPokemon(corpo, dt, agente.perfil);
   if (corpo._renasceu) {

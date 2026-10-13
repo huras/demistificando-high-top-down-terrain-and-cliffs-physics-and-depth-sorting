@@ -126,6 +126,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/luzes") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 1_000_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarCatalogoLuzes(obj);
+        const dest = path.join(raiz, "assets", "luzes", "catalogo.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (
     (req.method === "GET" || req.method === "HEAD") &&
     url.pathname === "/ref/catalogo.json"
@@ -174,6 +204,34 @@ const servidor = http.createServer((req, res) => {
   }
   enviarArquivo(req, res, arquivo);
 });
+
+function validarCatalogoLuzes(obj) {
+  if (!obj || typeof obj.modelos !== "object" || Array.isArray(obj.modelos)) {
+    throw new Error("arquivo sem modelos");
+  }
+  const ids = Object.keys(obj.modelos);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id)) throw new Error(`modelo inválido: ${id}`);
+    const item = obj.modelos[id];
+    if (!item || !Array.isArray(item.pontos) || item.pontos.length > 12) {
+      throw new Error(`${id} sem pontos`);
+    }
+    for (let p = 0; p < item.pontos.length; p++) {
+      const ponto = item.pontos[p];
+      for (const chave of ["x", "y", "z", "raio", "intensidade"]) {
+        const n = Number(ponto?.[chave]);
+        if (!Number.isFinite(n)) throw new Error(`${id} ponto ${p} sem ${chave}`);
+        ponto[chave] = n;
+      }
+      if (typeof ponto.cor !== "string" || !/^#[0-9a-fA-F]{6}$/.test(ponto.cor)) {
+        throw new Error(`${id} ponto ${p} sem cor`);
+      }
+      if (ponto.raio < 0.2 || ponto.raio > 16) throw new Error(`${id} raio fora`);
+      if (ponto.intensidade < 0 || ponto.intensidade > 4) throw new Error(`${id} intensidade fora`);
+    }
+  }
+}
 
 function enviarArquivo(req, res, arquivo) {
   fs.stat(arquivo, (err, st) => {
