@@ -18,6 +18,7 @@ import {
   RELEVO_FUNDO,
   RELEVO_MONTANHA,
   RELEVO_RASO,
+  RELEVO_TERRA,
   relevoEm,
 } from "./kantoRelevo.js";
 import { noFootprint, predioNoLayout, ruaNoLayout } from "./volumesCidade.js";
@@ -65,6 +66,41 @@ export const BIOMA_KANTO = Object.freeze({
     kit: "pewter-massif",
     superficie: "pedra",
     cor: "#6e6874",
+    camada: "terra",
+  }),
+  praia: Object.freeze({
+    id: "dirty-sand",
+    kit: "dirty-sand",
+    superficie: "terra",
+    cor: "#d6c48a",
+    camada: "terra",
+  }),
+  areiaFundo: Object.freeze({
+    id: "sandy-shelf",
+    kit: "sandy-shelf",
+    superficie: "terra",
+    cor: "#c9b07a",
+    camada: "mar",
+  }),
+  savana: Object.freeze({
+    id: "savanna",
+    kit: "savanna",
+    superficie: "grama",
+    cor: "#c4a24a",
+    camada: "terra",
+  }),
+  outono: Object.freeze({
+    id: "autum-forest",
+    kit: "autum-forest",
+    superficie: "grama",
+    cor: "#b07840",
+    camada: "terra",
+  }),
+  seco: Object.freeze({
+    id: "brown-earth",
+    kit: "brown-earth",
+    superficie: "terra",
+    cor: "#8d6844",
     camada: "terra",
   }),
 });
@@ -182,15 +218,72 @@ function alturaRua(lx, ly, zona) {
   return Math.round((hx + hy) * 0.5);
 }
 
+function ehAgua(byte) {
+  return byte === RELEVO_FUNDO || byte === RELEVO_RASO || byte === 255;
+}
+
+function distanciaAte(wx, wy, casa) {
+  const ax = (wx / AREA_KANTO) | 0;
+  const ay = (wy / AREA_KANTO) | 0;
+  const px = wx + 0.5;
+  const py = wy + 0.5;
+  let melhor = 480;
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      if (!casa(relevoEm(ax + dx, ay + dy))) continue;
+      const x0 = (ax + dx) * AREA_KANTO;
+      const y0 = (ay + dy) * AREA_KANTO;
+      const x1 = x0 + AREA_KANTO;
+      const y1 = y0 + AREA_KANTO;
+      const qx = px < x0 ? x0 : px > x1 ? x1 : px;
+      const qy = py < y0 ? y0 : py > y1 ? y1 : py;
+      const d = Math.hypot(px - qx, py - qy);
+      if (d < melhor) melhor = d;
+    }
+  }
+  return melhor;
+}
+
+function perfilCosta(wx, wy) {
+  const onda = (fbm2(wx * 0.006, wy * 0.006, SEMENTE + 17, 4) - 0.5) * 110;
+  const afast = distanciaAte(wx, wy, ehAgua) - distanciaAte(wx, wy, (b) => b === RELEVO_TERRA || b === RELEVO_MONTANHA) + onda;
+  const faixa = 30;
+  let u = (afast + faixa) / (faixa * 2);
+  if (u < 0) u = 0;
+  else if (u > 1) u = 1;
+  u = u * u * (3 - 2 * u);
+  return {
+    u,
+    dentroMontanha: distanciaAte(wx, wy, (b) => b !== RELEVO_MONTANHA && b !== 255),
+  };
+}
+
+function alturaDoTerreno(x, y, zona, perfil) {
+  const n = fbm2(x * 0.02, y * 0.02, SEMENTE, 2);
+  const plano = COTA_CIDADE + Math.round((n - 0.5) * 3);
+  const montanha = zona.montanha || relevoEm(zona.ax, zona.ay) === RELEVO_MONTANHA;
+  if (!montanha) return plano;
+  const t = Math.min(1, perfil.dentroMontanha / 40);
+  const pico = Math.max(22, Math.min(48, Math.round(COTA_MONTANHA + (n - 0.5) * 16)));
+  return Math.round(plano + (pico - plano) * t);
+}
+
+function biomaDoMiolo(x, y) {
+  const n = fbm2(x * 0.0032, y * 0.0032, SEMENTE + 41, 3);
+  const detalhe = fbm2(x * 0.012, y * 0.012, SEMENTE + 77, 2);
+  if (n > 0.74 && detalhe > 0.5) return BIOMA_KANTO.mata;
+  if (n < 0.3) return BIOMA_KANTO.savana;
+  if (n < 0.46) return BIOMA_KANTO.outono;
+  if (detalhe < 0.2) return BIOMA_KANTO.seco;
+  return BIOMA_KANTO.grama;
+}
+
 function alturaNatural(x, y, zona) {
   const byte = relevoEm(zona.ax, zona.ay);
   if (zona.agua) return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
-  if (byte === RELEVO_FUNDO) return COTA_FUNDO;
-  if (byte === RELEVO_RASO) return COTA_RASO;
-  const montanha = zona.montanha || byte === RELEVO_MONTANHA;
-  const n = fbm2(x * 0.02, y * 0.02, SEMENTE, 2);
-  if (montanha) return Math.max(22, Math.min(48, Math.round(COTA_MONTANHA + (n - 0.5) * 16)));
-  return COTA_CIDADE + Math.round((n - 0.5) * 2);
+  const perfil = perfilCosta(x, y);
+  const terra = alturaDoTerreno(x, y, zona, perfil);
+  return Math.round(COTA_FUNDO + (terra - COTA_FUNDO) * perfil.u);
 }
 
 function distanciaFora(lx, ly, fp) {
@@ -237,12 +330,18 @@ function calcular(x, y) {
   if (h < 1) h = 1;
   if (h > 60) h = 60;
 
+  const perfil = perfilCosta(x, y);
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
   let bioma = BIOMA_KANTO.grama;
   if (predio) bioma = BIOMA_KANTO.pedra;
   else if (rua) bioma = BIOMA_KANTO.caminho;
-  else if (zona.montanha || relevoEm(ax, ay) === RELEVO_MONTANHA) bioma = BIOMA_KANTO.montanha;
-  else if (floresta) bioma = BIOMA_KANTO.mata;
+  else if (perfil.u < 0.34) bioma = BIOMA_KANTO.areiaFundo;
+  else if (perfil.u < 0.72) bioma = BIOMA_KANTO.praia;
+  else if (perfil.dentroMontanha > 24) bioma = BIOMA_KANTO.montanha;
+  else if (floresta) {
+    const mancha = fbm2(x * 0.02, y * 0.02, SEMENTE + 5, 2);
+    bioma = mancha > 0.34 ? BIOMA_KANTO.mata : biomaDoMiolo(x, y);
+  } else bioma = biomaDoMiolo(x, y);
 
   return {
     h,

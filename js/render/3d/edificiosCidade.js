@@ -10,6 +10,7 @@ import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "./luzes/catalogo.js";
 import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
 import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
+import { idsVisuais, origemDoModelo, urlDoModelo } from "../../mundo/cidade/catalogoCasas.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
@@ -17,7 +18,6 @@ const LADO_Z = 5;
 const ALTURA_POSTE = 3.6;
 const MEIO_RUA = 3.5;
 const PASSO_POSTE = 10;
-const CASAS = ["casa-bark", "casa-amigo", "casa-cherry", "casa-guia"];
 const _ponto = new THREE.Vector3();
 const COR_JANELA = 0xb9d7ff;
 const materiaisJanela = [];
@@ -107,7 +107,7 @@ function materialDoGlobo(mapa) {
   return materialGlobo;
 }
 
-export const MODELOS_CIDADE = ["centro", "loja", "lab", "poste"].concat(CASAS);
+export const MODELOS_CIDADE = idsVisuais();
 
 function yawDaRua(mx, my) {
   const dx = mx - 64;
@@ -116,24 +116,21 @@ function yawDaRua(mx, my) {
   return dx > 0 ? -Math.PI / 2 : Math.PI / 2;
 }
 
-function modeloDoPapel(papel, variante) {
-  if (papel === "casa") return CASAS[((variante % CASAS.length) + CASAS.length) % CASAS.length];
-  if (papel === "centro" || papel === "loja" || papel === "lab") return papel;
-  return null;
-}
-
 function carregarObj(id) {
-  const base = `assets/models/cidade/${id}/`;
+  const origem = origemDoModelo(id);
+  const base = origem ? urlDoModelo(origem.base) : `assets/models/cidade/${id}/`;
+  const arquivo = origem?.arquivo || "modelo.obj";
+  const mtl = arquivo.replace(/\.obj$/i, ".mtl");
   return new Promise((resolve, reject) => {
-    const mtl = new MTLLoader();
-    mtl.setResourcePath(base);
-    mtl.load(
-      `${base}modelo.mtl`,
-      (mats) => {
-        mats.preload();
+    const mats = new MTLLoader();
+    mats.setResourcePath(base);
+    mats.load(
+      `${base}${urlDoModelo(mtl)}`,
+      (pronto) => {
+        pronto.preload();
         const obj = new OBJLoader();
-        obj.setMaterials(mats);
-        obj.load(`${base}modelo.obj`, resolve, undefined, reject);
+        obj.setMaterials(pronto);
+        obj.load(`${base}${urlDoModelo(arquivo)}`, resolve, undefined, reject);
       },
       undefined,
       reject,
@@ -347,7 +344,7 @@ function montarCidade(moldes, def) {
   const volumes = layout.volumes;
   for (let i = 0; i < volumes.length; i++) {
     const v = volumes[i];
-    const id = modeloDoPapel(v.papel, v.variante);
+    const id = v.modelo;
     const molde = id ? moldes.get(id) : null;
     if (!molde) continue;
     const mx = (v.x0 + v.x1) * 0.5;

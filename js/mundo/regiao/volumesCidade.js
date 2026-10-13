@@ -2,6 +2,7 @@
  * Lotes e volumes de prédio. A colisão é a coluna do chunk carregado;
  * o layout em si é só conta, sem malha.
  */
+import { idDaCasa } from "../cidade/catalogoCasas.js";
 
 const BORDA = 2;
 const LOTE_X = 8;
@@ -117,10 +118,14 @@ export function montarLayout(def) {
   const LIMITE = 36;
   const volumes = [];
   const n = Math.min(ordem.length, LIMITE);
+  let casas = 0;
   for (let i = 0; i < n; i++) {
     const lote = ordem[i];
     const papel = papelDe(def, i, n);
-    const variante = papel === "casa" ? varianteCasa(i) : 0;
+    const variante = papel === "casa" ? varianteCasa(casas) : 0;
+    let modelo = null;
+    if (papel === "casa") modelo = idDaCasa(def.key, casas++);
+    else if (papel === "centro" || papel === "loja" || papel === "lab") modelo = papel;
     volumes.push({
       x0: lote.x0,
       y0: lote.y0,
@@ -129,6 +134,7 @@ export function montarLayout(def) {
       altura: ALTURA[papel] || ALTURA.casa,
       papel,
       variante,
+      modelo,
     });
   }
   return { fp, volumes };

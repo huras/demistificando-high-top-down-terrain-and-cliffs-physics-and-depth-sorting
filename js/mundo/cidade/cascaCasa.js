@@ -10,12 +10,12 @@ import { CIDADES_KANTO } from "../regiao/kantoCidades.js";
 import { montarLayout } from "../regiao/volumesCidade.js";
 import { indiceLocal, invalidarFluxo, recalcularSuperficies } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
+import { idDaCasa, idsColisao, origemDoModelo, urlDoModelo } from "./catalogoCasas.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
 const LADO_Z = 5;
-const CASAS = ["casa-bark", "casa-amigo", "casa-cherry", "casa-guia"];
-const IDS = ["centro", "loja", "lab"].concat(CASAS);
+const IDS = idsColisao();
 
 /** @type {Map<string, { celulas: Int16Array, minX: number, maxX: number, minZ: number, maxZ: number }>} */
 const moldes = new Map();
@@ -25,8 +25,8 @@ let pronto = false;
 /** @type {Promise<boolean> | null} */
 let carga = null;
 
-function modeloDoPapel(papel, variante) {
-  if (papel === "casa") return CASAS[((variante % CASAS.length) + CASAS.length) % CASAS.length];
+function modeloDoPapel(papel, variante, cidade) {
+  if (papel === "casa") return idDaCasa(cidade, variante);
   if (papel === "centro" || papel === "loja" || papel === "lab") return papel;
   return null;
 }
@@ -307,7 +307,7 @@ function montarColocacoes() {
     const volumes = layout.volumes;
     for (let i = 0; i < volumes.length; i++) {
       const v = volumes[i];
-      const id = modeloDoPapel(v.papel, v.variante);
+      const id = v.modelo || modeloDoPapel(v.papel, v.variante, def.key);
       if (!id || !moldes.has(id)) continue;
       const mx = (v.x0 + v.x1) * 0.5;
       const my = (v.y0 + v.y1) * 0.5;
@@ -384,7 +384,10 @@ export function aplicarCascaNoChunk(chunk) {
 }
 
 async function carregarUm(id) {
-  const res = await fetch(`assets/models/cidade/${id}/modelo.obj`);
+  const origem = origemDoModelo(id);
+  const base = origem ? urlDoModelo(origem.base) : `assets/models/cidade/${id}/`;
+  const arquivo = urlDoModelo(origem?.arquivo || "modelo.obj");
+  const res = await fetch(`${base}${arquivo}`);
   if (!res.ok) throw new Error(id);
   return moldeDaMalha(await res.text());
 }
