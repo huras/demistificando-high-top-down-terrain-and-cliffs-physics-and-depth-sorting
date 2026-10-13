@@ -74,8 +74,81 @@ export function receberCaptura(selvagem) {
   return copia;
 }
 
+export function ganharBolas(n) {
+  bolas = Math.max(0, bolas + (n | 0));
+}
+
+export function definirBolas(n) {
+  bolas = Math.max(0, n | 0);
+}
+
 export function guardarItem(chave) {
   bolsa.set(chave, (bolsa.get(chave) || 0) + 1);
+}
+
+export function contarItem(chave) {
+  return bolsa.get(chave) || 0;
+}
+
+export function ajustarItem(chave, delta) {
+  const n = (bolsa.get(chave) || 0) + (delta | 0);
+  if (n <= 0) bolsa.delete(chave);
+  else bolsa.set(chave, n);
+  return Math.max(0, n);
+}
+
+export function curarParty() {
+  for (let i = 0; i < party.length; i++) {
+    const p = party[i];
+    p.hp = p.hpMax;
+    p.pp = p.ppMax;
+    p.morto = false;
+    p.mortoAte = 0;
+  }
+}
+
+export function definirDeployado(indice) {
+  if (indice < 0 || indice >= party.length) return false;
+  const atual = party[deployado];
+  if (atual && atual !== party[indice]) atual.capturado = true;
+  deployado = indice;
+  const prox = party[deployado];
+  prox.capturado = false;
+  prox.morto = false;
+  prox._colocado = false;
+  return true;
+}
+
+export function tirarDaParty(indice) {
+  if (indice < 0 || indice >= party.length || party.length <= 1) return null;
+  const [ator] = party.splice(indice, 1);
+  if (deployado >= party.length) deployado = party.length - 1;
+  else if (indice < deployado) deployado -= 1;
+  const vivo = party[deployado];
+  if (vivo) {
+    vivo.capturado = false;
+    vivo._colocado = false;
+  }
+  return ator;
+}
+
+export function colocarNaParty(ator) {
+  if (!ator || party.length >= POKEMON.PARTY_MAX) return false;
+  ator.faccao = "party";
+  ator.hostil = false;
+  ator.capturado = party.length > 0;
+  party.push(ator);
+  return true;
+}
+
+export function substituirParty(atores) {
+  party.length = 0;
+  for (let i = 0; i < atores.length && i < POKEMON.PARTY_MAX; i++) party.push(atores[i]);
+  deployado = 0;
+  if (party[0]) {
+    party[0].capturado = false;
+    party[0]._colocado = false;
+  }
 }
 
 export function itensBolsa() {

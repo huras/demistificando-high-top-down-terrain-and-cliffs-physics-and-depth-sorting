@@ -12,6 +12,7 @@ export function iniciarTeclado() {
     const k = normalizar(ev.code || ev.key);
     if (
       [
+        "Tab",
         "ArrowUp",
         "ArrowDown",
         "ArrowLeft",

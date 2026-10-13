@@ -79,6 +79,7 @@ import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.j
 import { carregarDados } from "./pokemon/dados.js";
 import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
+import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
 
 const SPAWN = USAR_PATCH_DEMO ? SPAWN_DEMO : SPAWN_PALLET;
 const canvas = document.getElementById("canvas");
@@ -274,6 +275,7 @@ async function iniciar() {
   };
 
   ultimo = performance.now();
+  montarJogo({ viewport, corpo });
   requestAnimationFrame(loop);
 }
 
@@ -371,10 +373,17 @@ function campoFocado() {
 function loop(agora) {
   const dt = Math.min(0.05, (agora - ultimo) / 1000);
   ultimo = agora;
+  let trava = false;
+  try {
+    tickJogo(dt, corpo);
+    trava = jogoTravaMundo();
+  } catch (err) {
+    console.error("Erro na interface:", err);
+  }
 
   if (teclaAgora("Backquote")) debug = !debug;
   if (teclaAgora("KeyT")) alternarVisual(atlas);
-  if (teclaAgora("Digit3") || teclaAgora("Numpad3")) alternarModo();
+  if (teclaAgora("Numpad3")) alternarModo();
 
   const horaMenos = teclaAgora("BracketLeft");
   const horaMais = teclaAgora("BracketRight");
@@ -391,7 +400,7 @@ function loop(agora) {
       if (estaEmCena() && teclaAgora("Escape")) definirModoCena(false);
       if (estaEmCena() && teclaAgora("KeyF")) enquadrarSelecaoCena();
     }
-    if (!estaEmCena()) {
+    if (!estaEmCena() && !trava) {
       const mouse = consumirMovimentoMouse();
       definirMira3d(botaoDireitoSegurado());
       olharCamera3d(mouse.dx, mouse.dy);
@@ -416,9 +425,9 @@ function loop(agora) {
   atualizarStreaming(corpo.x, corpo.y);
   definirCorposAtores(listarSolidosPokemon());
   atualizarMapaKanto(corpo.x, corpo.y);
-  if (!passeioAtivo()) atualizarMovimento(corpo, dt);
+  if (!passeioAtivo() && !trava) atualizarMovimento(corpo, dt);
   tickFilaPath();
-  if (passeioAtivo()) atualizarPasseio(corpo, dt);
+  if (passeioAtivo() && !trava) atualizarPasseio(corpo, dt);
   atualizarAgente(agente, corpo, dt);
   tickPokemon(corpo, dt, agente.perfil);
   if (corpo._renasceu) {

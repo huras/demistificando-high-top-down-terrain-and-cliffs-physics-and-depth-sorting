@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>High Top-Down — Cliffs, Física e Depth Sorting</title>
   <link rel="stylesheet" href="css/demo.css" />
+  <link rel="stylesheet" href="css/jogo.css" />
   <script type="importmap">
   {
     "imports": {
@@ -59,7 +60,7 @@
               <li><span class="ajuda-atalhos__teclas"><kbd>E</kbd></span> grudar / soltar face · sobe a cachoeira</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>F</kbd></span> fly on/off</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>T</kbd></span> visual real / cubos</li>
-              <li><span class="ajuda-atalhos__teclas"><kbd>3</kbd></span> modo 3D</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>Numpad 3</kbd></span> modo 3D</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>C</kbd></span> vista de cena (3D)</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>RMB</kbd> <kbd>WASD</kbd></span> na cena: olhar e voar</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>Q</kbd> <kbd>E</kbd></span> na cena: desce / sobe</li>
@@ -67,11 +68,16 @@
               <li><span class="ajuda-atalhos__teclas"><kbd>scroll</kbd> <kbd>+</kbd><kbd>-</kbd></span> zoom</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>[</kbd> <kbd>]</kbd></span> hora do dia (3D)</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>G</kbd></span> clima (3D)</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>1</kbd>–<kbd>6</kbd></span> toque troca o slot; segurar abre a roda</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>I</kbd></span> mochila</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>R</kbd></span> falar, ferramenta, berry</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>B</kbd></span> segurar e soltar — pokébola</li>
+              <li><span class="ajuda-atalhos__teclas">LMB</span> com picareta, quebra o bloco</li>
+              <li><span class="ajuda-atalhos__teclas">RMB</span> com bloco na mão, coloca</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>`</kbd></span> debug pivôs</li>
               <li><span class="ajuda-atalhos__teclas">mouse</span> girar ao redor (3D)</li>
               <li><span class="ajuda-atalhos__teclas">RMB</span> mira no ombro (3D)</li>
-              <li><span class="ajuda-atalhos__teclas">LMB</span> segurar e soltar a flecha na mira · quebra bloco fora dela</li>
+              <li><span class="ajuda-atalhos__teclas">LMB</span> na mira, solta a flecha · fora dela, a picareta quebra o bloco</li>
               <li><span class="ajuda-atalhos__teclas">RMB</span> coloca bloco (2D)</li>
             </ul>
           </div>
@@ -87,6 +93,29 @@
           <div class="mapa-kanto" id="mapa-kanto">
             <canvas id="mapa-kanto-tela" width="128" height="128" aria-label="Mapa de Kanto"></canvas>
             <p class="mapa-kanto__nome" id="mapa-kanto-nome">Pallet</p>
+          </div>
+          <div id="jogo-hud" class="jogo-hud">
+            <canvas id="jogo-sala" class="jogo-sala" hidden></canvas>
+            <p id="jogo-prompt" class="jogo-prompt" hidden></p>
+            <div id="jogo-dialogo" class="jogo-dialogo" hidden></div>
+            <p id="jogo-toast" class="jogo-toast" hidden></p>
+            <section id="jogo-painel" class="jogo-painel" hidden></section>
+            <section id="jogo-construir" class="jogo-painel jogo-painel--lado" hidden></section>
+            <section id="jogo-craft" class="jogo-painel jogo-painel--lado" hidden></section>
+            <section id="jogo-roda" class="jogo-roda" hidden></section>
+            <div id="jogo-hotbar" class="jogo-hotbar"></div>
+            <div class="jogo-canto">
+              <div id="jogo-relogio" class="jogo-relogio" data-periodo="dia">
+                <b data-hora>09:21</b>
+                <span data-periodo>Dia</span>
+                <span data-clima>Limpo</span>
+              </div>
+              <div class="jogo-mini-anel">
+                <canvas id="jogo-mini" class="jogo-mini" width="144" height="144" aria-label="Minimapa"></canvas>
+                <span class="jogo-mini-anel__norte">N</span>
+              </div>
+              <div id="jogo-equipe" class="jogo-equipe"></div>
+            </div>
           </div>
           <div class="cena-ui" id="cena-ui">
             <section class="cena-painel cena-painel--esq" aria-label="Hierarquia">

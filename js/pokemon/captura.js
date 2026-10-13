@@ -8,6 +8,46 @@ import { gastarBola, obterBolas, partyCheia, receberCaptura } from "./party.js";
 let bola = null;
 let segurando = false;
 let carga = 0;
+const particulas = [];
+
+export function particulasCaptura() {
+  return particulas;
+}
+
+function estourar(x, y, z, cor, n, sobe) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const v = 0.8 + Math.random() * 2.6;
+    particulas.push({
+      x,
+      y,
+      z,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v,
+      vz: (sobe ? 1.4 : 0.2) + Math.random() * 2.2,
+      vida: 0.45 + Math.random() * 0.45,
+      idade: 0,
+      cor,
+    });
+  }
+}
+
+function tickParticulas(dt) {
+  for (let i = particulas.length - 1; i >= 0; i--) {
+    const p = particulas[i];
+    p.idade += dt;
+    if (p.idade >= p.vida) {
+      particulas.splice(i, 1);
+      continue;
+    }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.z += p.vz * dt;
+    p.vz -= 6 * dt;
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+  }
+}
 
 export function obterBola() {
   return bola;
@@ -82,8 +122,13 @@ export function atualizarCaptura(corpo, dt, agora, efeitos) {
     carga = 0;
   }
 
-  if (!bola) return;
+  if (!bola) {
+    tickParticulas(dt);
+    return;
+  }
   bola.faseT += dt;
+  bola.giro = (bola.giro || 0) + dt * 14;
+  tickParticulas(dt);
 
   if (bola.fase === "voo") {
     bola.x += bola.vx * dt;
@@ -100,6 +145,7 @@ export function atualizarCaptura(corpo, dt, agora, efeitos) {
       const dy = s.y - bola.y;
       if (dx * dx + dy * dy > 0.55 * 0.55) continue;
       selar(s, agora);
+      estourar(bola.x, bola.y, bola.z, "#f8fafc", 10, true);
       return;
     }
     if (bola.z <= chao || bola.viajou >= bola.max) {
@@ -117,27 +163,50 @@ export function atualizarCaptura(corpo, dt, agora, efeitos) {
     if (bola.faseT > 0.45) {
       bola.fase = "volta";
       bola.faseT = 0;
+      estourar(bola.x, bola.y, bola.z, "#cbd5e1", 6, false);
     }
     return;
   }
 
   if (bola.fase === "tremendo") {
     const passo = Math.floor(bola.faseT / 0.55);
-    if (passo > bola.tremor) bola.tremor = passo;
-    if (bola.tremor >= bola.tremores) {
+    if (passo > bola.tremor) {
+      bola.tremor = passo;
+      estourar(bola.x, bola.y, bola.z, "#fde68a", 8, true);
+    }
+    const some = bola.faseT < 0.4 ? 1 - bola.faseT / 0.4 : 0;
+    if (bola.alvo) bola.alvo._sumindo = some;
+    if (bola.tremor >= bola.tremores && bola.faseT >= bola.tremores * 0.55) {
       if (bola.sucesso) {
         const mon = receberCaptura(bola.alvo);
         bola.alvo.capturado = true;
+        bola.alvo.preso = false;
+        bola.alvo._sumindo = 0;
+        estourar(bola.x, bola.y, bola.z, "#facc15", 18, true);
+        estourar(bola.x, bola.y, bola.z, "#4ade80", 10, true);
         efeitos.flutuar(bola.alvo, mon ? "pego!" : "party cheia", "#4ade80");
-        if (!mon) bola.alvo.capturado = false;
-        bola = null;
+        if (!mon) {
+          bola.alvo.capturado = false;
+          bola.alvo.preso = false;
+          bola.alvo._sumindo = 1;
+        }
+        bola.fase = "brilho";
+        bola.faseT = 0;
       } else {
         bola.alvo.capturado = false;
+        bola.alvo.preso = false;
+        bola.alvo._sumindo = 1;
+        estourar(bola.x, bola.y, bola.z, "#f87171", 14, true);
         bola.fase = "volta";
         bola.faseT = 0;
         efeitos.flutuar(bola.alvo, "escapou", "#fca5a5");
       }
     }
+    return;
+  }
+
+  if (bola.fase === "brilho") {
+    if (bola.faseT > 0.45) bola = null;
     return;
   }
 
@@ -154,8 +223,9 @@ export function atualizarCaptura(corpo, dt, agora, efeitos) {
 
 function selar(alvo, agora) {
   void agora;
-  alvo.capturado = true;
+  alvo.preso = true;
   alvo.andando = false;
+  alvo._sumindo = 1;
   const chance = chanceDe(alvo);
   const sucesso = Math.random() < chance;
   bola.alvo = alvo;

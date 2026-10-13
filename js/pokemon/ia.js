@@ -161,7 +161,7 @@ function perseguir(ator, alvo, dt) {
 }
 
 function atualizarUm(ator, party, jogador, dt) {
-  if (ator.morto || ator.capturado) {
+  if (ator.morto || ator.capturado || ator.preso) {
     ator.andando = false;
     ator.alvo = null;
     return;

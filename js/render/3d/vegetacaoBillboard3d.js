@@ -32,7 +32,7 @@ function estiloDe(prop) {
 }
 
 function chaveDe(prop) {
-  if (!prop || prop.tipo === "placa") return null;
+  if (!prop || prop.oculto || prop.tipo === "placa") return null;
   return prop.sprite || prop.tipo || null;
 }
 

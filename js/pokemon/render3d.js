@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, TILE } from "../config.js";
 import { criarSombraContato3d } from "../render/3d/sombraContato3d.js";
-import { obterBola } from "./captura.js";
+import { obterBola, particulasCaptura } from "./captura.js";
 import { projeteisVivos } from "./combate/projeteis.js";
 import { dropsNoChao } from "./drops.js";
 import { blitQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
@@ -11,6 +11,7 @@ import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
 import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
 import { aplicarCorSprite } from "../render/3d/ceu/luzBillboard.js";
 import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
+import { dropsBloco } from "../jogo/blocos.js";
 
 /** 1 px do quadro = 1/TILE voxel, igual à árvore e ao tile do Pokémon AI. */
 const PX_MUNDO = 1 / TILE;
@@ -20,6 +21,7 @@ const PE_Y = LADO - 64;
 const CAP_ATOR = 20;
 const CAP_TIRO = 32;
 const CAP_DROP = 48;
+const CAP_FAISCA = 36;
 const MAX_BRILHO = 4;
 const _mundo = new THREE.Vector3();
 const _luzCidade = new THREE.Color();
@@ -31,6 +33,8 @@ const porId = new Map();
 let tiros = [];
 let drops = [];
 let bolaMesh = null;
+let bolaTex = null;
+let faiscas = [];
 let pontoTex = null;
 
 function texturaPonto() {
@@ -87,6 +91,37 @@ function criarAtorSlot() {
   return { grupo, canvas, ctx, tex, mat, sprite, sombra, brilhos, chave: "", livre: true };
 }
 
+function texturaBola() {
+  if (bolaTex) return bolaTex;
+  const c = document.createElement("canvas");
+  c.width = 32;
+  c.height = 32;
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, 32, 32);
+  g.beginPath();
+  g.arc(16, 16, 14, 0, Math.PI * 2);
+  g.fillStyle = "#f8fafc";
+  g.fill();
+  g.beginPath();
+  g.arc(16, 16, 14, Math.PI, 0);
+  g.fillStyle = "#ef4444";
+  g.fill();
+  g.fillStyle = "#111827";
+  g.fillRect(2, 14, 28, 4);
+  g.beginPath();
+  g.arc(16, 16, 4, 0, Math.PI * 2);
+  g.fillStyle = "#f8fafc";
+  g.fill();
+  g.lineWidth = 2;
+  g.strokeStyle = "#111827";
+  g.stroke();
+  bolaTex = new THREE.CanvasTexture(c);
+  bolaTex.magFilter = THREE.NearestFilter;
+  bolaTex.minFilter = THREE.NearestFilter;
+  bolaTex.colorSpace = THREE.SRGBColorSpace;
+  return bolaTex;
+}
+
 function criarPonto(cor) {
   const mat = new THREE.SpriteMaterial({
     map: texturaPonto(),
@@ -109,8 +144,16 @@ export function ligarPokemon3d(scene) {
   for (let i = 0; i < CAP_ATOR; i++) atores.push(criarAtorSlot());
   for (let i = 0; i < CAP_TIRO; i++) tiros.push(criarPonto("#ffffff"));
   for (let i = 0; i < CAP_DROP; i++) drops.push(criarPonto("#fbbf24"));
-  bolaMesh = criarPonto("#f8fafc");
-  bolaMesh.scale.set(0.28, 0.28, 1);
+  for (let i = 0; i < CAP_FAISCA; i++) faiscas.push(criarPonto("#fde68a"));
+  bolaMesh = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texturaBola(),
+    transparent: true,
+    depthWrite: false,
+  }));
+  bolaMesh.renderOrder = 5;
+  bolaMesh.visible = false;
+  bolaMesh.scale.set(0.42, 0.42, 1);
+  cena.add(bolaMesh);
 }
 
 function ancorar(slot) {
@@ -211,6 +254,9 @@ export function atualizarPokemon3d(yawCam = 0) {
     if (fr && pack.img && pack.estado === "pronto") pintar(slot, ator, fr, pack);
     else fallback(slot, ator);
     const offsetY = aplicarMedida(slot, ator);
+    const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
+    slot.sprite.scale.multiplyScalar(some);
+    slot.grupo.visible = some > 0.04;
     if (visual && dirMundo != null) visual.dir = dirMundo;
     slot.sombra.atualizar(
       { x: ator.x, y: ator.y, z: ator.z, noChao: true, elevacao: ator.z },
@@ -245,17 +291,38 @@ export function atualizarPokemon3d(yawCam = 0) {
   }
 
   const noChao = dropsNoChao();
+  const blocos = dropsBloco();
+  const total = noChao.length + blocos.length;
   for (let i = 0; i < drops.length; i++) {
     const mesh = drops[i];
-    const item = noChao[i];
-    if (!item) {
+    if (i >= total) {
       mesh.visible = false;
       continue;
     }
+    const item = i < noChao.length ? noChao[i] : blocos[i - noChao.length];
     mesh.visible = true;
-    mesh.material.color.set("#fbbf24");
-    mesh.scale.set(0.18, 0.18, 1);
-    mesh.position.set(item.x, item.z * ALTURA_BLOCO + 0.25, item.y);
+    mesh.material.color.set(item.cor || "#fbbf24");
+    mesh.material.opacity = 1;
+    const bob = Math.sin((item.idade || 0) * 4) * 0.06;
+    mesh.scale.set(0.22, 0.22, 1);
+    mesh.position.set(item.x, item.z * ALTURA_BLOCO + 0.28 + bob, item.y);
+  }
+
+  const faixas = particulasCaptura();
+  for (let i = 0; i < faiscas.length; i++) {
+    const mesh = faiscas[i];
+    const p = faixas[i];
+    if (!p) {
+      mesh.visible = false;
+      continue;
+    }
+    const t = 1 - p.idade / p.vida;
+    mesh.visible = true;
+    mesh.material.color.set(p.cor || "#fff");
+    mesh.material.opacity = Math.max(0, t);
+    const s = 0.08 + t * 0.12;
+    mesh.scale.set(s, s, 1);
+    mesh.position.set(p.x, p.z * ALTURA_BLOCO, p.y);
   }
 
   const bola = obterBola();
@@ -265,6 +332,10 @@ export function atualizarPokemon3d(yawCam = 0) {
     return;
   }
   bolaMesh.visible = true;
-  const pulo = bola.fase === "tremendo" ? Math.sin(bola.faseT * 18) * 0.08 : 0;
-  bolaMesh.position.set(bola.x, bola.z * ALTURA_BLOCO + pulo, bola.y);
+  const treme = bola.fase === "tremendo" ? Math.sin(bola.faseT * 28) * 0.12 : 0;
+  const pulo = bola.fase === "tremendo" ? Math.abs(Math.sin(bola.faseT * 18)) * 0.1 : 0;
+  const escala = bola.fase === "brilho" ? 0.42 + Math.sin(bola.faseT * 16) * 0.08 : 0.42;
+  bolaMesh.scale.set(escala, escala, 1);
+  bolaMesh.material.rotation = bola.giro || 0;
+  bolaMesh.position.set(bola.x + treme, bola.z * ALTURA_BLOCO + pulo, bola.y);
 }

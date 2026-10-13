@@ -13,6 +13,14 @@ export function especie(chave) {
   return especies?.[chave] || null;
 }
 
+export function listarEspecies() {
+  if (!especies) return [];
+  const chaves = Object.keys(especies);
+  const lista = [];
+  for (let i = 0; i < chaves.length; i++) lista.push(especies[chaves[i]]);
+  return lista;
+}
+
 export function golpe(chave) {
   return golpes?.[chave] || null;
 }

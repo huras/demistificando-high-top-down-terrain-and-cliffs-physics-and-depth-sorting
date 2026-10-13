@@ -1,6 +1,7 @@
 /**
  * Colisão da casa = casca do OBJ.
  * Material door_only, e a face marcada como porta no editor, é o vão: não vira bloco.
+ * O fundo do modelo não tem faces: vira parede, porque a porta não fica atrás.
  * h_kage é a sombra no chão: também não.
  */
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
@@ -152,6 +153,92 @@ function faceEhPorta(f, portas) {
   return !!(portas && portas.has(f.indice));
 }
 
+/** O lado com menos parede é o fundo aberto do modelo. A porta fica no lado oposto. */
+function ladoAberto(solidos) {
+  const area = [0, 0, 0, 0];
+  for (let i = 0; i < solidos.length; i++) {
+    const t = solidos[i];
+    const n = cruz(sub(t.b, t.a), sub(t.c, t.a));
+    const ax = Math.abs(n[0]);
+    const ay = Math.abs(n[1]);
+    const az = Math.abs(n[2]);
+    if (ay >= ax && ay >= az) continue;
+    const lado = ax >= az ? (n[0] > 0 ? 0 : 1) : (n[2] > 0 ? 2 : 3);
+    area[lado] += Math.hypot(n[0], n[1], n[2]);
+  }
+  let menor = 0;
+  for (let i = 1; i < 4; i++) if (area[i] < area[menor]) menor = i;
+  if (area[menor] > area[menor ^ 1] * 0.45) return -1;
+  return menor;
+}
+
+function ladoDaPorta(vaos) {
+  const normal = [0, 0, 0];
+  for (let i = 0; i < vaos.length; i++) {
+    const t = vaos[i];
+    const n = cruz(sub(t.b, t.a), sub(t.c, t.a));
+    normal[0] += n[0];
+    normal[2] += n[2];
+  }
+  if (Math.abs(normal[0]) < 1e-6 && Math.abs(normal[2]) < 1e-6) return -1;
+  if (Math.abs(normal[0]) >= Math.abs(normal[2])) return normal[0] > 0 ? 0 : 1;
+  return normal[2] > 0 ? 2 : 3;
+}
+
+function fecharFundo(marcas, limites, solidos, vaos) {
+  let lado = ladoAberto(solidos);
+  const porta = ladoDaPorta(vaos);
+  if (lado >= 0 && lado === porta) lado = lado ^ 1;
+  if (lado < 0) return;
+  const eixo = lado < 2 ? 0 : 2;
+  const noMax = lado % 2 === 0;
+  const outro = eixo === 0 ? 2 : 0;
+  const celulas = [];
+  let fundo = noMax ? -Infinity : Infinity;
+  let minU = Infinity;
+  let maxU = -Infinity;
+  const teto = new Map();
+  const solido = new Set();
+  for (const chave of marcas) {
+    const p = chave.split(",");
+    const c = [+p[0], +p[1], +p[2]];
+    celulas.push(c);
+    if (noMax) {
+      if (c[eixo] > fundo) fundo = c[eixo];
+    } else if (c[eixo] < fundo) fundo = c[eixo];
+  }
+  if (!Number.isFinite(fundo)) return;
+  for (let i = 0; i < celulas.length; i++) {
+    const c = celulas[i];
+    const u = c[outro];
+    const alto = teto.get(u);
+    if (alto == null || c[1] > alto) teto.set(u, c[1]);
+    if (c[1] <= 1) {
+      if (u < minU) minU = u;
+      if (u > maxU) maxU = u;
+    }
+    if (c[eixo] === fundo) solido.add(`${u},${c[1]}`);
+  }
+  if (!Number.isFinite(minU)) return;
+  for (let u = minU; u <= maxU; u++) {
+    const topo = teto.get(u);
+    if (topo == null) continue;
+    let limite = topo;
+    for (let y = 0; y <= topo; y++) {
+      if (solido.has(`${u},${y}`)) {
+        limite = y;
+        break;
+      }
+    }
+    for (let y = 0; y < limite; y++) {
+      const cel = [0, y, 0];
+      cel[eixo] = fundo;
+      cel[outro] = u;
+      marcarCelula(marcas, limites, cel[0], cel[1], cel[2]);
+    }
+  }
+}
+
 function abrirVao(marcas, vaos) {
   if (!vaos.length) return;
   const min = [Infinity, Infinity, Infinity];
@@ -237,6 +324,7 @@ export function moldeDaMalha(objTexto, portas = null) {
   }
   const grupos = partirGrupos(vaos);
   for (let i = 0; i < grupos.length; i++) abrirVao(marcas, grupos[i]);
+  fecharFundo(marcas, limites, solidos, vaos);
   let minVX = limites.minX;
   let maxVX = limites.maxX;
   let minVZ = limites.minZ;

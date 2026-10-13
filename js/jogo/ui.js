@@ -1,0 +1,672 @@
+/** Interface DOM: mochila, roda, party, PC, loja, diálogo, dex, quests, craft e móveis. */
+
+import {
+  BOLAS,
+  BERRIES,
+  BLOCOS,
+  CHAVES,
+  ESTOQUE_LOJA,
+  FERRAMENTAS,
+  MATERIAIS,
+  MOVEIS,
+  RECEITAS_BOLA,
+  REMEDIOS,
+  TIPO_ITEM,
+  classificarChave,
+  defItem,
+  precoCompra,
+  precoVenda,
+  teclaDoSlot,
+} from "../wild/catalogo.js";
+import { listarEspecies } from "../pokemon/dados.js";
+import {
+  curarParty,
+  definirDeployado,
+  listaParty,
+  pokemonNoCampo,
+  tirarDaParty,
+} from "../pokemon/party.js";
+import {
+  abrirPainel,
+  atribuirSlot,
+  avisar,
+  comprar,
+  contar,
+  craftarBola,
+  cicloSlot,
+  estado,
+  fecharTopo,
+  hotbarAtivo,
+  marcarQuest,
+  moverDaCaixaParaParty,
+  moverDaPartyParaCaixa,
+  nomeDe,
+  podePagarCusto,
+  salvar,
+  soltarDaCaixa,
+  temChave,
+  usarNoJogador,
+  usarNoPokemon,
+  vender,
+  colocarMovel,
+} from "./estado.js";
+import { celulaConstrucao, pertoDe, propsDaSala } from "./sala.js";
+import { celulaLivre } from "../wild/salas.js";
+import { sfx } from "./audio.js";
+import { htmlIcone } from "./icones.js";
+import { obterClima, obterHora } from "../render/3d/ceu/controleCeu.js";
+import { obterBloco, superficieEm } from "../mundo/voxel/storeMundo.js";
+import { BLOCO } from "../mundo/voxel/tiposBloco.js";
+
+let raiz = null;
+
+export function ligarUi(overlay) {
+  raiz = overlay;
+  raiz.addEventListener("click", noClique);
+  raiz.addEventListener("change", noChange);
+}
+
+function noChange(ev) {
+  const sel = ev.target.closest("[data-caixa]");
+  if (!sel) return;
+  estado.caixaAtiva = sel.selectedIndex;
+  pintar();
+}
+
+function noClique(ev) {
+  const btn = ev.target.closest("[data-act]");
+  if (!btn) return;
+  const act = btn.dataset.act;
+  const tipo = btn.dataset.tipo;
+  const key = btn.dataset.key;
+  const i = Number(btn.dataset.i);
+  if (act === "fechar") fecharTopo();
+  else if (act === "aba") abrirPainel(btn.dataset.painel);
+  else if (act === "cat") {
+    estado.categoria = btn.dataset.cat;
+    avisar();
+  } else if (act === "usar" || act === "usar-mon") usarSelecionado(tipo, key, "pokemon");
+  else if (act === "usar-jogador") usarSelecionado(tipo, key, "jogador");
+  else if (act === "slot") {
+    estado.slotAtivo = i;
+    avisar();
+  } else if (act === "ciclo") cicloSlot(i);
+  else if (act === "limpar-slot") atribuirSlot(i, null, null);
+  else if (act === "deploy") definirDeployado(i);
+  else if (act === "depositar") toast(moverDaPartyParaCaixa(i));
+  else if (act === "retirar") toast(moverDaCaixaParaParty(i));
+  else if (act === "soltar-caixa") toast(soltarDaCaixa(i));
+  else if (act === "soltar-party") {
+    const ator = tirarDaParty(i);
+    toast(ator ? `Soltou ${nomeEspecie(ator)}.` : "O time precisa de um Pokémon.");
+    avisar();
+  } else if (act === "comprar") toast(comprar(tipo, key, 1));
+  else if (act === "vender") toast(vender(tipo, key, 1));
+  else if (act === "craft") toast(craftarBola(key));
+  else if (act === "movel") colocarSelecionado(key);
+  else if (act === "salvar") salvar();
+  else if (act === "escolha") escolher(btn.dataset.id);
+  else if (act === "seguir") avancarDialogo();
+  pintar();
+}
+
+function toast(msg) {
+  if (msg) estado.itemGet = msg;
+}
+
+function usarSelecionado(tipo, key, destino) {
+  if (tipo === TIPO_ITEM.FERRAMENTA) {
+    const livre = estado.hotbar.findIndex((s) => !s);
+    const idx = livre < 0 ? estado.slotAtivo : livre;
+    atribuirSlot(idx, tipo, key);
+    estado.slotAtivo = idx;
+    return;
+  }
+  if (tipo === TIPO_ITEM.BLOCO) {
+    atribuirSlot(estado.slotAtivo, tipo, key);
+    return;
+  }
+  if (tipo !== TIPO_ITEM.BERRY && tipo !== TIPO_ITEM.REMEDIO) return;
+  if (destino === "jogador") {
+    estado.itemGet = usarNoJogador(tipo, key) ? `Usou ${nomeDe(tipo, key)} em você.` : "Você não precisa disso.";
+    return;
+  }
+  const mon = pokemonNoCampo();
+  if (!mon) {
+    estado.itemGet = "Nenhum Pokémon no campo.";
+    return;
+  }
+  estado.itemGet = usarNoPokemon(tipo, key, mon)
+    ? `Usou ${nomeDe(tipo, key)} no ${nomeEspecie(mon)}.`
+    : "Não teve efeito.";
+}
+
+function colocarSelecionado(key) {
+  const interior = estado.interior;
+  if (!interior || interior.papel !== "casa") {
+    estado.itemGet = "Só dentro de casa.";
+    return;
+  }
+  const cel = celulaConstrucao(interior);
+  if (!cel || !celulaLivre(interior.sala, cel.x, cel.y)) {
+    estado.itemGet = "Esse chão está ocupado.";
+    return;
+  }
+  const props = propsDaSala(interior.sala, interior);
+  for (let i = 0; i < props.length; i++) {
+    if (props[i].x === cel.x && props[i].y === cel.y) {
+      estado.itemGet = "Já tem alguma coisa aí.";
+      return;
+    }
+  }
+  toast(colocarMovel(interior.casaId, key, cel.x, cel.y));
+}
+
+function escolher(id) {
+  const dlg = estado.dialogo;
+  if (!dlg) return;
+  if (dlg.acao === "curar" && id === "sim") {
+    curarParty();
+    marcarQuest("centro");
+    sfx("cura");
+    estado.dialogo = { nome: "Enfermeira", linhas: ["Pronto. Seu time está curado."], i: 0 };
+  } else if (dlg.acao === "curar") {
+    estado.dialogo = { nome: "Enfermeira", linhas: ["Volte quando precisar."], i: 0 };
+  }
+  avisar();
+}
+
+export function pintar() {
+  if (!raiz) return;
+  pintarHotbar();
+  pintarPrompt();
+  pintarDialogo();
+  pintarToast();
+  pintarEquipe();
+  pintarPainel();
+  pintarConstruir();
+  pintarCraft();
+  pintarMini();
+}
+
+function el(id) {
+  return raiz.querySelector(id);
+}
+
+function pintarHotbar() {
+  const host = el("#jogo-hotbar");
+  if (!host) return;
+  const partes = [];
+  for (let i = 0; i < estado.hotbar.length; i++) {
+    const slot = estado.hotbar[i];
+    const nome = slot ? nomeDe(slot.tipo, slot.key) : "";
+    const qtd = slot ? contar(slot.tipo, slot.key) : "";
+    const tecla = (teclaDoSlot(i) || "").replace("Digit", "");
+    const icone = slot ? htmlIcone(slot.key, "jogo-slot__icone") : `<span class="jogo-slot__icone jogo-icone--vazio"></span>`;
+    partes.push(
+      `<button type="button" class="jogo-slot${i === estado.slotAtivo ? " is-on" : ""}" data-act="slot" data-i="${i}" title="${nome}">
+        <span class="jogo-slot__tecla">${tecla}</span>
+        ${icone}
+        <span class="jogo-slot__qtd">${qtd}</span>
+      </button>`,
+    );
+  }
+  host.innerHTML = partes.join("");
+}
+
+export function atualizarLeve() {
+  pintarPrompt();
+  pintarToast();
+  pintarMini();
+  pintarRelogio();
+  pintarEquipe();
+}
+
+function pintarPrompt() {
+  const host = el("#jogo-prompt");
+  if (!host) return;
+  host.hidden = !estado.prompt;
+  host.textContent = estado.prompt || "";
+}
+
+function pintarToast() {
+  const host = el("#jogo-toast");
+  if (!host) return;
+  host.hidden = !estado.itemGet;
+  host.textContent = estado.itemGet || "";
+}
+
+function pintarDialogo() {
+  const host = el("#jogo-dialogo");
+  if (!host) return;
+  const dlg = estado.dialogo;
+  host.hidden = !dlg;
+  if (!dlg) {
+    host.innerHTML = "";
+    return;
+  }
+  const linha = dlg.linhas[dlg.i] || "";
+  const escolhas = dlg.escolhas && dlg.i >= dlg.linhas.length - 1
+    ? dlg.escolhas.map((e) => `<button type="button" data-act="escolha" data-id="${e.id}">${e.rotulo}</button>`).join("")
+    : `<button type="button" data-act="seguir">Continuar</button>`;
+  host.innerHTML = `<p class="jogo-dialogo__nome">${dlg.nome || ""}</p><p>${linha}</p><div class="jogo-dialogo__acoes">${escolhas}</div>`;
+}
+
+export function avancarDialogo() {
+  const dlg = estado.dialogo;
+  if (!dlg) return;
+  if (dlg.escolhas && dlg.i >= dlg.linhas.length - 1) return;
+  dlg.i += 1;
+  if (dlg.i >= dlg.linhas.length) {
+    if (dlg.acao === "loja") {
+      estado.dialogo = null;
+      abrirPainel("loja");
+      return;
+    }
+    if (dlg.acao === "pc") {
+      estado.dialogo = null;
+      abrirPainel("pc");
+      return;
+    }
+    estado.dialogo = null;
+  }
+  avisar();
+}
+
+let assinaturaEquipe = "";
+
+function urlRetrato(ator) {
+  const dex = ator?.especie?.dex | 0;
+  if (!dex) return "";
+  return ator.shiny
+    ? `/ref/sprites/pokemon-portraits/shiny/${dex}.png`
+    : `/ref/sprites/pokemon-portraits/${dex}.png`;
+}
+
+function pintarEquipe() {
+  const host = el("#jogo-equipe");
+  if (!host) return;
+  const party = listaParty();
+  const campo = pokemonNoCampo();
+  const sig = party
+    .map((ator) => `${ator.id}:${ator.nivel}:${ator.shiny ? 1 : 0}:${ator.hpMax}:${campo === ator ? 1 : 0}:${ator.especie?.dex || 0}`)
+    .join("|");
+  if (sig !== assinaturaEquipe) {
+    assinaturaEquipe = sig;
+    host.innerHTML = party.length
+      ? party
+          .map((ator, i) => {
+            const url = urlRetrato(ator);
+            const face = url
+              ? `<img class="jogo-mon__face" src="${url}" alt="" draggable="false" />`
+              : `<span class="jogo-mon__face">${nomeEspecie(ator).slice(0, 1)}</span>`;
+            return `<button type="button" class="jogo-mon${campo === ator ? " is-on" : ""}" data-act="deploy" data-i="${i}">
+              ${face}
+              <span class="jogo-mon__nome">${nomeEspecie(ator)} <small>Nv${ator.nivel}</small></span>
+              <span class="jogo-mon__barra"><i data-hp="${i}"></i></span>
+              <span class="jogo-mon__txt" data-hp-txt="${i}"></span>
+            </button>`;
+          })
+          .join("")
+      : "";
+  }
+  for (let i = 0; i < party.length; i++) {
+    const ator = party[i];
+    const t = ator.hpMax > 0 ? Math.max(0, ator.hp) / ator.hpMax : 0;
+    const bar = host.querySelector(`[data-hp="${i}"]`);
+    const txt = host.querySelector(`[data-hp-txt="${i}"]`);
+    if (bar) {
+      bar.style.width = `${Math.round(t * 100)}%`;
+      bar.dataset.baixa = t < 0.35 ? "1" : "0";
+    }
+    if (txt) txt.textContent = `${Math.max(0, Math.round(ator.hp))}/${ator.hpMax}`;
+  }
+}
+
+function pintarPainel() {
+  const host = el("#jogo-painel");
+  if (!host) return;
+  const nome = estado.painel;
+  host.hidden = !nome;
+  if (!nome) {
+    host.innerHTML = "";
+    return;
+  }
+  if (nome === "loja") host.innerHTML = htmlLoja();
+  else if (nome === "pc") host.innerHTML = htmlPc();
+  else host.innerHTML = htmlMenu(nome);
+}
+
+function abas(ativa) {
+  const itens = [
+    ["mochila", "Mochila"],
+    ["party", "Time"],
+    ["pokedex", "Pokédex"],
+    ["quests", "Missões"],
+    ["save", "Salvar"],
+  ];
+  return `<nav class="jogo-abas">${itens
+    .map(([id, rotulo]) => `<button type="button" data-act="aba" data-painel="${id}" class="${ativa === id ? "is-on" : ""}">${rotulo}</button>`)
+    .join("")}<button type="button" data-act="fechar">Fechar</button></nav>`;
+}
+
+function htmlMenu(nome) {
+  let corpo = "";
+  if (nome === "mochila") corpo = htmlMochila();
+  else if (nome === "party") corpo = htmlParty(true);
+  else if (nome === "pokedex") corpo = htmlDex();
+  else if (nome === "quests") corpo = htmlQuests();
+  else if (nome === "save") corpo = htmlSave();
+  return `${abas(nome)}<div class="jogo-corpo">${corpo}</div>`;
+}
+
+function htmlMochila() {
+  const cats = [
+    ["balls", "Bolas"],
+    ["berries", "Berries"],
+    ["medicine", "Remédios"],
+    ["materials", "Materiais"],
+    ["blocks", "Blocos"],
+    ["tools", "Ferramentas"],
+    ["key", "Chave"],
+  ];
+  const botoes = cats
+    .map(([id, rotulo]) => `<button type="button" data-act="cat" data-cat="${id}" class="${estado.categoria === id ? "is-on" : ""}">${rotulo}</button>`)
+    .join("");
+  return `<p class="jogo-dinheiro">¥ ${estado.dinheiro}</p><div class="jogo-cats">${botoes}</div><div class="jogo-grade">${linhasCategoria(estado.categoria)}</div>`;
+}
+
+function linhasCategoria(cat) {
+  const mapa = {
+    balls: entradas(BOLAS, TIPO_ITEM.BOLA),
+    berries: entradas(BERRIES, TIPO_ITEM.BERRY),
+    medicine: entradas(REMEDIOS, TIPO_ITEM.REMEDIO),
+    materials: entradas(MATERIAIS, TIPO_ITEM.MATERIAL),
+    blocks: entradas(BLOCOS, TIPO_ITEM.BLOCO),
+    tools: entradas(FERRAMENTAS, TIPO_ITEM.FERRAMENTA),
+    key: entradas(CHAVES, TIPO_ITEM.CHAVE),
+  };
+  const lista = mapa[cat] || [];
+  if (!lista.length) return "<p>Vazio.</p>";
+  return lista
+    .map((item) => {
+      const qtd = contar(item.tipo, item.key);
+      if (qtd <= 0 && item.tipo !== TIPO_ITEM.CHAVE) return "";
+      if (item.tipo === TIPO_ITEM.CHAVE && !temChave(item.key)) return "";
+      const cura = item.tipo === TIPO_ITEM.BERRY || item.tipo === TIPO_ITEM.REMEDIO;
+      const usar = item.tipo === TIPO_ITEM.BOLA
+        ? ""
+        : cura
+          ? `<button type="button" data-act="usar-mon" data-tipo="${item.tipo}" data-key="${item.key}">Pokémon</button><button type="button" data-act="usar-jogador" data-tipo="${item.tipo}" data-key="${item.key}">Você</button>`
+          : `<button type="button" data-act="usar" data-tipo="${item.tipo}" data-key="${item.key}">Usar</button>`;
+      return `<div class="jogo-item">${htmlIcone(item.key, "jogo-item__icone")}<span>${item.nome} ×${qtd || 1}</span>${usar}</div>`;
+    })
+    .join("");
+}
+
+function entradas(obj, tipo) {
+  return Object.keys(obj).map((key) => ({ ...obj[key], tipo }));
+}
+
+function nomeEspecie(ator) {
+  return ator?.especie?.nome || ator?.especie?.name || ator?.especie?.key || "Pokémon";
+}
+
+function htmlParty(comSoltar) {
+  const party = listaParty();
+  if (!party.length) return "<p>Time vazio.</p>";
+  return party
+    .map((ator, i) => {
+      const hp = `${Math.max(0, Math.round(ator.hp))}/${ator.hpMax}`;
+      const soltar = comSoltar ? `<button type="button" data-act="soltar-party" data-i="${i}">Soltar</button>` : "";
+      const dep = estado.painel === "pc"
+        ? `<button type="button" data-act="depositar" data-i="${i}">Depositar</button>`
+        : `<button type="button" data-act="deploy" data-i="${i}">Campo</button>`;
+      return `<div class="jogo-item"><span>${nomeEspecie(ator)} Lv${ator.nivel}${ator.shiny ? " ✦" : ""}</span><span>${hp}</span>${dep}${soltar}</div>`;
+    })
+    .join("");
+}
+
+function htmlPc() {
+  const caixa = estado.caixas[estado.caixaAtiva];
+  const opcoes = estado.caixas
+    .map((c, i) => `<option${i === estado.caixaAtiva ? " selected" : ""}>${c.nome}</option>`)
+    .join("");
+  const slots = caixa.slots
+    .map((snap, i) => {
+      if (!snap) return `<div class="jogo-item"><span>vazio</span></div>`;
+      return `<div class="jogo-item"><span>${snap.especieKey} Lv${snap.nivel}</span><button type="button" data-act="retirar" data-i="${i}">Retirar</button><button type="button" data-act="soltar-caixa" data-i="${i}">Soltar</button></div>`;
+    })
+    .join("");
+  return `<header class="jogo-topo"><h2>PC</h2><button type="button" data-act="fechar">Fechar</button></header>
+    <select data-caixa>${opcoes}</select>
+    <h3>Time</h3>${htmlParty(false)}<h3>${caixa.nome}</h3><div class="jogo-grade">${slots}</div>`;
+}
+
+function htmlLoja() {
+  const compra = ESTOQUE_LOJA.map((e) => {
+    const def = defItem(e.tipo, e.key);
+    if (!def) return "";
+    const preco = precoCompra(e.tipo, e.key);
+    if (preco < 0) return "";
+    return `<div class="jogo-item"><span>${def.nome}</span><span>¥${preco}</span><button type="button" data-act="comprar" data-tipo="${e.tipo}" data-key="${e.key}">Comprar</button></div>`;
+  }).join("");
+  const venda = itensVendaveis()
+    .map((e) => `<div class="jogo-item"><span>${e.nome} ×${e.qtd}</span><span>¥${e.venda}</span><button type="button" data-act="vender" data-tipo="${e.tipo}" data-key="${e.key}">Vender</button></div>`)
+    .join("");
+  return `<header class="jogo-topo"><h2>Poké Mart</h2><button type="button" data-act="fechar">Fechar</button></header>
+    <p class="jogo-dinheiro">¥ ${estado.dinheiro}</p><h3>Comprar</h3><div class="jogo-grade">${compra}</div><h3>Vender</h3><div class="jogo-grade">${venda || "<p>Nada para vender.</p>"}</div>`;
+}
+
+function itensVendaveis() {
+  const lista = [];
+  const grupos = [
+    [BOLAS, TIPO_ITEM.BOLA],
+    [BERRIES, TIPO_ITEM.BERRY],
+    [REMEDIOS, TIPO_ITEM.REMEDIO],
+    [MATERIAIS, TIPO_ITEM.MATERIAL],
+  ];
+  for (let g = 0; g < grupos.length; g++) {
+    const obj = grupos[g][0];
+    const tipo = grupos[g][1];
+    const chaves = Object.keys(obj);
+    for (let i = 0; i < chaves.length; i++) {
+      const key = chaves[i];
+      const qtd = contar(tipo, key);
+      const venda = precoVenda(tipo, key);
+      if (qtd > 0 && venda > 0) lista.push({ tipo, key, nome: obj[key].nome, qtd, venda });
+    }
+  }
+  return lista;
+}
+
+function htmlDex() {
+  if (!temChave("pokedex")) return "<p>Você não tem a Pokédex.</p>";
+  const especies = listarEspecies();
+  if (!especies.length) return "<p>Catálogo ainda não carregou.</p>";
+  return `<p>${estado.vistos.length} vistas</p><div class="jogo-grade">${especies
+    .map((esp) => {
+      const key = esp.key;
+      const vista = estado.vistos.includes(key);
+      const nome = vista ? esp.nome || esp.name || key : "???";
+      return `<div class="jogo-item${vista ? "" : " is-off"}"><span>${nome}</span></div>`;
+    })
+    .join("")}</div>`;
+}
+
+function htmlQuests() {
+  return estado.quests
+    .map((q) => `<div class="jogo-item"><span>${q.titulo}</span><span>${q.feita ? "feita" : q.texto}</span></div>`)
+    .join("");
+}
+
+function htmlSave() {
+  return `<p>O save fica neste navegador.</p><button type="button" data-act="salvar">Salvar agora</button>`;
+}
+
+function pintarConstruir() {
+  const host = el("#jogo-construir");
+  if (!host) return;
+  host.hidden = !estado.construir;
+  if (!estado.construir) return;
+  const chaves = Object.keys(MOVEIS);
+  host.innerHTML = `<header class="jogo-topo"><h2>Móveis</h2><button type="button" data-act="fechar">Fechar</button></header>${chaves
+    .map((key) => {
+      const m = MOVEIS[key];
+      const ok = podePagarCusto(m.custo);
+      const custo = Object.entries(m.custo).map(([k, n]) => `${n} ${k}`).join(", ");
+      return `<div class="jogo-item"><span>${m.nome}</span><span>${custo}</span><button type="button" data-act="movel" data-key="${key}" ${ok ? "" : "disabled"}>Colocar</button></div>`;
+    })
+    .join("")}`;
+}
+
+function pintarCraft() {
+  const host = el("#jogo-craft");
+  if (!host) return;
+  host.hidden = !estado.craft;
+  if (!estado.craft) return;
+  const chaves = Object.keys(RECEITAS_BOLA);
+  host.innerHTML = `<header class="jogo-topo"><h2>Bancada</h2><button type="button" data-act="fechar">Fechar</button></header>${chaves
+    .map((key) => {
+      const r = RECEITAS_BOLA[key];
+      const ok = podePagarCusto(r.custo);
+      return `<div class="jogo-item"><span>${r.nome}</span><span>${r.custo.anyCrystal} cristal</span><button type="button" data-act="craft" data-key="${key}" ${ok ? "" : "disabled"}>Craftar</button></div>`;
+    })
+    .join("")}`;
+}
+
+function corChao(id) {
+  if (id === BLOCO.AGUA) return "#1d4ed8";
+  if (id === BLOCO.PEDRA) return "#78716c";
+  if (id === BLOCO.TERRA) return "#8a5a32";
+  if (id === BLOCO.GRAMA) return "#3f8f46";
+  return "#102018";
+}
+
+function periodoDe(hora) {
+  if (hora < 5 || hora >= 20) return { nome: "Noite", chave: "noite" };
+  if (hora < 8) return { nome: "Amanhecer", chave: "aurora" };
+  if (hora < 17) return { nome: "Dia", chave: "dia" };
+  return { nome: "Tarde", chave: "tarde" };
+}
+
+function pintarRelogio() {
+  const host = el("#jogo-relogio");
+  if (!host) return;
+  const hora = obterHora();
+  const h = Math.floor(hora);
+  const m = Math.floor((hora - h) * 60);
+  const texto = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const periodo = periodoDe(hora);
+  const clima = obterClima();
+  const nomes = { limpo: "Limpo", chuva: "Chuva", areia: "Areia", nevasca: "Neve" };
+  if (host.dataset.chave === `${texto}|${periodo.chave}|${clima}`) return;
+  host.dataset.chave = `${texto}|${periodo.chave}|${clima}`;
+  host.dataset.periodo = periodo.chave;
+  const horaEl = host.querySelector("[data-hora]");
+  const perEl = host.querySelector("[data-periodo]");
+  const cliEl = host.querySelector("[data-clima]");
+  if (horaEl) horaEl.textContent = texto;
+  if (perEl) perEl.textContent = periodo.nome;
+  if (cliEl) cliEl.textContent = nomes[clima] || clima;
+}
+
+let miniEm = 0;
+
+function pintarMini() {
+  const tela = el("#jogo-mini");
+  if (!tela) return;
+  const agora = performance.now();
+  if (agora - miniEm < 180) return;
+  miniEm = agora;
+  const ctx = tela.getContext("2d");
+  const w = tela.width;
+  const h = tela.height;
+  ctx.fillStyle = "#102018";
+  ctx.fillRect(0, 0, w, h);
+  const corpo = corpoRef;
+  if (!corpo) return;
+  const alcance = 18;
+  const cel = w / (alcance * 2);
+  const ox = Math.floor(corpo.x);
+  const oy = Math.floor(corpo.y);
+  for (let dy = -alcance; dy < alcance; dy++) {
+    for (let dx = -alcance; dx < alcance; dx++) {
+      const x = ox + dx;
+      const y = oy + dy;
+      const topo = superficieEm(x, y);
+      const id = topo > 0 ? obterBloco(x, y, topo - 1) : BLOCO.AR;
+      ctx.fillStyle = corChao(id);
+      ctx.fillRect((dx + alcance) * cel, (dy + alcance) * cel, Math.ceil(cel), Math.ceil(cel));
+    }
+  }
+  for (let i = 0; i < estado.plots.length; i++) {
+    const p = estado.plots[i];
+    const dx = p.x - ox;
+    const dy = p.y - oy;
+    if (Math.abs(dx) >= alcance || Math.abs(dy) >= alcance) continue;
+    ctx.fillStyle = p.stage === "ripe" ? "#facc15" : "#f59e0b";
+    ctx.fillRect((dx + alcance) * cel, (dy + alcance) * cel, Math.ceil(cel), Math.ceil(cel));
+  }
+  ctx.fillStyle = "#f8fafc";
+  ctx.beginPath();
+  ctx.arc(w / 2, h / 2, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#111827";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+let corpoRef = null;
+
+export function definirCorpo(corpo) {
+  corpoRef = corpo;
+}
+
+export function falarCom(alvo) {
+  if (!alvo) return;
+  const ref = alvo.ref;
+  if (alvo.tipo === "npc") {
+    estado.dialogo = {
+      nome: ref.nome,
+      linhas: ref.fala.slice(),
+      i: 0,
+      acao: ref.acao || "",
+      escolhas: ref.escolhas || null,
+    };
+    avisar();
+    return;
+  }
+  if (ref.acao === "pc") {
+    estado.dialogo = { nome: "PC", linhas: ["O PC do Centro está ligado."], i: 0, acao: "pc" };
+    avisar();
+    return;
+  }
+  if (ref.cura) {
+    curarParty();
+    marcarQuest("centro");
+    sfx("cura");
+    estado.itemGet = "Descansou. O time foi curado.";
+    avisar();
+    return;
+  }
+  if (ref.craft || ref.key === "bancada") {
+    estado.craft = true;
+    avisar();
+  }
+}
+
+export function promptDe(alvo, ferramenta) {
+  if (estado.dialogo || estado.painel) return "";
+  if (alvo?.tipo === "npc") return `${alvo.ref.nome} — R`;
+  if (alvo?.ref?.acao === "pc") return "PC — R";
+  if (alvo?.ref?.cura) return "Cama — R";
+  if (alvo?.ref?.craft || alvo?.ref?.key === "bancada") return "Bancada — R";
+  if (estado.interior?.papel === "casa" && hotbarAtivo()?.key === "hammer") return "Martelo — R abre os móveis";
+  if (!estado.interior && ferramenta) return `${ferramenta} — R`;
+  return "";
+}
+
+export function classeDeChave(key) {
+  return classificarChave(key);
+}

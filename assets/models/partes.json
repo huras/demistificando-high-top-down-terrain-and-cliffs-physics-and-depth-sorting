@@ -2,6 +2,13 @@
   "pallet-town-house": {
     "porta": [
       123
+    ],
+    "janela": [
+      0,
+      1,
+      2,
+      3,
+      4
     ]
   },
   "pallet-town-house-2": {
@@ -51,6 +58,40 @@
     "porta": [
       82,
       83
+    ]
+  },
+  "centro": {
+    "porta": [
+      149
+    ]
+  },
+  "loja": {
+    "porta": [
+      43
+    ]
+  },
+  "lab": {
+    "porta": [
+      46
+    ]
+  },
+  "casa-amigo": {
+    "porta": [
+      80
+    ]
+  },
+  "casa-cherry": {
+    "porta": [
+      81
+    ]
+  },
+  "casa-guia": {
+    "porta": [
+      82
+    ],
+    "janela": [
+      1,
+      0
     ]
   }
 }

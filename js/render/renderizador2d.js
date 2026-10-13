@@ -69,7 +69,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   }
 
   desenharOverlayAjuda(ctx, camera, debug, ocl, modoVisual, "2d");
-  desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
+  desenharHudStamina(ctx, corpo, projetar2d(camera));
   desenharHudPokemon(ctx, projetar2d(camera), corpo);
   desenharLabelHoverHud(ctx, canvas.width, canvas.height);
 
@@ -169,8 +169,8 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   desenharOverlayAjuda(ctx, { zoom }, debug, null, modoVisual, "3d");
-  desenharHudStamina(ctx, corpo, canvas.width, canvas.height);
   const cam = emCena ? null : camera3d?.camRender;
+  desenharHudStamina(ctx, corpo, cam ? projetar3d(cam, canvas.width, canvas.height) : null);
   desenharHudPokemon(ctx, projetar3d(cam, canvas.width, canvas.height), corpo);
   if (emCena) {
     desenharTagCena(ctx, canvas.width);

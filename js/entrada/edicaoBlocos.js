@@ -4,11 +4,12 @@
 import { obterModo } from "../modoJogo.js";
 import { estaEmCena } from "../cena/modoCena.js";
 import { alvoBloco2d, alvoBloco3d } from "../mundo/voxel/alvoBloco.js";
-import { colocarBloco, quebrarBloco } from "../mundo/voxel/editar.js";
 import { ESCALA, FACE_H, TILE } from "../config.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 import { invalidarHoverBloco } from "./hoverBloco.js";
 import { ponteiroTravado, botaoDireitoSegurado } from "./ponteiro3d.js";
+import { tentarColocar, tentarQuebrar } from "../jogo/blocos.js";
+import { uiAberta } from "../jogo/estado.js";
 
 let canvas2d = null;
 let canvas3d = null;
@@ -45,26 +46,29 @@ function aoMouseDown2d(ev) {
   if (!alvo) return;
 
   ev.preventDefault();
-  if (ev.button === 0) quebrarBloco(corpo, alvo);
-  else colocarBloco(corpo, alvo);
+  if (uiAberta()) return;
+  if (ev.button === 0) tentarQuebrar(corpo, alvo);
+  else tentarColocar(corpo, alvo);
   invalidarHoverBloco();
 }
 
 function aoMouseDown3d(ev) {
   if (obterModo() !== "3d" || estaEmCena()) return;
   if (!ponteiroTravado()) return;
-  if (ev.button !== 0) return;
-  if (botaoDireitoSegurado()) return;
+  if (ev.button !== 0 && ev.button !== 2) return;
+  if (botaoDireitoSegurado() && ev.button === 0) return;
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d) return;
-  if (cen.camera3d.modo === "mira") return;
+  if (uiAberta()) return;
+  if (ev.button === 0 && cen.camera3d.modo === "mira") return;
 
   const alvo = alvoBloco3d(corpo, cen.camera3d);
   if (!alvo) return;
 
   ev.preventDefault();
-  quebrarBloco(corpo, alvo);
+  if (ev.button === 2) tentarColocar(corpo, alvo);
+  else tentarQuebrar(corpo, alvo);
   invalidarHoverBloco();
 }
 

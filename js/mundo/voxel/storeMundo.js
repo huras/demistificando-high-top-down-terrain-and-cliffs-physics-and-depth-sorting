@@ -50,6 +50,11 @@ function emitirDirty(aabb) {
   for (const fn of ouvintesDirty) fn(aabb);
 }
 
+/** Avisa a vegetação para remontar (prop cortada, por exemplo). */
+export function avisarDirty() {
+  emitirDirty(aabbCarregado);
+}
+
 function chaveEdit(x, y, z) {
   return `${x|0},${y|0},${z|0}`;
 }
