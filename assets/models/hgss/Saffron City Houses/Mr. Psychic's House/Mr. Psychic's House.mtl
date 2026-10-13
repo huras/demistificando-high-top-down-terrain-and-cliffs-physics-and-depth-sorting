@@ -1,0 +1,32 @@
+newmtl h_in
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka h_in.png
+map_Kd h_in.png
+map_d h_in.png
+newmtl h_kage
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 0.2903226
+Tr 0.2903226
+map_Ka h_kage.png
+map_Kd h_kage.png
+map_d h_kage.png
+newmtl ybc_eo01
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka ybc_eo01.png
+map_Kd ybc_eo01.png
+map_d ybc_eo01.png
+newmtl ybc_mado
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka ybc_mado.png
+map_Kd ybc_mado.png
+map_d ybc_mado.png

@@ -1,0 +1,32 @@
+newmtl tkwa_sl2
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka tkwa_sl2.png
+map_Kd tkwa_sl2.png
+map_d tkwa_sl2.png
+newmtl tkwa_sl2l
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka tkwa_sl2l.png
+map_Kd tkwa_sl2l.png
+map_d tkwa_sl2l.png
+newmtl tkwa_sl2w
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka tkwa_sl2w.png
+map_Kd tkwa_sl2w.png
+map_d tkwa_sl2w.png
+newmtl tkwa_sl3
+Ka 0.972549 0.972549 0.972549
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka tkwa_sl3.png
+map_Kd tkwa_sl3.png
+map_d tkwa_sl3.png

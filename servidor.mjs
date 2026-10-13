@@ -156,6 +156,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/pivos") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 200_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarPivos(obj);
+        const dest = path.join(raiz, "assets", "pokemon", "pivos.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (
     (req.method === "GET" || req.method === "HEAD") &&
     url.pathname === "/ref/catalogo.json"
@@ -230,6 +260,28 @@ function validarCatalogoLuzes(obj) {
       if (ponto.raio < 0.2 || ponto.raio > 16) throw new Error(`${id} raio fora`);
       if (ponto.intensidade < 0 || ponto.intensidade > 4) throw new Error(`${id} intensidade fora`);
     }
+  }
+}
+
+function validarPivos(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("arquivo sem pivôs");
+  }
+  const ids = Object.keys(obj);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw new Error(`espécie inválida: ${id}`);
+    const item = obj[id];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`${id} sem ajuste`);
+    }
+    for (const chave of ["offsetY", "dx", "dy"]) {
+      const n = Number(item[chave]);
+      if (!Number.isFinite(n)) throw new Error(`${id} sem ${chave}`);
+      item[chave] = n;
+    }
+    if (item.offsetY < -4 || item.offsetY > 4) throw new Error(`${id} altura fora`);
+    if (Math.abs(item.dx) > 256 || Math.abs(item.dy) > 256) throw new Error(`${id} pivô fora`);
   }
 }
 

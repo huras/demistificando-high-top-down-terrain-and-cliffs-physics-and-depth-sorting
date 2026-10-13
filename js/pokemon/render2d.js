@@ -21,7 +21,7 @@ function desenharSombra(ctx, x, y, escala) {
 }
 
 function desenharCorpo(ctx, ator) {
-  const { escala, offsetY } = medidaSprite(ator);
+  const { escala, offsetY, dx, dy } = medidaSprite(ator);
   const chaoX = mundoParaTelaX(ator.x);
   const chaoY = mundoParaTelaY(ator.y, ator.z, ator.hopLift || 0);
   const footX = chaoX;
@@ -32,7 +32,7 @@ function desenharCorpo(ctx, ator) {
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (fr && pack.img && pack.estado === "pronto") {
-    blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala);
+    blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala, { dx, dy });
   } else {
     const cor = ator.especie.cor || COR_TIPO[ator.tipos?.[0]] || "#94a3b8";
     ctx.fillStyle = cor;

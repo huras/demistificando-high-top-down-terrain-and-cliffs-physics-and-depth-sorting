@@ -445,7 +445,6 @@ function loop(agora) {
     agente.tempoAr = 0;
     resetarNav(agente);
     camera.pronta = false;
-    resetarCamera3d();
     atualizarStreaming(corpo.x, corpo.y);
   }
   despenetrarCorpos();

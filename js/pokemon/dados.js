@@ -24,10 +24,27 @@ export function dropsDaEspecie(chave) {
   };
 }
 
+function aplicarPivos(arquivo) {
+  if (!arquivo || typeof arquivo !== "object" || Array.isArray(arquivo)) return;
+  const chaves = Object.keys(arquivo);
+  for (let i = 0; i < chaves.length; i++) {
+    const esp = especies[chaves[i]];
+    const item = arquivo[chaves[i]];
+    if (!esp || !item || typeof item !== "object") continue;
+    const offsetY = Number(item.offsetY);
+    const dx = Number(item.dx);
+    const dy = Number(item.dy);
+    if (Number.isFinite(offsetY)) esp.offsetY = offsetY;
+    if (Number.isFinite(dx)) esp.pivoDx = dx;
+    if (Number.isFinite(dy)) esp.pivoDy = dy;
+  }
+}
+
 export async function carregarDados() {
-  const [catRes, dropRes] = await Promise.all([
+  const [catRes, dropRes, pivoRes] = await Promise.all([
     fetch("/ref/catalogo.json"),
     fetch("/ref/src/data/pokemon/speciesDrops.json"),
+    fetch("/assets/pokemon/pivos.json"),
   ]);
   if (!catRes.ok) throw new Error("catálogo de pokémon indisponível");
   const cat = await catRes.json();
@@ -40,6 +57,7 @@ export async function carregarDados() {
       materials: bruto.materials || {},
     };
   }
+  if (pivoRes.ok) aplicarPivos(await pivoRes.json());
   pronto = true;
   return { especies: Object.keys(especies).length, golpes: Object.keys(golpes).length };
 }

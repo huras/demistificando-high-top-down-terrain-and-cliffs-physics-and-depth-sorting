@@ -1,0 +1,17 @@
+{
+  "bulbasaur": {
+    "offsetY": -0.28,
+    "dx": 1,
+    "dy": 5
+  },
+  "ivysaur": {
+    "offsetY": -0.4,
+    "dx": 1,
+    "dy": 6
+  },
+  "venusaur": {
+    "offsetY": -0.26,
+    "dx": 0,
+    "dy": 2
+  }
+}

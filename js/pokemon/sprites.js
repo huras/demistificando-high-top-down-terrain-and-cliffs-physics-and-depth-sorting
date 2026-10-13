@@ -117,35 +117,41 @@ export function direcao8Camera(dx, dy, yawCam) {
 
 /**
  * Pé em (footX, footY), na base do recorte opaco — igual ao personagem.
- * O pivô X continua o da célula, pra o corpo não escorregar entre quadros.
- * O atlas só tem o recorte; ele entra na célula em (trimX, trimY).
+ * O atlas PMD entra espelhado; o pivô X vira (1 − pivot) pra o pé não escorregar.
  */
-export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala) {
+export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala, ajuste) {
+  const trimX = fr.trimX || 0;
+  const trimW = fr.trimW || fr.w;
+  const trimH = fr.trimH || fr.h;
   const dw = fr.w * escala;
-  const base = (fr.trimY || 0) + (fr.trimH || fr.h);
-  const dx = footX - fr.pivotX * dw;
-  const dy = footY - base * escala;
+  const destW = trimW * escala;
+  const destH = trimH * escala;
+  // O atlas PMD vem espelhado no X. O desenho desvira, como o pmdSpriteUv.
+  const pivotX = 1 - (fr.pivotX ?? 0.5);
+  const trimEsq = fr.w - trimX - trimW;
+  const ox = Number(ajuste?.dx);
+  const oy = Number(ajuste?.dy);
+  const dx = footX - pivotX * dw + trimEsq * escala + (Number.isFinite(ox) ? ox : 0) * escala;
+  const dy = footY - trimH * escala + (Number.isFinite(oy) ? oy : 0) * escala;
   const sw = (fr.u1 - fr.u0) * atlasW;
   const sh = (fr.v1 - fr.v0) * atlasH;
-  ctx.drawImage(
-    img,
-    fr.u0 * atlasW,
-    fr.v0 * atlasH,
-    sw,
-    sh,
-    dx + (fr.trimX || 0) * escala,
-    dy + (fr.trimY || 0) * escala,
-    (fr.trimW || fr.w) * escala,
-    (fr.trimH || fr.h) * escala,
-  );
+  ctx.save();
+  ctx.translate(dx + destW, dy);
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, fr.u0 * atlasW, fr.v0 * atlasH, sw, sh, 0, 0, destW, destH);
+  ctx.restore();
 }
 
 export function medidaSprite(ator) {
   const escala = Number(ator?.especie?.escala);
   const offsetY = Number(ator?.especie?.offsetY);
+  const dx = Number(ator?.especie?.pivoDx);
+  const dy = Number(ator?.especie?.pivoDy);
   return {
     escala: escala > 0 ? escala : 1,
     offsetY: Number.isFinite(offsetY) ? offsetY : 0,
+    dx: Number.isFinite(dx) ? dx : 0,
+    dy: Number.isFinite(dy) ? dy : 0,
   };
 }
 

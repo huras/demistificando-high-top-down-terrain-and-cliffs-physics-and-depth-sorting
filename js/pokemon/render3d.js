@@ -126,12 +126,13 @@ function aplicarMedida(slot, ator) {
 }
 
 function pintar(slot, ator, fr, pack) {
-  const chave = `${ator.id}:${pack.id}:${ator.visual?.anim}:${ator.visual?.dir}:${ator.visual?.frame}:${ator.morto ? 1 : 0}`;
+  const { dx, dy } = medidaSprite(ator);
+  const chave = `${ator.id}:${pack.id}:${ator.visual?.anim}:${ator.visual?.dir}:${ator.visual?.frame}:${ator.morto ? 1 : 0}:${dx}:${dy}`;
   if (slot.chave === chave) return;
   slot.chave = chave;
   slot.ctx.imageSmoothingEnabled = false;
   slot.ctx.clearRect(0, 0, LADO, LADO);
-  blitQuadro(slot.ctx, pack.img, pack.atlasW, pack.atlasH, fr, PE_X, PE_Y, 1);
+  blitQuadro(slot.ctx, pack.img, pack.atlasW, pack.atlasH, fr, PE_X, PE_Y, 1, { dx, dy });
   slot.tex.needsUpdate = true;
   ancorar(slot);
 }
