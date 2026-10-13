@@ -147,7 +147,7 @@ export function criarVegetacaoBillboard3d() {
       depthWrite: true,
       depthTest: true,
       side: THREE.FrontSide,
-    })));
+    })), { clareia: true });
     const depth = new THREE.MeshDepthMaterial({
       depthPacking: THREE.RGBADepthPacking,
       map: tex,

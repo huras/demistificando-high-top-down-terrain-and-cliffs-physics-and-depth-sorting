@@ -58,6 +58,18 @@ reflectedLight.indirectDiffuse *= mix(1.0, sombraN, 0.42);
 vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoCeu);
 `;
 
+const FRAG_SOMA_CLAREIA = `
+float sombraN = sombraNuvem();
+reflectedLight.directDiffuse *= sombraN;
+reflectedLight.indirectDiffuse *= mix(1.0, sombraN, 0.42);
+vec3 lampada = luzCidade(vMundoCeu);
+float picoLampada = max(lampada.r, max(lampada.g, lampada.b));
+float ganhoLampada = min(1.05, picoLampada * 6.5);
+vec3 tintaLampada = lampada / max(picoLampada, 1e-4);
+vec3 clarearLampada = ganhoLampada * (vec3(0.72) + tintaLampada * 0.28) * step(0.001, picoLampada);
+vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + clarearLampada * diffuseColor.rgb;
+`;
+
 function ligarUniforms(shader) {
   shader.uniforms.uMapaNuvem = uniformsNuvem.uMapaNuvem;
   shader.uniforms.uVentoNuvem = uniformsNuvem.uVentoNuvem;
@@ -75,10 +87,11 @@ function ligarUniforms(shader) {
  * A cisalha é a direção do sol vezes a altura da nuvem — a sombra não fica
  * embaixo da nuvem quando o sol está baixo (o truque do BOTW).
  */
-export function aplicarSombraNuvem(material) {
+export function aplicarSombraNuvem(material, opcoes) {
   if (!material || material.userData?.[MARCA]) return material;
   if (!material.userData) material.userData = {};
   material.userData[MARCA] = true;
+  const clareia = opcoes?.clareia === true;
 
   const anterior = material.onBeforeCompile;
   const chaveAnterior = material.customProgramCacheKey;
@@ -98,7 +111,7 @@ export function aplicarSombraNuvem(material) {
       frag = frag.replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${FRAG_LUZ}`);
     }
     const soma = "vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;";
-    if (frag.includes(soma)) frag = frag.replace(soma, FRAG_SOMA);
+    if (frag.includes(soma)) frag = frag.replace(soma, clareia ? FRAG_SOMA_CLAREIA : FRAG_SOMA);
     else if (!avisou) {
       avisou = true;
       console.warn("ceu: shader sem totalDiffuse, sombra de nuvem não entrou");
@@ -113,7 +126,7 @@ export function aplicarSombraNuvem(material) {
   };
   material.customProgramCacheKey = function chaveSombra() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|sombra-nuvem|poca|luz-cidade`;
+    return `${base}|sombra-nuvem|poca|luz-cidade${clareia ? "|clareia" : ""}`;
   };
   return material;
 }

@@ -96,6 +96,7 @@ export function criarVegetacaoDistante() {
           side: THREE.FrontSide,
         }),
       ),
+      { clareia: true },
     );
     const geo = new THREE.PlaneGeometry(1, 1);
     geo.translate(0, 0.5, 0);
