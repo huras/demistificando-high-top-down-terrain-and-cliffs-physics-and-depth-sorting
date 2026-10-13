@@ -25,3 +25,44 @@ export function lerFacesObj(texto) {
   }
   return { verts, faces, quantidade: indice };
 }
+
+function chavePonto(p) {
+  return `${Math.round(p[0] * 50)},${Math.round(p[1] * 50)},${Math.round(p[2] * 50)}`;
+}
+
+/** Triângulos que se encostam viram um grupo. Várias faces de uma porta contam como uma. */
+export function partirGrupos(faces) {
+  const n = faces.length;
+  const pai = new Array(n);
+  for (let i = 0; i < n; i++) pai[i] = i;
+  function achar(i) {
+    while (pai[i] !== i) {
+      pai[i] = pai[pai[i]];
+      i = pai[i];
+    }
+    return i;
+  }
+  const mapa = new Map();
+  for (let i = 0; i < n; i++) {
+    const f = faces[i];
+    const pontos = [f.a, f.b, f.c];
+    for (let k = 0; k < 3; k++) {
+      const chave = chavePonto(pontos[k]);
+      const lista = mapa.get(chave);
+      if (lista) lista.push(i);
+      else mapa.set(chave, [i]);
+    }
+  }
+  for (const lista of mapa.values()) {
+    const raiz = achar(lista[0]);
+    for (let i = 1; i < lista.length; i++) pai[achar(lista[i])] = raiz;
+  }
+  const grupos = new Map();
+  for (let i = 0; i < n; i++) {
+    const raiz = achar(i);
+    const grupo = grupos.get(raiz);
+    if (grupo) grupo.push(faces[i]);
+    else grupos.set(raiz, [faces[i]]);
+  }
+  return [...grupos.values()];
+}

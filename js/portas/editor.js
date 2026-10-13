@@ -1,12 +1,15 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../mundo/cidade/catalogoCasas.js";
-import { lerFacesObj } from "../mundo/cidade/facesObj.js";
+import { lerFacesObj, partirGrupos } from "../mundo/cidade/facesObj.js";
 
 const statusEl = document.getElementById("status");
 const listaEl = document.getElementById("lista");
 const buscaEl = document.getElementById("busca");
 const contagemEl = document.getElementById("contagem");
+const materialEl = document.getElementById("material");
 const canvas = document.getElementById("vista");
 const btnPorta = document.getElementById("papel-porta");
 const btnJanela = document.getElementById("papel-janela");
@@ -32,7 +35,13 @@ cena.add(new THREE.GridHelper(10, 10, 0x3d5248, 0x243028));
 
 const raycaster = new THREE.Raycaster();
 const ponteiro = new THREE.Vector2();
-const matCasa = new THREE.MeshLambertMaterial({ color: 0xc8c2b4, side: THREE.DoubleSide });
+const matSemTextura = new THREE.MeshLambertMaterial({ color: 0xc8c2b4, side: THREE.DoubleSide });
+const matCasa = new THREE.MeshBasicMaterial({
+  transparent: true,
+  opacity: 0,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+});
 const matPorta = new THREE.MeshBasicMaterial({
   color: 0x3ddc6a,
   side: THREE.DoubleSide,
@@ -40,7 +49,8 @@ const matPorta = new THREE.MeshBasicMaterial({
   polygonOffsetFactor: -2,
   polygonOffsetUnits: -2,
   transparent: true,
-  opacity: 0.82,
+  opacity: 0.28,
+  depthWrite: false,
 });
 const matJanela = new THREE.MeshBasicMaterial({
   color: 0x4aa3e8,
@@ -49,7 +59,8 @@ const matJanela = new THREE.MeshBasicMaterial({
   polygonOffsetFactor: -2,
   polygonOffsetUnits: -2,
   transparent: true,
-  opacity: 0.82,
+  opacity: 0.28,
+  depthWrite: false,
 });
 const matHover = new THREE.MeshBasicMaterial({
   color: 0xffe08a,
@@ -58,7 +69,8 @@ const matHover = new THREE.MeshBasicMaterial({
   polygonOffsetFactor: -3,
   polygonOffsetUnits: -3,
   transparent: true,
-  opacity: 0.55,
+  opacity: 0.28,
+  depthWrite: false,
 });
 
 const grupo = new THREE.Group();
@@ -95,6 +107,7 @@ let faces = [];
 let triParaFace = [];
 let portaArquivo = new Set();
 let malhaCasa = null;
+let raizVisual = null;
 let malhaPorta = null;
 let malhaJanela = null;
 let malhaHover = null;
@@ -156,6 +169,32 @@ function soltar(malha) {
   malha.removeFromParent();
 }
 
+function soltarVisual() {
+  if (!raizVisual) return;
+  const texturas = new Set();
+  raizVisual.traverse((filho) => {
+    if (!filho.isMesh) return;
+    filho.geometry?.dispose();
+    const lista = Array.isArray(filho.material) ? filho.material : [filho.material];
+    for (let i = 0; i < lista.length; i++) {
+      if (lista[i]?.map) texturas.add(lista[i].map);
+      lista[i]?.dispose();
+    }
+  });
+  for (const tex of texturas) tex.dispose();
+  raizVisual.removeFromParent();
+  raizVisual = null;
+}
+
+function textoDe(rotulo, indices) {
+  const lista = [...indices];
+  if (!lista.length) return `${rotulo}: 0`;
+  const n = partirGrupos(faces.filter((f) => indices.has(f.indice))).length;
+  const facesN = lista.length;
+  if (n === facesN) return `${rotulo}: ${n}`;
+  return `${rotulo}: ${n} (${facesN} faces)`;
+}
+
 function pintar() {
   const item = modeloId ? itemDo(modeloId) : { porta: [], janela: [] };
   const portas = new Set(item.porta);
@@ -165,11 +204,70 @@ function pintar() {
   malhaPorta = new THREE.Mesh(geometriaDas(portas), matPorta);
   malhaJanela = new THREE.Mesh(geometriaDas(item.janela), matJanela);
   grupo.add(malhaPorta, malhaJanela);
-  const nPorta = item.porta.length + [...portaArquivo].filter((n) => !item.porta.includes(n)).length;
   contagemEl.textContent = modeloId
-    ? `Porta: ${nPorta} face${nPorta === 1 ? "" : "s"} · Janela: ${item.janela.length}`
+    ? `${textoDe("Porta", portas)} · ${textoDe("Janela", new Set(item.janela))}`
     : "Nenhuma face marcada";
   desenharLista();
+}
+
+function materialVisivel(orig) {
+  const mapa = orig?.map || null;
+  if (mapa) {
+    mapa.colorSpace = THREE.SRGBColorSpace;
+    mapa.magFilter = THREE.NearestFilter;
+    mapa.minFilter = THREE.NearestFilter;
+    mapa.generateMipmaps = false;
+    mapa.needsUpdate = true;
+  }
+  return new THREE.MeshLambertMaterial({
+    name: orig?.name || "",
+    map: mapa,
+    color: mapa ? 0xffffff : orig?.color || 0xffffff,
+    alphaTest: 0.2,
+    side: THREE.DoubleSide,
+  });
+}
+
+function prepararVisual(raiz) {
+  raiz.traverse((filho) => {
+    if (!filho.isMesh) return;
+    const antigo = Array.isArray(filho.material) ? filho.material[0] : filho.material;
+    const nome = (antigo?.name || filho.name || "").toLowerCase();
+    if (nome.includes("kage")) {
+      filho.visible = false;
+      return;
+    }
+    filho.material = materialVisivel(antigo);
+    if (antigo) {
+      antigo.map = null;
+      antigo.dispose();
+    }
+  });
+  return raiz;
+}
+
+function carregarVisual(url) {
+  const barra = url.lastIndexOf("/");
+  const base = url.slice(0, barra + 1);
+  const arquivo = url.slice(barra + 1);
+  const mtl = arquivo.replace(/\.obj$/i, ".mtl");
+  return new Promise((resolve, reject) => {
+    const mats = new MTLLoader();
+    mats.setResourcePath(base);
+    mats.load(
+      `${base}${mtl}`,
+      (pronto) => {
+        pronto.preload();
+        const obj = new OBJLoader();
+        obj.setMaterials(pronto);
+        obj.load(`${base}${arquivo}`, resolve, undefined, reject);
+      },
+      undefined,
+      () => {
+        new OBJLoader().load(`${base}${arquivo}`, resolve, undefined, reject);
+      },
+    );
+  });
 }
 
 function enquadrar() {
@@ -199,8 +297,24 @@ async function abrir(id) {
     dizer(`Não achei o modelo de ${modelo.nome}`);
     return;
   }
-  const obj = lerFacesObj(await res.text());
+  const texto = await res.text();
   if (ticket !== carga) return;
+  const obj = lerFacesObj(texto);
+  let visual = null;
+  try {
+    visual = prepararVisual(await carregarVisual(modelo.url));
+  } catch (erro) {
+    console.error("material", modelo.id, erro);
+  }
+  if (ticket !== carga) {
+    if (visual) {
+      const antigo = raizVisual;
+      raizVisual = visual;
+      soltarVisual();
+      raizVisual = antigo;
+    }
+    return;
+  }
   faces = obj.faces;
   portaArquivo = new Set();
   hoverIndice = -2;
@@ -216,12 +330,16 @@ async function abrir(id) {
   }
   soltar(malhaCasa);
   soltar(malhaHover);
+  soltarVisual();
   malhaHover = null;
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  geo.computeVertexNormals();
-  malhaCasa = new THREE.Mesh(geo, matCasa);
+  malhaCasa = new THREE.Mesh(geo, visual ? matCasa : matSemTextura);
   grupo.clear();
+  if (visual) {
+    raizVisual = visual;
+    grupo.add(raizVisual);
+  }
   grupo.add(malhaCasa);
   grupo.position.set(0, 0, 0);
   geo.computeBoundingBox();
@@ -235,6 +353,7 @@ async function abrir(id) {
   }
   pintar();
   enquadrar();
+  materialEl.textContent = "Material: —";
   dizer(`${modelo.nome} · clique numa face`);
 }
 
@@ -255,7 +374,12 @@ function mostrarHover(indice) {
   hoverIndice = indice;
   soltar(malhaHover);
   malhaHover = null;
-  if (indice < 0) return;
+  if (indice < 0) {
+    materialEl.textContent = "Material: —";
+    return;
+  }
+  const face = faces.find((f) => f.indice === indice);
+  materialEl.textContent = `Material: ${face?.mtl || "sem nome"}`;
   malhaHover = new THREE.Mesh(geometriaDas([indice]), matHover);
   grupo.add(malhaHover);
 }

@@ -11,7 +11,7 @@ import { montarLayout } from "../regiao/volumesCidade.js";
 import { indiceLocal, invalidarFluxo, recalcularSuperficies } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { idDaCasa, idsColisao, origemDoModelo, urlDoModelo } from "./catalogoCasas.js";
-import { lerFacesObj } from "./facesObj.js";
+import { lerFacesObj, partirGrupos } from "./facesObj.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
@@ -235,7 +235,8 @@ export function moldeDaMalha(objTexto, portas = null) {
     const t = solidos[i];
     marcarTriangulo(marcas, limites, caixa, t.a, t.b, t.c);
   }
-  abrirVao(marcas, vaos);
+  const grupos = partirGrupos(vaos);
+  for (let i = 0; i < grupos.length; i++) abrirVao(marcas, grupos[i]);
   let minVX = limites.minX;
   let maxVX = limites.maxX;
   let minVZ = limites.minZ;
