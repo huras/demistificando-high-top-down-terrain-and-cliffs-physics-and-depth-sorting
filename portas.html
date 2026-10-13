@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portas e janelas</title>
+  <link rel="stylesheet" href="css/pivos.css" />
+  <link rel="stylesheet" href="css/portas.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Portas e janelas</h1>
+    <p class="topo__nota" id="status">Carregando casas…</p>
+    <button type="button" id="salvar">Salvar</button>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna">
+      <h2>Casa</h2>
+      <input id="busca" type="search" placeholder="Nome da casa" />
+      <ul class="lista lista--alta" id="lista"></ul>
+      <h2>Marcar</h2>
+      <div class="papeis">
+        <button type="button" id="papel-porta" class="ativo">Porta</button>
+        <button type="button" id="papel-janela">Janela</button>
+      </div>
+      <p class="coords" id="contagem">Nenhuma face marcada</p>
+      <p class="nota">Clique numa face para marcar ou tirar. Arraste para girar a casa. A porta abre o vão na colisão. A janela fica gravada para usar depois.</p>
+    </aside>
+    <div class="palco">
+      <canvas id="vista"></canvas>
+    </div>
+  </div>
+  <script type="module" src="js/portas/editor.js"></script>
+</body>
+</html>

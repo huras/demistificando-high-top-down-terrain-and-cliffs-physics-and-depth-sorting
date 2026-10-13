@@ -1,6 +1,6 @@
 /**
  * Colisão da casa = casca do OBJ.
- * Material door_only é o vão: não vira bloco.
+ * Material door_only, e a face marcada como porta no editor, é o vão: não vira bloco.
  * h_kage é a sombra no chão: também não.
  */
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
@@ -11,6 +11,7 @@ import { montarLayout } from "../regiao/volumesCidade.js";
 import { indiceLocal, invalidarFluxo, recalcularSuperficies } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { idDaCasa, idsColisao, origemDoModelo, urlDoModelo } from "./catalogoCasas.js";
+import { lerFacesObj } from "./facesObj.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
@@ -138,29 +139,17 @@ function marcarTriangulo(marcas, limites, caixa, a, b, c) {
   }
 }
 
-function lerObj(texto) {
-  const verts = [];
-  const faces = [];
-  let mtl = "";
-  const linhas = texto.split(/\r?\n/);
-  for (let i = 0; i < linhas.length; i++) {
-    const linha = linhas[i];
-    if (linha.startsWith("usemtl ")) mtl = linha.slice(7).trim();
-    else if (linha.startsWith("v ")) {
-      const p = linha.split(/\s+/);
-      verts.push([+p[1], +p[2], +p[3]]);
-    } else if (linha.startsWith("f ")) {
-      const idx = linha.trim().split(/\s+/).slice(1).map((t) => (+t.split("/")[0] || 0) - 1);
-      const pontos = [];
-      for (let k = 0; k < idx.length; k++) {
-        if (idx[k] >= 0 && idx[k] < verts.length) pontos.push(verts[idx[k]]);
-      }
-      for (let k = 1; k < pontos.length - 1; k++) {
-        faces.push({ mtl, a: pontos[0], b: pontos[k], c: pontos[k + 1] });
-      }
-    }
-  }
-  return { verts, faces };
+let partes = {};
+
+function portasDo(id) {
+  const lista = partes[id]?.porta;
+  if (!Array.isArray(lista) || !lista.length) return null;
+  return new Set(lista);
+}
+
+function faceEhPorta(f, portas) {
+  if (ehVao(f.mtl)) return true;
+  return !!(portas && portas.has(f.indice));
 }
 
 function abrirVao(marcas, vaos) {
@@ -204,8 +193,8 @@ function abrirVao(marcas, vaos) {
   }
 }
 
-export function moldeDaMalha(objTexto) {
-  const obj = lerObj(objTexto);
+export function moldeDaMalha(objTexto, portas = null) {
+  const obj = lerFacesObj(objTexto);
   let minX = Infinity;
   let minY = Infinity;
   let minZ = Infinity;
@@ -230,12 +219,12 @@ export function moldeDaMalha(objTexto) {
   const vaos = [];
   for (let i = 0; i < obj.faces.length; i++) {
     const f = obj.faces[i];
-    if (ignorar(f.mtl) && !ehVao(f.mtl)) continue;
+    if (ignorar(f.mtl) && !faceEhPorta(f, portas)) continue;
     const a = local(f.a);
     const b = local(f.b);
     const c = local(f.c);
     const tri = { a, b, c, p: [a, b, c] };
-    if (ehVao(f.mtl)) vaos.push(tri);
+    if (faceEhPorta(f, portas)) vaos.push(tri);
     else solidos.push(tri);
   }
 
@@ -389,12 +378,22 @@ async function carregarUm(id) {
   const arquivo = urlDoModelo(origem?.arquivo || "modelo.obj");
   const res = await fetch(`${base}${arquivo}`);
   if (!res.ok) throw new Error(id);
-  return moldeDaMalha(await res.text());
+  return moldeDaMalha(await res.text(), portasDo(id));
+}
+
+async function garantirPartes() {
+  const res = await fetch("assets/models/partes.json", { cache: "no-store" });
+  if (!res.ok) {
+    partes = {};
+    return;
+  }
+  const json = await res.json();
+  partes = json && typeof json === "object" ? json : {};
 }
 
 export function carregarCascasCidade() {
   if (carga) return carga;
-  carga = Promise.all(
+  carga = garantirPartes().then(() => Promise.all(
     IDS.map(async (id) => {
       try {
         return [id, await carregarUm(id)];
@@ -412,6 +411,6 @@ export function carregarCascasCidade() {
     montarColocacoes();
     pronto = true;
     return true;
-  });
+  }));
   return carga;
 }

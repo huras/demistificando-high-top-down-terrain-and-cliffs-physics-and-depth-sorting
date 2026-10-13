@@ -209,8 +209,10 @@ function preparar(raiz, escala) {
   raiz.traverse((filho) => {
     if (!filho.isMesh) return;
     const nome = (filho.material?.name || "").toLowerCase();
-    if (nome === "h_kage" || nome === "kage") {
+    if (nome.includes("kage")) {
       filho.visible = false;
+      filho.castShadow = false;
+      filho.receiveShadow = false;
       return;
     }
     if (nome === "tkwa_sl3") {

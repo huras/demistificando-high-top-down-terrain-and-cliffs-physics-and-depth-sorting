@@ -1,0 +1,20 @@
+.papeis {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.papeis button {
+  flex: 1;
+}
+
+.papeis button.ativo {
+  border-color: var(--destaque);
+  color: var(--destaque);
+}
+
+.papeis button.ativo[data-papel="janela"],
+#papel-janela.ativo {
+  border-color: #7eb6e0;
+  color: #7eb6e0;
+}

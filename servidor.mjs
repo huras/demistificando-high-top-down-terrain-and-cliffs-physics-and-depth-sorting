@@ -186,6 +186,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/partes") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 2_000_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarPartes(obj);
+        const dest = path.join(raiz, "assets", "models", "partes.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (
     (req.method === "GET" || req.method === "HEAD") &&
     url.pathname === "/ref/catalogo.json"
@@ -260,6 +290,39 @@ function validarCatalogoLuzes(obj) {
       if (ponto.raio < 0.2 || ponto.raio > 16) throw new Error(`${id} raio fora`);
       if (ponto.intensidade < 0 || ponto.intensidade > 4) throw new Error(`${id} intensidade fora`);
     }
+  }
+}
+
+function validarPartes(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("arquivo sem partes");
+  }
+  const ids = Object.keys(obj);
+  if (ids.length > 200) throw new Error("muitos modelos");
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^[a-z0-9.'-]{1,80}$/i.test(id)) throw new Error(`modelo inválido: ${id}`);
+    const item = obj[id];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`${id} sem partes`);
+    }
+    const limpo = {};
+    const vistos = { porta: new Set(), janela: new Set() };
+    for (const papel of ["porta", "janela"]) {
+      const lista = item[papel] || [];
+      if (!Array.isArray(lista) || lista.length > 400) throw new Error(`${id} ${papel}`);
+      const saida = [];
+      for (let k = 0; k < lista.length; k++) {
+        const n = lista[k];
+        if (!Number.isInteger(n) || n < 0 || n > 200_000) throw new Error(`${id} face`);
+        if (vistos.porta.has(n) || vistos.janela.has(n)) continue;
+        vistos[papel].add(n);
+        saida.push(n);
+      }
+      if (saida.length) limpo[papel] = saida;
+    }
+    if (!limpo.porta && !limpo.janela) delete obj[id];
+    else obj[id] = limpo;
   }
 }
 

@@ -1,0 +1,56 @@
+{
+  "pallet-town-house": {
+    "porta": [
+      123
+    ]
+  },
+  "pallet-town-house-2": {
+    "porta": [
+      26
+    ]
+  },
+  "viridian-city-house": {
+    "porta": [
+      44
+    ]
+  },
+  "pewter-city-house": {
+    "porta": [
+      8
+    ]
+  },
+  "cerulean-city-house-1": {
+    "porta": [
+      13
+    ]
+  },
+  "copycat's-house": {
+    "porta": [
+      14
+    ]
+  },
+  "mr.-psychic's-house": {
+    "porta": [
+      14
+    ]
+  },
+  "lavender-town-house": {
+    "porta": [
+      55,
+      56,
+      58,
+      57
+    ]
+  },
+  "vermilion-city-house-1": {
+    "porta": [
+      12
+    ]
+  },
+  "fuchsia-city-house-1": {
+    "porta": [
+      82,
+      83
+    ]
+  }
+}
