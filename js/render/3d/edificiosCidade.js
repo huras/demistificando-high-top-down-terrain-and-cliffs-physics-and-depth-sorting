@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
-import { CHUNK_XZ } from "../../config.js";
+import { CHUNK_XZ, TILE } from "../../config.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
@@ -10,11 +10,17 @@ import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "./luzes/catalogo.js";
 import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
 import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
+import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
+import { pivoDaImagem } from "../pivoPe.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../../mundo/cidade/catalogoCasas.js";
+import { anexarDecoracaoCidade, carregarSpritesPraca, criarDecoracaoRotas } from "./decoracaoCidade.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
 const LADO_Z = 5;
+const ALFA_SPRITE = 0.12;
+const FOLHAS_CASA = 5;
+const PX_MUNDO = 1 / TILE;
 const ALTURA_POSTE = 3.6;
 const MEIO_RUA = 3.5;
 const PASSO_POSTE = 10;
@@ -313,6 +319,15 @@ export function carregarMoldeCidade(id) {
   });
 }
 
+function longeDaPraca(ocupados, x, y) {
+  for (let i = 0; i < ocupados.length; i++) {
+    const dx = ocupados[i].x - x;
+    const dy = ocupados[i].y - y;
+    if (dx * dx + dy * dy < 2.56) return false;
+  }
+  return true;
+}
+
 function postesDoLayout(layout) {
   const fp = layout.fp;
   const lista = [];
@@ -337,7 +352,72 @@ function postesDoLayout(layout) {
   return lista;
 }
 
-function montarCidade(moldes, def) {
+function prepararFolha(tex) {
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  const img = tex.image;
+  const pivo = pivoDaImagem(img);
+  return {
+    tex,
+    largura: (img.width || 0) * PX_MUNDO,
+    altura: (img.height || 0) * PX_MUNDO,
+    pivo,
+  };
+}
+
+function carregarFolhas() {
+  const pedidos = [];
+  for (let n = 1; n <= FOLHAS_CASA; n++) {
+    pedidos.push(new Promise((resolve) => {
+      new THREE.TextureLoader().load(
+        `assets/sprites/casas/casa-${n}.png`,
+        (tex) => resolve([n, prepararFolha(tex)]),
+        undefined,
+        () => resolve([n, null]),
+      );
+    }));
+  }
+  return Promise.all(pedidos).then((pares) => {
+    const folhas = new Map();
+    for (let i = 0; i < pares.length; i++) {
+      if (pares[i][1]) folhas.set(pares[i][0], pares[i][1]);
+    }
+    return folhas;
+  });
+}
+
+function materialDoCartao(tex) {
+  const mat = new THREE.MeshLambertMaterial({
+    map: tex,
+    transparent: true,
+    alphaTest: ALFA_SPRITE,
+    side: THREE.FrontSide,
+    depthWrite: true,
+  });
+  aplicarLuzCidade(mat);
+  aplicarLuzBillboard(mat);
+  return mat;
+}
+
+function criarCartaoCasa(folha) {
+  const geo = new THREE.PlaneGeometry(folha.largura, folha.altura);
+  geo.translate(folha.largura * (0.5 - folha.pivo.x), folha.altura * (folha.pivo.y - 0.5), 0);
+  if (!folha.material) folha.material = materialDoCartao(folha.tex);
+  const mesh = new THREE.Mesh(geo, folha.material);
+  mesh.name = "casa-cartao";
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.rotation.order = "YXZ";
+  const raiz = new THREE.Group();
+  raiz.add(mesh);
+  raiz.userData.cartao = mesh;
+  return raiz;
+}
+
+function montarCidade(moldes, folhas, def, sprites) {
   const layout = montarLayout(def);
   const grupo = new THREE.Group();
   grupo.name = `cidade-${def.key}`;
@@ -346,11 +426,19 @@ function montarCidade(moldes, def) {
   const volumes = layout.volumes;
   for (let i = 0; i < volumes.length; i++) {
     const v = volumes[i];
+    const mx = (v.x0 + v.x1) * 0.5;
+    const my = (v.y0 + v.y1) * 0.5;
+    if (v.cartao) {
+      const folha = folhas.get(v.folha);
+      if (!folha) continue;
+      const sprite = criarCartaoCasa(folha);
+      sprite.position.set(ox + mx, ALTURA_PRACA, oy + v.y1 - 1);
+      grupo.add(sprite);
+      continue;
+    }
     const id = v.modelo;
     const molde = id ? moldes.get(id) : null;
     if (!molde) continue;
-    const mx = (v.x0 + v.x1) * 0.5;
-    const my = (v.y0 + v.y1) * 0.5;
     const inst = molde.grupo.clone(true);
     inst.rotation.y = v.papel === "casa" ? 0 : yawDaRua(mx, my);
     inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
@@ -358,8 +446,10 @@ function montarCidade(moldes, def) {
     grupo.add(inst);
   }
   const poste = moldes.get("poste");
+  const acender = (inst, dono) => pendurarLuzes(inst, "poste", dono);
+  const decor = anexarDecoracaoCidade(grupo, poste, layout, ox, oy, acender, sprites);
   if (poste) {
-    const pontos = postesDoLayout(layout);
+    const pontos = postesDoLayout(layout).filter((p) => longeDaPraca(decor.ocupados, p[0], p[1]));
     for (let i = 0; i < pontos.length; i++) {
       const inst = poste.grupo.clone(true);
       inst.position.set(ox + pontos[i][0], ALTURA_PRACA, oy + pontos[i][1]);
@@ -379,8 +469,11 @@ export function criarEdificiosCidade() {
   grupo.name = "edificios-cidade";
   const ids = MODELOS_CIDADE;
   const cargas = ids.map((id) => carregarObj(id).then((raiz) => [id, { grupo: raiz }]));
-  Promise.all([Promise.all(cargas), carregarCatalogoLuzes()])
-    .then(([pares]) => {
+  Promise.all([Promise.all(cargas), carregarCatalogoLuzes(), carregarFolhas(), carregarSpritesPraca().catch((erro) => {
+      console.error("sprites da praça", erro);
+      return null;
+    })])
+    .then(([pares, , folhas, sprites]) => {
       const moldes = new Map();
       for (let i = 0; i < pares.length; i++) {
         const [id, item] = pares[i];
@@ -389,11 +482,17 @@ export function criarEdificiosCidade() {
         medido.grupo.scale.setScalar(escala);
         moldes.set(id, medido);
       }
+      const acender = (inst, dono) => pendurarLuzes(inst, "poste", dono);
+      grupo.userData.cidades = [];
       for (let i = 0; i < CIDADES_KANTO.length; i++) {
-        const cidade = montarCidade(moldes, CIDADES_KANTO[i]);
+        const cidade = montarCidade(moldes, folhas, CIDADES_KANTO[i], sprites);
         grupo.add(cidade.grupo);
-        grupo.userData.cidades = grupo.userData.cidades || [];
         grupo.userData.cidades.push(cidade);
+      }
+      const rotas = criarDecoracaoRotas(moldes.get("poste"), acender);
+      for (let i = 0; i < rotas.length; i++) {
+        grupo.add(rotas[i].grupo);
+        grupo.userData.cidades.push(rotas[i]);
       }
     })
     .catch((erro) => {
@@ -402,7 +501,7 @@ export function criarEdificiosCidade() {
 
   return {
     grupo,
-    atualizar(px, py) {
+    atualizar(px, py, yaw = 0, inclinacao = 0) {
       const pesoNoite = obterPesoNoite();
       if (materialFlare) materialFlare.opacity = pesoNoite;
       for (let j = 0; j < materiaisJanela.length; j++) materiaisJanela[j].emissiveIntensity = pesoNoite;
@@ -420,6 +519,11 @@ export function criarEdificiosCidade() {
         const filhos = c.grupo.children;
         for (let f = 0; f < filhos.length; f++) {
           const inst = filhos[f];
+          const cartao = inst.userData.cartao;
+          if (cartao) {
+            cartao.rotation.x = inclinacao;
+            cartao.rotation.y = yaw;
+          }
           const pontos = inst.userData.pontosLuz;
           if (!pontos) continue;
           inst.updateWorldMatrix(true, false);

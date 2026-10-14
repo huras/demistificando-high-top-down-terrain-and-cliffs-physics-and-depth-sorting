@@ -8,7 +8,7 @@ import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import { ALTURA_PRACA, amostraKanto } from "../regiao/amostraKanto.js";
 import { AREA_KANTO } from "../regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../regiao/kantoCidades.js";
-import { montarLayout } from "../regiao/volumesCidade.js";
+import { faixaDaPorta, montarLayout } from "../regiao/volumesCidade.js";
 import { indiceLocal, invalidarFluxo, recalcularSuperficies } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { idDaCasa, idsColisao, origemDoModelo, urlDoModelo } from "./catalogoCasas.js";
@@ -18,6 +18,7 @@ const FOLGA = 0.96;
 const LADO_X = 6;
 const LADO_Z = 5;
 const IDS = idsColisao();
+/** O lote fica sólido. A única abertura é a porta da frente, quando a casa tem uma. */
 
 /** @type {Map<string, { celulas: Int16Array, minX: number, maxX: number, minZ: number, maxZ: number }>} */
 const moldes = new Map();
@@ -172,22 +173,35 @@ function ladoAberto(solidos) {
   return menor;
 }
 
-function ladoDaPorta(vaos) {
-  const normal = [0, 0, 0];
+function ladoDaPorta(vaos, caixa) {
+  if (!vaos.length || !caixa) return -1;
+  let sx = 0;
+  let sz = 0;
+  let n = 0;
   for (let i = 0; i < vaos.length; i++) {
     const t = vaos[i];
-    const n = cruz(sub(t.b, t.a), sub(t.c, t.a));
-    normal[0] += n[0];
-    normal[2] += n[2];
+    for (let k = 0; k < 3; k++) {
+      sx += t.p[k][0];
+      sz += t.p[k][2];
+      n += 1;
+    }
   }
-  if (Math.abs(normal[0]) < 1e-6 && Math.abs(normal[2]) < 1e-6) return -1;
-  if (Math.abs(normal[0]) >= Math.abs(normal[2])) return normal[0] > 0 ? 0 : 1;
-  return normal[2] > 0 ? 2 : 3;
+  sx /= n;
+  sz /= n;
+  const dist = [
+    Math.abs(sx - caixa.max[0]),
+    Math.abs(sx - caixa.min[0]),
+    Math.abs(sz - caixa.max[2]),
+    Math.abs(sz - caixa.min[2]),
+  ];
+  let lado = 0;
+  for (let i = 1; i < 4; i++) if (dist[i] < dist[lado]) lado = i;
+  return lado;
 }
 
 function descreverFundo(solidos, vaos, caixa) {
   let lado = ladoAberto(solidos);
-  const porta = ladoDaPorta(vaos);
+  const porta = ladoDaPorta(vaos, caixa);
   if (lado >= 0 && lado === porta) lado ^= 1;
   if (lado < 0) return null;
   const eixo = lado < 2 ? 0 : 2;
@@ -205,17 +219,12 @@ function descreverFundo(solidos, vaos, caixa) {
   };
 }
 
-function abrirVao(marcas, vaos) {
-  if (!vaos.length) return;
+function caixaDoVao(vaos) {
+  if (!vaos.length) return null;
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
-  const normal = [0, 0, 0];
   for (let i = 0; i < vaos.length; i++) {
     const t = vaos[i];
-    const n = cruz(sub(t.b, t.a), sub(t.c, t.a));
-    normal[0] += n[0];
-    normal[1] += n[1];
-    normal[2] += n[2];
     for (let k = 0; k < 3; k++) {
       const p = t.p[k];
       for (let a = 0; a < 3; a++) {
@@ -224,18 +233,47 @@ function abrirVao(marcas, vaos) {
       }
     }
   }
+  if (max[1] < 1.75) max[1] = 1.75;
+  return { min, max };
+}
+
+function encolherEixo(min, max) {
+  const folga = 0.2;
+  const a = min + folga;
+  const b = max - folga;
+  if (b - a < 0.5) return [min, max];
+  for (let c = Math.floor(a); c <= Math.floor(b); c++) {
+    const centro = c + 0.5;
+    if (centro >= a && centro <= b) return [a, b];
+  }
+  return [min, max];
+}
+
+function abrirVao(marcas, vaos) {
+  if (!vaos.length) return;
+  const caixa = caixaDoVao(vaos);
+  const min = caixa.min.slice();
+  const max = caixa.max.slice();
+  const normal = [0, 0, 0];
+  for (let i = 0; i < vaos.length; i++) {
+    const t = vaos[i];
+    const n = cruz(sub(t.b, t.a), sub(t.c, t.a));
+    normal[0] += n[0];
+    normal[1] += n[1];
+    normal[2] += n[2];
+  }
   let eixo = 0;
   if (Math.abs(normal[1]) > Math.abs(normal[eixo])) eixo = 1;
   if (Math.abs(normal[2]) > Math.abs(normal[eixo])) eixo = 2;
+  min[eixo] -= 1;
+  max[eixo] += 1;
   for (let a = 0; a < 3; a++) {
-    if (a === eixo) {
-      min[a] -= 1;
-      max[a] += 1;
-    } else {
-      min[a] += 0.2;
-      max[a] -= 0.2;
-    }
+    if (a === eixo) continue;
+    const faixa = encolherEixo(min[a], max[a]);
+    min[a] = faixa[0];
+    max[a] = faixa[1];
   }
+  if (eixo !== 1 && max[1] < 1.75) max[1] = 1.75;
   for (const chave of [...marcas]) {
     const p = chave.split(",");
     const c = [+p[0] + 0.5, +p[1] + 0.5, +p[2] + 0.5];
@@ -291,6 +329,7 @@ export function moldeDaMalha(objTexto, portas = null) {
   const grupos = partirGrupos(vaos);
   for (let i = 0; i < grupos.length; i++) abrirVao(marcas, grupos[i]);
   const fundo = descreverFundo(solidos, vaos, caixa);
+  const vao = caixaDoVao(vaos);
   let minVX = limites.minX;
   let maxVX = limites.maxX;
   let minVZ = limites.minZ;
@@ -317,7 +356,7 @@ export function moldeDaMalha(objTexto, portas = null) {
     } else if (fundo.paraDentro > 0) minVZ -= 1;
     else maxVZ += 1;
   }
-  return { celulas, minX: minVX, maxX: maxVX, minZ: minVZ, maxZ: maxVZ, temPorta: vaos.length > 0, fundo };
+  return { celulas, minX: minVX, maxX: maxVX, minZ: minVZ, maxZ: maxVZ, temPorta: vaos.length > 0, fundo, vao };
 }
 
 function localDoDelta(dx, dy, yaw) {
@@ -407,6 +446,69 @@ function casaTocaChunk(casa, molde, x0, y0, x1, y1) {
   return maxX > x0 && minX < x1 && maxY > y0 && minY < y1;
 }
 
+function centroNaFaixa(i, a0, a1) {
+  const c = i + 0.5;
+  return c >= a0 && c < a1;
+}
+
+function limparLoteNoChunk(chunk, casa, x0, y0, x1, y1) {
+  const vx0 = Math.max(x0, Math.floor(casa.ox + casa.x0));
+  const vx1 = Math.min(x1, Math.ceil(casa.ox + casa.x1));
+  const vy0 = Math.max(y0, Math.floor(casa.oy + casa.y0));
+  const vy1 = Math.min(y1, Math.ceil(casa.oy + casa.y1));
+  const z0 = ALTURA_PRACA;
+  const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + (casa.altura | 0));
+  let mudou = false;
+  for (let wy = vy0; wy < vy1; wy++) {
+    for (let wx = vx0; wx < vx1; wx++) {
+      const lx = wx - casa.ox;
+      const ly = wy - casa.oy;
+      if (lx < casa.x0 || lx >= casa.x1 || ly < casa.y0 || ly >= casa.y1) continue;
+      for (let z = z0; z < z1; z++) {
+        const li = indiceLocal(wx - x0, wy - y0, z);
+        if (chunk.blocos[li] === BLOCO.AR) continue;
+        chunk.blocos[li] = BLOCO.AR;
+        mudou = true;
+      }
+    }
+  }
+  return mudou;
+}
+
+function lacrarLoteNoChunk(chunk, casa, x0, y0, x1, y1) {
+  const wx0 = casa.ox + casa.x0;
+  const wx1 = casa.ox + casa.x1;
+  const wy0 = casa.oy + casa.y0;
+  const wy1 = casa.oy + casa.y1;
+  const faixa = casa.porta === false ? null : faixaDaPorta(casa);
+  const z0 = ALTURA_PRACA;
+  const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(3, casa.altura | 0));
+  let mudou = false;
+  const ix0 = Math.max(x0, Math.floor(wx0));
+  const ix1 = Math.min(x1, Math.ceil(wx1));
+  const iy0 = Math.max(y0, Math.floor(wy0));
+  const iy1 = Math.min(y1, Math.ceil(wy1));
+  for (let wy = iy0; wy < iy1; wy++) {
+    if (!centroNaFaixa(wy, wy0, wy1)) continue;
+    for (let wx = ix0; wx < ix1; wx++) {
+      if (!centroNaFaixa(wx, wx0, wx1)) continue;
+      const naPorta = !!faixa
+        && centroNaFaixa(wx, casa.ox + faixa.x0, casa.ox + faixa.x1)
+        && centroNaFaixa(wy, casa.oy + faixa.y0, casa.oy + faixa.y1);
+      for (let z = z0; z < z1; z++) {
+        const amostra = amostraKanto(wx, wy);
+        if (amostra && z < (amostra.h | 0)) continue;
+        const li = indiceLocal(wx - x0, wy - y0, z);
+        const id = naPorta ? BLOCO.AR : BLOCO.PEDRA;
+        if (chunk.blocos[li] === id) continue;
+        chunk.blocos[li] = id;
+        mudou = true;
+      }
+    }
+  }
+  return mudou;
+}
+
 function montarColocacoes() {
   colocacoes.length = 0;
   for (let c = 0; c < CIDADES_KANTO.length; c++) {
@@ -417,10 +519,28 @@ function montarColocacoes() {
     const volumes = layout.volumes;
     for (let i = 0; i < volumes.length; i++) {
       const v = volumes[i];
-      const id = v.modelo || modeloDoPapel(v.papel, v.variante, def.key);
-      if (!id || !moldes.has(id)) continue;
       const mx = (v.x0 + v.x1) * 0.5;
       const my = (v.y0 + v.y1) * 0.5;
+      if (v.cartao) {
+        colocacoes.push({
+          base: true,
+          px: ox + mx,
+          py: oy + my,
+          ox,
+          oy,
+          x0: v.x0,
+          y0: v.y0,
+          x1: v.x1,
+          y1: v.y1,
+          altura: v.altura,
+          papel: v.papel,
+          cartao: true,
+          porta: v.porta !== false,
+        });
+        continue;
+      }
+      const id = v.modelo || modeloDoPapel(v.papel, v.variante, def.key);
+      if (!id || !moldes.has(id)) continue;
       colocacoes.push({
         id,
         px: ox + mx,
@@ -433,6 +553,9 @@ function montarColocacoes() {
         x1: v.x1,
         y1: v.y1,
         altura: v.altura,
+        papel: v.papel,
+        cartao: false,
+        porta: v.porta !== false,
       });
     }
   }
@@ -452,27 +575,13 @@ export function aplicarCascaNoChunk(chunk) {
 
   for (let i = 0; i < colocacoes.length; i++) {
     const casa = colocacoes[i];
+    if (casa.base) {
+      if (lacrarLoteNoChunk(chunk, casa, x0, y0, x1, y1)) mudou = true;
+      continue;
+    }
     const molde = moldes.get(casa.id);
     if (!molde || !casaTocaChunk(casa, molde, x0, y0, x1, y1)) continue;
-    const vx0 = Math.max(x0, Math.floor(casa.ox + casa.x0));
-    const vx1 = Math.min(x1, Math.ceil(casa.ox + casa.x1));
-    const vy0 = Math.max(y0, Math.floor(casa.oy + casa.y0));
-    const vy1 = Math.min(y1, Math.ceil(casa.oy + casa.y1));
-    const z0 = ALTURA_PRACA;
-    const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + (casa.altura | 0));
-    for (let wy = vy0; wy < vy1; wy++) {
-      for (let wx = vx0; wx < vx1; wx++) {
-        const lx = wx - casa.ox;
-        const ly = wy - casa.oy;
-        if (lx < casa.x0 || lx >= casa.x1 || ly < casa.y0 || ly >= casa.y1) continue;
-        for (let z = z0; z < z1; z++) {
-          const li = indiceLocal(wx - x0, wy - y0, z);
-          if (chunk.blocos[li] === BLOCO.AR) continue;
-          chunk.blocos[li] = BLOCO.AR;
-          mudou = true;
-        }
-      }
-    }
+    if (limparLoteNoChunk(chunk, casa, x0, y0, x1, y1)) mudou = true;
     if (selarFundoNoChunk(chunk, casa, molde.fundo, x0, y0, x1, y1)) mudou = true;
     const cel = molde.celulas;
     for (let k = 0; k < cel.length; k += 3) {
@@ -485,6 +594,7 @@ export function aplicarCascaNoChunk(chunk) {
       chunk.blocos[li] = BLOCO.PEDRA;
       mudou = true;
     }
+    if (lacrarLoteNoChunk(chunk, casa, x0, y0, x1, y1)) mudou = true;
   }
 
   if (mudou) {

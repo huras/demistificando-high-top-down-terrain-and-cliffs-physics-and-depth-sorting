@@ -24,6 +24,7 @@ let desde = 0;
 let cat = 0;
 let mira = 0;
 let ponteiro = null;
+let acumScroll = 0;
 
 function campoFocado() {
   const tag = document.activeElement?.tagName;
@@ -55,7 +56,7 @@ function montarDom() {
           <div class="bag-wheel__center-desc" data-centro-qtd></div>
         </div>
       </div>
-      <p class="bag-wheel__cmds">Segure o número · mire com o mouse · solte para equipar · Q e E trocam a categoria</p>
+      <p class="bag-wheel__cmds">Segure o número · mire com o mouse · solte para equipar · scroll, Q e E trocam a categoria</p>
     </div>`;
   document.body.appendChild(raiz);
   anel = raiz.querySelector("[data-anel]");
@@ -139,6 +140,7 @@ function abrir(slot) {
   aberta = true;
   estado.roda = true;
   estado.slotAtivo = slot;
+  acumScroll = 0;
   cat = catInicial(slot);
   const atual = estado.hotbar[slot];
   const lista = itensDaCat();
@@ -155,14 +157,36 @@ function fechar(equipar) {
   const slot = estado.slotAtivo;
   aberta = false;
   estado.roda = false;
+  acumScroll = 0;
   raiz.classList.remove("is-in");
   raiz.hidden = true;
   if (item) atribuirSlot(slot, item.tipo, item.key);
   pintar();
 }
 
+function mudarCategoria(dir) {
+  cat = (cat + dir + CATS.length) % CATS.length;
+  mira = 0;
+  desenhar();
+}
+
+/** True se a roda comeu o scroll. Um passo por gesto, para o trackpad não pular tudo. */
+export function rolarCategoria(deltaY) {
+  if (!aberta || !deltaY) return aberta;
+  acumScroll += deltaY;
+  if (Math.abs(acumScroll) < 60) return true;
+  mudarCategoria(acumScroll > 0 ? 1 : -1);
+  acumScroll = 0;
+  return true;
+}
+
 export function ligarRoda() {
   montarDom();
+  raiz.addEventListener("wheel", (ev) => {
+    if (!aberta) return;
+    ev.preventDefault();
+    rolarCategoria(ev.deltaY);
+  }, { passive: false });
 }
 
 export function tickRoda() {
@@ -173,15 +197,9 @@ export function tickRoda() {
     return;
   }
   if (aberta) {
-    if (teclaAgora("KeyQ")) {
-      cat = (cat + CATS.length - 1) % CATS.length;
-      mira = 0;
-      desenhar();
-    } else if (teclaAgora("KeyE")) {
-      cat = (cat + 1) % CATS.length;
-      mira = 0;
-      desenhar();
-    } else if (teclaAgora("Escape")) {
+    if (teclaAgora("KeyQ")) mudarCategoria(-1);
+    else if (teclaAgora("KeyE")) mudarCategoria(1);
+    else if (teclaAgora("Escape")) {
       fechar(false);
       tecla = "";
       return;

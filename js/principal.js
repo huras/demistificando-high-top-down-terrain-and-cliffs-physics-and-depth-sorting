@@ -80,6 +80,7 @@ import { carregarDados } from "./pokemon/dados.js";
 import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
+import { rolarCategoria } from "./jogo/roda.js";
 
 const SPAWN = USAR_PATCH_DEMO ? SPAWN_DEMO : SPAWN_PALLET;
 const canvas = document.getElementById("canvas");
@@ -196,6 +197,7 @@ async function iniciar() {
 
   const onWheel = (ev) => {
     ev.preventDefault();
+    if (rolarCategoria(ev.deltaY)) return;
     if (obterModo() === "3d" && estaEmCena()) {
       aplicarScrollCena(ev.deltaY);
       return;

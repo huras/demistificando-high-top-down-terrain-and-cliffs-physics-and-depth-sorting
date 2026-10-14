@@ -411,7 +411,6 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
   comecarQuadroLuzes();
   comecarMapaChao();
-  estado.edificios?.atualizar?.(corpo.x, corpo.y);
   estado.terrenoSuave?.tick(corpo.x, corpo.y, estado.terreno.chunksExibidos?.());
   seguirAlvo3d(estado.camera3d, corpo, dt);
   aplicarFacingMira(corpo, estado.camera3d);
@@ -437,6 +436,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   });
 
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
+  estado.edificios?.atualizar?.(corpo.x, corpo.y, yaw, inclinacao);
   estado.vegetacao?.atualizar?.(yaw, inclinacao);
   estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw, inclinacao);
   anotarEstadoSim(estado.personagem.grupo, corpo);

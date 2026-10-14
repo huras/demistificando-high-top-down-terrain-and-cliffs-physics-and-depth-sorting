@@ -138,8 +138,8 @@ export const CAMERA_SUAVIDADE = 7;
 
 /** Câmera terceira pessoa (modo 3D). */
 export const CAMERA3D_DIST_MIN = 4;
-export const CAMERA3D_DIST_MAX = 28;
-export const CAMERA3D_DIST_PADRAO = 10;
+export const CAMERA3D_DIST_MAX = 32;
+export const CAMERA3D_DIST_PADRAO = 28.8;
 export const CAMERA3D_ALTURA = 3.2;
 export const CAMERA3D_OLHAR_Y = 1.15;
 export const CAMERA3D_PIVO_MIN = 0.4;

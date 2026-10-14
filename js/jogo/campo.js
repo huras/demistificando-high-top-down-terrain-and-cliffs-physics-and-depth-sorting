@@ -1,7 +1,7 @@
 /** Campo: porta, enxada, regador, plantar, colher, machado e picareta. */
 
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
-import { predioNoLayout } from "../mundo/regiao/volumesCidade.js";
+import { faixaDaPorta, predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
 import { alturaEm } from "../mundo/altura.js";
 import { obterBloco, avisarDirty } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
@@ -74,10 +74,19 @@ export function celulaAlvo(corpo) {
   };
 }
 
+function naPortaFrente(info, x, y) {
+  const faixa = faixaDaPorta(info.predio);
+  if (!faixa) return false;
+  const ox = info.ax * AREA_KANTO;
+  const oy = info.ay * AREA_KANTO;
+  return x >= ox + faixa.x0 && x < ox + faixa.x1 && y >= oy + faixa.y0 && y < oy + faixa.y1;
+}
+
 export function tentarEntrar(corpo) {
   if (estado.interior || estado.saidaGrace > 0) return false;
   const info = loteSob(corpo.x, corpo.y);
-  if (!info) return false;
+  if (!info || info.predio.porta === false) return false;
+  if (!naPortaFrente(info, corpo.x, corpo.y)) return false;
   const sala = criarSala(info.predio.papel);
   if (!sala) return false;
   estado.interior = {
@@ -95,12 +104,19 @@ export function tentarEntrar(corpo) {
   return true;
 }
 
+function saidaDoPredio(interior) {
+  const v = interior.predio;
+  const ox = interior.ax * AREA_KANTO;
+  const oy = interior.ay * AREA_KANTO;
+  return saidaDaPorta(v, ox, oy);
+}
+
 export function sairInterior(corpo) {
   const interior = estado.interior;
   if (!interior) return;
-  const v = interior.predio;
-  corpo.x = interior.ax * AREA_KANTO + (v.x0 + v.x1) / 2;
-  corpo.y = interior.ay * AREA_KANTO + v.y0 - 2.4;
+  const saida = saidaDoPredio(interior);
+  corpo.x = saida.x;
+  corpo.y = saida.y;
   corpo.vx = 0;
   corpo.vy = 0;
   estado.interior = null;

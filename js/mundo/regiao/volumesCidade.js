@@ -4,6 +4,9 @@
  */
 import { idDaCasa } from "../cidade/catalogoCasas.js";
 
+/** casa-2 e casa-4 não têm porta. Igual red-house-2/4. */
+const FOLHAS_SEM_PORTA = new Set([2, 4]);
+
 const BORDA = 2;
 const LOTE_X = 8;
 const CORPO_X = 6;
@@ -124,8 +127,13 @@ export function montarLayout(def) {
     const papel = papelDe(def, i, n);
     const variante = papel === "casa" ? varianteCasa(casas) : 0;
     let modelo = null;
-    if (papel === "casa") modelo = idDaCasa(def.key, casas++);
-    else if (papel === "centro" || papel === "loja" || papel === "lab") modelo = papel;
+    let cartao = false;
+    let folha = 0;
+    if (papel === "casa") {
+      cartao = def.key === "pallet-town" && (casas % 2) === 1;
+      if (cartao) folha = (casas % 5) + 1;
+      modelo = idDaCasa(def.key, casas++);
+    } else if (papel === "centro" || papel === "loja" || papel === "lab") modelo = papel;
     volumes.push({
       x0: lote.x0,
       y0: lote.y0,
@@ -135,9 +143,47 @@ export function montarLayout(def) {
       papel,
       variante,
       modelo,
+      cartao,
+      folha,
+      porta: !(cartao && FOLHAS_SEM_PORTA.has(folha)),
     });
   }
   return { fp, volumes };
+}
+
+function yawDaFrente(v) {
+  if (v.cartao || v.papel === "casa") return 0;
+  const mx = (v.x0 + v.x1) * 0.5;
+  const my = (v.y0 + v.y1) * 0.5;
+  const dx = mx - CENTRO;
+  const dy = my - CENTRO;
+  if (Math.abs(dy) <= Math.abs(dx)) return dy > 0 ? Math.PI : 0;
+  return dx > 0 ? -Math.PI / 2 : Math.PI / 2;
+}
+
+/** Um tile no meio da face da frente. Sem porta, null. */
+export function faixaDaPorta(v) {
+  if (!v || v.porta === false) return null;
+  const k = ((Math.round(yawDaFrente(v) / (Math.PI / 2)) % 4) + 4) % 4;
+  const cx = (v.x0 + v.x1) * 0.5;
+  const cy = (v.y0 + v.y1) * 0.5;
+  if (k === 0) return { x0: cx - 0.5, x1: cx + 0.5, y0: v.y1 - 1, y1: v.y1 };
+  if (k === 1) return { x0: v.x1 - 1, x1: v.x1, y0: cy - 0.5, y1: cy + 0.5 };
+  if (k === 2) return { x0: cx - 0.5, x1: cx + 0.5, y0: v.y0, y1: v.y0 + 1 };
+  return { x0: v.x0, x1: v.x0 + 1, y0: cy - 0.5, y1: cy + 0.5 };
+}
+
+/** Um passo para fora da porta da frente. */
+export function saidaDaPorta(v, ox, oy) {
+  const faixa = faixaDaPorta(v);
+  const cx = ox + (v.x0 + v.x1) * 0.5;
+  if (!faixa) return { x: cx, y: oy + v.y1 + 1.15 };
+  const px = ox + (faixa.x0 + faixa.x1) * 0.5;
+  const py = oy + (faixa.y0 + faixa.y1) * 0.5;
+  if (faixa.y1 >= v.y1) return { x: px, y: oy + v.y1 + 1.15 };
+  if (faixa.y0 <= v.y0) return { x: px, y: oy + v.y0 - 1.15 };
+  if (faixa.x1 >= v.x1) return { x: ox + v.x1 + 1.15, y: py };
+  return { x: ox + v.x0 - 1.15, y: py };
 }
 
 export function noFootprint(lx, ly, layout) {
