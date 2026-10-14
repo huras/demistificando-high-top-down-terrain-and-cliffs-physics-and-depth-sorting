@@ -6,7 +6,7 @@ import { alturaEm } from "../mundo/altura.js";
 import { obterBloco, avisarDirty } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
-import { ajustarItem } from "../pokemon/party.js";
+import { ajustarItem, pokemonNoCampo } from "../pokemon/party.js";
 import { yawCamera } from "../render/3d/camera3d.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
 import { BERRIES, CRISTAIS, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
@@ -14,14 +14,18 @@ import { ESTAGIO } from "../wild/estagios.js";
 import { colher, criarSolo, plantar, regar, simularPlot } from "../wild/plots.js";
 import { criarSala } from "../wild/salas.js";
 import { sfx } from "./audio.js";
+import { tentarColocar, tentarQuebrar } from "./blocos.js";
 import {
   contar,
   darItem,
   estado,
   gastar,
+  hotbarAtivo,
   marcarQuest,
   nomeDe,
   plotEm,
+  usarNoJogador,
+  usarNoPokemon,
 } from "./estado.js";
 
 const PAPEIS = new Set(["casa", "loja", "centro"]);
@@ -200,7 +204,7 @@ function darFibra() {
 function usarRegador(alvo) {
   const plot = plotEm(alvo.x, alvo.y);
   if (!plot || plot.stage === ESTAGIO.SOLO) return "Não há planta para regar.";
-  if (plot.stage === ESTAGIO.MADURA) return "Já está madura. Colha com a berry na mão, ou use R sem ferramenta.";
+  if (plot.stage === ESTAGIO.MADURA) return "Já está madura. Clique com a berry para colher.";
   if (!regar(plot)) return "Não deu para regar.";
   sfx("cavar");
   return "Regou.";
@@ -226,9 +230,9 @@ export function plantarOuColher(alvo, item) {
   return "";
 }
 
-function usarMachado(corpo) {
-  const prop = propPerto(corpo.x, corpo.y, new Set(["arvore"]));
-  if (!prop) return "Nenhuma árvore por perto.";
+function usarMachadoNo(x, y) {
+  const prop = propPerto(x, y, new Set(["arvore"]));
+  if (!prop) return "Nenhuma árvore no clique.";
   prop.oculto = true;
   if (!estado.cortados.includes(prop.id)) estado.cortados.push(prop.id);
   ajustarItem("wood", 2 + Math.floor(Math.random() * 2));
@@ -237,9 +241,9 @@ function usarMachado(corpo) {
   return "Madeira obtida.";
 }
 
-function usarPicareta(corpo) {
-  const prop = propPerto(corpo.x, corpo.y, new Set(["pedra", "cristal"]));
-  if (!prop) return "Nenhuma pedra por perto.";
+function usarPicaretaNo(x, y) {
+  const prop = propPerto(x, y, new Set(["pedra", "cristal"]));
+  if (!prop) return "Nenhuma pedra no clique.";
   prop.oculto = true;
   if (!estado.cortados.includes(prop.id)) estado.cortados.push(prop.id);
   if (prop.tipo === "cristal") {
@@ -253,12 +257,65 @@ function usarPicareta(corpo) {
   return prop.tipo === "cristal" ? "Cristal obtido." : "Pedra obtida.";
 }
 
+function usarConsumivel(item) {
+  const mon = pokemonNoCampo();
+  const monPrecisa = !!(mon && (mon.morto || mon.hp < mon.hpMax || mon.status));
+  if (monPrecisa && usarNoPokemon(item.tipo, item.key, mon)) {
+    return `Usou ${nomeDe(item.tipo, item.key)} no ${mon.especie?.nome || "Pokémon"}.`;
+  }
+  if (usarNoJogador(item.tipo, item.key)) return `Usou ${nomeDe(item.tipo, item.key)} em você.`;
+  if (mon && usarNoPokemon(item.tipo, item.key, mon)) {
+    return `Usou ${nomeDe(item.tipo, item.key)} no ${mon.especie?.nome || "Pokémon"}.`;
+  }
+  return mon ? "Não teve efeito." : "Ninguém para usar.";
+}
+
+/** Clique esquerdo usa o que está selecionado na hotbar. */
+export function usarNoClique(corpo, celula, alvoBloco) {
+  const item = hotbarAtivo();
+  if (!item || !celula) return "";
+  if (contar(item.tipo, item.key) <= 0) return "Você não tem esse item.";
+  if (item.tipo === TIPO_ITEM.BLOCO) {
+    if (alvoBloco && tentarColocar(corpo, alvoBloco)) return "Colocou o bloco.";
+    return "Não deu para colocar o bloco.";
+  }
+  if (item.tipo === TIPO_ITEM.FERRAMENTA) {
+    if (item.key === "pickaxe") {
+      if (alvoBloco && tentarQuebrar(corpo, alvoBloco)) return "Quebrou o bloco.";
+      return usarPicaretaNo(celula.x + 0.5, celula.y + 0.5);
+    }
+    if (item.key === "axe") return usarMachadoNo(celula.x + 0.5, celula.y + 0.5);
+    if (item.key === "hoe") return usarEnxada(celula);
+    if (item.key === "wateringCan") return usarRegador(celula);
+    if (item.key === "hammer" && estado.interior?.papel === "casa") {
+      estado.construir = true;
+      return "";
+    }
+    return FERRAMENTAS[item.key]?.dica || "";
+  }
+  if (item.tipo === TIPO_ITEM.BERRY) {
+    const plantou = plantarOuColher(celula, item);
+    if (plantou) return plantou;
+  }
+  if (item.tipo === TIPO_ITEM.BERRY || item.tipo === TIPO_ITEM.REMEDIO) return usarConsumivel(item);
+  return "";
+}
+
+function usarMachado(corpo) {
+  return usarMachadoNo(corpo.x, corpo.y);
+}
+
+function usarPicareta(corpo) {
+  return usarPicaretaNo(corpo.x, corpo.y);
+}
+
 export function dicaFerramenta() {
   const item = estado.hotbar[estado.slotAtivo];
   if (!item) return "";
   if (item.tipo === TIPO_ITEM.FERRAMENTA) return FERRAMENTAS[item.key]?.dica || "";
-  if (item.tipo === TIPO_ITEM.BLOCO) return "Botão direito coloca o bloco.";
-  if (item.tipo === TIPO_ITEM.BERRY) return "R usa no Pokémon ou em você. Em solo cavado, planta.";
-  if (item.tipo === TIPO_ITEM.REMEDIO) return "R usa no Pokémon, ou em você se ele não precisar.";
+  if (item.tipo === TIPO_ITEM.BLOCO) return "Clique esquerdo coloca o bloco.";
+  if (item.tipo === TIPO_ITEM.BERRY) return "Clique esquerdo usa ou planta. Em solo cavado, planta.";
+  if (item.tipo === TIPO_ITEM.REMEDIO) return "Clique esquerdo usa no Pokémon, ou em você se ele não precisar.";
+  if (item.tipo === TIPO_ITEM.BOLA) return "A mira segue o cursor até o anel. Segure e solte para arremessar.";
   return "";
 }

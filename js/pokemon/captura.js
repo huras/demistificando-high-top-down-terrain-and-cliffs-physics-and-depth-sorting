@@ -1,13 +1,18 @@
 import { POKEMON } from "../config.js";
-import { teclaAgora, teclaBaixa } from "../entrada/teclado.js";
 import { estaEmCena } from "../cena/modoCena.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { selvagensAtivos } from "./populacao.js";
 import { gastarBola, obterBolas, partyCheia, receberCaptura } from "./party.js";
 
+export const ALCANCE_BOLA = 10;
+const LARGURA_MIRA = 0.86;
+
 let bola = null;
 let segurando = false;
+let pedidoSegurar = false;
+let soltarPendente = false;
 let carga = 0;
+let miraCursor = null;
 const particulas = [];
 
 export function particulasCaptura() {
@@ -57,6 +62,57 @@ export function cargaAtual() {
   return segurando ? carga : 0;
 }
 
+/** O cursor no chão. A mira da bola lê isso o tempo todo. */
+export function definirMiraCursor(x, y) {
+  if (Number.isFinite(x) && Number.isFinite(y)) miraCursor = { x, y };
+}
+
+/**
+ * Direção e ponto de queda da bola, presos ao anel de alcance.
+ * @returns {{x0:number,y0:number,z:number,ux:number,uy:number,alcance:number,voo:number,largura:number,carga:number}|null}
+ */
+export function obterMiraBola(corpo) {
+  if (!corpo) return null;
+  let dx = corpo.dirX || 0;
+  let dy = corpo.dirY || 1;
+  if (miraCursor) {
+    dx = miraCursor.x - corpo.x;
+    dy = miraCursor.y - corpo.y;
+  }
+  let dist = Math.hypot(dx, dy);
+  if (dist < 0.2) {
+    dx = corpo.dirX || 0;
+    dy = corpo.dirY || 1;
+    dist = Math.hypot(dx, dy) || 1;
+  }
+  const ux = dx / dist;
+  const uy = dy / dist;
+  const voo = Math.min(Math.max(dist, 1.15), ALCANCE_BOLA);
+  return {
+    x0: corpo.x,
+    y0: corpo.y,
+    z: corpo.elevacao ?? corpo.z ?? 0,
+    ux,
+    uy,
+    alcance: ALCANCE_BOLA,
+    voo,
+    largura: LARGURA_MIRA,
+    carga: segurando ? carga : 0,
+  };
+}
+
+/** Segurar o clique esquerdo com uma bola na hotbar carrega o arremesso. */
+export function definirSegurarBola(ativo, x, y) {
+  if (ativo) {
+    pedidoSegurar = true;
+    soltarPendente = false;
+    definirMiraCursor(x, y);
+    return;
+  }
+  if (pedidoSegurar || segurando) soltarPendente = true;
+  pedidoSegurar = false;
+}
+
 function chanceDe(alvo) {
   const taxa = Math.max(0, Math.min(1, (alvo.especie?.captura ?? 45) / 255));
   const desmaiado = alvo.morto || alvo.hp <= 0;
@@ -74,19 +130,21 @@ function tremoresDe(chance, sucesso) {
 function soltar(corpo) {
   if (obterBolas() <= 0 || partyCheia()) return;
   if (!gastarBola()) return;
-  const dx = corpo.dirX || 0;
-  const dy = corpo.dirY || 1;
-  const len = Math.hypot(dx, dy) || 1;
-  const dist = 5 + carga * 5;
-  const vel = 9;
+  const geo = obterMiraBola(corpo);
+  const ux = geo?.ux ?? (corpo.dirX || 0);
+  const uy = geo?.uy ?? (corpo.dirY || 1);
+  const dist = geo?.voo ?? ALCANCE_BOLA;
+  const tempo = 0.42 + dist * 0.045;
+  const vel = dist / tempo;
+  const vz = -1.15 / tempo + 10 * tempo + carga * 1.4;
   bola = {
     fase: "voo",
     x: corpo.x,
     y: corpo.y,
     z: (corpo.elevacao ?? corpo.z ?? 0) + 1.15,
-    vx: (dx / len) * vel,
-    vy: (dy / len) * vel,
-    vz: 5.2 + carga * 2.4,
+    vx: ux * vel,
+    vy: uy * vel,
+    vz,
     viajou: 0,
     max: dist,
     tremor: 0,
@@ -102,23 +160,24 @@ export function atualizarCaptura(corpo, dt, agora, efeitos) {
   const digita = focado === "INPUT" || focado === "SELECT" || focado === "TEXTAREA";
   const pode = !digita && !estaEmCena();
 
-  if (pode && teclaBaixa("KeyB") && !bola) {
+  if (pode && !bola && (pedidoSegurar || soltarPendente)) {
     if (!segurando) {
-      const edge = teclaAgora("KeyB");
       if (obterBolas() <= 0) {
-        if (edge) efeitos.flutuar(corpo, "sem bola", "#fca5a5");
+        efeitos.flutuar(corpo, "sem bola", "#fca5a5");
+        pedidoSegurar = false;
+        soltarPendente = false;
       } else if (partyCheia()) {
-        if (edge) efeitos.flutuar(corpo, "party cheia", "#fca5a5");
+        efeitos.flutuar(corpo, "party cheia", "#fca5a5");
+        pedidoSegurar = false;
+        soltarPendente = false;
       } else segurando = true;
     }
-    if (segurando) carga = Math.min(1, carga + dt / 0.95);
-  } else if (segurando) {
-    segurando = false;
-    if (pode) soltar(corpo);
-    carga = 0;
+    if (segurando && pedidoSegurar) carga = Math.min(1, carga + dt / 0.95);
   }
-  if (teclaAgora("KeyB") && !pode) {
+  if (segurando && !pedidoSegurar) {
     segurando = false;
+    soltarPendente = false;
+    if (pode) soltar(corpo);
     carga = 0;
   }
 
@@ -148,8 +207,12 @@ export function atualizarCaptura(corpo, dt, agora, efeitos) {
       estourar(bola.x, bola.y, bola.z, "#f8fafc", 10, true);
       return;
     }
-    if (bola.z <= chao || bola.viajou >= bola.max) {
+    if (bola.z <= chao) {
       bola.z = chao;
+      if (bola.vz < 0) bola.vz = 0;
+    }
+    if (bola.viajou >= bola.max) {
+      bola.z = Math.max(bola.z, chao);
       bola.vz = 0;
       bola.fase = "rolando";
       bola.faseT = 0;

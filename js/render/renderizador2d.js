@@ -20,7 +20,7 @@ import {
 import { empilharAlvoEscalada } from "./alvoEscalada.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
 import { empilharPokemon } from "../pokemon/render2d.js";
-import { desenharHudPokemon, projetar2d, projetar3d } from "../pokemon/hud.js";
+import { desenharHudPokemon, projetar2d, projetar3d, projetarChao3d } from "../pokemon/hud.js";
 import { avancarTempoAgua, empilharAgua2d } from "./agua2d.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
@@ -170,8 +170,9 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
 
   desenharOverlayAjuda(ctx, { zoom }, debug, null, modoVisual, "3d");
   const cam = emCena ? null : camera3d?.camRender;
-  desenharHudStamina(ctx, corpo, cam ? projetar3d(cam, canvas.width, canvas.height) : null);
-  desenharHudPokemon(ctx, projetar3d(cam, canvas.width, canvas.height), corpo);
+  const projetar = cam ? projetar3d(cam, canvas.width, canvas.height) : null;
+  desenharHudStamina(ctx, corpo, projetar);
+  desenharHudPokemon(ctx, projetar, corpo, cam ? projetarChao3d(cam, canvas.width, canvas.height) : null);
   if (emCena) {
     desenharTagCena(ctx, canvas.width);
   } else {

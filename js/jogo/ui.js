@@ -45,8 +45,6 @@ import {
   salvar,
   soltarDaCaixa,
   temChave,
-  usarNoJogador,
-  usarNoPokemon,
   vender,
   colocarMovel,
 } from "./estado.js";
@@ -114,31 +112,19 @@ function toast(msg) {
   if (msg) estado.itemGet = msg;
 }
 
-function usarSelecionado(tipo, key, destino) {
-  if (tipo === TIPO_ITEM.FERRAMENTA) {
-    const livre = estado.hotbar.findIndex((s) => !s);
-    const idx = livre < 0 ? estado.slotAtivo : livre;
-    atribuirSlot(idx, tipo, key);
-    estado.slotAtivo = idx;
-    return;
-  }
-  if (tipo === TIPO_ITEM.BLOCO) {
-    atribuirSlot(estado.slotAtivo, tipo, key);
-    return;
-  }
-  if (tipo !== TIPO_ITEM.BERRY && tipo !== TIPO_ITEM.REMEDIO) return;
-  if (destino === "jogador") {
-    estado.itemGet = usarNoJogador(tipo, key) ? `Usou ${nomeDe(tipo, key)} em você.` : "Você não precisa disso.";
-    return;
-  }
-  const mon = pokemonNoCampo();
-  if (!mon) {
-    estado.itemGet = "Nenhum Pokémon no campo.";
-    return;
-  }
-  estado.itemGet = usarNoPokemon(tipo, key, mon)
-    ? `Usou ${nomeDe(tipo, key)} no ${nomeEspecie(mon)}.`
-    : "Não teve efeito.";
+function usarSelecionado(tipo, key) {
+  const equipa =
+    tipo === TIPO_ITEM.FERRAMENTA ||
+    tipo === TIPO_ITEM.BLOCO ||
+    tipo === TIPO_ITEM.BERRY ||
+    tipo === TIPO_ITEM.REMEDIO ||
+    tipo === TIPO_ITEM.BOLA;
+  if (!equipa) return;
+  const livre = estado.hotbar.findIndex((s) => !s);
+  const idx = livre < 0 ? estado.slotAtivo : livre;
+  atribuirSlot(idx, tipo, key);
+  estado.slotAtivo = idx;
+  estado.itemGet = `Equipou ${nomeDe(tipo, key)}.`;
 }
 
 function colocarSelecionado(key) {
@@ -393,12 +379,15 @@ function linhasCategoria(cat) {
       const qtd = contar(item.tipo, item.key);
       if (qtd <= 0 && item.tipo !== TIPO_ITEM.CHAVE) return "";
       if (item.tipo === TIPO_ITEM.CHAVE && !temChave(item.key)) return "";
-      const cura = item.tipo === TIPO_ITEM.BERRY || item.tipo === TIPO_ITEM.REMEDIO;
-      const usar = item.tipo === TIPO_ITEM.BOLA
-        ? ""
-        : cura
-          ? `<button type="button" data-act="usar-mon" data-tipo="${item.tipo}" data-key="${item.key}">Pokémon</button><button type="button" data-act="usar-jogador" data-tipo="${item.tipo}" data-key="${item.key}">Você</button>`
-          : `<button type="button" data-act="usar" data-tipo="${item.tipo}" data-key="${item.key}">Usar</button>`;
+      const equipa =
+        item.tipo === TIPO_ITEM.BOLA ||
+        item.tipo === TIPO_ITEM.BERRY ||
+        item.tipo === TIPO_ITEM.REMEDIO ||
+        item.tipo === TIPO_ITEM.BLOCO ||
+        item.tipo === TIPO_ITEM.FERRAMENTA;
+      const usar = equipa
+        ? `<button type="button" data-act="usar" data-tipo="${item.tipo}" data-key="${item.key}">Equipar</button>`
+        : "";
       return `<div class="jogo-item">${htmlIcone(item.key, "jogo-item__icone")}<span>${item.nome} ×${qtd || 1}</span>${usar}</div>`;
     })
     .join("");
@@ -662,8 +651,8 @@ export function promptDe(alvo, ferramenta) {
   if (alvo?.ref?.acao === "pc") return "PC — R";
   if (alvo?.ref?.cura) return "Cama — R";
   if (alvo?.ref?.craft || alvo?.ref?.key === "bancada") return "Bancada — R";
-  if (estado.interior?.papel === "casa" && hotbarAtivo()?.key === "hammer") return "Martelo — R abre os móveis";
-  if (!estado.interior && ferramenta) return `${ferramenta} — R`;
+  if (estado.interior?.papel === "casa" && hotbarAtivo()?.key === "hammer") return "Martelo — clique esquerdo abre os móveis";
+  if (!estado.interior && ferramenta) return `${ferramenta} — clique esquerdo`;
   return "";
 }
 

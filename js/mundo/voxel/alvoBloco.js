@@ -5,6 +5,7 @@ import {
   CHUNK_Y,
 } from "../../config.js";
 import { obterBloco } from "./storeMundo.js";
+import { ehLiquido, ehSolido } from "./tiposBloco.js";
 import { raioDoPonteiro } from "../../render/3d/camera3d.js";
 
 const FACES = [

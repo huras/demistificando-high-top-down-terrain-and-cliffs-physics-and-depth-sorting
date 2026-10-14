@@ -282,6 +282,14 @@
   image-rendering: pixelated;
 }
 
+.jogo-icone--tileset {
+  display: inline-block;
+  flex-shrink: 0;
+  overflow: hidden;
+  vertical-align: middle;
+  image-rendering: pixelated;
+}
+
 .jogo-icone--vazio {
   display: block;
   border-radius: 6px;

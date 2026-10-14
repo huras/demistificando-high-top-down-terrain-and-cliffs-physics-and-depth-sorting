@@ -1,4 +1,4 @@
-/** Picareta derruba o bloco no chão. O bloco na mão entra com o botão direito. */
+/** Picareta quebra o bloco sob o clique. O bloco selecionado coloca no clique esquerdo. */
 
 import { alturaSobPes } from "../fisica/colisao.js";
 import { colocarBloco, definirBlocoNaMao, quebrarBloco } from "../mundo/voxel/editar.js";

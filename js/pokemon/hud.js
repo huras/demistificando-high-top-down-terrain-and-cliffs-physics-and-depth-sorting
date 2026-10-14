@@ -1,12 +1,14 @@
 import { progressoExp } from "./experiencia.js";
 import { colunaEmocao, folhaEmocoes } from "./emocoes.js";
 import { flutuantes } from "./flutuantes.js";
-import { cargaAtual } from "./captura.js";
+import { cargaAtual, obterBola, obterMiraBola } from "./captura.js";
 import { obterBolas, pokemonNoCampo } from "./party.js";
 import { pedirRetrato } from "./retrato.js";
 import { atoresVisiveis, obterTreinador, pokemonLigado, relogioPokemon } from "./sistema.js";
 import { ALTURA_BLOCO } from "../config.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
+import { hotbarAtivo, uiAberta } from "../jogo/estado.js";
+import { TIPO_ITEM } from "../wild/catalogo.js";
 import * as THREE from "three";
 
 const _ponto = new THREE.Vector3();
@@ -19,6 +21,133 @@ export function projetar2d(camera) {
   });
 }
 
+export function projetarChao3d(cam, largura, altura) {
+  return (x, y, z) => {
+    if (!cam) return null;
+    _ponto.set(x, (z || 0) * ALTURA_BLOCO + 0.08, y);
+    _ponto.project(cam);
+    if (_ponto.z < -1 || _ponto.z > 1) return null;
+    return {
+      x: (_ponto.x * 0.5 + 0.5) * largura,
+      y: (-_ponto.y * 0.5 + 0.5) * altura,
+    };
+  };
+}
+
+function bolaNaMao() {
+  if (uiAberta() || obterBola()) return false;
+  const item = hotbarAtivo();
+  return item?.tipo === TIPO_ITEM.BOLA;
+}
+
+function corCarga(carga, alfa) {
+  const t = Math.max(0, Math.min(1, carga));
+  const r = Math.round(170 + (255 - 170) * t);
+  const g = Math.round(220 + (206 - 220) * t);
+  const b = Math.round(255 + (120 - 255) * t);
+  return `rgba(${r}, ${g}, ${b}, ${alfa})`;
+}
+
+function pontosAnel(x, y, raio, n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pts.push([x + Math.cos(a) * raio, y + Math.sin(a) * raio]);
+  }
+  return pts;
+}
+
+function pontosCapsula(x, y, ux, uy, comp, raio) {
+  const px = -uy;
+  const py = ux;
+  const recuo = Math.min(0.45, comp * 0.2);
+  const x0 = x + ux * recuo;
+  const y0 = y + uy * recuo;
+  const x1 = x + ux * comp;
+  const y1 = y + uy * comp;
+  const pts = [[x0 + px * raio, y0 + py * raio]];
+  const passos = 12;
+  for (let i = 0; i <= passos; i++) {
+    const ang = (i / passos) * Math.PI;
+    const c = Math.cos(ang);
+    const s = Math.sin(ang);
+    pts.push([
+      x1 + px * raio * c + ux * raio * s,
+      y1 + py * raio * c + uy * raio * s,
+    ]);
+  }
+  pts.push([x0 - px * raio, y0 - py * raio]);
+  return pts;
+}
+
+function tracarMundo(ctx, pts, projetar, z, fechar) {
+  let comecou = false;
+  let algum = false;
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const s = projetar(pts[i][0], pts[i][1], z, 0);
+    if (!s) {
+      comecou = false;
+      continue;
+    }
+    if (!comecou) ctx.moveTo(s.x, s.y);
+    else ctx.lineTo(s.x, s.y);
+    comecou = true;
+    algum = true;
+  }
+  if (fechar && algum) ctx.closePath();
+  return algum;
+}
+
+function desenharMira(ctx, projetar, corpo) {
+  if (!bolaNaMao() || !projetar || !corpo) return;
+  const geo = obterMiraBola(corpo);
+  if (!geo) return;
+  const z = geo.z;
+  const raio = geo.largura * 0.5;
+  const comp = Math.max(raio + 0.2, geo.voo - raio);
+  const anel = pontosAnel(geo.x0, geo.y0, geo.alcance, 72);
+  const faixa = pontosCapsula(geo.x0, geo.y0, geo.ux, geo.uy, comp, raio);
+  const pontaX = geo.x0 + geo.ux * comp;
+  const pontaY = geo.y0 + geo.uy * comp;
+  const ponta = pontosAnel(pontaX, pontaY, geo.largura * 0.52, 20);
+
+  ctx.save();
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  ctx.fillStyle = "rgba(90, 170, 255, 0.08)";
+  ctx.strokeStyle = "rgba(186, 226, 255, 0.82)";
+  ctx.lineWidth = 2;
+  if (tracarMundo(ctx, anel, projetar, z, true)) {
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.shadowColor = "rgba(80, 170, 255, 0.45)";
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = corCarga(geo.carga, 0.28 + geo.carga * 0.22);
+  ctx.strokeStyle = corCarga(geo.carga, 0.95);
+  ctx.lineWidth = 2.25;
+  if (tracarMundo(ctx, faixa, projetar, z, true)) {
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = corCarga(geo.carga, 0.55);
+  if (tracarMundo(ctx, ponta, projetar, z, true)) ctx.fill();
+
+  const eixo = [
+    [geo.x0 + geo.ux * 0.45, geo.y0 + geo.uy * 0.45],
+    [pontaX, pontaY],
+  ];
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([7, 6]);
+  if (tracarMundo(ctx, eixo, projetar, z, false)) ctx.stroke();
+  ctx.restore();
+}
 export function projetar3d(cam, largura, altura) {
   return (x, y, z, hop) => {
     if (!cam) return null;
@@ -63,7 +192,7 @@ function painel(ctx) {
   }
   ctx.font = "12px Segoe UI, sans-serif";
   ctx.fillStyle = "rgba(231, 229, 228, 0.8)";
-  ctx.fillText("segurar B · pokébola", 20, mon ? 86 : 52);
+  ctx.fillText("B · mochila", 20, mon ? 86 : 52);
   ctx.restore();
 }
 
@@ -161,9 +290,10 @@ function carga(ctx, projetar, corpo) {
 /**
  * Marcadores em espaço de tela. `projetar(x, y, z, hop)` devolve {x, y} ou null.
  */
-export function desenharHudPokemon(ctx, projetar, corpo) {
+export function desenharHudPokemon(ctx, projetar, corpo, projetarChao) {
   painel(ctx);
   if (!pokemonLigado() || !projetar) return;
+  desenharMira(ctx, projetarChao || projetar, corpo);
   const atores = atoresVisiveis();
   for (let i = 0; i < atores.length; i++) {
     const a = atores[i];

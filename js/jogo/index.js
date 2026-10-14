@@ -3,8 +3,6 @@
 import { teclaAgora, teclaBaixa } from "../entrada/teclado.js";
 import { obterClima } from "../render/3d/ceu/controleCeu.js";
 import { zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
-import { TIPO_ITEM } from "../wild/catalogo.js";
-import { pokemonNoCampo } from "../pokemon/party.js";
 import { chaveBgm, definirBgm, destravarAudio } from "./audio.js";
 import { tickBlocos } from "./blocos.js";
 import { atualizarBillboardsBerry } from "./billboards.js";
@@ -15,7 +13,6 @@ import {
   sairInterior,
   tentarEntrar,
   tickCampo,
-  usarFerramenta,
 } from "./campo.js";
 import {
   abrirPainel,
@@ -23,13 +20,9 @@ import {
   carregar,
   estado,
   fecharTopo,
-  hotbarAtivo,
-  nomeDe,
   registrarParty,
   salvar,
   uiAberta,
-  usarNoJogador,
-  usarNoPokemon,
 } from "./estado.js";
 import { ligarRoda, tickRoda } from "./roda.js";
 import { desenharSala, ligarSala, moverSala, pertoDe, redimensionarSala } from "./sala.js";
@@ -107,7 +100,8 @@ function lerTeclas(corpo) {
   ) {
     fecharTopo();
   }
-  if (teclaAgora("KeyI") && !estado.dialogo && !estado.roda) {
+  if (teclaAgora("KeyI") || teclaAgora("KeyB")) {
+    if (estado.dialogo || estado.roda) return;
     if (estado.painel === "mochila") fecharTopo();
     else abrirPainel("mochila");
   }
@@ -127,44 +121,9 @@ function interagir(corpo) {
       falarCom(perto);
       return;
     }
-    if (hotbarAtivo()?.key === "hammer" && estado.interior.papel === "casa") {
-      estado.construir = true;
-      pintar();
-      return;
-    }
     return;
   }
-  const item = hotbarAtivo();
-  const alvo = celulaAlvo(corpo);
-  if (item?.tipo === TIPO_ITEM.FERRAMENTA) {
-    const msg = usarFerramenta(corpo);
-    if (msg) mostrar(msg);
-    return;
-  }
-  const colheita = plantarOuColher(alvo, item);
-  if (colheita) {
-    mostrar(colheita);
-    return;
-  }
-  if (item && (item.tipo === TIPO_ITEM.BERRY || item.tipo === TIPO_ITEM.REMEDIO)) {
-    const mon = pokemonNoCampo();
-    const monPrecisa = !!(mon && (mon.morto || mon.hp < mon.hpMax || mon.status));
-    if (monPrecisa && usarNoPokemon(item.tipo, item.key, mon)) {
-      mostrar(`Usou ${nomeDe(item.tipo, item.key)} no ${mon.especie?.nome || "Pokémon"}.`);
-      return;
-    }
-    if (usarNoJogador(item.tipo, item.key)) {
-      mostrar(`Usou ${nomeDe(item.tipo, item.key)} em você.`);
-      return;
-    }
-    if (mon && usarNoPokemon(item.tipo, item.key, mon)) {
-      mostrar(`Usou ${nomeDe(item.tipo, item.key)} no ${mon.especie?.nome || "Pokémon"}.`);
-      return;
-    }
-    mostrar(mon ? "Não teve efeito." : "Ninguém para usar.");
-    return;
-  }
-  const madura = plantarOuColher(alvo, null);
+  const madura = plantarOuColher(celulaAlvo(corpo), null);
   if (madura) mostrar(madura);
 }
 

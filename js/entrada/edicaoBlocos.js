@@ -7,9 +7,13 @@ import { alvoBloco2d, alvoBloco3dCursor } from "../mundo/voxel/alvoBloco.js";
 import { ESCALA, FACE_H, TILE } from "../config.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 import { invalidarHoverBloco } from "./hoverBloco.js";
-import { tentarColocar, tentarQuebrar } from "../jogo/blocos.js";
-import { uiAberta } from "../jogo/estado.js";
+import { raioDoPonteiro } from "../render/3d/camera3d.js";
 import { tentarAtaqueNoClique } from "../pokemon/clique.js";
+import { definirSegurarBola, definirMiraCursor } from "../pokemon/captura.js";
+import { usarNoClique } from "../jogo/campo.js";
+import { estado, hotbarAtivo, uiAberta } from "../jogo/estado.js";
+import { atualizarLeve, pintar } from "../jogo/ui.js";
+import { TIPO_ITEM } from "../wild/catalogo.js";
 
 let canvas2d = null;
 let canvas3d = null;
@@ -38,51 +42,84 @@ function ndcDoEvento(ev, canvas) {
   return { ndcX: u * 2 - 1, ndcY: -(v * 2 - 1) };
 }
 
-function aoMouseDown2d(ev) {
-  if (obterModo() !== "2d") return;
-  if (ev.button !== 0 && ev.button !== 2) return;
-  const corpo = obterCorpo();
-  const camera = obterCamera2d();
-  if (!corpo || !camera || !canvas2d) return;
-  if (ev.button === 0 && tentarAtaqueNoClique(ev, camera, obterCenario3d())) {
-    ev.preventDefault();
+function pontoNoChao(raio, z) {
+  const dz = raio.dz;
+  if (Math.abs(dz) < 1e-4) return { x: raio.ox + raio.dx * 12, y: raio.oy + raio.dy * 12 };
+  let t = (z - raio.oz) / dz;
+  if (!(t > 0.05)) t = 0.05;
+  if (t > 64) t = 64;
+  return { x: raio.ox + raio.dx * t, y: raio.oy + raio.dy * t };
+}
+
+function dispararItem(corpo, celula, alvo, mira) {
+  const item = hotbarAtivo();
+  if (!item || uiAberta()) return;
+  if (item.tipo === TIPO_ITEM.BOLA) {
+    definirSegurarBola(true, mira.x, mira.y);
     return;
   }
-
-  const { mx, my } = telaParaMundo2d(ev.clientX, ev.clientY, camera, canvas2d);
-  const cx = Math.floor(mx);
-  const cy = Math.floor(my);
-  const visao = obterVisaoCaverna2d(corpo);
-  const alvo = alvoBloco2d(cx, cy, visao ? visao.teto : undefined);
-  if (!alvo) return;
-
-  ev.preventDefault();
-  if (uiAberta()) return;
-  if (ev.button === 0) tentarQuebrar(corpo, alvo);
-  else tentarColocar(corpo, alvo);
+  const msg = usarNoClique(corpo, celula, alvo);
+  if (msg) estado.itemGet = msg;
+  if (estado.construir) pintar();
+  else if (msg) atualizarLeve();
   invalidarHoverBloco();
 }
 
-function aoMouseDown3d(ev) {
-  if (obterModo() !== "3d" || estaEmCena()) return;
-  if (ev.button !== 0 && ev.button !== 2) return;
+function aoMouseUp() {
+  definirSegurarBola(false);
+}
+
+function aoMove2d(ev) {
+  if (obterModo() !== "2d" || !canvas2d) return;
+  const camera = obterCamera2d();
+  if (!camera) return;
+  const { mx, my } = telaParaMundo2d(ev.clientX, ev.clientY, camera, canvas2d);
+  definirMiraCursor(mx, my);
+}
+
+function aoMove3d(ev) {
+  if (obterModo() !== "3d" || estaEmCena() || !canvas3d) return;
   const corpo = obterCorpo();
   const cen = obterCenario3d();
-  if (!corpo || !cen?.camera3d || !canvas3d) return;
-  if (uiAberta()) return;
-  if (ev.button === 0 && tentarAtaqueNoClique(ev, null, cen)) {
+  if (!corpo || !cen?.camera3d) return;
+  const { ndcX, ndcY } = ndcDoEvento(ev, canvas3d);
+  const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
+  const chao = pontoNoChao(raio, corpo.z ?? 0);
+  definirMiraCursor(chao.x, chao.y);
+}
+
+function aoMouseDown2d(ev) {
+  if (obterModo() !== "2d" || ev.button !== 0) return;
+  const corpo = obterCorpo();
+  const camera = obterCamera2d();
+  if (!corpo || !camera || !canvas2d || uiAberta()) return;
+  if (tentarAtaqueNoClique(ev, camera, obterCenario3d())) {
     ev.preventDefault();
     return;
   }
+  const { mx, my } = telaParaMundo2d(ev.clientX, ev.clientY, camera, canvas2d);
+  const visao = obterVisaoCaverna2d(corpo);
+  const alvo = alvoBloco2d(Math.floor(mx), Math.floor(my), visao ? visao.teto : undefined);
+  ev.preventDefault();
+  dispararItem(corpo, { x: Math.floor(mx), y: Math.floor(my) }, alvo, { x: mx, y: my });
+}
 
+function aoMouseDown3d(ev) {
+  if (obterModo() !== "3d" || estaEmCena() || ev.button !== 0) return;
+  const corpo = obterCorpo();
+  const cen = obterCenario3d();
+  if (!corpo || !cen?.camera3d || !canvas3d || uiAberta()) return;
+  if (tentarAtaqueNoClique(ev, null, cen)) {
+    ev.preventDefault();
+    return;
+  }
   const { ndcX, ndcY } = ndcDoEvento(ev, canvas3d);
   const alvo = alvoBloco3dCursor(cen.camera3d, ndcX, ndcY);
-  if (!alvo) return;
-
+  const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
+  const chao = pontoNoChao(raio, corpo.z ?? 0);
+  const celula = alvo ? { x: alvo.x, y: alvo.y } : { x: Math.floor(chao.x), y: Math.floor(chao.y) };
   ev.preventDefault();
-  if (ev.button === 2) tentarColocar(corpo, alvo);
-  else tentarQuebrar(corpo, alvo);
-  invalidarHoverBloco();
+  dispararItem(corpo, celula, alvo, chao);
 }
 
 function aoContextMenu(ev) {
@@ -109,6 +146,9 @@ export function ligarEdicaoBlocos(opts) {
 
   canvas2d.addEventListener("mousedown", aoMouseDown2d);
   canvas3d.addEventListener("mousedown", aoMouseDown3d);
+  canvas2d.addEventListener("pointermove", aoMove2d);
+  canvas3d.addEventListener("pointermove", aoMove3d);
+  window.addEventListener("mouseup", aoMouseUp);
   canvas2d.addEventListener("contextmenu", aoContextMenu);
   canvas3d.addEventListener("contextmenu", aoContextMenu);
 }
@@ -117,6 +157,9 @@ export function desligarEdicaoBlocos() {
   if (!ligado) return;
   canvas2d?.removeEventListener("mousedown", aoMouseDown2d);
   canvas3d?.removeEventListener("mousedown", aoMouseDown3d);
+  canvas2d?.removeEventListener("pointermove", aoMove2d);
+  canvas3d?.removeEventListener("pointermove", aoMove3d);
+  window.removeEventListener("mouseup", aoMouseUp);
   canvas2d?.removeEventListener("contextmenu", aoContextMenu);
   canvas3d?.removeEventListener("contextmenu", aoContextMenu);
   ligado = false;

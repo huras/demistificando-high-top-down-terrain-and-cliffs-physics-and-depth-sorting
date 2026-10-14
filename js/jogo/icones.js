@@ -1,4 +1,27 @@
-/** Ícones copiados de sprites/items-icons. */
+/** Ícones: PNG de itens, ou o recorte de tileset definido no Pokémon AI. */
+
+const FOLHA = Object.freeze({
+  tileset_1: {
+    url: "/ref/sprites/items-tileset/tileset_1.png",
+    tile: 32,
+    ox: 1,
+    oy: 1,
+    px: 2,
+    py: 2,
+    w: 476,
+    h: 1020,
+  },
+  iconset_2: {
+    url: "/ref/sprites/items-tileset/IconSet-2.png",
+    tile: 32,
+    ox: 0,
+    oy: 0,
+    px: 0,
+    py: 0,
+    w: 512,
+    h: 3200,
+  },
+});
 
 const REL = Object.freeze({
   pokeball: "pokeballs/poke-ball.png",
@@ -24,14 +47,8 @@ const REL = Object.freeze({
   aspear: "berries/aspear-berry.png",
   lum: "berries/lum-berry.png",
   leppa: "berries/leppa-berry.png",
-  hoe: "hold-items/soft-sand.png",
   wateringCan: "general-items/sprinklotad.png",
-  axe: "hold-items/hard-stone.png",
-  pickaxe: "hold-items/rocky-helmet.png",
-  hammer: "hold-items/hard-stone.png",
-  wood: "hold-items/charcoal.png",
   stone: "hold-items/hard-stone.png",
-  plantFiber: "hold-items/miracle-seed.png",
   blueCrystal: "hold-items/never-melt-ice.png",
   redCrystal: "hold-items/fire-gem.png",
   yellowCrystal: "hold-items/electric-gem.png",
@@ -41,13 +58,40 @@ const REL = Object.freeze({
   blocoPedra: "hold-items/hard-stone.png",
 });
 
+/** Mesmos recortes de src/items/iconOverrides.json. */
+const TILESET = Object.freeze({
+  axe: { folha: "tileset_1", r: 10, c: 1 },
+  hoe: { folha: "iconset_2", r: 7, c: 10 },
+  pickaxe: { folha: "iconset_2", r: 13, c: 8 },
+  hammer: { folha: "tileset_1", r: 9, c: 3 },
+  wood: { folha: "iconset_2", r: 18, c: 7 },
+  plantFiber: { folha: "tileset_1", r: 18, c: 6 },
+});
+
+const EXIBE = 36;
+
 export function urlIcone(chave) {
   const rel = REL[chave];
   return rel ? `assets/itens/${rel}` : "";
 }
 
 export function htmlIcone(chave, classe) {
+  const base = classe || "jogo-icone";
+  const corte = TILESET[chave];
+  if (corte) {
+    const folha = FOLHA[corte.folha];
+    const x = folha.ox + corte.c * (folha.tile + folha.px);
+    const y = folha.oy + corte.r * (folha.tile + folha.py);
+    const s = EXIBE / folha.tile;
+    const estilo = [
+      `background-image:url(${folha.url})`,
+      "background-repeat:no-repeat",
+      `background-size:${folha.w * s}px ${folha.h * s}px`,
+      `background-position:-${x * s}px -${y * s}px`,
+    ].join(";");
+    return `<span class="${base} jogo-icone--tileset" style="${estilo}"></span>`;
+  }
   const url = urlIcone(chave);
-  if (!url) return `<span class="${classe || "jogo-icone"} jogo-icone--vazio"></span>`;
-  return `<img class="${classe || "jogo-icone"}" src="${url}" alt="" draggable="false" />`;
+  if (!url) return `<span class="${base} jogo-icone--vazio"></span>`;
+  return `<img class="${base}" src="${url}" alt="" draggable="false" />`;
 }
