@@ -88,7 +88,18 @@ function criarAtorSlot() {
   }
   grupo.visible = false;
   cena.add(grupo);
-  return { grupo, canvas, ctx, tex, mat, sprite, sombra, brilhos, chave: "", livre: true };
+  return {
+    grupo,
+    canvas,
+    ctx,
+    tex,
+    mat,
+    sprite,
+    sombra,
+    brilhos,
+    chave: "",
+    livre: true,
+  };
 }
 
 function texturaBola() {
@@ -255,6 +266,7 @@ export function atualizarPokemon3d(yawCam = 0) {
     else fallback(slot, ator);
     const offsetY = aplicarMedida(slot, ator);
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
+    slot.sprite.visible = true;
     slot.sprite.scale.multiplyScalar(some);
     slot.grupo.visible = some > 0.04;
     if (visual && dirMundo != null) visual.dir = dirMundo;

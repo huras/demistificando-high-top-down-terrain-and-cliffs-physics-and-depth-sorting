@@ -1,0 +1,548 @@
+{
+  "1": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.977
+  },
+  "10": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "hit"
+    ],
+    "altura": 1.595
+  },
+  "11": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.977
+  },
+  "12": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.267
+  },
+  "13": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "hit"
+    ],
+    "altura": 1.595
+  },
+  "14": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "hit"
+    ],
+    "altura": 1.894
+  },
+  "15": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  },
+  "16": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.595
+  },
+  "17": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.267
+  },
+  "18": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.512
+  },
+  "19": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.595
+  },
+  "20": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.977
+  },
+  "21": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.595
+  },
+  "22": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.332
+  },
+  "23": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.78
+  },
+  "24": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 3.44
+  },
+  "25": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.705
+  },
+  "27": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.894
+  },
+  "28": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  },
+  "29": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.705
+  },
+  "30": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.056
+  },
+  "32": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.804
+  },
+  "33": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.13
+  },
+  "41": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.056
+  },
+  "42": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.569
+  },
+  "43": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.804
+  },
+  "44": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.056
+  },
+  "46": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.595
+  },
+  "47": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  },
+  "48": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  },
+  "49": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "hit"
+    ],
+    "altura": 2.512
+  },
+  "50": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.466
+  },
+  "51": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.977
+  },
+  "52": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.705
+  },
+  "53": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  },
+  "56": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.804
+  },
+  "57": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  },
+  "58": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.977
+  },
+  "60": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.894
+  },
+  "61": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  },
+  "63": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "hit"
+    ],
+    "altura": 2.13
+  },
+  "64": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.394
+  },
+  "66": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.056
+  },
+  "67": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.512
+  },
+  "69": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.977
+  },
+  "70": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  },
+  "74": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 1.705
+  },
+  "75": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
+  }
+}

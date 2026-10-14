@@ -18,6 +18,7 @@ const tipos = {
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".obj": "text/plain; charset=utf-8",
+  ".glb": "model/gltf-binary",
   ".mtl": "text/plain; charset=utf-8",
 };
 
