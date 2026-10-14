@@ -185,58 +185,24 @@ function ladoDaPorta(vaos) {
   return normal[2] > 0 ? 2 : 3;
 }
 
-function fecharFundo(marcas, limites, solidos, vaos) {
+function descreverFundo(solidos, vaos, caixa) {
   let lado = ladoAberto(solidos);
   const porta = ladoDaPorta(vaos);
-  if (lado >= 0 && lado === porta) lado = lado ^ 1;
-  if (lado < 0) return;
+  if (lado >= 0 && lado === porta) lado ^= 1;
+  if (lado < 0) return null;
   const eixo = lado < 2 ? 0 : 2;
-  const noMax = lado % 2 === 0;
+  const paraDentro = lado % 2 === 0 ? -1 : 1;
   const outro = eixo === 0 ? 2 : 0;
-  const celulas = [];
-  let fundo = noMax ? -Infinity : Infinity;
-  let minU = Infinity;
-  let maxU = -Infinity;
-  const teto = new Map();
-  const solido = new Set();
-  for (const chave of marcas) {
-    const p = chave.split(",");
-    const c = [+p[0], +p[1], +p[2]];
-    celulas.push(c);
-    if (noMax) {
-      if (c[eixo] > fundo) fundo = c[eixo];
-    } else if (c[eixo] < fundo) fundo = c[eixo];
-  }
-  if (!Number.isFinite(fundo)) return;
-  for (let i = 0; i < celulas.length; i++) {
-    const c = celulas[i];
-    const u = c[outro];
-    const alto = teto.get(u);
-    if (alto == null || c[1] > alto) teto.set(u, c[1]);
-    if (c[1] <= 1) {
-      if (u < minU) minU = u;
-      if (u > maxU) maxU = u;
-    }
-    if (c[eixo] === fundo) solido.add(`${u},${c[1]}`);
-  }
-  if (!Number.isFinite(minU)) return;
-  for (let u = minU; u <= maxU; u++) {
-    const topo = teto.get(u);
-    if (topo == null) continue;
-    let limite = topo;
-    for (let y = 0; y <= topo; y++) {
-      if (solido.has(`${u},${y}`)) {
-        limite = y;
-        break;
-      }
-    }
-    for (let y = 0; y < limite; y++) {
-      const cel = [0, y, 0];
-      cel[eixo] = fundo;
-      cel[outro] = u;
-      marcarCelula(marcas, limites, cel[0], cel[1], cel[2]);
-    }
-  }
+  const plano = paraDentro > 0 ? caixa.min[eixo] : caixa.max[eixo];
+  if (!Number.isFinite(plano)) return null;
+  return {
+    eixo,
+    paraDentro,
+    plano,
+    minU: caixa.min[outro],
+    maxU: caixa.max[outro],
+    topo: 3,
+  };
 }
 
 function abrirVao(marcas, vaos) {
@@ -324,7 +290,7 @@ export function moldeDaMalha(objTexto, portas = null) {
   }
   const grupos = partirGrupos(vaos);
   for (let i = 0; i < grupos.length; i++) abrirVao(marcas, grupos[i]);
-  fecharFundo(marcas, limites, solidos, vaos);
+  const fundo = descreverFundo(solidos, vaos, caixa);
   let minVX = limites.minX;
   let maxVX = limites.maxX;
   let minVZ = limites.minZ;
@@ -344,7 +310,73 @@ export function moldeDaMalha(objTexto, portas = null) {
     minVZ = 0;
     maxVZ = 0;
   }
-  return { celulas, minX: minVX, maxX: maxVX, minZ: minVZ, maxZ: maxVZ, temPorta: vaos.length > 0 };
+  if (fundo) {
+    if (fundo.eixo === 0) {
+      if (fundo.paraDentro > 0) minVX -= 1;
+      else maxVX += 1;
+    } else if (fundo.paraDentro > 0) minVZ -= 1;
+    else maxVZ += 1;
+  }
+  return { celulas, minX: minVX, maxX: maxVX, minZ: minVZ, maxZ: maxVZ, temPorta: vaos.length > 0, fundo };
+}
+
+function localDoDelta(dx, dy, yaw) {
+  const k = ((Math.round(yaw / (Math.PI / 2)) % 4) + 4) % 4;
+  if (k === 1) return [-dy, dx];
+  if (k === 2) return [-dx, -dy];
+  if (k === 3) return [dy, -dx];
+  return [dx, dy];
+}
+
+function faixaCruza(a0, a1, b0, b1) {
+  return a1 > b0 && a0 < b1;
+}
+
+function selarFundoNoChunk(chunk, casa, fundo, x0, y0, x1, y1) {
+  if (!fundo) return false;
+  const alcance = 6;
+  const wx0 = Math.max(x0, Math.floor(casa.px - alcance));
+  const wx1 = Math.min(x1, Math.ceil(casa.px + alcance));
+  const wy0 = Math.max(y0, Math.floor(casa.py - alcance));
+  const wy1 = Math.min(y1, Math.ceil(casa.py + alcance));
+  const plano0 = fundo.paraDentro > 0 ? fundo.plano - 0.02 : fundo.plano - 1;
+  const plano1 = fundo.paraDentro > 0 ? fundo.plano + 1 : fundo.plano + 0.02;
+  let mudou = false;
+  for (let wy = wy0; wy < wy1; wy++) {
+    for (let wx = wx0; wx < wx1; wx++) {
+      const cantos = [
+        localDoDelta(wx - casa.px, wy - casa.py, casa.yaw),
+        localDoDelta(wx + 1 - casa.px, wy - casa.py, casa.yaw),
+        localDoDelta(wx - casa.px, wy + 1 - casa.py, casa.yaw),
+        localDoDelta(wx + 1 - casa.px, wy + 1 - casa.py, casa.yaw),
+      ];
+      let minE = Infinity;
+      let maxE = -Infinity;
+      let minU = Infinity;
+      let maxU = -Infinity;
+      for (let i = 0; i < 4; i++) {
+        const e = fundo.eixo === 0 ? cantos[i][0] : cantos[i][1];
+        const u = fundo.eixo === 0 ? cantos[i][1] : cantos[i][0];
+        if (e < minE) minE = e;
+        if (e > maxE) maxE = e;
+        if (u < minU) minU = u;
+        if (u > maxU) maxU = u;
+      }
+      if (!faixaCruza(minE, maxE, plano0, plano1)) continue;
+      if (!faixaCruza(minU, maxU, fundo.minU, fundo.maxU)) continue;
+      for (let iy = 0; iy < fundo.topo; iy++) {
+        const gz = ALTURA_PRACA + iy;
+        if (gz < 0 || gz >= CHUNK_Y) continue;
+        const amostra = amostraKanto(wx, wy);
+        if (amostra && gz < (amostra.h | 0)) continue;
+        const li = indiceLocal(wx - x0, wy - y0, gz);
+        if (chunk.blocos[li] === BLOCO.PEDRA) continue;
+        chunk.blocos[li] = BLOCO.PEDRA;
+        mudou = true;
+      }
+    }
+  }
+  return mudou;
 }
 
 function mundoDaCelula(ix, iy, iz, casa) {
@@ -441,6 +473,7 @@ export function aplicarCascaNoChunk(chunk) {
         }
       }
     }
+    if (selarFundoNoChunk(chunk, casa, molde.fundo, x0, y0, x1, y1)) mudou = true;
     const cel = molde.celulas;
     for (let k = 0; k < cel.length; k += 3) {
       const [gx, gy, gz] = mundoDaCelula(cel[k], cel[k + 1], cel[k + 2], casa);
