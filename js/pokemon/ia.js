@@ -1,4 +1,4 @@
-import { POKEMON } from "../config.js";
+import { AGENTE_DIST_PARAR, POKEMON } from "../config.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
@@ -52,6 +52,12 @@ function marcarAncora(ator) {
   ator._ae = ator.elevacao ?? ator.z ?? 0;
 }
 
+function pararCorpo(ator) {
+  ator.vx = 0;
+  ator.vy = 0;
+  ator.andando = false;
+}
+
 function desistirMeta(ator) {
   if (ator.escalando) soltarEscalada(ator, { impulso: false, pousarBase: true });
   cancelarPath(ator.id);
@@ -61,7 +67,7 @@ function desistirMeta(ator) {
   nav.climbAlvo = null;
   ator.roam = "waiting";
   ator.espera = 0.35;
-  ator.andando = false;
+  pararCorpo(ator);
   if (ator.noChao && !ator.pulando) ator.acao = "parado";
   marcarAncora(ator);
 }
@@ -117,7 +123,7 @@ export function irPara(ator, gx, gy, gz, vel, dt) {
 function vagar(ator, dt) {
   if (ator.roam === "waiting") {
     ator.espera -= dt;
-    ator.andando = false;
+    pararCorpo(ator);
     if (ator.espera <= 0) {
       escolherMeta(ator);
       ator.roam = "moving";
@@ -128,10 +134,15 @@ function vagar(ator, dt) {
   const dx = ator.metaX - ator.x;
   const dy = ator.metaY - ator.y;
   if (!noTerritorio(ator, ator.metaX, ator.metaY)) escolherMeta(ator);
-  if (dx * dx + dy * dy < 1 && ator.noChao && !ator.pulando && !ator.escalando) {
+  if (
+    dx * dx + dy * dy < AGENTE_DIST_PARAR * AGENTE_DIST_PARAR &&
+    ator.noChao &&
+    !ator.pulando &&
+    !ator.escalando
+  ) {
     ator.roam = "waiting";
     ator.espera = POKEMON.ESPERA_MIN + Math.random() * (POKEMON.ESPERA_MAX - POKEMON.ESPERA_MIN);
-    ator.andando = false;
+    pararCorpo(ator);
     ator.acao = "parado";
     return;
   }
@@ -215,7 +226,6 @@ function atualizarUm(ator, party, jogador, dt) {
     ator.ordemAlvo = null;
     ator.modo = "roam";
     ator.alvo = null;
-    ator.andando = false;
     ator.presoT = 0;
     return;
   }
@@ -225,7 +235,7 @@ function atualizarUm(ator, party, jogador, dt) {
   if (d > 1.15) {
     irPara(ator, ordem.x, ordem.y, ordem.z ?? ordem.elevacao, velocidadeDe(ator, true), dt);
   } else {
-    ator.andando = false;
+    pararCorpo(ator);
   }
 }
 

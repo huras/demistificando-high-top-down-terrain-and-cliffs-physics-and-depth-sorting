@@ -25,6 +25,7 @@ import {
   tentarBracada,
 } from "./agua.js";
 import { atualizarCorrida } from "./corrida.js";
+import { ritmoAndar } from "./ritmoAndar.js";
 import {
   anexarEscalada,
   atualizarEscalada,
@@ -328,12 +329,13 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   if (cantoEmCliffAlto(corpo)) empurrarForaDeCliff(corpo);
 
   corpo.andando = movendo && (dx !== 0 || dy !== 0);
+  if (corpo.andando) {
+    corpo.animT += dt * ritmoAndar(Math.hypot(corpo.vx, corpo.vy), VELOCIDADE_MAX);
+  }
   if (corpo.aguaProf > 0.2) {
     corpo.correndo = false;
     corpo.acao = corpo.andando ? "vadeando" : "vado";
-    if (corpo.andando) corpo.animT += dt;
   } else if (corpo.andando) {
-    corpo.animT += dt * (corpo.correndo ? 1.35 : 1);
     corpo.acao = corpo.correndo ? "sprint" : "correndo";
   } else if (
     !corpo.acao.startsWith("escala") &&

@@ -1,5 +1,4 @@
 import {
-  AGENTE_DIST_PARAR,
   AGENTE_GLIDE_HEUR_FOLGA,
   AGENTE_VEL_MUL,
   ASA_DELTA_ABRIR_APOS,
@@ -32,6 +31,7 @@ import {
 } from "./agua.js";
 import { alturaSobPes, corpoColideSolido, moverAereo, moverComColisao } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
+import { ritmoAndar } from "./ritmoAndar.js";
 import {
   anexarEscalada,
   atualizarEscalada,
@@ -434,10 +434,11 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0) {
       return;
     }
 
-    const dist = Math.hypot(lider.x - agente.x, lider.y - agente.y);
     agente.correndo = velMax >= VELOCIDADE_SPRINT - 0.05;
-    agente.andando = movendo && dist > AGENTE_DIST_PARAR;
-    if (agente.andando) agente.animT += dt * (agente.correndo ? 1.35 : 1);
+    agente.andando = Math.hypot(agente.vx, agente.vy) > 0.45;
+    if (agente.andando) {
+      agente.animT += dt * ritmoAndar(Math.hypot(agente.vx, agente.vy), VELOCIDADE_MAX);
+    }
 
     if (nav?.estado === "semCaminho") agente.acao = "sem-caminho";
     else if (nav?.estado === "buscando") agente.acao = "buscando-path";

@@ -177,9 +177,21 @@ export function marcarPose(ator, nome, agora) {
   ator.poseAte = agora + duracaoFaixa(pack, faixa);
 }
 
-function voa(ator) {
-  if ((ator.hopLift || 0) > 0.05) return true;
-  if (!ator.andando) return false;
+function velocidadePlana(ator) {
+  return Math.hypot(ator.vx || 0, ator.vy || 0);
+}
+
+function marcarPasso(ator) {
+  const sp = velocidadePlana(ator);
+  const ativo = !!ator.visual?.passo;
+  const passo = ativo ? sp > 0.22 : sp > 0.48;
+  ator.visual.passo = passo;
+  return passo;
+}
+
+function voa(ator, passo) {
+  if ((ator.hopLift || 0) > 0.12) return true;
+  if (!passo) return false;
   const tipos = ator.tipos || ator.especie?.tipos;
   if (!tipos) return false;
   for (let i = 0; i < tipos.length; i++) {
@@ -188,11 +200,11 @@ function voa(ator) {
   return false;
 }
 
-function escolherFaixa(ator, pack, agora) {
+function escolherFaixa(ator, pack, agora, passo) {
   if (ator.morto) return pack.anims?.Sleep ? "Sleep" : "Idle";
   if (agora < ator.poseAte && POSE_GOLPE.has(ator.pose)) return faixaDoGolpe(pack, ator.pose);
-  if (voa(ator) && pack.anims?.FlapAround) return "FlapAround";
-  if (ator.andando && pack.anims?.Walk) return "Walk";
+  if (voa(ator, passo) && pack.anims?.FlapAround) return "FlapAround";
+  if (passo && pack.anims?.Walk) return "Walk";
   return "Idle";
 }
 
@@ -202,7 +214,8 @@ export function tickVisual(ator, dt, agora) {
   const d = direcao8(ator.dirX, ator.dirY);
   if (d != null) v.dir = d;
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
-  let anim = escolherFaixa(ator, pack, agora);
+  const passo = marcarPasso(ator);
+  let anim = escolherFaixa(ator, pack, agora, passo);
   if (POSE_GOLPE.has(anim) && pack.anims?.[anim] && !ator.poseMedida) {
     ator.poseMedida = true;
     ator.poseAte = agora + duracaoFaixa(pack, anim);
@@ -215,16 +228,22 @@ export function tickVisual(ator, dt, agora) {
   }
   const spec = pack.anims?.[v.anim];
   if (!spec) return pack;
-  const durMs = spec.durations[v.frame] || spec.durations[0] || 80;
-  v.t += dt;
-  if (v.t >= durMs / 1000) {
-    v.t = 0;
+  const loco = v.anim === "Walk" || (v.anim === "FlapAround" && v.passo);
+  const ritmo = loco
+    ? Math.min(2.2, Math.max(0.72, velocidadePlana(ator) / POKEMON.VEL_ROAM))
+    : 1;
+  v.t += dt * ritmo;
+  for (let i = 0; i < 6; i++) {
+    const dur = (spec.durations[v.frame] || spec.durations[0] || 80) / 1000;
+    if (v.t < dur) break;
+    v.t -= dur;
     v.frame++;
     if (v.frame >= spec.frameCount) {
       v.frame = 0;
       if (POSE_GOLPE.has(anim)) {
         ator.poseAte = 0;
         ator.poseMedida = false;
+        break;
       }
     }
   }
