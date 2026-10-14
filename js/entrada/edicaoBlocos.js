@@ -45,9 +45,8 @@ function ndcDoEvento(ev, canvas) {
 function pontoNoChao(raio, z) {
   const dz = raio.dz;
   if (Math.abs(dz) < 1e-4) return { x: raio.ox + raio.dx * 12, y: raio.oy + raio.dy * 12 };
-  let t = (z - raio.oz) / dz;
-  if (!(t > 0.05)) t = 0.05;
-  if (t > 64) t = 64;
+  const t = (z - raio.oz) / dz;
+  if (!Number.isFinite(t)) return { x: raio.ox, y: raio.oy };
   return { x: raio.ox + raio.dx * t, y: raio.oy + raio.dy * t };
 }
 
