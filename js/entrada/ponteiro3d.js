@@ -1,5 +1,5 @@
 /**
- * Mouse-look 3D com pointer lock no viewport.
+ * Botões do mouse no viewport. O cursor fica livre: não trava e não gira a câmera.
  */
 
 let ligado = false;
@@ -40,20 +40,13 @@ function aoTravaMudou() {
   }
 }
 
-function aoClique() {
-  if (!ligado || !elementoAlvo) return;
-  if (document.pointerLockElement === elementoAlvo) return;
-  elementoAlvo.requestPointerLock?.();
-}
-
 /**
- * Liga mouse-look no elemento (canvas 3D / viewport).
+ * Liga o acompanhamento dos botões no elemento (canvas 3D / viewport).
  */
 export function ligarPonteiro3d(el) {
   if (!el || ligado) return;
   elementoAlvo = el;
   ligado = true;
-  el.addEventListener("click", aoClique);
   document.addEventListener("mousemove", aoMover);
   document.addEventListener("mousedown", aoBotaoBaixo);
   document.addEventListener("mouseup", aoBotaoCima);
@@ -63,9 +56,6 @@ export function ligarPonteiro3d(el) {
 export function desligarPonteiro3d() {
   if (!ligado) return;
   ligado = false;
-  if (elementoAlvo) {
-    elementoAlvo.removeEventListener("click", aoClique);
-  }
   document.removeEventListener("mousemove", aoMover);
   document.removeEventListener("mousedown", aoBotaoBaixo);
   document.removeEventListener("mouseup", aoBotaoCima);

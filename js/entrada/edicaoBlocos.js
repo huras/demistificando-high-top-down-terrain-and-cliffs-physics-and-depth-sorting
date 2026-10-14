@@ -1,15 +1,15 @@
 /**
- * Input de edição de blocos (2D mouse + 3D click com pointer lock).
+ * Input de edição de blocos e de ataque no Pokémon sob o cursor.
  */
 import { obterModo } from "../modoJogo.js";
 import { estaEmCena } from "../cena/modoCena.js";
-import { alvoBloco2d, alvoBloco3d } from "../mundo/voxel/alvoBloco.js";
+import { alvoBloco2d, alvoBloco3dCursor } from "../mundo/voxel/alvoBloco.js";
 import { ESCALA, FACE_H, TILE } from "../config.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 import { invalidarHoverBloco } from "./hoverBloco.js";
-import { ponteiroTravado, botaoDireitoSegurado } from "./ponteiro3d.js";
 import { tentarColocar, tentarQuebrar } from "../jogo/blocos.js";
 import { uiAberta } from "../jogo/estado.js";
+import { tentarAtaqueNoClique } from "../pokemon/clique.js";
 
 let canvas2d = null;
 let canvas3d = null;
@@ -31,12 +31,23 @@ function telaParaMundo2d(clientX, clientY, camera, canvas) {
   return { mx, my };
 }
 
+function ndcDoEvento(ev, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const u = (ev.clientX - rect.left) / rect.width;
+  const v = (ev.clientY - rect.top) / rect.height;
+  return { ndcX: u * 2 - 1, ndcY: -(v * 2 - 1) };
+}
+
 function aoMouseDown2d(ev) {
   if (obterModo() !== "2d") return;
   if (ev.button !== 0 && ev.button !== 2) return;
   const corpo = obterCorpo();
   const camera = obterCamera2d();
   if (!corpo || !camera || !canvas2d) return;
+  if (ev.button === 0 && tentarAtaqueNoClique(ev, camera, obterCenario3d())) {
+    ev.preventDefault();
+    return;
+  }
 
   const { mx, my } = telaParaMundo2d(ev.clientX, ev.clientY, camera, canvas2d);
   const cx = Math.floor(mx);
@@ -54,16 +65,18 @@ function aoMouseDown2d(ev) {
 
 function aoMouseDown3d(ev) {
   if (obterModo() !== "3d" || estaEmCena()) return;
-  if (!ponteiroTravado()) return;
   if (ev.button !== 0 && ev.button !== 2) return;
-  if (botaoDireitoSegurado() && ev.button === 0) return;
   const corpo = obterCorpo();
   const cen = obterCenario3d();
-  if (!corpo || !cen?.camera3d) return;
+  if (!corpo || !cen?.camera3d || !canvas3d) return;
   if (uiAberta()) return;
-  if (ev.button === 0 && cen.camera3d.modo === "mira") return;
+  if (ev.button === 0 && tentarAtaqueNoClique(ev, null, cen)) {
+    ev.preventDefault();
+    return;
+  }
 
-  const alvo = alvoBloco3d(corpo, cen.camera3d);
+  const { ndcX, ndcY } = ndcDoEvento(ev, canvas3d);
+  const alvo = alvoBloco3dCursor(cen.camera3d, ndcX, ndcY);
   if (!alvo) return;
 
   ev.preventDefault();

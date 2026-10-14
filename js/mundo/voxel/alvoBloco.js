@@ -5,7 +5,7 @@ import {
   CHUNK_Y,
 } from "../../config.js";
 import { obterBloco } from "./storeMundo.js";
-import { ehLiquido, ehSolido } from "./tiposBloco.js";
+import { raioDoPonteiro } from "../../render/3d/camera3d.js";
 
 const FACES = [
   { nx: 1, ny: 0, nz: 0 },
@@ -173,6 +173,12 @@ export function alvoBloco3d(corpo, camera3d, maxDist = ALCANCE_EDICAO) {
     fwAlt / ALTURA_BLOCO,
     maxDist,
   );
+}
+
+/** Ray do cursor (NDC −1..1). Acerta o que está desenhado sob o ponteiro. */
+export function alvoBloco3dCursor(camera3d, ndcX, ndcY, maxDist = ALCANCE_EDICAO) {
+  const raio = raioDoPonteiro(camera3d, ndcX, ndcY);
+  return raycastVoxel(raio.ox, raio.oy, raio.oz, raio.dx, raio.dy, raio.dz, maxDist);
 }
 
 /** Expõe vizinho ar na face atingida (pra highlight). */

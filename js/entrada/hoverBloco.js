@@ -4,10 +4,9 @@
 import { ESCALA, FACE_H, TILE } from "../config.js";
 import { obterModo } from "../modoJogo.js";
 import { estaEmCena } from "../cena/modoCena.js";
-import { alvoBloco2d, alvoBloco3d } from "../mundo/voxel/alvoBloco.js";
+import { alvoBloco2d, alvoBloco3dCursor } from "../mundo/voxel/alvoBloco.js";
 import { nomeBloco } from "../mundo/voxel/tiposBloco.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
-import { ponteiroTravado } from "./ponteiro3d.js";
 
 /** @type {{ x:number, y:number, z:number, id:number, nx:number, ny:number, nz:number } | null} */
 let hover = null;
@@ -53,6 +52,13 @@ function telaParaMundo2d(camera, canvas, corpo) {
   return { mx, my };
 }
 
+function ndcDoCanvas(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const u = (clientX - rect.left) / rect.width;
+  const v = (clientY - rect.top) / rect.height;
+  return { ndcX: u * 2 - 1, ndcY: -(v * 2 - 1) };
+}
+
 function aplicarHover(alvo) {
   if (!alvo) {
     if (hoverKey === "") return false;
@@ -86,7 +92,7 @@ export function atualizarHoverBloco() {
   const corpo = obterCorpo();
 
   if (modo === "3d") {
-    if (estaEmCena() || !ponteiroTravado() || !corpo) {
+    if (estaEmCena() || !ponteiroDentro || !corpo || !canvas3d) {
       aplicarHover(null);
       sujo = false;
       return hover;
@@ -97,9 +103,8 @@ export function atualizarHoverBloco() {
       sujo = false;
       return hover;
     }
-    // 3D: mira no centro — re-pick todo frame (DDA ≤128; barato vs mesh)
-    const alvo = alvoBloco3d(corpo, cen.camera3d);
-    aplicarHover(alvo);
+    const { ndcX, ndcY } = ndcDoCanvas(canvas3d);
+    aplicarHover(alvoBloco3dCursor(cen.camera3d, ndcX, ndcY));
     sujo = false;
     return hover;
   }
@@ -164,8 +169,9 @@ export function ligarHoverBloco(opts) {
   canvas2d.addEventListener("pointermove", aoMove, optsMove);
   canvas2d.addEventListener("pointerenter", aoMove, optsMove);
   canvas2d.addEventListener("pointerleave", aoLeave, optsMove);
-  // 3D usa mira central com pointer lock — move só marca sujo
-  canvas3d.addEventListener("pointermove", marcarSujo, optsMove);
+  canvas3d.addEventListener("pointermove", aoMove, optsMove);
+  canvas3d.addEventListener("pointerenter", aoMove, optsMove);
+  canvas3d.addEventListener("pointerleave", aoLeave, optsMove);
 }
 
 export function desligarHoverBloco() {
@@ -173,7 +179,9 @@ export function desligarHoverBloco() {
   canvas2d?.removeEventListener("pointermove", aoMove);
   canvas2d?.removeEventListener("pointerenter", aoMove);
   canvas2d?.removeEventListener("pointerleave", aoLeave);
-  canvas3d?.removeEventListener("pointermove", marcarSujo);
+  canvas3d?.removeEventListener("pointermove", aoMove);
+  canvas3d?.removeEventListener("pointerenter", aoMove);
+  canvas3d?.removeEventListener("pointerleave", aoLeave);
   ligado = false;
   hover = null;
   hoverKey = "";

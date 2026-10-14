@@ -114,6 +114,26 @@ export function girarYaw(camera3d, sentido, dt) {
   camera3d.yaw += sentido * CAMERA3D_ROT_VEL * dt;
 }
 
+const _ndcPerto = new THREE.Vector3();
+const _ndcLonge = new THREE.Vector3();
+
+/** Raio do cursor em coords de voxel: x/y no chão, z em blocos. */
+export function raioDoPonteiro(camera3d, ndcX, ndcY) {
+  const cam = camera3d.cam ?? camera3d;
+  _ndcPerto.set(ndcX, ndcY, 0).unproject(cam);
+  _ndcLonge.set(ndcX, ndcY, 1).unproject(cam);
+  _ndcLonge.sub(_ndcPerto);
+  const len = _ndcLonge.length() || 1;
+  return {
+    ox: _ndcPerto.x,
+    oy: _ndcPerto.z,
+    oz: _ndcPerto.y / ALTURA_BLOCO,
+    dx: _ndcLonge.x / len,
+    dy: _ndcLonge.z / len,
+    dz: _ndcLonge.y / len / ALTURA_BLOCO,
+  };
+}
+
 /**
  * Órbita: só o yaw (ao redor do personagem).
  * Mira: yaw e pitch.

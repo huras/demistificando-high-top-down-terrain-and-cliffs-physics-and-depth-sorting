@@ -210,43 +210,22 @@ function atualizarUm(ator, party, jogador, dt) {
     return;
   }
 
-  if (ator._ignoraT > 0) ator._ignoraT -= dt;
-  const selvagens = party.selvagens || [];
-  let alvo = null;
-  let melhor = POKEMON.RAIO_AGRO * POKEMON.RAIO_AGRO;
-  for (let i = 0; i < selvagens.length; i++) {
-    const s = selvagens[i];
-    if (s.morto || s.capturado) continue;
-    if (ator._ignoraT > 0 && s.id === ator._ignora) continue;
-    if (Math.abs((s.z || 0) - (ator.z || 0)) > 0.9) continue;
-    const d = dist2(ator, s);
-    if (d < melhor) {
-      melhor = d;
-      alvo = s;
-    }
-  }
-  if (alvo) {
-    ator.modo = "agro";
-    ator.alvo = alvo;
-    const d = Math.sqrt(melhor);
-    if (d > 1.15) {
-      const andou = irPara(ator, alvo.x, alvo.y, alvo.z ?? alvo.elevacao, velocidadeDe(ator, true), dt);
-      ator.presoT = andou ? 0 : ator.presoT + dt;
-      if (ator.presoT > 0.75) {
-        ator._ignora = alvo.id;
-        ator._ignoraT = 2.2;
-        ator.presoT = 0;
-        ator.modo = "roam";
-        ator.alvo = null;
-      }
-    } else {
-      ator.andando = false;
-      ator.presoT = 0;
-    }
-  } else {
+  const ordem = ator.ordemAlvo;
+  if (!ordem || ordem.morto || ordem.capturado) {
+    ator.ordemAlvo = null;
     ator.modo = "roam";
     ator.alvo = null;
+    ator.andando = false;
     ator.presoT = 0;
+    return;
+  }
+  ator.modo = "agro";
+  ator.alvo = ordem;
+  const d = Math.hypot(ator.x - ordem.x, ator.y - ordem.y);
+  if (d > 1.15) {
+    irPara(ator, ordem.x, ordem.y, ordem.z ?? ordem.elevacao, velocidadeDe(ator, true), dt);
+  } else {
+    ator.andando = false;
   }
 }
 

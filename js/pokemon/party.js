@@ -4,6 +4,7 @@ import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
+import { definirEmocao, EMOCAO } from "./emocoes.js";
 
 const party = [];
 let deployado = 0;
@@ -40,6 +41,20 @@ export function pokemonNoCampo() {
 export function pokemonDeployado() {
   const p = party[deployado];
   return p && !p.morto ? p : null;
+}
+
+/** O Pokémon em campo persegue e ataca esse selvagem. */
+export function ordenarAtaque(alvo) {
+  const mon = pokemonDeployado();
+  if (!mon || !alvo || alvo === mon || alvo.morto || alvo.capturado) return false;
+  if (alvo.faccao === "party") return false;
+  mon.ordemAlvo = alvo;
+  mon.modo = "agro";
+  mon.alvo = alvo;
+  mon.presoT = 0;
+  definirEmocao(mon, EMOCAO.RAIVA, { duracao: 1.1 });
+  definirEmocao(alvo, EMOCAO.EXCLAMACAO, { duracao: 1.1 });
+  return true;
 }
 
 export function obterBolas() {
