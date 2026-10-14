@@ -7,7 +7,7 @@ import { pedirRetrato } from "./retrato.js";
 import { atoresVisiveis, obterTreinador, pokemonLigado, relogioPokemon } from "./sistema.js";
 import { ALTURA_BLOCO } from "../config.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
-import { hotbarAtivo, uiAberta } from "../jogo/estado.js";
+import { hotbarAtivo, contar, uiAberta } from "../jogo/estado.js";
 import { TIPO_ITEM } from "../wild/catalogo.js";
 import * as THREE from "three";
 
@@ -37,7 +37,8 @@ export function projetarChao3d(cam, largura, altura) {
 function bolaNaMao() {
   if (uiAberta() || obterBola()) return false;
   const item = hotbarAtivo();
-  return item?.tipo === TIPO_ITEM.BOLA;
+  if (!item || item.tipo !== TIPO_ITEM.BOLA) return false;
+  return contar(item.tipo, item.key) > 0;
 }
 
 function corCarga(carga, alfa) {

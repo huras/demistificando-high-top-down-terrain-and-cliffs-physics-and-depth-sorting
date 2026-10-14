@@ -3,9 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extrairCatalogo } from "./js/pokemon/extrairCatalogo.mjs";
+import { garantirAtlasPmd, interpretarPedidoAtlas } from "./js/pokemon/assarAtlas.mjs";
 
 const raiz = path.dirname(fileURLToPath(import.meta.url));
 const raizRef = path.resolve(raiz, "..", "Pokemon AI");
+const cacheAtlas = path.join(raiz, ".cache", "pmd-atlas", "v9");
 const porta = 4177;
 
 const tipos = {
@@ -55,6 +57,12 @@ function caminhoSeguro(pathname) {
 
 const servidor = http.createServer((req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
+
+  if (url.pathname === "/favicon.ico") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
 
   if (req.method === "POST" && url.pathname === "/api/biomas") {
     const pedacos = [];
@@ -233,6 +241,18 @@ const servidor = http.createServer((req, res) => {
       .catch((erro) => {
         res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: false, erro: String(erro?.message || erro) }));
+      });
+    return;
+  }
+
+  const pedidoAtlas = interpretarPedidoAtlas(url.pathname);
+  if (pedidoAtlas && (req.method === "GET" || req.method === "HEAD")) {
+    garantirAtlasPmd(raizRef, cacheAtlas, pedidoAtlas.id)
+      .then((pasta) => enviarArquivo(req, res, path.join(pasta, pedidoAtlas.arquivo)))
+      .catch((erro) => {
+        console.error("atlas pmd", pedidoAtlas.id, erro?.message || erro);
+        res.writeHead(404);
+        res.end("nao encontrado");
       });
     return;
   }

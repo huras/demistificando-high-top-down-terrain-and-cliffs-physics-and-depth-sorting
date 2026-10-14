@@ -16,12 +16,14 @@ import {
 } from "./campo.js";
 import {
   abrirPainel,
+  alternarSlot,
   aoMudar,
   carregar,
   estado,
   fecharTopo,
   registrarParty,
   salvar,
+  soltarSlotVazio,
   uiAberta,
 } from "./estado.js";
 import { ligarRoda, tickRoda } from "./roda.js";
@@ -58,6 +60,7 @@ export function montarJogo(opts) {
 export function tickJogo(dt, corpo) {
   definirCorpo(corpo);
   registrarParty();
+  soltarSlotVazio();
   tickCampo(dt);
   tickBlocos(corpo, dt);
   if (!campoFocado()) {

@@ -29,6 +29,7 @@ import {
 import {
   abrirPainel,
   atribuirSlot,
+  alternarSlot,
   avisar,
   comprar,
   contar,
@@ -85,10 +86,7 @@ function noClique(ev) {
     avisar();
   } else if (act === "usar" || act === "usar-mon") usarSelecionado(tipo, key, "pokemon");
   else if (act === "usar-jogador") usarSelecionado(tipo, key, "jogador");
-  else if (act === "slot") {
-    estado.slotAtivo = i;
-    avisar();
-  } else if (act === "ciclo") cicloSlot(i);
+  else if (act === "slot") alternarSlot(i); else if (act === "ciclo") cicloSlot(i);
   else if (act === "limpar-slot") atribuirSlot(i, null, null);
   else if (act === "deploy") definirDeployado(i);
   else if (act === "depositar") toast(moverDaPartyParaCaixa(i));
@@ -121,7 +119,7 @@ function usarSelecionado(tipo, key) {
     tipo === TIPO_ITEM.BOLA;
   if (!equipa) return;
   const livre = estado.hotbar.findIndex((s) => !s);
-  const idx = livre < 0 ? estado.slotAtivo : livre;
+  const idx = livre >= 0 ? livre : estado.slotAtivo >= 0 ? estado.slotAtivo : 0;
   atribuirSlot(idx, tipo, key);
   estado.slotAtivo = idx;
   estado.itemGet = `Equipou ${nomeDe(tipo, key)}.`;

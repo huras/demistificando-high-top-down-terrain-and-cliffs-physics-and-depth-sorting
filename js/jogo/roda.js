@@ -3,7 +3,7 @@
 import { teclaAgora, teclaBaixa } from "../entrada/teclado.js";
 import { BOLAS, BERRIES, BLOCOS, FERRAMENTAS, REMEDIOS, TIPO_ITEM, slotDaTecla } from "../wild/catalogo.js";
 import { htmlIcone } from "./icones.js";
-import { atribuirSlot, contar, estado, nomeDe } from "./estado.js";
+import { atribuirSlot, alternarSlot, contar, estado, nomeDe } from "./estado.js";
 import { pintar } from "./ui.js";
 
 const SEGURAR_MS = 160;
@@ -25,6 +25,7 @@ let cat = 0;
 let mira = 0;
 let ponteiro = null;
 let acumScroll = 0;
+let slotAlvo = 0;
 
 function campoFocado() {
   const tag = document.activeElement?.tagName;
@@ -139,7 +140,7 @@ function catInicial(slot) {
 function abrir(slot) {
   aberta = true;
   estado.roda = true;
-  estado.slotAtivo = slot;
+  slotAlvo = slot;
   acumScroll = 0;
   cat = catInicial(slot);
   const atual = estado.hotbar[slot];
@@ -154,13 +155,16 @@ function abrir(slot) {
 function fechar(equipar) {
   const lista = itensDaCat();
   const item = equipar ? lista[mira] : null;
-  const slot = estado.slotAtivo;
+  const slot = slotAlvo;
   aberta = false;
   estado.roda = false;
   acumScroll = 0;
   raiz.classList.remove("is-in");
   raiz.hidden = true;
-  if (item) atribuirSlot(slot, item.tipo, item.key);
+  if (item) {
+    atribuirSlot(slot, item.tipo, item.key);
+    estado.slotAtivo = contar(item.tipo, item.key) > 0 ? slot : -1;
+  }
   pintar();
 }
 
@@ -215,18 +219,14 @@ export function tickRoda() {
   if (baixa && !tecla) {
     tecla = baixa;
     desde = performance.now();
-    estado.slotAtivo = slotDaTecla(baixa);
-    pintar();
+    slotAlvo = slotDaTecla(baixa);
   } else if (!baixa && tecla) {
-    const slot = slotDaTecla(tecla);
+    const slot = slotAlvo;
     tecla = "";
     if (aberta) fechar(true);
-    else {
-      estado.slotAtivo = slot;
-      pintar();
-    }
+    else alternarSlot(slot);
   } else if (baixa && !aberta && performance.now() - desde >= SEGURAR_MS) {
-    abrir(slotDaTecla(baixa));
+    abrir(slotAlvo);
   }
 }
 

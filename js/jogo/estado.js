@@ -59,7 +59,7 @@ function questsIniciais() {
 export const estado = {
   dinheiro: 3000,
   hotbar: new Array(SLOTS_HOTBAR).fill(null),
-  slotAtivo: 0,
+  slotAtivo: -1,
   caixas: caixasVazias(),
   caixaAtiva: 0,
   plots: [],
@@ -358,7 +358,30 @@ export function plotEm(x, y) {
 }
 
 export function hotbarAtivo() {
-  return estado.hotbar[estado.slotAtivo] || null;
+  const item = estado.hotbar[estado.slotAtivo];
+  return item || null;
+}
+
+/** Toque no número ou no slot: liga se estava desligado, desliga se já era esse. */
+export function alternarSlot(indice) {
+  if (indice < 0 || indice >= estado.hotbar.length) return;
+  const antes = estado.slotAtivo;
+  const item = estado.hotbar[indice];
+  const tem = !!(item && contar(item.tipo, item.key) > 0);
+  if (!tem) {
+    if (estado.slotAtivo === indice) estado.slotAtivo = -1;
+  } else if (estado.slotAtivo === indice) estado.slotAtivo = -1;
+  else estado.slotAtivo = indice;
+  if (estado.slotAtivo !== antes) avisar();
+}
+
+/** Item zerado não fica armado. */
+export function soltarSlotVazio() {
+  const item = hotbarAtivo();
+  if (item && contar(item.tipo, item.key) > 0) return;
+  if (estado.slotAtivo < 0) return;
+  estado.slotAtivo = -1;
+  avisar();
 }
 
 export function atribuirSlot(indice, tipo, key) {
