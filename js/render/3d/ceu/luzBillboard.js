@@ -84,6 +84,11 @@ export function aplicarCorSprite(material, corBase, sombraNuvem, luzExtra) {
 
 /** O cartão inteiro usa o depth do pivô, puxado pra câmera o bastante pra vencer o piso. */
 const FOLGA_PIVO = 1.5;
+/**
+ * Empate no mesmo pé: o personagem ganha por um fio.
+ * Folga grande deslocava o corte pro meio do cartão, longe do pixel da base.
+ */
+const FOLGA_ATOR = 0.08;
 
 const VERT_PIVO = `
 varying float vProfundidadePivo;
@@ -116,6 +121,46 @@ function achatarProfundidade(shader) {
       "#include <dithering_fragment>",
       "#include <dithering_fragment>\ngl_FragDepth = vProfundidadePivo;",
     );
+}
+
+/** Sprite do personagem: o pivô é a origem, igual ao pé do cartão. */
+export function aplicarProfundidadeSprite(material) {
+  if (!material || material.userData?.profundidadeSprite) return material;
+  if (!material.userData) material.userData = {};
+  material.userData.profundidadeSprite = true;
+
+  const anterior = material.onBeforeCompile;
+  const chaveAnterior = material.customProgramCacheKey;
+  const folga = (FOLGA_PIVO + FOLGA_ATOR).toFixed(2);
+  material.onBeforeCompile = (shader, renderer) => {
+    if (anterior) anterior.call(material, shader, renderer);
+    if (shader.vertexShader.includes("vProfundidadePivo")) return;
+    const ancora = "vec4 mvPosition = modelViewMatrix[ 3 ];";
+    if (!shader.vertexShader.includes(ancora)) return;
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>\n${VERT_PIVO}`)
+      .replace(
+        ancora,
+        `${ancora}
+{
+  vec4 pivoVista = mvPosition;
+  pivoVista.z += ${folga};
+  vec4 pivoClip = projectionMatrix * pivoVista;
+  vProfundidadePivo = pivoClip.z / pivoClip.w * 0.5 + 0.5;
+}`,
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\n${VERT_PIVO}`)
+      .replace(
+        "#include <fog_fragment>",
+        "#include <fog_fragment>\ngl_FragDepth = vProfundidadePivo;",
+      );
+  };
+  material.customProgramCacheKey = function chavePivoSprite() {
+    const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
+    return `${base}|pivo-sprite|${folga}`;
+  };
+  return material;
 }
 
 /** Troca a normal de iluminação e achata o depth no pivô. A sombra fica no cartão real. */

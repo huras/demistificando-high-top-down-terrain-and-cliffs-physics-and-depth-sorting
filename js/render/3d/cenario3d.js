@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
 import { ALTURA_BLOCO, ASA_DELTA_DESCIDA, BILLBOARD_INCLINACAO, CAMERA3D_DIST_MAX, CHUNK_XZ, RAIO_STREAM } from "../../config.js";
+import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
+import { medidasSala } from "../../mundo/cidade/sala3d.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { criarTerrenoSuave, obterRaioSuave } from "./terrenoSuave.js";
 import {
@@ -24,7 +26,8 @@ import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
-import { comecarQuadroLuzes, criarPoolLuzes, resolverLuzes } from "./luzes/pool.js";
+import { atualizarLuzBillboard } from "./ceu/luzBillboard.js";
+import { comecarQuadroLuzes, criarCartaoLuz, criarPoolLuzes, resolverLuzes } from "./luzes/pool.js";
 import { comecarMapaChao, resolverMapaChao } from "./luzes/mapaChao.js";
 import { estaEmCena } from "../../cena/modoCena.js";
 import {
@@ -64,6 +67,63 @@ function aplicarNevoa(raio) {
     cam.updateProjectionMatrix();
   }
   sincronizarFarCena(farCam);
+}
+
+function criarLuzSala(cena) {
+  const m = medidasSala();
+  const x = (m.chaoX0 + m.chaoX1) * 0.5;
+  const z = (m.chaoY0 + m.chaoY1) * 0.5;
+  const y = ALTURA_PRACA * ALTURA_BLOCO + m.alturaParede * ALTURA_BLOCO * 0.82;
+  const luz = new THREE.PointLight(0xffcc88, 0, 24, 2);
+  luz.name = "luz-sala";
+  luz.position.set(x, y, z);
+  luz.castShadow = false;
+  cena.add(luz);
+
+  const bulbo = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 12, 8),
+    new THREE.MeshBasicMaterial({ color: 0xfff6df, toneMapped: false }),
+  );
+  bulbo.name = "lampada-sala";
+  bulbo.position.copy(luz.position);
+  bulbo.visible = false;
+  cena.add(bulbo);
+
+  const brilho = criarCartaoLuz("#ffd7a1", 1.6);
+  brilho.position.copy(luz.position);
+  brilho.visible = false;
+  cena.add(brilho);
+  return { luz, bulbo, brilho, x, y, z };
+}
+
+/** A sala não segue o sol: lâmpada no teto e um miolo quente. */
+function ligarLuzSala(dentro) {
+  const lamp = estado.luzSala;
+  if (!lamp) return;
+  lamp.luz.intensity = dentro ? 95 : 0;
+  lamp.bulbo.visible = dentro;
+  lamp.brilho.visible = dentro;
+  lamp.brilho.material.opacity = dentro ? 0.9 : 0;
+  if (!dentro) return;
+
+  const { sol, hemi, ambient, fill, rim } = estado;
+  sol.color.set(0xffe6c0);
+  sol.intensity = 0.42;
+  sol.castShadow = false;
+  sol.position.set(lamp.x, lamp.y + 8, lamp.z);
+  sol.target.position.set(lamp.x, ALTURA_PRACA * ALTURA_BLOCO, lamp.z);
+
+  hemi.color.set(0xffe8cc);
+  hemi.groundColor.set(0xd9c2a4);
+  hemi.intensity = 0.5;
+
+  ambient.color.set(0xf3ddc4);
+  ambient.intensity = 0.4;
+
+  fill.intensity = 0.06;
+  rim.intensity = 0;
+  estado.renderer.toneMappingExposure = 1.02;
+  atualizarLuzBillboard({ sol, ambient, hemi, fill, rim });
 }
 
 /** Dentro da sala 3D o mapa some: sobra a sala e o preto. */
@@ -215,6 +275,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.add(hoverTile.mesh);
 
   const ceu = criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim });
+  const luzSala = criarLuzSala(scene);
   verCamadaAuxiliar(sol.shadow.camera);
 
   const rig = criarRigCamera3d();
@@ -229,7 +290,11 @@ export function iniciarCenario3d(canvas, atlas = null) {
     scene,
     camera3d,
     sol,
+    hemi,
+    ambient,
+    fill,
     rim,
+    luzSala,
     terreno,
     terrenoSuave,
     edificios,
@@ -471,6 +536,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     nevoa: estado.nevoaBase,
     raioBlocos: obterRaioStream() * CHUNK_XZ,
   });
+  ligarLuzSala(!!estadoJogo.interior?.sala3d);
 
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
   estado.edificios?.atualizar?.(corpo.x, corpo.y, yaw, inclinacao);

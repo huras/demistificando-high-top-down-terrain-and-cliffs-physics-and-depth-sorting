@@ -98,9 +98,10 @@ export function criarVegetacaoDistante() {
       ),
       { clareia: true },
     );
+    const pivo = pivoDaImagem(img);
     const geo = new THREE.PlaneGeometry(1, 1);
-    geo.translate(0, 0.5, 0);
-    const pivotY = pivoDaImagem(img).y;
+    geo.translate(0.5 - pivo.x, pivo.y - 0.5, 0);
+    const pivotY = pivo.y;
     const mesh = new THREE.InstancedMesh(geo, material, IMPOSTOR_CAP);
     mesh.name = `impostor-${sprite}`;
     mesh.castShadow = false;
@@ -146,8 +147,7 @@ export function criarVegetacaoDistante() {
       algum = true;
       for (let i = 0; i < itens.length; i++) {
         const p = itens[i];
-        const afunda = (1 - (lote.pivotY ?? 1)) * altura;
-        dummy.position.set(p.x, p.h * ALTURA_BLOCO - afunda, p.y);
+        dummy.position.set(p.x, p.h * ALTURA_BLOCO, p.y);
         dummy.rotation.set(inclinacao, yaw, 0);
         dummy.scale.set(largura, altura, 1);
         dummy.updateMatrix();

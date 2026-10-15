@@ -3,9 +3,12 @@ import { cobrirPernasAgua } from "./agua2d.js";
 import { desenharAsaDelta } from "./asaDeltaVisual.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import { pivoDoFrame } from "./pivoPe.js";
+import { carregarPivoJogador, pivoDoJogador } from "./pivoJogador.js";
 import { chaveEntidade, chaveTopo, empilhar } from "./ordenacaoProfundidade.js";
 import { CORES } from "./paleta.js";
 import { empilharSombras } from "./sombra.js";
+
+carregarPivoJogador();
 
 /**
  * Sheet gold 4×4, frame 64px, displayScale 0.5.
@@ -80,8 +83,10 @@ export function retanguloDoPersonagem(atlas, corpo) {
   const dw = frame * JOGADOR_ESCALA * ESCALA;
   const dh = dw;
   const pivo = sheet ? pivoDoFrame(sheet, col, linha, frame) : { x: 0.5, y: 1 };
+  const aj = pivoDoJogador();
+  const pxSprite = dw / frame;
   const footX = mundoParaTelaX(corpo.x);
-  const footY = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift);
+  const footY = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift) + aj.offsetY * TILE * ESCALA;
   return {
     sheet,
     frame,
@@ -89,8 +94,8 @@ export function retanguloDoPersonagem(atlas, corpo) {
     col,
     dw,
     dh,
-    px: footX - pivo.x * dw,
-    py: footY - pivo.y * dh,
+    px: footX - pivo.x * dw + aj.dx * pxSprite,
+    py: footY - pivo.y * dh + aj.dy * pxSprite,
     peY: footY,
   };
 }

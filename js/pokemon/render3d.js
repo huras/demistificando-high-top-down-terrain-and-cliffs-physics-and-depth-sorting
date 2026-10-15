@@ -9,7 +9,7 @@ import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
 import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
 import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
-import { aplicarCorSprite } from "../render/3d/ceu/luzBillboard.js";
+import { aplicarCorSprite, aplicarProfundidadeSprite } from "../render/3d/ceu/luzBillboard.js";
 import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
 import { dropsBloco } from "../jogo/blocos.js";
 
@@ -72,6 +72,7 @@ function criarAtorSlot() {
     depthTest: true,
     alphaTest: 0.12,
   });
+  aplicarProfundidadeSprite(mat);
   const sprite = new THREE.Sprite(mat);
   sprite.center.set(PE_X / LADO, (LADO - PE_Y) / LADO);
   sprite.scale.set(LADO * PX_MUNDO, LADO * PX_MUNDO, 1);

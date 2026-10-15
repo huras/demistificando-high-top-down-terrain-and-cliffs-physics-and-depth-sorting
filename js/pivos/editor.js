@@ -1,5 +1,16 @@
-import { TILE } from "../config.js";
+import { CAMINHOS, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
 import { blitQuadro, garantirAtlas } from "../pokemon/sprites.js";
+import { pivoDoFrame } from "../render/pivoPe.js";
+
+const CHAVE_JOGADOR = "jogador";
+const JOGADOR = Object.freeze({
+  key: CHAVE_JOGADOR,
+  nome: "Jogador",
+  dex: 0,
+  escala: JOGADOR_ESCALA,
+});
+const LINHA_JOGADOR = Object.freeze({ 0: 0, 2: 1, 6: 2, 4: 3 });
+const CICLO_ANDAR = [0, 1, 0, 3];
 
 const ZOOM = 6;
 
@@ -14,6 +25,7 @@ const ctx = canvas.getContext("2d");
 
 let arquivo = {};
 let especies = [];
+let imgJogador = null;
 let escolhida = null;
 let faixa = "Idle";
 let dir = 0;
@@ -73,12 +85,16 @@ function mostrarControles(esp) {
   coordsEl.textContent = `dx ${aj.dx}    dy ${aj.dy}`;
 }
 
+function ehJogador(esp) {
+  return esp?.key === CHAVE_JOGADOR;
+}
+
 function botaoLista(esp) {
   const li = document.createElement("li");
   const btn = document.createElement("button");
   btn.type = "button";
   btn.dataset.key = esp.key;
-  btn.textContent = `#${esp.dex} ${esp.nome || esp.key}`;
+  btn.textContent = ehJogador(esp) ? "Jogador" : `#${esp.dex} ${esp.nome || esp.key}`;
   if (esp.key === escolhida?.key) btn.classList.add("ativo");
   if (arquivo[esp.key]) btn.classList.add("tem-ajuste");
   li.appendChild(btn);
@@ -88,6 +104,8 @@ function botaoLista(esp) {
 function pintarListas() {
   const q = buscaEl.value.trim().toLowerCase();
   const frag = document.createDocumentFragment();
+  const nomeJogador = "jogador";
+  if (!q || nomeJogador.includes(q)) frag.appendChild(botaoLista(JOGADOR));
   let mostrados = 0;
   for (let i = 0; i < especies.length && mostrados < 80; i++) {
     const esp = especies[i];
@@ -101,14 +119,26 @@ function pintarListas() {
   listaEl.replaceChildren(frag);
 }
 
+function ajustarDirs() {
+  document.getElementById("dirs").classList.toggle("dirs--jogador", ehJogador(escolhida));
+  if (!ehJogador(escolhida)) return;
+  if (LINHA_JOGADOR[dir] == null) {
+    dir = 0;
+    for (const item of document.querySelectorAll("#dirs button")) {
+      item.classList.toggle("ativo", item.dataset.dir === "0");
+    }
+  }
+}
+
 function escolher(key) {
-  const esp = especies.find((item) => item.key === key);
+  const esp = key === CHAVE_JOGADOR ? JOGADOR : especies.find((item) => item.key === key);
   if (!esp) return;
   escolhida = esp;
   avisoSprite = "";
   frame = 0;
   frameT = 0;
-  garantirAtlas(esp.dex, false);
+  if (!ehJogador(esp)) garantirAtlas(esp.dex, false);
+  ajustarDirs();
   mostrarControles(esp);
   pintarListas();
   dizer(`${esp.nome || esp.key} · escala ${escalaDa(esp).toFixed(2)}`);
@@ -172,11 +202,14 @@ function desenhar() {
   ctx.fill();
   ctx.restore();
 
-  const pack = esp ? garantirAtlas(esp.dex, false) : null;
-  const fr = quadroAtual(pack);
-  if (fr && pack?.img && pack.estado === "pronto") {
-    ctx.imageSmoothingEnabled = false;
-    blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, peX, peY, ZOOM * escalaDa(esp), aj);
+  if (ehJogador(esp)) desenharJogador(peX, peY, aj);
+  else {
+    const pack = esp ? garantirAtlas(esp.dex, false) : null;
+    const fr = quadroAtual(pack);
+    if (fr && pack?.img && pack.estado === "pronto") {
+      ctx.imageSmoothingEnabled = false;
+      blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, peX, peY, ZOOM * escalaDa(esp), aj);
+    }
   }
 
   ctx.save();
@@ -201,6 +234,42 @@ function desenhar() {
   desenharCruz(peX, peY);
 }
 
+function desenharJogador(peX, peY, aj) {
+  if (!imgJogador) return;
+  const linha = LINHA_JOGADOR[dir] ?? 0;
+  const col = faixa === "Walk" ? frame : 0;
+  const pivo = pivoDoFrame(imgJogador, col, linha, JOGADOR_FRAME);
+  const esc = ZOOM * JOGADOR_ESCALA;
+  const lado = JOGADOR_FRAME * esc;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(
+    imgJogador,
+    col * JOGADOR_FRAME,
+    linha * JOGADOR_FRAME,
+    JOGADOR_FRAME,
+    JOGADOR_FRAME,
+    peX + aj.dx * esc - pivo.x * lado,
+    peY + aj.dy * esc - pivo.y * lado,
+    lado,
+    lado,
+  );
+}
+
+let passoAndar = 0;
+
+function avancarJogador(dt) {
+  if (faixa !== "Walk") {
+    frame = 0;
+    passoAndar = 0;
+    return;
+  }
+  frameT += dt;
+  if (frameT < 0.12) return;
+  frameT = 0;
+  passoAndar = (passoAndar + 1) % CICLO_ANDAR.length;
+  frame = CICLO_ANDAR[passoAndar];
+}
+
 function redimensionar() {
   const r = canvas.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -219,6 +288,12 @@ function quadro(agora) {
   const dt = Math.min(0.05, (agora - ultimo) / 1000);
   ultimo = agora;
   redimensionar();
+  if (ehJogador(escolhida)) {
+    avancarJogador(dt);
+    desenhar();
+    requestAnimationFrame(quadro);
+    return;
+  }
   const pack = escolhida ? garantirAtlas(escolhida.dex, false) : null;
   if (pack?.estado === "pronto") avancarPose(pack, dt);
   else if (pack?.estado === "falhou" && escolhida && avisoSprite !== escolhida.key) {
@@ -251,6 +326,7 @@ document.getElementById("faixas").addEventListener("click", (ev) => {
   faixa = btn.dataset.faixa;
   frame = 0;
   frameT = 0;
+  passoAndar = 0;
   for (const item of document.querySelectorAll("#faixas button")) {
     item.classList.toggle("ativo", item === btn);
   }
@@ -262,6 +338,7 @@ document.getElementById("dirs").addEventListener("click", (ev) => {
   dir = Number(btn.dataset.dir) || 0;
   frame = 0;
   frameT = 0;
+  passoAndar = 0;
   for (const item of document.querySelectorAll("#dirs button")) {
     item.classList.toggle("ativo", item === btn);
   }
@@ -333,8 +410,12 @@ async function iniciar() {
     .filter((esp) => esp && esp.key)
     .sort((a, b) => (a.dex | 0) - (b.dex | 0));
   pintarListas();
-  if (especies.length) escolher(especies[0].key);
-  else dizer("Catálogo vazio.");
+  escolher(CHAVE_JOGADOR);
+  const img = new Image();
+  img.onload = () => {
+    imgJogador = img;
+  };
+  img.src = CAMINHOS.jogador;
   window.addEventListener("resize", redimensionar);
   requestAnimationFrame(quadro);
 }

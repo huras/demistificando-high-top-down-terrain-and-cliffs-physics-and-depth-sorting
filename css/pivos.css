@@ -186,6 +186,14 @@ button, input {
   min-height: 1px;
 }
 
+.dirs--jogador button[data-dir="1"],
+.dirs--jogador button[data-dir="3"],
+.dirs--jogador button[data-dir="5"],
+.dirs--jogador button[data-dir="7"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .faixas button.ativo,
 .dirs button.ativo {
   border-color: var(--destaque);

@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, ALTURA_SPRITE_JOGADOR, JOGADOR_FRAME } from "../../config.js";
 import { pivoDoFrame } from "../pivoPe.js";
+import { carregarPivoJogador, pivoDoJogador } from "../pivoJogador.js";
 import { colunaAgua } from "../../mundo/agua/fluxo.js";
 import { criarAsaDelta3d } from "./asaDelta3d.js";
 import { linhaFacingDoCorpo } from "./facingCamera3d.js";
 import { criarSombraContato3d } from "./sombraContato3d.js";
-import { aplicarCorSprite } from "./ceu/luzBillboard.js";
+import { aplicarCorSprite, aplicarProfundidadeSprite } from "./ceu/luzBillboard.js";
 import { fatorSombraMundo } from "./ceu/mapaNuvem.js";
 import { amostrarLuzCidade } from "./luzes/mapaChao.js";
 
@@ -39,6 +40,7 @@ export function criarPersonagem3d(opts = {}) {
     alphaTest: 0.12,
     sizeAttenuation: true,
   });
+  aplicarProfundidadeSprite(spriteMat);
   if (opts.tint != null) spriteMat.color.setHex(opts.tint);
   const corBase = spriteMat.color.clone();
 
@@ -63,6 +65,7 @@ export function criarPersonagem3d(opts = {}) {
     sizeAttenuation: true,
     clippingPlanes: [planoVeu],
   });
+  aplicarProfundidadeSprite(veuMat);
   const veu = new THREE.Sprite(veuMat);
   veu.center.set(0.5, 0);
   veu.scale.set(ALTURA_SPRITE_JOGADOR, ALTURA_SPRITE_JOGADOR, 1);
@@ -80,6 +83,7 @@ export function criarPersonagem3d(opts = {}) {
 
   let sheet = opts.sprite || null;
   let ultimoFrameKey = "";
+  carregarPivoJogador();
 
   function pintarFrame(corpoEstado, yawCam) {
     if (!sheet || !frameCtx) return;
@@ -89,25 +93,28 @@ export function criarPersonagem3d(opts = {}) {
       ? ciclo[Math.floor(corpoEstado.animT * 8) % 4]
       : 0;
     const key = `${linha}:${col}`;
-    if (key === ultimoFrameKey) return;
-    ultimoFrameKey = key;
-    frameCtx.clearRect(0, 0, JOGADOR_FRAME, JOGADOR_FRAME);
-    frameCtx.drawImage(
-      sheet,
-      col * JOGADOR_FRAME,
-      linha * JOGADOR_FRAME,
-      JOGADOR_FRAME,
-      JOGADOR_FRAME,
-      0,
-      0,
-      JOGADOR_FRAME,
-      JOGADOR_FRAME,
-    );
-    tex.needsUpdate = true;
+    if (key !== ultimoFrameKey) {
+      ultimoFrameKey = key;
+      frameCtx.clearRect(0, 0, JOGADOR_FRAME, JOGADOR_FRAME);
+      frameCtx.drawImage(
+        sheet,
+        col * JOGADOR_FRAME,
+        linha * JOGADOR_FRAME,
+        JOGADOR_FRAME,
+        JOGADOR_FRAME,
+        0,
+        0,
+        JOGADOR_FRAME,
+        JOGADOR_FRAME,
+      );
+      tex.needsUpdate = true;
+    }
     const pivo = pivoDoFrame(sheet, col, linha, JOGADOR_FRAME);
-    const centroY = 1 - pivo.y;
-    sprite.center.set(pivo.x, centroY);
-    veu.center.set(pivo.x, centroY);
+    const aj = pivoDoJogador();
+    const centroX = pivo.x - aj.dx / JOGADOR_FRAME;
+    const centroY = 1 - pivo.y + aj.dy / JOGADOR_FRAME;
+    sprite.center.set(centroX, centroY);
+    veu.center.set(centroX, centroY);
   }
 
   function definirSprite(img) {
@@ -131,6 +138,9 @@ export function criarPersonagem3d(opts = {}) {
       const elev =
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
       grupo.position.set(corpoEstado.x, elev * ALTURA_BLOCO, corpoEstado.y);
+      const folgaPe = -pivoDoJogador().offsetY;
+      sprite.position.y = folgaPe;
+      veu.position.y = folgaPe;
       const sombraNuvem = fatorSombraMundo(corpoEstado.x, grupo.position.y, corpoEstado.y);
       amostrarLuzCidade(grupo.position.x, grupo.position.y + ALTURA_SPRITE_JOGADOR * 0.56, grupo.position.z, _luzCidade);
       aplicarCorSprite(spriteMat, corBase, sombraNuvem, _luzCidade);

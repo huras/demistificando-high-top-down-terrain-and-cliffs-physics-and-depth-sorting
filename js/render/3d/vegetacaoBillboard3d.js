@@ -19,7 +19,7 @@ import { onDirty } from "../../mundo/voxel/storeMundo.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
- * Quad com a base da imagem em y local 0. O pé opaco encosta no chão.
+ * Quad com o primeiro pixel opaco da base na origem. O pé encosta no chão.
  * Yaw segue a câmera. Na terceira pessoa o cartão deita no X; na mira fica em pé.
  */
 
@@ -114,9 +114,10 @@ export function criarVegetacaoBillboard3d() {
     lote.geo?.dispose();
   }
 
-  function geometriaNaBase() {
+/** Quad unitário com o pé opaco na origem. A escala não tira o pé do chão. */
+  function geometriaNoPe(pivotX, pivotY) {
     const geo = new THREE.PlaneGeometry(1, 1);
-    geo.translate(0, 0.5, 0);
+    geo.translate(0.5 - pivotX, pivotY - 0.5, 0);
     return geo;
   }
 
@@ -155,8 +156,9 @@ export function criarVegetacaoBillboard3d() {
       side: THREE.DoubleSide,
     });
 
-    const geo = geometriaNaBase();
-    const pivotY = pivoDaImagem(img).y;
+    const pivo = pivoDaImagem(img);
+    const geo = geometriaNoPe(pivo.x, pivo.y);
+    const pivotY = pivo.y;
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
     mesh.name = `veg-${def.chave}`;
     mesh.castShadow = false;
@@ -247,13 +249,12 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function escreverMesh(mesh, itens, largura, altura, pivotY, yaw, inclinacao, limites) {
+  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites) {
     if (!mesh) return;
-    const afunda = (1 - (pivotY ?? 1)) * altura;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
       const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
-      dummy.position.set(p.x, base * ALTURA_BLOCO - afunda, p.y);
+      dummy.position.set(p.x, base * ALTURA_BLOCO, p.y);
       dummy.rotation.set(inclinacao, yaw, 0);
       dummy.scale.set(largura, altura, 1);
       dummy.updateMatrix();
@@ -269,9 +270,9 @@ export function criarVegetacaoBillboard3d() {
   function escrever(yaw, yawSol, inclinacao, recalcularLimites) {
     if (recalcularLimites) sincronizarLotes(recolherGrupos());
     for (const lote of lotes.values()) {
-      const { mesh, sombra, itens, largura, altura, pivotY } = lote;
-      escreverMesh(mesh, itens, largura, altura, pivotY ?? 1, yaw, inclinacao, recalcularLimites);
-      escreverMesh(sombra, itens, largura, altura, pivotY ?? 1, yawSol, 0, recalcularLimites);
+      const { mesh, sombra, itens, largura, altura } = lote;
+      escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites);
+      escreverMesh(sombra, itens, largura, altura, yawSol, 0, recalcularLimites);
     }
   }
 
