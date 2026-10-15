@@ -39,9 +39,11 @@ import {
 import { registrarObjetoCena, verCamadaAuxiliar } from "../../cena/registroCena.js";
 import { atualizarRealceCena, ligarSelecaoCena } from "../../cena/selecaoCena.js";
 import { atualizarPokemon3d, ligarPokemon3d } from "../../pokemon/render3d.js";
+import { estado as estadoJogo } from "../../jogo/estado.js";
 
 let estado = null;
 const puxada = { segurando: false, soltou: false };
+let domoNoVazio = false;
 
 /** Nevoeiro calibrado no raio 5 (disco de ~80 blocos). */
 const NEVOA_NEAR = 36;
@@ -62,6 +64,41 @@ function aplicarNevoa(raio) {
     cam.updateProjectionMatrix();
   }
   sincronizarFarCena(farCam);
+}
+
+/** Dentro da sala 3D o mapa some: sobra a sala e o preto. */
+function aplicarVazioSala(dentro) {
+  const cena = estado.scene;
+  const domo = cena.getObjectByName("ceu-domo");
+  if (!dentro) {
+    if (domoNoVazio && domo) domo.visible = true;
+    domoNoVazio = false;
+    return;
+  }
+  const terreno = estado.terreno.grupo;
+  const cubos = terreno.getObjectByName("terreno-cubos");
+  const real = terreno.getObjectByName("terreno-real");
+  const agua = terreno.getObjectByName("terreno-agua");
+  if (cubos) cubos.visible = false;
+  if (real) real.visible = false;
+  if (agua) agua.visible = false;
+  if (estado.terrenoSuave?.mesh) estado.terrenoSuave.mesh.visible = false;
+  if (estado.vegetacao?.grupo) estado.vegetacao.grupo.visible = false;
+  if (estado.vegetacaoDistante?.grupo) estado.vegetacaoDistante.grupo.visible = false;
+  if (domo) {
+    domo.visible = false;
+    domoNoVazio = true;
+  }
+  const chuva = cena.getObjectByName("ceu-precipitacao");
+  const raio = cena.getObjectByName("ceu-relampago");
+  if (chuva) chuva.visible = false;
+  if (raio) raio.visible = false;
+  cena.background.set(0x000000);
+  if (cena.fog) {
+    cena.fog.color.set(0x000000);
+    cena.fog.near = 500;
+    cena.fog.far = 900;
+  }
 }
 
 /**
@@ -468,6 +505,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   resolverLuzes(camPos.x, camPos.y, camPos.z, estado.scene.fog?.far ?? 90);
   resolverMapaChao(camPos.x, camPos.z);
   atualizarRealceCena();
+  aplicarVazioSala(!!estadoJogo.interior?.sala3d);
   estado.renderer.render(estado.scene, camRender);
   return estado;
 }

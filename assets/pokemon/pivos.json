@@ -5,7 +5,7 @@
     "dy": 5
   },
   "ivysaur": {
-    "offsetY": -0.4,
+    "offsetY": -0.67,
     "dx": 1,
     "dy": 6
   },
@@ -13,5 +13,70 @@
     "offsetY": -0.26,
     "dx": 0,
     "dy": 2
+  },
+  "alakazam": {
+    "offsetY": 0.01,
+    "dx": 0,
+    "dy": 0
+  },
+  "persian": {
+    "offsetY": -0.01,
+    "dx": 0,
+    "dy": 0
+  },
+  "butterfree": {
+    "offsetY": -0.08,
+    "dx": 0,
+    "dy": 0
+  },
+  "charmander": {
+    "offsetY": -0.04,
+    "dx": 0,
+    "dy": 0
+  },
+  "charmeleon": {
+    "offsetY": -0.04,
+    "dx": 0,
+    "dy": 0
+  },
+  "wartortle": {
+    "offsetY": -0.04,
+    "dx": 0,
+    "dy": 0
+  },
+  "blastoise": {
+    "offsetY": -0.04,
+    "dx": 0,
+    "dy": 0
+  },
+  "kakuna": {
+    "offsetY": -0.11,
+    "dx": 0,
+    "dy": 0
+  },
+  "beedrill": {
+    "offsetY": -0.08,
+    "dx": 0,
+    "dy": 0
+  },
+  "spearow": {
+    "offsetY": -0.04,
+    "dx": 0,
+    "dy": 0
+  },
+  "nidorina": {
+    "offsetY": -0.06,
+    "dx": 0,
+    "dy": 0
+  },
+  "rayquaza": {
+    "offsetY": -0.06,
+    "dx": 0,
+    "dy": 0
+  },
+  "golbat": {
+    "offsetY": -0.01,
+    "dx": 0,
+    "dy": 0
   }
 }

@@ -227,7 +227,13 @@ export function criarVegetacaoDistante() {
     for (let i = 0; i < banda.lista.length; i++) {
       const ch = banda.lista[i];
       if (cache.has(ch.k)) continue;
-      cache.set(ch.k, { arvores: arvoresDoChunk(ch.cx, ch.cy) });
+      const gen = arvoresDoChunk(ch.cx, ch.cy);
+      let passo = gen.next();
+      while (!passo.done) {
+        yield;
+        passo = gen.next();
+      }
+      cache.set(ch.k, { arvores: passo.value });
       geracao += 1;
       yield;
     }
@@ -246,7 +252,7 @@ export function criarVegetacaoDistante() {
     if (trabalho) {
       const t0 = performance.now();
       let passo;
-      while (performance.now() - t0 < 3) {
+      while (performance.now() - t0 < 0.6) {
         passo = trabalho.next();
         if (passo.done) break;
       }
@@ -254,7 +260,7 @@ export function criarVegetacaoDistante() {
     }
 
     const propsSig = assinaturaProps();
-    if (geracao !== geracaoPublicada || propsSig !== sigProps) {
+    if (!trabalho && (geracao !== geracaoPublicada || propsSig !== sigProps)) {
       sigProps = propsSig;
       publicar(banda);
     }
@@ -363,7 +369,7 @@ function espalhar(todos) {
   return saida;
 }
 
-function arvoresDoChunk(cx, cy) {
+function* arvoresDoChunk(cx, cy) {
   const baseX = cx * CHUNK_XZ;
   const baseY = cy * CHUNK_XZ;
   const arvores = [];
@@ -376,21 +382,24 @@ function arvoresDoChunk(cx, cy) {
     alturas[i] = alturaDoRelevo(baseX + lx, baseY + ly);
     return alturas[i];
   };
+  let n = 0;
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
       const wy = baseY + ly;
-      if (wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
-      const planta = plantaDoRelevo(wx, wy);
-      if (!planta || planta.classe !== "arvore") continue;
-      if (ehCliff(lx, ly, alturaLocal)) continue;
-      arvores.push({
-        x: wx + 0.5,
-        y: wy + 0.5,
-        h: alturaLocal(lx, ly),
-        sprite: planta.sprite,
-        tipo: "arvore",
-      });
+      if (!(wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS)) {
+        const planta = plantaDoRelevo(wx, wy);
+        if (planta && planta.classe === "arvore" && !ehCliff(lx, ly, alturaLocal)) {
+          arvores.push({
+            x: wx + 0.5,
+            y: wy + 0.5,
+            h: alturaLocal(lx, ly),
+            sprite: planta.sprite,
+            tipo: "arvore",
+          });
+        }
+      }
+      if ((++n & 31) === 0) yield;
     }
   }
   return arvores;

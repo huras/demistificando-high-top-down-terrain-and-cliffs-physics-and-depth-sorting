@@ -428,11 +428,12 @@ function opcoesHotbar() {
 }
 
 export function uiAberta() {
+  const interior2d = estado.interior && !estado.interior.sala3d;
   return !!(
     estado.painel ||
     estado.dialogo ||
     estado.roda ||
-    estado.interior ||
+    interior2d ||
     estado.construir ||
     estado.craft
   );

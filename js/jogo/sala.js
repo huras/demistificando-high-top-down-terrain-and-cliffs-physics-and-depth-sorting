@@ -97,7 +97,7 @@ export function propsDaSala(sala, interior) {
 }
 
 export function pertoDe(interior) {
-  if (!interior) return null;
+  if (!interior?.sala) return null;
   const sala = interior.sala;
   let melhor = null;
   let dist = 1.35;
@@ -119,8 +119,9 @@ export function pertoDe(interior) {
 export function desenharSala(largura, altura) {
   if (!ctx || !tela) return;
   const interior = estado.interior;
-  tela.hidden = !interior;
-  if (!interior) return;
+  const overlay = interior && !interior.sala3d;
+  tela.hidden = !overlay;
+  if (!overlay) return;
   const sala = interior.sala;
   ctx.clearRect(0, 0, largura, altura);
   ctx.fillStyle = "#1a140f";

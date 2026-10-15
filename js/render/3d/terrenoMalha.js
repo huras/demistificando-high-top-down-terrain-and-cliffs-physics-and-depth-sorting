@@ -1828,10 +1828,11 @@ export function criarTerrenoMalha(atlas = null) {
 
   /** Chunk em construção, fatiado entre frames. */
   let trabalhoMalha = null;
-  const ORCAMENTO_MALHA_MS = 2;
+  const ORCAMENTO_MALHA_MS = 1;
 
   /**
-   * Gasta no máximo ~2 ms por frame na malha. Um chunk leva vários frames.
+   * Gasta no máximo ~1 ms por frame na malha. Um chunk leva vários frames.
+   * Junto com o streaming, a malha suave e a vegetação distante, cabe em 60 fps.
    */
   function tickMalha(px = 0, py = 0, _maxChunks = MESH_CHUNKS_POR_FRAME) {
     avancarMateriaisAgua(performance.now() / 1000);

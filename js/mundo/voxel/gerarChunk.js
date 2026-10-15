@@ -7,6 +7,7 @@ import {
 } from "../bioma/catalogo.js";
 import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
 import { aplicarCascaNoChunk, cascasProntas } from "../cidade/cascaCasa.js";
+import { aplicarSalaNoChunk } from "../cidade/sala3d.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { definirLocal, preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
@@ -18,14 +19,16 @@ const GERAR_CAVERNAS = false;
 
 /**
  * Terreno procedural: colunas do bioma. Caverna só se GERAR_CAVERNAS.
+ * Cede a cada 16 colunas para o streaming não estourar o frame.
  */
-export function gerarChunkProcedural(chunk, seed) {
+export function* passosChunk(chunk, seed) {
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
   const nivel = nivelMarBlocos();
 
   /** @type {Int16Array} */
   const alturas = new Int16Array(CHUNK_XZ * CHUNK_XZ);
+  let coluna = 0;
 
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
@@ -48,6 +51,7 @@ export function gerarChunkProcedural(chunk, seed) {
           chunk.blocos[((ly * CHUNK_XZ + lx) * CHUNK_Y + lz) | 0] = BLOCO.AGUA;
         }
       }
+      if ((++coluna & 15) === 0) yield;
     }
   }
 
@@ -123,6 +127,7 @@ export function gerarChunkProcedural(chunk, seed) {
   }
 
   const props = [];
+  coluna = 0;
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
@@ -143,7 +148,10 @@ export function gerarChunkProcedural(chunk, seed) {
       }
       if (cliff) continue;
       const planta = plantaDoRelevo(wx, wy);
-      if (!planta) continue;
+      if (!planta) {
+        if ((++coluna & 31) === 0) yield;
+        continue;
+      }
       props.push({
         id: `v${wx}_${wy}`,
         x: wx + 0.5,
@@ -152,12 +160,21 @@ export function gerarChunkProcedural(chunk, seed) {
         tipo: planta.classe,
         sprite: planta.sprite,
       });
+      if ((++coluna & 31) === 0) yield;
     }
   }
   definirPropsChunk(chunk.cx, chunk.cy, props);
 
+  yield;
   if (cascasProntas()) aplicarCascaNoChunk(chunk);
+  aplicarSalaNoChunk(chunk);
   recalcularSuperficies(chunk);
   chunk.gerado = true;
   chunk.sujo = true;
+}
+
+/** Drena a geração. Quem edita bloco precisa do chunk inteiro na hora. */
+export function gerarChunkProcedural(chunk, seed) {
+  const gen = passosChunk(chunk, seed);
+  while (!gen.next().done) {}
 }

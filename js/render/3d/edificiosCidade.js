@@ -13,7 +13,7 @@ import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../../mundo/cidade/catalogoCasas.js";
-import { anexarDecoracaoCidade, carregarSpritesPraca, criarDecoracaoRotas } from "./decoracaoCidade.js";
+import { anexarCascaSala, anexarDecoracaoCidade, anexarInteriores, carregarSpritesPraca, criarDecoracaoRotas } from "./decoracaoCidade.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
@@ -489,6 +489,12 @@ export function criarEdificiosCidade() {
         grupo.add(cidade.grupo);
         grupo.userData.cidades.push(cidade);
       }
+      const sala = new THREE.Group();
+      sala.name = "sala-interior";
+      anexarCascaSala(sala, sprites?.piso);
+      anexarInteriores(sala, sprites?.moveis);
+      grupo.add(sala);
+      grupo.userData.sala = sala;
       const rotas = criarDecoracaoRotas(moldes.get("poste"), acender);
       for (let i = 0; i < rotas.length; i++) {
         grupo.add(rotas[i].grupo);
@@ -539,6 +545,16 @@ export function criarEdificiosCidade() {
               ponto.intensidade,
             );
           }
+        }
+      }
+      const sala = grupo.userData.sala;
+      if (sala) {
+        const pecas = sala.children;
+        for (let f = 0; f < pecas.length; f++) {
+          const cartao = pecas[f].userData.cartao;
+          if (!cartao) continue;
+          cartao.rotation.x = inclinacao;
+          cartao.rotation.y = yaw;
         }
       }
     },

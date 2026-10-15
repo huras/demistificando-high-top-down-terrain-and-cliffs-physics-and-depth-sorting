@@ -357,7 +357,7 @@ export function criarTerrenoSuave() {
     if (trabalho) {
       const t0 = performance.now();
       let passo;
-      while (performance.now() - t0 < 3) {
+      while (performance.now() - t0 < 0.6) {
         passo = trabalho.next();
         if (passo.done) break;
       }

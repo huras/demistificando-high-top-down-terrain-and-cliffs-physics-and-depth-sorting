@@ -1,6 +1,9 @@
 /** Campo: porta, enxada, regador, plantar, colher, machado e picareta. */
 
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
+import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
+import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
+import { atualizarStreaming } from "../mundo/voxel/storeMundo.js";
 import { faixaDaPorta, predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
 import { alturaEm } from "../mundo/altura.js";
 import { obterBloco, avisarDirty } from "../mundo/voxel/storeMundo.js";
@@ -91,6 +94,7 @@ export function tentarEntrar(corpo) {
   const info = loteSob(corpo.x, corpo.y);
   if (!info || info.predio.porta === false) return false;
   if (!naPortaFrente(info, corpo.x, corpo.y)) return false;
+  if (info.predio.papel === "casa") return entrarSala3d(corpo, info);
   const sala = criarSala(info.predio.papel);
   if (!sala) return false;
   estado.interior = {
@@ -105,6 +109,41 @@ export function tentarEntrar(corpo) {
   };
   estado.painel = null;
   sfx("porta");
+  return true;
+}
+
+function entrarSala3d(corpo, info) {
+  const spawn = spawnSala();
+  estado.interior = {
+    sala3d: true,
+    papel: "casa",
+    casaId: idCasa(info),
+    ax: info.ax,
+    ay: info.ay,
+    predio: info.predio,
+  };
+  corpo.x = spawn.x;
+  corpo.y = spawn.y;
+  corpo.z = ALTURA_PRACA;
+  corpo.elevacao = ALTURA_PRACA;
+  corpo.vx = 0;
+  corpo.vy = 0;
+  corpo.vz = 0;
+  corpo.noChao = true;
+  corpo.hopLift = 0;
+  corpo.pulando = false;
+  corpo.pulo = null;
+  atualizarStreaming(spawn.x, spawn.y, undefined, true);
+  corpo._renasceu = true;
+  estado.painel = null;
+  sfx("porta");
+  return true;
+}
+
+export function checarSaidaSala(corpo) {
+  if (!estado.interior?.sala3d) return false;
+  if (!naSaidaSala(corpo.x, corpo.y)) return false;
+  sairInterior(corpo);
   return true;
 }
 
@@ -123,6 +162,17 @@ export function sairInterior(corpo) {
   corpo.y = saida.y;
   corpo.vx = 0;
   corpo.vy = 0;
+  if (interior.sala3d) {
+    corpo.z = ALTURA_PRACA;
+    corpo.elevacao = ALTURA_PRACA;
+    corpo.vz = 0;
+    corpo.noChao = true;
+    corpo.hopLift = 0;
+    corpo.pulando = false;
+    corpo.pulo = null;
+    atualizarStreaming(saida.x, saida.y, undefined, true);
+    corpo._renasceu = true;
+  }
   estado.interior = null;
   estado.construir = false;
   estado.craft = false;
@@ -287,7 +337,7 @@ export function usarNoClique(corpo, celula, alvoBloco) {
     if (item.key === "axe") return usarMachadoNo(celula.x + 0.5, celula.y + 0.5);
     if (item.key === "hoe") return usarEnxada(celula);
     if (item.key === "wateringCan") return usarRegador(celula);
-    if (item.key === "hammer" && estado.interior?.papel === "casa") {
+    if (item.key === "hammer" && estado.interior?.papel === "casa" && !estado.interior.sala3d) {
       estado.construir = true;
       return "";
     }

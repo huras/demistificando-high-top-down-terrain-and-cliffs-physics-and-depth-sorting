@@ -1,5 +1,6 @@
 import { SEED_MUNDO } from "../../config.js";
 import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
+import { dentroDoTerrenoSala } from "../cidade/sala3d.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { hash2 } from "../voxel/ruido.js";
 import { avaliarGrafo } from "./grafo.js";
@@ -160,6 +161,7 @@ export function superficieDoRelevo(wx, wy, catalogo = dados, seed = semente) {
  * @returns {{ classe: string, sprite: string } | null}
  */
 export function plantaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
+  if (dentroDoTerrenoSala(wx, wy)) return null;
   if (dentroDoKanto(wx, wy)) {
     const amostra = amostraKanto(wx, wy);
     if (!amostra || amostra.rua || amostra.predio || amostra.h < nivelMarBlocos(catalogo)) return null;

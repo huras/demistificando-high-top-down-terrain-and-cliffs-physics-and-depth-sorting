@@ -15,6 +15,7 @@ let nomeEl = null;
 let base = null;
 let axJogador = -1;
 let ayJogador = -1;
+let dentroDaCasa = false;
 
 function corRelevo(tipo) {
   if (tipo === RELEVO_FUNDO) return "#143e66";
@@ -80,6 +81,16 @@ export function ligarMapaKanto() {
 
 export function atualizarMapaKanto(x, y) {
   if (!tela || !base) return;
+  const fora = x < 0 || y < 0 || x >= LADO_KANTO * 128 || y >= LADO_KANTO * 128;
+  if (fora) {
+    dentroDaCasa = true;
+    if (nomeEl) nomeEl.textContent = "Casa";
+    return;
+  }
+  if (dentroDaCasa) {
+    dentroDaCasa = false;
+    axJogador = -1;
+  }
   const ax = Math.max(0, Math.min(LADO_KANTO - 1, (x / 128) | 0));
   const ay = Math.max(0, Math.min(LADO_KANTO - 1, (y / 128) | 0));
   if (ax === axJogador && ay === ayJogador) return;

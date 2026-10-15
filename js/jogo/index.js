@@ -10,6 +10,7 @@ import {
   celulaAlvo,
   dicaFerramenta,
   plantarOuColher,
+  checarSaidaSala,
   sairInterior,
   tentarEntrar,
   tickCampo,
@@ -67,13 +68,15 @@ export function tickJogo(dt, corpo) {
     tickRoda();
     lerTeclas(corpo);
   }
-  if (estado.interior && !estado.dialogo && !estado.painel && !estado.construir && !estado.craft) {
+  if (estado.interior?.sala3d) {
+    checarSaidaSala(corpo);
+  } else if (estado.interior && !estado.dialogo && !estado.painel && !estado.construir && !estado.craft) {
     moverSala(dt);
     if (estado.interior?.saindo) sairInterior(corpo);
   } else if (!estado.interior) {
     tentarEntrar(corpo);
   }
-  const alvo = estado.interior ? pertoDe(estado.interior) : null;
+  const alvo = estado.interior && !estado.interior.sala3d ? pertoDe(estado.interior) : null;
   const ferramenta = dicaFerramenta();
   estado.prompt = promptDe(alvo, ferramenta);
   const zona = zonaNoMundo(corpo.x, corpo.y);

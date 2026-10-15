@@ -36,7 +36,7 @@ export function indexarBases(cx, cy, lista) {
   const itens = lista || [];
   for (let i = 0; i < itens.length; i++) {
     const p = itens[i];
-    const r = raioBase(p.tipo);
+    const r = p.r > 0 ? p.r : raioBase(p.tipo);
     if (!(r > 0) || p.z == null) continue;
     const disco = { x: p.x, y: p.y, z: p.z, r };
     meus.push(disco);

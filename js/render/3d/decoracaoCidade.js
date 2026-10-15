@@ -2,6 +2,13 @@ import * as THREE from "three";
 import { ALTURA_BLOCO } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { decoracaoDaCidade, decoracaoDasRotas } from "../../mundo/regiao/decoracaoKanto.js";
+import {
+  FOLHA_INTERIOR,
+  PECAS_INTERIOR,
+  PX_MOVEL,
+  moveisDaSala,
+} from "../../mundo/cidade/interiorCasa.js";
+import { medidasSala } from "../../mundo/cidade/sala3d.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
@@ -10,6 +17,8 @@ const FOLHA_CORREIO = "/ref/sprites/buildings/Mountains-Trees-and-Public-Decorat
 const FOLHA_AVISO = "/ref/sprites/buildings/the_public_pokemon_tileset_by_thatssowitty_d4ni56y.png";
 const PX_CORREIO = 32;
 const PX_AVISO = 16;
+const PISO_COL = 4;
+const PISO_ROW = 144;
 const CORREIOS = Object.freeze([
   Object.freeze({ cor: "#c23b3b", col: 5, row: 296 }),
   Object.freeze({ cor: "#2f6fbf", col: 7, row: 299 }),
@@ -106,6 +115,18 @@ function recortar(img, col, row, cols, rows, tile) {
   return tela;
 }
 
+function texturaRepetida(tela) {
+  const tex = new THREE.CanvasTexture(tela);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 function folhaDe(tela, pxPorUnidade) {
   const tex = new THREE.CanvasTexture(tela);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -142,15 +163,31 @@ function cartao(folha) {
 }
 
 export function carregarSpritesPraca() {
-  return Promise.all([carregarImagem(FOLHA_CORREIO), carregarImagem(FOLHA_AVISO)]).then(([correio, aviso]) => {
+  return Promise.all([
+    carregarImagem(FOLHA_CORREIO),
+    carregarImagem(FOLHA_AVISO),
+    carregarImagem(FOLHA_INTERIOR).catch(() => null),
+  ]).then(([correio, aviso, interior]) => {
     const correios = new Map();
     for (let i = 0; i < CORREIOS.length; i++) {
       const item = CORREIOS[i];
       correios.set(item.cor, folhaDe(recortar(correio, item.col, item.row, 1, 2, PX_CORREIO), PX_CORREIO));
     }
+    const moveis = new Map();
+    if (interior) {
+      for (let i = 0; i < PECAS_INTERIOR.length; i++) {
+        const peca = PECAS_INTERIOR[i];
+        moveis.set(
+          peca.id,
+          folhaDe(recortar(interior, peca.col, peca.row, peca.cols, peca.rows, 16), PX_MOVEL),
+        );
+      }
+    }
     return {
       correios,
       aviso: folhaDe(recortar(aviso, 2, 364, 2, 2, PX_AVISO), PX_AVISO),
+      moveis,
+      piso: texturaRepetida(recortar(correio, PISO_COL, PISO_ROW, 1, 1, PX_CORREIO)),
     };
   });
 }
@@ -222,6 +259,73 @@ export function anexarDecoracaoCidade(grupo, moldePoste, layout, ox, oy, acender
     if (inst) grupo.add(inst);
   }
   return decor;
+}
+
+function materialSala(cor, mapa) {
+  const mat = new THREE.MeshLambertMaterial({
+    color: mapa ? 0xffffff : cor,
+    map: mapa || null,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  aplicarLuzCidade(mat);
+  return mat;
+}
+
+function blocoSala(largura, altura, fundo, x, y, z, mat) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(largura, altura, fundo), mat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/** Piso de azulejo e paredes por cima do voxel, pra não aparecer o mato. */
+export function anexarCascaSala(grupo, piso) {
+  const m = medidasSala();
+  const chaoW = m.chaoX1 - m.chaoX0;
+  const chaoD = m.chaoY1 - m.chaoY0;
+  if (piso) {
+    piso.repeat.set(chaoW, chaoD);
+    piso.needsUpdate = true;
+    const geo = new THREE.PlaneGeometry(chaoW, chaoD);
+    const mesh = new THREE.Mesh(geo, materialSala("#ffffff", piso));
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set((m.chaoX0 + m.chaoX1) * 0.5, ALTURA_PRACA + 0.08, (m.chaoY0 + m.chaoY1) * 0.5);
+    mesh.name = "piso-sala";
+    grupo.add(mesh);
+  }
+  const parede = materialSala("#f3e7cf");
+  const h = m.alturaParede + 0.2;
+  const y = ALTURA_PRACA + h * 0.5;
+  const meioX = (m.x0 + m.x1) * 0.5;
+  const meioY = (m.y0 + m.y1) * 0.5;
+  const largura = m.x1 - m.x0;
+  const fundo = m.y1 - m.y0;
+  grupo.add(blocoSala(largura, h, 1.05, meioX, y, m.y0 + 0.5, parede));
+  grupo.add(blocoSala(1.05, h, fundo, m.x0 + 0.5, y, meioY, parede));
+  grupo.add(blocoSala(1.05, h, fundo, m.x1 - 0.5, y, meioY, parede));
+  const esq = m.portaX0 - m.x0;
+  const dir = m.x1 - m.portaX1;
+  if (esq > 0.2) {
+    grupo.add(blocoSala(esq, h, 1.05, m.x0 + esq * 0.5, y, m.portaY + 0.5, parede));
+  }
+  if (dir > 0.2) {
+    grupo.add(blocoSala(dir, h, 1.05, m.portaX1 + dir * 0.5, y, m.portaY + 0.5, parede));
+  }
+}
+
+export function anexarInteriores(grupo, moveis) {
+  if (!moveis?.size) return;
+  const lista = moveisDaSala();
+  for (let i = 0; i < lista.length; i++) {
+    const item = lista[i];
+    const inst = porSprite(moveis.get(item.id), item.x, ALTURA_PRACA, item.y);
+    if (!inst) continue;
+    inst.name = `movel-${item.id}`;
+    grupo.add(inst);
+  }
 }
 
 export function criarDecoracaoRotas(moldePoste, acender) {

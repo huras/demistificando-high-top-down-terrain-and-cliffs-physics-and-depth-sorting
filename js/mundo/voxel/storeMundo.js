@@ -20,7 +20,7 @@ import {
   superficieLocal,
 } from "./chunk.js";
 import { limparPropsChunk } from "../bioma/propsBioma.js";
-import { gerarChunkProcedural } from "./gerarChunk.js";
+import { gerarChunkProcedural, passosChunk } from "./gerarChunk.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
 
 /** @type {Map<string, object>} */
@@ -70,6 +70,25 @@ function aplicarEditsNoChunk(chunk) {
   }
 }
 
+function publicarChunkCarregado(chunk) {
+  if (USAR_PATCH_DEMO) aplicarPatchDemo(chunk, ALTURAS);
+  aplicarEditsNoChunk(chunk);
+  chunk.gerado = true;
+  chunk.sujo = true;
+  invalidarFluxo(chunk);
+  chunks.set(chaveChunk(chunk.cx, chunk.cy), chunk);
+  marcarChunkVizinhosSujos(chunk.cx, chunk.cy);
+  invalidarFluxoVizinhos(chunk.cx, chunk.cy);
+  emitirDirty({
+    x0: chunk.cx * CHUNK_XZ,
+    y0: chunk.cy * CHUNK_XZ,
+    x1: chunk.cx * CHUNK_XZ + CHUNK_XZ - 1,
+    y1: chunk.cy * CHUNK_XZ + CHUNK_XZ - 1,
+    z0: 0,
+    z1: CHUNK_Y - 1,
+  });
+}
+
 export function carregarChunk(cx, cy) {
   const k = chaveChunk(cx, cy);
   let chunk = chunks.get(k);
@@ -77,23 +96,7 @@ export function carregarChunk(cx, cy) {
 
   chunk = criarChunk(cx, cy);
   gerarChunkProcedural(chunk, seed);
-  if (USAR_PATCH_DEMO) aplicarPatchDemo(chunk, ALTURAS);
-  aplicarEditsNoChunk(chunk);
-  chunk.gerado = true;
-  chunk.sujo = true;
-  invalidarFluxo(chunk);
-  chunks.set(k, chunk);
-  // Vizinhos precisam remeshar: faces de cliff na borda mudam com o vizinho.
-  marcarChunkVizinhosSujos(cx, cy);
-  invalidarFluxoVizinhos(cx, cy);
-  emitirDirty({
-    x0: cx * CHUNK_XZ,
-    y0: cy * CHUNK_XZ,
-    x1: cx * CHUNK_XZ + CHUNK_XZ - 1,
-    y1: cy * CHUNK_XZ + CHUNK_XZ - 1,
-    z0: 0,
-    z1: CHUNK_Y - 1,
-  });
+  publicarChunkCarregado(chunk);
   return chunk;
 }
 
@@ -264,12 +267,41 @@ export function definirRaioStream(raio) {
 
 /**
  * Mantém disco de chunks em torno do jogador.
+ * No frame, só gasta ~0,8 ms: o anel novo entra fatiado. Teleporte e o
+ * primeiro preenchimento passam sincrono=true e drenam o disco inteiro.
  */
-export function atualizarStreaming(px, py, raio = raioAtivo) {
+let filaStream = null;
+let fatiaStream = null;
+const ORCAMENTO_STREAM_MS = 0.8;
+
+function discoStream(pcx, pcy, raio) {
+  const lista = [];
+  for (let dy = -raio; dy <= raio; dy++) {
+    for (let dx = -raio; dx <= raio; dx++) {
+      if (dx * dx + dy * dy > raio * raio + 1) continue;
+      lista.push({ cx: pcx + dx, cy: pcy + dy, d: dx * dx + dy * dy });
+    }
+  }
+  lista.sort((a, b) => a.d - b.d);
+  return lista;
+}
+
+function atualizarAabbStream(pcx, pcy, raio) {
+  aabbCarregado = {
+    x0: (pcx - raio) * CHUNK_XZ,
+    y0: (pcy - raio) * CHUNK_XZ,
+    x1: (pcx + raio + 1) * CHUNK_XZ - 1,
+    y1: (pcy + raio + 1) * CHUNK_XZ - 1,
+  };
+}
+
+export function atualizarStreaming(px, py, raio = raioAtivo, sincrono = false) {
   const { cx: pcx, cy: pcy } = mundoParaChunk(px, py);
 
-  // Early-out: mesmo chunk âncora, mesmo raio e já carregado — evita Set/loop todo frame.
   if (
+    !sincrono &&
+    !filaStream &&
+    !fatiaStream &&
     atualizarStreaming._pcx === pcx &&
     atualizarStreaming._pcy === pcy &&
     atualizarStreaming._raio === raio &&
@@ -277,35 +309,78 @@ export function atualizarStreaming(px, py, raio = raioAtivo) {
   ) {
     return aabbCarregado;
   }
-  atualizarStreaming._pcx = pcx;
-  atualizarStreaming._pcy = pcy;
-  atualizarStreaming._raio = raio;
 
-  const precisos = new Set();
-
-  for (let dy = -raio; dy <= raio; dy++) {
-    for (let dx = -raio; dx <= raio; dx++) {
-      if (dx * dx + dy * dy > raio * raio + 1) continue;
-      const cx = pcx + dx;
-      const cy = pcy + dy;
-      const k = chaveChunk(cx, cy);
-      precisos.add(k);
-      carregarChunk(cx, cy);
+  const mesmo =
+    filaStream &&
+    filaStream.pcx === pcx &&
+    filaStream.pcy === pcy &&
+    filaStream.raio === raio;
+  if (!mesmo) {
+    const disco = discoStream(pcx, pcy, raio);
+    const querer = new Set(disco.map((c) => chaveChunk(c.cx, c.cy)));
+    if (fatiaStream && !querer.has(chaveChunk(fatiaStream.cx, fatiaStream.cy))) {
+      fatiaStream = null;
     }
+    const entrar = [];
+    for (let i = 0; i < disco.length; i++) {
+      const c = disco[i];
+      if (chunks.has(chaveChunk(c.cx, c.cy))) continue;
+      if (fatiaStream && fatiaStream.cx === c.cx && fatiaStream.cy === c.cy) continue;
+      entrar.push(c);
+    }
+    const sair = [];
+    for (const chunk of chunks.values()) {
+      if (!querer.has(chaveChunk(chunk.cx, chunk.cy))) sair.push(chunk);
+    }
+    filaStream = { pcx, pcy, raio, entrar, sair, i: 0, j: 0 };
   }
 
-  for (const [k, chunk] of chunks) {
-    if (!precisos.has(k)) {
-      descarregarChunk(chunk.cx, chunk.cy);
+  const limite = performance.now() + (sincrono ? 1e9 : ORCAMENTO_STREAM_MS);
+  while (performance.now() < limite) {
+    if (fatiaStream) {
+      const passo = fatiaStream.gen.next();
+      if (passo.done) {
+        if (!chunks.has(chaveChunk(fatiaStream.cx, fatiaStream.cy))) {
+          publicarChunkCarregado(fatiaStream.chunk);
+        }
+        fatiaStream = null;
+      }
+      continue;
     }
+    if (filaStream.i < filaStream.entrar.length) {
+      const item = filaStream.entrar[filaStream.i++];
+      if (chunks.has(chaveChunk(item.cx, item.cy))) continue;
+      const chunk = criarChunk(item.cx, item.cy);
+      fatiaStream = {
+        cx: item.cx,
+        cy: item.cy,
+        chunk,
+        gen: passosChunk(chunk, seed),
+      };
+      continue;
+    }
+    if (filaStream.j < filaStream.sair.length) {
+      const chunk = filaStream.sair[filaStream.j++];
+      if (chunks.get(chaveChunk(chunk.cx, chunk.cy)) === chunk) {
+        descarregarChunk(chunk.cx, chunk.cy);
+      }
+      continue;
+    }
+    break;
   }
 
-  aabbCarregado = {
-    x0: (pcx - raio) * CHUNK_XZ,
-    y0: (pcy - raio) * CHUNK_XZ,
-    x1: (pcx + raio + 1) * CHUNK_XZ - 1,
-    y1: (pcy + raio + 1) * CHUNK_XZ - 1,
-  };
+  if (
+    filaStream &&
+    !fatiaStream &&
+    filaStream.i >= filaStream.entrar.length &&
+    filaStream.j >= filaStream.sair.length
+  ) {
+    atualizarStreaming._pcx = pcx;
+    atualizarStreaming._pcy = pcy;
+    atualizarStreaming._raio = raio;
+    atualizarAabbStream(pcx, pcy, raio);
+    filaStream = null;
+  }
   return aabbCarregado;
 }
 
@@ -315,7 +390,7 @@ export function obterAabbCarregado() {
 
 /** Carrega região do patch demo + vizinhança inicial. */
 export function iniciarMundoAoRedor(px, py) {
-  atualizarStreaming(px, py, raioAtivo);
+  atualizarStreaming(px, py, raioAtivo, true);
 }
 
 /** A malha rele o chunk sem desenhar a casca da casa. */

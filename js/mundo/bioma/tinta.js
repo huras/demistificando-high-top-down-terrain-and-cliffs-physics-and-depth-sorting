@@ -1,5 +1,8 @@
 import { amostrarRegiao, biomaDominante } from "./catalogo.js";
 import { dentroDoKanto } from "../regiao/amostraKanto.js";
+import { dentroDoTerrenoSala } from "../cidade/sala3d.js";
+
+const COR_SALA = [0.84, 0.72, 0.52];
 
 let cacheX = 1e9;
 let cacheY = 1e9;
@@ -17,7 +20,9 @@ function misturaEm(wx, wy) {
   if (x !== cacheX || y !== cacheY) {
     cacheX = x;
     cacheY = y;
-    if (dentroDoKanto(x, y)) {
+    if (dentroDoTerrenoSala(x, y)) {
+      cacheRgb = COR_SALA;
+    } else if (dentroDoKanto(x, y)) {
       const bioma = biomaDominante(x, y);
       cacheRgb = bioma ? corDe(bioma) : [0.49, 0.81, 0.42];
     } else {

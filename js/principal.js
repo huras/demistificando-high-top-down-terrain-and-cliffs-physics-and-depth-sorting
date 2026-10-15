@@ -43,6 +43,7 @@ import {
   paraCadaChunk,
 } from "./mundo/voxel/storeMundo.js";
 import { aplicarCascaNoChunk, carregarCascasCidade } from "./mundo/cidade/cascaCasa.js";
+import { indexarColisaoCidade } from "./mundo/cidade/colisaoDecor.js";
 import { invalidarNavCache } from "./navegacao/navGrade.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
@@ -133,6 +134,7 @@ async function iniciar() {
   atlas.cliffs = visuaisKits[1].cliffs;
   window.__atlas = atlas;
 
+  indexarColisaoCidade();
   iniciarMundoAoRedor(SPAWN.x, SPAWN.y);
   carregarCascasCidade().then((ok) => {
     if (!ok) return;
@@ -272,7 +274,7 @@ async function iniciar() {
       }
       camera.pronta = false;
       resetarCamera3d();
-      atualizarStreaming(x, y);
+      atualizarStreaming(x, y, undefined, true);
     },
   };
 
@@ -327,7 +329,7 @@ function ligarRaioStream() {
         n === 0 ? "só este chunk" : `${n} · ${n * CHUNK_XZ} blocos`;
     }
     atualizarSuave();
-    if (corpo) atualizarStreaming(corpo.x, corpo.y);
+    if (corpo) atualizarStreaming(corpo.x, corpo.y, undefined, true);
   };
 
   input.addEventListener("input", aplicar);
@@ -456,7 +458,7 @@ function loop(agora) {
     agente.tempoAr = 0;
     resetarNav(agente);
     camera.pronta = false;
-    atualizarStreaming(corpo.x, corpo.y);
+    atualizarStreaming(corpo.x, corpo.y, undefined, true);
   }
   despenetrarCorpos();
   atualizarHudCompanheiro(agente);

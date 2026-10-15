@@ -127,7 +127,7 @@ function usarSelecionado(tipo, key) {
 
 function colocarSelecionado(key) {
   const interior = estado.interior;
-  if (!interior || interior.papel !== "casa") {
+  if (!interior || interior.papel !== "casa" || interior.sala3d || !interior.sala) {
     estado.itemGet = "Só dentro de casa.";
     return;
   }
@@ -649,7 +649,7 @@ export function promptDe(alvo, ferramenta) {
   if (alvo?.ref?.acao === "pc") return "PC — R";
   if (alvo?.ref?.cura) return "Cama — R";
   if (alvo?.ref?.craft || alvo?.ref?.key === "bancada") return "Bancada — R";
-  if (estado.interior?.papel === "casa" && hotbarAtivo()?.key === "hammer") return "Martelo — clique esquerdo abre os móveis";
+  if (estado.interior?.papel === "casa" && !estado.interior.sala3d && hotbarAtivo()?.key === "hammer") return "Martelo — clique esquerdo abre os móveis";
   if (!estado.interior && ferramenta) return `${ferramenta} — clique esquerdo`;
   return "";
 }
