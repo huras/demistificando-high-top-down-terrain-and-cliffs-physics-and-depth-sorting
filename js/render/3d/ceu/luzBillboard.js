@@ -82,7 +82,43 @@ export function aplicarCorSprite(material, corBase, sombraNuvem, luzExtra) {
   material.color.copy(_out);
 }
 
-/** Troca a normal de iluminação. Não mexe no depth/sombra. */
+/** O cartão inteiro usa o depth do pivô, puxado pra câmera o bastante pra vencer o piso. */
+const FOLGA_PIVO = 1.5;
+
+const VERT_PIVO = `
+varying float vProfundidadePivo;
+`;
+
+const VERT_PIVO_CALC = `
+{
+  vec4 pivoLocal = vec4(0.0, 0.0, 0.0, 1.0);
+  #ifdef USE_INSTANCING
+    pivoLocal = instanceMatrix * pivoLocal;
+  #endif
+  #ifdef USE_BATCHING
+    pivoLocal = batchingMatrix * pivoLocal;
+  #endif
+  vec4 pivoVista = modelViewMatrix * pivoLocal;
+  pivoVista.z += ${FOLGA_PIVO.toFixed(2)};
+  vec4 pivoClip = projectionMatrix * pivoVista;
+  vProfundidadePivo = pivoClip.z / pivoClip.w * 0.5 + 0.5;
+}
+`;
+
+function achatarProfundidade(shader) {
+  if (shader.vertexShader.includes("vProfundidadePivo")) return;
+  shader.vertexShader = shader.vertexShader
+    .replace("#include <common>", `#include <common>\n${VERT_PIVO}`)
+    .replace("#include <project_vertex>", `#include <project_vertex>\n${VERT_PIVO_CALC}`);
+  shader.fragmentShader = shader.fragmentShader
+    .replace("#include <common>", `#include <common>\n${VERT_PIVO}`)
+    .replace(
+      "#include <dithering_fragment>",
+      "#include <dithering_fragment>\ngl_FragDepth = vProfundidadePivo;",
+    );
+}
+
+/** Troca a normal de iluminação e achata o depth no pivô. A sombra fica no cartão real. */
 export function aplicarLuzBillboard(material) {
   if (!material || material.userData?.luzBillboard) return material;
   if (!material.userData) material.userData = {};
@@ -100,10 +136,11 @@ export function aplicarLuzBillboard(material) {
       "#include <normal_fragment_maps>",
       "#include <normal_fragment_maps>\nnormal = normalize( mat3( viewMatrix ) * uNormalSol );",
     );
+    achatarProfundidade(shader);
   };
   material.customProgramCacheKey = function chaveLuzBillboard() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-billboard`;
+    return `${base}|luz-billboard|pivo`;
   };
   return material;
 }
