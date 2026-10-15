@@ -39,6 +39,17 @@ function montarGolpes(especie, nivel) {
   return slots;
 }
 
+/** A arena testa um golpe só. Sem chave, fica a Investida. */
+export function equiparGolpe(ator, chave) {
+  if (!ator) return;
+  if (!chave) {
+    ator.golpes = [];
+    return;
+  }
+  const def = golpe(chave);
+  ator.golpes = def ? [{ chave: def.key, cd: 0, def }] : [];
+}
+
 export function ppMaximo(nivel, velocidade) {
   const speBonus = Math.round(((velocidade || 50) - 50) * 0.06);
   return Math.max(8, Math.round(20 + nivel * 0.25 + speBonus));

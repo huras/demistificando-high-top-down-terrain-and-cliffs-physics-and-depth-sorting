@@ -25,3 +25,7 @@ export function tickFlutuantes(dt) {
 export function flutuantes() {
   return lista;
 }
+
+export function limparFlutuantes() {
+  lista.length = 0;
+}

@@ -30,6 +30,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos) {
   alvo.iframe = 0.15;
   marcarPose(alvo, "Hurt", agora);
   efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
+  if (efeitos.aoImpacto) efeitos.aoImpacto(alvo, tipo, efet);
   if (alvo.faccao === "selvagem") {
     alvo.pendenteAtacante = atacante;
     if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
@@ -97,6 +98,7 @@ function executar(ator, slot, alvo, agora, efeitos) {
   ator.dirX = dx / len;
   ator.dirY = dy / len;
   gastar(ator, slot, agora);
+  if (efeitos.aoGolpe) efeitos.aoGolpe(ator, def);
 
   if (def.poder <= 0) {
     if (CURA.test(def.key)) {

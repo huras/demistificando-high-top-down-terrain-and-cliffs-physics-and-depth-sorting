@@ -11,6 +11,32 @@ import { fatorSombraMundo } from "./ceu/mapaNuvem.js";
 import { amostrarLuzCidade } from "./luzes/mapaChao.js";
 
 const _luzCidade = new THREE.Color();
+const COR_SILHUETA = 0xc5d6ee;
+
+/**
+ * O cartão visível some quando o pivô perde o depth.
+ * Este passe usa o mesmo pivô com teste invertido, então só entra
+ * o que o sólido já cobriu — casa, penhasco, o que escreveu depth.
+ */
+function aplicarMascaraSilhueta(material) {
+  const anterior = material.onBeforeCompile;
+  const chaveAnterior = material.customProgramCacheKey;
+  material.onBeforeCompile = (shader, renderer) => {
+    if (anterior) anterior.call(material, shader, renderer);
+    if (shader.fragmentShader.includes("silhuetaChata")) return;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <map_fragment>",
+      `#include <map_fragment>
+/* silhuetaChata */
+diffuseColor.rgb = diffuse;`,
+    );
+  };
+  material.customProgramCacheKey = function chaveSilhueta() {
+    const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
+    return `${base}|silhueta-chata`;
+  };
+  return material;
+}
 
 /**
  * Billboard HD-2D + sombra de contato + asa-delta.
@@ -51,6 +77,30 @@ export function criarPersonagem3d(opts = {}) {
   sprite.castShadow = false;
   sprite.receiveShadow = false;
   grupo.add(sprite);
+
+  const silhuetaMat = new THREE.SpriteMaterial({
+    map: tex,
+    color: COR_SILHUETA,
+    transparent: true,
+    opacity: 0.92,
+    depthWrite: false,
+    depthTest: true,
+    depthFunc: THREE.GreaterDepth,
+    alphaTest: 0.12,
+    sizeAttenuation: true,
+    fog: false,
+    toneMapped: false,
+  });
+  aplicarMascaraSilhueta(silhuetaMat);
+  aplicarProfundidadeSprite(silhuetaMat);
+  const silhueta = new THREE.Sprite(silhuetaMat);
+  silhueta.name = "silhueta";
+  silhueta.center.set(0.5, 0);
+  silhueta.scale.copy(sprite.scale);
+  silhueta.renderOrder = 5;
+  silhueta.raycast = () => {};
+  silhueta.visible = sprite.visible;
+  grupo.add(silhueta);
 
   // Véu só abaixo da superfície (normal para baixo descarta o que está acima).
   const planoVeu = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
@@ -115,12 +165,14 @@ export function criarPersonagem3d(opts = {}) {
     const centroY = 1 - pivo.y + aj.dy / JOGADOR_FRAME;
     sprite.center.set(centroX, centroY);
     veu.center.set(centroX, centroY);
+    silhueta.center.set(centroX, centroY);
   }
 
   function definirSprite(img) {
     sheet = img || null;
     ultimoFrameKey = "";
     sprite.visible = !!sheet;
+    silhueta.visible = !!sheet;
     if (!sheet) veu.visible = false;
   }
 
@@ -141,6 +193,7 @@ export function criarPersonagem3d(opts = {}) {
       const folgaPe = -pivoDoJogador().offsetY;
       sprite.position.y = folgaPe;
       veu.position.y = folgaPe;
+      silhueta.position.y = folgaPe;
       const sombraNuvem = fatorSombraMundo(corpoEstado.x, grupo.position.y, corpoEstado.y);
       amostrarLuzCidade(grupo.position.x, grupo.position.y + ALTURA_SPRITE_JOGADOR * 0.56, grupo.position.z, _luzCidade);
       aplicarCorSprite(spriteMat, corBase, sombraNuvem, _luzCidade);
@@ -184,6 +237,7 @@ export function criarPersonagem3d(opts = {}) {
     liberar() {
       tex.dispose();
       spriteMat.dispose();
+      silhuetaMat.dispose();
       veuMat.dispose();
       sombra.liberar();
       asa.liberar();

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arena de combate</title>
+  <link rel="stylesheet" href="css/combate.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Arena de combate</h1>
+    <p class="topo__nota" id="status">Carregando catálogo…</p>
+    <div class="tempo" role="group" aria-label="Velocidade">
+      <button type="button" data-tempo="0.5">0,5×</button>
+      <button type="button" data-tempo="1" class="ativo">1×</button>
+      <button type="button" data-tempo="2">2×</button>
+    </div>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna coluna--esq" id="lado-esquerda"></aside>
+    <div class="palco">
+      <canvas id="vista"></canvas>
+      <div class="hud" id="hud">
+        <div class="marca" data-marca="esquerda" hidden>
+          <p class="marca__nome"></p>
+          <div class="marca__barra"><span></span></div>
+        </div>
+        <div class="marca" data-marca="direita" hidden>
+          <p class="marca__nome"></p>
+          <div class="marca__barra"><span></span></div>
+        </div>
+      </div>
+      <div class="luta">
+        <button type="button" id="lutar" disabled>Lutar</button>
+      </div>
+    </div>
+    <aside class="coluna coluna--dir" id="lado-direita"></aside>
+  </div>
+
+  <script type="module" src="js/combate/pagina.js"></script>
+</body>
+</html>

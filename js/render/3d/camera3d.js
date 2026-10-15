@@ -194,7 +194,7 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
   const offZ = desejadoZ - tz;
   const distOff = Math.hypot(offX, offY, offZ) || 1;
 
-  const distLivre = distanciaAteSolido(
+  const distOlho = distanciaComOlhoLivre(
     tx,
     tyBase,
     tz,
@@ -203,14 +203,15 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
     offZ / distOff,
     distOff,
   );
-  const alvoClip = Math.min(distOff, Math.max(0.55, distLivre - 0.35));
   if (camera3d._distClip == null) camera3d._distClip = distOff;
-  const tClip = 1 - Math.exp(-10 * dt);
-  camera3d._distClip += (alvoClip - camera3d._distClip) * tClip;
-  if (alvoClip >= distOff - 0.05) {
-    camera3d._distClip += (distOff - camera3d._distClip) * tClip;
+  const entrando = distOlho < camera3d._distClip - 0.02;
+  if (entrando && camera3d._distClip - distOlho > 1.25) {
+    camera3d._distClip = distOlho;
+  } else {
+    const tClip = 1 - Math.exp(-(entrando ? 24 : 7) * dt);
+    camera3d._distClip += (distOlho - camera3d._distClip) * tClip;
   }
-  const dist = Math.min(distOff, Math.max(0.45, camera3d._distClip));
+  const dist = Math.min(distOff, Math.max(DIST_OLHO_MIN, camera3d._distClip));
   const escala = dist / distOff;
 
   const camX = tx + offX * escala;
@@ -352,29 +353,53 @@ function poseMira(camera3d, tx, tyBase, tz) {
   camera3d._miraLook.set(camX + aimX * 14, camY + aimY * 14, camZ + aimZ * 14);
 }
 
+const RAIO_OLHO = 0.18;
+const PASSO_OLHO = 0.25;
+const FOLGA_OLHO = 0.4;
+const DIST_OLHO_MIN = 0.45;
+const AMOSTRAS_OLHO = [
+  [0, 0, 0],
+  [1, 0, 0],
+  [-1, 0, 0],
+  [0, 1, 0],
+  [0, -1, 0],
+  [0, 0, 1],
+  [0, 0, -1],
+];
+
 /**
- * Raymarch voxel: distância máxima livre ao longo do raio (mundo → Three).
- * ox,oy,oz = olhar (mundo x, elev, mundo y); n* = direção unitária Three.
+ * O braço da câmera fica no comprimento pedido.
+ * Só recua se o olho entrou num sólido — senão a vista nasce dentro do volume.
+ * Sólido no meio do raio não puxa a câmera: o personagem entra em silhueta.
+ * ox,oy,oz = pivô (mundo x, elev Three, mundo z); n* = direção unitária Three.
  */
-function distanciaAteSolido(ox, oy, oz, nx, ny, nz, distMax) {
-  const steps = Math.max(8, Math.ceil(distMax * 6));
-  const step = distMax / steps;
-  let livre = distMax;
-  for (let i = 1; i <= steps; i++) {
-    const t = i * step;
-    const wx = ox + nx * t;
-    const we = oy + ny * t;
-    const wy = oz + nz * t;
-    const cx = Math.floor(wx);
-    const cy = Math.floor(wy);
-    const cz = Math.floor(we / ALTURA_BLOCO);
-    if (cz < 0 || cz >= CHUNK_Y) continue;
-    if (ehSolido(obterBloco(cx, cy, cz))) {
-      livre = Math.max(0.4, t - step);
-      break;
+function distanciaComOlhoLivre(ox, oy, oz, nx, ny, nz, distMax) {
+  if (!olhoOcupado(ox, oy, oz, nx, ny, nz, distMax)) return distMax;
+  for (let t = distMax - PASSO_OLHO; t > DIST_OLHO_MIN; t -= PASSO_OLHO) {
+    if (!olhoOcupado(ox, oy, oz, nx, ny, nz, t)) {
+      return Math.max(DIST_OLHO_MIN, t - FOLGA_OLHO);
     }
   }
-  return livre;
+  return DIST_OLHO_MIN;
+}
+
+function olhoOcupado(ox, oy, oz, nx, ny, nz, t) {
+  const px = ox + nx * t;
+  const py = oy + ny * t;
+  const pz = oz + nz * t;
+  for (let i = 0; i < AMOSTRAS_OLHO.length; i++) {
+    const o = AMOSTRAS_OLHO[i];
+    if (pontoOcupado(px + o[0] * RAIO_OLHO, py + o[1] * RAIO_OLHO, pz + o[2] * RAIO_OLHO)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function pontoOcupado(wx, wyThree, wz) {
+  const cz = Math.floor(wyThree / ALTURA_BLOCO);
+  if (cz < 0 || cz >= CHUNK_Y) return false;
+  return ehSolido(obterBloco(Math.floor(wx), Math.floor(wz), cz));
 }
 
 function lerp(a, b, t) {
