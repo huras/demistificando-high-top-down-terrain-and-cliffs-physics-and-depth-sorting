@@ -202,6 +202,7 @@ function voa(ator, passo) {
 
 function escolherFaixa(ator, pack, agora, passo) {
   if (ator.morto) return pack.anims?.Sleep ? "Sleep" : "Idle";
+  if ((ator.recuoRestante || 0) > 0 && pack.anims?.Hurt) return "Hurt";
   if (agora < ator.poseAte && POSE_GOLPE.has(ator.pose)) return faixaDoGolpe(pack, ator.pose);
   if (voa(ator, passo) && pack.anims?.FlapAround) return "FlapAround";
   if (passo && pack.anims?.Walk) return "Walk";
@@ -241,6 +242,7 @@ export function tickVisual(ator, dt, agora) {
     if (v.frame >= spec.frameCount) {
       v.frame = 0;
       if (POSE_GOLPE.has(anim)) {
+        if (anim === "Hurt" && (ator.recuoRestante || 0) > 0) continue;
         ator.poseAte = 0;
         ator.poseMedida = false;
         break;

@@ -7,7 +7,7 @@ import { cancelarPath } from "../navegacao/filaPath.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import { garantirNav } from "../navegacao/seguirCaminho.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
-import { velocidadeDe } from "./ator.js";
+import { emRecuo, velocidadeDe } from "./ator.js";
 
 function dist2(a, b) {
   const dx = a.x - b.x;
@@ -175,6 +175,10 @@ function atualizarUm(ator, party, jogador, dt) {
   if (ator.morto || ator.capturado || ator.preso) {
     ator.andando = false;
     ator.alvo = null;
+    return;
+  }
+  if (emRecuo(ator)) {
+    ator.andando = false;
     return;
   }
   if (ator.dormindo > 0) {

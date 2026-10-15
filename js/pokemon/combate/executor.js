@@ -1,5 +1,5 @@
 import { atoresPerto } from "../grade.js";
-import { golpeBasico, recargaDe } from "../ator.js";
+import { emRecuo, golpeBasico, recargaDe } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano } from "../tipos.js";
 import { soltarProjetil } from "./projeteis.js";
@@ -9,6 +9,33 @@ const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlig
 
 function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/** 0,1 s e 0,7 m no toque; 1 s e 4,2 m quando o dano cobre a vida inteira. */
+function iniciarRecuo(alvo, atacante, dano, agora) {
+  const hp = Math.max(1, alvo.hpMax || 1);
+  const fracao = Math.min(1, Math.max(0, dano) / hp);
+  const tempo = 0.1 + fracao * 0.9;
+  let dx = alvo.x - (atacante?.x ?? alvo.x);
+  let dy = alvo.y - (atacante?.y ?? alvo.y);
+  let len = Math.hypot(dx, dy);
+  if (len < 0.05) {
+    dx = -(atacante?.dirX || 0);
+    dy = -(atacante?.dirY || 1);
+    len = Math.hypot(dx, dy) || 1;
+  }
+  alvo.recuoDur = tempo;
+  alvo.recuoRestante = tempo;
+  alvo.recuoDist = 0.7 + fracao * 3.5;
+  alvo.recuoDirX = dx / len;
+  alvo.recuoDirY = dy / len;
+  alvo.andando = false;
+  alvo.poseAte = agora + tempo;
+  return { tempo, dist: alvo.recuoDist };
+}
+
+function notar(efeitos, item) {
+  if (efeitos && efeitos.anotar) efeitos.anotar(item);
 }
 
 function inimigo(a, b) {
@@ -24,13 +51,23 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos) {
   if (efet === 0 || dano <= 0) {
     efeitos.flutuar(alvo, "imune", "#94a3b8");
     alvo.iframe = 0.2;
+    notar(efeitos, { tipo: "imune", alvo });
     return;
   }
   alvo.hp -= dano;
   alvo.iframe = 0.15;
   marcarPose(alvo, "Hurt", agora);
+  const recuo = iniciarRecuo(alvo, atacante, dano, agora);
   efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
   if (efeitos.aoImpacto) efeitos.aoImpacto(alvo, tipo, efet);
+  notar(efeitos, {
+    tipo: "dano",
+    alvo,
+    dano,
+    efet,
+    recuo: recuo.tempo,
+    dist: recuo.dist,
+  });
   if (alvo.faccao === "selvagem") {
     alvo.pendenteAtacante = atacante;
     if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
@@ -40,6 +77,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos) {
   alvo.morto = true;
   atorMorreu(alvo, agora);
   efeitos.aoDerrotar(alvo, atacante);
+  notar(efeitos, { tipo: "queda", alvo });
 }
 
 function atorMorreu(alvo, agora) {
@@ -99,11 +137,14 @@ function executar(ator, slot, alvo, agora, efeitos) {
   ator.dirY = dy / len;
   gastar(ator, slot, agora);
   if (efeitos.aoGolpe) efeitos.aoGolpe(ator, def);
+  notar(efeitos, { tipo: "golpe", ator, def });
 
   if (def.poder <= 0) {
     if (CURA.test(def.key)) {
+      const antes = ator.hp;
       ator.hp = Math.min(ator.hpMax, ator.hp + Math.ceil(ator.hpMax * 0.22));
       efeitos.flutuar(ator, "cura", "#4ade80");
+      notar(efeitos, { tipo: "cura", ator, ganho: ator.hp - antes });
     } else {
       ator.velMul = 1.25;
       ator.velMulAte = agora + 4;
@@ -149,7 +190,7 @@ function executar(ator, slot, alvo, agora, efeitos) {
 }
 
 export function tentarGolpe(ator, agora, efeitos) {
-  if (ator.morto || ator.capturado || ator.dormindo > 0) return;
+  if (ator.morto || ator.capturado || ator.dormindo > 0 || emRecuo(ator)) return;
   const alvo = ator.alvo;
   if (!alvo || alvo.morto || alvo.capturado) return;
   if (alvo.hp <= 0 && alvo.faccao === "treinador") return;

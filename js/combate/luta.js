@@ -1,4 +1,4 @@
-import { criarAtor, equiparGolpe, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
+import { criarAtor, emRecuo, equiparGolpe, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
 import { impactoProjetil, tentarGolpe } from "../pokemon/combate/executor.js";
 import { limparParticulas, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
@@ -23,6 +23,10 @@ let lutando = false;
 let acabou = false;
 let vencedor = null;
 let agora = 0;
+let inicio = 0;
+const linhasLog = [];
+let versaoLog = 0;
+const CAP_LOG = 80;
 
 const estado = {
   lutando: false,
@@ -32,8 +36,62 @@ const estado = {
   direita: null,
 };
 
+function limparLog() {
+  linhasLog.length = 0;
+  versaoLog++;
+}
+
+function registrar(campos) {
+  const t = Math.max(0, agora - inicio);
+  linhasLog.push({ ...campos, selo: t.toFixed(2).replace(".", ",") });
+  if (linhasLog.length > CAP_LOG) linhasLog.shift();
+  versaoLog++;
+}
+
+function nomeDe(ator) {
+  return ator?.especie?.nome || "—";
+}
+
+function sujeito(ator) {
+  return { lado: ator?.faccao || "", nome: nomeDe(ator) };
+}
+
+function anotar(item) {
+  if (!item) return;
+  if (item.tipo === "golpe") {
+    registrar({
+      tipo: "golpe",
+      ...sujeito(item.ator),
+      golpe: item.def?.nome || "golpe",
+      tipoGolpe: item.def?.tipo || "",
+    });
+    return;
+  }
+  if (item.tipo === "dano") {
+    registrar({
+      tipo: "dano",
+      ...sujeito(item.alvo),
+      dano: item.dano,
+      efet: item.efet > 1 ? "super" : item.efet < 1 ? "pouco" : "",
+      recuo: Number(item.recuo).toFixed(2).replace(".", ","),
+      dist: Number(item.dist).toFixed(1).replace(".", ","),
+    });
+    return;
+  }
+  if (item.tipo === "imune") {
+    registrar({ tipo: "imune", ...sujeito(item.alvo) });
+    return;
+  }
+  if (item.tipo === "cura") {
+    registrar({ tipo: "cura", ...sujeito(item.ator), ganho: item.ganho });
+    return;
+  }
+  if (item.tipo === "queda") registrar({ tipo: "queda", ...sujeito(item.alvo) });
+}
+
 const efeitos = {
   flutuar,
+  anotar,
   aoDerrotar() {},
   aoGolpe(ator, def) {
     const z = (ator.z || 0) + (ator.hopLift || 0) + 2.2;
@@ -101,6 +159,10 @@ function avancar(ator, tx, ty, dt) {
   const d = Math.hypot(dx, dy) || 0.0001;
   ator.dirX = dx / d;
   ator.dirY = dy / d;
+  if (emRecuo(ator)) {
+    ator.andando = false;
+    return;
+  }
   const def = postura(ator);
   const parada = paradaDe(def);
   const folga = 0.18;
@@ -219,6 +281,8 @@ export function iniciarLuta() {
     direita = montar("direita", cfg.direita);
   }
   limparCampo();
+  inicio = agora;
+  limparLog();
   acabou = false;
   vencedor = null;
   lutando = true;
@@ -247,6 +311,8 @@ export function tickLuta(dt) {
 
   tickPassivo(esquerda, passo, agora);
   tickPassivo(direita, passo, agora);
+  limitar(esquerda);
+  limitar(direita);
 
   if (lutando) {
     montarGrade(par);
@@ -266,6 +332,10 @@ export function tickLuta(dt) {
 
 export function estadoLuta() {
   return estado;
+}
+
+export function logArena() {
+  return { linhas: linhasLog, versao: versaoLog };
 }
 
 export function atoresArena() {

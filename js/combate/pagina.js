@@ -5,7 +5,7 @@ import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
 import { desenharArena, ligarArena, projetarArena } from "./arena3d.js";
-import { atoresArena, estadoLuta, iniciarLuta, montarLados, tickLuta } from "./luta.js";
+import { atoresArena, estadoLuta, iniciarLuta, logArena, montarLados, tickLuta } from "./luta.js";
 
 const TIPO = {
   normal: "normal",
@@ -55,6 +55,9 @@ let lutandoAntes = false;
 const statusEl = document.getElementById("status");
 const botao = document.getElementById("lutar");
 const hud = document.getElementById("hud");
+const logN = document.getElementById("log-n");
+const logLista = document.getElementById("log-lista");
+let versaoLog = -1;
 const danos = [];
 
 function campo(raiz, nome) {
@@ -397,6 +400,48 @@ function cfgInicial() {
   ui.direita.golpe = golpeInicial(dir, 50);
 }
 
+function pedaco(cls, texto) {
+  const el = document.createElement("span");
+  el.className = cls;
+  el.textContent = texto;
+  return el;
+}
+
+function pintarLog() {
+  const { linhas, versao } = logArena();
+  if (versao === versaoLog) return;
+  versaoLog = versao;
+  logN.textContent = String(linhas.length);
+  logLista.replaceChildren();
+  for (const linha of linhas) {
+    const li = document.createElement("li");
+    li.dataset.tipo = linha.tipo;
+    if (linha.lado) li.dataset.lado = linha.lado;
+    li.append(pedaco("log__t", `${linha.selo}s`), pedaco("log__nome", linha.nome));
+    if (linha.tipo === "golpe") {
+      li.append(document.createTextNode(" usou "));
+      const golpe = pedaco("log__golpe", linha.golpe);
+      const cor = COR_TIPO[linha.tipoGolpe];
+      if (cor) golpe.style.color = cor;
+      li.append(golpe);
+    } else if (linha.tipo === "dano") {
+      const marca = linha.efet ? ` log__dano--${linha.efet}` : "";
+      li.append(pedaco(`log__dano${marca}`, ` −${linha.dano}`));
+      if (linha.efet === "super") li.append(pedaco("log__efet log__efet--super", " super efetivo"));
+      else if (linha.efet === "pouco") li.append(pedaco("log__efet log__efet--pouco", " pouco efetivo"));
+      li.append(pedaco("log__meta", ` · recuo ${linha.recuo}s · ${linha.dist} m`));
+    } else if (linha.tipo === "imune") {
+      li.append(pedaco("log__imune", " imune"));
+    } else if (linha.tipo === "cura") {
+      li.append(pedaco("log__cura", ` +${linha.ganho}`));
+    } else if (linha.tipo === "queda") {
+      li.append(pedaco("log__queda", " caiu"));
+    }
+    logLista.appendChild(li);
+  }
+  logLista.scrollTop = logLista.scrollHeight;
+}
+
 function quadro(t) {
   const bruto = ultimo ? (t - ultimo) / 1000 : 0;
   ultimo = t;
@@ -408,6 +453,7 @@ function quadro(t) {
     resto -= passo;
   }
   desenharArena(atoresArena());
+  pintarLog();
   pintarVida("esquerda");
   pintarVida("direita");
   pintarDanos();

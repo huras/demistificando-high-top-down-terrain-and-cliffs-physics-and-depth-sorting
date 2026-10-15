@@ -334,3 +334,127 @@ button, input, select {
   color: #b7aea8;
   cursor: default;
 }
+
+.log {
+  position: absolute;
+  left: 12px;
+  bottom: 64px;
+  z-index: 2;
+  width: min(420px, calc(100% - 24px));
+  color: #efe8e2;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.log summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(16, 18, 16, 0.82);
+  border: 1px solid #3d4540;
+  user-select: none;
+}
+
+.log summary::-webkit-details-marker {
+  display: none;
+}
+
+.log__n {
+  min-width: 1.4em;
+  text-align: center;
+  color: #c4513a;
+  font-weight: 750;
+}
+
+.log ol {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  max-height: 180px;
+  overflow: auto;
+  list-style: none;
+  border-radius: 10px;
+  background: rgba(16, 18, 16, 0.88);
+  border: 1px solid #3d4540;
+}
+
+.log li {
+  margin: 1px 0;
+  padding: 1px 0 1px 7px;
+  border-left: 2px solid transparent;
+  color: #d6e4dc;
+}
+
+.log li[data-lado="esquerda"] {
+  border-left-color: #7dd3fc;
+}
+
+.log li[data-lado="direita"] {
+  border-left-color: #fb923c;
+}
+
+.log__t {
+  color: #8b8680;
+  font-variant-numeric: tabular-nums;
+}
+
+.log li[data-lado="esquerda"] .log__nome {
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+.log li[data-lado="direita"] .log__nome {
+  color: #fb923c;
+  font-weight: 700;
+}
+
+.log__golpe {
+  font-weight: 700;
+}
+
+.log__dano {
+  color: #f87171;
+  font-weight: 750;
+}
+
+.log__dano--super {
+  color: #fbbf24;
+}
+
+.log__dano--pouco {
+  color: #94a3b8;
+}
+
+.log__efet--super {
+  color: #fbbf24;
+}
+
+.log__efet--pouco {
+  color: #94a3b8;
+}
+
+.log__meta {
+  color: #6f7a86;
+}
+
+.log__imune {
+  color: #94a3b8;
+}
+
+.log__cura {
+  color: #4ade80;
+  font-weight: 750;
+}
+
+.log li[data-tipo="queda"] {
+  background: rgba(196, 81, 58, 0.22);
+  border-radius: 4px;
+}
+
+.log__queda {
+  color: #fca5a5;
+  font-weight: 750;
+}

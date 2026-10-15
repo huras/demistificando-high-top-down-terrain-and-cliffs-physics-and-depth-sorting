@@ -116,6 +116,11 @@ export function criarAtor(opts) {
     avisou: false,
     dormindo: opts.dormindo ?? 0,
     iframe: 0,
+    recuoRestante: 0,
+    recuoDur: 0,
+    recuoDist: 0,
+    recuoDirX: 0,
+    recuoDirY: 0,
     participantes: new Set(),
     emocao: null,
     emocaoIdade: 0,
@@ -152,6 +157,9 @@ export function reviverAtor(ator, x, y, z) {
   ator.pose = "Idle";
   ator.iframe = 0.4;
   ator.dormindo = 0.6;
+  ator.recuoRestante = 0;
+  ator.recuoDur = 0;
+  ator.recuoDist = 0;
 }
 
 export function aplicarNivel(ator, nivelNovo) {
@@ -165,9 +173,35 @@ export function aplicarNivel(ator, nivelNovo) {
   ator.pp = ator.ppMax;
 }
 
+export function emRecuo(ator) {
+  return (ator?.recuoRestante || 0) > 0;
+}
+
+function integrarRecuo(ator, dt) {
+  const dur = ator.recuoDur || ator.recuoRestante;
+  const antes = ator.recuoRestante;
+  const depois = Math.max(0, antes - dt);
+  const u0 = 1 - antes / dur;
+  const u1 = 1 - depois / dur;
+  const fatia = (1 - u0) * (1 - u0) - (1 - u1) * (1 - u1);
+  const anda = (ator.recuoDist || 0) * Math.max(0, fatia);
+  ator.x += (ator.recuoDirX || 0) * anda;
+  ator.y += (ator.recuoDirY || 0) * anda;
+  const vel = (ator.recuoDist * 2 * Math.max(0, 1 - u0)) / dur;
+  ator.vx = (ator.recuoDirX || 0) * vel;
+  ator.vy = (ator.recuoDirY || 0) * vel;
+  ator.andando = false;
+  ator.recuoRestante = depois;
+  if (depois > 0) return;
+  ator.vx = 0;
+  ator.vy = 0;
+  if (ator.pose === "Hurt") ator.poseAte = 0;
+}
+
 export function tickPassivo(ator, dt, agora) {
   if (ator.hopLift > 0) ator.hopLift = Math.max(0, ator.hopLift - dt * 3.2);
   if (ator.iframe > 0) ator.iframe = Math.max(0, ator.iframe - dt);
+  if ((ator.recuoRestante || 0) > 0) integrarRecuo(ator, dt);
   if (ator.velMulAte > 0 && agora >= ator.velMulAte) {
     ator.velMul = 1;
     ator.velMulAte = 0;
