@@ -316,6 +316,8 @@ export function tickLuta(dt) {
 
   if (lutando) {
     montarGrade(par);
+    esquerda.recuoNoTick = esquerda.recuoRestante || 0;
+    direita.recuoNoTick = direita.recuoRestante || 0;
     tentarGolpe(esquerda, agora, efeitos);
     tentarGolpe(direita, agora, efeitos);
   }

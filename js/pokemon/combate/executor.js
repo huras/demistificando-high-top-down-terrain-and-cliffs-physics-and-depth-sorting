@@ -109,7 +109,7 @@ function escolher(ator, alvo, d) {
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (g.def.forma === "contact" && d <= Math.max(1.05, g.def.alcance)) return g;
+    if (g.def.forma === "contact" && d <= Math.max(golpeBasico().alcance, g.def.alcance)) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
@@ -124,7 +124,7 @@ function escolher(ator, alvo, d) {
       if (prontos[i].def.poder <= 0) return prontos[i];
     }
   }
-  if (d <= 1.2 && ator.cdBasico <= 0) return { basico: true, def: golpeBasico(), cd: ator.cdBasico };
+  if (d <= golpeBasico().alcance && ator.cdBasico <= 0) return { basico: true, def: golpeBasico(), cd: ator.cdBasico };
   return null;
 }
 
@@ -190,7 +190,8 @@ function executar(ator, slot, alvo, agora, efeitos) {
 }
 
 export function tentarGolpe(ator, agora, efeitos) {
-  if (ator.morto || ator.capturado || ator.dormindo > 0 || emRecuo(ator)) return;
+  const recuoHerdado = ator.recuoNoTick == null ? emRecuo(ator) : ator.recuoNoTick > 0;
+  if (ator.morto || ator.capturado || ator.dormindo > 0 || recuoHerdado) return;
   const alvo = ator.alvo;
   if (!alvo || alvo.morto || alvo.capturado) return;
   if (alvo.hp <= 0 && alvo.faccao === "treinador") return;
