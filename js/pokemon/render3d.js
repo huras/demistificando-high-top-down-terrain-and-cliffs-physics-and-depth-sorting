@@ -240,6 +240,13 @@ function aplicarBrilho(slot, ator, offsetY) {
   }
 }
 
+function copiarCartao(destino, origem) {
+  destino.center.copy(origem.center);
+  destino.position.y = origem.position.y;
+  destino.scale.copy(origem.scale);
+  destino.visible = origem.visible;
+}
+
 function pegarLivre() {
   for (let i = 0; i < atores.length; i++) {
     if (atores[i].livre) return atores[i];
@@ -279,10 +286,7 @@ export function atualizarPokemon3d(yawCam = 0) {
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
     slot.sprite.visible = true;
     slot.sprite.scale.multiplyScalar(some);
-    slot.silhueta.center.copy(slot.sprite.center);
-    slot.silhueta.position.y = slot.sprite.position.y;
-    slot.silhueta.scale.copy(slot.sprite.scale);
-    slot.silhueta.visible = true;
+    copiarCartao(slot.silhueta, slot.sprite);
     slot.silhueta.material.color.setHex(
       ator.faccao === "party" ? COR_SILHUETA_JOGADOR : COR_SILHUETA_SELVAGEM,
     );

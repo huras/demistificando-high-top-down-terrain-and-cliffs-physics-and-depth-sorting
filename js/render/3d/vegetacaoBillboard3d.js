@@ -16,6 +16,7 @@ import { todaVegetacao } from "../../mundo/bioma/propsBioma.js";
 import { registrarObjetoCena, removerObjetoCena, marcarAuxiliar } from "../../cena/registroCena.js";
 import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
 import { onDirty } from "../../mundo/voxel/storeMundo.js";
+import { STENCIL_GRAMA, marcarStencilSolido } from "./silhuetaSprite.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
@@ -139,6 +140,7 @@ export function criarVegetacaoBillboard3d() {
 
     const { largura, altura } = medidasDe(img, def.escala);
     const tex = criarTextura(img);
+    const grama = def.amostra?.tipo === "grama";
     const material = aplicarSombraNuvem(aplicarLuzBillboard(new THREE.MeshStandardMaterial({
       map: tex,
       roughness: 1,
@@ -149,6 +151,16 @@ export function criarVegetacaoBillboard3d() {
       depthTest: true,
       side: THREE.FrontSide,
     })), { clareia: true });
+    if (grama) {
+      material.stencilWrite = true;
+      material.stencilRef = STENCIL_GRAMA;
+      material.stencilFunc = THREE.AlwaysStencilFunc;
+      material.stencilFail = THREE.KeepStencilOp;
+      material.stencilZFail = THREE.KeepStencilOp;
+      material.stencilZPass = THREE.ReplaceStencilOp;
+    } else if (def.amostra?.tipo === "arvore") {
+      marcarStencilSolido(material);
+    }
     const depth = new THREE.MeshDepthMaterial({
       depthPacking: THREE.RGBADepthPacking,
       map: tex,

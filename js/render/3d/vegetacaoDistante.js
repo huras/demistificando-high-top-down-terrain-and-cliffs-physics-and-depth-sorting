@@ -19,6 +19,7 @@ import { obterRaioSuave } from "./terrenoSuave.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { registrarObjetoCena, removerObjetoCena } from "../../cena/registroCena.js";
 import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
+import { marcarStencilSolido } from "./silhuetaSprite.js";
 
 /**
  * Árvores billboard em todo o disco suave, fora dos chunks de bloco.
@@ -98,6 +99,7 @@ export function criarVegetacaoDistante() {
       ),
       { clareia: true },
     );
+    marcarStencilSolido(material);
     const pivo = pivoDaImagem(img);
     const geo = new THREE.PlaneGeometry(1, 1);
     geo.translate(0.5 - pivo.x, pivo.y - 0.5, 0);

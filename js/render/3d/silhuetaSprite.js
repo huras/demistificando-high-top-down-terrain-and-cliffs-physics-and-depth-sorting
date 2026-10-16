@@ -5,6 +5,28 @@ import { aplicarProfundidadeSprite } from "./ceu/luzBillboard.js";
 export const COR_SILHUETA_JOGADOR = 0xc5d6ee;
 /** Selvagem: quente, para não confundir com o aliado atrás do sólido. */
 export const COR_SILHUETA_SELVAGEM = 0xf2b08a;
+/** Terreno e árvore gravam 1. A grama grava 2 por cima, no pixel que ela ganha. */
+export const STENCIL_SOLIDO = 1;
+export const STENCIL_GRAMA = 2;
+
+export function marcarStencilSolido(material) {
+  material.stencilWrite = true;
+  material.stencilRef = STENCIL_SOLIDO;
+  material.stencilFunc = THREE.AlwaysStencilFunc;
+  material.stencilFail = THREE.KeepStencilOp;
+  material.stencilZFail = THREE.KeepStencilOp;
+  material.stencilZPass = THREE.ReplaceStencilOp;
+  return material;
+}
+
+function testarStencil(material, ref) {
+  material.stencilWrite = true;
+  material.stencilRef = ref;
+  material.stencilFunc = THREE.EqualStencilFunc;
+  material.stencilFail = THREE.KeepStencilOp;
+  material.stencilZFail = THREE.KeepStencilOp;
+  material.stencilZPass = THREE.KeepStencilOp;
+}
 
 /**
  * O cartão visível some quando o pivô perde o depth.
@@ -47,6 +69,7 @@ export function criarSpriteSilhueta(mapa, cor = COR_SILHUETA_JOGADOR) {
   });
   aplicarMascaraSilhueta(material);
   aplicarProfundidadeSprite(material);
+  testarStencil(material, STENCIL_SOLIDO);
   const sprite = new THREE.Sprite(material);
   sprite.name = "silhueta";
   sprite.center.set(0.5, 0);

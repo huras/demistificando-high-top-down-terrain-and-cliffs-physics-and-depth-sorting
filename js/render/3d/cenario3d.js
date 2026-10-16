@@ -30,8 +30,9 @@ import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
 import { atualizarLuzBillboard } from "./ceu/luzBillboard.js";
-import { comecarQuadroLuzes, criarCartaoLuz, criarPoolLuzes, resolverLuzes } from "./luzes/pool.js";
+import { comecarQuadroLuzes, criarPoolLuzes, definirPesoNoite, resolverLuzes } from "./luzes/pool.js";
 import { comecarMapaChao, resolverMapaChao } from "./luzes/mapaChao.js";
+import { uniformsNuvem } from "./ceu/parametros.js";
 import { estaEmCena } from "../../cena/modoCena.js";
 import {
   atualizarCameraCena,
@@ -77,62 +78,56 @@ function criarLuzSala(cena) {
   const x = (m.chaoX0 + m.chaoX1) * 0.5;
   const z = (m.chaoY0 + m.chaoY1) * 0.5;
   const y = ALTURA_PRACA * ALTURA_BLOCO + m.alturaParede * ALTURA_BLOCO * 0.82;
-  const luz = new THREE.PointLight(0xffcc88, 0, 24, 2);
+  const luz = new THREE.PointLight(0xfff1d4, 0, 18, 2);
   luz.name = "luz-sala";
   luz.position.set(x, y, z);
   luz.castShadow = false;
   cena.add(luz);
 
   const bulbo = new THREE.Mesh(
-    new THREE.SphereGeometry(0.18, 12, 8),
+    new THREE.SphereGeometry(0.16, 12, 8),
     new THREE.MeshBasicMaterial({ color: 0xfff6df, toneMapped: false }),
   );
   bulbo.name = "lampada-sala";
   bulbo.position.copy(luz.position);
   bulbo.visible = false;
   cena.add(bulbo);
-
-  const brilho = criarCartaoLuz("#ffd7a1", 1.6);
-  brilho.position.copy(luz.position);
-  brilho.visible = false;
-  cena.add(brilho);
-  return { luz, bulbo, brilho, x, y, z };
+  return { luz, bulbo, x, y, z };
 }
 
-/** A sala não segue o sol: lâmpada no teto e um miolo quente. */
-function ligarLuzSala(dentro, corpo) {
+/** Dentro, o ciclo do céu não entra: a sala fica clara por igual, com a lâmpada parada no teto. */
+function ligarLuzSala(dentro) {
   const lamp = estado.luzSala;
   if (!lamp) return;
-  lamp.luz.intensity = dentro ? 95 : 0;
+  lamp.luz.intensity = dentro ? 4 : 0;
   lamp.bulbo.visible = dentro;
-  lamp.brilho.visible = dentro;
-  lamp.brilho.material.opacity = dentro ? 0.9 : 0;
-  if (!dentro || !corpo) return;
-  const y = ALTURA_PRACA * ALTURA_BLOCO + 3.2;
-  lamp.luz.position.set(corpo.x, y, corpo.y);
-  lamp.bulbo.position.copy(lamp.luz.position);
-  lamp.brilho.position.copy(lamp.luz.position);
-  lamp.x = corpo.x;
-  lamp.z = corpo.y;
-  lamp.luz.distance = 28;
+  if (!dentro) return;
 
+  definirPesoNoite(0);
+  uniformsNuvem.uForcaSombra.value = 0;
+
+  const chaoY = ALTURA_PRACA * ALTURA_BLOCO;
   const { sol, hemi, ambient, fill, rim } = estado;
-  sol.color.set(0xffe6c0);
-  sol.intensity = 0.42;
+  sol.color.set(0xfff4e4);
+  sol.intensity = 0.95;
   sol.castShadow = false;
-  sol.position.set(lamp.x, lamp.y + 8, lamp.z);
-  sol.target.position.set(lamp.x, ALTURA_PRACA * ALTURA_BLOCO, lamp.z);
+  sol.position.set(lamp.x, lamp.y + 14, lamp.z);
+  sol.target.position.set(lamp.x, chaoY, lamp.z);
 
-  hemi.color.set(0xffe8cc);
-  hemi.groundColor.set(0xd9c2a4);
-  hemi.intensity = 0.5;
+  hemi.color.set(0xfff7ee);
+  hemi.groundColor.set(0xe8d2b2);
+  hemi.intensity = 0.7;
 
-  ambient.color.set(0xf3ddc4);
-  ambient.intensity = 0.4;
+  ambient.color.set(0xfff3e6);
+  ambient.intensity = 0.58;
 
-  fill.intensity = 0.06;
+  fill.color.set(0xffe7c8);
+  fill.intensity = 0.28;
+  fill.position.set(lamp.x - 8, lamp.y, lamp.z + 5);
+  fill.target.position.set(lamp.x, chaoY, lamp.z);
+
   rim.intensity = 0;
-  estado.renderer.toneMappingExposure = 1.02;
+  estado.renderer.toneMappingExposure = 1.06;
   atualizarLuzBillboard({ sol, ambient, hemi, fill, rim });
 }
 
@@ -549,7 +544,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     nevoa: estado.nevoaBase,
     raioBlocos: obterRaioStream() * CHUNK_XZ,
   });
-  ligarLuzSala(!!estadoJogo.interior?.sala3d, corpo);
+  ligarLuzSala(!!estadoJogo.interior?.sala3d);
 
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
   estado.edificios?.atualizar?.(corpo.x, corpo.y, yaw, inclinacao);
