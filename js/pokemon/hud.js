@@ -2,7 +2,7 @@ import { progressoExp } from "./experiencia.js";
 import { colunaEmocao, folhaEmocoes } from "./emocoes.js";
 import { flutuantes } from "./flutuantes.js";
 import { cargaAtual, obterBola, obterMiraBola } from "./captura.js";
-import { obterBolas, pokemonNoCampo } from "./party.js";
+import { alvoDeOrdem, obterBolas, pokemonNoCampo } from "./party.js";
 import { pedirRetrato } from "./retrato.js";
 import { atoresVisiveis, obterTreinador, pokemonLigado, relogioPokemon } from "./sistema.js";
 import { ALTURA_BLOCO } from "../config.js";
@@ -306,32 +306,112 @@ function tintaSobre(hex) {
   return 0.3 * r + 0.59 * g + 0.11 * b > 160 ? "#1c1917" : "#f8fafc";
 }
 
-function desenharAnel(ctx, p) {
+const ANEL_HOVER = {
+  rx: 28,
+  ry: 12,
+  fill: "rgba(45, 212, 191, 0.4)",
+  borda: "rgba(6, 18, 22, 0.9)",
+  linha: "#ecfeff",
+  trava: false,
+};
+const ANEL_ALVO = {
+  rx: 34,
+  ry: 14,
+  fill: "rgba(248, 113, 113, 0.4)",
+  borda: "rgba(40, 8, 8, 0.92)",
+  linha: "#fecaca",
+  trava: true,
+};
+
+function desenharAnel(ctx, p, estilo, pulso) {
+  const k = pulso || 0;
+  const rx = estilo.rx + k * 2;
+  const ry = estilo.ry + k;
   ctx.save();
   ctx.beginPath();
-  ctx.ellipse(p.x, p.y, 28, 12, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(45, 212, 191, 0.4)";
+  ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = estilo.fill;
   ctx.fill();
   ctx.lineWidth = 3.5;
-  ctx.strokeStyle = "rgba(6, 18, 22, 0.9)";
+  ctx.strokeStyle = estilo.borda;
   ctx.stroke();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = "#ecfeff";
+  ctx.strokeStyle = estilo.linha;
   ctx.stroke();
+  if (estilo.trava) {
+    const folga = 5;
+    ctx.beginPath();
+    ctx.moveTo(p.x - rx - folga, p.y);
+    ctx.lineTo(p.x - rx + 7, p.y);
+    ctx.moveTo(p.x + rx - 7, p.y);
+    ctx.lineTo(p.x + rx + folga, p.y);
+    ctx.moveTo(p.x, p.y - ry - folga);
+    ctx.lineTo(p.x, p.y - ry + 5);
+    ctx.moveTo(p.x, p.y + ry - 5);
+    ctx.lineTo(p.x, p.y + ry + folga);
+    ctx.stroke();
+  }
   ctx.restore();
+}
+
+function desenharPlacaAlvo(ctx, x, y, nome) {
+  const texto = nome || "Alvo";
+  ctx.save();
+  ctx.font = "700 12px Segoe UI, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  const largura = ctx.measureText(texto).width + 22;
+  const altura = 18;
+  let px = x - largura * 0.5;
+  let py = y - altura - 18;
+  const canvas = ctx.canvas;
+  if (canvas) {
+    const maxX = canvas.width - largura - 8;
+    const maxY = canvas.height - altura - 8;
+    if (px < 8) px = 8;
+    else if (px > maxX) px = maxX;
+    if (py < 8) py = 8;
+    else if (py > maxY) py = maxY;
+  }
+  ctx.fillStyle = "rgba(48, 10, 12, 0.92)";
+  ctx.fillRect(px, py, largura, altura);
+  ctx.fillStyle = "#f87171";
+  ctx.fillRect(px, py, 3, altura);
+  ctx.fillStyle = "#fff1f2";
+  ctx.fillText(texto, px + 10, py + altura * 0.5);
+  ctx.restore();
+}
+
+/**
+ * Trava vermelha no selvagem que o time foi mandado atacar.
+ * A placa some se o cursor já está em cima — o hover mostra o nome.
+ * Devolve o ator marcado, ou null.
+ */
+export function desenharAlvoOrdem(ctx, projetar, projetarPes, sobCursor) {
+  const alvo = alvoDeOrdem();
+  if (!ctx || !alvo || !projetar) return null;
+  const z = alvo.elevacao ?? alvo.z ?? 0;
+  const hop = alvo.hopLift || 0;
+  const corpo = projetar(alvo.x, alvo.y, z, hop);
+  if (!corpo) return alvo;
+  const pes = projetarPes ? projetarPes(alvo.x, alvo.y, z, hop) : null;
+  const pulso = Math.sin(relogioPokemon() * 4.2) * 0.5;
+  if (pes) desenharAnel(ctx, pes, ANEL_ALVO, pulso);
+  if (sobCursor !== alvo) desenharPlacaAlvo(ctx, corpo.x, corpo.y, alvo.especie?.nome);
+  return alvo;
 }
 
 /**
  * Placa com nome, nível e tipos do Pokémon sob o cursor.
  */
-export function desenharHoverPokemon(ctx, ator, projetar, projetarPes) {
+export function desenharHoverPokemon(ctx, ator, projetar, projetarPes, comAnel = true) {
   if (!ctx || !ator || !projetar) return;
   const z = ator.elevacao ?? ator.z ?? 0;
   const hop = ator.hopLift || 0;
   const corpo = projetar(ator.x, ator.y, z, hop);
   if (!corpo) return;
   const pes = projetarPes ? projetarPes(ator.x, ator.y, z, hop) : null;
-  if (pes) desenharAnel(ctx, pes);
+  if (pes && comAnel) desenharAnel(ctx, pes, ANEL_HOVER, 0);
 
   const tipos = ator.tipos || ator.especie?.tipos || [];
   const nome = `${ator.shiny ? "★ " : ""}${ator.especie?.nome || "Pokémon"}`;

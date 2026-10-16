@@ -22,7 +22,7 @@ import {
 import { empilharAlvoEscalada } from "./alvoEscalada.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
 import { empilharPokemon } from "../pokemon/render2d.js";
-import { desenharHudPokemon, desenharHoverPokemon, projetar2d, projetarPes2d, projetar3d, projetarChao3d } from "../pokemon/hud.js";
+import { desenharAlvoOrdem, desenharHudPokemon, desenharHoverPokemon, projetar2d, projetarPes2d, projetar3d, projetarChao3d } from "../pokemon/hud.js";
 import { avancarTempoAgua, empilharAgua2d } from "./agua2d.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
@@ -195,9 +195,9 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
 
 function desenharPokemonSobCursor(ctx, canvas, projetar, projetarPes) {
   const ponteiro = obterPonteiroCanvas(canvas);
-  if (!ponteiro) return;
-  const alvo = atorSobPonteiro(ponteiro.x, ponteiro.y, projetar, projetarPes);
-  if (alvo) desenharHoverPokemon(ctx, alvo, projetar, projetarPes);
+  const sob = ponteiro ? atorSobPonteiro(ponteiro.x, ponteiro.y, projetar, projetarPes) : null;
+  const ordem = desenharAlvoOrdem(ctx, projetar, projetarPes, sob);
+  if (sob) desenharHoverPokemon(ctx, sob, projetar, projetarPes, sob !== ordem);
 }
 
 function desenharTagCena(ctx, largura) {

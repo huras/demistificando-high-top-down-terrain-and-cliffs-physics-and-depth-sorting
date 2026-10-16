@@ -1,4 +1,5 @@
-import { AGENTE_DIST_SEGUIR, POKEMON } from "../config.js";
+import { POKEMON } from "../config.js";
+import { AGENTE_DIST_SEGUIR, OFFSET_MON } from "../navegacao/espacoSeguir.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
 import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
@@ -55,6 +56,14 @@ export function ordenarAtaque(alvo) {
   definirEmocao(mon, EMOCAO.RAIVA, { duracao: 1.1 });
   definirEmocao(alvo, EMOCAO.EXCLAMACAO, { duracao: 1.1 });
   return true;
+}
+
+/** Selvagem que o Pokémon em campo foi mandado atacar, ou null. */
+export function alvoDeOrdem() {
+  const mon = pokemonDeployado();
+  const alvo = mon?.ordemAlvo;
+  if (!alvo || alvo.morto || alvo.capturado) return null;
+  return alvo;
 }
 
 export function obterBolas() {
@@ -223,14 +232,14 @@ export function atualizarParty(corpo, dt, agora, perfil) {
   const mon = pokemonNoCampo();
   if (mon?.morto && mon.mortoAte > 0 && agora >= mon.mortoAte) {
     const z = corpo.elevacao ?? corpo.z ?? mon.z;
-    reviverAtor(mon, corpo.x + 1.7, corpo.y + 1.85, z);
+    reviverAtor(mon, corpo.x + OFFSET_MON.x, corpo.y + OFFSET_MON.y, z);
   }
   const vivo = pokemonDeployado();
   if (!vivo || vivo.capturado) return;
   const z = corpo.elevacao ?? corpo.z ?? mon.z;
   if (!mon._colocado) {
-    mon.x = corpo.x + 1.7;
-    mon.y = corpo.y + 1.85;
+    mon.x = corpo.x + OFFSET_MON.x;
+    mon.y = corpo.y + OFFSET_MON.y;
     mon.z = z;
     mon.elevacao = z;
     mon._colocado = true;

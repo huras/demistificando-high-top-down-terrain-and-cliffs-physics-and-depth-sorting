@@ -1,5 +1,4 @@
 import {
-  AGENTE_GAP_ELEV_PARAR,
   AGENTE_GLIDE_HEUR_FOLGA,
   AGENTE_VEL_MUL,
   ASA_DELTA_ABRIR_APOS,
@@ -10,6 +9,7 @@ import {
   VELOCIDADE_MAX,
   VELOCIDADE_SPRINT,
 } from "../config.js";
+import { aplicarEspacoSeguir } from "../navegacao/espacoSeguir.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import {
   atualizarSeguirCaminho,
@@ -232,35 +232,10 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
   const soltarAsa = navCmd.soltarAsa;
   const soltarParede = navCmd.soltarParede;
   const nav = agente.nav;
-
-  if (distSeguir > 0 && !agente.voando && !agente.planando && !agente.escalando && !agente.mantle) {
-    const distLider = Math.hypot(lider.x - agente.x, lider.y - agente.y);
-    const zLider = lider.elevacao ?? lider.z ?? 0;
-    const zAg = agente.elevacao ?? agente.z ?? 0;
-    const mesmoPiso = Math.abs(zAg - zLider) < AGENTE_GAP_ELEV_PARAR;
-    if (mesmoPiso) {
-      const folga = distLider - distSeguir;
-      if (folga < -0.08) {
-        const d = Math.max(distLider, 0.001);
-        ix = (agente.x - lider.x) / d;
-        iy = (agente.y - lider.y) / d;
-        const indoParaLider =
-          agente.vx * (lider.x - agente.x) + agente.vy * (lider.y - agente.y);
-        if (indoParaLider > 0) {
-          agente.vx = 0;
-          agente.vy = 0;
-        }
-        velMax = Math.min(velMax, 2.2);
-      } else if (folga <= 0) {
-        agente.vx = 0;
-        agente.vy = 0;
-        ix = 0;
-        iy = 0;
-      } else if (folga < 1.25) {
-        velMax *= Math.max(0.22, folga / 1.25);
-      }
-    }
-  }
+  const passo = aplicarEspacoSeguir(agente, lider, ix, iy, velMax, distSeguir);
+  ix = passo.ix;
+  iy = passo.iy;
+  velMax = passo.velMax;
 
   if (soltarAsa && estaPlanando(agente)) {
     fecharAsaDelta(agente);

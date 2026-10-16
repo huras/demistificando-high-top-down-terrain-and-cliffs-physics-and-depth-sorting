@@ -1,5 +1,4 @@
 import {
-  AGENTE_DIST_SEGUIR,
   CAMINHOS,
   CHUNK_XZ,
   PASSO_MALHA_SUAVE,
@@ -26,6 +25,7 @@ import { atualizarAgente, criarAgente, resetarNav } from "./fisica/agente.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { definirCorposAtores, definirCorposFixos } from "./fisica/obstaculos.js";
 import { iniciarStamina } from "./fisica/stamina.js";
+import { AGENTE_DIST_SEGUIR, OFFSET_NPC } from "./navegacao/espacoSeguir.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
 import { atualizarPasseio, ligarBotaoPasseio, passeioAtivo } from "./debug/passeioKanto.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
@@ -149,8 +149,8 @@ async function iniciar() {
 
   corpo = criarCorpo(SPAWN);
   agente = criarAgente({
-    x: SPAWN.x - 1.7,
-    y: SPAWN.y + 1.85,
+    x: SPAWN.x + OFFSET_NPC.x,
+    y: SPAWN.y + OFFSET_NPC.y,
     z: SPAWN.z,
   });
   definirCorposFixos([corpo, agente]);
@@ -253,8 +253,8 @@ async function iniciar() {
       corpo.tempoAr = 0;
       iniciarStamina(corpo);
       if (agente) {
-        agente.x = x - 1.7;
-        agente.y = y + 1.85;
+        agente.x = x + OFFSET_NPC.x;
+        agente.y = y + OFFSET_NPC.y;
         agente.z = z;
         agente.elevacao = z;
         agente.vx = 0;
@@ -439,8 +439,8 @@ function loop(agora) {
   tickPokemon(corpo, dt, agente.perfil);
   if (corpo._renasceu) {
     corpo._renasceu = false;
-    agente.x = corpo.x - 1.7;
-    agente.y = corpo.y + 1.85;
+    agente.x = corpo.x + OFFSET_NPC.x;
+    agente.y = corpo.y + OFFSET_NPC.y;
     agente.z = corpo.z;
     agente.elevacao = corpo.z;
     agente.vx = 0;
