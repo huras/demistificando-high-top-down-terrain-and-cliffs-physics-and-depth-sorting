@@ -51,6 +51,31 @@ const TABELA = {
   fairy: { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 },
 };
 
+const NOME_TIPO = Object.freeze({
+  normal: "Normal",
+  fire: "Fogo",
+  water: "Água",
+  electric: "Elétrico",
+  grass: "Planta",
+  ice: "Gelo",
+  fighting: "Lutador",
+  poison: "Venenoso",
+  ground: "Terra",
+  flying: "Voador",
+  psychic: "Psíquico",
+  bug: "Inseto",
+  rock: "Pedra",
+  ghost: "Fantasma",
+  dragon: "Dragão",
+  dark: "Sombrio",
+  steel: "Aço",
+  fairy: "Fada",
+});
+
+export function nomeTipo(tipo) {
+  return NOME_TIPO[tipo] || tipo || "";
+}
+
 export const COR_TIPO = Object.freeze({
   normal: "#9ca3af",
   fire: "#f97316",

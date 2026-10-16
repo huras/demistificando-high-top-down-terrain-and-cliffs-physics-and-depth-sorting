@@ -63,8 +63,9 @@ export function raycastVoxel(ox, oy, oz, dx, dy, dz, maxDist = ALCANCE_EDICAO) {
   let ny = 0;
   let nz = 0;
   let dist = 0;
+  const passos = Math.min(480, Math.ceil(maxDist * 2.5) + 8);
 
-  for (let i = 0; i < 128; i++) {
+  for (let i = 0; i < passos; i++) {
     if (z >= 0 && z < CHUNK_Y) {
       const id = obterBloco(x, y, z);
       if (ehSolido(id) || ehLiquido(id)) {

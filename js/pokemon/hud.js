@@ -6,6 +6,7 @@ import { obterBolas, pokemonNoCampo } from "./party.js";
 import { pedirRetrato } from "./retrato.js";
 import { atoresVisiveis, obterTreinador, pokemonLigado, relogioPokemon } from "./sistema.js";
 import { ALTURA_BLOCO } from "../config.js";
+import { COR_TIPO, nomeTipo } from "./tipos.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { hotbarAtivo, contar, uiAberta } from "../jogo/estado.js";
 import { TIPO_ITEM } from "../wild/catalogo.js";
@@ -18,6 +19,14 @@ export function projetar2d(camera) {
   return (x, y, z, hop) => ({
     x: (mundoParaTelaX(x) - camera.x) * zoom,
     y: (mundoParaTelaY(y, z, hop || 0) - 48 - camera.y) * zoom,
+  });
+}
+
+export function projetarPes2d(camera) {
+  const zoom = camera?.zoom || 1;
+  return (x, y, z, hop) => ({
+    x: (mundoParaTelaX(x) - camera.x) * zoom,
+    y: (mundoParaTelaY(y, z, hop || 0) - camera.y) * zoom,
   });
 }
 
@@ -285,6 +294,101 @@ function carga(ctx, projetar, corpo) {
   ctx.beginPath();
   ctx.arc(p.x, p.y - 28, 16, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * t);
   ctx.stroke();
+  ctx.restore();
+}
+
+function tintaSobre(hex) {
+  const n = parseInt(String(hex).slice(1), 16);
+  if (!Number.isFinite(n)) return "#f8fafc";
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return 0.3 * r + 0.59 * g + 0.11 * b > 160 ? "#1c1917" : "#f8fafc";
+}
+
+function desenharAnel(ctx, p) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, 28, 12, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(45, 212, 191, 0.4)";
+  ctx.fill();
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = "rgba(6, 18, 22, 0.9)";
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#ecfeff";
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Placa com nome, nível e tipos do Pokémon sob o cursor.
+ */
+export function desenharHoverPokemon(ctx, ator, projetar, projetarPes) {
+  if (!ctx || !ator || !projetar) return;
+  const z = ator.elevacao ?? ator.z ?? 0;
+  const hop = ator.hopLift || 0;
+  const corpo = projetar(ator.x, ator.y, z, hop);
+  if (!corpo) return;
+  const pes = projetarPes ? projetarPes(ator.x, ator.y, z, hop) : null;
+  if (pes) desenharAnel(ctx, pes);
+
+  const tipos = ator.tipos || ator.especie?.tipos || [];
+  const nome = `${ator.shiny ? "★ " : ""}${ator.especie?.nome || "Pokémon"}`;
+  const nivel = `Nv ${ator.nivel | 0}`;
+  ctx.save();
+  ctx.font = "700 14px Segoe UI, sans-serif";
+  ctx.textBaseline = "middle";
+  const nomeW = ctx.measureText(nome).width;
+  const nivelW = ctx.measureText(nivel).width;
+  ctx.font = "700 11px Segoe UI, sans-serif";
+  const chips = [];
+  let chipsW = 0;
+  for (let i = 0; i < tipos.length; i++) {
+    const rotulo = nomeTipo(tipos[i]);
+    const w = ctx.measureText(rotulo).width + 12;
+    chips.push({ rotulo, tipo: tipos[i], w });
+    chipsW += w;
+    if (i) chipsW += 4;
+  }
+  const miolo = Math.max(nomeW + 10 + nivelW, chipsW);
+  const largura = miolo + 20;
+  const altura = chips.length ? 46 : 28;
+  const canvas = ctx.canvas;
+  let x = corpo.x - largura * 0.5;
+  let y = corpo.y - altura - 16;
+  if (canvas) {
+    x = Math.max(8, Math.min(canvas.width - largura - 8, x));
+    y = Math.max(8, Math.min(canvas.height - altura - 8, y));
+  }
+
+  ctx.fillStyle = ator.morto ? "rgba(20, 18, 16, 0.82)" : "rgba(8, 12, 10, 0.86)";
+  ctx.fillRect(x, y, largura, altura);
+  ctx.strokeStyle = "rgba(255, 248, 220, 0.92)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + 0.5, y + 0.5, largura - 1, altura - 1);
+
+  ctx.font = "700 14px Segoe UI, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillStyle = ator.morto ? "#a8a29e" : "#f8fafc";
+  ctx.fillText(nome, x + 10, y + 14);
+  ctx.fillStyle = "rgba(255, 236, 180, 0.95)";
+  ctx.textAlign = "right";
+  ctx.fillText(nivel, x + largura - 10, y + 14);
+
+  ctx.font = "700 11px Segoe UI, sans-serif";
+  ctx.textAlign = "center";
+  let cx = x + (largura - chipsW) * 0.5;
+  for (let i = 0; i < chips.length; i++) {
+    const chip = chips[i];
+    const cor = COR_TIPO[chip.tipo] || "#78716c";
+    const cy = y + 28;
+    ctx.fillStyle = cor;
+    ctx.fillRect(cx, cy, chip.w, 14);
+    ctx.fillStyle = tintaSobre(cor);
+    ctx.fillText(chip.rotulo, cx + chip.w * 0.5, cy + 7);
+    cx += chip.w + 4;
+  }
   ctx.restore();
 }
 

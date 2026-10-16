@@ -7,6 +7,49 @@ import { ordenarAtaque } from "./party.js";
 import { atoresVisiveis } from "./sistema.js";
 
 const RAIO_PX = 72;
+const RAIO_HOVER = 72;
+
+function dist2AoSegmento(px, py, ax, ay, bx, by) {
+  const abx = bx - ax;
+  const aby = by - ay;
+  const apx = px - ax;
+  const apy = py - ay;
+  const ab2 = abx * abx + aby * aby;
+  let t = ab2 > 1e-4 ? (apx * abx + apy * aby) / ab2 : 0;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  const dx = px - (ax + abx * t);
+  const dy = py - (ay + aby * t);
+  return dx * dx + dy * dy;
+}
+
+/**
+ * Pokémon sob o cursor. `projetar` aponta o corpo; `projetarPes` o chão.
+ * Os dois juntos cobrem o sprite na vertical.
+ */
+export function atorSobPonteiro(px, py, projetar, projetarPes) {
+  if (!projetar || px == null || py == null) return null;
+  const lista = atoresVisiveis();
+  let melhor = null;
+  let melhorD = RAIO_HOVER * RAIO_HOVER;
+  for (let i = 0; i < lista.length; i++) {
+    const ator = lista[i];
+    if (ator.capturado) continue;
+    const z = ator.elevacao ?? ator.z ?? 0;
+    const hop = ator.hopLift || 0;
+    const corpo = projetar(ator.x, ator.y, z, hop);
+    if (!corpo) continue;
+    const pes = projetarPes ? projetarPes(ator.x, ator.y, z, hop) : null;
+    const d = pes
+      ? dist2AoSegmento(px, py, pes.x, pes.y, corpo.x, corpo.y)
+      : (corpo.x - px) * (corpo.x - px) + (corpo.y - py) * (corpo.y - py);
+    if (d < melhorD) {
+      melhorD = d;
+      melhor = ator;
+    }
+  }
+  return melhor;
+}
 
 function ndcDoEvento(ev) {
   const canvas = ev.currentTarget;

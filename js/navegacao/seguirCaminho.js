@@ -97,10 +97,10 @@ function zDoWaypoint(wp, elevFallback) {
  * Perto no plano XY mas líder bem mais alto (mesma célula / tile ao lado do cliff).
  * Path 2D acha que já chegou — força climb ou voo vertical.
  */
-function perseguirLiderAlto(agente, lider, liderZ, dist, nav) {
+function perseguirLiderAlto(agente, lider, liderZ, dist, nav, parar) {
   const perfil = agente.perfil;
   const elevAg = agente.elevacao ?? agente.z ?? 0;
-  if (dist > AGENTE_DIST_PARAR * 1.55) return null;
+  if (dist > parar * 1.55) return null;
   if (liderZ < elevAg + AGENTE_GAP_ELEV_PARAR) return null;
   if (agente.escalando || agente.mantle) return null;
 
@@ -278,10 +278,11 @@ function indiceWaypointInicial(cells, ax, ay, elev = null) {
  * Atualiza pedido de path / segue waypoints.
  * Retorna { ix, iy, querPulo, querPlanar }.
  */
-export function atualizarSeguirCaminho(agente, lider, dt) {
+export function atualizarSeguirCaminho(agente, lider, dt, distSeguir = 0) {
   const nav = garantirNav(agente);
   const perfil = agente.perfil;
   const dist = Math.hypot(lider.x - agente.x, lider.y - agente.y);
+  const parar = distSeguir > 0 ? distSeguir : AGENTE_DIST_PARAR;
   const planando = !!agente.planando;
   const voando = !!agente.voando;
   const naParede = !!agente.escalando && !agente.mantle;
@@ -293,7 +294,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
 
 
   if (
-    dist <= AGENTE_DIST_PARAR &&
+    dist <= parar &&
     gapElev < AGENTE_GAP_ELEV_PARAR &&
     !planando &&
     !voando &&
@@ -314,7 +315,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
 
   // Mesma célula / tile ao lado mas Δelev grande → sobe (path 2D acha que já chegou)
   if (!planando && !voando && !naParede && !noMantle && !naLamina) {
-    const chaseAlto = perseguirLiderAlto(agente, lider, liderZ, dist, nav);
+    const chaseAlto = perseguirLiderAlto(agente, lider, liderZ, dist, nav, parar);
     if (chaseAlto) return chaseAlto;
   }
 
@@ -377,7 +378,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     const dyL = lider.y - agente.y;
     const dL = Math.hypot(dxL, dyL) || 1;
     const chegou =
-      dist <= AGENTE_DIST_PARAR * 1.2 &&
+      dist <= parar * 1.2 &&
       gapElev < AGENTE_GAP_ELEV_PARAR &&
       !lider.voando;
     return {
@@ -424,7 +425,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     const dyL = lider.y - agente.y;
     const dL = Math.hypot(dxL, dyL) || 1;
     const pertoEBaixo =
-      dist <= AGENTE_DIST_PARAR * 1.4 &&
+      dist <= parar * 1.4 &&
       Math.abs((agente.elevacao ?? 0) - liderZ) < AGENTE_GAP_ELEV_PARAR &&
       !lider.voando;
     return {
@@ -500,7 +501,7 @@ export function atualizarSeguirCaminho(agente, lider, dt) {
     const folgaAr = agente.elevacao - (zChaoAr > 0 ? zChaoAr : 0);
     // Fecha asa só perto do líder e quase no chão; senão pousa natural com a asa
     const soltarAsa =
-      planando && dist <= AGENTE_DIST_PARAR * 1.35 && folgaAr <= 1.15;
+      planando && dist <= parar * 1.35 && folgaAr <= 1.15;
     return {
       ix: dxL / dL,
       iy: dyL / dL,

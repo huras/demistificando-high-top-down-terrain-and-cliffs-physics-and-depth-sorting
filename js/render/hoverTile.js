@@ -19,28 +19,103 @@ export function desenharHoverTile2d(ctx) {
   const faceH = FACE_H * ESCALA;
 
   ctx.save();
-  // Fill suave no topo
-  ctx.fillStyle = "rgba(125, 206, 106, 0.18)";
+  ctx.fillStyle = "rgba(94, 234, 212, 0.45)";
   ctx.fillRect(px, py, s, s);
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(6, 18, 22, 0.9)";
+  ctx.strokeRect(px + 1.5, py + 1.5, s - 3, s - 3);
+  ctx.lineWidth = 1.75;
+  ctx.strokeStyle = "#ecfeff";
+  ctx.strokeRect(px + 1.5, py + 1.5, s - 3, s - 3);
 
-  // Contorno topo
-  ctx.strokeStyle = "rgba(232, 255, 224, 0.95)";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(px + 0.75, py + 0.75, s - 1.5, s - 1.5);
-
-  // Aresta sul (profundidade high top-down)
   const fy = py + s - 1;
-  ctx.fillStyle = "rgba(125, 206, 106, 0.12)";
+  ctx.fillStyle = "rgba(45, 212, 191, 0.22)";
   ctx.fillRect(px, fy, s, faceH);
-  ctx.strokeStyle = "rgba(125, 206, 106, 0.75)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(236, 254, 255, 0.9)";
+  ctx.lineWidth = 1.25;
   ctx.beginPath();
   ctx.moveTo(px + 0.5, fy);
   ctx.lineTo(px + 0.5, fy + faceH);
   ctx.lineTo(px + s - 0.5, fy + faceH);
   ctx.lineTo(px + s - 0.5, fy);
   ctx.stroke();
+  ctx.restore();
+}
 
+function tracarTile(ctx, pts) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+}
+
+function tracarCantos(ctx, pts) {
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % 4];
+    const c = pts[(i + 3) % 4];
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const acx = c.x - a.x;
+    const acy = c.y - a.y;
+    const lab = Math.hypot(abx, aby) || 1;
+    const lac = Math.hypot(acx, acy) || 1;
+    const ub = Math.min(lab * 0.55, 12);
+    const uc = Math.min(lac * 0.55, 12);
+    const ox = abx / lab + acx / lac;
+    const oy = aby / lab + acy / lac;
+    const ol = Math.hypot(ox, oy) || 1;
+    ctx.moveTo(a.x + (abx / lab) * ub, a.y + (aby / lab) * ub);
+    ctx.lineTo(a.x, a.y);
+    ctx.lineTo(a.x + (acx / lac) * uc, a.y + (acy / lac) * uc);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(a.x - (ox / ol) * 7, a.y - (oy / ol) * 7);
+  }
+}
+
+/**
+ * Quadrado do tile em espaço de tela (por cima do WebGL).
+ * `projetarChao(x, y, z)` devolve {x, y} ou null.
+ */
+export function desenharMarcadorTileTela(ctx, projetarChao) {
+  const h = obterHoverBloco();
+  if (!h || !projetarChao || !ctx) return;
+  const z = h.z + 1;
+  const pts = [
+    projetarChao(h.x, h.y, z),
+    projetarChao(h.x + 1, h.y, z),
+    projetarChao(h.x + 1, h.y + 1, z),
+    projetarChao(h.x, h.y + 1, z),
+  ];
+  for (let i = 0; i < 4; i++) if (!pts[i]) return;
+
+  const cx = (pts[0].x + pts[2].x) * 0.5;
+  const cy = (pts[0].y + pts[2].y) * 0.5;
+  ctx.save();
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  tracarTile(ctx, pts);
+  ctx.fillStyle = "rgba(45, 212, 191, 0.55)";
+  ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(6, 18, 22, 0.92)";
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#ecfeff";
+  ctx.stroke();
+  tracarCantos(ctx, pts);
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(6, 18, 22, 0.92)";
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#ecfeff";
+  ctx.stroke();
+  ctx.fillStyle = "#ecfeff";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -93,58 +168,67 @@ export function desenharLabelHoverHud(ctx, canvasW, canvasH, mira3d = false) {
  * Cria marcador 3D (EdgesGeometry) — 1 mesh, só move quando a célula muda.
  * @param {typeof import("three")} THREE
  */
+function texturaCursorTile(THREE) {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, 128, 128);
+  g.fillStyle = "rgba(45, 212, 191, 0.72)";
+  g.fillRect(14, 14, 100, 100);
+  g.strokeStyle = "rgba(6, 18, 22, 0.95)";
+  g.lineWidth = 18;
+  g.strokeRect(8, 8, 112, 112);
+  g.strokeStyle = "#ecfeff";
+  g.lineWidth = 7;
+  g.strokeRect(14, 14, 100, 100);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 export function criarMarcadorHover3d(THREE) {
-  const geo = new THREE.BoxGeometry(1.02, 1.02 * ALTURA_BLOCO, 1.02);
-  const edges = new THREE.EdgesGeometry(geo);
-  geo.dispose();
-
-  const mat = new THREE.LineBasicMaterial({
-    color: 0xb8f0a0,
+  const geo = new THREE.PlaneGeometry(1, 1);
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshBasicMaterial({
+    map: texturaCursorTile(THREE),
     transparent: true,
-    opacity: 0.95,
-    depthTest: true,
-  });
-  const lines = new THREE.LineSegments(edges, mat);
-  lines.visible = false;
-  lines.renderOrder = 3;
-  lines.frustumCulled = true;
-
-  // Fill sutil
-  const fillMat = new THREE.MeshBasicMaterial({
-    color: 0x7dce6a,
-    transparent: true,
-    opacity: 0.12,
     depthWrite: false,
+    depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
+    fog: false,
   });
-  const fill = new THREE.Mesh(
-    new THREE.BoxGeometry(1.01, 1.01 * ALTURA_BLOCO, 1.01),
-    fillMat,
-  );
-  fill.renderOrder = 2;
-  lines.add(fill);
+  const malha = new THREE.Mesh(geo, mat);
+  malha.visible = false;
+  malha.renderOrder = 8;
+  malha.frustumCulled = false;
 
   let lastKey = "";
 
   return {
-    mesh: lines,
+    mesh: malha,
     atualizar() {
       const h = obterHoverBloco();
       if (!h) {
         if (lastKey !== "") {
-          lines.visible = false;
+          malha.visible = false;
           lastKey = "";
         }
         return;
       }
       const k = h.x + "," + h.y + "," + h.z;
       if (k !== lastKey) {
-        // Three: (x, altura, y_mundo)
-        lines.position.set(h.x + 0.5, (h.z + 0.5) * ALTURA_BLOCO, h.y + 0.5);
+        malha.position.set(h.x + 0.5, (h.z + 1) * ALTURA_BLOCO + 0.12, h.y + 0.5);
         lastKey = k;
       }
-      lines.visible = true;
-      const pulso = 0.88 + 0.12 * Math.sin(performance.now() * 0.008);
-      mat.opacity = pulso;
+      malha.visible = true;
+      const pulso = 0.94 + 0.06 * Math.sin(performance.now() * 0.008);
+      malha.scale.set(pulso, pulso, 1);
     },
   };
 }

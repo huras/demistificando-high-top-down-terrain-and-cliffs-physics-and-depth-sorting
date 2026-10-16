@@ -1,4 +1,5 @@
 import {
+  AGENTE_DIST_SEGUIR,
   CAMINHOS,
   CHUNK_XZ,
   PASSO_MALHA_SUAVE,
@@ -148,8 +149,8 @@ async function iniciar() {
 
   corpo = criarCorpo(SPAWN);
   agente = criarAgente({
-    x: SPAWN.x - 1.1,
-    y: SPAWN.y + 0.9,
+    x: SPAWN.x - 1.7,
+    y: SPAWN.y + 1.85,
     z: SPAWN.z,
   });
   definirCorposFixos([corpo, agente]);
@@ -252,8 +253,8 @@ async function iniciar() {
       corpo.tempoAr = 0;
       iniciarStamina(corpo);
       if (agente) {
-        agente.x = x - 1.1;
-        agente.y = y + 0.9;
+        agente.x = x - 1.7;
+        agente.y = y + 1.85;
         agente.z = z;
         agente.elevacao = z;
         agente.vx = 0;
@@ -434,12 +435,12 @@ function loop(agora) {
   if (!passeioAtivo() && !trava) atualizarMovimento(corpo, dt);
   tickFilaPath();
   if (passeioAtivo() && !trava) atualizarPasseio(corpo, dt);
-  atualizarAgente(agente, corpo, dt);
+  atualizarAgente(agente, corpo, dt, 0, AGENTE_DIST_SEGUIR);
   tickPokemon(corpo, dt, agente.perfil);
   if (corpo._renasceu) {
     corpo._renasceu = false;
-    agente.x = corpo.x - 1.1;
-    agente.y = corpo.y + 0.9;
+    agente.x = corpo.x - 1.7;
+    agente.y = corpo.y + 1.85;
     agente.z = corpo.z;
     agente.elevacao = corpo.z;
     agente.vx = 0;

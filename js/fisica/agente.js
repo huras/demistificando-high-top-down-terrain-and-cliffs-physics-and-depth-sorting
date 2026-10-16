@@ -1,4 +1,5 @@
 import {
+  AGENTE_GAP_ELEV_PARAR,
   AGENTE_GLIDE_HEUR_FOLGA,
   AGENTE_VEL_MUL,
   ASA_DELTA_ABRIR_APOS,
@@ -213,25 +214,53 @@ export { resetarNav };
  * Segue o líder via pathfinding (sem teleporte).
  * Velocidade = AGENTE_VEL_MUL × walk/sprint do líder.
  */
-export function atualizarAgente(agente, lider, dt, velPedido = 0) {
+export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0) {
   if (!agente || !lider) return;
 
   const podeCorrer = agente.perfil?.podeCorrer !== false;
   const velLider =
     podeCorrer && lider.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
-  const velMax = velPedido > 0 ? velPedido : velLider * AGENTE_VEL_MUL;
+  let velMax = velPedido > 0 ? velPedido : velLider * AGENTE_VEL_MUL;
 
-  const {
-    ix,
-    iy,
-    querPulo,
-    querPlanar,
-    querEscalar,
-    querVoar,
-    soltarAsa,
-    soltarParede,
-  } = atualizarSeguirCaminho(agente, lider, dt);
+  const navCmd = atualizarSeguirCaminho(agente, lider, dt, distSeguir);
+  let ix = navCmd.ix;
+  let iy = navCmd.iy;
+  const querPulo = navCmd.querPulo;
+  const querPlanar = navCmd.querPlanar;
+  const querEscalar = navCmd.querEscalar;
+  const querVoar = navCmd.querVoar;
+  const soltarAsa = navCmd.soltarAsa;
+  const soltarParede = navCmd.soltarParede;
   const nav = agente.nav;
+
+  if (distSeguir > 0 && !agente.voando && !agente.planando && !agente.escalando && !agente.mantle) {
+    const distLider = Math.hypot(lider.x - agente.x, lider.y - agente.y);
+    const zLider = lider.elevacao ?? lider.z ?? 0;
+    const zAg = agente.elevacao ?? agente.z ?? 0;
+    const mesmoPiso = Math.abs(zAg - zLider) < AGENTE_GAP_ELEV_PARAR;
+    if (mesmoPiso) {
+      const folga = distLider - distSeguir;
+      if (folga < -0.08) {
+        const d = Math.max(distLider, 0.001);
+        ix = (agente.x - lider.x) / d;
+        iy = (agente.y - lider.y) / d;
+        const indoParaLider =
+          agente.vx * (lider.x - agente.x) + agente.vy * (lider.y - agente.y);
+        if (indoParaLider > 0) {
+          agente.vx = 0;
+          agente.vy = 0;
+        }
+        velMax = Math.min(velMax, 2.2);
+      } else if (folga <= 0) {
+        agente.vx = 0;
+        agente.vy = 0;
+        ix = 0;
+        iy = 0;
+      } else if (folga < 1.25) {
+        velMax *= Math.max(0.22, folga / 1.25);
+      }
+    }
+  }
 
   if (soltarAsa && estaPlanando(agente)) {
     fecharAsaDelta(agente);

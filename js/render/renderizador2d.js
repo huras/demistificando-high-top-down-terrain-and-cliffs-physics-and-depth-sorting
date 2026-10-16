@@ -11,7 +11,9 @@ import { desenharPivosSort } from "./debugPivos.js";
 import { atualizarFadeCobertura } from "./fadeCobertura.js";
 import { atualizarPainel, desenharOverlayAjuda } from "./hudDebug.js";
 import { desenharHudStamina } from "./hudStamina.js";
-import { desenharHoverTile2d, desenharLabelHoverHud } from "./hoverTile.js";
+import { desenharHoverTile2d, desenharLabelHoverHud, desenharMarcadorTileTela } from "./hoverTile.js";
+import { obterPonteiroCanvas } from "../entrada/hoverBloco.js";
+import { atorSobPonteiro } from "../pokemon/clique.js";
 import {
   criarListaProfundidade,
   desenharLista,
@@ -20,7 +22,7 @@ import {
 import { empilharAlvoEscalada } from "./alvoEscalada.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
 import { empilharPokemon } from "../pokemon/render2d.js";
-import { desenharHudPokemon, projetar2d, projetar3d, projetarChao3d } from "../pokemon/hud.js";
+import { desenharHudPokemon, desenharHoverPokemon, projetar2d, projetarPes2d, projetar3d, projetarChao3d } from "../pokemon/hud.js";
 import { avancarTempoAgua, empilharAgua2d } from "./agua2d.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
@@ -69,8 +71,11 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   }
 
   desenharOverlayAjuda(ctx, camera, debug, ocl, modoVisual, "2d");
-  desenharHudStamina(ctx, corpo, projetar2d(camera));
-  desenharHudPokemon(ctx, projetar2d(camera), corpo);
+  const projetar = projetar2d(camera);
+  const projetarPes = projetarPes2d(camera);
+  desenharHudStamina(ctx, corpo, projetar);
+  desenharHudPokemon(ctx, projetar, corpo);
+  desenharPokemonSobCursor(ctx, canvas, projetar, projetarPes);
   desenharLabelHoverHud(ctx, canvas.width, canvas.height);
 
   return { ocl, modoVisual };
@@ -171,18 +176,28 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
   desenharOverlayAjuda(ctx, { zoom }, debug, null, modoVisual, "3d");
   const cam = emCena ? null : camera3d?.camRender;
   const projetar = cam ? projetar3d(cam, canvas.width, canvas.height) : null;
+  const projetarChao = cam ? projetarChao3d(cam, canvas.width, canvas.height) : null;
   desenharHudStamina(ctx, corpo, projetar);
-  desenharHudPokemon(ctx, projetar, corpo, cam ? projetarChao3d(cam, canvas.width, canvas.height) : null);
+  desenharHudPokemon(ctx, projetar, corpo, projetarChao);
   if (emCena) {
     desenharTagCena(ctx, canvas.width);
   } else {
-    desenharLabelHoverHud(ctx, canvas.width, canvas.height, true);
+    desenharMarcadorTileTela(ctx, projetarChao);
+    desenharPokemonSobCursor(ctx, canvas, projetar, projetarChao);
+    desenharLabelHoverHud(ctx, canvas.width, canvas.height, false);
     if ((camera3d?.camera3d?.blend ?? 0) > 0.35) {
       desenharMira(ctx, canvas.width, canvas.height, camera3d?.flechas?.carga?.() ?? 0);
     }
   }
 
   return { ocl, modoVisual };
+}
+
+function desenharPokemonSobCursor(ctx, canvas, projetar, projetarPes) {
+  const ponteiro = obterPonteiroCanvas(canvas);
+  if (!ponteiro) return;
+  const alvo = atorSobPonteiro(ponteiro.x, ponteiro.y, projetar, projetarPes);
+  if (alvo) desenharHoverPokemon(ctx, alvo, projetar, projetarPes);
 }
 
 function desenharTagCena(ctx, largura) {

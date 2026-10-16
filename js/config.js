@@ -29,6 +29,8 @@ export const ATRITO_AR = 1.8;
 /** Agente que segue o jogador. */
 export const AGENTE_VEL_MUL = 1;
 export const AGENTE_DIST_PARAR = 1.15;
+/** NPC seguidor e Pokémon do time: param antes de encostar no jogador. */
+export const AGENTE_DIST_SEGUIR = 2.45;
 /** Só “chegou” se |Δelev| estiver abaixo disto (evita satisfeito no tile ao lado do cliff). */
 export const AGENTE_GAP_ELEV_PARAR = 0.85;
 
@@ -285,6 +287,8 @@ export const PASSO_MALHA_SUAVE = 8;
 export const IMPOSTOR_CAP = 256;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 6;
+/** Cursor enxerga o chão com a câmera longe; editar continua no alcance curto. */
+export const ALCANCE_MIRA = 320;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */
 export const MESH_CHUNKS_POR_FRAME = 1;
 /**

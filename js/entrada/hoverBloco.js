@@ -1,7 +1,7 @@
 /**
  * Hover de bloco — pick barato (dirty + cache sem alloc).
  */
-import { ESCALA, FACE_H, TILE } from "../config.js";
+import { ALCANCE_MIRA, ESCALA, FACE_H, TILE } from "../config.js";
 import { obterModo } from "../modoJogo.js";
 import { estaEmCena } from "../cena/modoCena.js";
 import { alvoBloco2d, alvoBloco3dCursor } from "../mundo/voxel/alvoBloco.js";
@@ -104,7 +104,7 @@ export function atualizarHoverBloco() {
       return hover;
     }
     const { ndcX, ndcY } = ndcDoCanvas(canvas3d);
-    aplicarHover(alvoBloco3dCursor(cen.camera3d, ndcX, ndcY));
+    aplicarHover(alvoBloco3dCursor(cen.camera3d, ndcX, ndcY, ALCANCE_MIRA));
     sujo = false;
     return hover;
   }
@@ -145,6 +145,16 @@ export function obterHoverBloco() {
 
 export function textoHoverBloco() {
   return hoverTexto;
+}
+
+/** Ponto do cursor no bitmap do canvas, ou null se o ponteiro saiu. */
+export function obterPonteiroCanvas(canvas) {
+  if (!ponteiroDentro || !canvas) return null;
+  const rect = canvas.getBoundingClientRect();
+  const u = (clientX - rect.left) / rect.width;
+  const v = (clientY - rect.top) / rect.height;
+  if (u < 0 || u > 1 || v < 0 || v > 1) return null;
+  return { x: u * canvas.width, y: v * canvas.height };
 }
 
 /**

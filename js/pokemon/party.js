@@ -1,4 +1,4 @@
-import { POKEMON } from "../config.js";
+import { AGENTE_DIST_SEGUIR, POKEMON } from "../config.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
 import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
@@ -223,14 +223,14 @@ export function atualizarParty(corpo, dt, agora, perfil) {
   const mon = pokemonNoCampo();
   if (mon?.morto && mon.mortoAte > 0 && agora >= mon.mortoAte) {
     const z = corpo.elevacao ?? corpo.z ?? mon.z;
-    reviverAtor(mon, corpo.x - 0.8, corpo.y + 0.6, z);
+    reviverAtor(mon, corpo.x + 1.7, corpo.y + 1.85, z);
   }
   const vivo = pokemonDeployado();
   if (!vivo || vivo.capturado) return;
   const z = corpo.elevacao ?? corpo.z ?? mon.z;
   if (!mon._colocado) {
-    mon.x = corpo.x - 1.1;
-    mon.y = corpo.y + 0.8;
+    mon.x = corpo.x + 1.7;
+    mon.y = corpo.y + 1.85;
     mon.z = z;
     mon.elevacao = z;
     mon._colocado = true;
@@ -242,5 +242,5 @@ export function atualizarParty(corpo, dt, agora, perfil) {
     resetarNav(mon);
   }
   garantirCorpoLocomocao(mon, usar);
-  atualizarAgente(mon, corpo, dt);
+  atualizarAgente(mon, corpo, dt, 0, AGENTE_DIST_SEGUIR);
 }
