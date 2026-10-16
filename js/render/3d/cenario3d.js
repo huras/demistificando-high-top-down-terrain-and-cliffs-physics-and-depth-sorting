@@ -26,6 +26,7 @@ import { atualizarDebugCorpos, criarDebugCorpos } from "./debugCorpos.js";
 import { criarDebugCasas } from "./debugCasas.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
+import { criarFxCampo } from "../../campo/fx.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
@@ -258,6 +259,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const vegetacaoDistante = criarVegetacaoDistante();
   scene.add(vegetacaoDistante.grupo);
 
+  const fxCampo = criarFxCampo();
+  scene.add(fxCampo.grupo);
+
   const personagem = criarPersonagem3d({
     nome: "personagem",
     sprite: atlas?.jogador ?? null,
@@ -308,6 +312,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     edificios,
     vegetacao,
     vegetacaoDistante,
+    fxCampo,
     personagem,
     agente3d,
     ventoAsa,
@@ -422,6 +427,7 @@ function aplicarAtlasNaCena(atlas) {
   estado.terrenoSuave?.aplicarTexturas?.(estado.terreno.obterTexturasTopo?.());
   estado.vegetacao?.aplicarAtlas?.(atlas);
   estado.vegetacaoDistante?.aplicarAtlas?.(atlas);
+  estado.fxCampo?.aplicarAtlas?.(atlas);
   estado.personagem.definirSprite?.(atlas?.jogador ?? null);
   estado.agente3d.definirSprite?.(atlas?.jogador ?? null);
   const tiles = usarTiles(atlas);
@@ -550,6 +556,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.edificios?.atualizar?.(corpo.x, corpo.y, yaw, inclinacao);
   estado.vegetacao?.atualizar?.(yaw, inclinacao);
   estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw, inclinacao);
+  estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   anotarEstadoSim(estado.personagem.grupo, corpo);
   estado.personagem.atualizar(corpo, camRender, yaw);
   if (agente && estado.agente3d) {

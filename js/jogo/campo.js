@@ -9,13 +9,17 @@ import { atualizarStreaming } from "../mundo/voxel/storeMundo.js";
 import { portaDoModelo, vaosPortaPerto } from "../mundo/cidade/cascaCasa.js";
 import { faixaDaPorta, predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
 import { alturaEm } from "../mundo/altura.js";
-import { obterBloco, avisarDirty } from "../mundo/voxel/storeMundo.js";
+import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { ajustarItem, pokemonNoCampo } from "../pokemon/party.js";
+import { executarNoProp, textoDoAcerto } from "../campo/acoes.js";
+import { tickArvores } from "../campo/cicloArvore.js";
+import { tickGrama } from "../campo/grama.js";
+import { tickOrdens } from "../campo/ordem.js";
 import { yawCamera } from "../render/3d/camera3d.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
-import { BERRIES, CRISTAIS, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
+import { BERRIES, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
 import { ESTAGIO } from "../wild/estagios.js";
 import { colher, criarSolo, plantar, regar, simularPlot } from "../wild/plots.js";
 import { criarSala } from "../wild/salas.js";
@@ -291,32 +295,13 @@ export function sairInterior(corpo) {
   sfx("porta");
 }
 
-let corteAcum = 0;
-
 export function tickCampo(dt) {
   if (estado.saidaGrace > 0) estado.saidaGrace = Math.max(0, estado.saidaGrace - dt);
   const agora = Date.now();
   for (let i = 0; i < estado.plots.length; i++) simularPlot(estado.plots[i], agora);
-  corteAcum += dt;
-  if (estado.cortados.length && corteAcum >= 0.4) {
-    corteAcum = 0;
-    aplicarCortes();
-  }
-}
-
-function aplicarCortes() {
-  if (!estado.cortados.length) return;
-  const conjunto = new Set(estado.cortados);
-  const props = vegetacaoNaArea(-1e9, -1e9, 1e9, 1e9);
-  let mudou = false;
-  for (let i = 0; i < props.length; i++) {
-    const p = props[i];
-    if (!p.oculto && conjunto.has(p.id)) {
-      p.oculto = true;
-      mudou = true;
-    }
-  }
-  if (mudou) avisarDirty();
+  tickArvores(dt, agora);
+  tickGrama(dt, agora);
+  tickOrdens(dt);
 }
 
 function propPerto(x, y, tipos) {
@@ -393,28 +378,14 @@ export function plantarOuColher(alvo, item) {
 function usarMachadoNo(x, y) {
   const prop = propPerto(x, y, new Set(["arvore"]));
   if (!prop) return "Nenhuma árvore no clique.";
-  prop.oculto = true;
-  if (!estado.cortados.includes(prop.id)) estado.cortados.push(prop.id);
-  ajustarItem("wood", 2 + Math.floor(Math.random() * 2));
-  avisarDirty();
-  sfx("cavar");
-  return "Madeira obtida.";
+  const resultado = executarNoProp("cortar", prop);
+  return textoDoAcerto(resultado, prop) || (resultado === "acertou" ? "Cortou." : "");
 }
 
 function usarPicaretaNo(x, y) {
   const prop = propPerto(x, y, new Set(["pedra", "cristal"]));
   if (!prop) return "Nenhuma pedra no clique.";
-  prop.oculto = true;
-  if (!estado.cortados.includes(prop.id)) estado.cortados.push(prop.id);
-  if (prop.tipo === "cristal") {
-    const key = CRISTAIS[Math.floor(Math.random() * CRISTAIS.length)];
-    ajustarItem(key, 1);
-  } else {
-    ajustarItem("stone", 2);
-  }
-  avisarDirty();
-  sfx("cavar");
-  return prop.tipo === "cristal" ? "Cristal obtido." : "Pedra obtida.";
+  return textoDoAcerto(executarNoProp("minerar", prop), prop);
 }
 
 function usarConsumivel(item) {

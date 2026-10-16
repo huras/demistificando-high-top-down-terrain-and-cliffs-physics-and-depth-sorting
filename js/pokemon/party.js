@@ -244,6 +244,7 @@ export function atualizarParty(corpo, dt, agora, perfil) {
     mon.elevacao = z;
     mon._colocado = true;
   }
+  if (mon.ordemCampo) return;
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;
   const usar = perfil || PERFIL_COMPANHEIRO;
   if (mon.perfil !== usar) {

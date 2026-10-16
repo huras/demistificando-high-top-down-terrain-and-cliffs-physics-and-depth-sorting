@@ -12,6 +12,7 @@ import {
 } from "../../config.js";
 import { alturaDoRelevo, plantaDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { chunksComProps } from "../../mundo/bioma/propsBioma.js";
+import { foraDoHorizonte, revisaoCampo } from "../../campo/estadoProps.js";
 import { hash2 } from "../../mundo/voxel/ruido.js";
 import { COLUNAS, LINHAS } from "../../mundo/regioes/mapaDemoPatch.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
@@ -171,7 +172,12 @@ export function criarVegetacaoDistante() {
       const salvo = cache.get(ch.k);
       if (!salvo) continue;
       const arvores = salvo.arvores;
-      for (let j = 0; j < arvores.length; j++) todos.push(arvores[j]);
+      for (let j = 0; j < arvores.length; j++) {
+        const item = arvores[j];
+        const id = item.id || `v${Math.floor(item.x)}_${Math.floor(item.y)}`;
+        if (foraDoHorizonte(id)) continue;
+        todos.push(item);
+      }
     }
     const escolhidas = espalhar(todos);
 
@@ -302,8 +308,8 @@ function yawDiferente(atual, aplicado) {
 
 function assinaturaProps() {
   const props = chunksComProps();
-  if (!props.size) return "";
-  return [...props].sort().join("|");
+  const base = props.size ? [...props].sort().join("|") : "";
+  return `${base}#${revisaoCampo()}`;
 }
 
 function montarBanda(px, py) {
@@ -391,8 +397,9 @@ function* arvoresDoChunk(cx, cy) {
       const wy = baseY + ly;
       if (!(wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS)) {
         const planta = plantaDoRelevo(wx, wy);
-        if (planta && planta.classe === "arvore" && !ehCliff(lx, ly, alturaLocal)) {
+        if (planta && planta.classe === "arvore" && !ehCliff(lx, ly, alturaLocal) && !foraDoHorizonte(`v${wx}_${wy}`)) {
           arvores.push({
+            id: `v${wx}_${wy}`,
             x: wx + 0.5,
             y: wy + 0.5,
             h: alturaLocal(lx, ly),

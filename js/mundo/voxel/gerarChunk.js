@@ -10,6 +10,7 @@ import { aplicarCascaNoChunk, cascasProntas } from "../cidade/cascaCasa.js";
 import { aplicarSalaNoChunk } from "../cidade/sala3d.js";
 import { aplicarLaboratorioNoChunk, dentroDoTerrenoLaboratorio } from "../cidade/laboratorio.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
+import { aplicarNaLista } from "../../campo/estadoProps.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { definirLocal, preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
 import { valueNoise3 } from "./ruido.js";
@@ -165,6 +166,7 @@ export function* passosChunk(chunk, seed) {
       if ((++coluna & 31) === 0) yield;
     }
   }
+  aplicarNaLista(props);
   definirPropsChunk(chunk.cx, chunk.cy, props);
 
   yield;

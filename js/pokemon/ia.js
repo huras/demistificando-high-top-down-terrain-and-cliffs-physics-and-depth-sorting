@@ -225,6 +225,8 @@ function atualizarUm(ator, party, jogador, dt) {
     return;
   }
 
+  if (ator.ordemCampo) return;
+
   const ordem = ator.ordemAlvo;
   if (!ordem || ordem.morto || ordem.capturado) {
     ator.ordemAlvo = null;

@@ -8,6 +8,8 @@ import { ESCALA, FACE_H, TILE } from "../config.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 import { invalidarHoverBloco } from "./hoverBloco.js";
 import { raioDoPonteiro } from "../render/3d/camera3d.js";
+import { ponteiroTravado } from "./ponteiro3d.js";
+import { abrirMenuCampo } from "../campo/menu.js";
 import { tentarAtaqueNoClique } from "../pokemon/clique.js";
 import { definirSegurarBola, definirMiraCursor } from "../pokemon/captura.js";
 import { usarNoClique } from "../jogo/campo.js";
@@ -121,8 +123,28 @@ function aoMouseDown3d(ev) {
   dispararItem(corpo, celula, alvo, chao);
 }
 
+function mundoDoClique(ev) {
+  if (ev.currentTarget === canvas3d && canvas3d) {
+    const corpo = obterCorpo();
+    const cen = obterCenario3d();
+    if (!corpo || !cen?.camera3d) return null;
+    const { ndcX, ndcY } = ndcDoEvento(ev, canvas3d);
+    const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
+    return pontoNoChao(raio, corpo.z ?? 0);
+  }
+  const camera = obterCamera2d();
+  if (!camera || !canvas2d) return null;
+  const { mx, my } = telaParaMundo2d(ev.clientX, ev.clientY, camera, canvas2d);
+  return { x: mx, y: my };
+}
+
 function aoContextMenu(ev) {
   ev.preventDefault();
+  if (ponteiroTravado() || uiAberta() || estaEmCena()) return;
+  const corpo = obterCorpo();
+  const mundo = mundoDoClique(ev);
+  if (!corpo || !mundo) return;
+  abrirMenuCampo(ev.clientX, ev.clientY, mundo.x, mundo.y, corpo);
 }
 
 /**

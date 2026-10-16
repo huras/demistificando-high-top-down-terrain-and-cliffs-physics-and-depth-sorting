@@ -17,6 +17,8 @@ import { registrarObjetoCena, removerObjetoCena, marcarAuxiliar } from "../../ce
 import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
 import { onDirty } from "../../mundo/voxel/storeMundo.js";
 import { STENCIL_GRAMA, marcarStencilSolido } from "./silhuetaSprite.js";
+import { FASE } from "../../campo/estadoProps.js";
+import { imagemToco } from "../../campo/visualToco.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
@@ -34,6 +36,9 @@ function estiloDe(prop) {
 
 function chaveDe(prop) {
   if (!prop || prop.oculto || prop.tipo === "placa") return null;
+  if (prop.fase === FASE.CAINDO || prop.fase === FASE.REMOVIDO) return null;
+  if (prop.tipo === "arvore" && prop.fase === FASE.TOCO) return `toco:${prop.sprite || "arvore"}`;
+  if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return `tocoq:${prop.sprite || "arvore"}`;
   return prop.sprite || prop.tipo || null;
 }
 
@@ -92,12 +97,36 @@ export function criarVegetacaoBillboard3d() {
   let inclinacaoAplicada = 0;
   let alturasSujas = true;
 
-  function imagemDe(prop) {
+  const corInst = new THREE.Color();
+
+  function imagemBase(prop) {
     if (!atlasAtual || !prop) return null;
     if (prop.sprite && atlasAtual.sprites?.[prop.sprite]) return atlasAtual.sprites[prop.sprite];
     if (prop.tipo === "arvore") return atlasAtual.arvore || null;
     if (prop.tipo === "mata" || prop.tipo === "grama") return atlasAtual.mata || null;
     return null;
+  }
+
+  function imagemDe(prop) {
+    const base = imagemBase(prop);
+    if (!base) return null;
+    if (prop.tipo === "arvore" && prop.fase === FASE.TOCO) return imagemToco(base, false);
+    if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return imagemToco(base, true);
+    return base;
+  }
+
+  function corDe(prop) {
+    if (prop.tipo === "grama" && prop.fase === FASE.QUEIMANDO) {
+      corInst.setRGB(1, 0.48, 0.16);
+      return corInst;
+    }
+    if ((prop.tipo === "pedra" || prop.tipo === "cristal") && prop.hpMax > 0 && prop.hp < prop.hpMax - 1e-3) {
+      const t = Math.max(0, Math.min(1, prop.hp / prop.hpMax));
+      corInst.setRGB(0.42 + 0.58 * t, 0.34 + 0.66 * t, 0.3 + 0.7 * t);
+      return corInst;
+    }
+    corInst.setRGB(1, 1, 1);
+    return corInst;
   }
 
   function soltarLote(lote) {
@@ -271,8 +300,12 @@ export function criarVegetacaoBillboard3d() {
       dummy.scale.set(largura, altura, 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
+      mesh.setColorAt(i, corDe(p));
     }
-    if (itens.length) mesh.instanceMatrix.needsUpdate = true;
+    if (itens.length) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
     if (limites && itens.length) {
       mesh.computeBoundingBox();
       mesh.computeBoundingSphere();

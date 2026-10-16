@@ -78,18 +78,22 @@ export const BOLAS = Object.freeze({
 export const FERRAMENTAS = Object.freeze({
   hoe: Object.freeze({ key: "hoe", nome: "Enxada", tipo: TIPO_ITEM.FERRAMENTA, cor: "#a16207", dica: "Cava grama para plantar." }),
   wateringCan: Object.freeze({ key: "wateringCan", nome: "Regador", tipo: TIPO_ITEM.FERRAMENTA, cor: "#0ea5e9", dica: "Rega a planta para ela crescer." }),
-  axe: Object.freeze({ key: "axe", nome: "Machado", tipo: TIPO_ITEM.FERRAMENTA, cor: "#92400e", dica: "Corta árvore e solta madeira." }),
+  axe: Object.freeze({ key: "axe", nome: "Machado", tipo: TIPO_ITEM.FERRAMENTA, cor: "#92400e", dica: "Corta a árvore. Ela cai e vira toco." }),
   pickaxe: Object.freeze({ key: "pickaxe", nome: "Picareta", tipo: TIPO_ITEM.FERRAMENTA, cor: "#64748b", dica: "Clique esquerdo quebra o bloco, ou a pedra sob o cursor." }),
   hammer: Object.freeze({ key: "hammer", nome: "Martelo", tipo: TIPO_ITEM.FERRAMENTA, cor: "#78716c", dica: "Abre o catálogo dentro de casa." }),
 });
 
 export const MATERIAIS = Object.freeze({
   wood: Object.freeze({ key: "wood", nome: "Madeira", tipo: TIPO_ITEM.MATERIAL, compra: 36, venda: 18, cor: "#a16207" }),
+  coal: Object.freeze({ key: "coal", nome: "Carvão", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 28, cor: "#44403c" }),
   stone: Object.freeze({ key: "stone", nome: "Pedra", tipo: TIPO_ITEM.MATERIAL, compra: 30, venda: 15, cor: "#78716c" }),
   plantFiber: Object.freeze({ key: "plantFiber", nome: "Fibra", tipo: TIPO_ITEM.MATERIAL, compra: 20, venda: 10, cor: "#65a30d" }),
   blueCrystal: Object.freeze({ key: "blueCrystal", nome: "Cristal azul", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#38bdf8" }),
   redCrystal: Object.freeze({ key: "redCrystal", nome: "Cristal vermelho", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#f43f5e" }),
   yellowCrystal: Object.freeze({ key: "yellowCrystal", nome: "Cristal amarelo", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#facc15" }),
+  purpleCrystal: Object.freeze({ key: "purpleCrystal", nome: "Cristal roxo", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#a855f7" }),
+  greenCrystal: Object.freeze({ key: "greenCrystal", nome: "Cristal verde", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#22c55e" }),
+  pinkCrystal: Object.freeze({ key: "pinkCrystal", nome: "Cristal rosa", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#f9a8d4" }),
 });
 
 export const CHAVES = Object.freeze({
@@ -126,7 +130,14 @@ export const RECEITAS_BOLA = Object.freeze({
   ultraball: Object.freeze({ key: "ultraball", nome: "Ultra Bola", custo: Object.freeze({ anyCrystal: 7 }) }),
 });
 
-export const CRISTAIS = Object.freeze(["blueCrystal", "redCrystal", "yellowCrystal"]);
+export const CRISTAIS = Object.freeze([
+  "blueCrystal",
+  "redCrystal",
+  "yellowCrystal",
+  "purpleCrystal",
+  "greenCrystal",
+  "pinkCrystal",
+]);
 
 export const PREMIER_A_CADA = 10;
 

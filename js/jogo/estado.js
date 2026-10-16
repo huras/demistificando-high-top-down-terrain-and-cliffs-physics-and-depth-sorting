@@ -23,6 +23,7 @@ import { hidratarPlot, serializarPlot } from "../wild/plots.js";
 import { criarAtor } from "../pokemon/ator.js";
 import { especie } from "../pokemon/dados.js";
 import { obterTreinador } from "../pokemon/sistema.js";
+import { hidratarCampo, idsRemovidos, reaplicarCarregados, serializarCampo } from "../campo/estadoProps.js";
 import {
   ajustarItem,
   colocarNaParty,
@@ -496,7 +497,8 @@ export function salvar() {
     caixas: estado.caixas,
     plots: estado.plots.map(serializarPlot),
     moveis: estado.moveis,
-    cortados: estado.cortados,
+    campo: serializarCampo(),
+    cortados: idsRemovidos(),
     vistos: estado.vistos,
     quests: estado.quests,
     chaves: estado.chaves,
@@ -544,7 +546,9 @@ export function carregar() {
     if (plot) estado.plots.push(plot);
   }
   estado.moveis = bruto.moveis || {};
-  estado.cortados = bruto.cortados || [];
+  hidratarCampo(bruto.campo, bruto.cortados);
+  estado.cortados = idsRemovidos();
+  reaplicarCarregados();
   estado.vistos = bruto.vistos || [];
   estado.quests = bruto.quests || questsIniciais();
   estado.chaves = bruto.chaves || ["pokedex"];
