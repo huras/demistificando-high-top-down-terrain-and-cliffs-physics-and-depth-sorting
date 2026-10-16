@@ -34,6 +34,7 @@
         <a class="btn-modo" href="luzes.html">Luzes</a>
         <a class="btn-modo" href="pivos.html">Pivôs</a>
         <a class="btn-modo" href="portas.html">Portas</a>
+        <a class="btn-modo" href="colisores.html">Colisores</a>
         <a class="btn-modo" href="combate.html">Combate</a>
         <button type="button" id="btn-passeio" class="btn-modo" aria-pressed="false">Passeio</button>
         <div class="ajuda-atalhos" id="ajuda-atalhos">
@@ -165,6 +166,42 @@
       </div>
 
       <aside class="painel" id="painel">
+        <section class="painel__bloco">
+          <h2>
+            Depuração
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Explicação dos colisores das portas" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <p>
+                  O volume que a porta abre no prédio. Essa faixa fica sem bloco,
+                  do chão até o topo do lote. O mesmo desenho vale para a saída da casa e do laboratório.
+                </p>
+                <p>
+                  O disco âmbar é o raio com que o jogador, o companheiro e os Pokémon se empurram.
+                </p>
+                <p>
+                  O volume rosa é o lote sólido da casa. A porta fica aberta nesse sólido.
+                </p>
+              </span>
+            </span>
+          </h2>
+          <label class="ceu-ciclo" for="debug-vaos-porta">
+            <input id="debug-vaos-porta" type="checkbox" />
+            Colisores das portas
+          </label>
+          <p class="debug-nota" id="debug-vaos-porta-nota" hidden></p>
+          <label class="ceu-ciclo" for="debug-corpos">
+            <input id="debug-corpos" type="checkbox" />
+            Colisores das entidades
+          </label>
+          <p class="debug-nota" id="debug-corpos-nota" hidden></p>
+          <label class="ceu-ciclo" for="debug-casas">
+            <input id="debug-casas" type="checkbox" />
+            Colisores das casas
+          </label>
+          <p class="debug-nota" id="debug-casas-nota" hidden></p>
+        </section>
+
         <section class="painel__bloco">
           <h2>
             Modelo mental

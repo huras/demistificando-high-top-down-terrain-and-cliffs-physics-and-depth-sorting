@@ -510,6 +510,12 @@ body[data-modo="3d"] #canvas-3d.palco__camada--ativa {
   accent-color: var(--destaque);
 }
 
+.debug-nota {
+  margin: 6px 0 0;
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
 .estado--comp {
   margin-top: 4px;
 }

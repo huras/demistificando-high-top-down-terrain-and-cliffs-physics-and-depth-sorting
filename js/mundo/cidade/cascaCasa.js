@@ -8,7 +8,8 @@ import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import { ALTURA_PRACA, amostraKanto } from "../regiao/amostraKanto.js";
 import { AREA_KANTO } from "../regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../regiao/kantoCidades.js";
-import { faixaDaPorta, montarLayout } from "../regiao/volumesCidade.js";
+import { definirAjustes } from "./ajustesColisor.js";
+import { caixaDoCorpo, faixaDaPorta, montarLayout } from "../regiao/volumesCidade.js";
 import { indiceLocal, invalidarFluxo, recalcularSuperficies } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { idDaCasa, idsColisao, origemDoModelo, urlDoModelo } from "./catalogoCasas.js";
@@ -330,7 +331,8 @@ export function moldeDaMalha(objTexto, portas = null) {
   for (let i = 0; i < grupos.length; i++) abrirVao(marcas, grupos[i]);
   const fundo = descreverFundo(solidos, vaos, caixa);
   const vao = caixaDoVao(vaos);
-  const porta = descreverPorta(vao, caixaLocal(obj.verts, local));
+  const predio = caixaLocal(obj.verts, local);
+  const porta = alinharPortaNaFachada(descreverPorta(vao, predio), fundo, predio);
   let minVX = limites.minX;
   let maxVX = limites.maxX;
   let minVZ = limites.minZ;
@@ -412,8 +414,85 @@ function descreverPorta(vao, predio) {
   return { eixo, u0, u1, plano, paraFora };
 }
 
+/** A fachada da rua é o lado oposto ao fundo aberto. O Centro já nasce assim. */
+function alinharPortaNaFachada(porta, fundo, predio) {
+  if (!porta || !fundo || porta.eixo !== fundo.eixo || !predio) return porta;
+  const rua = fundo.paraDentro > 0 ? 1 : -1;
+  if (porta.paraFora === rua) return porta;
+  const eixo = porta.eixo === 0 ? 0 : 2;
+  porta.paraFora = rua;
+  porta.plano = rua > 0 ? predio.max[eixo] : predio.min[eixo];
+  return porta;
+}
+
 export function portaDoModelo(id) {
   return moldes.get(id)?.porta || null;
+}
+
+/** Vão que a porta deixa sem bloco. Mesma caixa que a colisão do lote usa. */
+export function listarVaosPorta() {
+  if (!pronto) return [];
+  const saida = [];
+  for (let i = 0; i < colocacoes.length; i++) {
+    const casa = colocacoes[i];
+    const molde = casa.base ? null : moldes.get(casa.id);
+    const faixa = faixaDaPorta(casa, molde?.porta || null);
+    if (!faixa) continue;
+    const x0 = casa.ox + faixa.x0;
+    const x1 = casa.ox + faixa.x1;
+    const y0 = casa.oy + faixa.y0;
+    const y1 = casa.oy + faixa.y1;
+    if (x1 - x0 < 0.05 || y1 - y0 < 0.05) continue;
+    saida.push({
+      x0,
+      x1,
+      y0,
+      y1,
+      z0: ALTURA_PRACA,
+      z1: Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(3, casa.altura | 0)),
+    });
+  }
+  return saida;
+}
+
+/** Sólido do lote, o mesmo que a física lacra. A porta fica de fora. */
+export function listarSolidosCasa() {
+  if (!pronto) return [];
+  const saida = [];
+  for (let i = 0; i < colocacoes.length; i++) {
+    const casa = colocacoes[i];
+    const corpo = caixaDoCorpo(casa);
+    const x0 = casa.ox + corpo.x0;
+    const x1 = casa.ox + corpo.x1;
+    const y0 = casa.oy + corpo.y0;
+    const y1 = casa.oy + corpo.y1;
+    const z0 = ALTURA_PRACA;
+    const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(3, casa.altura | 0));
+    const molde = casa.base ? null : moldes.get(casa.id);
+    const faixa = faixaDaPorta(casa, molde?.porta || null);
+    if (!faixa) {
+      empurrarSolido(saida, x0, x1, y0, y1, z0, z1);
+      continue;
+    }
+    const dx0 = Math.max(x0, casa.ox + faixa.x0);
+    const dx1 = Math.min(x1, casa.ox + faixa.x1);
+    const dy0 = Math.max(y0, casa.oy + faixa.y0);
+    const dy1 = Math.min(y1, casa.oy + faixa.y1);
+    if (dx1 - dx0 < 0.05 || dy1 - dy0 < 0.05) {
+      empurrarSolido(saida, x0, x1, y0, y1, z0, z1);
+      continue;
+    }
+    empurrarSolido(saida, x0, dx0, y0, y1, z0, z1);
+    empurrarSolido(saida, dx1, x1, y0, y1, z0, z1);
+    empurrarSolido(saida, dx0, dx1, y0, dy0, z0, z1);
+    empurrarSolido(saida, dx0, dx1, dy1, y1, z0, z1);
+  }
+  return saida;
+}
+
+function empurrarSolido(saida, x0, x1, y0, y1, z0, z1) {
+  if (x1 - x0 < 0.05 || y1 - y0 < 0.05 || z1 - z0 < 0.5) return;
+  saida.push({ x0, x1, y0, y1, z0, z1 });
 }
 
 function localDoDelta(dx, dy, yaw) {
@@ -504,8 +583,7 @@ function casaTocaChunk(casa, molde, x0, y0, x1, y1) {
 }
 
 function faixaDoLote(casa) {
-  if (casa.porta === false) return null;
-  return faixaDaPorta(casa, moldes.get(casa.id)?.porta);
+  return faixaDaPorta(casa, casa.base ? null : moldes.get(casa.id)?.porta);
 }
 
 function naFaixaMundo(wx, wy, casa, faixa) {
@@ -543,10 +621,11 @@ function limparLoteNoChunk(chunk, casa, x0, y0, x1, y1) {
 }
 
 function lacrarLoteNoChunk(chunk, casa, x0, y0, x1, y1) {
-  const wx0 = casa.ox + casa.x0;
-  const wx1 = casa.ox + casa.x1;
-  const wy0 = casa.oy + casa.y0;
-  const wy1 = casa.oy + casa.y1;
+  const corpo = caixaDoCorpo(casa);
+  const wx0 = casa.ox + corpo.x0;
+  const wx1 = casa.ox + corpo.x1;
+  const wy0 = casa.oy + corpo.y0;
+  const wy1 = casa.oy + corpo.y1;
   const faixa = faixaDoLote(casa);
   const z0 = ALTURA_PRACA;
   const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(3, casa.altura | 0));
@@ -602,6 +681,7 @@ function montarColocacoes() {
           altura: v.altura,
           papel: v.papel,
           cartao: true,
+          folha: v.folha,
           porta: v.porta !== false,
         });
         continue;
@@ -682,6 +762,16 @@ async function carregarUm(id) {
   return moldeDaMalha(await res.text(), portasDo(id));
 }
 
+async function garantirAjustes() {
+  const res = await fetch("assets/models/colisores.json", { cache: "no-store" });
+  if (!res.ok) {
+    definirAjustes({});
+    return;
+  }
+  const json = await res.json();
+  definirAjustes(json && typeof json === "object" ? json : {});
+}
+
 async function garantirPartes() {
   const res = await fetch("assets/models/partes.json", { cache: "no-store" });
   if (!res.ok) {
@@ -694,7 +784,7 @@ async function garantirPartes() {
 
 export function carregarCascasCidade() {
   if (carga) return carga;
-  carga = garantirPartes().then(() => Promise.all(
+  carga = Promise.all([garantirPartes(), garantirAjustes()]).then(() => Promise.all(
     IDS.map(async (id) => {
       try {
         return [id, await carregarUm(id)];

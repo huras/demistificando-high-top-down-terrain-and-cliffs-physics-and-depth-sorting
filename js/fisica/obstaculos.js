@@ -115,7 +115,7 @@ function indexarAutorais() {
 
 indexarAutorais();
 
-function raioCorpo(corpo) {
+export function raioDoCorpo(corpo) {
   return corpo.raioCorpo > 0 ? corpo.raioCorpo : RAIO_CORPO;
 }
 
@@ -127,7 +127,7 @@ function invadeLista(lista, x, y, elev, raio, ignorar) {
     if (Math.abs(elev - eb) > FOLGA_PISO) continue;
     const dx = x - b.x;
     const dy = y - b.y;
-    const min = raio + raioCorpo(b);
+    const min = raio + raioDoCorpo(b);
     if (dx * dx + dy * dy < min * min) return true;
   }
   return false;
@@ -164,4 +164,18 @@ export function corposSolidos() {
   for (let i = 0; i < corposFixos.length; i++) saida.push(corposFixos[i]);
   for (let i = 0; i < corposAtores.length; i++) saida.push(corposAtores[i]);
   return saida;
+}
+
+/** Jogador, companheiro e Pokémon que a física trata como sólidos. */
+export function visitarCorposSolidos(fn) {
+  for (let i = 0; i < corposFixos.length; i++) {
+    const corpo = corposFixos[i];
+    if (!corpo || corpo.morto || corpo.capturado) continue;
+    fn(corpo);
+  }
+  for (let i = 0; i < corposAtores.length; i++) {
+    const corpo = corposAtores[i];
+    if (!corpo || corpo.morto || corpo.capturado) continue;
+    fn(corpo);
+  }
 }

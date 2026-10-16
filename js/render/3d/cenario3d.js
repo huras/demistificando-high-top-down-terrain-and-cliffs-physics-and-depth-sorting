@@ -21,6 +21,9 @@ import { criarRigCamera3d } from "./rigCamera3d.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarEdificiosCidade } from "./edificiosCidade.js";
+import { criarDebugVaosPorta } from "./debugVaosPorta.js";
+import { atualizarDebugCorpos, criarDebugCorpos } from "./debugCorpos.js";
+import { criarDebugCasas } from "./debugCasas.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
@@ -246,6 +249,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
 
   const edificios = criarEdificiosCidade();
   terreno.grupo.add(edificios.grupo);
+  scene.add(criarDebugVaosPorta());
+  scene.add(criarDebugCorpos());
+  scene.add(criarDebugCasas());
 
   const terrenoSuave = criarTerrenoSuave();
   terreno.grupo.add(terrenoSuave.mesh);
@@ -574,6 +580,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   });
 
   atualizarPokemon3d(yaw, dt);
+  atualizarDebugCorpos();
   const camPos = estado.camera3d.cam.position;
   resolverLuzes(camPos.x, camPos.y, camPos.z, estado.scene.fog?.far ?? 90);
   resolverMapaChao(camPos.x, camPos.z);

@@ -225,6 +225,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/colisores") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 200_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarColisores(obj);
+        const dest = path.join(raiz, "assets", "models", "colisores.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (
     (req.method === "GET" || req.method === "HEAD") &&
     url.pathname === "/ref/catalogo.json"
@@ -344,6 +374,48 @@ function validarPartes(obj) {
     }
     if (!limpo.porta && !limpo.janela) delete obj[id];
     else obj[id] = limpo;
+  }
+}
+
+function caixaLimpa(caixa, id, nome) {
+  if (!caixa || typeof caixa !== "object" || Array.isArray(caixa)) {
+    throw new Error(`${id} ${nome}`);
+  }
+  const saida = {};
+  for (const chave of ["x", "y", "lx", "ly"]) {
+    const n = Number(caixa[chave]);
+    if (!Number.isFinite(n)) throw new Error(`${id} ${nome}`);
+    saida[chave] = Math.round(n * 100) / 100;
+  }
+  if (saida.lx < 0.15 || saida.lx > 10 || saida.ly < 0.15 || saida.ly > 10) {
+    throw new Error(`${id} ${nome} tamanho`);
+  }
+  if (Math.abs(saida.x) > 6 || Math.abs(saida.y) > 6) throw new Error(`${id} ${nome} offset`);
+  return saida;
+}
+
+function validarColisores(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("arquivo sem colisores");
+  }
+  const ids = Object.keys(obj);
+  if (ids.length > 80) throw new Error("muitos colisores");
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^[a-z0-9.'-]{1,80}$/i.test(id)) throw new Error(`modelo inválido: ${id}`);
+    const item = obj[id];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`${id} sem ajuste`);
+    }
+    const limpo = {};
+    if (item.corpo != null) limpo.corpo = caixaLimpa(item.corpo, id, "corpo");
+    if (Object.prototype.hasOwnProperty.call(item, "porta")) {
+      limpo.porta = item.porta == null ? null : caixaLimpa(item.porta, id, "porta");
+    }
+    if (!limpo.corpo && !Object.prototype.hasOwnProperty.call(limpo, "porta")) {
+      throw new Error(`${id} vazio`);
+    }
+    obj[id] = limpo;
   }
 }
 

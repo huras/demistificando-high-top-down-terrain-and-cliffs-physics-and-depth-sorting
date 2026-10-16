@@ -55,6 +55,7 @@ import { ligarMapaKanto, atualizarMapaKanto } from "./ui/mapaKanto.js";
 import { ligarDicasPainel } from "./ui/dicasPainel.js";
 import { ligarPainelCeu, sincronizarPainelCeu } from "./ui/painelCeu.js";
 import { ligarPainelCamera, sincronizarPainelCamera } from "./ui/painelCamera.js";
+import { ligarPainelDebug } from "./ui/painelDebug.js";
 import { ligarHudCompanheiro, atualizarHudCompanheiro } from "./ui/hudCompanheiro.js";
 import {
   ativarInputRelativoCamera,
@@ -159,6 +160,7 @@ async function iniciar() {
   ligarRaioStream();
   ligarPainelCeu();
   ligarPainelCamera();
+  ligarPainelDebug();
   ligarDicasPainel();
   ligarAjudaAtalhos();
   ligarMapaKanto();

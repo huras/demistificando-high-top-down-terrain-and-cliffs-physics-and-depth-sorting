@@ -2,6 +2,7 @@
  * Lotes e volumes de prédio. A colisão é a coluna do chunk carregado;
  * o layout em si é só conta, sem malha.
  */
+import { ajusteDe } from "../cidade/ajustesColisor.js";
 import { idDaCasa } from "../cidade/catalogoCasas.js";
 
 /** casa-2 e casa-4 não têm porta. Igual red-house-2/4. */
@@ -179,14 +180,90 @@ function faixaNoMeio(v) {
   return { x0: v.x0, x1: v.x0 + 1, y0: cy - 0.5, y1: cy + 0.5 };
 }
 
+/** Vidro da porta nas folhas de 64px. O pivô do cartão é o meio; a porta fica à direita. */
+const PORTA_CARTAO = Object.freeze({
+  1: Object.freeze([36, 50]),
+  3: Object.freeze([36, 50]),
+  5: Object.freeze([36, 50]),
+});
+const LARGURA_CARTAO = 4;
+
+function faixaDoCartao(v) {
+  const px = PORTA_CARTAO[v.folha];
+  if (!px) return faixaNoMeio(v);
+  const cx = (v.x0 + v.x1) * 0.5;
+  return {
+    x0: cx + (px[0] / 64 - 0.5) * LARGURA_CARTAO,
+    x1: cx + (px[1] / 64 - 0.5) * LARGURA_CARTAO,
+    y0: v.y1 - 1,
+    y1: v.y1,
+  };
+}
+
+/** Caixa do editor, no espaço do lote. O giro da rua entra aqui. */
+export function projetarCaixa(v, caixa) {
+  const hx = Number(caixa.lx) * 0.5;
+  const hy = Number(caixa.ly) * 0.5;
+  const x0 = Number(caixa.x) - hx;
+  const x1 = Number(caixa.x) + hx;
+  const z0 = Number(caixa.y) - hy;
+  const z1 = Number(caixa.y) + hy;
+  const yaw = yawDaFrente(v);
+  const cx = (v.x0 + v.x1) * 0.5;
+  const cy = (v.y0 + v.y1) * 0.5;
+  const cantos = [
+    [x0, z0],
+    [x1, z0],
+    [x0, z1],
+    [x1, z1],
+  ];
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < cantos.length; i++) {
+    const [rx, rz] = giroLocal(cantos[i][0], cantos[i][1], yaw);
+    const wx = cx + rx;
+    const wy = cy + rz;
+    if (wx < minX) minX = wx;
+    if (wx > maxX) maxX = wx;
+    if (wy < minY) minY = wy;
+    if (wy > maxY) maxY = wy;
+  }
+  return { x0: minX, x1: maxX, y0: minY, y1: maxY };
+}
+
+function caixaMedida(caixa) {
+  if (!caixa) return false;
+  const lx = Number(caixa.lx);
+  const ly = Number(caixa.ly);
+  return Number.isFinite(Number(caixa.x))
+    && Number.isFinite(Number(caixa.y))
+    && lx > 0.05
+    && ly > 0.05;
+}
+
+/** Sólido do lote. Com medida salva, usa ela. Senão, o retângulo do lote. */
+export function caixaDoCorpo(v) {
+  const ajuste = ajusteDe(v);
+  if (ajuste?.corpo && caixaMedida(ajuste.corpo)) return projetarCaixa(v, ajuste.corpo);
+  return { x0: v.x0, y0: v.y0, x1: v.x1, y1: v.y1 };
+}
+
 /**
  * Vão da porta no lote.
- * Com a porta da malha, acompanha a largura e o lado dela.
- * Sem isso, um tile no meio da frente.
+ * Medida salva na página de colisores vem primeiro.
+ * Sem isso, a porta da malha. Sem malha, um tile no meio da frente.
  */
 export function faixaDaPorta(v, porta) {
-  if (!v || v.porta === false) return null;
-  if (!porta) return faixaNoMeio(v);
+  if (!v) return null;
+  const ajuste = ajusteDe(v);
+  if (ajuste && Object.prototype.hasOwnProperty.call(ajuste, "porta")) {
+    if (!ajuste.porta) return null;
+    if (caixaMedida(ajuste.porta)) return projetarCaixa(v, ajuste.porta);
+  }
+  if (v.porta === false) return null;
+  if (!porta) return v.cartao ? faixaDoCartao(v) : faixaNoMeio(v);
   const hx = (v.x1 - v.x0) * 0.5;
   const hz = (v.y1 - v.y0) * 0.5;
   const yaw = yawDaFrente(v);

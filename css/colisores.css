@@ -1,0 +1,48 @@
+.campo--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.campo--check input {
+  width: auto;
+}
+
+#bloco-corpo.foco h2 { color: #ffb15a; }
+#bloco-porta.foco h2 { color: #7fd4ff; }
+
+#bloco-porta.sem-porta .campo:not(.campo--check) {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+#automatico {
+  margin: 4px 0 12px;
+  width: 100%;
+}
+
+.legenda {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  margin: 0;
+  display: flex;
+  gap: 14px;
+  font-size: 0.82rem;
+  color: var(--texto);
+  pointer-events: none;
+}
+
+.legenda__corpo::before,
+.legenda__porta::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+
+.legenda__corpo::before { background: #ff9a3c; }
+.legenda__porta::before { background: #3ec6ff; }
