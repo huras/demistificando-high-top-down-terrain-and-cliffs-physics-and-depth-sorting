@@ -8,6 +8,7 @@ import {
 import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
 import { aplicarCascaNoChunk, cascasProntas } from "../cidade/cascaCasa.js";
 import { aplicarSalaNoChunk } from "../cidade/sala3d.js";
+import { aplicarLaboratorioNoChunk, dentroDoTerrenoLaboratorio } from "../cidade/laboratorio.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { definirLocal, preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
@@ -147,6 +148,7 @@ export function* passosChunk(chunk, seed) {
         if (h - alturas[ny * CHUNK_XZ + nx] >= 2) cliff = true;
       }
       if (cliff) continue;
+      if (dentroDoTerrenoLaboratorio(wx, wy)) continue;
       const planta = plantaDoRelevo(wx, wy);
       if (!planta) {
         if ((++coluna & 31) === 0) yield;
@@ -168,6 +170,7 @@ export function* passosChunk(chunk, seed) {
   yield;
   if (cascasProntas()) aplicarCascaNoChunk(chunk);
   aplicarSalaNoChunk(chunk);
+  aplicarLaboratorioNoChunk(chunk);
   recalcularSuperficies(chunk);
   chunk.gerado = true;
   chunk.sujo = true;

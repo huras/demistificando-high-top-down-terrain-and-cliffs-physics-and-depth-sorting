@@ -31,12 +31,21 @@ import { ehSolido } from "../../mundo/voxel/tiposBloco.js";
 export function criarCamera3d(aspect) {
   const cam = new THREE.PerspectiveCamera(50, aspect, 0.1, 200);
   const orto = new THREE.OrthographicCamera(-aspect, aspect, 1, -1, 0.1, 200);
+  cam.userData.vista = {
+    meiaLargura: aspect,
+    meiaAltura: 1,
+    projBlend: 1,
+    distOlhar: CAMERA3D_DIST_PADRAO,
+  };
   return {
     cam,
     _orto: orto,
     _projPersp: new THREE.Matrix4(),
     projecao: "orto",
     projBlend: 1,
+    meiaLargura: aspect,
+    meiaAltura: 1,
+    distOlhar: CAMERA3D_DIST_PADRAO,
     modo: "orbita",
     mecanismo: "livre",
     mostrarRig: false,
@@ -264,11 +273,18 @@ function aplicarProjecao(camera3d, dt) {
   const alvo = camera3d.projecao === "orto" ? 1 : 0;
   const t = 1 - Math.exp(-CAMERA3D_PROJECAO_SUAVIDADE * dt);
   camera3d.projBlend += (alvo - camera3d.projBlend) * t;
-  if (camera3d.projBlend < 0.001) {
-    camera3d.projBlend = 0;
-    return;
-  }
-  if (camera3d.projBlend > 0.999) camera3d.projBlend = 1;
+  if (camera3d.projBlend < 0.001) camera3d.projBlend = 0;
+  else if (camera3d.projBlend > 0.999) camera3d.projBlend = 1;
+
+  camera3d.meiaLargura = meiaLargura;
+  camera3d.meiaAltura = meiaAltura;
+  camera3d.distOlhar = dist;
+  const vista = persp.userData.vista || (persp.userData.vista = {});
+  vista.meiaLargura = meiaLargura;
+  vista.meiaAltura = meiaAltura;
+  vista.projBlend = camera3d.projBlend;
+  vista.distOlhar = dist;
+  if (camera3d.projBlend === 0) return;
 
   const origem = camera3d._projPersp.elements;
   const destino = orto.projectionMatrix.elements;

@@ -330,6 +330,7 @@ export function moldeDaMalha(objTexto, portas = null) {
   for (let i = 0; i < grupos.length; i++) abrirVao(marcas, grupos[i]);
   const fundo = descreverFundo(solidos, vaos, caixa);
   const vao = caixaDoVao(vaos);
+  const porta = descreverPorta(vao, caixaLocal(obj.verts, local));
   let minVX = limites.minX;
   let maxVX = limites.maxX;
   let minVZ = limites.minZ;
@@ -356,7 +357,63 @@ export function moldeDaMalha(objTexto, portas = null) {
     } else if (fundo.paraDentro > 0) minVZ -= 1;
     else maxVZ += 1;
   }
-  return { celulas, minX: minVX, maxX: maxVX, minZ: minVZ, maxZ: maxVZ, temPorta: vaos.length > 0, fundo, vao };
+  return { celulas, minX: minVX, maxX: maxVX, minZ: minVZ, maxZ: maxVZ, temPorta: vaos.length > 0, fundo, vao, porta };
+}
+
+function caixaLocal(verts, local) {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < verts.length; i++) {
+    const p = local(verts[i]);
+    for (let a = 0; a < 3; a++) {
+      if (p[a] < min[a]) min[a] = p[a];
+      if (p[a] > max[a]) max[a] = p[a];
+    }
+  }
+  return { min, max };
+}
+
+/** Porta da malha, no espaço local do prédio. O vão do lote usa isso em vez do meio da fachada. */
+function descreverPorta(vao, predio) {
+  if (!vao || !predio) return null;
+  const dx = vao.max[0] - vao.min[0];
+  const dz = vao.max[2] - vao.min[2];
+  const cx = (vao.min[0] + vao.max[0]) * 0.5;
+  const cz = (vao.min[2] + vao.max[2]) * 0.5;
+  const eixo = dz <= dx ? 2 : 0;
+  let paraFora = 1;
+  let u0 = 0;
+  let u1 = 0;
+  let plano = 0;
+  if (eixo === 2) {
+    const sul = Math.abs(cz - predio.max[2]);
+    const norte = Math.abs(cz - predio.min[2]);
+    paraFora = sul <= norte ? 1 : -1;
+    u0 = vao.min[0];
+    u1 = vao.max[0];
+    plano = paraFora > 0 ? vao.max[2] : vao.min[2];
+  } else {
+    const leste = Math.abs(cx - predio.max[0]);
+    const oeste = Math.abs(cx - predio.min[0]);
+    paraFora = leste <= oeste ? 1 : -1;
+    u0 = vao.min[2];
+    u1 = vao.max[2];
+    plano = paraFora > 0 ? vao.max[0] : vao.min[0];
+  }
+  const larguraMin = 1.05;
+  if (u1 - u0 < larguraMin) {
+    const meio = (u0 + u1) * 0.5;
+    u0 = meio - larguraMin * 0.5;
+    u1 = meio + larguraMin * 0.5;
+  } else {
+    u0 -= 0.2;
+    u1 += 0.2;
+  }
+  return { eixo, u0, u1, plano, paraFora };
+}
+
+export function portaDoModelo(id) {
+  return moldes.get(id)?.porta || null;
 }
 
 function localDoDelta(dx, dy, yaw) {
@@ -446,6 +503,16 @@ function casaTocaChunk(casa, molde, x0, y0, x1, y1) {
   return maxX > x0 && minX < x1 && maxY > y0 && minY < y1;
 }
 
+function faixaDoLote(casa) {
+  if (casa.porta === false) return null;
+  return faixaDaPorta(casa, moldes.get(casa.id)?.porta);
+}
+
+function naFaixaMundo(wx, wy, casa, faixa) {
+  return centroNaFaixa(wx, casa.ox + faixa.x0, casa.ox + faixa.x1)
+    && centroNaFaixa(wy, casa.oy + faixa.y0, casa.oy + faixa.y1);
+}
+
 function centroNaFaixa(i, a0, a1) {
   const c = i + 0.5;
   return c >= a0 && c < a1;
@@ -480,7 +547,7 @@ function lacrarLoteNoChunk(chunk, casa, x0, y0, x1, y1) {
   const wx1 = casa.ox + casa.x1;
   const wy0 = casa.oy + casa.y0;
   const wy1 = casa.oy + casa.y1;
-  const faixa = casa.porta === false ? null : faixaDaPorta(casa);
+  const faixa = faixaDoLote(casa);
   const z0 = ALTURA_PRACA;
   const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(3, casa.altura | 0));
   let mudou = false;
@@ -545,7 +612,7 @@ function montarColocacoes() {
         id,
         px: ox + mx,
         py: oy + my,
-        yaw: v.papel === "casa" ? 0 : yawDaRua(mx, my),
+        yaw: v.papel === "casa" || v.papel === "lab" ? 0 : yawDaRua(mx, my),
         ox,
         oy,
         x0: v.x0,
@@ -583,9 +650,11 @@ export function aplicarCascaNoChunk(chunk) {
     if (!molde || !casaTocaChunk(casa, molde, x0, y0, x1, y1)) continue;
     if (limparLoteNoChunk(chunk, casa, x0, y0, x1, y1)) mudou = true;
     if (selarFundoNoChunk(chunk, casa, molde.fundo, x0, y0, x1, y1)) mudou = true;
+    const faixa = faixaDoLote(casa);
     const cel = molde.celulas;
     for (let k = 0; k < cel.length; k += 3) {
       const [gx, gy, gz] = mundoDaCelula(cel[k], cel[k + 1], cel[k + 2], casa);
+      if (faixa && naFaixaMundo(gx, gy, casa, faixa)) continue;
       if (gx < x0 || gy < y0 || gx >= x1 || gy >= y1 || gz < 0 || gz >= CHUNK_Y) continue;
       const amostra = amostraKanto(gx, gy);
       if (amostra && gz < (amostra.h | 0)) continue;

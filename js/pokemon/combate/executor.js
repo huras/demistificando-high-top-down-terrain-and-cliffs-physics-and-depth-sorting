@@ -1,5 +1,5 @@
 import { atoresPerto } from "../grade.js";
-import { emRecuo, golpeBasico, recargaDe } from "../ator.js";
+import { comecarAvanco, emAvanco, emEsquiva, emRecuo, golpeBasico, recargaDe } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano } from "../tipos.js";
 import { soltarProjetil } from "./projeteis.js";
@@ -9,6 +9,14 @@ const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlig
 
 function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function usaCorpo(ator) {
+  return ator.usaCorpo !== false;
+}
+
+function usaDistancia(ator) {
+  return ator.usaDistancia !== false;
 }
 
 /** Trava no lugar e depois desliza. 0,1 s e 0,7 m no toque; 1 s e 4,2 m quando o dano cobre a vida inteira. */
@@ -34,6 +42,7 @@ function iniciarRecuo(alvo, atacante, dano, agora) {
   alvo.vx = 0;
   alvo.vy = 0;
   alvo.andando = false;
+  alvo.avancoRestante = 0;
   alvo.poseAte = agora + trava + tempo;
   if (alvo.visual) {
     alvo.visual.anim = "Hurt";
@@ -53,9 +62,32 @@ function inimigo(a, b) {
   return true;
 }
 
-function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos) {
+function errouGolpe(acerto) {
+  if (acerto == null) return false;
+  const p = Number(acerto);
+  if (!Number.isFinite(p) || p >= 100) return false;
+  if (p <= 0) return true;
+  return Math.floor(Math.random() * 100) + 1 > p;
+}
+
+function chanceEsquiva(forma) {
+  if (forma === "projectile" || forma === "arc") return 0.3;
+  return 0.25;
+}
+
+function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma) {
   if (!alvo || alvo.morto || alvo.capturado || alvo.iframe > 0 || alvo.invulneravel) return;
   if (!inimigo(atacante, alvo)) return;
+  if (emEsquiva(alvo) && Math.random() < chanceEsquiva(forma)) {
+    efeitos.flutuar(alvo, "dodge", "#67e8f9");
+    notar(efeitos, { tipo: "dodge", ator: atacante, alvo });
+    return;
+  }
+  if (errouGolpe(acerto)) {
+    efeitos.flutuar(alvo, "errou", "#cbd5e1");
+    notar(efeitos, { tipo: "erro", ator: atacante, alvo });
+    return;
+  }
   const { dano, efet } = calcularDano(atacante, alvo, poder, tipo, categoria);
   if (efet === 0 || dano <= 0) {
     efeitos.flutuar(alvo, "imune", "#94a3b8");
@@ -116,25 +148,35 @@ function escolher(ator, alvo, d) {
     if ((g.def.pp || 1) > ator.pp) continue;
     prontos.push(g);
   }
+  const corpo = usaCorpo(ator);
+  const distancia = usaDistancia(ator);
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (g.def.forma === "contact" && d <= Math.max(golpeBasico().alcance, g.def.alcance)) return g;
+    if (corpo && g.def.forma === "contact" && d <= Math.max(golpeBasico().alcance, g.def.alcance)) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if ((g.def.forma === "projectile" || g.def.forma === "arc") && d <= g.def.alcance) return g;
+    if (distancia && (g.def.forma === "projectile" || g.def.forma === "arc") && d <= g.def.alcance) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (g.def.forma === "radius" && g.def.poder > 0 && d <= Math.max(2.2, g.def.alcance)) return g;
+    if (corpo && g.def.forma === "radius" && g.def.poder > 0 && d <= Math.max(2.2, g.def.alcance)) return g;
   }
   if (d > 2.4) {
     for (let i = 0; i < prontos.length; i++) {
       if (prontos[i].def.poder <= 0) return prontos[i];
     }
   }
-  if (d <= golpeBasico().alcance && ator.cdBasico <= 0) return { basico: true, def: golpeBasico(), cd: ator.cdBasico };
+  if (corpo && d <= golpeBasico().alcance && ator.cdBasico <= 0) return { basico: true, def: golpeBasico(), cd: ator.cdBasico };
   return null;
+}
+
+function avancarNoGolpe(ator, alvo) {
+  const dx = (alvo?.x ?? ator.x + ator.dirX) - ator.x;
+  const dy = (alvo?.y ?? ator.y + ator.dirY) - ator.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const dist = Math.min(0.72, Math.max(0.18, len - 0.58));
+  comecarAvanco(ator, dx / len, dy / len, dist);
 }
 
 function executar(ator, slot, alvo, agora, efeitos) {
@@ -176,6 +218,8 @@ function executar(ator, slot, alvo, agora, efeitos) {
       poder: def.poder,
       tipo: def.tipo,
       categoria: def.categoria,
+      acerto: def.acerto,
+      forma: def.forma,
       raio: def.raio,
       max: def.alcance || 12,
       arco: def.forma === "arc",
@@ -183,24 +227,26 @@ function executar(ator, slot, alvo, agora, efeitos) {
     return;
   }
 
+  if (def.forma === "radius" || def.forma === "contact") avancarNoGolpe(ator, alvo);
+
   if (def.forma === "radius") {
     marcarPose(ator, "Attack", agora);
     const raio = Math.max(2.2, def.alcance || 2.2);
     const perto = atoresPerto(ator.x, ator.y, raio);
     for (let i = 0; i < perto.length; i++) {
-      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos);
+      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
     }
     return;
   }
 
   marcarPose(ator, "Attack", agora);
   ator.hopLift = Math.max(ator.hopLift, 0.42);
-  if (alvo) aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos);
+  if (alvo) aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
 }
 
 export function tentarGolpe(ator, agora, efeitos) {
   const recuoHerdado = ator.recuoNoTick == null ? emRecuo(ator) : ator.recuoNoTick > 0;
-  if (ator.morto || ator.capturado || ator.dormindo > 0 || recuoHerdado) return;
+  if (ator.morto || ator.capturado || ator.dormindo > 0 || recuoHerdado || emAvanco(ator) || emEsquiva(ator)) return;
   const alvo = ator.alvo;
   if (!alvo || alvo.morto || alvo.capturado) return;
   if (alvo.hp <= 0 && alvo.faccao === "treinador") return;
@@ -219,6 +265,8 @@ export function impactoProjetil(projetil, alvo, agora, efeitos) {
     projetil.categoria,
     agora,
     efeitos,
+    projetil.acerto,
+    projetil.forma,
   );
 }
 

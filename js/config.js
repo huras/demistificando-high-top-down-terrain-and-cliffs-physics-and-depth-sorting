@@ -358,7 +358,7 @@ export const POKEMON = Object.freeze({
   SHINY: 0.01,
   HOSTIL: 0.35,
   PARTY_MAX: 6,
-  BOLAS: 20,
+  BOLAS: 999,
   RAIO_PICKUP: 1.5,
   PROJETEIS_MAX: 32,
   DROPS_MAX: 48,

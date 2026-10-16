@@ -4,7 +4,7 @@ import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
 import { desenharArena, ligarArena, projetarArena } from "./arena3d.js";
-import { atoresArena, estadoLuta, iniciarLuta, logArena, montarLados, tickLuta } from "./luta.js";
+import { atoresArena, definirUso, estadoLuta, iniciarLuta, logArena, montarLados, tickLuta } from "./luta.js";
 
 const TIPO = {
   normal: "normal",
@@ -42,8 +42,8 @@ const CATEGORIA = {
 
 const LADOS = ["esquerda", "direita"];
 const ui = {
-  esquerda: { busca: "", chave: "", nivel: 50, corpo: "", distancia: "" },
-  direita: { busca: "", chave: "", nivel: 50, corpo: "", distancia: "" },
+  esquerda: { busca: "", chave: "", nivel: 50, corpo: "", distancia: "", usaCorpo: true, usaDistancia: true },
+  direita: { busca: "", chave: "", nivel: 50, corpo: "", distancia: "", usaCorpo: true, usaDistancia: true },
 };
 
 let especies = [];
@@ -110,6 +110,17 @@ function golpesDoTipo(esp, nivel, tipo) {
   for (let i = 0; i < lista.length; i++) {
     if (lista[i].poder > 0 && serve(lista[i])) saida.push(lista[i]);
   }
+  if (tipo !== "distancia") return saida;
+  const extras = ["swift", "hyperBeam"];
+  for (let i = 0; i < extras.length; i++) {
+    const def = golpe(extras[i]);
+    if (!def || def.poder <= 0 || !eDistancia(def)) continue;
+    let tem = false;
+    for (let j = 0; j < saida.length; j++) {
+      if (saida[j].key === def.key) tem = true;
+    }
+    if (!tem) saida.push(def);
+  }
   return saida;
 }
 
@@ -137,7 +148,8 @@ function textoFicha(def, vazio) {
   if (!def) return vazio;
   const forma = FORMA[def.forma] || def.forma;
   const categoria = CATEGORIA[def.categoria] || def.categoria;
-  return `${forma} · ${categoria} · poder ${def.poder | 0} · alcance ${Number(def.alcance) || 0} · ${Number(def.recarga) || 0} s · custo ${def.pp || 0} PP`;
+  const acerto = def.acerto === null ? "não erra" : def.acerto ?? 100;
+  return `${forma} · ${categoria} · poder ${def.poder | 0} · acerto ${acerto} · alcance ${Number(def.alcance) || 0} · ${Number(def.recarga) || 0} s · custo ${def.pp || 0} PP`;
 }
 
 function corVida(pct) {
@@ -191,6 +203,10 @@ function montarColuna(lado) {
       <div class="vida__trilho"><span data-campo="barra"></span></div>
       <p class="vida__num" data-campo="hp">—</p>
       <p class="pp" data-campo="pp">PP —</p>
+      <div class="esquiva">
+        <div class="esquiva__trilho"><span data-campo="esquiva"></span></div>
+        <p class="pp" data-campo="esquiva-num">Esquiva 0%</p>
+      </div>
     </div>
     <div class="stats" data-campo="stats"></div>
     <fieldset class="lado__controles" data-campo="controles">
@@ -203,16 +219,28 @@ function montarColuna(lado) {
         Nível <strong data-campo="nivel-valor">50</strong>
         <input data-campo="nivel" type="range" min="1" max="${NIVEL_MAX}" value="50" />
       </label>
-      <label class="campo">
-        Corpo a corpo
+      <div class="campo" data-campo="bloco-corpo">
+        <div class="campo__topo">
+          <span>Corpo a corpo</span>
+          <label class="uso">
+            <input data-campo="usa-corpo" type="checkbox" checked />
+            Usar
+          </label>
+        </div>
         <select data-campo="corpo"></select>
         <p class="ficha" data-campo="ficha-corpo"></p>
-      </label>
-      <label class="campo">
-        À distância
+      </div>
+      <div class="campo" data-campo="bloco-distancia">
+        <div class="campo__topo">
+          <span>À distância</span>
+          <label class="uso">
+            <input data-campo="usa-distancia" type="checkbox" checked />
+            Usar
+          </label>
+        </div>
         <select data-campo="distancia"></select>
         <p class="ficha" data-campo="ficha-distancia"></p>
-      </label>
+      </div>
     </fieldset>
   `;
 
@@ -252,6 +280,16 @@ function montarColuna(lado) {
     ui[lado].distancia = ev.target.value;
     pintarFichaGolpe(lado);
     aplicar();
+  });
+  campo(raiz, "usa-corpo").addEventListener("change", (ev) => {
+    ui[lado].usaCorpo = ev.target.checked;
+    pintarFichaGolpe(lado);
+    sincronizarUso(lado);
+  });
+  campo(raiz, "usa-distancia").addEventListener("change", (ev) => {
+    ui[lado].usaDistancia = ev.target.checked;
+    pintarFichaGolpe(lado);
+    sincronizarUso(lado);
   });
 }
 
@@ -311,8 +349,14 @@ function pintarFichaGolpe(lado) {
   const raiz = raizDe(lado);
   const corpo = ui[lado].corpo ? golpe(ui[lado].corpo) : null;
   const distancia = ui[lado].distancia ? golpe(ui[lado].distancia) : null;
-  campo(raiz, "ficha-corpo").textContent = textoFicha(corpo, "Perto, usa Investida.");
-  campo(raiz, "ficha-distancia").textContent = textoFicha(distancia, "Sem golpe à distância.");
+  const usaCorpo = ui[lado].usaCorpo !== false;
+  const usaDistancia = ui[lado].usaDistancia !== false;
+  campo(raiz, "usa-corpo").checked = usaCorpo;
+  campo(raiz, "usa-distancia").checked = usaDistancia;
+  campo(raiz, "bloco-corpo").classList.toggle("campo--off", !usaCorpo);
+  campo(raiz, "bloco-distancia").classList.toggle("campo--off", !usaDistancia);
+  campo(raiz, "ficha-corpo").textContent = textoFicha(corpo, usaCorpo ? "Perto, usa Investida." : "Desligado.");
+  campo(raiz, "ficha-distancia").textContent = textoFicha(distancia, usaDistancia ? "Sem golpe à distância." : "Desligado.");
 }
 
 function pintarEscolha(lado) {
@@ -355,6 +399,11 @@ function pintarVida(lado) {
   barra.style.background = corVida(pct);
   campo(raiz, "hp").textContent = `${Math.max(0, Math.ceil(ator.hp))} / ${ator.hpMax}`;
   campo(raiz, "pp").textContent = `PP ${Math.ceil(ator.pp)} / ${ator.ppMax}`;
+  const carga = Math.max(0, Math.min(1, ator.esquiva || 0));
+  const trilha = campo(raiz, "esquiva");
+  trilha.style.width = `${carga * 100}%`;
+  trilha.style.background = carga >= 1 ? "#7dce6a" : "#67e8f9";
+  campo(raiz, "esquiva-num").textContent = carga >= 1 ? "Esquiva pronta" : `Esquiva ${Math.round(carga * 100)}%`;
   campo(raiz, "estado").textContent = textoEstado(lado, ator);
 
   const marca = hud.querySelector(`[data-marca="${lado}"]`);
@@ -367,9 +416,14 @@ function pintarVida(lado) {
   marca.hidden = false;
   marca.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
   marca.querySelector(".marca__nome").textContent = ator.especie.nome;
-  const miolo = marca.querySelector("span");
+  const miolo = marca.querySelector(".marca__barra span");
   miolo.style.width = `${pct * 100}%`;
   miolo.style.background = corVida(pct);
+  const esquiva = marca.querySelector(".marca__esquiva span");
+  if (esquiva) {
+    esquiva.style.width = `${carga * 100}%`;
+    esquiva.style.background = carga >= 1 ? "#7dce6a" : "#67e8f9";
+  }
 }
 
 function pintarDanos() {
@@ -396,7 +450,13 @@ function pintarDanos() {
 
 function travar(ativo) {
   for (let i = 0; i < LADOS.length; i++) {
-    campo(raizDe(LADOS[i]), "controles").disabled = ativo;
+    const controles = campo(raizDe(LADOS[i]), "controles");
+    const lista = controles.querySelectorAll("input, select, button");
+    for (let j = 0; j < lista.length; j++) {
+      const campoNome = lista[j].dataset.campo;
+      if (campoNome === "usa-corpo" || campoNome === "usa-distancia") continue;
+      lista[j].disabled = ativo;
+    }
   }
 }
 
@@ -408,15 +468,31 @@ function atualizarBotao() {
   else botao.textContent = "Lutar";
 }
 
+function entradaDe(lado, especieLado) {
+  return {
+    especie: especieLado,
+    nivel: ui[lado].nivel,
+    corpo: ui[lado].corpo,
+    distancia: ui[lado].distancia,
+    usaCorpo: ui[lado].usaCorpo !== false,
+    usaDistancia: ui[lado].usaDistancia !== false,
+  };
+}
+
+function sincronizarUso(lado) {
+  if (estadoLuta().lutando) {
+    definirUso(lado, ui[lado].usaCorpo !== false, ui[lado].usaDistancia !== false);
+    return;
+  }
+  aplicar();
+}
+
 function aplicar() {
   if (estadoLuta().lutando) return;
   const esq = especie(ui.esquerda.chave);
   const dir = especie(ui.direita.chave);
   if (!esq || !dir) return;
-  montarLados(
-    { especie: esq, nivel: ui.esquerda.nivel, corpo: ui.esquerda.corpo, distancia: ui.esquerda.distancia },
-    { especie: dir, nivel: ui.direita.nivel, corpo: ui.direita.corpo, distancia: ui.direita.distancia },
-  );
+  montarLados(entradaDe("esquerda", esq), entradaDe("direita", dir));
   pintarStats("esquerda");
   pintarStats("direita");
   pintarVida("esquerda");
@@ -471,6 +547,10 @@ function pintarLog() {
       li.append(pedaco("log__meta", ` · recuo ${linha.recuo}s · ${linha.dist} m`));
     } else if (linha.tipo === "imune") {
       li.append(pedaco("log__imune", " imune"));
+    } else if (linha.tipo === "erro") {
+      li.append(pedaco("log__erro", " errou"));
+    } else if (linha.tipo === "dodge") {
+      li.append(pedaco("log__dodge", " dodge"));
     } else if (linha.tipo === "cura") {
       li.append(pedaco("log__cura", ` +${linha.ganho}`));
     } else if (linha.tipo === "queda") {

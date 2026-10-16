@@ -9,6 +9,7 @@ import { atualizarBillboardsBerry } from "./billboards.js";
 import {
   celulaAlvo,
   dicaFerramenta,
+  entradaPerto,
   plantarOuColher,
   checarSaidaSala,
   sairInterior,
@@ -29,6 +30,8 @@ import {
 } from "./estado.js";
 import { ligarRoda, tickRoda } from "./roda.js";
 import { desenharSala, ligarSala, moverSala, pertoDe, redimensionarSala } from "./sala.js";
+import { alvoLaboratorio, executarAlvoLaboratorio } from "./laboratorio.js";
+import { promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, ligarUi, pintar, promptDe } from "./ui.js";
 
 let viewport = null;
@@ -73,12 +76,26 @@ export function tickJogo(dt, corpo) {
   } else if (estado.interior && !estado.dialogo && !estado.painel && !estado.construir && !estado.craft) {
     moverSala(dt);
     if (estado.interior?.saindo) sairInterior(corpo);
-  } else if (!estado.interior) {
-    tentarEntrar(corpo);
+  }
+  let porta = null;
+  const livre =
+    !estado.interior &&
+    !estado.dialogo &&
+    !estado.painel &&
+    !estado.construir &&
+    !estado.craft &&
+    !corpo.escalando &&
+    !corpo.voando;
+  if (livre && !campoFocado()) {
+    porta = entradaPerto(corpo.x, corpo.y);
+    if (porta && teclaAgora("KeyE")) tentarEntrar(corpo, porta);
   }
   const alvo = estado.interior && !estado.interior.sala3d ? pertoDe(estado.interior) : null;
   const ferramenta = dicaFerramenta();
-  estado.prompt = promptDe(alvo, ferramenta);
+  const noLab = estado.interior?.sala3d && estado.interior.papel === "lab";
+  const alvoLab = noLab && !estado.dialogo && !estado.painel ? alvoLaboratorio(corpo.x, corpo.y) : null;
+  estado.promptEntrar = !!porta && !estado.interior;
+  estado.prompt = alvoLab ? promptDoLaboratorio(alvoLab) : promptDe(alvo, ferramenta);
   const zona = zonaNoMundo(corpo.x, corpo.y);
   definirBgm(chaveBgm(zona, obterClima(), estado.interior?.sala?.kind));
   atualizarBillboardsBerry();
@@ -121,6 +138,11 @@ function interagir(corpo) {
     return;
   }
   if (estado.painel || estado.construir || estado.craft || estado.roda) return;
+  if (estado.interior?.sala3d && estado.interior.papel === "lab") {
+    const perto = alvoLaboratorio(corpo.x, corpo.y);
+    if (perto) executarAlvoLaboratorio(perto);
+    return;
+  }
   if (estado.interior) {
     const perto = pertoDe(estado.interior);
     if (perto) {

@@ -3,8 +3,10 @@
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
+import { naSaidaLaboratorio, spawnLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { atualizarStreaming } from "../mundo/voxel/storeMundo.js";
-import { faixaDaPorta, predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
+import { portaDoModelo } from "../mundo/cidade/cascaCasa.js";
+import { predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
 import { alturaEm } from "../mundo/altura.js";
 import { obterBloco, avisarDirty } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
@@ -31,7 +33,8 @@ import {
   usarNoPokemon,
 } from "./estado.js";
 
-const PAPEIS = new Set(["casa", "loja", "centro"]);
+const PAPEIS = new Set(["casa", "loja", "centro", "lab"]);
+const RAIO_PORTA = 0.95;
 
 export function loteSob(x, y) {
   const zona = zonaNoMundo(x, y);
@@ -81,20 +84,36 @@ export function celulaAlvo(corpo) {
   };
 }
 
-function naPortaFrente(info, x, y) {
-  const faixa = faixaDaPorta(info.predio);
-  if (!faixa) return false;
-  const ox = info.ax * AREA_KANTO;
-  const oy = info.ay * AREA_KANTO;
-  return x >= ox + faixa.x0 && x < ox + faixa.x1 && y >= oy + faixa.y0 && y < oy + faixa.y1;
+export function entradaPerto(x, y) {
+  const zona = zonaNoMundo(x, y);
+  if (!zona?.layout || zona.tipo !== "cidade") return null;
+  const ax = (x / AREA_KANTO) | 0;
+  const ay = (y / AREA_KANTO) | 0;
+  const ox = ax * AREA_KANTO;
+  const oy = ay * AREA_KANTO;
+  const volumes = zona.layout.volumes;
+  let melhor = null;
+  let melhorD = RAIO_PORTA * RAIO_PORTA;
+  for (let i = 0; i < volumes.length; i++) {
+    const predio = volumes[i];
+    if (!PAPEIS.has(predio.papel) || predio.porta === false) continue;
+    const saida = saidaDaPorta(predio, ox, oy, portaDoModelo(predio.modelo));
+    const dx = x - saida.x;
+    const dy = y - saida.y;
+    const d = dx * dx + dy * dy;
+    if (d > melhorD) continue;
+    melhorD = d;
+    melhor = { zona, predio, ax, ay };
+  }
+  return melhor;
 }
 
-export function tentarEntrar(corpo) {
+export function tentarEntrar(corpo, infoPronto) {
   if (estado.interior || estado.saidaGrace > 0) return false;
-  const info = loteSob(corpo.x, corpo.y);
+  const info = infoPronto || entradaPerto(corpo.x, corpo.y);
   if (!info || info.predio.porta === false) return false;
-  if (!naPortaFrente(info, corpo.x, corpo.y)) return false;
   if (info.predio.papel === "casa") return entrarSala3d(corpo, info);
+  if (info.predio.papel === "lab") return entrarLaboratorio(corpo, info);
   const sala = criarSala(info.predio.papel);
   if (!sala) return false;
   estado.interior = {
@@ -140,9 +159,43 @@ function entrarSala3d(corpo, info) {
   return true;
 }
 
+function entrarLaboratorio(corpo, info) {
+  const spawn = spawnLaboratorio();
+  estado.interior = {
+    sala3d: true,
+    papel: "lab",
+    casaId: idCasa(info),
+    ax: info.ax,
+    ay: info.ay,
+    predio: info.predio,
+  };
+  pousar(corpo, spawn.x, spawn.y);
+  return true;
+}
+
+function pousar(corpo, x, y) {
+  corpo.x = x;
+  corpo.y = y;
+  corpo.z = ALTURA_PRACA;
+  corpo.elevacao = ALTURA_PRACA;
+  corpo.vx = 0;
+  corpo.vy = 0;
+  corpo.vz = 0;
+  corpo.noChao = true;
+  corpo.hopLift = 0;
+  corpo.pulando = false;
+  corpo.pulo = null;
+  atualizarStreaming(x, y, undefined, true);
+  corpo._renasceu = true;
+  estado.painel = null;
+  sfx("porta");
+}
+
 export function checarSaidaSala(corpo) {
   if (!estado.interior?.sala3d) return false;
-  if (!naSaidaSala(corpo.x, corpo.y)) return false;
+  const naSaida =
+    estado.interior.papel === "lab" ? naSaidaLaboratorio(corpo.x, corpo.y) : naSaidaSala(corpo.x, corpo.y);
+  if (!naSaida) return false;
   sairInterior(corpo);
   return true;
 }
@@ -151,7 +204,7 @@ function saidaDoPredio(interior) {
   const v = interior.predio;
   const ox = interior.ax * AREA_KANTO;
   const oy = interior.ay * AREA_KANTO;
-  return saidaDaPorta(v, ox, oy);
+  return saidaDaPorta(v, ox, oy, portaDoModelo(v.modelo));
 }
 
 export function sairInterior(corpo) {

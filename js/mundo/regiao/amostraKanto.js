@@ -21,9 +21,14 @@ import {
   RELEVO_TERRA,
   relevoEm,
 } from "./kantoRelevo.js";
-import { noFootprint, predioNoLayout, ruaNoLayout } from "./volumesCidade.js";
+import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "./volumesCidade.js";
 
 const COTA_CIDADE = 16;
+const SPRITE_PREDIO = new Set(["ginasio", "museu", "torre", "coliseu", "porto", "safari", "mansao", "esconderijo"]);
+
+function predioSprite(papel) {
+  return SPRITE_PREDIO.has(papel);
+}
 const COTA_MONTANHA = 34;
 const COTA_RASO = 10;
 const COTA_FUNDO = 8;
@@ -348,8 +353,9 @@ function calcular(x, y) {
     bioma,
     rua,
     floresta,
-    predio: predio ? predio.altura : 0,
-    modelo: !!(predio && (predio.papel === "casa" || predio.papel === "centro" || predio.papel === "loja" || predio.papel === "lab")),
+    predio: predio && !predioSprite(predio.papel) ? predio.altura : 0,
+    entradaLab: !!(zona.tipo === "cidade" && zona.layout && naEntradaDoLab(lx, ly, zona.layout)),
+    modelo: !!(predio && (predio.papel === "casa" || predio.papel === "centro" || predio.papel === "loja" || predio.papel === "lab" || predioSprite(predio.papel))),
     nome: zona.nome,
   };
 }

@@ -3,7 +3,20 @@ import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { SPAWN } from "../mundo/mapaDemo.js";
-import { dentroDoTerrenoSala } from "../mundo/cidade/sala3d.js";
+import {
+  MIOL_X,
+  MIOL_Y,
+  ORIGEM_SALA_X,
+  ORIGEM_SALA_Y,
+  dentroDoTerrenoSala,
+} from "../mundo/cidade/sala3d.js";
+import {
+  COLS_LAB,
+  ORIGEM_LAB_X,
+  ORIGEM_LAB_Y,
+  ROWS_LAB,
+  dentroDoTerrenoLaboratorio,
+} from "../mundo/cidade/laboratorio.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { criarAtor, reviverAtor } from "./ator.js";
@@ -98,6 +111,21 @@ function nivelNoPonto(x, y) {
   return Math.max(2, Math.min(28, 3 + Math.floor(dist / 26)));
 }
 
+/** A câmera do interior vê além da sala. Selvagem nessa faixa aparece no preto. */
+const FOLGA_VAZIO = 56;
+
+function naFaixa(x, y, x0, y0, x1, y1, folga) {
+  return x >= x0 - folga && x < x1 + folga && y >= y0 - folga && y < y1 + folga;
+}
+
+function zonaSemSelvagem(x, y) {
+  if (dentroDoTerrenoSala(x, y) || dentroDoTerrenoLaboratorio(x, y)) return true;
+  return (
+    naFaixa(x, y, ORIGEM_LAB_X, ORIGEM_LAB_Y, ORIGEM_LAB_X + COLS_LAB, ORIGEM_LAB_Y + ROWS_LAB, FOLGA_VAZIO) ||
+    naFaixa(x, y, ORIGEM_SALA_X, ORIGEM_SALA_Y, ORIGEM_SALA_X + MIOL_X + 2, ORIGEM_SALA_Y + MIOL_Y + 2, FOLGA_VAZIO)
+  );
+}
+
 function pisoSeco(x, y) {
   if (!dentroDoMapa(x, y)) return 0;
   const z = alturaEm(x, y);
@@ -119,7 +147,7 @@ function garantirLar(cx, cy, indice) {
   const x = cx * CHUNK_XZ + ox + 0.5;
   const y = cy * CHUNK_XZ + oy + 0.5;
   if (
-    dentroDoTerrenoSala(x, y) ||
+    zonaSemSelvagem(x, y) ||
     ehCidade(x, y) ||
     Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN
   ) {
@@ -226,6 +254,10 @@ function sincronizarLares(px, py) {
     for (let indice = 0; indice < 2; indice++) {
       const lar = garantirLar(cx, cy, indice);
       if (!lar || lar.sumidoAte > agora) continue;
+      if (zonaSemSelvagem(lar.x, lar.y)) {
+        if (lar.ator) guardar(lar);
+        continue;
+      }
       const dx = lar.x - px;
       const dy = lar.y - py;
       const d2 = dx * dx + dy * dy;
@@ -329,7 +361,7 @@ function tentarGrama(corpo) {
   if (chave === celulaGrama) return;
   if (corpo.pulando || corpo.planando || corpo.escalando || corpo.voando) return;
   celulaGrama = chave;
-  if (dentroDoTerrenoSala(cx, cy) || ehCidade(cx, cy)) return;
+  if (zonaSemSelvagem(cx, cy) || ehCidade(cx, cy)) return;
   if (!pisouGrama(cx, cy)) return;
   if (cooldownGrama > 0) return;
   if (Math.random() >= POKEMON.CHANCE_GRAMA) return;
@@ -337,7 +369,7 @@ function tentarGrama(corpo) {
   const cel = celulaDeGrama(corpo.x, corpo.y, POKEMON.RAIO_AGRO * 0.75);
   const x = cel ? cel.x : corpo.x + (Math.random() < 0.5 ? -2.5 : 2.5);
   const y = cel ? cel.y : corpo.y + (Math.random() < 0.5 ? -1.5 : 1.5);
-  if (dentroDoTerrenoSala(x, y) || ehCidade(x, y)) return;
+  if (zonaSemSelvagem(x, y) || ehCidade(x, y)) return;
   const z = pisoSeco(Math.floor(x), Math.floor(y)) || (corpo.elevacao ?? corpo.z ?? 0);
   const base = POOL[Math.floor(Math.random() * POOL.length)];
   const nivel = nivelNoPonto(x, y);

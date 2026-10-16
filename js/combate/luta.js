@@ -1,4 +1,4 @@
-import { criarAtor, emRecuo, equiparGolpes, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
+import { comecarEsquiva, criarAtor, emAvanco, emEsquiva, emRecuo, equiparGolpes, golpeBasico, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
 import { impactoProjetil, tentarGolpe } from "../pokemon/combate/executor.js";
 import { limparParticulas, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
@@ -82,6 +82,14 @@ function anotar(item) {
     registrar({ tipo: "imune", ...sujeito(item.alvo) });
     return;
   }
+  if (item.tipo === "erro") {
+    registrar({ tipo: "erro", ...sujeito(item.ator) });
+    return;
+  }
+  if (item.tipo === "dodge") {
+    registrar({ tipo: "dodge", ...sujeito(item.alvo) });
+    return;
+  }
   if (item.tipo === "cura") {
     registrar({ tipo: "cura", ...sujeito(item.ator), ganho: item.ganho });
     return;
@@ -133,12 +141,35 @@ function golpePronto(ator, serve) {
   return null;
 }
 
+function ehDistancia(def) {
+  return def.forma === "projectile" || def.forma === "arc";
+}
+
+function ehCorpo(def) {
+  return def.forma === "contact" || def.forma === "radius";
+}
+
+function golpeEquipado(ator, serve) {
+  for (let i = 0; i < ator.golpes.length; i++) {
+    if (serve(ator.golpes[i].def)) return ator.golpes[i].def;
+  }
+  return null;
+}
+
 function postura(ator) {
-  const longe = golpePronto(ator, (def) => def.forma === "projectile" || def.forma === "arc");
-  if (longe) return longe;
-  const perto = golpePronto(ator, (def) => def.forma === "contact" || def.forma === "radius");
-  if (perto) return perto;
-  return { forma: "contact", alcance: 1.15, poder: 18 };
+  const corpo = ator.usaCorpo !== false;
+  const distancia = ator.usaDistancia !== false;
+  if (distancia) {
+    const longe = golpePronto(ator, ehDistancia);
+    if (longe) return longe;
+  }
+  if (corpo) {
+    const perto = golpePronto(ator, ehCorpo);
+    if (perto) return perto;
+    return { forma: "contact", alcance: 1.15, poder: 18 };
+  }
+  if (distancia) return golpeEquipado(ator, ehDistancia);
+  return null;
 }
 
 function paradaDe(def) {
@@ -157,6 +188,80 @@ function paradaDe(def) {
   return Math.min(dentro, Math.max(1.55, Math.min(alcance * 0.45, 4.4)));
 }
 
+function golpeProntoAmeaca(ator, serve) {
+  if (!ator?.golpes) return null;
+  for (let i = 0; i < ator.golpes.length; i++) {
+    const g = ator.golpes[i];
+    if (!serve(g.def) || g.cd > 0) continue;
+    if ((g.def.pp || 1) > ator.pp) continue;
+    return g.def;
+  }
+  return null;
+}
+
+function vaiMelee(oponente, ator) {
+  if (!oponente || oponente.morto || oponente.capturado || oponente.dormindo > 0) return false;
+  if (emRecuo(oponente) || emAvanco(oponente) || emEsquiva(oponente)) return false;
+  if (oponente.usaCorpo === false) return false;
+  const dx = ator.x - oponente.x;
+  const dy = ator.y - oponente.y;
+  const d = Math.hypot(dx, dy);
+  const basico = golpeBasico().alcance;
+  const contato = golpeProntoAmeaca(oponente, (def) => def.forma === "contact");
+  if (contato && d <= Math.max(basico, contato.alcance)) return true;
+  const tiro = oponente.usaDistancia !== false && golpeProntoAmeaca(oponente, (def) => def.forma === "projectile" || def.forma === "arc");
+  if (tiro && d <= tiro.alcance) return false;
+  const area = golpeProntoAmeaca(oponente, (def) => def.forma === "radius" && def.poder > 0);
+  if (area && d <= Math.max(2.2, area.alcance)) return true;
+  return d <= basico && oponente.cdBasico <= 0;
+}
+
+function tiroVem(p, ator) {
+  if (!p || p.dono === ator || p.faccao === ator.faccao) return false;
+  const dx = ator.x - p.x;
+  const dy = ator.y - p.y;
+  const vel = Math.hypot(p.vx, p.vy);
+  if (vel < 0.5) return false;
+  if (dx * p.vx + dy * p.vy <= 0) return false;
+  const lateral = Math.abs(dx * p.vy - dy * p.vx) / vel;
+  if (lateral > (p.raio || 0.45) + 0.7) return false;
+  return Math.hypot(dx, dy) / vel < 0.22;
+}
+
+function ameacaAgora(ator, oponente) {
+  if ((ator.esquiva || 0) < 1) return false;
+  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) return false;
+  if (vaiMelee(oponente, ator)) return true;
+  const tiros = projeteisVivos();
+  for (let i = 0; i < tiros.length; i++) {
+    if (tiroVem(tiros[i], ator)) return true;
+  }
+  return false;
+}
+
+function tentarEsquiva(ator, dx, dy, d) {
+  const lado = ator.esquivaLado || 1;
+  ator.esquivaLado = -lado;
+  const ok = comecarEsquiva(ator, (-dy / d) * lado, (dx / d) * lado);
+  if (!ok) ator.esquivaLado = lado;
+  return ok;
+}
+
+function reagirPar(a, b) {
+  const ameacaA = ameacaAgora(a, b);
+  const ameacaB = ameacaAgora(b, a);
+  if (ameacaA) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    tentarEsquiva(a, dx, dy, Math.hypot(dx, dy) || 0.0001);
+  }
+  if (ameacaB) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    tentarEsquiva(b, dx, dy, Math.hypot(dx, dy) || 0.0001);
+  }
+}
+
 function avancar(ator, tx, ty, dt) {
   if (ator.morto || ator.capturado) {
     ator.vx = 0;
@@ -169,11 +274,17 @@ function avancar(ator, tx, ty, dt) {
   const d = Math.hypot(dx, dy) || 0.0001;
   ator.dirX = dx / d;
   ator.dirY = dy / d;
-  if (emRecuo(ator)) {
+  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
     ator.andando = false;
     return;
   }
   const def = postura(ator);
+  if (!def) {
+    ator.vx = 0;
+    ator.vy = 0;
+    ator.andando = false;
+    return;
+  }
   const parada = paradaDe(def);
   const folga = 0.18;
   let sentido = 0;
@@ -226,6 +337,8 @@ function montar(lado, entrada) {
   });
   ator.dirX = casa.dirX;
   ator.dirY = 0;
+  ator.usaCorpo = entrada.usaCorpo !== false;
+  ator.usaDistancia = entrada.usaDistancia !== false;
   equiparGolpes(ator, [entrada.corpo, entrada.distancia]);
   apresentar(ator);
   return ator;
@@ -268,6 +381,18 @@ function encerrar() {
   else if (dirVivo && !esqVivo) vencedor = "direita";
   else vencedor = "empate";
   publicar();
+}
+
+export function definirUso(lado, corpo, distancia) {
+  const entrada = cfg[lado];
+  if (entrada) {
+    entrada.usaCorpo = corpo !== false;
+    entrada.usaDistancia = distancia !== false;
+  }
+  const ator = lado === "esquerda" ? esquerda : lado === "direita" ? direita : null;
+  if (!ator) return;
+  ator.usaCorpo = corpo !== false;
+  ator.usaDistancia = distancia !== false;
 }
 
 export function montarLados(esqCfg, dirCfg) {
@@ -328,8 +453,10 @@ export function tickLuta(dt) {
     montarGrade(par);
     esquerda.recuoNoTick = esquerda.recuoRestante || 0;
     direita.recuoNoTick = direita.recuoRestante || 0;
+    reagirPar(esquerda, direita);
     tentarGolpe(esquerda, agora, efeitos);
     tentarGolpe(direita, agora, efeitos);
+    reagirPar(esquerda, direita);
   }
   atualizarProjeteis(passo, lutando ? par : vazio, aoTiro);
   if (lutando && (esquerda.hp <= 0 || direita.hp <= 0)) encerrar();

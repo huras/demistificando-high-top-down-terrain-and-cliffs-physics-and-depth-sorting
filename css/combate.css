@@ -168,11 +168,30 @@ button, input, select {
 }
 
 .vida__trilho span,
-.marca__barra span {
+.marca__barra span,
+.esquiva__trilho span,
+.marca__esquiva span {
   display: block;
   height: 100%;
   width: 0;
   background: #4ade80;
+}
+
+.esquiva {
+  margin-top: 8px;
+}
+
+.esquiva__trilho,
+.marca__esquiva {
+  height: 5px;
+  border-radius: 99px;
+  background: #101612;
+  border: 1px solid var(--borda);
+  overflow: hidden;
+}
+
+.marca__esquiva {
+  margin-top: 3px;
 }
 
 .stats {
@@ -207,6 +226,37 @@ button, input, select {
   gap: 4px;
   margin-bottom: 10px;
   font-size: 0.86rem;
+}
+
+.campo__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.uso {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--suave);
+  font-size: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.uso input {
+  accent-color: var(--destaque);
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.campo--off select,
+.campo--off .ficha {
+  opacity: 0.45;
 }
 
 .campo input[type="search"],
@@ -302,7 +352,7 @@ button, input, select {
   left: 0;
   top: 0;
   font-weight: 750;
-  font-size: 0.92rem;
+  font-size: 1.84rem;
   text-shadow: 0 1px 2px #000;
   pointer-events: none;
 }
@@ -442,6 +492,15 @@ button, input, select {
 
 .log__imune {
   color: #94a3b8;
+}
+
+.log__erro {
+  color: #cbd5e1;
+}
+
+.log__dodge {
+  color: #67e8f9;
+  font-weight: 750;
 }
 
 .log__cura {

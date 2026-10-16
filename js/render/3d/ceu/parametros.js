@@ -11,8 +11,8 @@ export const DURACAO_DIA = 4320;
 export const INCLINACAO_SOL_PADRAO = 52;
 export const INCLINACAO_SOL_MIN = 0;
 export const INCLINACAO_SOL_MAX = 90;
-/** Giro do arco em volta da vertical, em graus. O valor antigo era 0.55 rad. */
-export const ROTACAO_SOL_PADRAO = (0.55 * 180) / Math.PI;
+/** Giro do arco em volta da vertical, em graus. */
+export const ROTACAO_SOL_PADRAO = 0;
 export const ROTACAO_SOL_MIN = 0;
 export const ROTACAO_SOL_MAX = 360;
 

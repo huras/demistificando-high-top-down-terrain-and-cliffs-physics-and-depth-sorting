@@ -156,6 +156,55 @@ export function colocarNaParty(ator) {
   return true;
 }
 
+export function especieNoTime(chave) {
+  for (let i = 0; i < party.length; i++) {
+    if (party[i].especie?.key === chave) return true;
+  }
+  return false;
+}
+
+export function receberEspecie(chave, nivel) {
+  if (party.length >= POKEMON.PARTY_MAX) return null;
+  const esp = especie(chave);
+  if (!esp) return null;
+  const ator = criarAtor({
+    id: `party-${esp.key}-${party.length}-${(Math.random() * 1e6) | 0}`,
+    especie: esp,
+    nivel: Math.max(1, nivel | 0),
+    faccao: "party",
+    x: 0,
+    y: 0,
+    z: 1,
+    hostil: false,
+  });
+  if (!colocarNaParty(ator)) return null;
+  return ator;
+}
+
+export function montarTime(chaves, nivel) {
+  const atores = [];
+  const lv = Math.max(1, nivel | 0);
+  for (let i = 0; i < chaves.length && atores.length < POKEMON.PARTY_MAX; i++) {
+    const esp = especie(chaves[i]);
+    if (!esp) continue;
+    atores.push(
+      criarAtor({
+        id: `party-${i}-${esp.key}`,
+        especie: esp,
+        nivel: lv,
+        faccao: "party",
+        x: 0,
+        y: 0,
+        z: 1,
+        hostil: false,
+      }),
+    );
+  }
+  if (!atores.length) return false;
+  substituirParty(atores);
+  return true;
+}
+
 export function substituirParty(atores) {
   party.length = 0;
   for (let i = 0; i < atores.length && i < POKEMON.PARTY_MAX; i++) party.push(atores[i]);

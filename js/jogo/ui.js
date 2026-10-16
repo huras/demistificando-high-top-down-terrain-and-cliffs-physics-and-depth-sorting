@@ -1,5 +1,9 @@
 /** Interface DOM: mochila, roda, party, PC, loja, diálogo, dex, quests, craft e móveis. */
 
+import * as THREE from "three";
+import { ALTURA_BLOCO } from "../config.js";
+import { estaEm3d } from "../modoJogo.js";
+import { obterCenario3d } from "../render/3d/cenario3d.js";
 import {
   BOLAS,
   BERRIES,
@@ -19,6 +23,8 @@ import {
   teclaDoSlot,
 } from "../wild/catalogo.js";
 import { listarEspecies } from "../pokemon/dados.js";
+import { COR_TIPO } from "../pokemon/tipos.js";
+import { darDaCapsula, montarTimeCapsula } from "./laboratorio.js";
 import {
   curarParty,
   definirDeployado,
@@ -63,6 +69,13 @@ export function ligarUi(overlay) {
   raiz = overlay;
   raiz.addEventListener("click", noClique);
   raiz.addEventListener("change", noChange);
+  raiz.addEventListener("input", noCapsula);
+  raiz.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape" || !estado.painel) return;
+    ev.preventDefault();
+    fecharTopo();
+    pintar();
+  });
 }
 
 function noChange(ev) {
@@ -103,6 +116,16 @@ function noClique(ev) {
   else if (act === "salvar") salvar();
   else if (act === "escolha") escolher(btn.dataset.id);
   else if (act === "seguir") avancarDialogo();
+  else if (act === "tipo-capsula") alternarTipoCapsula(btn.dataset.tipo);
+  else if (act === "sel-capsula") {
+    garantirCapsula().sel = btn.dataset.key || "";
+  } else if (act === "dar-capsula") {
+    const cap = garantirCapsula();
+    if (cap.sel) darDaCapsula(cap.sel, cap.nivel);
+  } else if (act === "time-capsula") sortearTimeCapsula();
+  else if (act === "limpar-tipo-capsula") {
+    garantirCapsula().tipos = [];
+  }
   pintar();
 }
 
@@ -206,11 +229,50 @@ export function atualizarLeve() {
   pintarEquipe();
 }
 
+const _ancora = new THREE.Vector3();
+
 function pintarPrompt() {
+  const entrar = el("#jogo-entrar");
   const host = el("#jogo-prompt");
+  const mostraEntrar = !!estado.promptEntrar && !estado.dialogo && !estado.painel;
+  if (entrar) {
+    const estava = !entrar.hidden;
+    entrar.hidden = !mostraEntrar;
+    if (mostraEntrar) {
+      if (!estava) {
+        entrar.classList.remove("acao-prompt--nova");
+        void entrar.offsetWidth;
+        entrar.classList.add("acao-prompt--nova");
+      }
+      colocarEntrar(entrar, corpoRef);
+    }
+  }
   if (!host) return;
-  host.hidden = !estado.prompt;
+  host.hidden = mostraEntrar || !estado.prompt;
   host.textContent = estado.prompt || "";
+}
+
+function colocarEntrar(entrar, corpo) {
+  const canvas = document.getElementById(estaEm3d() ? "canvas-3d" : "canvas");
+  const hud = entrar.offsetParent || entrar.parentElement;
+  if (!canvas || !hud || !corpo) return;
+  const cRect = canvas.getBoundingClientRect();
+  const hRect = hud.getBoundingClientRect();
+  let x = cRect.width * 0.5;
+  let y = cRect.height * 0.42;
+  if (estaEm3d()) {
+    const cam = obterCenario3d()?.camera3d?.cam;
+    if (cam) {
+      _ancora.set(corpo.x, (corpo.z || 0) * ALTURA_BLOCO + 2.6, corpo.y);
+      _ancora.project(cam);
+      if (_ancora.z >= -1 && _ancora.z <= 1) {
+        x = (_ancora.x * 0.5 + 0.5) * cRect.width;
+        y = (-_ancora.y * 0.5 + 0.5) * cRect.height;
+      }
+    }
+  }
+  entrar.style.left = `${cRect.left - hRect.left + x}px`;
+  entrar.style.top = `${cRect.top - hRect.top + y}px`;
 }
 
 function pintarToast() {
@@ -233,7 +295,10 @@ function pintarDialogo() {
   const escolhas = dlg.escolhas && dlg.i >= dlg.linhas.length - 1
     ? dlg.escolhas.map((e) => `<button type="button" data-act="escolha" data-id="${e.id}">${e.rotulo}</button>`).join("")
     : `<button type="button" data-act="seguir">Continuar</button>`;
-  host.innerHTML = `<p class="jogo-dialogo__nome">${dlg.nome || ""}</p><p>${linha}</p><div class="jogo-dialogo__acoes">${escolhas}</div>`;
+  const retrato = dlg.retrato
+    ? `<img class="jogo-dialogo__retrato" alt="" src="${escHtml(dlg.retrato)}" />`
+    : "";
+  host.innerHTML = `<div class="jogo-dialogo__corpo">${retrato}<div><p class="jogo-dialogo__nome">${escHtml(dlg.nome || "")}</p><p>${escHtml(linha)}</p><div class="jogo-dialogo__acoes">${escolhas}</div></div></div>`;
 }
 
 export function avancarDialogo() {
@@ -312,13 +377,163 @@ function pintarPainel() {
   if (!host) return;
   const nome = estado.painel;
   host.hidden = !nome;
+  host.classList.toggle("jogo-painel--capsula", nome === "capsula");
   if (!nome) {
     host.innerHTML = "";
     return;
   }
   if (nome === "loja") host.innerHTML = htmlLoja();
   else if (nome === "pc") host.innerHTML = htmlPc();
+  else if (nome === "capsula") host.innerHTML = htmlCapsula();
   else host.innerHTML = htmlMenu(nome);
+}
+
+const TIPOS_CAPSULA = Object.freeze([
+  ["normal", "Normal"],
+  ["fire", "Fogo"],
+  ["water", "Água"],
+  ["electric", "Elétrico"],
+  ["grass", "Planta"],
+  ["ice", "Gelo"],
+  ["fighting", "Lutador"],
+  ["poison", "Venenoso"],
+  ["ground", "Terra"],
+  ["flying", "Voador"],
+  ["psychic", "Psíquico"],
+  ["bug", "Inseto"],
+  ["rock", "Pedra"],
+  ["ghost", "Fantasma"],
+  ["dragon", "Dragão"],
+  ["dark", "Sombrio"],
+  ["steel", "Aço"],
+  ["fairy", "Fada"],
+]);
+
+let catalogoCapsula = null;
+
+function escHtml(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, (c) => {
+    if (c === "&") return "&amp;";
+    if (c === "<") return "&lt;";
+    if (c === ">") return "&gt;";
+    if (c === '"') return "&quot;";
+    return "&#39;";
+  });
+}
+
+function garantirCapsula() {
+  if (!estado.capsula) estado.capsula = { busca: "", tipos: [], nivel: 5, sel: "" };
+  return estado.capsula;
+}
+
+function nivelCapsula(valor) {
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return 5;
+  return Math.max(1, Math.min(100, Math.round(n)));
+}
+
+function listaCatalogo() {
+  if (catalogoCapsula) return catalogoCapsula;
+  catalogoCapsula = listarEspecies()
+    .slice()
+    .sort((a, b) => (a.dex | 0) - (b.dex | 0));
+  return catalogoCapsula;
+}
+
+function filtrarCapsula(cap) {
+  const q = cap.busca.trim().toLowerCase();
+  const tipos = cap.tipos;
+  const todos = listaCatalogo();
+  const visiveis = [];
+  let total = 0;
+  for (let i = 0; i < todos.length; i++) {
+    const esp = todos[i];
+    if (q) {
+      const texto = `${esp.nome} ${esp.key} ${esp.dex}`.toLowerCase();
+      if (!texto.includes(q)) continue;
+    }
+    if (tipos.length) {
+      let ok = true;
+      for (let t = 0; t < tipos.length; t++) {
+        if (!esp.tipos?.includes(tipos[t])) ok = false;
+      }
+      if (!ok) continue;
+    }
+    total += 1;
+    if (visiveis.length < 72) visiveis.push(esp);
+  }
+  return { visiveis, total };
+}
+
+function htmlListaCapsula(cap) {
+  const { visiveis, total } = filtrarCapsula(cap);
+  if (!total) return "<p>Nenhuma espécie com esse filtro.</p>";
+  const itens = visiveis
+    .map((esp) => {
+      const dex = String(esp.dex | 0).padStart(3, "0");
+      const tipos = (esp.tipos || []).map((tipo) => TIPOS_CAPSULA.find((item) => item[0] === tipo)?.[1] || tipo).join(" / ");
+      const on = cap.sel === esp.key ? " is-on" : "";
+      return `<button type="button" class="capsula-item${on}" data-act="sel-capsula" data-key="${escHtml(esp.key)}"><b>${dex}</b><span>${escHtml(esp.nome)}</span><small>${escHtml(tipos)}</small></button>`;
+    })
+    .join("");
+  const resto = total > visiveis.length ? `<p class="capsula-resto">Mostrando ${visiveis.length} de ${total}. Afine a busca.</p>` : "";
+  return `${itens}${resto}`;
+}
+
+function htmlCapsula() {
+  const cap = garantirCapsula();
+  const escolhida = listaCatalogo().find((esp) => esp.key === cap.sel);
+  const retrato = escolhida
+    ? `<img class="capsula-retrato" alt="" src="/ref/sprites/pokemon-portraits/${escolhida.dex | 0}.png" />`
+    : `<span class="capsula-retrato capsula-retrato--vazio">?</span>`;
+  const tipos = TIPOS_CAPSULA.map(([id, rotulo]) => {
+    const on = cap.tipos.includes(id) ? " is-on" : "";
+    const cor = COR_TIPO[id] || "#94a3b8";
+    return `<button type="button" class="capsula-tipo${on}" data-act="tipo-capsula" data-tipo="${id}" title="${rotulo}" aria-label="${rotulo}" aria-pressed="${on ? "true" : "false"}" style="--tipo:${cor}"></button>`;
+  }).join("");
+  const nome = escolhida ? escHtml(escolhida.nome) : "Escolha uma espécie";
+  return `<header class="jogo-topo"><h2>Cápsula</h2><button type="button" data-act="fechar">Fechar</button></header>
+    <div class="capsula-topo">${retrato}<div><p class="capsula-nome">${nome}</p>
+    <label class="capsula-nivel">Nível <input data-capsula="nivel" type="number" min="1" max="100" value="${cap.nivel}" /></label>
+    <div class="capsula-acoes"><button type="button" data-act="dar-capsula">Colocar no time</button><button type="button" data-act="time-capsula">Time aleatório</button></div></div></div>
+    <input class="capsula-busca" data-capsula="busca" type="search" placeholder="Nome ou número" value="${escHtml(cap.busca)}" />
+    <div class="capsula-tipos" aria-label="Tipos">${tipos}<button type="button" class="capsula-limpar" data-act="limpar-tipo-capsula" ${cap.tipos.length ? "" : "hidden"}>Limpar</button></div>
+    <div class="capsula-lista" id="capsula-lista">${htmlListaCapsula(cap)}</div>`;
+}
+
+function noCapsula(ev) {
+  const campo = ev.target.closest("[data-capsula]");
+  if (!campo || estado.painel !== "capsula") return;
+  const cap = garantirCapsula();
+  if (campo.dataset.capsula === "busca") cap.busca = campo.value;
+  if (campo.dataset.capsula === "nivel") cap.nivel = nivelCapsula(campo.value);
+  const lista = el("#capsula-lista");
+  if (lista) lista.innerHTML = htmlListaCapsula(cap);
+}
+
+function alternarTipoCapsula(tipo) {
+  if (!tipo) return;
+  const cap = garantirCapsula();
+  const i = cap.tipos.indexOf(tipo);
+  if (i >= 0) cap.tipos.splice(i, 1);
+  else if (cap.tipos.length < 2) cap.tipos.push(tipo);
+  else cap.tipos = [cap.tipos[1], tipo];
+}
+
+function sortearTimeCapsula() {
+  const todos = listaCatalogo();
+  if (!todos.length) return;
+  const chaves = [];
+  const usados = new Set();
+  let guarda = 0;
+  while (chaves.length < 6 && usados.size < todos.length && guarda < 40) {
+    guarda += 1;
+    const esp = todos[(Math.random() * todos.length) | 0];
+    if (usados.has(esp.key)) continue;
+    usados.add(esp.key);
+    chaves.push(esp.key);
+  }
+  montarTimeCapsula(chaves, garantirCapsula().nivel);
 }
 
 function abas(ativa) {

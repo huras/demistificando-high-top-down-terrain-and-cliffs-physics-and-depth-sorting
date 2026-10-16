@@ -12,6 +12,7 @@ const BASICO = Object.freeze({
   categoria: "physical",
   tipo: "normal",
   poder: 18,
+  acerto: 100,
   pp: 0,
   recarga: 0.55,
   alcance: 1.15,
@@ -132,6 +133,18 @@ export function criarAtor(opts) {
     recuoDirX: 0,
     recuoDirY: 0,
     recuoTrava: 0,
+    avancoRestante: 0,
+    avancoDur: 0,
+    avancoDist: 0,
+    avancoDirX: 0,
+    avancoDirY: 0,
+    esquiva: 0,
+    esquivaRestante: 0,
+    esquivaDur: 0,
+    esquivaDist: 0,
+    esquivaDirX: 0,
+    esquivaDirY: 0,
+    esquivaLado: 1,
     participantes: new Set(),
     emocao: null,
     emocaoIdade: 0,
@@ -172,6 +185,13 @@ export function reviverAtor(ator, x, y, z) {
   ator.recuoDur = 0;
   ator.recuoDist = 0;
   ator.recuoTrava = 0;
+  ator.avancoRestante = 0;
+  ator.avancoDur = 0;
+  ator.avancoDist = 0;
+  ator.esquiva = 0;
+  ator.esquivaRestante = 0;
+  ator.esquivaDur = 0;
+  ator.esquivaDist = 0;
 }
 
 export function aplicarNivel(ator, nivelNovo) {
@@ -189,7 +209,17 @@ export function emRecuo(ator) {
   return (ator?.recuoRestante || 0) > 0 || (ator?.recuoTrava || 0) > 0;
 }
 
+export function emAvanco(ator) {
+  return (ator?.avancoRestante || 0) > 0;
+}
+
+export function emEsquiva(ator) {
+  return (ator?.esquivaRestante || 0) > 0;
+}
+
 function integrarRecuo(ator, dt) {
+  ator.avancoRestante = 0;
+  ator.esquivaRestante = 0;
   if ((ator.recuoTrava || 0) > 0) {
     const gasto = Math.min(ator.recuoTrava, dt);
     ator.recuoTrava -= gasto;
@@ -219,10 +249,86 @@ function integrarRecuo(ator, dt) {
   if (ator.pose === "Hurt") ator.poseAte = 0;
 }
 
+function integrarAvanco(ator, dt) {
+  const dur = ator.avancoDur || ator.avancoRestante;
+  if (dur <= 0) {
+    ator.avancoRestante = 0;
+    return;
+  }
+  const antes = ator.avancoRestante;
+  const depois = Math.max(0, antes - dt);
+  const u0 = 1 - antes / dur;
+  const u1 = 1 - depois / dur;
+  const fatia = (1 - u0) * (1 - u0) - (1 - u1) * (1 - u1);
+  const anda = (ator.avancoDist || 0) * Math.max(0, fatia);
+  ator.x += (ator.avancoDirX || 0) * anda;
+  ator.y += (ator.avancoDirY || 0) * anda;
+  const vel = (ator.avancoDist * 2 * Math.max(0, 1 - u0)) / dur;
+  ator.vx = (ator.avancoDirX || 0) * vel;
+  ator.vy = (ator.avancoDirY || 0) * vel;
+  ator.andando = false;
+  ator.avancoRestante = depois;
+  if (depois > 0) return;
+  ator.vx = 0;
+  ator.vy = 0;
+}
+
+function integrarEsquiva(ator, dt) {
+  const dur = ator.esquivaDur || ator.esquivaRestante;
+  if (dur <= 0) {
+    ator.esquivaRestante = 0;
+    return;
+  }
+  const antes = ator.esquivaRestante;
+  const depois = Math.max(0, antes - dt);
+  const u0 = 1 - antes / dur;
+  const u1 = 1 - depois / dur;
+  const fatia = (1 - u0) * (1 - u0) - (1 - u1) * (1 - u1);
+  const anda = (ator.esquivaDist || 0) * Math.max(0, fatia);
+  ator.x += (ator.esquivaDirX || 0) * anda;
+  ator.y += (ator.esquivaDirY || 0) * anda;
+  const vel = (ator.esquivaDist * 2 * Math.max(0, 1 - u0)) / dur;
+  ator.vx = (ator.esquivaDirX || 0) * vel;
+  ator.vy = (ator.esquivaDirY || 0) * vel;
+  ator.andando = false;
+  ator.esquivaRestante = depois;
+  if (depois > 0) return;
+  ator.vx = 0;
+  ator.vy = 0;
+}
+
+/** Passo curto para o alvo. O primeiro pedaço sai no quadro do golpe. */
+export function comecarAvanco(ator, dirX, dirY, dist) {
+  ator.avancoDur = 0.14;
+  ator.avancoRestante = 0.14;
+  ator.avancoDist = dist;
+  ator.avancoDirX = dirX;
+  ator.avancoDirY = dirY;
+  integrarAvanco(ator, 0.05);
+}
+
+/** Passo lateral. Gasta a barra inteira. */
+export function comecarEsquiva(ator, dirX, dirY) {
+  if ((ator.esquiva || 0) < 1) return false;
+  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) return false;
+  const len = Math.hypot(dirX, dirY) || 1;
+  ator.esquiva = 0;
+  ator.esquivaDur = 0.18;
+  ator.esquivaRestante = 0.18;
+  ator.esquivaDist = 1.15;
+  ator.esquivaDirX = dirX / len;
+  ator.esquivaDirY = dirY / len;
+  ator.hopLift = Math.max(ator.hopLift || 0, 0.2);
+  integrarEsquiva(ator, 0.05);
+  return true;
+}
+
 export function tickPassivo(ator, dt, agora) {
   if (ator.hopLift > 0) ator.hopLift = Math.max(0, ator.hopLift - dt * 3.2);
   if (ator.iframe > 0) ator.iframe = Math.max(0, ator.iframe - dt);
   if ((ator.recuoRestante || 0) > 0) integrarRecuo(ator, dt);
+  else if ((ator.avancoRestante || 0) > 0) integrarAvanco(ator, dt);
+  else if ((ator.esquivaRestante || 0) > 0) integrarEsquiva(ator, dt);
   if (ator.velMulAte > 0 && agora >= ator.velMulAte) {
     ator.velMul = 1;
     ator.velMulAte = 0;
@@ -233,6 +339,11 @@ export function tickPassivo(ator, dt, agora) {
   }
   const regen = (1 / 10) * (1 / escalaRecarga(ator.stats.velocidade));
   ator.pp = Math.min(ator.ppMax, ator.pp + regen * dt);
+  if ((ator.esquivaRestante || 0) <= 0) {
+    const vel = Math.max(1, ator.stats.velocidade || 50);
+    const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
+    ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 5);
+  }
   if (ator.cdBasico > 0) ator.cdBasico = Math.max(0, ator.cdBasico - dt);
   for (let i = 0; i < ator.golpes.length; i++) {
     const g = ator.golpes[i];

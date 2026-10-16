@@ -165,6 +165,7 @@ export function plantaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   if (dentroDoKanto(wx, wy)) {
     const amostra = amostraKanto(wx, wy);
     if (!amostra || amostra.rua || amostra.predio || amostra.h < nivelMarBlocos(catalogo)) return null;
+    if (amostra.entradaLab) return null;
     return plantaNoBioma(amostra.bioma, wx, wy);
   }
   const b = biomaDominante(wx | 0, wy | 0, catalogo, seed);

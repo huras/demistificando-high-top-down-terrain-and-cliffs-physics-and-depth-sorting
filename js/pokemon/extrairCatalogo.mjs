@@ -82,6 +82,7 @@ async function montar(raizRef) {
       categoria: g.category || "physical",
       tipo: g.type || "normal",
       poder: g.power | 0,
+      acerto: Object.prototype.hasOwnProperty.call(g, "accuracy") ? g.accuracy : 100,
       pp: g.ppCost | 0 || 1,
       recarga: Number(g.cooldown) || 4,
       alcance: Number(g.range) || 1,

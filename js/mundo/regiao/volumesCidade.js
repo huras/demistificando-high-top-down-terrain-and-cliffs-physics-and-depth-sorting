@@ -152,7 +152,7 @@ export function montarLayout(def) {
 }
 
 function yawDaFrente(v) {
-  if (v.cartao || v.papel === "casa") return 0;
+  if (v.cartao || v.papel === "casa" || v.papel === "lab") return 0;
   const mx = (v.x0 + v.x1) * 0.5;
   const my = (v.y0 + v.y1) * 0.5;
   const dx = mx - CENTRO;
@@ -161,9 +161,15 @@ function yawDaFrente(v) {
   return dx > 0 ? -Math.PI / 2 : Math.PI / 2;
 }
 
-/** Um tile no meio da face da frente. Sem porta, null. */
-export function faixaDaPorta(v) {
-  if (!v || v.porta === false) return null;
+function giroLocal(x, z, yaw) {
+  const k = ((Math.round(yaw / (Math.PI / 2)) % 4) + 4) % 4;
+  if (k === 1) return [z, -x];
+  if (k === 2) return [-x, -z];
+  if (k === 3) return [-z, x];
+  return [x, z];
+}
+
+function faixaNoMeio(v) {
   const k = ((Math.round(yawDaFrente(v) / (Math.PI / 2)) % 4) + 4) % 4;
   const cx = (v.x0 + v.x1) * 0.5;
   const cy = (v.y0 + v.y1) * 0.5;
@@ -173,9 +179,71 @@ export function faixaDaPorta(v) {
   return { x0: v.x0, x1: v.x0 + 1, y0: cy - 0.5, y1: cy + 0.5 };
 }
 
+/**
+ * Vão da porta no lote.
+ * Com a porta da malha, acompanha a largura e o lado dela.
+ * Sem isso, um tile no meio da frente.
+ */
+export function faixaDaPorta(v, porta) {
+  if (!v || v.porta === false) return null;
+  if (!porta) return faixaNoMeio(v);
+  const hx = (v.x1 - v.x0) * 0.5;
+  const hz = (v.y1 - v.y0) * 0.5;
+  const yaw = yawDaFrente(v);
+  const k = ((Math.round(yaw / (Math.PI / 2)) % 4) + 4) % 4;
+  const troca = k === 1 || k === 3;
+  const meioX = troca ? hz : hx;
+  const meioZ = troca ? hx : hz;
+  const fora = 0.9;
+  const dentro = 0.45;
+  let x0;
+  let x1;
+  let z0;
+  let z1;
+  if (porta.eixo === 0) {
+    z0 = porta.u0;
+    z1 = porta.u1;
+    const borda = porta.paraFora > 0 ? meioX : -meioX;
+    const a = porta.plano - porta.paraFora * dentro;
+    const b = borda + porta.paraFora * fora;
+    x0 = Math.min(a, b);
+    x1 = Math.max(a, b);
+  } else {
+    x0 = porta.u0;
+    x1 = porta.u1;
+    const borda = porta.paraFora > 0 ? meioZ : -meioZ;
+    const a = porta.plano - porta.paraFora * dentro;
+    const b = borda + porta.paraFora * fora;
+    z0 = Math.min(a, b);
+    z1 = Math.max(a, b);
+  }
+  const cx = (v.x0 + v.x1) * 0.5;
+  const cy = (v.y0 + v.y1) * 0.5;
+  const cantos = [
+    [x0, z0],
+    [x1, z0],
+    [x0, z1],
+    [x1, z1],
+  ];
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < cantos.length; i++) {
+    const [rx, rz] = giroLocal(cantos[i][0], cantos[i][1], yaw);
+    const wx = cx + rx;
+    const wy = cy + rz;
+    if (wx < minX) minX = wx;
+    if (wx > maxX) maxX = wx;
+    if (wy < minY) minY = wy;
+    if (wy > maxY) maxY = wy;
+  }
+  return { x0: minX, x1: maxX, y0: minY, y1: maxY };
+}
+
 /** Um passo para fora da porta da frente. */
-export function saidaDaPorta(v, ox, oy) {
-  const faixa = faixaDaPorta(v);
+export function saidaDaPorta(v, ox, oy, porta) {
+  const faixa = faixaDaPorta(v, porta);
   const cx = ox + (v.x0 + v.x1) * 0.5;
   if (!faixa) return { x: cx, y: oy + v.y1 + 1.15 };
   const px = ox + (faixa.x0 + faixa.x1) * 0.5;
@@ -184,6 +252,18 @@ export function saidaDaPorta(v, ox, oy) {
   if (faixa.y0 <= v.y0) return { x: px, y: oy + v.y0 - 1.15 };
   if (faixa.x1 >= v.x1) return { x: ox + v.x1 + 1.15, y: py };
   return { x: ox + v.x0 - 1.15, y: py };
+}
+
+/** Quintal em volta do laboratório, pra o mato não entrar no lote. */
+export function naEntradaDoLab(lx, ly, layout) {
+  const lista = layout?.volumes;
+  if (!lista) return false;
+  for (let i = 0; i < lista.length; i++) {
+    const v = lista[i];
+    if (v.papel !== "lab") continue;
+    if (lx >= v.x0 - 2 && lx < v.x1 + 2 && ly >= v.y0 - 1 && ly < v.y1 + 6) return true;
+  }
+  return false;
 }
 
 export function noFootprint(lx, ly, layout) {

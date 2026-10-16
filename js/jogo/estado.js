@@ -17,6 +17,7 @@ import {
   precoCompra,
   precoVenda,
 } from "../wild/catalogo.js";
+import { POKEMON } from "../config.js";
 import { ESTAGIO } from "../wild/estagios.js";
 import { hidratarPlot, serializarPlot } from "../wild/plots.js";
 import { criarAtor } from "../pokemon/ator.js";
@@ -70,6 +71,7 @@ export const estado = {
   chaves: ["pokedex"],
   dialogo: null,
   prompt: "",
+  promptEntrar: false,
   painel: null,
   categoria: "balls",
   roda: false,
@@ -522,7 +524,7 @@ export function carregar() {
     return false;
   }
   estado.dinheiro = bruto.dinheiro | 0;
-  definirBolas(bruto.bolas | 0);
+  definirBolas(Math.max(bruto.bolas | 0, POKEMON.BOLAS));
   const mapa = itensBolsa();
   mapa.clear();
   const pares = bruto.bolsa || [];

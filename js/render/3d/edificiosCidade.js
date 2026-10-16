@@ -14,6 +14,8 @@ import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../../mundo/cidade/catalogoCasas.js";
 import { anexarCascaSala, anexarDecoracaoCidade, anexarInteriores, carregarSpritesPraca, criarDecoracaoRotas } from "./decoracaoCidade.js";
+import { atualizarLaboratorio, montarLaboratorio3d } from "./laboratorio3d.js";
+import { carregarSpritesPredio, chaveSpritePredio, criarSpritePredio, montarUsina } from "./prediosSprite.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
@@ -96,15 +98,17 @@ function materialDoGlobo(mapa) {
     mapa.generateMipmaps = false;
     mapa.needsUpdate = true;
   }
-  materialGlobo = new THREE.MeshPhongMaterial({
+  materialGlobo = new THREE.MeshLambertMaterial({
     name: "tkwa_sl2l",
     map: mapa || null,
-    color: 0x3a3a3a,
-    emissive: 0xffffff,
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    emissive: 0xfff1c4,
     emissiveMap: mapa || null,
-    emissiveIntensity: 1,
-    specular: 0xffffff,
-    shininess: 64,
+    emissiveIntensity: 0,
   });
   materialGlobo.addEventListener("dispose", () => {
     materialGlobo = null;
@@ -243,8 +247,9 @@ function preparar(raiz, escala) {
       const mapa = filho.material?.map || null;
       filho.material?.dispose?.();
       filho.material = materialDoGlobo(mapa);
-      filho.castShadow = true;
-      filho.receiveShadow = true;
+      filho.castShadow = false;
+      filho.receiveShadow = false;
+      filho.renderOrder = 1;
       return;
     }
     consertarNormais(filho.geometry);
@@ -417,7 +422,7 @@ function criarCartaoCasa(folha) {
   return raiz;
 }
 
-function montarCidade(moldes, folhas, def, sprites) {
+function montarCidade(moldes, folhas, def, sprites, predios) {
   const layout = montarLayout(def);
   const grupo = new THREE.Group();
   grupo.name = `cidade-${def.key}`;
@@ -436,11 +441,19 @@ function montarCidade(moldes, folhas, def, sprites) {
       grupo.add(sprite);
       continue;
     }
+    const spriteId = chaveSpritePredio(v.papel, def.ginasio);
+    const folhaPredio = spriteId ? predios?.get(spriteId) : null;
+    if (folhaPredio) {
+      const sprite = criarSpritePredio(folhaPredio);
+      sprite.position.set(ox + mx, ALTURA_PRACA, oy + my);
+      grupo.add(sprite);
+      continue;
+    }
     const id = v.modelo;
     const molde = id ? moldes.get(id) : null;
     if (!molde) continue;
     const inst = molde.grupo.clone(true);
-    inst.rotation.y = v.papel === "casa" ? 0 : yawDaRua(mx, my);
+    inst.rotation.y = v.papel === "casa" || v.papel === "lab" ? 0 : yawDaRua(mx, my);
     inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
     pendurarLuzes(inst, id, `${def.key}:${i}`);
     grupo.add(inst);
@@ -472,8 +485,11 @@ export function criarEdificiosCidade() {
   Promise.all([Promise.all(cargas), carregarCatalogoLuzes(), carregarFolhas(), carregarSpritesPraca().catch((erro) => {
       console.error("sprites da praça", erro);
       return null;
+    }), carregarSpritesPredio().catch((erro) => {
+      console.error("sprites dos prédios", erro);
+      return null;
     })])
-    .then(([pares, , folhas, sprites]) => {
+    .then(([pares, , folhas, sprites, predios]) => {
       const moldes = new Map();
       for (let i = 0; i < pares.length; i++) {
         const [id, item] = pares[i];
@@ -485,7 +501,7 @@ export function criarEdificiosCidade() {
       const acender = (inst, dono) => pendurarLuzes(inst, "poste", dono);
       grupo.userData.cidades = [];
       for (let i = 0; i < CIDADES_KANTO.length; i++) {
-        const cidade = montarCidade(moldes, folhas, CIDADES_KANTO[i], sprites);
+        const cidade = montarCidade(moldes, folhas, CIDADES_KANTO[i], sprites, predios);
         grupo.add(cidade.grupo);
         grupo.userData.cidades.push(cidade);
       }
@@ -495,6 +511,13 @@ export function criarEdificiosCidade() {
       anexarInteriores(sala, sprites?.moveis);
       grupo.add(sala);
       grupo.userData.sala = sala;
+      if (predios) {
+        const usina = montarUsina(predios);
+        if (usina) {
+          grupo.add(usina.grupo);
+          grupo.userData.cidades.push(usina);
+        }
+      }
       const rotas = criarDecoracaoRotas(moldes.get("poste"), acender);
       for (let i = 0; i < rotas.length; i++) {
         grupo.add(rotas[i].grupo);
@@ -505,11 +528,15 @@ export function criarEdificiosCidade() {
       console.error("modelos da cidade", erro);
     });
 
+  montarLaboratorio3d(grupo);
+
   return {
     grupo,
     atualizar(px, py, yaw = 0, inclinacao = 0) {
+      atualizarLaboratorio(yaw, inclinacao);
       const pesoNoite = obterPesoNoite();
       if (materialFlare) materialFlare.opacity = pesoNoite;
+      if (materialGlobo) materialGlobo.emissiveIntensity = pesoNoite;
       for (let j = 0; j < materiaisJanela.length; j++) materiaisJanela[j].emissiveIntensity = pesoNoite;
       const cidades = grupo.userData.cidades;
       if (!cidades) return;

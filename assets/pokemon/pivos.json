@@ -78,5 +78,15 @@
     "offsetY": -0.01,
     "dx": 0,
     "dy": 0
+  },
+  "sentret": {
+    "offsetY": 0,
+    "dx": 0,
+    "dy": 0
+  },
+  "ninetales": {
+    "offsetY": 0.01,
+    "dx": 0,
+    "dy": 0
   }
 }

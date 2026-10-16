@@ -9,6 +9,7 @@ import { CIDADES_KANTO } from "../regiao/kantoCidades.js";
 import { decoracaoDaCidade } from "../regiao/decoracaoKanto.js";
 import { montarLayout } from "../regiao/volumesCidade.js";
 import { moveisDaSala } from "./interiorCasa.js";
+import { plantaLaboratorio } from "./laboratorio.js";
 
 const RAIO_QUADRO = 0.72;
 const RAIO_CORREIO = 0.38;
@@ -30,6 +31,8 @@ export function indexarColisaoCidade() {
     }
   }
   const moveis = moveisDaSala();
+  const discosLab = plantaLaboratorio().discos;
+  for (let i = 0; i < discosLab.length; i++) lista.push(discosLab[i]);
   for (let i = 0; i < moveis.length; i++) {
     const item = moveis[i];
     lista.push({ x: item.x, y: item.y, z, r: item.r });

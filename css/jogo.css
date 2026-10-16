@@ -36,6 +36,114 @@
   bottom: 92px;
 }
 
+.acao-prompt {
+  --fonte: "Segoe UI", system-ui, sans-serif;
+  position: absolute;
+  z-index: 7;
+  left: 0;
+  top: 0;
+  transform: translate(-36px, -28px);
+  display: flex;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+}
+
+.acao-prompt[hidden] {
+  display: none;
+}
+
+.acao-prompt--nova .acao-prompt__teclado {
+  animation: acao-prompt-entra 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes acao-prompt-entra {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.acao-prompt__corpo {
+  display: flex;
+  align-items: center;
+}
+
+.acao-prompt__teclado {
+  position: relative;
+  width: 78px;
+  height: 58px;
+  flex: 0 0 auto;
+  padding: 4px;
+  border-radius: 10px;
+  background: linear-gradient(165deg, rgba(8, 12, 10, 0.72) 0%, rgba(8, 12, 10, 0.42) 100%);
+  backdrop-filter: blur(5px);
+  -webkit-mask-image: radial-gradient(ellipse 120% 120% at 50% 50%, #000 68%, transparent 100%);
+  mask-image: radial-gradient(ellipse 120% 120% at 50% 50%, #000 68%, transparent 100%);
+}
+
+.acao-prompt__tecla {
+  position: absolute;
+  width: 17px;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font-family: var(--fonte);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(232, 224, 208, 0.34);
+  border: 1px solid rgba(232, 224, 208, 0.14);
+  background: rgba(8, 12, 10, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.acao-prompt__tecla--2 { left: 18px; top: 0; }
+.acao-prompt__tecla--3 { left: 38px; top: 0; }
+.acao-prompt__tecla--w { left: 8px; top: 20px; }
+.acao-prompt__tecla--e { left: 28px; top: 20px; }
+.acao-prompt__tecla--r { left: 48px; top: 20px; }
+.acao-prompt__tecla--s { left: 18px; top: 40px; }
+.acao-prompt__tecla--d { left: 38px; top: 40px; }
+.acao-prompt__tecla--f { left: 58px; top: 40px; }
+
+.acao-prompt__tecla--ativa {
+  z-index: 2;
+  transform: scale(1.06);
+  font-size: 11px;
+  font-weight: 800;
+  color: #1a1408;
+  border: 2px solid rgba(12, 18, 14, 0.92);
+  background: linear-gradient(165deg, #f4f0e4 0%, #ddd4bc 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.acao-prompt__rotulo {
+  margin-left: -4px;
+  padding: 8px 18px 8px 14px;
+  min-width: 72px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.22);
+  font-family: var(--fonte);
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 650;
+  color: #3a3328;
+  white-space: nowrap;
+}
+
 .jogo-toast {
   top: 16px;
 }
@@ -58,6 +166,22 @@
   right: 24px;
   bottom: 88px;
   padding: 16px 18px;
+}
+
+.jogo-dialogo__corpo {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.jogo-dialogo__retrato {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #efe4d0;
+  border-radius: 10px;
 }
 
 .jogo-dialogo__nome {
@@ -85,6 +209,100 @@
   left: auto;
   right: 24px;
   width: min(360px, calc(100% - 48px));
+}
+
+.jogo-painel--capsula {
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(920px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+}
+
+.capsula-topo,
+.capsula-acoes,
+.capsula-tipos {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.capsula-topo {
+  margin: 8px 0;
+}
+
+.capsula-retrato {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #fffaf1;
+  border-radius: 12px;
+}
+
+.capsula-retrato--vazio {
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.capsula-nome {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.capsula-nivel input,
+.capsula-busca {
+  border: 1px solid #1c1917;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font: inherit;
+}
+
+.capsula-busca {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.capsula-tipo {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: var(--tipo, #94a3b8);
+  padding: 0;
+}
+
+.capsula-tipo.is-on {
+  border-color: #1c1917;
+  outline: 2px solid #fff;
+}
+
+.capsula-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 6px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.capsula-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  background: #fffaf1;
+  border-radius: 10px;
+}
+
+.capsula-item small {
+  opacity: 0.7;
+}
+
+.capsula-resto {
+  grid-column: 1 / -1;
+  margin: 4px 0;
 }
 
 .jogo-roda {

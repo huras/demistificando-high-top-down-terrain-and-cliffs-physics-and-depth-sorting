@@ -97,14 +97,21 @@ function criarLuzSala(cena) {
 }
 
 /** A sala não segue o sol: lâmpada no teto e um miolo quente. */
-function ligarLuzSala(dentro) {
+function ligarLuzSala(dentro, corpo) {
   const lamp = estado.luzSala;
   if (!lamp) return;
   lamp.luz.intensity = dentro ? 95 : 0;
   lamp.bulbo.visible = dentro;
   lamp.brilho.visible = dentro;
   lamp.brilho.material.opacity = dentro ? 0.9 : 0;
-  if (!dentro) return;
+  if (!dentro || !corpo) return;
+  const y = ALTURA_PRACA * ALTURA_BLOCO + 3.2;
+  lamp.luz.position.set(corpo.x, y, corpo.y);
+  lamp.bulbo.position.copy(lamp.luz.position);
+  lamp.brilho.position.copy(lamp.luz.position);
+  lamp.x = corpo.x;
+  lamp.z = corpo.y;
+  lamp.luz.distance = 28;
 
   const { sol, hemi, ambient, fill, rim } = estado;
   sol.color.set(0xffe6c0);
@@ -536,7 +543,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     nevoa: estado.nevoaBase,
     raioBlocos: obterRaioStream() * CHUNK_XZ,
   });
-  ligarLuzSala(!!estadoJogo.interior?.sala3d);
+  ligarLuzSala(!!estadoJogo.interior?.sala3d, corpo);
 
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
   estado.edificios?.atualizar?.(corpo.x, corpo.y, yaw, inclinacao);
