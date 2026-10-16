@@ -1,12 +1,13 @@
 /** Campo: porta, enxada, regador, plantar, colher, machado e picareta. */
 
+import { RAIO_CORPO } from "../config.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
 import { naSaidaLaboratorio, spawnLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { atualizarStreaming } from "../mundo/voxel/storeMundo.js";
-import { portaDoModelo } from "../mundo/cidade/cascaCasa.js";
-import { predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
+import { portaDoModelo, vaosPortaPerto } from "../mundo/cidade/cascaCasa.js";
+import { faixaDaPorta, predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
 import { alturaEm } from "../mundo/altura.js";
 import { obterBloco, avisarDirty } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
@@ -34,7 +35,11 @@ import {
 } from "./estado.js";
 
 const PAPEIS = new Set(["casa", "loja", "centro", "lab"]);
-const RAIO_PORTA = 0.95;
+/** Encosta na caixa: o corpo já conta como colisão. */
+const RAIO_TOQUE = RAIO_CORPO + 0.06;
+/** Solta um pouco depois, pra o aviso não piscar no limite do volume. */
+const RAIO_SOLTA = RAIO_CORPO + 0.22;
+let portaSegura = "";
 
 export function loteSob(x, y) {
   const zona = zonaNoMundo(x, y);
@@ -84,28 +89,79 @@ export function celulaAlvo(corpo) {
   };
 }
 
+function chavePorta(ax, ay, predio) {
+  return `${ax}:${ay}:${predio.papel}:${predio.x0}:${predio.y0}`;
+}
+
+function dist2Retangulo(x, y, x0, y0, x1, y1) {
+  const px = x < x0 ? x0 : x > x1 ? x1 : x;
+  const py = y < y0 ? y0 : y > y1 ? y1 : y;
+  const dx = x - px;
+  const dy = y - py;
+  return dx * dx + dy * dy;
+}
+
+function predioDoVao(zona, vao) {
+  const volumes = zona.layout.volumes;
+  for (let i = 0; i < volumes.length; i++) {
+    const predio = volumes[i];
+    if (predio.papel === vao.papel && predio.x0 === vao.loteX0 && predio.y0 === vao.loteY0) return predio;
+  }
+  return null;
+}
+
+function considerarPorta(zona, ax, ay, predio, d, estadoBusca) {
+  if (!predio || !PAPEIS.has(predio.papel) || predio.porta === false) return;
+  const chave = chavePorta(ax, ay, predio);
+  const toque2 = RAIO_TOQUE * RAIO_TOQUE;
+  const solta2 = RAIO_SOLTA * RAIO_SOLTA;
+  if (d <= toque2 && d < estadoBusca.toqueD) {
+    estadoBusca.toqueD = d;
+    estadoBusca.toque = { zona, predio, ax, ay, chave };
+    return;
+  }
+  if (chave === portaSegura && d <= solta2) {
+    estadoBusca.solta = { zona, predio, ax, ay, chave };
+  }
+}
+
+function fecharBusca(estadoBusca) {
+  const escolhido = estadoBusca.toque || estadoBusca.solta;
+  portaSegura = escolhido ? escolhido.chave : "";
+  if (!escolhido) return null;
+  return { zona: escolhido.zona, predio: escolhido.predio, ax: escolhido.ax, ay: escolhido.ay };
+}
+
+/** Enquanto o corpo tocar a caixa da porta, dá pra entrar. Cada contato novo vale. */
 export function entradaPerto(x, y) {
   const zona = zonaNoMundo(x, y);
-  if (!zona?.layout || zona.tipo !== "cidade") return null;
+  if (!zona?.layout || zona.tipo !== "cidade") {
+    portaSegura = "";
+    return null;
+  }
   const ax = (x / AREA_KANTO) | 0;
   const ay = (y / AREA_KANTO) | 0;
+  const estadoBusca = { toque: null, toqueD: Infinity, solta: null };
+  const vaos = vaosPortaPerto(x, y, RAIO_SOLTA);
+  if (vaos) {
+    for (let i = 0; i < vaos.length; i++) {
+      const vao = vaos[i];
+      considerarPorta(zona, ax, ay, predioDoVao(zona, vao), vao.d, estadoBusca);
+    }
+    return fecharBusca(estadoBusca);
+  }
   const ox = ax * AREA_KANTO;
   const oy = ay * AREA_KANTO;
   const volumes = zona.layout.volumes;
-  let melhor = null;
-  let melhorD = RAIO_PORTA * RAIO_PORTA;
   for (let i = 0; i < volumes.length; i++) {
     const predio = volumes[i];
     if (!PAPEIS.has(predio.papel) || predio.porta === false) continue;
-    const saida = saidaDaPorta(predio, ox, oy, portaDoModelo(predio.modelo));
-    const dx = x - saida.x;
-    const dy = y - saida.y;
-    const d = dx * dx + dy * dy;
-    if (d > melhorD) continue;
-    melhorD = d;
-    melhor = { zona, predio, ax, ay };
+    const faixa = faixaDaPorta(predio, portaDoModelo(predio.modelo));
+    if (!faixa) continue;
+    const d = dist2Retangulo(x, y, ox + faixa.x0, oy + faixa.y0, ox + faixa.x1, oy + faixa.y1);
+    considerarPorta(zona, ax, ay, predio, d, estadoBusca);
   }
-  return melhor;
+  return fecharBusca(estadoBusca);
 }
 
 export function tentarEntrar(corpo, infoPronto) {
@@ -227,6 +283,7 @@ export function sairInterior(corpo) {
     corpo._renasceu = true;
   }
   estado.interior = null;
+  portaSegura = "";
   estado.construir = false;
   estado.craft = false;
   estado.dialogo = null;

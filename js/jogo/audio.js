@@ -1,7 +1,59 @@
-/** Efeitos curtos. A música só entra quando existir arquivo em assets/musica. */
+/** Trilha, chuva e trovão. Os arquivos ficam no Pokemon AI e saem por /ref/music. */
+
+const REF = "/ref/music/";
+const VOL_BGM = 0.34;
+const VOL_CAMADA = 0.28;
+
+const TRILHAS = {
+  campo: [
+    "BGM/pool/Pokemon HeartGold and SoulSilver - Route 29.mp3",
+    "BGM/pool/Pokemon Diamond and Pearl - Route 201 (Day).mp3",
+    "BGM/pool/Green Plains Journey - Plains Day A.mp3",
+  ],
+  cidade: [
+    "BGM/pool/Pokemon Diamond and Pearl - Canalave City (Day).mp3",
+    "BGM/pool/Pokemon Diamond and Pearl - Twinleaf Town (Day).mp3",
+    "BGM/1-06. Pallet Town.mp3",
+  ],
+  chuva: [
+    "BGM/generated/Heavy Rain.mp3",
+    "BGM/pool/Pokemon Omega Ruby and Alpha Sapphire - Heavy Rain.mp3",
+  ],
+  "hub.center": [
+    "BGM/pool/Pokemon Red Green Blue Yellow - Pokémon Center.mp3",
+    "BGM/pool/Pokemon HeartGold and SoulSilver - Pokémon Center.mp3",
+    "BGM/pool/Pokemon Black and White - Pokemon Center.mp3",
+  ],
+  "hub.mart": [
+    "BGM/pool/Pokemon HeartGold and SoulSilver - Poké Mart.mp3",
+    "BGM/pool/Pokemon Omega Ruby and Alpha Sapphire - Poke Mart.mp3",
+  ],
+  "hub.house": ["BGM/1-06. Pallet Town.mp3"],
+};
+
+const CAMADAS = {
+  drips: "BGS/drips.ogg",
+  rain: "BGS/rain.ogg",
+  storm: "BGS/storm.ogg",
+};
+
+const TROVAO = {
+  perto: ["SFX/weather/nearby-lightning-a.mp3", "SFX/weather/nearby-lightning-b.mp3"],
+  longe: ["SFX/weather/far-away-lightning.mp3"],
+};
 
 let ctx = null;
 let mudo = false;
+let liberado = false;
+let chaveAtual = "";
+/** @type {{ el: HTMLAudioElement, vol: number, alvo: number, chave: string } | null} */
+let voz = null;
+/** @type {{ el: HTMLAudioElement, vol: number, alvo: number } | null} */
+let saindo = null;
+/** @type {Map<string, { el: HTMLAudioElement, vol: number, alvo: number }>} */
+const camadas = new Map();
+/** @type {Map<string, number>} */
+const cursor = new Map();
 
 function audio() {
   if (ctx) return ctx;
@@ -11,13 +63,102 @@ function audio() {
   return ctx;
 }
 
-export function destravarAudio() {
-  const ac = audio();
-  if (ac && ac.state === "suspended") ac.resume();
+function urlRef(rel) {
+  return REF + rel.split("/").map(encodeURIComponent).join("/");
 }
 
-/** A chave continua sendo calculada. Sem arquivo, não sai som. */
-export function definirBgm(_chave) {}
+function limitar01(n) {
+  return Math.max(0, Math.min(1, n || 0));
+}
+
+function aproximar(atual, alvo, dt, vel) {
+  const d = vel * dt;
+  if (Math.abs(alvo - atual) <= d) return alvo;
+  return atual + Math.sign(alvo - atual) * d;
+}
+
+function criarEl(rel, loop) {
+  const el = new Audio(urlRef(rel));
+  el.preload = "auto";
+  el.loop = loop;
+  el.volume = 0;
+  return el;
+}
+
+function escolher(chave) {
+  const pool = TRILHAS[chave];
+  if (!pool?.length) return null;
+  const i = cursor.has(chave) ? cursor.get(chave) : -1;
+  const n = (i + 1) % pool.length;
+  cursor.set(chave, n);
+  return pool[n];
+}
+
+function garantirToco(el) {
+  if (!liberado || mudo || !el.paused) return;
+  el.play().catch(() => {});
+}
+
+function aplicarVolume(slot, dt, entra) {
+  const vel = slot.alvo > slot.vol ? entra : 1.8;
+  slot.vol = aproximar(slot.vol, mudo ? 0 : slot.alvo, dt, vel);
+  slot.el.volume = Math.max(0, Math.min(1, slot.vol));
+  if (slot.vol > 0.012) garantirToco(slot.el);
+  else if (slot.alvo <= 0 && !slot.el.paused) slot.el.pause();
+}
+
+function alvosChuva(chuva, dentro) {
+  if (dentro) return { drips: 0, rain: 0, storm: 0 };
+  const c = limitar01(chuva);
+  const drips = limitar01(c / 0.32) * (1 - limitar01((c - 0.28) / 0.42));
+  const chuvaCheia = limitar01((c - 0.18) / 0.45);
+  const tempestade = limitar01((c - 0.52) / 0.48);
+  return {
+    drips: drips * 0.75 * VOL_CAMADA,
+    rain: chuvaCheia * 0.9 * (1 - tempestade * 0.35) * VOL_CAMADA,
+    storm: tempestade * 0.95 * VOL_CAMADA,
+  };
+}
+
+function cama(id) {
+  let slot = camadas.get(id);
+  if (slot) return slot;
+  slot = { el: criarEl(CAMADAS[id], true), vol: 0, alvo: 0 };
+  camadas.set(id, slot);
+  return slot;
+}
+
+export function destravarAudio() {
+  liberado = true;
+  const ac = audio();
+  if (ac && ac.state === "suspended") ac.resume();
+  if (voz) garantirToco(voz.el);
+  for (const slot of camadas.values()) {
+    if (slot.alvo > 0.012) garantirToco(slot.el);
+  }
+}
+
+export function definirBgm(chave) {
+  const proxima = TRILHAS[chave] ? chave : "campo";
+  if (proxima === chaveAtual && voz) return;
+  chaveAtual = proxima;
+  if (saindo && saindo !== voz) {
+    saindo.el.pause();
+    saindo.el.src = "";
+  }
+  if (voz) {
+    voz.alvo = 0;
+    saindo = voz;
+  }
+  const arquivo = escolher(proxima);
+  if (!arquivo) {
+    voz = null;
+    return;
+  }
+  const el = criarEl(arquivo, true);
+  voz = { el, vol: 0, alvo: VOL_BGM, chave: proxima };
+  if (liberado) garantirToco(el);
+}
 
 export function chaveBgm(zona, clima, interiorKind) {
   if (interiorKind === "heal") return "hub.center";
@@ -26,6 +167,40 @@ export function chaveBgm(zona, clima, interiorKind) {
   if (clima && clima !== "limpo") return "chuva";
   if (zona?.tipo === "cidade") return "cidade";
   return "campo";
+}
+
+/** Segue a chuva já misturada no céu. Dentro de casa o leito some. */
+export function atualizarAudio(dt, mix, dentro) {
+  const passo = Math.min(Math.max(dt || 0, 0), 0.05);
+  const alvos = alvosChuva(mix?.chuva, dentro);
+  for (const id of Object.keys(CAMADAS)) {
+    const slot = cama(id);
+    slot.alvo = alvos[id] || 0;
+    aplicarVolume(slot, passo, 0.9);
+  }
+  if (voz) {
+    voz.alvo = mudo ? 0 : VOL_BGM;
+    aplicarVolume(voz, passo, 0.7);
+  }
+  if (saindo) {
+    saindo.alvo = 0;
+    aplicarVolume(saindo, passo, 1.6);
+    if (saindo.vol <= 0.012) {
+      saindo.el.pause();
+      saindo.el.src = "";
+      if (saindo !== voz) saindo = null;
+    }
+  }
+}
+
+/** perto = raio no chão. longe = o eco. */
+export function tocarTrovao(qual) {
+  if (!liberado || mudo) return;
+  const lista = qual === "longe" ? TROVAO.longe : TROVAO.perto;
+  const arquivo = lista[(Math.random() * lista.length) | 0];
+  const el = new Audio(urlRef(arquivo));
+  el.volume = qual === "longe" ? 0.55 : 0.86;
+  el.play().catch(() => {});
 }
 
 export function sfx(tipo) {
@@ -49,5 +224,12 @@ export function sfx(tipo) {
 
 export function alternarMudo() {
   mudo = !mudo;
+  if (mudo) {
+    voz?.el.pause();
+    saindo?.el.pause();
+    for (const slot of camadas.values()) slot.el.pause();
+  } else {
+    destravarAudio();
+  }
   return mudo;
 }

@@ -9,6 +9,7 @@ import { marcarAuxiliar } from "../../cena/registroCena.js";
 import { ALTURA_PAREDE_LAB, ORIGEM_LAB_X, ORIGEM_LAB_Y, ROWS_LAB, plantaLaboratorio } from "../../mundo/cidade/laboratorio.js";
 import { medidasSala } from "../../mundo/cidade/sala3d.js";
 import { carregarCascasCidade, listarVaosPorta } from "../../mundo/cidade/cascaCasa.js";
+import { escreverArestasCartao, matrizCartao } from "./matrizCartao.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 
 const COR_VOLUME = 0x3ec6ff;
@@ -77,6 +78,10 @@ function criarPreenchimento(caixas) {
   mesh.renderOrder = 4;
   mesh.raycast = semRaycast;
   for (let i = 0; i < n; i++) {
+    if (caixas[i].cartao) {
+      mesh.setMatrixAt(i, matrizCartao(caixas[i], _m));
+      continue;
+    }
     const m = medida(caixas[i]);
     _p.set(m.cx, m.cy, m.cz);
     _s.set(m.sx, m.sy, m.sz);
@@ -91,6 +96,10 @@ function criarArestas(caixas) {
   const pos = new Float32Array(n * ARESTAS.length * 6);
   let o = 0;
   for (let i = 0; i < n; i++) {
+    if (caixas[i].cartao) {
+      o = escreverArestasCartao(pos, o, ARESTAS, caixas[i]);
+      continue;
+    }
     const m = medida(caixas[i]);
     for (let e = 0; e < ARESTAS.length; e++) {
       const a = ARESTAS[e];

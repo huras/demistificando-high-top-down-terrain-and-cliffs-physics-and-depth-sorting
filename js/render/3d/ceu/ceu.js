@@ -25,6 +25,7 @@ import { atualizarPoca } from "./pocaChao.js";
 import { criarPrecipitacao } from "./precipitacao.js";
 import { atualizarLuzBillboard } from "./luzBillboard.js";
 import { definirPesoNoite } from "../luzes/pool.js";
+import { tocarTrovao } from "../../../jogo/audio.js";
 import { criarRelampago } from "./relampago.js";
 
 export {
@@ -128,6 +129,8 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     aplicarNevoa(visual, clima, nevoa);
 
     const flash = relampago.atualizar(seguro, clima.raio, alvo);
+    const trovao = relampago.consumirEvento();
+    if (trovao) tocarTrovao(trovao === "eco" ? "longe" : "perto");
     atmosfera.atualizar(visual, camera, flash * 0.55, pesoCirrus, seguro);
     precipitacao.atualizar(clima, dirVento, seguro, camera, renderer);
     atualizarPoca(seguro, clima.chuva, visual);

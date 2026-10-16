@@ -8,7 +8,9 @@ import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import { ALTURA_PRACA, amostraKanto } from "../regiao/amostraKanto.js";
 import { AREA_KANTO } from "../regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../regiao/kantoCidades.js";
-import { definirAjustes } from "./ajustesColisor.js";
+import { ajusteDe, definirAjustes } from "./ajustesColisor.js";
+import { corpoPadraoSprite, portaPadraoSprite } from "./caixaSprite.js";
+import { chaveColisorSprite, medidaSprite, pontosGradeUsina } from "./spritesPredio.js";
 import { caixaDoCorpo, faixaDaPorta, montarLayout } from "../regiao/volumesCidade.js";
 import { indiceLocal, invalidarFluxo, recalcularSuperficies } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
@@ -26,8 +28,54 @@ const moldes = new Map();
 /** @type {object[]} */
 const colocacoes = [];
 let pronto = false;
+/** @type {{ sprite: string, x: number, y: number, altura: number }[]} */
+let gradeUsina = [];
+/** @type {Map<string, { largura: number, altura: number }>} */
+const medidaPorSprite = new Map();
 /** @type {Promise<boolean> | null} */
 let carga = null;
+
+function medidaDoSprite(sprite) {
+  if (!sprite) return null;
+  if (medidaPorSprite.has(sprite)) return medidaPorSprite.get(sprite);
+  const base = sprite.replace(/-(rock|water|electric|grass|poison|psychic|fire|ground)$/, "");
+  return medidaPorSprite.get(base) || null;
+}
+
+function comMedidaSprite(casa, sprite) {
+  const medida = medidaDoSprite(sprite);
+  if (!medida) return casa;
+  casa.larguraSprite = medida.largura;
+  casa.alturaSprite = medida.altura;
+  return casa;
+}
+
+function caixaDoEditor(casa, papel) {
+  const ajuste = ajusteDe(casa);
+  if (papel === "porta") {
+    if (ajuste && Object.prototype.hasOwnProperty.call(ajuste, "porta")) return ajuste.porta;
+    return portaPadraoSprite(casa.larguraSprite);
+  }
+  if (ajuste?.corpo) return ajuste.corpo;
+  return corpoPadraoSprite(casa.larguraSprite);
+}
+
+function volumeCartao(casa, caixa) {
+  if (!caixa) return null;
+  return {
+    cartao: true,
+    px: casa.px,
+    py: casa.py,
+    x: Number(caixa.x) || 0,
+    y: Number(caixa.y) || 0,
+    lx: Number(caixa.lx) || 1,
+    ly: Number(caixa.ly) || 1,
+  };
+}
+
+function topoDoVolume(casa) {
+  return Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(3, casa.altura | 0));
+}
 
 function modeloDoPapel(papel, variante, cidade) {
   if (papel === "casa") return idDaCasa(cidade, variante);
@@ -429,12 +477,61 @@ export function portaDoModelo(id) {
   return moldes.get(id)?.porta || null;
 }
 
+const _vaosPerto = [];
+
+function dist2Caixa(x, y, x0, y0, x1, y1) {
+  const px = x < x0 ? x0 : x > x1 ? x1 : x;
+  const py = y < y0 ? y0 : y > y1 ? y1 : y;
+  const dx = x - px;
+  const dy = y - py;
+  return dx * dx + dy * dy;
+}
+
+/**
+ * Portas cuja caixa chega no corpo.
+ * null enquanto a casca não carregou. O array é reusado no próximo frame.
+ */
+export function vaosPortaPerto(x, y, raio) {
+  if (!pronto) return null;
+  const r2 = raio * raio;
+  const alcance = 36;
+  _vaosPerto.length = 0;
+  for (let i = 0; i < colocacoes.length; i++) {
+    const casa = colocacoes[i];
+    if (casa.porta === false) continue;
+    const dx = x - casa.px;
+    const dy = y - casa.py;
+    if (dx * dx + dy * dy > alcance * alcance) continue;
+    const faixa = faixaDoLote(casa);
+    if (!faixa) continue;
+    const x0 = casa.ox + faixa.x0;
+    const x1 = casa.ox + faixa.x1;
+    const y0 = casa.oy + faixa.y0;
+    const y1 = casa.oy + faixa.y1;
+    if (x1 - x0 < 0.05 || y1 - y0 < 0.05) continue;
+    const d = dist2Caixa(x, y, x0, y0, x1, y1);
+    if (d > r2) continue;
+    _vaosPerto.push({
+      d,
+      papel: casa.papel,
+      loteX0: casa.x0,
+      loteY0: casa.y0,
+    });
+  }
+  return _vaosPerto;
+}
+
 /** Vão que a porta deixa sem bloco. Mesma caixa que a colisão do lote usa. */
 export function listarVaosPorta() {
   if (!pronto) return [];
   const saida = [];
   for (let i = 0; i < colocacoes.length; i++) {
     const casa = colocacoes[i];
+    if (casa.sprite) {
+      const volume = volumeCartao(casa, caixaDoEditor(casa, "porta"));
+      if (volume) saida.push(volume);
+      continue;
+    }
     const molde = casa.base ? null : moldes.get(casa.id);
     const faixa = faixaDaPorta(casa, molde?.porta || null);
     if (!faixa) continue;
@@ -449,7 +546,7 @@ export function listarVaosPorta() {
       y0,
       y1,
       z0: ALTURA_PRACA,
-      z1: Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(3, casa.altura | 0)),
+      z1: topoDoVolume(casa),
     });
   }
   return saida;
@@ -461,13 +558,18 @@ export function listarSolidosCasa() {
   const saida = [];
   for (let i = 0; i < colocacoes.length; i++) {
     const casa = colocacoes[i];
+    if (casa.sprite) {
+      const volume = volumeCartao(casa, caixaDoEditor(casa, "corpo"));
+      if (volume) saida.push(volume);
+      continue;
+    }
     const corpo = caixaDoCorpo(casa);
     const x0 = casa.ox + corpo.x0;
     const x1 = casa.ox + corpo.x1;
     const y0 = casa.oy + corpo.y0;
     const y1 = casa.oy + corpo.y1;
     const z0 = ALTURA_PRACA;
-    const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(3, casa.altura | 0));
+    const z1 = topoDoVolume(casa);
     const molde = casa.base ? null : moldes.get(casa.id);
     const faixa = faixaDaPorta(casa, molde?.porta || null);
     if (!faixa) {
@@ -686,10 +788,32 @@ function montarColocacoes() {
         });
         continue;
       }
+      const sprite = chaveColisorSprite(v.papel, def.ginasio);
       const id = v.modelo || modeloDoPapel(v.papel, v.variante, def.key);
-      if (!id || !moldes.has(id)) continue;
-      colocacoes.push({
+      if (!id || !moldes.has(id)) {
+        if (!sprite) continue;
+        colocacoes.push(comMedidaSprite({
+          base: true,
+          soSprite: true,
+          sprite,
+          px: ox + mx,
+          py: oy + my,
+          ox,
+          oy,
+          x0: v.x0,
+          y0: v.y0,
+          x1: v.x1,
+          y1: v.y1,
+          altura: v.altura,
+          papel: v.papel,
+          cartao: false,
+          porta: false,
+        }, sprite));
+        continue;
+      }
+      colocacoes.push(comMedidaSprite({
         id,
+        sprite: sprite || undefined,
         px: ox + mx,
         py: oy + my,
         yaw: v.papel === "casa" || v.papel === "lab" ? 0 : yawDaRua(mx, my),
@@ -703,8 +827,28 @@ function montarColocacoes() {
         papel: v.papel,
         cartao: false,
         porta: v.porta !== false,
-      });
+      }, sprite));
     }
+  }
+  for (let i = 0; i < gradeUsina.length; i++) {
+    const ponto = gradeUsina[i];
+    colocacoes.push(comMedidaSprite({
+      base: true,
+      soSprite: true,
+      sprite: ponto.sprite,
+      px: ponto.x,
+      py: ponto.y,
+      ox: 0,
+      oy: 0,
+      x0: ponto.x - 1,
+      y0: ponto.y - 1,
+      x1: ponto.x + 1,
+      y1: ponto.y + 1,
+      altura: Math.max(3, ponto.altura | 0),
+      papel: "usina",
+      cartao: false,
+      porta: false,
+    }, ponto.sprite));
   }
 }
 
@@ -722,7 +866,10 @@ export function aplicarCascaNoChunk(chunk) {
 
   for (let i = 0; i < colocacoes.length; i++) {
     const casa = colocacoes[i];
-    if (casa.base) {
+    const corpoSalvo = !!ajusteDe(casa)?.corpo;
+    if (casa.soSprite && !ajusteDe(casa)) continue;
+    if (casa.soSprite || casa.base || corpoSalvo) {
+      if (limparLoteNoChunk(chunk, casa, x0, y0, x1, y1)) mudou = true;
       if (lacrarLoteNoChunk(chunk, casa, x0, y0, x1, y1)) mudou = true;
       continue;
     }
@@ -762,6 +909,26 @@ async function carregarUm(id) {
   return moldeDaMalha(await res.text(), portasDo(id));
 }
 
+async function garantirUsina() {
+  const res = await fetch("assets/sprites/predios/manifesto.json", { cache: "no-store" });
+  if (!res.ok) return;
+  const json = await res.json();
+  const predios = json.buildings || {};
+  medidaPorSprite.clear();
+  const ids = Object.keys(predios);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    medidaPorSprite.set(id, medidaSprite(id, predios[id]));
+  }
+  const usina = predios["usina-eletrica"];
+  if (!usina) return;
+  const gestao = predios["eletrical-management-building"];
+  gradeUsina = pontosGradeUsina(
+    medidaSprite("usina-eletrica", usina),
+    gestao ? medidaSprite("eletrical-management-building", gestao) : null,
+  );
+}
+
 async function garantirAjustes() {
   const res = await fetch("assets/models/colisores.json", { cache: "no-store" });
   if (!res.ok) {
@@ -784,7 +951,7 @@ async function garantirPartes() {
 
 export function carregarCascasCidade() {
   if (carga) return carga;
-  carga = Promise.all([garantirPartes(), garantirAjustes()]).then(() => Promise.all(
+  carga = Promise.all([garantirPartes(), garantirAjustes(), garantirUsina()]).then(() => Promise.all(
     IDS.map(async (id) => {
       try {
         return [id, await carregarUm(id)];

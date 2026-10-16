@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { ALTURA_BLOCO } from "../../config.js";
 import { marcarAuxiliar } from "../../cena/registroCena.js";
 import { carregarCascasCidade, listarSolidosCasa } from "../../mundo/cidade/cascaCasa.js";
+import { escreverArestasCartao, matrizCartao } from "./matrizCartao.js";
 
 const COR_VOLUME = 0xe24b7a;
 const COR_ARESTA = 0xffd6e4;
@@ -81,6 +82,11 @@ function publicar(caixas) {
   const pos = new Float32Array(caixas.length * ARESTAS.length * 6);
   let o = 0;
   for (let i = 0; i < caixas.length; i++) {
+    if (caixas[i].cartao) {
+      mesh.setMatrixAt(i, matrizCartao(caixas[i], _m));
+      o = escreverArestasCartao(pos, o, ARESTAS, caixas[i]);
+      continue;
+    }
     const m = medida(caixas[i]);
     _p.set(m.cx, m.cy, m.cz);
     _s.set(m.sx, m.sy, m.sz);

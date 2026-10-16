@@ -22,9 +22,12 @@ const tipos = {
   ".obj": "text/plain; charset=utf-8",
   ".glb": "model/gltf-binary",
   ".mtl": "text/plain; charset=utf-8",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
 };
 
-const EXT_REF = new Set([".png", ".json", ".webp"]);
+const EXT_REF = new Set([".png", ".json", ".webp", ".mp3", ".ogg", ".wav"]);
 
 function caminhoNaRaiz(base, rel) {
   if (!rel || rel.includes("\0")) return null;
@@ -387,10 +390,10 @@ function caixaLimpa(caixa, id, nome) {
     if (!Number.isFinite(n)) throw new Error(`${id} ${nome}`);
     saida[chave] = Math.round(n * 100) / 100;
   }
-  if (saida.lx < 0.15 || saida.lx > 10 || saida.ly < 0.15 || saida.ly > 10) {
+  if (saida.lx < 0.15 || saida.lx > 30 || saida.ly < 0.15 || saida.ly > 30) {
     throw new Error(`${id} ${nome} tamanho`);
   }
-  if (Math.abs(saida.x) > 6 || Math.abs(saida.y) > 6) throw new Error(`${id} ${nome} offset`);
+  if (Math.abs(saida.x) > 20 || Math.abs(saida.y) > 20) throw new Error(`${id} ${nome} offset`);
   return saida;
 }
 
@@ -441,6 +444,23 @@ function validarPivos(obj) {
   }
 }
 
+function faixaBytes(range, total) {
+  if (!range) return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(range);
+  if (!m || total <= 0) return "invalida";
+  let ini = m[1] ? Number(m[1]) : NaN;
+  let fim = m[2] ? Number(m[2]) : total - 1;
+  if (m[1] === "") {
+    const n = Number(m[2]);
+    if (!Number.isFinite(n) || n <= 0) return "invalida";
+    ini = Math.max(0, total - n);
+    fim = total - 1;
+  }
+  if (!Number.isFinite(ini) || !Number.isFinite(fim)) return "invalida";
+  if (ini < 0 || ini >= total || fim < ini) return "invalida";
+  return { ini, fim: Math.min(fim, total - 1) };
+}
+
 function enviarArquivo(req, res, arquivo) {
   fs.stat(arquivo, (err, st) => {
     if (err || !st.isFile()) {
@@ -449,10 +469,33 @@ function enviarArquivo(req, res, arquivo) {
       return;
     }
     const ext = path.extname(arquivo).toLowerCase();
-    res.writeHead(200, {
-      "Content-Type": tipos[ext] || "application/octet-stream",
+    const tipo = tipos[ext] || "application/octet-stream";
+    const total = st.size;
+    const comum = {
+      "Content-Type": tipo,
+      "Accept-Ranges": "bytes",
       "Cache-Control": "no-store",
-    });
+    };
+    const faixa = faixaBytes(req.headers.range, total);
+    if (faixa === "invalida") {
+      res.writeHead(416, { "Content-Range": `bytes */${total}` });
+      res.end();
+      return;
+    }
+    if (faixa) {
+      res.writeHead(206, {
+        ...comum,
+        "Content-Length": faixa.fim - faixa.ini + 1,
+        "Content-Range": `bytes ${faixa.ini}-${faixa.fim}/${total}`,
+      });
+      if (req.method === "HEAD") {
+        res.end();
+        return;
+      }
+      fs.createReadStream(arquivo, { start: faixa.ini, end: faixa.fim }).pipe(res);
+      return;
+    }
+    res.writeHead(200, { ...comum, "Content-Length": total });
     if (req.method === "HEAD") {
       res.end();
       return;

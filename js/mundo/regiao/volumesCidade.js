@@ -4,6 +4,7 @@
  */
 import { ajusteDe } from "../cidade/ajustesColisor.js";
 import { idDaCasa } from "../cidade/catalogoCasas.js";
+import { portaPadraoSprite } from "../cidade/caixaSprite.js";
 
 /** casa-2 e casa-4 não têm porta. Igual red-house-2/4. */
 const FOLHAS_SEM_PORTA = new Set([2, 4]);
@@ -153,7 +154,7 @@ export function montarLayout(def) {
 }
 
 function yawDaFrente(v) {
-  if (v.cartao || v.papel === "casa" || v.papel === "lab") return 0;
+  if (v.cartao || v.sprite || v.papel === "casa" || v.papel === "lab") return 0;
   const mx = (v.x0 + v.x1) * 0.5;
   const my = (v.y0 + v.y1) * 0.5;
   const dx = mx - CENTRO;
@@ -200,8 +201,42 @@ function faixaDoCartao(v) {
   };
 }
 
+/**
+ * O cartão do jogo deita 45° e o chão esmaga a altura.
+ * A caixa do editor, em pé na arte, vira essa sombra no chão.
+ */
+function projetarCartao(v, caixa) {
+  const altura = 3;
+  const s = Math.sin(Math.PI / 4);
+  const c = Math.cos(Math.PI / 4);
+  const hx = Number(caixa.lx) * 0.5;
+  const hz = Number(caixa.ly) * 0.5;
+  const xs = [Number(caixa.x) - hx, Number(caixa.x) + hx];
+  const ys = [0, altura];
+  const zs = [Number(caixa.y) - hz, Number(caixa.y) + hz];
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (let ix = 0; ix < 2; ix++) {
+    for (let iy = 0; iy < 2; iy++) {
+      for (let iz = 0; iz < 2; iz++) {
+        const z2 = -ys[iy] * s + zs[iz] * c;
+        if (xs[ix] < minX) minX = xs[ix];
+        if (xs[ix] > maxX) maxX = xs[ix];
+        if (z2 < minZ) minZ = z2;
+        if (z2 > maxZ) maxZ = z2;
+      }
+    }
+  }
+  const cx = (v.x0 + v.x1) * 0.5;
+  const cy = (v.y0 + v.y1) * 0.5;
+  return { x0: cx + minX, x1: cx + maxX, y0: cy + minZ, y1: cy + maxZ };
+}
+
 /** Caixa do editor, no espaço do lote. O giro da rua entra aqui. */
 export function projetarCaixa(v, caixa) {
+  if (v?.sprite) return projetarCartao(v, caixa);
   const hx = Number(caixa.lx) * 0.5;
   const hy = Number(caixa.ly) * 0.5;
   const x0 = Number(caixa.x) - hx;
@@ -262,6 +297,9 @@ export function faixaDaPorta(v, porta) {
     if (!ajuste.porta) return null;
     if (caixaMedida(ajuste.porta)) return projetarCaixa(v, ajuste.porta);
   }
+  // Cartão 2D não herda a porta da malha 3D. Sem medida salva, a mesma
+  // porta que a página desenha em cima da arte.
+  if (v.sprite) return projetarCaixa(v, portaPadraoSprite(v.larguraSprite));
   if (v.porta === false) return null;
   if (!porta) return v.cartao ? faixaDoCartao(v) : faixaNoMeio(v);
   const hx = (v.x1 - v.x0) * 0.5;

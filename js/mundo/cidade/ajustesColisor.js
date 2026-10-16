@@ -14,6 +14,7 @@ export function definirAjustes(json) {
 export function chaveDoVolume(v) {
   if (!v) return "";
   if (v.cartao) return `cartao-${v.folha | 0}`;
+  if (v.sprite) return v.sprite;
   return v.modelo || v.id || "";
 }
 

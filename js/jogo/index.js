@@ -1,9 +1,10 @@
 /** Fachada que o loop chama. Trava o mundo quando a interface ou a sala está aberta. */
 
 import { teclaAgora, teclaBaixa } from "../entrada/teclado.js";
+import { lerMixClima } from "../render/3d/ceu/clima.js";
 import { obterClima } from "../render/3d/ceu/controleCeu.js";
 import { zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
-import { chaveBgm, definirBgm, destravarAudio } from "./audio.js";
+import { atualizarAudio, chaveBgm, definirBgm, destravarAudio } from "./audio.js";
 import { tickBlocos } from "./blocos.js";
 import { atualizarBillboardsBerry } from "./billboards.js";
 import {
@@ -56,6 +57,7 @@ export function montarJogo(opts) {
   aoMudar(pintar);
   pintar();
   window.addEventListener("pointerdown", destravarAudio, { once: true });
+  window.addEventListener("keydown", destravarAudio, { once: true });
   window.addEventListener("beforeunload", () => salvar());
   const rect = viewport?.getBoundingClientRect();
   redimensionarSala(Math.floor(rect?.width || 960), Math.floor(rect?.height || 540));
@@ -94,10 +96,11 @@ export function tickJogo(dt, corpo) {
   const ferramenta = dicaFerramenta();
   const noLab = estado.interior?.sala3d && estado.interior.papel === "lab";
   const alvoLab = noLab && !estado.dialogo && !estado.painel ? alvoLaboratorio(corpo.x, corpo.y) : null;
-  estado.promptEntrar = !!porta && !estado.interior;
+  estado.promptEntrar = !!porta && !estado.interior && !(estado.saidaGrace > 0);
   estado.prompt = alvoLab ? promptDoLaboratorio(alvoLab) : promptDe(alvo, ferramenta);
   const zona = zonaNoMundo(corpo.x, corpo.y);
   definirBgm(chaveBgm(zona, obterClima(), estado.interior?.sala?.kind));
+  atualizarAudio(dt, lerMixClima(), !!estado.interior);
   atualizarBillboardsBerry();
   if (estado.itemGet) {
     if (toastAte <= 0) toastAte = 2.4;

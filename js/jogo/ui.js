@@ -245,6 +245,8 @@ function pintarPrompt() {
         entrar.classList.add("acao-prompt--nova");
       }
       colocarEntrar(entrar, corpoRef);
+    } else if (estava) {
+      entrar.classList.remove("acao-prompt--nova");
     }
   }
   if (!host) return;

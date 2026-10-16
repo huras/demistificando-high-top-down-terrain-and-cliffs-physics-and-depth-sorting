@@ -176,6 +176,7 @@ export function criarRelampago() {
   let flash = 0;
   let espera = 2.5 + Math.random() * 2;
   let eco = 0;
+  let evento = null;
 
   function publicar(cursor) {
     geo.attributes.position.needsUpdate = true;
@@ -212,10 +213,12 @@ export function criarRelampago() {
     luz.position.set(b.x, chao + 6, b.z);
     fita.visible = true;
     flash = secundario ? Math.max(flash, 0.72) : 1;
+    evento = secundario ? "eco" : "golpe";
     if (!secundario && Math.random() < 0.38) eco = 0.09 + Math.random() * 0.07;
   }
 
   function atualizar(dt, taxa, alvo) {
+    evento = null;
     if (taxa > 0.04) {
       espera -= dt * (0.45 + taxa * 1.35);
       if (espera <= 0) {
@@ -243,6 +246,11 @@ export function criarRelampago() {
     atualizar,
     get flash() {
       return flash;
+    },
+    consumirEvento() {
+      const e = evento;
+      evento = null;
+      return e;
     },
   };
 }

@@ -3,10 +3,13 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../mundo/cidade/catalogoCasas.js";
+import { assarSprite, corpoPadraoSprite, entradasEditorSprite, medidaSprite, portaPadraoSprite } from "../mundo/cidade/spritesPredio.js";
 import { pivoDaImagem } from "../render/pivoPe.js";
 
 const LADO_X = 6;
 const LADO_Z = 5;
+const LIM_OFF = 16;
+const LIM_TAM = 24;
 const FOLGA = 0.96;
 const ALTURA = 3;
 const MARGEM_BORDA = 0.18;
@@ -61,7 +64,7 @@ const ponto = new THREE.Vector3();
 const ROTULOS = {
   centro: "Centro",
   loja: "Loja",
-  lab: "Laboratório",
+  lab: "Laboratório 3D",
   "casa-bark": "Casa bark",
   "casa-amigo": "Casa amigo",
   "casa-cherry": "Casa cherry",
@@ -106,6 +109,11 @@ function caixaDe(x, y, lx, ly) {
 
 function padraoDe(item) {
   const corpo = caixaDe(0, 0, LADO_X, LADO_Z);
+  if (item.sprite) {
+    const corpo = corpoPadraoSprite(item.largura || LADO_X);
+    const porta = portaPadraoSprite(item.largura || LADO_X);
+    return { corpo: caixaDe(corpo.x, corpo.y, corpo.lx, corpo.ly), porta: caixaDe(porta.x, porta.y, porta.lx, porta.ly) };
+  }
   if (item.cartao === 2 || item.cartao === 4) return { corpo, porta: null };
   if (item.cartao) {
     const u0 = (36 / 64 - 0.5) * 4;
@@ -315,6 +323,69 @@ function carregarObj(url) {
   });
 }
 
+function planoSprite(item) {
+  const img = imagensSprite.get(item.def.image);
+  const tela = assarSprite(item.def, img, item.tipo || null);
+  const tex = new THREE.CanvasTexture(tela);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  const geo = new THREE.PlaneGeometry(item.largura, item.altura);
+  geo.translate(0, item.altura * 0.5, 0);
+  return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
+    map: tex,
+    transparent: true,
+    alphaTest: 0.12,
+    side: THREE.FrontSide,
+  }));
+}
+
+function enquadrar(item) {
+  const alcance = Math.max(item?.largura || 8, item?.altura || 6, 8);
+  const dist = alcance * 1.15;
+  controles.target.set(0, alcance * 0.28, 0);
+  camera.position.set(alcance * 0.08, dist * 0.7, dist);
+  camera.far = Math.max(80, dist * 8);
+  camera.updateProjectionMatrix();
+  controles.update();
+}
+
+function carregarImagem(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(url));
+    img.src = url;
+  });
+}
+
+let prediosDef = {};
+const imagensSprite = new Map();
+
+async function incluirSprites() {
+  const res = await fetch("assets/sprites/predios/manifesto.json", { cache: "no-store" });
+  if (!res.ok) return;
+  const json = await res.json();
+  prediosDef = json.buildings || {};
+  const arquivos = [...new Set(Object.values(prediosDef).map((def) => def.image).filter(Boolean))];
+  await Promise.all(arquivos.map(async (arquivo) => {
+    const img = await carregarImagem(`assets/sprites/predios/${encodeURIComponent(arquivo)}`);
+    imagensSprite.set(arquivo, img);
+  }));
+  const entradas = entradasEditorSprite();
+  const novos = [];
+  for (let i = 0; i < entradas.length; i++) {
+    const entrada = entradas[i];
+    const def = prediosDef[entrada.sprite];
+    if (!def || !imagensSprite.get(def.image)) continue;
+    const tam = medidaSprite(entrada.sprite, def);
+    novos.push({ ...entrada, def, largura: tam.largura, altura: tam.altura });
+  }
+  itens.splice(5, 0, ...novos);
+}
+
 function cartao(folha) {
   return new Promise((resolve, reject) => {
     new THREE.TextureLoader().load(`assets/sprites/casas/casa-${folha}.png`, (pronta) => {
@@ -350,10 +421,15 @@ async function abrir(id) {
   const ticket = ++carga;
   dizer(`Abrindo ${item.nome}…`);
   desenharLista();
+  enquadrar(item);
   mostrar();
   soltarPredio();
   try {
-    const visual = item.cartao ? await cartao(item.cartao) : prepararMalha(await carregarObj(item.url));
+    const visual = item.cartao
+      ? await cartao(item.cartao)
+      : item.sprite
+        ? planoSprite(item)
+        : prepararMalha(await carregarObj(item.url));
     if (ticket !== carga) {
       visual.traverse?.((filho) => {
         filho.geometry?.dispose?.();
@@ -429,10 +505,10 @@ function aplicarBorda(caixa, chao, bordas) {
     else y0 = y1 - 0.2;
   }
   const nova = caixaDe((x0 + x1) * 0.5, (y0 + y1) * 0.5, x1 - x0, y1 - y0);
-  nova.x = Math.min(4, Math.max(-4, nova.x));
-  nova.y = Math.min(4, Math.max(-4, nova.y));
-  nova.lx = Math.min(8, Math.max(0.2, nova.lx));
-  nova.ly = Math.min(8, Math.max(0.2, nova.ly));
+  nova.x = Math.min(LIM_OFF, Math.max(-LIM_OFF, nova.x));
+  nova.y = Math.min(LIM_OFF, Math.max(-LIM_OFF, nova.y));
+  nova.lx = Math.min(LIM_TAM, Math.max(0.2, nova.lx));
+  nova.ly = Math.min(LIM_TAM, Math.max(0.2, nova.ly));
   return nova;
 }
 
@@ -475,8 +551,8 @@ canvas.addEventListener("pointermove", (ev) => {
     vista[arraste.papel] = aplicarBorda(caixa, chao, arraste.bordas);
   } else {
     vista[arraste.papel] = caixaDe(
-      Math.min(4, Math.max(-4, chao.x - arraste.dx)),
-      Math.min(4, Math.max(-4, chao.z - arraste.dz)),
+      Math.min(LIM_OFF, Math.max(-LIM_OFF, chao.x - arraste.dx)),
+      Math.min(LIM_OFF, Math.max(-LIM_OFF, chao.z - arraste.dz)),
       caixa.lx,
       caixa.ly,
     );
@@ -588,6 +664,12 @@ async function iniciar() {
   if (res.ok) {
     const json = await res.json();
     if (json && typeof json === "object") ajustes = json;
+  }
+  try {
+    await incluirSprites();
+  } catch (erro) {
+    console.error(erro);
+    dizer("Não carregou os prédios 2D");
   }
   desenharLista();
   dizer("Escolha um prédio e puxe a caixa até a porta");

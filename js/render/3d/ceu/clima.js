@@ -94,6 +94,11 @@ const atual = {
 };
 const corAlvo = new THREE.Color();
 
+/** Mistura já integrada. O áudio lê daqui sem dar outro passo. */
+export function lerMixClima() {
+  return { chuva: atual.chuva, raio: atual.raio };
+}
+
 /** Integra o preset escolhido. Chamar uma vez por frame. */
 export function avaliarClima(dt) {
   const preset = PRESETS[obterClima()] || PRESETS.limpo;
