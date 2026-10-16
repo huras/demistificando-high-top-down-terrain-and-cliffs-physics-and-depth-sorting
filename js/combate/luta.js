@@ -1,4 +1,4 @@
-import { criarAtor, emRecuo, equiparGolpe, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
+import { criarAtor, emRecuo, equiparGolpes, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
 import { impactoProjetil, tentarGolpe } from "../pokemon/combate/executor.js";
 import { limparParticulas, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
@@ -123,12 +123,22 @@ function limitar(ator) {
   ator.y *= k;
 }
 
-function postura(ator) {
-  const g = ator.golpes[0];
-  if (!g || (g.def.pp || 1) > ator.pp) {
-    return { forma: "contact", alcance: 1.05, poder: 18 };
+function golpePronto(ator, serve) {
+  for (let i = 0; i < ator.golpes.length; i++) {
+    const g = ator.golpes[i];
+    if (!serve(g.def) || g.cd > 0) continue;
+    if ((g.def.pp || 1) > ator.pp) continue;
+    return g.def;
   }
-  return g.def;
+  return null;
+}
+
+function postura(ator) {
+  const longe = golpePronto(ator, (def) => def.forma === "projectile" || def.forma === "arc");
+  if (longe) return longe;
+  const perto = golpePronto(ator, (def) => def.forma === "contact" || def.forma === "radius");
+  if (perto) return perto;
+  return { forma: "contact", alcance: 1.15, poder: 18 };
 }
 
 function paradaDe(def) {
@@ -216,7 +226,7 @@ function montar(lado, entrada) {
   });
   ator.dirX = casa.dirX;
   ator.dirY = 0;
-  equiparGolpe(ator, entrada.golpe || "");
+  equiparGolpes(ator, [entrada.corpo, entrada.distancia]);
   apresentar(ator);
   return ator;
 }

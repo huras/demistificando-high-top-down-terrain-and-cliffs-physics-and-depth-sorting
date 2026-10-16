@@ -233,6 +233,7 @@ export function tickVisual(ator, dt, agora) {
   const ritmo = loco
     ? Math.min(2.2, Math.max(0.72, velocidadePlana(ator) / POKEMON.VEL_ROAM))
     : 1;
+  if ((ator.recuoTrava || 0) > 0) return pack;
   v.t += dt * ritmo;
   for (let i = 0; i < 6; i++) {
     const dur = (spec.durations[v.frame] || spec.durations[0] || 80) / 1000;

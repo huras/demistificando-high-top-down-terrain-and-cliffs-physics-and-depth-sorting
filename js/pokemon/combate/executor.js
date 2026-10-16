@@ -11,11 +11,12 @@ function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-/** 0,1 s e 0,7 m no toque; 1 s e 4,2 m quando o dano cobre a vida inteira. */
+/** Trava no lugar e depois desliza. 0,1 s e 0,7 m no toque; 1 s e 4,2 m quando o dano cobre a vida inteira. */
 function iniciarRecuo(alvo, atacante, dano, agora) {
   const hp = Math.max(1, alvo.hpMax || 1);
   const fracao = Math.min(1, Math.max(0, dano) / hp);
   const tempo = 0.1 + fracao * 0.9;
+  const trava = 0.08 + fracao * 0.1;
   let dx = alvo.x - (atacante?.x ?? alvo.x);
   let dy = alvo.y - (atacante?.y ?? alvo.y);
   let len = Math.hypot(dx, dy);
@@ -26,11 +27,19 @@ function iniciarRecuo(alvo, atacante, dano, agora) {
   }
   alvo.recuoDur = tempo;
   alvo.recuoRestante = tempo;
+  alvo.recuoTrava = trava;
   alvo.recuoDist = 0.7 + fracao * 3.5;
   alvo.recuoDirX = dx / len;
   alvo.recuoDirY = dy / len;
+  alvo.vx = 0;
+  alvo.vy = 0;
   alvo.andando = false;
-  alvo.poseAte = agora + tempo;
+  alvo.poseAte = agora + trava + tempo;
+  if (alvo.visual) {
+    alvo.visual.anim = "Hurt";
+    alvo.visual.frame = 0;
+    alvo.visual.t = 0;
+  }
   return { tempo, dist: alvo.recuoDist };
 }
 

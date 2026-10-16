@@ -10,6 +10,11 @@ import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalo
 import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
 import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
 import { aplicarCorSprite, aplicarProfundidadeSprite } from "../render/3d/ceu/luzBillboard.js";
+import {
+  COR_SILHUETA_JOGADOR,
+  COR_SILHUETA_SELVAGEM,
+  criarSpriteSilhueta,
+} from "../render/3d/silhuetaSprite.js";
 import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
 import { dropsBloco } from "../jogo/blocos.js";
 
@@ -78,6 +83,10 @@ function criarAtorSlot() {
   sprite.scale.set(LADO * PX_MUNDO, LADO * PX_MUNDO, 1);
   sprite.renderOrder = 3;
   grupo.add(sprite);
+  const silhueta = criarSpriteSilhueta(tex, COR_SILHUETA_SELVAGEM);
+  silhueta.center.copy(sprite.center);
+  silhueta.scale.copy(sprite.scale);
+  grupo.add(silhueta);
   const sombra = criarSombraContato3d();
   grupo.add(sombra.grupo);
   const brilhos = [];
@@ -96,6 +105,7 @@ function criarAtorSlot() {
     tex,
     mat,
     sprite,
+    silhueta,
     sombra,
     brilhos,
     chave: "",
@@ -269,6 +279,13 @@ export function atualizarPokemon3d(yawCam = 0) {
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
     slot.sprite.visible = true;
     slot.sprite.scale.multiplyScalar(some);
+    slot.silhueta.center.copy(slot.sprite.center);
+    slot.silhueta.position.y = slot.sprite.position.y;
+    slot.silhueta.scale.copy(slot.sprite.scale);
+    slot.silhueta.visible = true;
+    slot.silhueta.material.color.setHex(
+      ator.faccao === "party" ? COR_SILHUETA_JOGADOR : COR_SILHUETA_SELVAGEM,
+    );
     slot.grupo.visible = some > 0.04;
     if (visual && dirMundo != null) visual.dir = dirMundo;
     slot.sombra.atualizar(

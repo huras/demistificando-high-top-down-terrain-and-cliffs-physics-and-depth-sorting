@@ -39,15 +39,25 @@ function montarGolpes(especie, nivel) {
   return slots;
 }
 
-/** A arena testa um golpe só. Sem chave, fica a Investida. */
-export function equiparGolpe(ator, chave) {
+/** A arena equipa os golpes escolhidos. Sem nenhum, fica a Investida. */
+export function equiparGolpes(ator, chaves) {
   if (!ator) return;
-  if (!chave) {
-    ator.golpes = [];
-    return;
+  const slots = [];
+  const vistos = new Set();
+  const lista = Array.isArray(chaves) ? chaves : [chaves];
+  for (let i = 0; i < lista.length; i++) {
+    const chave = lista[i];
+    if (!chave || vistos.has(chave)) continue;
+    const def = golpe(chave);
+    if (!def) continue;
+    vistos.add(chave);
+    slots.push({ chave: def.key, cd: 0, def });
   }
-  const def = golpe(chave);
-  ator.golpes = def ? [{ chave: def.key, cd: 0, def }] : [];
+  ator.golpes = slots;
+}
+
+export function equiparGolpe(ator, chave) {
+  equiparGolpes(ator, chave ? [chave] : []);
 }
 
 export function ppMaximo(nivel, velocidade) {
@@ -121,6 +131,7 @@ export function criarAtor(opts) {
     recuoDist: 0,
     recuoDirX: 0,
     recuoDirY: 0,
+    recuoTrava: 0,
     participantes: new Set(),
     emocao: null,
     emocaoIdade: 0,
@@ -160,6 +171,7 @@ export function reviverAtor(ator, x, y, z) {
   ator.recuoRestante = 0;
   ator.recuoDur = 0;
   ator.recuoDist = 0;
+  ator.recuoTrava = 0;
 }
 
 export function aplicarNivel(ator, nivelNovo) {
@@ -174,10 +186,19 @@ export function aplicarNivel(ator, nivelNovo) {
 }
 
 export function emRecuo(ator) {
-  return (ator?.recuoRestante || 0) > 0;
+  return (ator?.recuoRestante || 0) > 0 || (ator?.recuoTrava || 0) > 0;
 }
 
 function integrarRecuo(ator, dt) {
+  if ((ator.recuoTrava || 0) > 0) {
+    const gasto = Math.min(ator.recuoTrava, dt);
+    ator.recuoTrava -= gasto;
+    ator.vx = 0;
+    ator.vy = 0;
+    ator.andando = false;
+    dt -= gasto;
+    if (dt <= 1e-6 || ator.recuoTrava > 0) return;
+  }
   const dur = ator.recuoDur || ator.recuoRestante;
   const antes = ator.recuoRestante;
   const depois = Math.max(0, antes - dt);
