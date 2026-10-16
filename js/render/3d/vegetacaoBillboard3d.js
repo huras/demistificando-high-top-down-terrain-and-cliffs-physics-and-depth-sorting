@@ -19,6 +19,7 @@ import { onDirty } from "../../mundo/voxel/storeMundo.js";
 import { STENCIL_GRAMA, marcarStencilSolido } from "./silhuetaSprite.js";
 import { FASE } from "../../campo/estadoProps.js";
 import { imagemToco } from "../../campo/visualToco.js";
+import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "../../campo/sacudida.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
@@ -290,15 +291,21 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites) {
+  function pose(p, largura, altura, yaw, inclinacao, amostra) {
+    const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
+    const roll = amostra ? amostra.roll : 0;
+    const esmaga = amostra ? amostra.esmaga : 0;
+    dummy.position.set(p.x, base * ALTURA_BLOCO, p.y);
+    dummy.rotation.set(inclinacao, yaw, roll);
+    dummy.scale.set(largura * (1 + esmaga * 0.03), altura * (1 - esmaga * 0.045), 1);
+    dummy.updateMatrix();
+  }
+
+  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora) {
     if (!mesh) return;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
-      const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
-      dummy.position.set(p.x, base * ALTURA_BLOCO, p.y);
-      dummy.rotation.set(inclinacao, yaw, 0);
-      dummy.scale.set(largura, altura, 1);
-      dummy.updateMatrix();
+      pose(p, largura, altura, yaw, inclinacao, amostraSacudida(p, agora));
       mesh.setMatrixAt(i, dummy.matrix);
       mesh.setColorAt(i, corDe(p));
     }
@@ -312,13 +319,63 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
+  function lembrar(p, itens, mesh, sombra, i, largura, altura) {
+    let v = p._veg;
+    if (!v) v = p._veg = { itens: null, mesh: null, sombra: null, i: -1, largura: 0, altura: 0 };
+    v.itens = itens;
+    v.mesh = mesh;
+    v.sombra = sombra;
+    v.i = i;
+    v.largura = largura;
+    v.altura = altura;
+  }
+
   function escrever(yaw, yawSol, inclinacao, recalcularLimites) {
+    const agora = performance.now();
     if (recalcularLimites) sincronizarLotes(recolherGrupos());
+    const sacode = temSacudida();
     for (const lote of lotes.values()) {
       const { mesh, sombra, itens, largura, altura } = lote;
-      escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites);
-      escreverMesh(sombra, itens, largura, altura, yawSol, 0, recalcularLimites);
+      escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora);
+      escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora);
+      if (!sacode) continue;
+      for (let i = 0; i < itens.length; i++) {
+        const p = itens[i];
+        if (p._sacode) lembrar(p, itens, mesh, sombra, i, largura, altura);
+      }
     }
+  }
+
+  const malhasSujas = [];
+
+  function marcarSuja(mesh) {
+    if (!mesh || malhasSujas.includes(mesh)) return;
+    malhasSujas.push(mesh);
+  }
+
+  function aplicarVinculo(v, p, yaw, yawSol, inclinacao, amostra) {
+    if (!v || v.i < 0 || !v.mesh || v.itens?.[v.i] !== p) return;
+    pose(p, v.largura, v.altura, yaw, inclinacao, amostra);
+    v.mesh.setMatrixAt(v.i, dummy.matrix);
+    marcarSuja(v.mesh);
+    if (!v.sombra) return;
+    pose(p, v.largura, v.altura, yawSol, 0, amostra);
+    v.sombra.setMatrixAt(v.i, dummy.matrix);
+    marcarSuja(v.sombra);
+  }
+
+  function pulsarSacudidas(yaw, yawSol, inclinacao, agora, acabaram) {
+    malhasSujas.length = 0;
+    const vivas = propsSacudindo();
+    for (let i = 0; i < vivas.length; i++) {
+      const p = vivas[i];
+      aplicarVinculo(p._veg, p, yaw, yawSol, inclinacao, amostraSacudida(p, agora));
+    }
+    for (let i = 0; i < acabaram.length; i++) {
+      const p = acabaram[i];
+      aplicarVinculo(p._veg, p, yaw, yawSol, inclinacao, null);
+    }
+    for (let i = 0; i < malhasSujas.length; i++) malhasSujas[i].instanceMatrix.needsUpdate = true;
   }
 
   function sincronizarVisivel() {
@@ -355,14 +412,22 @@ export function criarVegetacaoBillboard3d() {
     const yawSol = yawCartaoSol();
     const mudouSol = yawDiferente(yawSol, yawSolAplicado);
     const mudouTilt = Math.abs(tilt - inclinacaoAplicada) > VEG_YAW_EPS;
-    if (!mudouYaw && !mudouSol && !mudouTilt && !alturasSujas) return;
-    const recalcular = alturasSujas || yawAplicado == null;
+    const agora = performance.now();
+    const acabaram = podarSacudidas(agora);
+    const sacode = temSacudida() || acabaram.length > 0;
+    const primeira = yawAplicado == null;
+    if (!mudouYaw && !mudouSol && !mudouTilt && !alturasSujas && !sacode && !primeira) return;
     yawAplicado = yaw;
     yawSolAplicado = yawSol;
     inclinacaoAplicada = tilt;
-    alturasSujas = false;
-    escrever(yaw, yawSol, tilt, recalcular);
-    sincronizarVisivel();
+    if (mudouYaw || mudouSol || mudouTilt || alturasSujas || primeira) {
+      const recalcular = alturasSujas || primeira;
+      alturasSujas = false;
+      escrever(yaw, yawSol, tilt, recalcular);
+      sincronizarVisivel();
+      return;
+    }
+    pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
   }
 
   const cancelarDirty = onDirty(() => {

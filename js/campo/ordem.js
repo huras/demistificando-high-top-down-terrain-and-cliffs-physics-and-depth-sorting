@@ -7,11 +7,17 @@ import { propPorId } from "../mundo/bioma/propsBioma.js";
 import { velocidadeDe } from "../pokemon/ator.js";
 import { irPara } from "../pokemon/ia.js";
 import { definirDeployado, listaParty, pokemonDeployado, pokemonNoCampo } from "../pokemon/party.js";
+import { relogioPokemon } from "../pokemon/sistema.js";
+import { marcarPose } from "../pokemon/sprites.js";
 import { executarNoProp } from "./acoes.js";
 import { esperaDaAcao, segueOrdem } from "./capacidades.js";
 
-const DIST_ACERTO = 1.15;
-const RECUO = 0.9;
+/** O seguidor para 1,15 antes do destino. O ponto de aproximação já fica a RECUO do tronco, então o acerto tem que cobrir os dois. */
+const DIST_ACERTO = 1.55;
+const RECUO = 0.72;
+const DIST_PARAR = 0.35;
+const DIST_PRESO = 2.4;
+const TEMPO_PRESO = 0.45;
 
 export function ordenarCampo(indice, acao, prop) {
   const party = listaParty();
@@ -39,7 +45,7 @@ export function ordenarCampo(indice, acao, prop) {
 }
 
 function aproximar(mon, x, y, z, dt) {
-  irPara(mon, x, y, z, velocidadeDe(mon, true), dt);
+  irPara(mon, x, y, z, velocidadeDe(mon, true), dt, DIST_PARAR);
 }
 
 export function tickOrdens(dt) {
@@ -66,14 +72,24 @@ export function tickOrdens(dt) {
   const dy = mon.y - prop.y;
   const dist = Math.hypot(dx, dy);
   if (dist > DIST_ACERTO) {
-    const len = dist || 1;
-    aproximar(mon, prop.x + (dx / len) * RECUO, prop.y + (dy / len) * RECUO, prop.z ?? ordem.z, dt);
-    return;
+    if (dist + 0.05 < (ordem.melhor ?? 99)) {
+      ordem.melhor = dist;
+      ordem.preso = 0;
+    } else if (dist < DIST_PRESO) ordem.preso = (ordem.preso || 0) + dt;
+    else ordem.preso = 0;
+    if ((ordem.preso || 0) < TEMPO_PRESO) {
+      const len = dist || 1;
+      aproximar(mon, prop.x + (dx / len) * RECUO, prop.y + (dy / len) * RECUO, prop.z ?? ordem.z, dt);
+      return;
+    }
   }
+  ordem.preso = 0;
   cancelarPath(mon.id);
   mon.vx = 0;
   mon.vy = 0;
   mon.andando = false;
+  mon.dirX = -dx;
+  mon.dirY = -dy;
   const agora = Date.now();
   if (agora < ordem.proximo) return;
   const resultado = executarNoProp(ordem.acao, prop);
@@ -81,5 +97,8 @@ export function tickOrdens(dt) {
     mon.ordemCampo = null;
     return;
   }
-  if (resultado !== "espera") ordem.proximo = agora + esperaDaAcao(ordem.acao);
+  if (resultado !== "espera") {
+    ordem.proximo = agora + esperaDaAcao(ordem.acao);
+    marcarPose(mon, "Attack", relogioPokemon());
+  }
 }

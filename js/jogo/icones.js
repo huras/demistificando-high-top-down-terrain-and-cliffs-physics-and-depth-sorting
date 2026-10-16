@@ -49,9 +49,14 @@ const REL = Object.freeze({
   leppa: "berries/leppa-berry.png",
   wateringCan: "general-items/sprinklotad.png",
   stone: "hold-items/hard-stone.png",
-  blueCrystal: "hold-items/never-melt-ice.png",
-  redCrystal: "hold-items/fire-gem.png",
-  yellowCrystal: "hold-items/electric-gem.png",
+  coal: "hold-items/charcoal.png",
+  blueCrystal: "crystals/small-blue-crystal.png",
+  redCrystal: "crystals/small-red-crystal.png",
+  yellowCrystal: "crystals/small-yellow-crystal.png",
+  purpleCrystal: "crystals/small-purple-crystal.png",
+  greenCrystal: "crystals/small-green-crystal.png",
+  pinkCrystal: "crystals/small-pink-crystal.png",
+  pokedex: "general-items/pokedex.png",
   expShare: "hold-items/exp-share.png",
   blocoGrama: "hold-items/miracle-seed.png",
   blocoTerra: "hold-items/soft-sand.png",
@@ -75,23 +80,24 @@ export function urlIcone(chave) {
   return rel ? `assets/itens/${rel}` : "";
 }
 
-export function htmlIcone(chave, classe) {
+export function htmlIcone(chave, classe, tamanho) {
   const base = classe || "jogo-icone";
+  const exibe = tamanho > 0 ? tamanho : EXIBE;
   const corte = TILESET[chave];
   if (corte) {
     const folha = FOLHA[corte.folha];
     const x = folha.ox + corte.c * (folha.tile + folha.px);
     const y = folha.oy + corte.r * (folha.tile + folha.py);
-    const s = EXIBE / folha.tile;
+    const s = exibe / folha.tile;
     const estilo = [
       `background-image:url(${folha.url})`,
       "background-repeat:no-repeat",
       `background-size:${folha.w * s}px ${folha.h * s}px`,
       `background-position:-${x * s}px -${y * s}px`,
     ].join(";");
-    return `<span class="${base} jogo-icone--tileset" style="${estilo}"></span>`;
+    return `<span class="${base} jogo-icone--tileset" style="${estilo};width:${exibe}px;height:${exibe}px"></span>`;
   }
   const url = urlIcone(chave);
-  if (!url) return `<span class="${base} jogo-icone--vazio"></span>`;
-  return `<img class="${base}" src="${url}" alt="" draggable="false" />`;
+  if (!url) return `<span class="${base} jogo-icone--vazio" style="width:${exibe}px;height:${exibe}px"></span>`;
+  return `<img class="${base}" src="${url}" alt="" width="${exibe}" height="${exibe}" draggable="false" />`;
 }

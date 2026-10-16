@@ -14,6 +14,7 @@ import {
   ORIGEM_LAB_Y,
   plantaLaboratorio,
 } from "../../mundo/cidade/laboratorio.js";
+import { fotoCuraMaquina, SLOTS_CURA } from "../../jogo/maquinaCura.js";
 
 const PX = 16;
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
@@ -39,6 +40,7 @@ const RECORTE = Object.freeze({
 });
 
 const cartoes = [];
+const bolasCura = [];
 
 function imagem(url) {
   return new Promise((resolve, reject) => {
@@ -213,6 +215,35 @@ function anexarCasca(grupo, piso) {
   }
 }
 
+function pendurarBolasCura(cartao) {
+  const geo = new THREE.SphereGeometry(0.16, 10, 8);
+  const faixaGeo = new THREE.CylinderGeometry(0.165, 0.165, 0.045, 10);
+  const faixa = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+  aplicarLuzCidade(faixa);
+  for (let i = 0; i < SLOTS_CURA.length; i++) {
+    const slot = SLOTS_CURA[i];
+    const mat = new THREE.MeshLambertMaterial({
+      color: 0xf8fafc,
+      emissive: 0xb8fff0,
+      emissiveIntensity: 0,
+    });
+    aplicarLuzCidade(mat);
+    const bola = new THREE.Group();
+    const corpo = new THREE.Mesh(geo, mat);
+    const cinto = new THREE.Mesh(faixaGeo, faixa);
+    cinto.rotation.z = Math.PI / 2;
+    bola.add(corpo);
+    bola.add(cinto);
+    const baseY = 1.5 - slot.y;
+    bola.position.set(slot.x, baseY, 0.18);
+    bola.userData.baseY = baseY;
+    bola.userData.mat = mat;
+    bola.visible = false;
+    cartao.add(bola);
+    bolasCura.push(bola);
+  }
+}
+
 function anexarBolas(grupo) {
   const planta = plantaLaboratorio();
   const geo = new THREE.SphereGeometry(0.16, 10, 8);
@@ -237,6 +268,20 @@ export function atualizarLaboratorio(yaw, inclinacao) {
   for (let i = 0; i < cartoes.length; i++) {
     cartoes[i].rotation.x = inclinacao;
     cartoes[i].rotation.y = yaw;
+  }
+  const foto = fotoCuraMaquina();
+  for (let i = 0; i < bolasCura.length; i++) {
+    const bola = bolasCura[i];
+    const quadro = foto ? foto[i] : null;
+    if (!quadro || !quadro.visivel) {
+      bola.visible = false;
+      continue;
+    }
+    bola.visible = true;
+    const s = quadro.escala;
+    bola.scale.set(s, s, s);
+    bola.position.y = bola.userData.baseY + (quadro.sobe || 0);
+    bola.userData.mat.emissiveIntensity = quadro.brilho || 0;
   }
 }
 
@@ -298,7 +343,9 @@ export function montarLaboratorio3d(grupo) {
       const x = ORIGEM_LAB_X + item.x;
       const z = ORIGEM_LAB_Y + (item.chao ? item.y : item.footY);
       const inst = item.chao ? porChao(moldesChao.get(item.id), x, z) : porBillboard(moldes.get(item.id), x, ORIGEM_LAB_Y + item.footY);
-      if (inst) sala.add(inst);
+      if (!inst) continue;
+      sala.add(inst);
+      if (item.id === "cura" && inst.userData.cartao) pendurarBolasCura(inst.userData.cartao);
     }
     if (gente) {
       const moldeNpc = new Map();

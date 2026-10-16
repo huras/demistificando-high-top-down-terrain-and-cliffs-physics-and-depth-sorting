@@ -1,12 +1,15 @@
 /**
- * Árvore em pé, queda, toco e toco queimado. Madeira no toco, carvão no toco queimado.
+ * Árvore em pé, queda, toco e toco queimado. Cada corte na madeira em pé ou no toco dá 1 madeira. Carvão só no toco queimado.
  */
 
+import { alturaEm } from "../mundo/altura.js";
 import { propPorId } from "../mundo/bioma/propsBioma.js";
+import { flutuar } from "../pokemon/flutuantes.js";
 import { ajustarItem } from "../pokemon/party.js";
 import { sfx } from "../jogo/audio.js";
 import { acenderGramaEm } from "./grama.js";
-import { emitirFagulha } from "./fx.js";
+import { emitirFagulha, emitirLascas } from "./fx.js";
+import { sacudir } from "./sacudida.js";
 import {
   FASE,
   cadaEstado,
@@ -29,6 +32,26 @@ function ladoDe(id) {
   const s = id || "";
   for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) | 0;
   return h & 1 ? 1 : -1;
+}
+
+function danoNoAr(prop, dano, alto) {
+  const chao = Number.isFinite(prop.z) ? prop.z : alturaEm(prop.x | 0, prop.y | 0);
+  flutuar(
+    {
+      x: prop.x + (Math.random() - 0.5) * 0.35,
+      y: prop.y,
+      z: chao + (alto ? 2.4 : 0.15),
+    },
+    String(dano),
+    "#fff4d6",
+  );
+}
+
+function golpeNaMadeira(prop, dano) {
+  const emPe = prop.fase === FASE.EM_PE;
+  danoNoAr(prop, dano, emPe);
+  sacudir(prop, emPe ? 0.09 : 0.05);
+  emitirLascas(prop.x, prop.y, 4);
 }
 
 function derrubar(prop) {
@@ -66,6 +89,7 @@ export function cortarArvore(prop) {
     const carvao = prop.fase === FASE.TOCO_QUEIMADO;
     prop.hp -= 1;
     ajustarItem(carvao ? "coal" : "wood", 1);
+    golpeNaMadeira(prop, 1);
     sfx("cavar");
     if (prop.hp <= 0) {
       prop.fase = FASE.REMOVIDO;
@@ -78,13 +102,15 @@ export function cortarArvore(prop) {
   }
   if (prop.fase !== FASE.EM_PE) return "nao";
   prop.hp -= 1;
+  ajustarItem("wood", 1);
+  golpeNaMadeira(prop, 1);
   sfx("cavar");
   if (prop.hp <= 0) {
     derrubar(prop);
-    return "queda";
+    return "madeira";
   }
   confirmar(prop);
-  return "acertou";
+  return "madeira";
 }
 
 /**

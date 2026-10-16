@@ -32,7 +32,9 @@ import {
 import { ligarRoda, tickRoda } from "./roda.js";
 import { desenharSala, ligarSala, moverSala, pertoDe, redimensionarSala } from "./sala.js";
 import { alvoLaboratorio, executarAlvoLaboratorio } from "./laboratorio.js";
+import { atualizarCuraMaquina } from "./maquinaCura.js";
 import { promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
+import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, ligarUi, pintar, promptDe } from "./ui.js";
 
 let viewport = null;
@@ -64,6 +66,8 @@ export function montarJogo(opts) {
 }
 
 export function tickJogo(dt, corpo) {
+  atualizarCuraMaquina(dt);
+  tickGanho(dt);
   definirCorpo(corpo);
   registrarParty();
   soltarSlotVazio();
@@ -120,12 +124,17 @@ export function tickJogo(dt, corpo) {
 }
 
 function lerTeclas(corpo) {
+  if (estado.ganhoAberto && teclaAgora("Escape")) {
+    fecharCartaGanho();
+    return;
+  }
   if (
     (estado.painel || estado.dialogo || estado.roda || estado.construir || estado.craft) &&
     teclaAgora("Escape")
   ) {
     fecharTopo();
   }
+  if (estado.ganhoAberto) return;
   if (teclaAgora("KeyI") || teclaAgora("KeyB")) {
     if (estado.dialogo || estado.roda) return;
     if (estado.painel === "mochila") fecharTopo();

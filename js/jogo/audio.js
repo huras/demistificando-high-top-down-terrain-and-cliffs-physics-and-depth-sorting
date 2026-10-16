@@ -45,6 +45,45 @@ const TROVAO = {
 let ctx = null;
 let mudo = false;
 let liberado = false;
+let abaixaBgm = 0;
+
+const PPQ_CURA = 120;
+const TEMPO_CURA = 454545 / 1e6;
+const NOTAS_CURA = Object.freeze([
+  [0, 28, 76, 100],
+  [0, 58, 83, 100],
+  [60, 13, 88, 100],
+  [60, 28, 68, 100],
+  [60, 28, 83, 50],
+  [60, 28, 76, 30],
+  [90, 13, 88, 30],
+  [120, 13, 88, 100],
+  [120, 28, 68, 30],
+  [120, 28, 76, 100],
+  [120, 58, 83, 100],
+  [150, 13, 88, 30],
+  [180, 13, 76, 100],
+  [180, 28, 68, 100],
+  [180, 28, 83, 50],
+  [180, 28, 76, 30],
+  [210, 13, 76, 30],
+  [240, 28, 68, 30],
+  [240, 28, 76, 100],
+  [240, 58, 83, 100],
+  [300, 28, 68, 100],
+  [300, 28, 76, 30],
+  [300, 58, 80, 100],
+  [360, 13, 88, 100],
+  [360, 28, 64, 100],
+  [360, 28, 83, 100],
+  [360, 58, 88, 100],
+  [390, 13, 88, 30],
+  [420, 28, 64, 30],
+  [420, 28, 88, 50],
+  [420, 28, 83, 30],
+  [480, 13, 88, 90],
+  [510, 13, 88, 25],
+]);
 let chaveAtual = "";
 /** @type {{ el: HTMLAudioElement, vol: number, alvo: number, chave: string } | null} */
 let voz = null;
@@ -178,8 +217,9 @@ export function atualizarAudio(dt, mix, dentro) {
     slot.alvo = alvos[id] || 0;
     aplicarVolume(slot, passo, 0.9);
   }
+  if (abaixaBgm > 0) abaixaBgm = Math.max(0, abaixaBgm - passo);
   if (voz) {
-    voz.alvo = mudo ? 0 : VOL_BGM;
+    voz.alvo = mudo ? 0 : VOL_BGM * (abaixaBgm > 0 ? 0.22 : 1);
     aplicarVolume(voz, passo, 0.7);
   }
   if (saindo) {
@@ -201,6 +241,44 @@ export function tocarTrovao(qual) {
   const el = new Audio(urlRef(arquivo));
   el.volume = qual === "longe" ? 0.55 : 0.86;
   el.play().catch(() => {});
+}
+
+function tickCura(tick) {
+  return (tick * TEMPO_CURA) / PPQ_CURA;
+}
+
+function notaCura(ac, quando, nota) {
+  const freq = 440 * 2 ** ((nota[2] - 69) / 12);
+  const dur = Math.max(0.018, tickCura(nota[1]));
+  const pico = 0.72 * Math.max(0, Math.min(1, nota[3] / 127)) * 0.22;
+  const osc = ac.createOscillator();
+  const ganho = ac.createGain();
+  osc.type = "square";
+  osc.frequency.setValueAtTime(freq, quando);
+  const t1 = quando + Math.min(0.012, dur * 0.2);
+  const t2 = quando + dur * 0.55;
+  const t3 = quando + dur;
+  ganho.gain.setValueAtTime(0.0001, quando);
+  ganho.gain.exponentialRampToValueAtTime(Math.max(0.0002, pico), t1);
+  ganho.gain.exponentialRampToValueAtTime(Math.max(0.0002, pico * 0.45), t2);
+  ganho.gain.exponentialRampToValueAtTime(0.0001, t3);
+  osc.connect(ganho);
+  ganho.connect(ac.destination);
+  osc.start(quando);
+  osc.stop(t3 + 0.02);
+}
+
+/** Jingle da máquina do Centro. Abaixa a trilha enquanto toca. */
+export function tocarCuraCentro() {
+  const ac = audio();
+  if (!ac || mudo) return;
+  const soltar = () => {
+    const t0 = ac.currentTime + 0.02;
+    for (let i = 0; i < NOTAS_CURA.length; i++) notaCura(ac, t0 + tickCura(NOTAS_CURA[i][0]), NOTAS_CURA[i]);
+    abaixaBgm = Math.max(abaixaBgm, tickCura(523) + 0.35);
+  };
+  if (ac.state === "suspended") ac.resume().then(soltar).catch(() => {});
+  else soltar();
 }
 
 export function sfx(tipo) {

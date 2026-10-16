@@ -24,6 +24,7 @@ import { criarAtor } from "../pokemon/ator.js";
 import { especie } from "../pokemon/dados.js";
 import { obterTreinador } from "../pokemon/sistema.js";
 import { hidratarCampo, idsRemovidos, reaplicarCarregados, serializarCampo } from "../campo/estadoProps.js";
+import { anunciarGanho, semearVistosDaBolsa } from "./ganhoItem.js";
 import {
   ajustarItem,
   colocarNaParty,
@@ -77,6 +78,8 @@ export const estado = {
   categoria: "balls",
   roda: false,
   itemGet: "",
+  ganhoAberto: false,
+  vistosItens: {},
   interior: null,
   construir: false,
   craft: false,
@@ -115,14 +118,16 @@ export function darItem(tipo, key, n = 1) {
   const qtd = n | 0;
   if (qtd === 0) return;
   if (tipo === TIPO_ITEM.BOLA && key === "pokeball") {
-    ganharBolas(qtd);
+    if (qtd > 0) ganharBolas(qtd);
+    anunciarGanho(key, qtd);
   } else if (tipo === TIPO_ITEM.CHAVE) {
-    if (qtd > 0) darChave(key);
+    if (qtd > 0) {
+      darChave(key);
+      anunciarGanho(key, 1);
+    }
   } else {
     ajustarItem(key, qtd);
   }
-  const def = defItem(tipo, key);
-  if (qtd > 0 && def) estado.itemGet = `${def.nome} ×${qtd}`;
   avisar();
 }
 
@@ -252,9 +257,10 @@ export function craftarBola(key) {
   const receita = RECEITAS_BOLA[key];
   if (!receita) return "Receita desconhecida.";
   if (!pagarCusto(receita.custo)) return "Faltam cristais.";
-  if (key === "pokeball") ganharBolas(1);
-  else ajustarItem(key, 1);
-  estado.itemGet = `${receita.nome} ×1`;
+  if (key === "pokeball") {
+    ganharBolas(1);
+    anunciarGanho("pokeball", 1);
+  } else ajustarItem(key, 1);
   avisar();
   return "";
 }
@@ -438,7 +444,8 @@ export function uiAberta() {
     estado.roda ||
     interior2d ||
     estado.construir ||
-    estado.craft
+    estado.craft ||
+    estado.ganhoAberto
   );
 }
 
@@ -500,6 +507,7 @@ export function salvar() {
     campo: serializarCampo(),
     cortados: idsRemovidos(),
     vistos: estado.vistos,
+    vistosItens: estado.vistosItens || {},
     quests: estado.quests,
     chaves: estado.chaves,
     party,
@@ -552,6 +560,11 @@ export function carregar() {
   estado.vistos = bruto.vistos || [];
   estado.quests = bruto.quests || questsIniciais();
   estado.chaves = bruto.chaves || ["pokedex"];
+  if (bruto.vistosItens && typeof bruto.vistosItens === "object" && !Array.isArray(bruto.vistosItens)) {
+    estado.vistosItens = { ...bruto.vistosItens };
+  } else {
+    semearVistosDaBolsa();
+  }
   const atores = [];
   const snaps = bruto.party || [];
   for (let i = 0; i < snaps.length; i++) {
@@ -565,17 +578,19 @@ export function carregar() {
 }
 
 function semearInicio() {
-  if (contarItem("oran") <= 0) ajustarItem("oran", 5);
-  if (contarItem("potion") <= 0) ajustarItem("potion", 2);
+  estado.vistosItens = {};
+  if (contarItem("oran") <= 0) ajustarItem("oran", 5, "mudo");
+  if (contarItem("potion") <= 0) ajustarItem("potion", 2, "mudo");
   const ferr = Object.keys(FERRAMENTAS);
   for (let i = 0; i < ferr.length; i++) {
-    if (contarItem(ferr[i]) <= 0) ajustarItem(ferr[i], 1);
+    if (contarItem(ferr[i]) <= 0) ajustarItem(ferr[i], 1, "mudo");
   }
   estado.hotbar[0] = { tipo: TIPO_ITEM.FERRAMENTA, key: "hoe" };
   estado.hotbar[1] = { tipo: TIPO_ITEM.FERRAMENTA, key: "wateringCan" };
   estado.hotbar[2] = { tipo: TIPO_ITEM.BERRY, key: "oran" };
   estado.hotbar[3] = { tipo: TIPO_ITEM.REMEDIO, key: "potion" };
   darChave("pokedex");
+  anunciarGanho("pokedex", 1, "mudo");
   registrarParty();
 }
 

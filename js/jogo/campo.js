@@ -301,7 +301,7 @@ export function tickCampo(dt) {
   for (let i = 0; i < estado.plots.length; i++) simularPlot(estado.plots[i], agora);
   tickArvores(dt, agora);
   tickGrama(dt, agora);
-  tickOrdens(dt);
+  if (!estado.ganhoAberto) tickOrdens(dt);
 }
 
 function propPerto(x, y, tipos) {

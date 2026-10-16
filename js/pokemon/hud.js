@@ -269,13 +269,17 @@ function desenharEmocao(ctx, x, y, ator) {
 function textos(ctx, projetar) {
   const lista = flutuantes();
   ctx.save();
-  ctx.font = "700 14px Segoe UI, sans-serif";
+  ctx.font = "700 16px Segoe UI, sans-serif";
   ctx.textAlign = "center";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(20, 16, 12, 0.88)";
   for (let i = 0; i < lista.length; i++) {
     const f = lista[i];
     const p = projetar(f.x, f.y, f.z, 0);
     if (!p) continue;
     ctx.globalAlpha = Math.max(0, 1 - f.idade / 0.85);
+    ctx.strokeText(f.texto, p.x, p.y);
     ctx.fillStyle = f.cor;
     ctx.fillText(f.texto, p.x, p.y);
   }

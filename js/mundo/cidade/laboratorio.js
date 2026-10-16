@@ -391,6 +391,10 @@ function montar() {
   for (let i = 0; i < moveis.length; i++) {
     const item = moveis[i];
     if (item.passa || item.chao) continue;
+    if (item.id === "cura") {
+      empurrarDiscosCura(discos, item);
+      continue;
+    }
     const r = item.id === "mesa" ? Math.min(0.82, item.halfW * 0.7) : Math.min(0.52, Math.max(0.36, item.halfW * 0.42));
     discos.push({ x: ORIGEM_LAB_X + item.x, y: ORIGEM_LAB_Y + item.footY - 0.3, z: ALTURA_PRACA, r });
   }
@@ -470,6 +474,33 @@ export function naSaidaLaboratorio(x, y) {
   const localY = y - ORIGEM_LAB_Y;
   if (localY < ROWS_LAB - 1.15) return false;
   return localX >= PLANTA.doorX0 - 0.2 && localX < PLANTA.doorX1 + 0.2;
+}
+
+/** Fileira de cima da máquina passa; as duas de baixo fecham o corpo, como no Pokémon AI. */
+function empurrarDiscosCura(discos, item) {
+  const cols = 2;
+  const rows = 3;
+  const solidas = [
+    [0, 1],
+    [1, 1],
+    [0, 2],
+    [1, 2],
+  ];
+  const esquerda = item.x - item.halfW;
+  const topo = item.y - item.halfH;
+  const cw = (item.halfW * 2) / cols;
+  const ch = (item.halfH * 2) / rows;
+  const raio = Math.min(cw, ch) * 0.48;
+  for (let i = 0; i < solidas.length; i++) {
+    const c = solidas[i][0];
+    const r = solidas[i][1];
+    discos.push({
+      x: ORIGEM_LAB_X + esquerda + (c + 0.5) * cw,
+      y: ORIGEM_LAB_Y + topo + (r + 0.5) * ch,
+      z: ALTURA_PRACA,
+      r: raio,
+    });
+  }
 }
 
 function pertoCaixa(px, py, item, alcance) {

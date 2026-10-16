@@ -6,6 +6,7 @@ import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
+import { anunciarGanho } from "../jogo/ganhoItem.js";
 
 const party = [];
 let deployado = 0;
@@ -107,17 +108,19 @@ export function definirBolas(n) {
 }
 
 export function guardarItem(chave) {
-  bolsa.set(chave, (bolsa.get(chave) || 0) + 1);
+  ajustarItem(chave, 1);
 }
 
 export function contarItem(chave) {
   return bolsa.get(chave) || 0;
 }
 
-export function ajustarItem(chave, delta) {
-  const n = (bolsa.get(chave) || 0) + (delta | 0);
+export function ajustarItem(chave, delta, fonte) {
+  const d = delta | 0;
+  const n = (bolsa.get(chave) || 0) + d;
   if (n <= 0) bolsa.delete(chave);
   else bolsa.set(chave, n);
+  if (d > 0) anunciarGanho(chave, d, fonte);
   return Math.max(0, n);
 }
 

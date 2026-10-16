@@ -105,8 +105,8 @@ function soltarAgro(ator, alvo) {
   return dist2(ator, alvo) > POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA;
 }
 
-/** Mesmo seguidor do companheiro: pula, escala e não teleporta. */
-export function irPara(ator, gx, gy, gz, vel, dt) {
+/** Mesmo seguidor do companheiro: pula, escala e não teleporta. distParar menor chega mais perto do ponto. */
+export function irPara(ator, gx, gy, gz, vel, dt, distParar = 0) {
   if (!ator.perfil?.podeEscalar) ator.perfil = PERFIL_COMPANHEIRO;
   garantirCorpoLocomocao(ator, ator.perfil);
   const zBase = ator.elevacao ?? ator.z ?? 0;
@@ -116,6 +116,7 @@ export function irPara(ator, gx, gy, gz, vel, dt) {
     { x: gx, y: gy, z: zAlvo > 0 ? zAlvo : zBase, elevacao: zAlvo > 0 ? zAlvo : zBase },
     dt,
     vel,
+    distParar,
   );
   return !!(ator.andando || ator.pulando || ator.escalando || ator.voando || ator.planando || ator.mantle);
 }
