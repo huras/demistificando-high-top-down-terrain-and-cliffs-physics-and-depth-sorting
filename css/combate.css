@@ -306,6 +306,25 @@ button, input, select {
   line-height: 1.4;
 }
 
+.recarga {
+  margin-top: 4px;
+}
+
+.recarga__trilho {
+  height: 5px;
+  border-radius: 99px;
+  background: #101612;
+  border: 1px solid var(--borda);
+  overflow: hidden;
+}
+
+.recarga__trilho span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #7dce6a;
+}
+
 .palco {
   flex: 1;
   min-width: 0;

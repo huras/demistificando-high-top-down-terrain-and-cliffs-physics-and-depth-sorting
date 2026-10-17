@@ -394,3 +394,9 @@ export function velocidadeDe(ator, correndo) {
 export function recargaDe(ator, segundos) {
   return segundos * escalaRecarga(ator.stats.velocidade);
 }
+
+export function recargaDoGolpe(ator, def) {
+  let segundos = def?.recarga || 4;
+  if (def?.forma === "projectile" || def?.forma === "arc") segundos *= 0.7;
+  return recargaDe(ator, segundos);
+}

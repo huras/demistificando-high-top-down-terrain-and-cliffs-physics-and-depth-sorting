@@ -1,5 +1,5 @@
 import { atoresPerto } from "../grade.js";
-import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, golpeBasico, recargaDe } from "../ator.js";
+import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, golpeBasico, recargaDe, recargaDoGolpe } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
 import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
@@ -138,7 +138,7 @@ function gastar(ator, slot, agora) {
     return;
   }
   ator.pp = Math.max(0, ator.pp - (slot.def.pp || 1));
-  slot.cd = recargaDe(ator, slot.def.recarga || 4);
+  slot.cd = recargaDoGolpe(ator, slot.def);
   slot.usadoEm = agora;
 }
 
@@ -177,7 +177,7 @@ function escolher(ator, alvo, d) {
 /** Golpe forte demora mais para juntar o Ki. */
 export function tempoConjuracao(def) {
   const poder = Math.max(1, def?.poder || 20);
-  return 0.5 + Math.min(0.8, poder / 100);
+  return 0.22 + Math.min(0.34, poder / 220);
 }
 
 export function emConjuracao(ator) {

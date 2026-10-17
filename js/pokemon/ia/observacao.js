@@ -86,7 +86,7 @@ function recargaTiro(ator) {
     const f = g.def.forma;
     if (f !== "projectile" && f !== "arc") continue;
     achou = true;
-    const base = g.def.recarga || 4;
+    const base = (g.def.recarga || 4) * 0.7;
     const u = base <= 0 ? 0 : Math.min(1, (g.cd || 0) / base);
     if (u < melhor) melhor = u;
   }

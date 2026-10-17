@@ -1,4 +1,5 @@
 import { ALTURA_BLOCO } from "../config.js";
+import { golpeBasico, recargaDe, recargaDoGolpe } from "../pokemon/ator.js";
 import { carregarDados, especie, golpe, listarEspecies } from "../pokemon/dados.js";
 import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
@@ -149,7 +150,62 @@ function textoFicha(def, vazio) {
   const forma = FORMA[def.forma] || def.forma;
   const categoria = CATEGORIA[def.categoria] || def.categoria;
   const acerto = def.acerto === null ? "não erra" : def.acerto ?? 100;
-  return `${forma} · ${categoria} · poder ${def.poder | 0} · acerto ${acerto} · alcance ${Number(def.alcance) || 0} · ${Number(def.recarga) || 0} s · custo ${def.pp || 0} PP`;
+  let recarga = Number(def.recarga) || 0;
+  if (def.forma === "projectile" || def.forma === "arc") recarga = Math.round(recarga * 70) / 100;
+  return `${forma} · ${categoria} · poder ${def.poder | 0} · acerto ${acerto} · alcance ${Number(def.alcance) || 0} · ${recarga} s · custo ${def.pp || 0} PP`;
+}
+
+function slotDoGolpe(ator, chave) {
+  const golpes = ator?.golpes || [];
+  for (let i = 0; i < golpes.length; i++) {
+    if (golpes[i].chave === chave) return golpes[i];
+  }
+  return null;
+}
+
+function textoSegundos(seg) {
+  return `${seg.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`;
+}
+
+function pintarRecargaUm(raiz, ator, nome, chave, basico) {
+  const barra = campo(raiz, `cd-${nome}`);
+  const rotulo = campo(raiz, `cd-${nome}-num`);
+  if (!chave && !basico) {
+    barra.style.width = "0%";
+    barra.style.background = "#334155";
+    rotulo.textContent = "Sem golpe";
+    return;
+  }
+  const slot = basico ? null : slotDoGolpe(ator, chave);
+  const conjurando = !!(slot && ator.conjuroSlot === slot && (ator.conjuroRestante || 0) > 0);
+  if (conjurando) {
+    const dur = ator.conjuroDur || 1;
+    const u = 1 - Math.max(0, ator.conjuroRestante) / dur;
+    barra.style.width = `${Math.max(0, Math.min(1, u)) * 100}%`;
+    barra.style.background = "#f59e0b";
+    rotulo.textContent = "Carregando";
+    return;
+  }
+  const def = basico ? golpeBasico() : slot?.def;
+  const total = !def ? 0 : basico ? recargaDe(ator, def.recarga || 0.55) : recargaDoGolpe(ator, def);
+  const cd = basico ? ator.cdBasico || 0 : slot?.cd || 0;
+  const u = total <= 0 ? 1 : 1 - Math.min(1, Math.max(0, cd) / total);
+  barra.style.width = `${u * 100}%`;
+  if (cd > 0.05) {
+    barra.style.background = "#38bdf8";
+    rotulo.textContent = textoSegundos(cd);
+  } else {
+    barra.style.background = "#7dce6a";
+    rotulo.textContent = "Pronto";
+  }
+}
+
+function pintarRecarga(lado) {
+  const ator = estadoLuta()[lado];
+  const raiz = raizDe(lado);
+  if (!ator) return;
+  pintarRecargaUm(raiz, ator, "corpo", ui[lado].corpo, !ui[lado].corpo);
+  pintarRecargaUm(raiz, ator, "distancia", ui[lado].distancia, false);
 }
 
 function corVida(pct) {
@@ -229,6 +285,10 @@ function montarColuna(lado) {
         </div>
         <select data-campo="corpo"></select>
         <p class="ficha" data-campo="ficha-corpo"></p>
+        <div class="recarga">
+          <div class="recarga__trilho"><span data-campo="cd-corpo"></span></div>
+          <p class="pp" data-campo="cd-corpo-num">Pronto</p>
+        </div>
       </div>
       <div class="campo" data-campo="bloco-distancia">
         <div class="campo__topo">
@@ -240,6 +300,10 @@ function montarColuna(lado) {
         </div>
         <select data-campo="distancia"></select>
         <p class="ficha" data-campo="ficha-distancia"></p>
+        <div class="recarga">
+          <div class="recarga__trilho"><span data-campo="cd-distancia"></span></div>
+          <p class="pp" data-campo="cd-distancia-num">Pronto</p>
+        </div>
       </div>
     </fieldset>
   `;
@@ -575,6 +639,8 @@ function quadro(t) {
   pintarLog();
   pintarVida("esquerda");
   pintarVida("direita");
+  pintarRecarga("esquerda");
+  pintarRecarga("direita");
   pintarDanos();
   const lutando = estadoLuta().lutando;
   if (lutandoAntes && !lutando) {
