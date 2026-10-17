@@ -115,7 +115,7 @@ export function criarFxCampo() {
 
   for (let i = 0; i < CAP_QUEDA; i++) {
     const mat = new THREE.MeshBasicMaterial({
-      transparent: true,
+      transparent: false,
       alphaTest: VEG_ALPHA_TEST,
       depthWrite: true,
       side: THREE.DoubleSide,
@@ -196,13 +196,24 @@ export function criarFxCampo() {
       const pivo = pivoDaImagem(img);
       const t = Math.min(1, Math.max(0, (Date.now() - (prop.inicioMs || 0)) / QUEDA_MS));
       const curva = t * t * t;
+      const u = t <= 0.42 ? 0 : (t - 0.42) / 0.58;
+      const fade = 1 - u * u * (3 - 2 * u);
       const base = alturaEm(Math.floor(prop.x), Math.floor(prop.y));
       mesh.geometry = geoComPivo(pivo);
       mesh.visible = true;
-      mesh.position.set(prop.x, base * ALTURA_BLOCO, prop.y);
+      const folga = 0.05;
+      mesh.position.set(prop.x + Math.sin(yaw) * folga, base * ALTURA_BLOCO, prop.y + Math.cos(yaw) * folga);
       mesh.rotation.set(inclinacao, yaw, curva * 1.15 * (prop.lado || 1));
       mesh.scale.set((pw / TILE) * VEG_ARVORE_ESCALA, (ph / TILE) * VEG_ARVORE_ESCALA, 1);
-      mat.opacity = t > 0.88 ? 1 - (t - 0.88) / 0.12 : 1;
+      const opaco = fade > 0.995;
+      if (mat.userData.opaco !== opaco) {
+        mat.transparent = !opaco;
+        mat.depthWrite = opaco;
+        mat.alphaTest = opaco ? VEG_ALPHA_TEST : 0;
+        mat.userData.opaco = opaco;
+        mat.needsUpdate = true;
+      }
+      mat.opacity = fade;
     }
   }
 

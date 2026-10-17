@@ -513,9 +513,11 @@ function pertoCaixa(px, py, item, alcance) {
 export function alvoDoLaboratorio(x, y) {
   const px = x - ORIGEM_LAB_X;
   const py = y - ORIGEM_LAB_Y;
+  const cura = PLANTA.cura;
+  const naFrente = Math.hypot(px - cura.x, py - cura.footY) <= 1.85;
+  if (pertoCaixa(px, py, cura, 1.6) || naFrente) return { tipo: "cura", ref: cura };
   const oak = PLANTA.npcs[0];
   if (Math.hypot(px - oak.x, py - oak.y) <= oak.alcance) return { tipo: "npc", ref: oak };
-  if (pertoCaixa(px, py, PLANTA.cura, 1.35)) return { tipo: "cura", ref: PLANTA.cura };
   let capsula = null;
   let distCapsula = Infinity;
   for (let i = 0; i < PLANTA.capsulas.length; i++) {
@@ -550,7 +552,7 @@ export function alvoDoLaboratorio(x, y) {
 
 export function promptDoLaboratorio(alvo) {
   if (!alvo) return "";
-  if (alvo.tipo === "cura") return "Máquina do Centro — R";
+  if (alvo.tipo === "cura") return "Recuperar";
   if (alvo.tipo === "capsula") return "Cápsula — R";
   if (alvo.tipo === "inicial") return `Pokébola de ${alvo.ref.especie} — R`;
   if (alvo.tipo === "npc") return `${alvo.ref.nome} — R`;

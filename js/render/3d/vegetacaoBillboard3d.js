@@ -37,8 +37,8 @@ function estiloDe(prop) {
 
 function chaveDe(prop) {
   if (!prop || prop.oculto || prop.tipo === "placa") return null;
-  if (prop.fase === FASE.CAINDO || prop.fase === FASE.REMOVIDO) return null;
-  if (prop.tipo === "arvore" && prop.fase === FASE.TOCO) return `toco:${prop.sprite || "arvore"}`;
+  if (prop.fase === FASE.REMOVIDO) return null;
+  if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return `toco:${prop.sprite || "arvore"}`;
   if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return `tocoq:${prop.sprite || "arvore"}`;
   return prop.sprite || prop.tipo || null;
 }
@@ -94,6 +94,7 @@ export function criarVegetacaoBillboard3d() {
   let atlasAtual = null;
 
   let yawAplicado = null;
+  let geracaoLote = 0;
   let yawSolAplicado = null;
   let inclinacaoAplicada = 0;
   let alturasSujas = true;
@@ -111,7 +112,7 @@ export function criarVegetacaoBillboard3d() {
   function imagemDe(prop) {
     const base = imagemBase(prop);
     if (!base) return null;
-    if (prop.tipo === "arvore" && prop.fase === FASE.TOCO) return imagemToco(base, false);
+    if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return imagemToco(base, false);
     if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return imagemToco(base, true);
     return base;
   }
@@ -321,18 +322,22 @@ export function criarVegetacaoBillboard3d() {
 
   function lembrar(p, itens, mesh, sombra, i, largura, altura) {
     let v = p._veg;
-    if (!v) v = p._veg = { itens: null, mesh: null, sombra: null, i: -1, largura: 0, altura: 0 };
+    if (!v) v = p._veg = { itens: null, mesh: null, sombra: null, i: -1, largura: 0, altura: 0, geracao: -1 };
     v.itens = itens;
     v.mesh = mesh;
     v.sombra = sombra;
     v.i = i;
     v.largura = largura;
     v.altura = altura;
+    v.geracao = geracaoLote;
   }
 
   function escrever(yaw, yawSol, inclinacao, recalcularLimites) {
     const agora = performance.now();
-    if (recalcularLimites) sincronizarLotes(recolherGrupos());
+    if (recalcularLimites) {
+      sincronizarLotes(recolherGrupos());
+      geracaoLote += 1;
+    }
     const sacode = temSacudida();
     for (const lote of lotes.values()) {
       const { mesh, sombra, itens, largura, altura } = lote;
@@ -354,7 +359,8 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function aplicarVinculo(v, p, yaw, yawSol, inclinacao, amostra) {
-    if (!v || v.i < 0 || !v.mesh || v.itens?.[v.i] !== p) return;
+    if (!v || v.geracao !== geracaoLote || v.i < 0 || !v.mesh || v.itens?.[v.i] !== p) return;
+    if (p.fase === FASE.CAINDO || p.fase === FASE.REMOVIDO || p.oculto) return;
     pose(p, v.largura, v.altura, yaw, inclinacao, amostra);
     v.mesh.setMatrixAt(v.i, dummy.matrix);
     marcarSuja(v.mesh);

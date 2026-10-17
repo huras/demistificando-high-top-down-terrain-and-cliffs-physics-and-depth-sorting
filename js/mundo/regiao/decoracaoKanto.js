@@ -17,6 +17,9 @@ import {
 const MEIO_RUA = 3.5;
 const OMBRO = MEIO_RUA + 1.15;
 const PASSO_POSTE = 12;
+const PASSO_POSTE_RUA = 10;
+const MARGEM_POSTE_RUA = MEIO_RUA + 0.8;
+const DIST_PRACA_POSTE = 1.6;
 const RECUO_POSTE = 14;
 const BORDA_PLACA = 8;
 const FOLGA_ALTURA = 3;
@@ -123,6 +126,44 @@ export function decoracaoDaCidade(layout) {
     casas,
     ocupados,
   };
+}
+
+function longeDaPraca(ocupados, x, y) {
+  const limite = DIST_PRACA_POSTE * DIST_PRACA_POSTE;
+  for (let i = 0; i < ocupados.length; i++) {
+    const dx = ocupados[i].x - x;
+    const dy = ocupados[i].y - y;
+    if (dx * dx + dy * dy < limite) return false;
+  }
+  return true;
+}
+
+/** Postes da calçada, em coordenadas da área. A praça entra em decoracaoDaCidade. */
+export function postesDeRua(layout) {
+  const fp = layout.fp;
+  const ocupados = decoracaoDaCidade(layout).ocupados;
+  const lista = [];
+  const margem = MARGEM_POSTE_RUA;
+  const volumes = layout.volumes;
+  function livre(x, y) {
+    if (Math.abs(x - CENTRO_AREA) < 8 && Math.abs(y - CENTRO_AREA) < 8) return false;
+    for (let i = 0; i < volumes.length; i++) {
+      const v = volumes[i];
+      if (x >= v.x0 - 0.4 && x < v.x1 + 0.4 && y >= v.y0 - 0.4 && y < v.y1 + 0.4) return false;
+    }
+    return longeDaPraca(ocupados, x, y);
+  }
+  for (let x = Math.ceil(fp.x0) + 4; x < fp.x1 - 2; x += PASSO_POSTE_RUA) {
+    const px = x + 0.5;
+    if (livre(px, CENTRO_AREA - margem)) lista.push({ x: px, y: CENTRO_AREA - margem });
+    if (livre(px, CENTRO_AREA + margem)) lista.push({ x: px, y: CENTRO_AREA + margem });
+  }
+  for (let y = Math.ceil(fp.y0) + 4; y < fp.y1 - 2; y += PASSO_POSTE_RUA) {
+    const py = y + 0.5;
+    if (livre(CENTRO_AREA - margem, py)) lista.push({ x: CENTRO_AREA - margem, y: py });
+    if (livre(CENTRO_AREA + margem, py)) lista.push({ x: CENTRO_AREA + margem, y: py });
+  }
+  return lista;
 }
 
 function vizinho(ax, ay, dir) {
@@ -288,7 +329,10 @@ function decoracaoDaRota(ax, ay, zona) {
   };
 }
 
+let cacheRotas = null;
+
 export function decoracaoDasRotas() {
+  if (cacheRotas) return cacheRotas;
   const grupos = [];
   for (let ay = 0; ay < LADO_KANTO; ay++) {
     for (let ax = 0; ax < LADO_KANTO; ax++) {
@@ -298,5 +342,6 @@ export function decoracaoDasRotas() {
       if (grupo) grupos.push(grupo);
     }
   }
+  cacheRotas = grupos;
   return grupos;
 }

@@ -6,11 +6,12 @@ import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
+import { postesDeRua } from "../../mundo/regiao/decoracaoKanto.js";
 import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "./luzes/catalogo.js";
 import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
 import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
-import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
+import { aplicarLuzBillboard, aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../../mundo/cidade/catalogoCasas.js";
 import { anexarCascaSala, anexarDecoracaoCidade, anexarInteriores, carregarSpritesPraca, criarDecoracaoRotas } from "./decoracaoCidade.js";
@@ -24,8 +25,6 @@ const ALFA_SPRITE = 0.12;
 const FOLHAS_CASA = 5;
 const PX_MUNDO = 1 / TILE;
 const ALTURA_POSTE = 3.6;
-const MEIO_RUA = 3.5;
-const PASSO_POSTE = 10;
 const _ponto = new THREE.Vector3();
 const COR_JANELA = 0xb9d7ff;
 const materiaisJanela = [];
@@ -210,7 +209,20 @@ function partirMultiMaterial(mesh) {
   geo.dispose();
 }
 
-function preparar(raiz, escala) {
+function marcarVolume(raiz, yChao) {
+  const amostra = new THREE.Vector3();
+  raiz.traverse((filho) => {
+    if (!filho.isMesh || !filho.visible || !filho.material) return;
+    if (filho.renderOrder >= 2) return;
+    const mat = filho.material;
+    if (mat.depthWrite === false) mat.depthWrite = true;
+    amostra.set(0, yChao, 0);
+    filho.worldToLocal(amostra);
+    aplicarProfundidadeVolume(mat, amostra.y);
+  });
+}
+
+function preparar(raiz, volume) {
   const multi = [];
   raiz.traverse((filho) => {
     if (filho.isMesh && Array.isArray(filho.material)) multi.push(filho);
@@ -259,6 +271,7 @@ function preparar(raiz, escala) {
   });
   raiz.updateMatrixWorld(true);
   const caixa = new THREE.Box3().setFromObject(raiz);
+  if (volume) marcarVolume(raiz, caixa.min.y);
   const grupo = new THREE.Group();
   raiz.position.set(
     -((caixa.min.x + caixa.max.x) * 0.5),
@@ -266,7 +279,7 @@ function preparar(raiz, escala) {
     -((caixa.min.z + caixa.max.z) * 0.5),
   );
   grupo.add(raiz);
-  grupo.scale.setScalar(escala);
+  grupo.scale.setScalar(1);
   grupo.userData.janelas = centrosJanela(grupo);
   return {
     grupo,
@@ -317,44 +330,11 @@ function pendurarLuzes(inst, id, dono) {
 
 export function carregarMoldeCidade(id) {
   return carregarObj(id).then((raiz) => {
-    const medido = preparar(raiz, 1);
+    const medido = preparar(raiz, id === "poste");
     const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
     medido.grupo.scale.setScalar(escala);
     return medido.grupo;
   });
-}
-
-function longeDaPraca(ocupados, x, y) {
-  for (let i = 0; i < ocupados.length; i++) {
-    const dx = ocupados[i].x - x;
-    const dy = ocupados[i].y - y;
-    if (dx * dx + dy * dy < 2.56) return false;
-  }
-  return true;
-}
-
-function postesDoLayout(layout) {
-  const fp = layout.fp;
-  const lista = [];
-  const margem = MEIO_RUA + 0.8;
-  function livre(x, y) {
-    if (Math.abs(x - 64) < 8 && Math.abs(y - 64) < 8) return false;
-    const volumes = layout.volumes;
-    for (let i = 0; i < volumes.length; i++) {
-      const v = volumes[i];
-      if (x >= v.x0 - 0.4 && x < v.x1 + 0.4 && y >= v.y0 - 0.4 && y < v.y1 + 0.4) return false;
-    }
-    return true;
-  }
-  for (let x = Math.ceil(fp.x0) + 4; x < fp.x1 - 2; x += PASSO_POSTE) {
-    if (livre(x + 0.5, 64 - margem)) lista.push([x + 0.5, 64 - margem]);
-    if (livre(x + 0.5, 64 + margem)) lista.push([x + 0.5, 64 + margem]);
-  }
-  for (let y = Math.ceil(fp.y0) + 4; y < fp.y1 - 2; y += PASSO_POSTE) {
-    if (livre(64 - margem, y + 0.5)) lista.push([64 - margem, y + 0.5]);
-    if (livre(64 + margem, y + 0.5)) lista.push([64 + margem, y + 0.5]);
-  }
-  return lista;
 }
 
 function prepararFolha(tex) {
@@ -460,12 +440,12 @@ function montarCidade(moldes, folhas, def, sprites, predios) {
   }
   const poste = moldes.get("poste");
   const acender = (inst, dono) => pendurarLuzes(inst, "poste", dono);
-  const decor = anexarDecoracaoCidade(grupo, poste, layout, ox, oy, acender, sprites);
+  anexarDecoracaoCidade(grupo, poste, layout, ox, oy, acender, sprites);
   if (poste) {
-    const pontos = postesDoLayout(layout).filter((p) => longeDaPraca(decor.ocupados, p[0], p[1]));
+    const pontos = postesDeRua(layout);
     for (let i = 0; i < pontos.length; i++) {
       const inst = poste.grupo.clone(true);
-      inst.position.set(ox + pontos[i][0], ALTURA_PRACA, oy + pontos[i][1]);
+      inst.position.set(ox + pontos[i].x, ALTURA_PRACA, oy + pontos[i].y);
       pendurarLuzes(inst, "poste", `${def.key}:poste:${i}`);
       grupo.add(inst);
     }
@@ -493,7 +473,7 @@ export function criarEdificiosCidade() {
       const moldes = new Map();
       for (let i = 0; i < pares.length; i++) {
         const [id, item] = pares[i];
-        const medido = preparar(item.grupo, 1);
+        const medido = preparar(item.grupo, id === "poste");
         const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
         medido.grupo.scale.setScalar(escala);
         moldes.set(id, medido);

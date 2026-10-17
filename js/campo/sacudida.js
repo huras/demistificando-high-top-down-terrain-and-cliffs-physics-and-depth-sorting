@@ -8,6 +8,13 @@ const CAP = 24;
 const ativas = [];
 const acabaram = [];
 
+export function soltarSacudida(prop) {
+  if (!prop?._sacode) return;
+  prop._sacode = null;
+  const i = ativas.indexOf(prop);
+  if (i >= 0) ativas.splice(i, 1);
+}
+
 export function sacudir(prop, amp) {
   if (!prop) return;
   let s = prop._sacode;

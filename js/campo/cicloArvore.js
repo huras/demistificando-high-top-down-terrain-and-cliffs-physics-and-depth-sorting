@@ -9,7 +9,7 @@ import { ajustarItem } from "../pokemon/party.js";
 import { sfx } from "../jogo/audio.js";
 import { acenderGramaEm } from "./grama.js";
 import { emitirFagulha, emitirLascas } from "./fx.js";
-import { sacudir } from "./sacudida.js";
+import { sacudir, soltarSacudida } from "./sacudida.js";
 import {
   FASE,
   cadaEstado,
@@ -55,6 +55,7 @@ function golpeNaMadeira(prop, dano) {
 }
 
 function derrubar(prop) {
+  soltarSacudida(prop);
   prop.fase = FASE.CAINDO;
   prop.hp = 0;
   prop.inicioMs = Date.now();

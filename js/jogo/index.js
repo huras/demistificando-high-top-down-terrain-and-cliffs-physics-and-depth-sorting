@@ -32,8 +32,8 @@ import {
 import { ligarRoda, tickRoda } from "./roda.js";
 import { desenharSala, ligarSala, moverSala, pertoDe, redimensionarSala } from "./sala.js";
 import { alvoLaboratorio, executarAlvoLaboratorio } from "./laboratorio.js";
-import { atualizarCuraMaquina } from "./maquinaCura.js";
-import { promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
+import { atualizarCuraMaquina, curaOcupada } from "./maquinaCura.js";
+import { ORIGEM_LAB_X, ORIGEM_LAB_Y, promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, ligarUi, pintar, promptDe } from "./ui.js";
 
@@ -99,9 +99,16 @@ export function tickJogo(dt, corpo) {
   const alvo = estado.interior && !estado.interior.sala3d ? pertoDe(estado.interior) : null;
   const ferramenta = dicaFerramenta();
   const noLab = estado.interior?.sala3d && estado.interior.papel === "lab";
-  const alvoLab = noLab && !estado.dialogo && !estado.painel ? alvoLaboratorio(corpo.x, corpo.y) : null;
-  estado.promptEntrar = !!porta && !estado.interior && !(estado.saidaGrace > 0);
-  estado.prompt = alvoLab ? promptDoLaboratorio(alvoLab) : promptDe(alvo, ferramenta);
+  const alvoLab = noLab && !estado.dialogo && !estado.painel && !estado.ganhoAberto ? alvoLaboratorio(corpo.x, corpo.y) : null;
+  const curaPerto = alvoLab?.tipo === "cura" && !curaOcupada();
+  const entrarPorta = !!porta && !estado.interior && !(estado.saidaGrace > 0);
+  estado.promptEntrar = entrarPorta || curaPerto;
+  estado.promptRotulo = curaPerto ? "Recuperar" : "Entrar";
+  estado.promptAncora = curaPerto
+    ? { x: ORIGEM_LAB_X + alvoLab.ref.x, y: ORIGEM_LAB_Y + alvoLab.ref.footY, z: corpo.z }
+    : null;
+  if (curaPerto && !campoFocado() && teclaAgora("KeyE")) executarAlvoLaboratorio(alvoLab);
+  estado.prompt = curaPerto ? "" : alvoLab ? promptDoLaboratorio(alvoLab) : promptDe(alvo, ferramenta);
   const zona = zonaNoMundo(corpo.x, corpo.y);
   definirBgm(chaveBgm(zona, obterClima(), estado.interior?.sala?.kind));
   atualizarAudio(dt, lerMixClima(), !!estado.interior);

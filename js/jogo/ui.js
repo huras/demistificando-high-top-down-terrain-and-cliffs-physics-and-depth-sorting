@@ -239,12 +239,14 @@ function pintarPrompt() {
     const estava = !entrar.hidden;
     entrar.hidden = !mostraEntrar;
     if (mostraEntrar) {
+      const rotulo = entrar.querySelector(".acao-prompt__rotulo");
+      if (rotulo) rotulo.textContent = estado.promptRotulo || "Entrar";
       if (!estava) {
         entrar.classList.remove("acao-prompt--nova");
         void entrar.offsetWidth;
         entrar.classList.add("acao-prompt--nova");
       }
-      colocarEntrar(entrar, corpoRef);
+      colocarEntrar(entrar, estado.promptAncora || corpoRef);
     } else if (estava) {
       entrar.classList.remove("acao-prompt--nova");
     }

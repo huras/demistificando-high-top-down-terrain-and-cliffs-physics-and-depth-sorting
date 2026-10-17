@@ -74,6 +74,8 @@ export const estado = {
   dialogo: null,
   prompt: "",
   promptEntrar: false,
+  promptRotulo: "Entrar",
+  promptAncora: null,
   painel: null,
   categoria: "balls",
   roda: false,

@@ -163,6 +163,53 @@ export function aplicarProfundidadeSprite(material) {
   return material;
 }
 
+/**
+ * Volume 3D no mesmo depth dos cartões.
+ * Cada fragmento usa o XZ dele no plano do chão do modelo, então o braço
+ * da luminária tem profundidade e a altura não fura a fila do pé.
+ * Sem a folga do ator: no mesmo ponto, o personagem ganha.
+ */
+export function aplicarProfundidadeVolume(material, baseLocalY) {
+  if (!material || material.userData?.profundidadeVolume) return material;
+  if (!material.userData) material.userData = {};
+  material.userData.profundidadeVolume = true;
+
+  const anterior = material.onBeforeCompile;
+  const chaveAnterior = material.customProgramCacheKey;
+  const y = Number(baseLocalY).toFixed(4);
+  const folga = FOLGA_PIVO.toFixed(2);
+  const decl = "varying float vProfundidadeVolume;";
+  const calc = `
+{
+  vec3 ancoraVolume = transformed;
+  ancoraVolume.y = ${y};
+  vec4 ancoraVista = modelViewMatrix * vec4(ancoraVolume, 1.0);
+  ancoraVista.z += ${folga};
+  vec4 ancoraClip = projectionMatrix * ancoraVista;
+  vProfundidadeVolume = ancoraClip.z / ancoraClip.w * 0.5 + 0.5;
+}
+`;
+
+  material.onBeforeCompile = (shader, renderer) => {
+    if (anterior) anterior.call(material, shader, renderer);
+    if (shader.vertexShader.includes("vProfundidadeVolume")) return;
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>\n${decl}`)
+      .replace("#include <project_vertex>", `#include <project_vertex>\n${calc}`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\n${decl}`)
+      .replace(
+        "#include <dithering_fragment>",
+        "#include <dithering_fragment>\ngl_FragDepth = vProfundidadeVolume;",
+      );
+  };
+  material.customProgramCacheKey = function chaveVolume() {
+    const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
+    return `${base}|volume-chao|${y}|${folga}`;
+  };
+  return material;
+}
+
 /** Troca a normal de iluminação e achata o depth no pivô. A sombra fica no cartão real. */
 export function aplicarLuzBillboard(material) {
   if (!material || material.userData?.luzBillboard) return material;

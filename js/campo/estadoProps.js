@@ -59,8 +59,8 @@ export function hpDeMineral(prop) {
 }
 
 export function raioColisao(prop) {
-  if (!prop || prop.fase === FASE.REMOVIDO || prop.fase === FASE.CAINDO) return -1;
-  if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.TOCO_QUEIMADO)) return 0.18;
+  if (!prop || prop.fase === FASE.REMOVIDO) return -1;
+  if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.TOCO_QUEIMADO || prop.fase === FASE.CAINDO)) return 0.18;
   return 0;
 }
 
