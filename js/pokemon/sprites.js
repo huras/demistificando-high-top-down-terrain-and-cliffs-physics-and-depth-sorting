@@ -204,6 +204,26 @@ function velocidadePlana(ator) {
   return Math.hypot(ator.vx || 0, ator.vy || 0);
 }
 
+/** Ciclo real mínimo. O atlas de voo cabe em ~60 ms e o de andar dispara no sprint. */
+const CICLO_ANDAR = 0.68;
+const CICLO_VOO = 0.42;
+
+function cicloDaFaixa(spec) {
+  const n = spec.frameCount || spec.durations?.length || 1;
+  let ms = 0;
+  for (let i = 0; i < n; i++) ms += spec.durations?.[i] || spec.durations?.[0] || 80;
+  return Math.max(0.05, ms / 1000);
+}
+
+function ritmoLocomocao(spec, nome, ator) {
+  const ciclo = cicloDaFaixa(spec);
+  const piso = nome === "FlapAround" ? CICLO_VOO : CICLO_ANDAR;
+  const base = Math.min(1, ciclo / piso);
+  const vel = velocidadePlana(ator);
+  const acompanha = Math.min(1.15, Math.max(0.8, vel / POKEMON.VEL_ROAM));
+  return base * (vel > 0.2 ? acompanha : 0.8);
+}
+
 function marcarPasso(ator) {
   const sp = velocidadePlana(ator);
   const ativo = !!ator.visual?.passo;
@@ -252,9 +272,8 @@ export function tickVisual(ator, dt, agora) {
   }
   const spec = pack.anims?.[v.anim];
   if (!spec) return pack;
-  const loco = v.anim === "Walk" || (v.anim === "FlapAround" && v.passo);
-  const ritmo = loco
-    ? Math.min(2.2, Math.max(0.72, velocidadePlana(ator) / POKEMON.VEL_ROAM))
+  const ritmo = v.anim === "Walk" || v.anim === "FlapAround"
+    ? ritmoLocomocao(spec, v.anim, ator)
     : 1;
   if ((ator.recuoTrava || 0) > 0) return pack;
   v.t += dt * ritmo;
