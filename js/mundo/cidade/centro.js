@@ -1,17 +1,11 @@
 /**
  * Centro Pokémon. Sala 14×9, um tile por célula.
- * A borda é parede, com a porta no sul. O miolo fica livre até os móveis entrarem.
+ * A borda é parede, com a porta no sul. O balcão fica na frente da enfermeira.
  */
-import { criarPlantaHub, aplicarPlantaNoChunk, naSaidaPlanta, alvoDaPlanta, ESCALA_HUB } from "./plantaHub.js";
+import { criarPlantaHub, aplicarPlantaNoChunk, naSaidaPlanta, alvoDaPlanta } from "./plantaHub.js";
 
 export const ORIGEM_CENTRO_X = 8192;
 export const ORIGEM_CENTRO_Y = 8704;
-
-const S = ESCALA_HUB;
-
-function meio(tx, ty) {
-  return { x: (tx + 0.5) * S, y: (ty + 0.5) * S };
-}
 
 const CAMADA = Object.freeze([
   Object.freeze([7, 8, 66, 67, 9, 9, 9, 56, 57, 9, 10, 11, 12, 13]),
@@ -25,9 +19,10 @@ const CAMADA = Object.freeze([
   Object.freeze([32, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 30, 39, 40]),
 ]);
 
-const enfermeira = meio(7, 3);
+const enfermeira = { x: 7.5, y: 2.55, coluna: 64 };
 const pc = { x: 10.5, y: 3 };
-const maquina = { x: 6, y: 3 };
+const maquina = { x: 6, y: 2.55 };
+const balcao = { x: 4, y: 3, w: 6, h: 1, sprite: 25 };
 
 const PLANTA = criarPlantaHub({
   papel: "centro",
@@ -46,13 +41,24 @@ const PLANTA = criarPlantaHub({
   props: [
     { id: "cura", x: maquina.x, y: maquina.y, disco: true, raio: 0.62 },
     { id: "pc", x: pc.x, y: pc.y, disco: true, raio: 0.42 },
+    { id: "npc", coluna: enfermeira.coluna, x: enfermeira.x, y: enfermeira.y, disco: true, raio: 0.36 },
   ],
   alvos: [
-    { tipo: "cura", nome: "Enfermeira", x: enfermeira.x, y: enfermeira.y, alcance: 1.45 },
-    { tipo: "cura", nome: "Máquina", x: maquina.x, y: maquina.y + 0.7, alcance: 1.35 },
+    { tipo: "cura", nome: "Enfermeira", x: 7.5, y: 4.5, alcance: 1.25 },
+    { tipo: "cura", nome: "Máquina", x: 6, y: 4.5, alcance: 1.25 },
     { tipo: "pc", nome: "PC", x: pc.x, y: pc.y + 0.7, alcance: 1.25 },
   ],
 });
+
+PLANTA.balcao = balcao;
+for (let i = 0; i < balcao.w; i++) {
+  PLANTA.discos.push({
+    x: ORIGEM_CENTRO_X + balcao.x + i + 0.5,
+    y: ORIGEM_CENTRO_Y + balcao.y + balcao.h * 0.5,
+    z: PLANTA.spawn.z,
+    r: 0.48,
+  });
+}
 
 export function plantaCentro() {
   return PLANTA;
