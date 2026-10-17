@@ -1,4 +1,5 @@
 import { emAvanco, emEsquiva, emRecuo } from "../ator.js";
+import { cancelarConjuracao } from "../combate/executor.js";
 import {
   CORREDOR_TIRO,
   FOLGA_PROJETIL,
@@ -50,6 +51,7 @@ function pensarEsquiva(ator, alvo, tiros) {
   observar(ator, alvo, tiros, faixa.parada, entrada);
   calcularHabilidade("esquivar");
   aplicarHabilidade("esquivar", ator, alvo);
+  if (emEsquiva(ator)) cancelarConjuracao(ator);
   return true;
 }
 

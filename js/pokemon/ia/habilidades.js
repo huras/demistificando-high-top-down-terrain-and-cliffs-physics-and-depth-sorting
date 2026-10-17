@@ -81,6 +81,12 @@ export function integrarComando(ator, alvo, dt) {
     ator.dirX = q.fx;
     ator.dirY = q.fy;
   }
+  if ((ator.conjuroRestante || 0) > 0) {
+    ator.vx = 0;
+    ator.vy = 0;
+    ator.andando = false;
+    return;
+  }
   if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
     ator.andando = false;
     return;

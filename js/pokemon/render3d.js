@@ -3,6 +3,7 @@ import { ALTURA_BLOCO, TILE } from "../config.js";
 import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 import { obterBola, particulasCaptura } from "./captura.js";
 import { projeteisVivos } from "./combate/projeteis.js";
+import { aurasVivas, ORBES_KI } from "./combate/ki.js";
 import { dropsNoChao } from "./drops.js";
 import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
@@ -28,6 +29,7 @@ const CAP_ATOR = 20;
 const CAP_TIRO = 32;
 const CAP_DROP = 48;
 const CAP_FAISCA = 36;
+const CAP_KI = 8;
 const MAX_BRILHO = 4;
 const _mundo = new THREE.Vector3();
 const _luzCidade = new THREE.Color();
@@ -42,7 +44,11 @@ let drops = [];
 let bolaMesh = null;
 let bolaTex = null;
 let faiscas = [];
+let kiHalos = [];
+let kiNucleos = [];
+let kiOrbes = [];
 let pontoTex = null;
+let kiTex = null;
 
 function texturaPonto() {
   if (pontoTex) return pontoTex;
@@ -146,6 +152,41 @@ function texturaBola() {
   return bolaTex;
 }
 
+function texturaKi() {
+  if (kiTex) return kiTex;
+  const c = document.createElement("canvas");
+  c.width = 32;
+  c.height = 32;
+  const g = c.getContext("2d");
+  const rad = g.createRadialGradient(16, 16, 0, 16, 16, 15);
+  rad.addColorStop(0, "rgba(255,255,255,1)");
+  rad.addColorStop(0.4, "rgba(255,255,255,0.55)");
+  rad.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = rad;
+  g.fillRect(0, 0, 32, 32);
+  kiTex = new THREE.CanvasTexture(c);
+  kiTex.colorSpace = THREE.SRGBColorSpace;
+  kiTex.magFilter = THREE.LinearFilter;
+  kiTex.minFilter = THREE.LinearFilter;
+  kiTex.generateMipmaps = false;
+  return kiTex;
+}
+
+function criarKi(ordem) {
+  const mat = new THREE.SpriteMaterial({
+    map: texturaKi(),
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.renderOrder = ordem;
+  sprite.visible = false;
+  cena.add(sprite);
+  return sprite;
+}
+
 function criarPonto(cor) {
   const mat = new THREE.SpriteMaterial({
     map: texturaPonto(),
@@ -169,6 +210,11 @@ export function ligarPokemon3d(scene) {
   for (let i = 0; i < CAP_TIRO; i++) tiros.push(criarPonto("#ffffff"));
   for (let i = 0; i < CAP_DROP; i++) drops.push(criarPonto("#fbbf24"));
   for (let i = 0; i < CAP_FAISCA; i++) faiscas.push(criarPonto("#fde68a"));
+  for (let i = 0; i < CAP_KI; i++) {
+    kiHalos.push(criarKi(6));
+    kiNucleos.push(criarKi(7));
+    for (let k = 0; k < ORBES_KI; k++) kiOrbes.push(criarKi(6));
+  }
   bolaMesh = new THREE.Sprite(new THREE.SpriteMaterial({
     map: texturaBola(),
     transparent: true,
@@ -331,6 +377,46 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
     mesh.material.color.set(p.cor || "#ffffff");
     mesh.scale.set(0.22, 0.22, 1);
     mesh.position.set(p.x, p.z * ALTURA_BLOCO, p.y);
+  }
+
+  const auras = aurasVivas();
+  for (let i = 0; i < CAP_KI; i++) {
+    const aura = auras[i];
+    const halo = kiHalos[i];
+    const nucleo = kiNucleos[i];
+    const viva = !!(aura && aura.viva);
+    halo.visible = viva;
+    nucleo.visible = viva;
+    if (!viva) {
+      for (let k = 0; k < ORBES_KI; k++) kiOrbes[i * ORBES_KI + k].visible = false;
+      continue;
+    }
+    const y = Math.max(0.2, aura.z * ALTURA_BLOCO);
+    const pulso = 1 + Math.sin(aura.ang * 3) * 0.07;
+    const s = (0.32 + aura.u * 0.95) * pulso;
+    halo.position.set(aura.x, y, aura.y);
+    halo.material.color.set(aura.cor);
+    halo.material.opacity = 0.4 + aura.u * 0.45;
+    halo.scale.set(s, s, 1);
+    nucleo.position.set(aura.x, y, aura.y);
+    nucleo.material.color.set("#ffffff");
+    nucleo.material.opacity = 0.9;
+    nucleo.scale.set(s * 0.4, s * 0.4, 1);
+    const raio = 0.82 - aura.u * 0.52;
+    for (let k = 0; k < ORBES_KI; k++) {
+      const mesh = kiOrbes[i * ORBES_KI + k];
+      const a = aura.ang + (k / ORBES_KI) * Math.PI * 2;
+      mesh.visible = true;
+      mesh.material.color.set(aura.cor);
+      mesh.material.opacity = 0.55 + aura.u * 0.4;
+      const os = 0.14 + aura.u * 0.12;
+      mesh.scale.set(os, os, 1);
+      mesh.position.set(
+        aura.x + Math.cos(a) * raio,
+        y + Math.sin(aura.ang * 2 + k) * 0.08,
+        aura.y + Math.sin(a) * raio,
+      );
+    }
   }
 
   const noChao = dropsNoChao();

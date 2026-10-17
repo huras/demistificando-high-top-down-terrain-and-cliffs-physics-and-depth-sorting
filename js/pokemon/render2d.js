@@ -4,6 +4,7 @@ import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
 import { obterBola } from "./captura.js";
 import { dropsNoChao } from "./drops.js";
 import { projeteisVivos } from "./combate/projeteis.js";
+import { auraDe, ORBES_KI } from "./combate/ki.js";
 import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
 import { atoresVisiveis } from "./sistema.js";
 import { COR_TIPO } from "./tipos.js";
@@ -40,6 +41,38 @@ function desenharCorpo(ctx, ator) {
     ctx.fillStyle = cor;
     ctx.beginPath();
     ctx.arc(footX, footY - 16 * escala, 12 * escala, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  desenharKi(ctx, ator, footX, footY, escala);
+}
+
+function desenharKi(ctx, ator, x, y, escala) {
+  const aura = auraDe(ator);
+  if (!aura?.viva) return;
+  const u = aura.u;
+  const pulso = 1 + Math.sin(aura.ang * 3) * 0.08;
+  const raio = (8 + u * 16) * escala * pulso;
+  const cy = y - 18 * escala;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = aura.cor;
+  ctx.globalAlpha = 0.35 + u * 0.4;
+  ctx.beginPath();
+  ctx.arc(x, cy, raio, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.arc(x, cy, raio * 0.38, 0, Math.PI * 2);
+  ctx.fill();
+  const orb = (16 - u * 8) * escala;
+  for (let i = 0; i < ORBES_KI; i++) {
+    const a = aura.ang + (i / ORBES_KI) * Math.PI * 2;
+    ctx.globalAlpha = 0.55 + u * 0.4;
+    ctx.fillStyle = aura.cor;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * orb, cy + Math.sin(a) * orb * 0.55, (2.4 + u * 1.8) * escala, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();

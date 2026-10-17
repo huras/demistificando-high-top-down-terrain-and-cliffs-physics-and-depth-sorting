@@ -1,7 +1,8 @@
 import { atoresPerto } from "../grade.js";
 import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, golpeBasico, recargaDe } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
-import { calcularDano } from "../tipos.js";
+import { calcularDano, COR_TIPO } from "../tipos.js";
+import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
 import { soltarProjetil } from "./projeteis.js";
 import { marcarPose } from "../sprites.js";
 
@@ -173,6 +174,121 @@ function escolher(ator, alvo, d) {
   return null;
 }
 
+/** Golpe forte demora mais para juntar o Ki. */
+export function tempoConjuracao(def) {
+  const poder = Math.max(1, def?.poder || 20);
+  return 0.5 + Math.min(0.8, poder / 100);
+}
+
+export function emConjuracao(ator) {
+  return (ator?.conjuroRestante || 0) > 0;
+}
+
+function pararNoLugar(ator) {
+  ator.vx = 0;
+  ator.vy = 0;
+  ator.andando = false;
+}
+
+export function cancelarConjuracao(ator) {
+  if (!ator) return;
+  ator.conjuroRestante = 0;
+  ator.conjuroDur = 0;
+  ator.conjuroSlot = null;
+  fecharKi(ator);
+}
+
+function comecarConjuro(ator, slot, mx, my, agora, efeitos) {
+  const dur = tempoConjuracao(slot.def);
+  ator.conjuroRestante = dur;
+  ator.conjuroDur = dur;
+  ator.conjuroSlot = slot;
+  ator.conjuroMx = mx;
+  ator.conjuroMy = my;
+  pararNoLugar(ator);
+  marcarPose(ator, "Shoot", agora);
+  ator.poseAte = agora + dur + 0.2;
+  abrirKi(ator, slot.def.tipo);
+  if (efeitos?.flutuar) efeitos.flutuar(ator, slot.def.nome, COR_TIPO[slot.def.tipo] || "#e2e8f0");
+}
+
+function disparar(ator, slot, mx, my, agora, efeitos) {
+  const def = slot.def;
+  const dx = mx - ator.x;
+  const dy = my - ator.y;
+  const len = Math.hypot(dx, dy) || 1;
+  ator.dirX = dx / len;
+  ator.dirY = dy / len;
+  gastar(ator, slot, agora);
+  if (efeitos.aoGolpe) efeitos.aoGolpe(ator, def);
+  notar(efeitos, { tipo: "golpe", ator, def });
+  marcarPose(ator, "Shoot", agora);
+  soltarProjetil({
+    x: ator.x + ator.dirX * 0.4,
+    y: ator.y + ator.dirY * 0.4,
+    z: alturaPe(ator),
+    vx: ator.dirX * (def.vel || 14),
+    vy: ator.dirY * (def.vel || 14),
+    dono: ator,
+    faccao: ator.faccao,
+    poder: def.poder,
+    tipo: def.tipo,
+    categoria: def.categoria,
+    acerto: def.acerto,
+    forma: def.forma,
+    raio: def.raio,
+    max: def.alcance || 12,
+    arco: def.forma === "arc",
+  });
+}
+
+export function tickConjuracao(ator, dt, agora, efeitos) {
+  if (!emConjuracao(ator)) return;
+  if (ator.morto || ator.capturado) {
+    cancelarConjuracao(ator);
+    return;
+  }
+  const slot = ator.conjuroSlot;
+  const alvo = ator.alvo;
+  if (!slot || !alvo) {
+    cancelarConjuracao(ator);
+    return;
+  }
+  let mx = ator.conjuroMx;
+  let my = ator.conjuroMy;
+  if (Number.isFinite(ator.miraX) && Number.isFinite(ator.miraY)) {
+    mx = ator.miraX;
+    my = ator.miraY;
+  } else {
+    mx = alvo.x;
+    my = alvo.y;
+  }
+  ator.conjuroMx = mx;
+  ator.conjuroMy = my;
+  const dx = mx - ator.x;
+  const dy = my - ator.y;
+  const len = Math.hypot(dx, dy) || 1;
+  ator.dirX = dx / len;
+  ator.dirY = dy / len;
+  const noRecuo = emRecuo(ator);
+  if (!noRecuo) pararNoLugar(ator);
+  const passo = noRecuo ? dt * 0.5 : dt;
+  ator.conjuroRestante -= passo;
+  const dur = ator.conjuroDur || tempoConjuracao(slot.def);
+  const u = 1 - Math.max(0, ator.conjuroRestante) / dur;
+  pulsarKi(ator, u, passo);
+  ator.hopLift = Math.max(ator.hopLift || 0, 0.05 + u * 0.2);
+  if (!noRecuo) {
+    ator.pose = "Shoot";
+    ator.poseAte = agora + 0.45;
+  }
+  if (ator.conjuroRestante > 0) return;
+  ator.conjuroRestante = 0;
+  ator.conjuroSlot = null;
+  fecharKi(ator);
+  disparar(ator, slot, mx, my, agora, efeitos);
+}
+
 function avancarNoGolpe(ator, alvo) {
   const dx = (alvo?.x ?? ator.x + ator.dirX) - ator.x;
   const dy = (alvo?.y ?? ator.y + ator.dirY) - ator.y;
@@ -188,6 +304,12 @@ function executar(ator, slot, alvo, agora, efeitos) {
   if ((def.forma === "projectile" || def.forma === "arc") && Number.isFinite(ator.miraX) && Number.isFinite(ator.miraY)) {
     mx = ator.miraX;
     my = ator.miraY;
+  }
+  if (def.forma === "projectile" || def.forma === "arc") {
+    if (def.poder > 0) {
+      comecarConjuro(ator, slot, mx, my, agora, efeitos);
+      return;
+    }
   }
   const dx = mx - ator.x;
   const dy = my - ator.y;
@@ -209,30 +331,8 @@ function executar(ator, slot, alvo, agora, efeitos) {
       ator.velMulAte = agora + 4;
       efeitos.flutuar(ator, def.nome, "#93c5fd");
     }
-    marcarPose(ator, "Attack", agora);
-    return;
-  }
-
-  if (def.forma === "projectile" || def.forma === "arc") {
-    marcarPose(ator, "Shoot", agora);
-    soltarProjetil({
-      x: ator.x + ator.dirX * 0.4,
-      y: ator.y + ator.dirY * 0.4,
-      z: alturaPe(ator),
-      vx: ator.dirX * (def.vel || 14),
-      vy: ator.dirY * (def.vel || 14),
-      dono: ator,
-      faccao: ator.faccao,
-      poder: def.poder,
-      tipo: def.tipo,
-      categoria: def.categoria,
-      acerto: def.acerto,
-      forma: def.forma,
-      raio: def.raio,
-      max: def.alcance || 12,
-      arco: def.forma === "arc",
-    });
-    return;
+  marcarPose(ator, "Attack", agora);
+  return;
   }
 
   if (def.forma === "radius" || def.forma === "contact") avancarNoGolpe(ator, alvo);
@@ -253,6 +353,7 @@ function executar(ator, slot, alvo, agora, efeitos) {
 }
 
 export function tentarGolpe(ator, agora, efeitos) {
+  if (emConjuracao(ator)) return;
   const recuoHerdado = ator.recuoNoTick == null ? emRecuo(ator) : ator.recuoNoTick > 0;
   if (ator.morto || ator.capturado || ator.dormindo > 0 || recuoHerdado || emAvanco(ator) || emEsquiva(ator)) return;
   const alvo = ator.alvo;

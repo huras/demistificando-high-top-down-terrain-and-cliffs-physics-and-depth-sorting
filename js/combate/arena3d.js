@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { ALTURA_BLOCO, TILE } from "../config.js";
 import { particulasVivas } from "../pokemon/combate/particulas.js";
 import { projeteisVivos } from "../pokemon/combate/projeteis.js";
+import { aurasVivas, ORBES_KI } from "../pokemon/combate/ki.js";
 import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
 import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 
@@ -11,6 +12,7 @@ const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;
 const CAP_TIRO = 32;
 const CAP_FAISCA = 160;
+const CAP_KI = 8;
 
 let canvas = null;
 let renderer = null;
@@ -32,6 +34,9 @@ const _desloc = { x: 0, z: 0 };
 const slots = [];
 const tiros = [];
 const faiscas = [];
+const kiHalos = [];
+const kiNucleos = [];
+const kiOrbes = [];
 
 function texturaSuave() {
   const c = document.createElement("canvas");
@@ -441,9 +446,56 @@ export function ligarArena(elemento) {
   for (let i = 0; i < 2; i++) slots.push(criarAtorSlot());
   for (let i = 0; i < CAP_TIRO; i++) tiros.push(criarPonto(nucleo, 4, false));
   for (let i = 0; i < CAP_FAISCA; i++) faiscas.push(criarPonto(suave, 5, true));
+  for (let i = 0; i < CAP_KI; i++) {
+    kiHalos.push(criarPonto(suave, 6, true));
+    kiNucleos.push(criarPonto(nucleo, 7, true));
+    for (let k = 0; k < ORBES_KI; k++) kiOrbes.push(criarPonto(suave, 6, true));
+  }
 
   ligarPonteiro();
   ajustarTamanho();
+}
+
+function pintarKi() {
+  const lista = aurasVivas();
+  for (let i = 0; i < CAP_KI; i++) {
+    const aura = lista[i];
+    const halo = kiHalos[i];
+    const nucleo = kiNucleos[i];
+    const viva = !!(aura && aura.viva);
+    halo.visible = viva;
+    nucleo.visible = viva;
+    if (!viva) {
+      for (let k = 0; k < ORBES_KI; k++) kiOrbes[i * ORBES_KI + k].visible = false;
+      continue;
+    }
+    const y = Math.max(0.2, aura.z * ALTURA_BLOCO);
+    const pulso = 1 + Math.sin(aura.ang * 3) * 0.07;
+    const s = (0.32 + aura.u * 0.95) * pulso;
+    halo.position.set(aura.x, y, aura.y);
+    halo.material.color.set(aura.cor);
+    halo.material.opacity = 0.4 + aura.u * 0.45;
+    halo.scale.set(s, s, 1);
+    nucleo.position.set(aura.x, y, aura.y);
+    nucleo.material.color.set("#ffffff");
+    nucleo.material.opacity = 0.9;
+    nucleo.scale.set(s * 0.4, s * 0.4, 1);
+    const raio = 0.82 - aura.u * 0.52;
+    for (let k = 0; k < ORBES_KI; k++) {
+      const mesh = kiOrbes[i * ORBES_KI + k];
+      const a = aura.ang + (k / ORBES_KI) * Math.PI * 2;
+      mesh.visible = true;
+      mesh.material.color.set(aura.cor);
+      mesh.material.opacity = 0.55 + aura.u * 0.4;
+      const os = 0.14 + aura.u * 0.12;
+      mesh.scale.set(os, os, 1);
+      mesh.position.set(
+        aura.x + Math.cos(a) * raio,
+        y + Math.sin(aura.ang * 2 + k) * 0.08,
+        aura.y + Math.sin(a) * raio,
+      );
+    }
+  }
 }
 
 export function desenharArena(atores) {
@@ -452,6 +504,7 @@ export function desenharArena(atores) {
   for (let i = 0; i < slots.length; i++) pintarAtor(slots[i], atores?.[i] || null);
   pintarTiros();
   pintarFaiscas();
+  pintarKi();
   renderer.render(cena, camera);
 }
 

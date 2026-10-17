@@ -3,7 +3,7 @@ import { SPAWN as SPAWN_DEMO } from "../mundo/mapaDemo.js";
 import { SPAWN_PALLET } from "../mundo/regiao/spawnKanto.js";
 import { tickPassivo, aplicarNivel } from "./ator.js";
 import { atualizarCaptura } from "./captura.js";
-import { impactoProjetil, tentarGolpe } from "./combate/executor.js";
+import { impactoProjetil, tentarGolpe, tickConjuracao } from "./combate/executor.js";
 import { atualizarProjeteis } from "./combate/projeteis.js";
 import { dadosProntos } from "./dados.js";
 import { atualizarDrops, soltarDrop } from "./drops.js";
@@ -114,6 +114,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   const atores = mon ? selvagens.concat(mon) : selvagens;
   for (let i = 0; i < atores.length; i++) tickPassivo(atores[i], passo, agora);
   montarGrade(atores.concat(treinador));
+  for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
   for (let i = 0; i < atores.length; i++) tentarGolpe(atores[i], agora, efeitos);
   atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
     impactoProjetil(p, alvo, agora, efeitos);

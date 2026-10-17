@@ -131,6 +131,10 @@ function zDePerseguicao(ator, alvo) {
 
 /** Mesmo seguidor do companheiro: pula, escala e não teleporta. distParar menor chega mais perto do ponto. */
 export function irPara(ator, gx, gy, gz, vel, dt, distParar = 0) {
+  if ((ator.conjuroRestante || 0) > 0) {
+    pararCorpo(ator);
+    return false;
+  }
   const perfil = perfilCampo(ator);
   if (ator.perfil !== perfil) ator.perfil = perfil;
   garantirCorpoLocomocao(ator, ator.perfil);
@@ -205,8 +209,8 @@ function atualizarUm(ator, party, jogador, dt) {
     ator.alvo = null;
     return;
   }
-  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
-    ator.andando = false;
+  if ((ator.conjuroRestante || 0) > 0 || emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
+    pararCorpo(ator);
     return;
   }
   if (ator.dormindo > 0) {

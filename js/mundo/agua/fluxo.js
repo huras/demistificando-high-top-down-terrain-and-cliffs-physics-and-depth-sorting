@@ -207,6 +207,22 @@ const CACHE_VAZIA = Object.freeze({
   fluxoY: 0,
 });
 
+/** Profundidade em repouso. Cachoeira e seco devolvem 0. Sem objeto. */
+export function profundidadeRepouso(wx, wy) {
+  const x = wx | 0;
+  const y = wy | 0;
+  const { cx, cy } = mundoParaChunk(x, y);
+  const chunk = obterChunk(cx, cy);
+  if (!chunk) return 0;
+  garantirFluxoChunk(chunk);
+  const lx = x - cx * CHUNK_XZ;
+  const ly = y - cy * CHUNK_XZ;
+  if (lx < 0 || ly < 0 || lx >= CHUNK_XZ || ly >= CHUNK_XZ) return 0;
+  const i = ly * CHUNK_XZ + lx;
+  if ((chunk.aguaSuperficie[i] | 0) <= 0 || chunk.aguaCaindo[i] === 1) return 0;
+  return chunk.aguaProf[i] | 0;
+}
+
 /** Coluna com fluxo já resolvido. O(1) depois do primeiro acesso ao chunk. */
 export function colunaAgua(wx, wy) {
   const x = wx | 0;

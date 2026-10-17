@@ -1,5 +1,6 @@
 import { comecarEsquiva, criarAtor, emAvanco, emEsquiva, emRecuo, equiparGolpes, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
-import { impactoProjetil, tentarGolpe } from "../pokemon/combate/executor.js";
+import { cancelarConjuracao, impactoProjetil, tentarGolpe, tickConjuracao } from "../pokemon/combate/executor.js";
+import { limparKi } from "../pokemon/combate/ki.js";
 import { limparParticulas, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { tickEmocoes } from "../pokemon/emocoes.js";
@@ -156,6 +157,7 @@ function tentarEsquiva(ator, dx, dy, d) {
   ator.esquivaLado = -lado;
   const ok = comecarEsquiva(ator, (-dy / d) * lado, (dx / d) * lado);
   if (!ok) ator.esquivaLado = lado;
+  else cancelarConjuracao(ator);
   return ok;
 }
 
@@ -186,6 +188,12 @@ function avancar(ator, tx, ty, dt) {
   const d = Math.hypot(dx, dy) || 0.0001;
   ator.dirX = dx / d;
   ator.dirY = dy / d;
+  if ((ator.conjuroRestante || 0) > 0) {
+    ator.vx = 0;
+    ator.vy = 0;
+    ator.andando = false;
+    return;
+  }
   if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
     ator.andando = false;
     return;
@@ -257,6 +265,7 @@ function limparCampo() {
   limparProjeteis();
   limparParticulas();
   limparFlutuantes();
+  limparKi();
 }
 
 function soltarRastros() {
@@ -274,6 +283,8 @@ function aoTiro(p, alvo) {
 }
 
 function encerrar() {
+  cancelarConjuracao(esquerda);
+  cancelarConjuracao(direita);
   lutando = false;
   acabou = true;
   esquerda.alvo = null;
@@ -378,6 +389,8 @@ export function tickLuta(dt) {
     } else {
       reagirPar(esquerda, direita);
     }
+    tickConjuracao(esquerda, passo, agora, efeitos);
+    tickConjuracao(direita, passo, agora, efeitos);
     tentarGolpe(esquerda, agora, efeitos);
     tentarGolpe(direita, agora, efeitos);
     if (iaRedeLigada()) {

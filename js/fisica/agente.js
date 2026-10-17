@@ -10,6 +10,7 @@ import {
   VELOCIDADE_SPRINT,
 } from "../config.js";
 import { aplicarEspacoSeguir } from "../navegacao/espacoSeguir.js";
+import { pensarSeguir } from "../navegacao/ia/pensar.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import {
   atualizarSeguirCaminho,
@@ -222,7 +223,8 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
     podeCorrer && lider.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
   let velMax = velPedido > 0 ? velPedido : velLider * AGENTE_VEL_MUL;
 
-  const navCmd = atualizarSeguirCaminho(agente, lider, dt, distSeguir);
+  const redeCmd = pensarSeguir(agente, lider, dt, distSeguir);
+  const navCmd = redeCmd || atualizarSeguirCaminho(agente, lider, dt, distSeguir);
   let ix = navCmd.ix;
   let iy = navCmd.iy;
   const querPulo = navCmd.querPulo;

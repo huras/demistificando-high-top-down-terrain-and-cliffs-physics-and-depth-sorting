@@ -100,6 +100,34 @@ export function centroNaBase(cx, cy, z) {
   return discoQueInvade(cx + 0.5, cy + 0.5, z, 0) != null;
 }
 
+const CAP_DISCOS = 48;
+
+/** Discos do piso, x,y,z,r. `destino` tem pelo menos 192 floats. Sem alocação. */
+export function encherDiscos(x, y, alcance, elev, destino) {
+  let n = 0;
+  const r = Math.ceil(alcance);
+  const cx = Math.floor(x);
+  const cy = Math.floor(y);
+  for (let iy = -r; iy <= r; iy++) {
+    for (let ix = -r; ix <= r; ix++) {
+      const balde = porCelula.get(`${cx + ix},${cy + iy}`);
+      if (!balde) continue;
+      for (let i = 0; i < balde.length; i++) {
+        const d = balde[i];
+        if (Math.abs(elev - d.z) > FOLGA_PISO) continue;
+        if (n >= CAP_DISCOS) return n;
+        const o = n * 4;
+        destino[o] = d.x;
+        destino[o + 1] = d.y;
+        destino[o + 2] = d.z;
+        destino[o + 3] = d.r;
+        n++;
+      }
+    }
+  }
+  return n;
+}
+
 function indexarAutorais() {
   const lista = [];
   for (let i = 0; i < PROPS.length; i++) {
