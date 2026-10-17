@@ -1,4 +1,4 @@
-import { comecarEsquiva, criarAtor, emAvanco, emEsquiva, emRecuo, equiparGolpes, golpeBasico, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
+import { comecarEsquiva, criarAtor, emAvanco, emEsquiva, emRecuo, equiparGolpes, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
 import { impactoProjetil, tentarGolpe } from "../pokemon/combate/executor.js";
 import { limparParticulas, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
@@ -6,8 +6,13 @@ import { tickEmocoes } from "../pokemon/emocoes.js";
 import { flutuar, limparFlutuantes, tickFlutuantes } from "../pokemon/flutuantes.js";
 import { montarGrade } from "../pokemon/grade.js";
 import { tickVisual } from "../pokemon/sprites.js";
+import { CORREDOR_TIRO, JANELA_TIRO, RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
+import { limitarArena, paradaDe, posturaDe, sentidoParada, vaiMelee } from "../pokemon/ia/espaco.js";
+import { integrarComando } from "../pokemon/ia/habilidades.js";
+import { iaRedeLigada, pensar, reagirEsquiva } from "../pokemon/ia/seletor.js";
 
-const RAIO_ARENA = 9.2;
+export { definirIaRede } from "../pokemon/ia/seletor.js";
+
 const CASA = {
   esquerda: { x: -5.2, y: 0, dirX: 1 },
   direita: { x: 5.2, y: 0, dirX: -1 },
@@ -123,99 +128,6 @@ function publicar() {
   par[1] = direita;
 }
 
-function limitar(ator) {
-  const d = Math.hypot(ator.x, ator.y);
-  if (d <= RAIO_ARENA) return;
-  const k = RAIO_ARENA / d;
-  ator.x *= k;
-  ator.y *= k;
-}
-
-function golpePronto(ator, serve) {
-  for (let i = 0; i < ator.golpes.length; i++) {
-    const g = ator.golpes[i];
-    if (!serve(g.def) || g.cd > 0) continue;
-    if ((g.def.pp || 1) > ator.pp) continue;
-    return g.def;
-  }
-  return null;
-}
-
-function ehDistancia(def) {
-  return def.forma === "projectile" || def.forma === "arc";
-}
-
-function ehCorpo(def) {
-  return def.forma === "contact" || def.forma === "radius";
-}
-
-function golpeEquipado(ator, serve) {
-  for (let i = 0; i < ator.golpes.length; i++) {
-    if (serve(ator.golpes[i].def)) return ator.golpes[i].def;
-  }
-  return null;
-}
-
-function postura(ator) {
-  const corpo = ator.usaCorpo !== false;
-  const distancia = ator.usaDistancia !== false;
-  if (distancia) {
-    const longe = golpePronto(ator, ehDistancia);
-    if (longe) return longe;
-  }
-  if (corpo) {
-    const perto = golpePronto(ator, ehCorpo);
-    if (perto) return perto;
-    return { forma: "contact", alcance: 1.15, poder: 18 };
-  }
-  if (distancia) return golpeEquipado(ator, ehDistancia);
-  return null;
-}
-
-function paradaDe(def) {
-  if (!def || def.forma === "contact") {
-    const alcance = Math.max(0.9, def?.alcance || 1.05);
-    return Math.min(alcance * 0.85, Math.max(0.8, alcance - 0.15));
-  }
-  if ((def.poder || 0) <= 0) return 2.8;
-  const alcance = Math.max(0.6, def.alcance || 1);
-  if (def.forma === "radius") {
-    const raio = Math.max(2.2, alcance);
-    return Math.min(4.2, Math.min(raio - 0.25, Math.max(1.55, raio * 0.7)));
-  }
-  const dentro = Math.min(alcance * 0.72, 4.4);
-  if (alcance <= 1.35) return Math.max(0.7, dentro);
-  return Math.min(dentro, Math.max(1.55, Math.min(alcance * 0.45, 4.4)));
-}
-
-function golpeProntoAmeaca(ator, serve) {
-  if (!ator?.golpes) return null;
-  for (let i = 0; i < ator.golpes.length; i++) {
-    const g = ator.golpes[i];
-    if (!serve(g.def) || g.cd > 0) continue;
-    if ((g.def.pp || 1) > ator.pp) continue;
-    return g.def;
-  }
-  return null;
-}
-
-function vaiMelee(oponente, ator) {
-  if (!oponente || oponente.morto || oponente.capturado || oponente.dormindo > 0) return false;
-  if (emRecuo(oponente) || emAvanco(oponente) || emEsquiva(oponente)) return false;
-  if (oponente.usaCorpo === false) return false;
-  const dx = ator.x - oponente.x;
-  const dy = ator.y - oponente.y;
-  const d = Math.hypot(dx, dy);
-  const basico = golpeBasico().alcance;
-  const contato = golpeProntoAmeaca(oponente, (def) => def.forma === "contact");
-  if (contato && d <= Math.max(basico, contato.alcance)) return true;
-  const tiro = oponente.usaDistancia !== false && golpeProntoAmeaca(oponente, (def) => def.forma === "projectile" || def.forma === "arc");
-  if (tiro && d <= tiro.alcance) return false;
-  const area = golpeProntoAmeaca(oponente, (def) => def.forma === "radius" && def.poder > 0);
-  if (area && d <= Math.max(2.2, area.alcance)) return true;
-  return d <= basico && oponente.cdBasico <= 0;
-}
-
 function tiroVem(p, ator) {
   if (!p || p.dono === ator || p.faccao === ator.faccao) return false;
   const dx = ator.x - p.x;
@@ -224,8 +136,8 @@ function tiroVem(p, ator) {
   if (vel < 0.5) return false;
   if (dx * p.vx + dy * p.vy <= 0) return false;
   const lateral = Math.abs(dx * p.vy - dy * p.vx) / vel;
-  if (lateral > (p.raio || 0.45) + 0.7) return false;
-  return Math.hypot(dx, dy) / vel < 0.22;
+  if (lateral > (p.raio || RAIO_PROJETIL) + CORREDOR_TIRO) return false;
+  return Math.hypot(dx, dy) / vel < JANELA_TIRO;
 }
 
 function ameacaAgora(ator, oponente) {
@@ -278,7 +190,7 @@ function avancar(ator, tx, ty, dt) {
     ator.andando = false;
     return;
   }
-  const def = postura(ator);
+  const def = posturaDe(ator);
   if (!def) {
     ator.vx = 0;
     ator.vy = 0;
@@ -286,10 +198,7 @@ function avancar(ator, tx, ty, dt) {
     return;
   }
   const parada = paradaDe(def);
-  const folga = 0.18;
-  let sentido = 0;
-  if (d > parada + folga) sentido = 1;
-  else if (d < parada - folga && def.forma !== "contact") sentido = -1;
+  const sentido = sentidoParada(d, parada, def.forma);
   if (sentido === 0) {
     ator.vx = 0;
     ator.vy = 0;
@@ -311,7 +220,7 @@ function avancar(ator, tx, ty, dt) {
   ator.vx = (dx / d) * sentido * vel;
   ator.vy = (dy / d) * sentido * vel;
   ator.andando = true;
-  limitar(ator);
+  limitarArena(ator);
 }
 
 function apresentar(ator) {
@@ -438,25 +347,45 @@ export function tickLuta(dt) {
     const ay = esquerda.y;
     const bx = direita.x;
     const by = direita.y;
-    avancar(esquerda, bx, by, passo);
-    avancar(direita, ax, ay, passo);
+    if (iaRedeLigada()) {
+      integrarComando(esquerda, direita, passo);
+      integrarComando(direita, esquerda, passo);
+    } else {
+      esquerda.miraX = NaN;
+      esquerda.miraY = NaN;
+      direita.miraX = NaN;
+      direita.miraY = NaN;
+      avancar(esquerda, bx, by, passo);
+      avancar(direita, ax, ay, passo);
+    }
     esquerda.alvo = direita;
     direita.alvo = esquerda;
   }
 
   tickPassivo(esquerda, passo, agora);
   tickPassivo(direita, passo, agora);
-  limitar(esquerda);
-  limitar(direita);
+  limitarArena(esquerda);
+  limitarArena(direita);
 
   if (lutando) {
     montarGrade(par);
     esquerda.recuoNoTick = esquerda.recuoRestante || 0;
     direita.recuoNoTick = direita.recuoRestante || 0;
-    reagirPar(esquerda, direita);
+    const tiros = projeteisVivos();
+    if (iaRedeLigada()) {
+      pensar(esquerda, direita, passo, tiros);
+      pensar(direita, esquerda, passo, tiros);
+    } else {
+      reagirPar(esquerda, direita);
+    }
     tentarGolpe(esquerda, agora, efeitos);
     tentarGolpe(direita, agora, efeitos);
-    reagirPar(esquerda, direita);
+    if (iaRedeLigada()) {
+      reagirEsquiva(esquerda, direita, tiros);
+      reagirEsquiva(direita, esquerda, tiros);
+    } else {
+      reagirPar(esquerda, direita);
+    }
   }
   atualizarProjeteis(passo, lutando ? par : vazio, aoTiro);
   if (lutando && (esquerda.hp <= 0 || direita.hp <= 0)) encerrar();

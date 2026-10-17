@@ -1,4 +1,5 @@
 import { POKEMON, RAIO_POKEMON } from "../config.js";
+import { ESQUIVA_DIST, ESQUIVA_DUR } from "./ia/constantes.js";
 import { golpe } from "./dados.js";
 import { totalParaNivel } from "./experiencia.js";
 import { calcularStats, escalaRecarga, escalaVelocidade } from "./tipos.js";
@@ -339,14 +340,25 @@ export function comecarEsquiva(ator, dirX, dirY) {
   if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) return false;
   const len = Math.hypot(dirX, dirY) || 1;
   ator.esquiva = 0;
-  ator.esquivaDur = 0.18;
-  ator.esquivaRestante = 0.18;
-  ator.esquivaDist = 1.15;
+  ator.esquivaDur = ESQUIVA_DUR;
+  ator.esquivaRestante = ESQUIVA_DUR;
+  ator.esquivaDist = ESQUIVA_DIST;
   ator.esquivaDirX = dirX / len;
   ator.esquivaDirY = dirY / len;
   ator.hopLift = Math.max(ator.hopLift || 0, 0.2);
   integrarEsquiva(ator, 0.05);
   return true;
+}
+
+export function passoEsquiva(ator, dt) {
+  integrarEsquiva(ator, dt);
+}
+
+export function recarregarBarraEsquiva(ator, dt) {
+  if ((ator.esquivaRestante || 0) > 0) return;
+  const vel = Math.max(1, ator.stats?.velocidade || 50);
+  const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
+  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 5);
 }
 
 export function tickPassivo(ator, dt, agora) {
@@ -365,11 +377,7 @@ export function tickPassivo(ator, dt, agora) {
   }
   const regen = (1 / 10) * (1 / escalaRecarga(ator.stats.velocidade));
   ator.pp = Math.min(ator.ppMax, ator.pp + regen * dt);
-  if ((ator.esquivaRestante || 0) <= 0) {
-    const vel = Math.max(1, ator.stats.velocidade || 50);
-    const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
-    ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 5);
-  }
+  recarregarBarraEsquiva(ator, dt);
   if (ator.cdBasico > 0) ator.cdBasico = Math.max(0, ator.cdBasico - dt);
   for (let i = 0; i < ator.golpes.length; i++) {
     const g = ator.golpes[i];

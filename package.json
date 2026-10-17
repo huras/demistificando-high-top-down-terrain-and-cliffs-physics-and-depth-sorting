@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Demo educacional: física high top-down, cliffs e depth sorting",
   "scripts": {
-    "start": "node servidor.mjs"
+    "start": "node servidor.mjs",
+    "treino:ia": "node treino/iaCombate.mjs"
   },
   "dependencies": {
     "pngjs": "^7.0.0",

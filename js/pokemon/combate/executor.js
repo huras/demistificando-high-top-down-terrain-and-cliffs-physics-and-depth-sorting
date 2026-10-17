@@ -183,8 +183,14 @@ function avancarNoGolpe(ator, alvo) {
 
 function executar(ator, slot, alvo, agora, efeitos) {
   const def = slot.def;
-  const dx = (alvo?.x ?? ator.x) - ator.x;
-  const dy = (alvo?.y ?? ator.y) - ator.y;
+  let mx = alvo?.x ?? ator.x;
+  let my = alvo?.y ?? ator.y;
+  if ((def.forma === "projectile" || def.forma === "arc") && Number.isFinite(ator.miraX) && Number.isFinite(ator.miraY)) {
+    mx = ator.miraX;
+    my = ator.miraY;
+  }
+  const dx = mx - ator.x;
+  const dy = my - ator.y;
   const len = Math.hypot(dx, dy) || 1;
   ator.dirX = dx / len;
   ator.dirY = dy / len;

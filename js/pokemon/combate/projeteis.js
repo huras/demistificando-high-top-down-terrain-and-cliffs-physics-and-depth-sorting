@@ -1,4 +1,5 @@
 import { POKEMON } from "../../config.js";
+import { FOLGA_PROJETIL, RAIO_PROJETIL } from "../ia/constantes.js";
 import { alturaCorpo, alturaPe } from "../ator.js";
 import { COR_TIPO } from "../tipos.js";
 
@@ -27,7 +28,7 @@ export function soltarProjetil(opts) {
     acerto: opts.acerto,
     forma: opts.forma || (opts.arco ? "arc" : "projectile"),
     cor: COR_TIPO[opts.tipo] || "#f8fafc",
-    raio: opts.raio || 0.45,
+    raio: opts.raio || RAIO_PROJETIL,
     viajou: 0,
     max: opts.max || 12,
     viva: true,
@@ -54,11 +55,11 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
       if (alvo === p.dono || alvo.faccao === p.faccao) continue;
       const dx = alvo.x - p.x;
       const dy = alvo.y - p.y;
-      const alcance = p.raio + 0.38;
+      const alcance = p.raio + FOLGA_PROJETIL;
       if (dx * dx + dy * dy > alcance * alcance) continue;
       const pe = alturaPe(alvo);
       const topo = pe + alturaCorpo(alvo);
-      const folga = p.raio || 0.45;
+      const folga = p.raio || RAIO_PROJETIL;
       if (p.z < pe - folga || p.z > topo + folga) continue;
       aoAtingir(p, alvo);
       bateu = true;
