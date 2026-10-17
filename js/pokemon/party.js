@@ -175,7 +175,7 @@ export function especieNoTime(chave) {
   return false;
 }
 
-export function receberEspecie(chave, nivel) {
+export function receberEspecie(chave, nivel, shiny = false) {
   if (party.length >= POKEMON.PARTY_MAX) return null;
   const esp = especie(chave);
   if (!esp) return null;
@@ -183,6 +183,7 @@ export function receberEspecie(chave, nivel) {
     id: `party-${esp.key}-${party.length}-${(Math.random() * 1e6) | 0}`,
     especie: esp,
     nivel: Math.max(1, nivel | 0),
+    shiny: !!shiny,
     faccao: "party",
     x: 0,
     y: 0,

@@ -6,6 +6,7 @@
   <title>High Top-Down — Cliffs, Física e Depth Sorting</title>
   <link rel="stylesheet" href="css/demo.css" />
   <link rel="stylesheet" href="css/jogo.css" />
+  <link rel="stylesheet" href="css/interiores.css" />
   <script type="importmap">
   {
     "imports": {
@@ -36,6 +37,7 @@
         <a class="btn-modo" href="portas.html">Portas</a>
         <a class="btn-modo" href="colisores.html">Colisores</a>
         <a class="btn-modo" href="combate.html">Combate</a>
+        <a class="btn-modo" href="marcar-centro.html">Marcar centro</a>
         <button type="button" id="btn-passeio" class="btn-modo" aria-pressed="false">Passeio</button>
         <div class="ajuda-atalhos" id="ajuda-atalhos">
           <button
@@ -117,7 +119,8 @@
             <section id="jogo-craft" class="jogo-painel jogo-painel--lado" hidden></section>
             <section id="jogo-roda" class="jogo-roda" hidden></section>
             <div id="jogo-hotbar" class="jogo-hotbar"></div>
-            <div class="jogo-canto">
+              <div class="jogo-canto">
+              <p id="jogo-dinheiro" class="jogo-dinheiro-hud">¥ 3000</p>
               <div id="jogo-relogio" class="jogo-relogio" data-periodo="dia">
                 <b data-hora>09:21</b>
                 <span data-periodo>Dia</span>

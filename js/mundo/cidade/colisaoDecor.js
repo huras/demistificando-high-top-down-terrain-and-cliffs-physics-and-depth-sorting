@@ -10,6 +10,8 @@ import { decoracaoDaCidade, decoracaoDasRotas, postesDeRua } from "../regiao/dec
 import { montarLayout } from "../regiao/volumesCidade.js";
 import { moveisDaSala } from "./interiorCasa.js";
 import { plantaLaboratorio } from "./laboratorio.js";
+import { plantaCentro } from "./centro.js";
+import { plantaLoja } from "./loja.js";
 
 const RAIO_QUADRO = 0.72;
 const RAIO_CORREIO = 0.38;
@@ -56,6 +58,10 @@ export function indexarColisaoCidade() {
   const moveis = moveisDaSala();
   const discosLab = plantaLaboratorio().discos;
   for (let i = 0; i < discosLab.length; i++) lista.push(discosLab[i]);
+  const discosCentro = plantaCentro().discos;
+  for (let i = 0; i < discosCentro.length; i++) lista.push(discosCentro[i]);
+  const discosLoja = plantaLoja().discos;
+  for (let i = 0; i < discosLoja.length; i++) lista.push(discosLoja[i]);
   for (let i = 0; i < moveis.length; i++) {
     const item = moveis[i];
     lista.push({ x: item.x, y: item.y, z, r: item.r });

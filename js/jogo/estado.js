@@ -277,6 +277,38 @@ export function colocarMovel(casaId, key, x, y) {
   return "";
 }
 
+export function vagasNasCaixas() {
+  let n = 0;
+  for (let c = 0; c < estado.caixas.length; c++) {
+    const slots = estado.caixas[c].slots;
+    for (let i = 0; i < slots.length; i++) if (!slots[i]) n += 1;
+  }
+  return n;
+}
+
+export function guardarNaCaixa(snap, silencioso = false) {
+  if (!snap) return false;
+  for (let c = 0; c < estado.caixas.length; c++) {
+    const slots = estado.caixas[c].slots;
+    const livre = slots.findIndex((s) => !s);
+    if (livre < 0) continue;
+    slots[livre] = snap;
+    if (!silencioso) avisar();
+    return true;
+  }
+  return false;
+}
+
+export function guardarVariosNaCaixa(snaps) {
+  if (!snaps?.length) return true;
+  if (vagasNasCaixas() < snaps.length) return false;
+  for (let i = 0; i < snaps.length; i++) {
+    if (!guardarNaCaixa(snaps[i], true)) return false;
+  }
+  avisar();
+  return true;
+}
+
 export function moverDaPartyParaCaixa(indiceParty) {
   const ator = listaParty()[indiceParty];
   if (!ator) return "Slot vazio.";

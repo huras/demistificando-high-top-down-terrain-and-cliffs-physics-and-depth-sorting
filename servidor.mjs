@@ -106,6 +106,57 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/centro-marcas") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 200_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        const papeis = new Set(["chao", "parede", "porta", "balcao", "enfermeira", "maquina", "pc", "decoracao"]);
+        const celulas = {};
+        const sprites = {};
+        const brutoCelulas = obj?.celulas && typeof obj.celulas === "object" ? obj.celulas : {};
+        const brutoSprites = obj?.sprites && typeof obj.sprites === "object" ? obj.sprites : {};
+        for (const chave of Object.keys(brutoCelulas)) {
+          const pedaco = chave.split(",");
+          const tx = Number(pedaco[0]);
+          const ty = Number(pedaco[1]);
+          const papel = brutoCelulas[chave];
+          if (!Number.isInteger(tx) || !Number.isInteger(ty) || tx < 0 || ty < 0 || tx > 13 || ty > 8) continue;
+          if (!papeis.has(papel)) continue;
+          celulas[`${tx},${ty}`] = papel;
+        }
+        for (const chave of Object.keys(brutoSprites)) {
+          const separado = /^(?:bg|fg):(\d+)$/.exec(chave);
+          const id = Number(separado ? separado[1] : chave);
+          const papel = brutoSprites[chave];
+          if (!Number.isInteger(id) || id < 0 || id > 200) continue;
+          if (!papeis.has(papel)) continue;
+          sprites[separado ? chave : String(id)] = papel;
+        }
+        const dest = path.join(raiz, "anotacoes", "centro.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify({ celulas, sprites }, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/detalhe") {
     const pedacos = [];
     let total = 0;

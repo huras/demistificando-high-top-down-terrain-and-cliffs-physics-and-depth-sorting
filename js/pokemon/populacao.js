@@ -17,6 +17,7 @@ import {
   ROWS_LAB,
   dentroDoTerrenoLaboratorio,
 } from "../mundo/cidade/laboratorio.js";
+import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { criarAtor, reviverAtor } from "./ator.js";
@@ -120,6 +121,11 @@ function naFaixa(x, y, x0, y0, x1, y1, folga) {
 
 function zonaSemSelvagem(x, y) {
   if (dentroDoTerrenoSala(x, y) || dentroDoTerrenoLaboratorio(x, y)) return true;
+  const faixas = faixasSemSelvagem();
+  for (let i = 0; i < faixas.length; i++) {
+    const f = faixas[i];
+    if (naFaixa(x, y, f.x0, f.y0, f.x1, f.y1, FOLGA_VAZIO)) return true;
+  }
   return (
     naFaixa(x, y, ORIGEM_LAB_X, ORIGEM_LAB_Y, ORIGEM_LAB_X + COLS_LAB, ORIGEM_LAB_Y + ROWS_LAB, FOLGA_VAZIO) ||
     naFaixa(x, y, ORIGEM_SALA_X, ORIGEM_SALA_Y, ORIGEM_SALA_X + MIOL_X + 2, ORIGEM_SALA_Y + MIOL_Y + 2, FOLGA_VAZIO)
@@ -402,7 +408,7 @@ function tentarGrama(corpo) {
 function tickGrama() {
   for (let i = grama.length - 1; i >= 0; i--) {
     const ator = grama[i];
-    if (ator.capturado) {
+    if (ator.capturado || zonaSemSelvagem(ator.x, ator.y)) {
       grama.splice(i, 1);
       continue;
     }

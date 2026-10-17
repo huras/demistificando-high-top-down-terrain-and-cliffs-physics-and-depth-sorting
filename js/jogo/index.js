@@ -32,6 +32,7 @@ import {
 import { ligarRoda, tickRoda } from "./roda.js";
 import { desenharSala, ligarSala, moverSala, pertoDe, redimensionarSala } from "./sala.js";
 import { alvoLaboratorio, executarAlvoLaboratorio } from "./laboratorio.js";
+import { alvoDoHub, ancoraDoHub, executarAlvoHub, promptDoHub } from "./hub.js";
 import { atualizarCuraMaquina, curaOcupada } from "./maquinaCura.js";
 import { ORIGEM_LAB_X, ORIGEM_LAB_Y, promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
@@ -99,16 +100,32 @@ export function tickJogo(dt, corpo) {
   const alvo = estado.interior && !estado.interior.sala3d ? pertoDe(estado.interior) : null;
   const ferramenta = dicaFerramenta();
   const noLab = estado.interior?.sala3d && estado.interior.papel === "lab";
+  const papelHub = estado.interior?.sala3d ? estado.interior.papel : "";
   const alvoLab = noLab && !estado.dialogo && !estado.painel && !estado.ganhoAberto ? alvoLaboratorio(corpo.x, corpo.y) : null;
-  const curaPerto = alvoLab?.tipo === "cura" && !curaOcupada();
+  const alvoHub =
+    (papelHub === "centro" || papelHub === "loja") && !estado.dialogo && !estado.painel && !estado.ganhoAberto
+      ? alvoDoHub(papelHub, corpo.x, corpo.y)
+      : null;
+  const curaPerto = (alvoLab?.tipo === "cura" || alvoHub?.tipo === "cura") && !curaOcupada();
   const entrarPorta = !!porta && !estado.interior && !(estado.saidaGrace > 0);
   estado.promptEntrar = entrarPorta || curaPerto;
   estado.promptRotulo = curaPerto ? "Recuperar" : "Entrar";
   estado.promptAncora = curaPerto
-    ? { x: ORIGEM_LAB_X + alvoLab.ref.x, y: ORIGEM_LAB_Y + alvoLab.ref.footY, z: corpo.z }
+    ? alvoHub
+      ? ancoraDoHub(papelHub, alvoHub)
+      : { x: ORIGEM_LAB_X + alvoLab.ref.x, y: ORIGEM_LAB_Y + alvoLab.ref.footY, z: corpo.z }
     : null;
-  if (curaPerto && !campoFocado() && teclaAgora("KeyE")) executarAlvoLaboratorio(alvoLab);
-  estado.prompt = curaPerto ? "" : alvoLab ? promptDoLaboratorio(alvoLab) : promptDe(alvo, ferramenta);
+  if (curaPerto && !campoFocado() && teclaAgora("KeyE")) {
+    if (alvoHub?.tipo === "cura") executarAlvoHub(alvoHub);
+    else executarAlvoLaboratorio(alvoLab);
+  }
+  estado.prompt = curaPerto
+    ? ""
+    : alvoLab
+      ? promptDoLaboratorio(alvoLab)
+      : alvoHub
+        ? promptDoHub(papelHub, alvoHub)
+        : promptDe(alvo, ferramenta);
   const zona = zonaNoMundo(corpo.x, corpo.y);
   definirBgm(chaveBgm(zona, obterClima(), estado.interior?.sala?.kind));
   atualizarAudio(dt, lerMixClima(), !!estado.interior);
@@ -160,6 +177,11 @@ function interagir(corpo) {
   if (estado.interior?.sala3d && estado.interior.papel === "lab") {
     const perto = alvoLaboratorio(corpo.x, corpo.y);
     if (perto) executarAlvoLaboratorio(perto);
+    return;
+  }
+  if (estado.interior?.sala3d && (estado.interior.papel === "centro" || estado.interior.papel === "loja")) {
+    const perto = alvoDoHub(estado.interior.papel, corpo.x, corpo.y);
+    if (perto) executarAlvoHub(perto);
     return;
   }
   if (estado.interior) {

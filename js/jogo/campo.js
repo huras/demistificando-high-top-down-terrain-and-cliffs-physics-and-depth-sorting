@@ -5,6 +5,8 @@ import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
 import { naSaidaLaboratorio, spawnLaboratorio } from "../mundo/cidade/laboratorio.js";
+import { naSaidaCentro, spawnCentro } from "../mundo/cidade/centro.js";
+import { naSaidaLoja, spawnLoja } from "../mundo/cidade/loja.js";
 import { atualizarStreaming } from "../mundo/voxel/storeMundo.js";
 import { portaDoModelo, vaosPortaPerto } from "../mundo/cidade/cascaCasa.js";
 import { faixaDaPorta, predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
@@ -22,7 +24,6 @@ import { obterCenario3d } from "../render/3d/cenario3d.js";
 import { BERRIES, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
 import { ESTAGIO } from "../wild/estagios.js";
 import { colher, criarSolo, plantar, regar, simularPlot } from "../wild/plots.js";
-import { criarSala } from "../wild/salas.js";
 import { sfx } from "./audio.js";
 import { tentarColocar, tentarQuebrar } from "./blocos.js";
 import {
@@ -174,20 +175,21 @@ export function tentarEntrar(corpo, infoPronto) {
   if (!info || info.predio.porta === false) return false;
   if (info.predio.papel === "casa") return entrarSala3d(corpo, info);
   if (info.predio.papel === "lab") return entrarLaboratorio(corpo, info);
-  const sala = criarSala(info.predio.papel);
-  if (!sala) return false;
+  if (info.predio.papel === "centro") return entrarHub(corpo, info, spawnCentro(), "centro");
+  if (info.predio.papel === "loja") return entrarHub(corpo, info, spawnLoja(), "loja");
+  return false;
+}
+
+function entrarHub(corpo, info, spawn, papel) {
   estado.interior = {
-    sala,
-    papel: info.predio.papel,
+    sala3d: true,
+    papel,
     casaId: idCasa(info),
     ax: info.ax,
     ay: info.ay,
     predio: info.predio,
-    px: sala.spawn.x + 0.5,
-    py: sala.spawn.y + 0.5,
   };
-  estado.painel = null;
-  sfx("porta");
+  pousar(corpo, spawn.x, spawn.y);
   return true;
 }
 
@@ -253,8 +255,15 @@ function pousar(corpo, x, y) {
 
 export function checarSaidaSala(corpo) {
   if (!estado.interior?.sala3d) return false;
+  const papel = estado.interior.papel;
   const naSaida =
-    estado.interior.papel === "lab" ? naSaidaLaboratorio(corpo.x, corpo.y) : naSaidaSala(corpo.x, corpo.y);
+    papel === "lab"
+      ? naSaidaLaboratorio(corpo.x, corpo.y)
+      : papel === "centro"
+        ? naSaidaCentro(corpo.x, corpo.y)
+        : papel === "loja"
+          ? naSaidaLoja(corpo.x, corpo.y)
+          : naSaidaSala(corpo.x, corpo.y);
   if (!naSaida) return false;
   sairInterior(corpo);
   return true;

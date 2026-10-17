@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marcar o Centro Pokémon</title>
+  <link rel="stylesheet" href="css/marcar-centro.css" />
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <div>
+      <h1>Marcar o Centro</h1>
+      <p>O desenho do chão não diz sozinho o que é parede, porta ou balcão. Marque o que cada parte é.</p>
+    </div>
+    <nav class="abas" aria-label="Partes da página">
+      <button type="button" class="aba is-ativa" data-aba="marcar">Marcar</button>
+      <button type="button" class="aba" data-aba="sala">Centro 3D</button>
+    </nav>
+    <button type="button" id="salvar">Salvar</button>
+    <span id="status" class="topo__status"></span>
+  </header>
+
+  <div class="miolo" data-painel="marcar">
+    <aside class="coluna">
+      <p class="nota">Cada quadrado do Emerald são duas folhas. O fundo fica atrás do jogador. A frente passa por cima: computador, boca do balcão, topo da parede. Escolha uma folha para ver o pedaço solto.</p>
+      <div class="pinceis" id="pinceis"></div>
+      <fieldset class="folhas">
+        <legend>Folha</legend>
+        <label class="opcao"><input type="radio" name="folha" value="fundo" checked /> Fundo</label>
+        <label class="opcao"><input type="radio" name="folha" value="frente" /> Frente</label>
+        <label class="opcao"><input type="radio" name="folha" value="juntas" /> As duas, como no 2D</label>
+      </fieldset>
+      <label class="opcao"><input type="checkbox" id="leitura" /> Mostrar a leitura atual do jogo</label>
+      <p class="mira" id="mira">Passe o mouse num quadrado.</p>
+    </aside>
+
+    <section class="mapa">
+      <canvas id="sala" width="896" height="576"></canvas>
+    </section>
+
+    <aside class="coluna">
+      <p class="nota">Marque o pedaço desta folha. O mesmo número no fundo e na frente é outro desenho. O quadrado pintado na mão vale mais.</p>
+      <div class="folha" id="folha"></div>
+    </aside>
+  </div>
+
+  <section class="vista" data-painel="sala" hidden>
+    <canvas id="vista-3d"></canvas>
+    <p class="vista__nota">Arraste para girar. A roda aproxima. A figura azul é a altura do jogador.</p>
+  </section>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js"
+    }
+  }
+  </script>
+  <script type="module" src="js/ferramentas/marcarCentro.js"></script>
+  <script type="module" src="js/ferramentas/verCentro3d.js"></script>
+</body>
+</html>

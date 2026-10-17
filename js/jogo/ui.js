@@ -9,7 +9,6 @@ import {
   BERRIES,
   BLOCOS,
   CHAVES,
-  ESTOQUE_LOJA,
   FERRAMENTAS,
   MATERIAIS,
   MOVEIS,
@@ -17,14 +16,9 @@ import {
   REMEDIOS,
   TIPO_ITEM,
   classificarChave,
-  defItem,
-  precoCompra,
-  precoVenda,
   teclaDoSlot,
 } from "../wild/catalogo.js";
-import { listarEspecies } from "../pokemon/dados.js";
-import { COR_TIPO } from "../pokemon/tipos.js";
-import { darDaCapsula, montarTimeCapsula } from "./laboratorio.js";
+import { especie, listarEspecies } from "../pokemon/dados.js";
 import {
   curarParty,
   definirDeployado,
@@ -59,6 +53,8 @@ import { celulaConstrucao, pertoDe, propsDaSala } from "./sala.js";
 import { celulaLivre } from "../wild/salas.js";
 import { sfx } from "./audio.js";
 import { htmlIcone } from "./icones.js";
+import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarCliqueCapsula, tratarInputCapsula } from "./capsula.js";
+import { htmlLoja, quantidadeLoja, tratarLoja } from "./loja.js";
 import { obterClima, obterHora } from "../render/3d/ceu/controleCeu.js";
 import { obterBloco, superficieEm } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
@@ -69,7 +65,8 @@ export function ligarUi(overlay) {
   raiz = overlay;
   raiz.addEventListener("click", noClique);
   raiz.addEventListener("change", noChange);
-  raiz.addEventListener("input", noCapsula);
+  raiz.addEventListener("input", tratarInputCapsula);
+  ligarCapsula(raiz);
   raiz.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape" || !estado.painel) return;
     ev.preventDefault();
@@ -109,22 +106,24 @@ function noClique(ev) {
     const ator = tirarDaParty(i);
     toast(ator ? `Soltou ${nomeEspecie(ator)}.` : "O time precisa de um Pokémon.");
     avisar();
-  } else if (act === "comprar") toast(comprar(tipo, key, 1));
-  else if (act === "vender") toast(vender(tipo, key, 1));
+  }   else if (act === "comprar") toast(comprar(tipo, key, quantidadeLoja(btn)));
+  else if (act === "vender") toast(vender(tipo, key, quantidadeLoja(btn)));
   else if (act === "craft") toast(craftarBola(key));
   else if (act === "movel") colocarSelecionado(key);
   else if (act === "salvar") salvar();
   else if (act === "escolha") escolher(btn.dataset.id);
   else if (act === "seguir") avancarDialogo();
-  else if (act === "tipo-capsula") alternarTipoCapsula(btn.dataset.tipo);
-  else if (act === "sel-capsula") {
-    garantirCapsula().sel = btn.dataset.key || "";
-  } else if (act === "dar-capsula") {
-    const cap = garantirCapsula();
-    if (cap.sel) darDaCapsula(cap.sel, cap.nivel);
-  } else if (act === "time-capsula") sortearTimeCapsula();
-  else if (act === "limpar-tipo-capsula") {
-    garantirCapsula().tipos = [];
+  else if (capsulaEh(act)) {
+    const modo = tratarCliqueCapsula(act, btn);
+    if (modo === "lista") {
+      pintar();
+      return;
+    }
+    atualizarLeve();
+    return;
+  } else if (tratarLoja(act, btn)) {
+    pintar();
+    return;
   }
   pintar();
 }
@@ -186,6 +185,7 @@ function escolher(id) {
 export function pintar() {
   if (!raiz) return;
   pintarHotbar();
+  pintarDinheiro();
   pintarPrompt();
   pintarDialogo();
   pintarToast();
@@ -198,6 +198,16 @@ export function pintar() {
 
 function el(id) {
   return raiz.querySelector(id);
+}
+
+function escHtml(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, (c) => {
+    if (c === "&") return "&amp;";
+    if (c === "<") return "&lt;";
+    if (c === ">") return "&gt;";
+    if (c === '"') return "&quot;";
+    return "&#39;";
+  });
 }
 
 function pintarHotbar() {
@@ -223,6 +233,7 @@ function pintarHotbar() {
 
 export function atualizarLeve() {
   pintarPrompt();
+  pintarDinheiro();
   pintarToast();
   pintarMini();
   pintarRelogio();
@@ -277,6 +288,12 @@ function colocarEntrar(entrar, corpo) {
   }
   entrar.style.left = `${cRect.left - hRect.left + x}px`;
   entrar.style.top = `${cRect.top - hRect.top + y}px`;
+}
+
+function pintarDinheiro() {
+  const host = el("#jogo-dinheiro");
+  if (!host) return;
+  host.textContent = `¥ ${estado.dinheiro}`;
 }
 
 function pintarToast() {
@@ -388,157 +405,12 @@ function pintarPainel() {
   }
   if (nome === "loja") host.innerHTML = htmlLoja();
   else if (nome === "pc") host.innerHTML = htmlPc();
-  else if (nome === "capsula") host.innerHTML = htmlCapsula();
-  else host.innerHTML = htmlMenu(nome);
+  else if (nome === "capsula") {
+    host.innerHTML = htmlCapsula();
+    montarJanelaCapsula();
+  } else host.innerHTML = htmlMenu(nome);
 }
 
-const TIPOS_CAPSULA = Object.freeze([
-  ["normal", "Normal"],
-  ["fire", "Fogo"],
-  ["water", "Água"],
-  ["electric", "Elétrico"],
-  ["grass", "Planta"],
-  ["ice", "Gelo"],
-  ["fighting", "Lutador"],
-  ["poison", "Venenoso"],
-  ["ground", "Terra"],
-  ["flying", "Voador"],
-  ["psychic", "Psíquico"],
-  ["bug", "Inseto"],
-  ["rock", "Pedra"],
-  ["ghost", "Fantasma"],
-  ["dragon", "Dragão"],
-  ["dark", "Sombrio"],
-  ["steel", "Aço"],
-  ["fairy", "Fada"],
-]);
-
-let catalogoCapsula = null;
-
-function escHtml(valor) {
-  return String(valor ?? "").replace(/[&<>"']/g, (c) => {
-    if (c === "&") return "&amp;";
-    if (c === "<") return "&lt;";
-    if (c === ">") return "&gt;";
-    if (c === '"') return "&quot;";
-    return "&#39;";
-  });
-}
-
-function garantirCapsula() {
-  if (!estado.capsula) estado.capsula = { busca: "", tipos: [], nivel: 5, sel: "" };
-  return estado.capsula;
-}
-
-function nivelCapsula(valor) {
-  const n = Number(valor);
-  if (!Number.isFinite(n)) return 5;
-  return Math.max(1, Math.min(100, Math.round(n)));
-}
-
-function listaCatalogo() {
-  if (catalogoCapsula) return catalogoCapsula;
-  catalogoCapsula = listarEspecies()
-    .slice()
-    .sort((a, b) => (a.dex | 0) - (b.dex | 0));
-  return catalogoCapsula;
-}
-
-function filtrarCapsula(cap) {
-  const q = cap.busca.trim().toLowerCase();
-  const tipos = cap.tipos;
-  const todos = listaCatalogo();
-  const visiveis = [];
-  let total = 0;
-  for (let i = 0; i < todos.length; i++) {
-    const esp = todos[i];
-    if (q) {
-      const texto = `${esp.nome} ${esp.key} ${esp.dex}`.toLowerCase();
-      if (!texto.includes(q)) continue;
-    }
-    if (tipos.length) {
-      let ok = true;
-      for (let t = 0; t < tipos.length; t++) {
-        if (!esp.tipos?.includes(tipos[t])) ok = false;
-      }
-      if (!ok) continue;
-    }
-    total += 1;
-    if (visiveis.length < 72) visiveis.push(esp);
-  }
-  return { visiveis, total };
-}
-
-function htmlListaCapsula(cap) {
-  const { visiveis, total } = filtrarCapsula(cap);
-  if (!total) return "<p>Nenhuma espécie com esse filtro.</p>";
-  const itens = visiveis
-    .map((esp) => {
-      const dex = String(esp.dex | 0).padStart(3, "0");
-      const tipos = (esp.tipos || []).map((tipo) => TIPOS_CAPSULA.find((item) => item[0] === tipo)?.[1] || tipo).join(" / ");
-      const on = cap.sel === esp.key ? " is-on" : "";
-      return `<button type="button" class="capsula-item${on}" data-act="sel-capsula" data-key="${escHtml(esp.key)}"><b>${dex}</b><span>${escHtml(esp.nome)}</span><small>${escHtml(tipos)}</small></button>`;
-    })
-    .join("");
-  const resto = total > visiveis.length ? `<p class="capsula-resto">Mostrando ${visiveis.length} de ${total}. Afine a busca.</p>` : "";
-  return `${itens}${resto}`;
-}
-
-function htmlCapsula() {
-  const cap = garantirCapsula();
-  const escolhida = listaCatalogo().find((esp) => esp.key === cap.sel);
-  const retrato = escolhida
-    ? `<img class="capsula-retrato" alt="" src="/ref/sprites/pokemon-portraits/${escolhida.dex | 0}.png" />`
-    : `<span class="capsula-retrato capsula-retrato--vazio">?</span>`;
-  const tipos = TIPOS_CAPSULA.map(([id, rotulo]) => {
-    const on = cap.tipos.includes(id) ? " is-on" : "";
-    const cor = COR_TIPO[id] || "#94a3b8";
-    return `<button type="button" class="capsula-tipo${on}" data-act="tipo-capsula" data-tipo="${id}" title="${rotulo}" aria-label="${rotulo}" aria-pressed="${on ? "true" : "false"}" style="--tipo:${cor}"></button>`;
-  }).join("");
-  const nome = escolhida ? escHtml(escolhida.nome) : "Escolha uma espécie";
-  return `<header class="jogo-topo"><h2>Cápsula</h2><button type="button" data-act="fechar">Fechar</button></header>
-    <div class="capsula-topo">${retrato}<div><p class="capsula-nome">${nome}</p>
-    <label class="capsula-nivel">Nível <input data-capsula="nivel" type="number" min="1" max="100" value="${cap.nivel}" /></label>
-    <div class="capsula-acoes"><button type="button" data-act="dar-capsula">Colocar no time</button><button type="button" data-act="time-capsula">Time aleatório</button></div></div></div>
-    <input class="capsula-busca" data-capsula="busca" type="search" placeholder="Nome ou número" value="${escHtml(cap.busca)}" />
-    <div class="capsula-tipos" aria-label="Tipos">${tipos}<button type="button" class="capsula-limpar" data-act="limpar-tipo-capsula" ${cap.tipos.length ? "" : "hidden"}>Limpar</button></div>
-    <div class="capsula-lista" id="capsula-lista">${htmlListaCapsula(cap)}</div>`;
-}
-
-function noCapsula(ev) {
-  const campo = ev.target.closest("[data-capsula]");
-  if (!campo || estado.painel !== "capsula") return;
-  const cap = garantirCapsula();
-  if (campo.dataset.capsula === "busca") cap.busca = campo.value;
-  if (campo.dataset.capsula === "nivel") cap.nivel = nivelCapsula(campo.value);
-  const lista = el("#capsula-lista");
-  if (lista) lista.innerHTML = htmlListaCapsula(cap);
-}
-
-function alternarTipoCapsula(tipo) {
-  if (!tipo) return;
-  const cap = garantirCapsula();
-  const i = cap.tipos.indexOf(tipo);
-  if (i >= 0) cap.tipos.splice(i, 1);
-  else if (cap.tipos.length < 2) cap.tipos.push(tipo);
-  else cap.tipos = [cap.tipos[1], tipo];
-}
-
-function sortearTimeCapsula() {
-  const todos = listaCatalogo();
-  if (!todos.length) return;
-  const chaves = [];
-  const usados = new Set();
-  let guarda = 0;
-  while (chaves.length < 6 && usados.size < todos.length && guarda < 40) {
-    guarda += 1;
-    const esp = todos[(Math.random() * todos.length) | 0];
-    if (usados.has(esp.key)) continue;
-    usados.add(esp.key);
-    chaves.push(esp.key);
-  }
-  montarTimeCapsula(chaves, garantirCapsula().nivel);
-}
 
 function abas(ativa) {
   const itens = [
@@ -628,7 +500,9 @@ function htmlParty(comSoltar) {
       const dep = estado.painel === "pc"
         ? `<button type="button" data-act="depositar" data-i="${i}">Depositar</button>`
         : `<button type="button" data-act="deploy" data-i="${i}">Campo</button>`;
-      return `<div class="jogo-item"><span>${nomeEspecie(ator)} Lv${ator.nivel}${ator.shiny ? " ✦" : ""}</span><span>${hp}</span>${dep}${soltar}</div>`;
+      const foto = urlRetrato(ator);
+      const img = foto ? `<img class="pc-retrato" alt="" src="${foto}" />` : "";
+      return `<div class="jogo-item">${img}<span>${escHtml(nomeEspecie(ator))} Lv${ator.nivel}${ator.shiny ? " ✦" : ""}</span><span>${hp}</span>${dep}${soltar}</div>`;
     })
     .join("");
 }
@@ -641,7 +515,16 @@ function htmlPc() {
   const slots = caixa.slots
     .map((snap, i) => {
       if (!snap) return `<div class="jogo-item"><span>vazio</span></div>`;
-      return `<div class="jogo-item"><span>${snap.especieKey} Lv${snap.nivel}</span><button type="button" data-act="retirar" data-i="${i}">Retirar</button><button type="button" data-act="soltar-caixa" data-i="${i}">Soltar</button></div>`;
+      const esp = especie(snap.especieKey);
+      const nome = esp?.nome || snap.especieKey;
+      const dex = esp?.dex | 0;
+      const url = !dex
+        ? ""
+        : snap.shiny
+          ? `/ref/sprites/pokemon-portraits/shiny/${dex}.png`
+          : `/ref/sprites/pokemon-portraits/${dex}.png`;
+      const img = url ? `<img class="pc-retrato" alt="" src="${url}" />` : "";
+      return `<div class="jogo-item">${img}<span>${escHtml(nome)} Lv${snap.nivel}${snap.shiny ? " ✦" : ""}</span><button type="button" data-act="retirar" data-i="${i}">Retirar</button><button type="button" data-act="soltar-caixa" data-i="${i}">Soltar</button></div>`;
     })
     .join("");
   return `<header class="jogo-topo"><h2>PC</h2><button type="button" data-act="fechar">Fechar</button></header>
@@ -649,42 +532,6 @@ function htmlPc() {
     <h3>Time</h3>${htmlParty(false)}<h3>${caixa.nome}</h3><div class="jogo-grade">${slots}</div>`;
 }
 
-function htmlLoja() {
-  const compra = ESTOQUE_LOJA.map((e) => {
-    const def = defItem(e.tipo, e.key);
-    if (!def) return "";
-    const preco = precoCompra(e.tipo, e.key);
-    if (preco < 0) return "";
-    return `<div class="jogo-item"><span>${def.nome}</span><span>¥${preco}</span><button type="button" data-act="comprar" data-tipo="${e.tipo}" data-key="${e.key}">Comprar</button></div>`;
-  }).join("");
-  const venda = itensVendaveis()
-    .map((e) => `<div class="jogo-item"><span>${e.nome} ×${e.qtd}</span><span>¥${e.venda}</span><button type="button" data-act="vender" data-tipo="${e.tipo}" data-key="${e.key}">Vender</button></div>`)
-    .join("");
-  return `<header class="jogo-topo"><h2>Poké Mart</h2><button type="button" data-act="fechar">Fechar</button></header>
-    <p class="jogo-dinheiro">¥ ${estado.dinheiro}</p><h3>Comprar</h3><div class="jogo-grade">${compra}</div><h3>Vender</h3><div class="jogo-grade">${venda || "<p>Nada para vender.</p>"}</div>`;
-}
-
-function itensVendaveis() {
-  const lista = [];
-  const grupos = [
-    [BOLAS, TIPO_ITEM.BOLA],
-    [BERRIES, TIPO_ITEM.BERRY],
-    [REMEDIOS, TIPO_ITEM.REMEDIO],
-    [MATERIAIS, TIPO_ITEM.MATERIAL],
-  ];
-  for (let g = 0; g < grupos.length; g++) {
-    const obj = grupos[g][0];
-    const tipo = grupos[g][1];
-    const chaves = Object.keys(obj);
-    for (let i = 0; i < chaves.length; i++) {
-      const key = chaves[i];
-      const qtd = contar(tipo, key);
-      const venda = precoVenda(tipo, key);
-      if (qtd > 0 && venda > 0) lista.push({ tipo, key, nome: obj[key].nome, qtd, venda });
-    }
-  }
-  return lista;
-}
 
 function htmlDex() {
   if (!temChave("pokedex")) return "<p>Você não tem a Pokédex.</p>";

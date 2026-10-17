@@ -1,0 +1,97 @@
+.jogo-dinheiro-hud {
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 250, 241, 0.94);
+  border: 1px solid #1c1917;
+  font-weight: 700;
+}
+
+.loja-abas,
+.loja-qtd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.loja-linha {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto;
+  gap: 8px;
+}
+
+.pc-retrato,
+.capsula-mini {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.capsula-lista {
+  display: block;
+  position: relative;
+  overflow: auto;
+  flex: 1;
+  min-height: 280px;
+  max-height: 52vh;
+}
+
+.capsula-trilho {
+  position: relative;
+  width: 100%;
+}
+
+.capsula-janela {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.capsula-item {
+  height: 90px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: 8px;
+  align-items: center;
+}
+
+.capsula-mini {
+  grid-row: 1 / span 3;
+}
+
+.capsula-item small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.capsula-pill {
+  font-style: normal;
+  font-size: 10px;
+  line-height: 1.3;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--tipo, #94a3b8);
+  color: #1c1917;
+}
+
+.capsula-dica {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.jogo-painel--capsula .capsula-lista {
+  margin-top: 8px;
+}

@@ -16,6 +16,8 @@ import { pivoDaImagem } from "../pivoPe.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../../mundo/cidade/catalogoCasas.js";
 import { anexarCascaSala, anexarDecoracaoCidade, anexarInteriores, carregarSpritesPraca, criarDecoracaoRotas } from "./decoracaoCidade.js";
 import { atualizarLaboratorio, montarLaboratorio3d } from "./laboratorio3d.js";
+import { atualizarCentro, montarCentro3d } from "./centro3d.js";
+import { montarLoja3d } from "./loja3d.js";
 import { carregarSpritesPredio, chaveSpritePredio, criarSpritePredio, montarUsina } from "./prediosSprite.js";
 
 const FOLGA = 0.96;
@@ -509,11 +511,14 @@ export function criarEdificiosCidade() {
     });
 
   montarLaboratorio3d(grupo);
+  montarCentro3d(grupo);
+  montarLoja3d(grupo);
 
   return {
     grupo,
     atualizar(px, py, yaw = 0, inclinacao = 0) {
-      atualizarLaboratorio(yaw, inclinacao);
+      atualizarLaboratorio(yaw, inclinacao, px, py);
+      atualizarCentro(px, py);
       const pesoNoite = obterPesoNoite();
       if (materialFlare) materialFlare.opacity = pesoNoite;
       if (materialGlobo) materialGlobo.emissiveIntensity = pesoNoite;

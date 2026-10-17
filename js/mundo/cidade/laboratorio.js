@@ -410,6 +410,10 @@ function montar() {
     muro,
     pisos: fundir(anda, cols, rows),
     muros: fundir(muro, cols, rows),
+    vedacoes: [
+      { x: -1, y: 0, w: 1, h: rows },
+      { x: cols, y: 0, w: 1, h: rows },
+    ],
     doorX0: layout.doorX0,
     doorX1: layout.doorX1,
     moveis,
@@ -437,6 +441,15 @@ export function dentroDoTerrenoLaboratorio(wx, wy) {
   );
 }
 
+function colunaVedada(col, row) {
+  const lista = PLANTA.vedacoes;
+  for (let i = 0; i < lista.length; i++) {
+    const faixa = lista[i];
+    if (col >= faixa.x && col < faixa.x + faixa.w && row >= faixa.y && row < faixa.y + faixa.h) return true;
+  }
+  return false;
+}
+
 export function aplicarLaboratorioNoChunk(chunk) {
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
@@ -450,12 +463,13 @@ export function aplicarLaboratorioNoChunk(chunk) {
       preencherColunaSolida(chunk, lx, ly, ALTURA_PRACA, BLOCO.TERRA);
       const col = wx - ORIGEM_LAB_X;
       const row = wy - ORIGEM_LAB_Y;
-      const solido =
+      const naPlanta =
         col >= 0 &&
         row >= 0 &&
         col < COLS_LAB &&
         row < ROWS_LAB &&
         PLANTA.muro[row * COLS_LAB + col] === 1;
+      const solido = naPlanta || colunaVedada(col, row);
       if (solido) {
         for (let z = ALTURA_PRACA; z < zParede; z++) definirLocal(chunk, lx, ly, z, BLOCO.PEDRA);
       }

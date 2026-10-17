@@ -17,6 +17,7 @@ import {
 } from "../render/3d/silhuetaSprite.js";
 import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
 import { dropsBloco } from "../jogo/blocos.js";
+import { estado as estadoJogo } from "../jogo/estado.js";
 
 /** 1 px do quadro = 1/TILE voxel, igual à árvore e ao tile do Pokémon AI. */
 const PX_MUNDO = 1 / TILE;
@@ -257,9 +258,11 @@ function pegarLivre() {
 export function atualizarPokemon3d(yawCam = 0) {
   if (!cena || !pokemonLigado()) return;
   const lista = atoresVisiveis();
+  const naSala = !!estadoJogo.interior?.sala3d;
   const vistos = new Set();
   for (let i = 0; i < lista.length; i++) {
     const ator = lista[i];
+    if (naSala && ator.faccao === "selvagem") continue;
     let slot = porId.get(ator.id);
     if (!slot) {
       slot = pegarLivre();
