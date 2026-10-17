@@ -25,16 +25,18 @@ const maquina = { x: 13, y: 2.55 };
 const base = 1.55;
 const vaso = { x: 1.75, y: base };
 const vasoDireito = { x: 26.25, y: base };
+const mapa = { x: 23.6, y: 1.12 };
 const estantes = [
   { x: 3.4, y: base },
   { x: 5.45, y: base },
   { x: 7.5, y: base },
 ];
-const mesa = { x: 24.3, y: 5.7 };
+const mesa = { x: 24, y: 5.6 };
 const cadeiras = [
-  { x: 23.05, y: 5.7 },
-  { x: 25.55, y: 5.7 },
-  { x: 24.3, y: 6.95 },
+  { id: "cadeira39", x: 22.5, y: 4.6 },
+  { id: "cadeira30", x: 22.5, y: 5.6 },
+  { id: "cadeira30", x: 23.5, y: 6.6 },
+  { id: "cadeira39", x: 24.5, y: 6.6 },
 ];
 const balcoes = [
   { x: 11, y: 3, w: 6, h: 1, sprite: 25 },
@@ -65,10 +67,11 @@ const PLANTA = criarPlantaHub({
     { id: "estante", x: estantes[0].x, y: estantes[0].y, disco: true, raio: 0.72 },
     { id: "estante", x: estantes[1].x, y: estantes[1].y, disco: true, raio: 0.72 },
     { id: "estante", x: estantes[2].x, y: estantes[2].y, disco: true, raio: 0.72 },
-    { id: "mesa", x: mesa.x, y: mesa.y, disco: true, raio: 0.55 },
-    { id: "cadeira", x: cadeiras[0].x, y: cadeiras[0].y, disco: true, raio: 0.36 },
-    { id: "cadeira", x: cadeiras[1].x, y: cadeiras[1].y, disco: true, raio: 0.36 },
-    { id: "cadeira", x: cadeiras[2].x, y: cadeiras[2].y, disco: true, raio: 0.36 },
+    { id: "mesa", x: mesa.x, y: mesa.y, disco: true, raio: 0.85 },
+    { id: cadeiras[0].id, x: cadeiras[0].x, y: cadeiras[0].y, disco: true, raio: 0.28 },
+    { id: cadeiras[1].id, x: cadeiras[1].x, y: cadeiras[1].y, disco: true, raio: 0.28 },
+    { id: cadeiras[2].id, x: cadeiras[2].x, y: cadeiras[2].y, disco: true, raio: 0.28 },
+    { id: cadeiras[3].id, x: cadeiras[3].x, y: cadeiras[3].y, disco: true, raio: 0.28 },
   ],
   alvos: [
     { tipo: "cura", nome: "Enfermeira", x: 14.5, y: 4.5, alcance: 1.25 },
@@ -78,6 +81,7 @@ const PLANTA = criarPlantaHub({
 });
 
 PLANTA.balcoes = balcoes;
+PLANTA.mapa = mapa;
 for (let p = 0; p < balcoes.length; p++) {
   const peca = balcoes[p];
   for (let iz = 0; iz < peca.h; iz++) {

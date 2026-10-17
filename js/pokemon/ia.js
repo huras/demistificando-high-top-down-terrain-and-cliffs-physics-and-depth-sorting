@@ -4,7 +4,7 @@ import { alturaSobPes } from "../fisica/colisao.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
 import { soltarEscalada } from "../fisica/escalada.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
-import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
+import { PERFIL_COMPANHEIRO, PERFIL_ESCALADOR } from "../navegacao/perfilMovimento.js";
 import { garantirNav } from "../navegacao/seguirCaminho.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
 import { emAvanco, emEsquiva, emRecuo, velocidadeDe } from "./ator.js";
@@ -105,9 +105,34 @@ function soltarAgro(ator, alvo) {
   return dist2(ator, alvo) > POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA;
 }
 
+function tipoVoador(ator) {
+  const tipos = ator.tipos || ator.especie?.tipos;
+  if (!tipos) return false;
+  for (let i = 0; i < tipos.length; i++) {
+    if (tipos[i] === "flying") return true;
+  }
+  return false;
+}
+
+/** Selvagem no chão escala e pula. Só o tipo voador (e o companheiro) sobe no ar. */
+function perfilCampo(ator) {
+  if (ator.faccao === "party" && ator.perfil) return ator.perfil;
+  return tipoVoador(ator) ? PERFIL_COMPANHEIRO : PERFIL_ESCALADOR;
+}
+
+/** Quem não voa persegue o chão embaixo de quem está no ar, não a altitude do voo. */
+function zDePerseguicao(ator, alvo) {
+  const z = alvo?.z ?? alvo?.elevacao ?? 0;
+  if (ator.perfil?.podeVoar) return z;
+  if (!alvo?.voando && !alvo?.planando) return z;
+  const chao = alturaSobPes(alvo.x, alvo.y, z);
+  return chao > 0 ? chao : z;
+}
+
 /** Mesmo seguidor do companheiro: pula, escala e não teleporta. distParar menor chega mais perto do ponto. */
 export function irPara(ator, gx, gy, gz, vel, dt, distParar = 0) {
-  if (!ator.perfil?.podeEscalar) ator.perfil = PERFIL_COMPANHEIRO;
+  const perfil = perfilCampo(ator);
+  if (ator.perfil !== perfil) ator.perfil = perfil;
   garantirCorpoLocomocao(ator, ator.perfil);
   const zBase = ator.elevacao ?? ator.z ?? 0;
   const zAlvo = gz != null && gz > 0 ? gz : alturaSobPes(gx, gy, zBase + 12);
@@ -162,11 +187,13 @@ function vagar(ator, dt) {
 }
 
 function perseguir(ator, alvo, dt) {
+  const perfil = perfilCampo(ator);
+  if (ator.perfil !== perfil) ator.perfil = perfil;
   irPara(
     ator,
     alvo.x,
     alvo.y,
-    alvo.z ?? alvo.elevacao,
+    zDePerseguicao(ator, alvo),
     velocidadeDe(ator, true),
     dt,
   );
@@ -238,9 +265,11 @@ function atualizarUm(ator, party, jogador, dt) {
   }
   ator.modo = "agro";
   ator.alvo = ordem;
+  const perfil = perfilCampo(ator);
+  if (ator.perfil !== perfil) ator.perfil = perfil;
   const d = Math.hypot(ator.x - ordem.x, ator.y - ordem.y);
   if (d > 1.15) {
-    irPara(ator, ordem.x, ordem.y, ordem.z ?? ordem.elevacao, velocidadeDe(ator, true), dt);
+    irPara(ator, ordem.x, ordem.y, zDePerseguicao(ator, ordem), velocidadeDe(ator, true), dt);
   } else {
     pararCorpo(ator);
   }

@@ -277,8 +277,8 @@ export const CHUNK_Y = 64;
 export const RAIO_STREAM = 5;
 export const RAIO_STREAM_MIN = 0;
 export const RAIO_STREAM_MAX = 10;
-/** Disco externo da malha suave, em chunks. 0 desliga. 12 ≈ 192 blocos. */
-export const RAIO_SUAVE = 12;
+/** Disco externo da malha suave, em chunks. 0 desliga. A câmera ortográfica não mostra esse anel. */
+export const RAIO_SUAVE = 0;
 export const RAIO_SUAVE_MIN = 0;
 export const RAIO_SUAVE_MAX = 20;
 /** Distância entre vértices da malha suave, em blocos. */

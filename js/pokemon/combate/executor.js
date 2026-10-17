@@ -1,5 +1,5 @@
 import { atoresPerto } from "../grade.js";
-import { comecarAvanco, emAvanco, emEsquiva, emRecuo, golpeBasico, recargaDe } from "../ator.js";
+import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, golpeBasico, recargaDe } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano } from "../tipos.js";
 import { soltarProjetil } from "./projeteis.js";
@@ -78,6 +78,7 @@ function chanceEsquiva(forma) {
 function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma) {
   if (!alvo || alvo.morto || alvo.capturado || alvo.iframe > 0 || alvo.invulneravel) return;
   if (!inimigo(atacante, alvo)) return;
+  if (forma !== "projectile" && forma !== "arc" && !cruzaAltura(atacante, alvo, forma === "radius" ? 0.55 : 0.35)) return;
   if (emEsquiva(alvo) && Math.random() < chanceEsquiva(forma)) {
     efeitos.flutuar(alvo, "dodge", "#67e8f9");
     notar(efeitos, { tipo: "dodge", ator: atacante, alvo });
@@ -150,9 +151,10 @@ function escolher(ator, alvo, d) {
   }
   const corpo = usaCorpo(ator);
   const distancia = usaDistancia(ator);
+  const noPlano = !alvo || cruzaAltura(ator, alvo);
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (corpo && g.def.forma === "contact" && d <= Math.max(golpeBasico().alcance, g.def.alcance)) return g;
+    if (corpo && noPlano && g.def.forma === "contact" && d <= Math.max(golpeBasico().alcance, g.def.alcance)) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
@@ -160,14 +162,14 @@ function escolher(ator, alvo, d) {
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (corpo && g.def.forma === "radius" && g.def.poder > 0 && d <= Math.max(2.2, g.def.alcance)) return g;
+    if (corpo && noPlano && g.def.forma === "radius" && g.def.poder > 0 && d <= Math.max(2.2, g.def.alcance)) return g;
   }
   if (d > 2.4) {
     for (let i = 0; i < prontos.length; i++) {
       if (prontos[i].def.poder <= 0) return prontos[i];
     }
   }
-  if (corpo && d <= golpeBasico().alcance && ator.cdBasico <= 0) return { basico: true, def: golpeBasico(), cd: ator.cdBasico };
+  if (corpo && noPlano && d <= golpeBasico().alcance && ator.cdBasico <= 0) return { basico: true, def: golpeBasico(), cd: ator.cdBasico };
   return null;
 }
 
@@ -210,7 +212,7 @@ function executar(ator, slot, alvo, agora, efeitos) {
     soltarProjetil({
       x: ator.x + ator.dirX * 0.4,
       y: ator.y + ator.dirY * 0.4,
-      z: ator.z,
+      z: alturaPe(ator),
       vx: ator.dirX * (def.vel || 14),
       vy: ator.dirY * (def.vel || 14),
       dono: ator,

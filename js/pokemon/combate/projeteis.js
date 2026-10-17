@@ -1,4 +1,5 @@
 import { POKEMON } from "../../config.js";
+import { alturaCorpo, alturaPe } from "../ator.js";
 import { COR_TIPO } from "../tipos.js";
 
 const vivos = [];
@@ -55,6 +56,10 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
       const dy = alvo.y - p.y;
       const alcance = p.raio + 0.38;
       if (dx * dx + dy * dy > alcance * alcance) continue;
+      const pe = alturaPe(alvo);
+      const topo = pe + alturaCorpo(alvo);
+      const folga = p.raio || 0.45;
+      if (p.z < pe - folga || p.z > topo + folga) continue;
       aoAtingir(p, alvo);
       bateu = true;
       break;

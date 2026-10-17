@@ -100,6 +100,8 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   treinador.y = corpo.y;
   treinador.z = corpo.elevacao ?? corpo.z ?? 0;
   treinador.elevacao = treinador.z;
+  treinador.voando = !!corpo.voando;
+  treinador.planando = !!corpo.planando;
   if (treinador.iframe > 0) treinador.iframe = Math.max(0, treinador.iframe - passo);
 
   atualizarPopulacao(corpo, passo, agora);

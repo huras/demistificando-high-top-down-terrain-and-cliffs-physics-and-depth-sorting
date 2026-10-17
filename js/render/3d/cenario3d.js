@@ -581,7 +581,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     lift: Math.max(0, elev - (corpo.z ?? 0)),
   });
 
-  atualizarPokemon3d(yaw, dt);
+  atualizarPokemon3d(yaw, camRender);
   atualizarDebugCorpos();
   const camPos = estado.camera3d.cam.position;
   resolverLuzes(camPos.x, camPos.y, camPos.z, estado.scene.fog?.far ?? 90);

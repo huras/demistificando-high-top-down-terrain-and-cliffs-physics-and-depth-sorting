@@ -6,6 +6,7 @@ import { alturaEm } from "../../mundo/altura.js";
 const RAIO_CEL = 0.46;
 const RX = RAIO_CEL * 0.95;
 const RY = RAIO_CEL * 0.38;
+const RAIO_REDONDO = 0.42;
 const BASE_ALPHA = 0.34;
 const SHRINK_K = 0.55;
 const HOP_REF = 2.4;
@@ -38,15 +39,15 @@ function clamp(v, a, b) {
   return Math.max(a, Math.min(b, v));
 }
 
-function elipseTocaCelula(x, y, cx, cy) {
+function elipseTocaCelula(x, y, cx, cy, rx, ry) {
   const px = clamp(x, cx, cx + 1);
   const py = clamp(y, cy, cy + 1);
-  const dx = (px - x) / RX;
-  const dy = (py - y) / RY;
+  const dx = (px - x) / rx;
+  const dy = (py - y) / ry;
   return dx * dx + dy * dy <= 1.05;
 }
 
-function coletarToposPerto(x, y, z) {
+function coletarToposPerto(x, y, z, rx, ry) {
   const cx0 = Math.floor(x);
   const cy0 = Math.floor(y);
   const altos = [];
@@ -57,7 +58,7 @@ function coletarToposPerto(x, y, z) {
     for (let cx = cx0 - 1; cx <= cx0 + 1; cx++) {
       const hz = alturaEm(cx, cy);
       if (hz <= 0) continue;
-      if (!elipseTocaCelula(x, y, cx, cy)) continue;
+      if (!elipseTocaCelula(x, y, cx, cy, rx, ry)) continue;
       if (hz === z) altos.push({ cx, cy, z: hz });
       else if (hz < z) {
         baixos.push({ cx, cy, z: hz });
@@ -105,9 +106,28 @@ function projetarNoChaoBaixo(x, y, baixos) {
 }
 
 /**
- * Dual oval de contato (pés + beirada de cliff). Sem cast de shadow map.
+ * XZ ao cair o centro do billboard na vertical até o chão.
+ * vistaX/vistaY são o deslocamento do centro em relação ao pé, nos eixos da câmera.
  */
-export function criarSombraContato3d() {
+export function projetarCentroNoChao(camera, vistaX, vistaY, destino = { x: 0, z: 0 }) {
+  destino.x = 0;
+  destino.z = 0;
+  if (!camera || (!vistaX && !vistaY)) return destino;
+  camera.updateMatrixWorld();
+  const e = camera.matrixWorld.elements;
+  destino.x = e[0] * vistaX + e[4] * vistaY;
+  destino.z = e[2] * vistaX + e[6] * vistaY;
+  return destino;
+}
+
+/**
+ * Sombra de contato (pés + beirada de cliff). Sem cast de shadow map.
+ * redonda: disco no ponto em que o centro do sprite cai no chão.
+ */
+export function criarSombraContato3d(opcoes = {}) {
+  const redonda = !!opcoes.redonda;
+  const raioX = redonda ? RAIO_REDONDO : RX;
+  const raioZ = redonda ? RAIO_REDONDO : RY;
   const grupo = new THREE.Group();
   grupo.name = "sombra-contato";
 
@@ -119,10 +139,13 @@ export function criarSombraContato3d() {
 
   return {
     grupo,
-    atualizar(corpoEstado, elevGrupo) {
+    atualizar(corpoEstado, elevGrupo, desloc) {
       const naParede = !!(corpoEstado.escalando && corpoEstado.escalada);
-      const x = corpoEstado.x;
-      const y = corpoEstado.y;
+      const dx = desloc?.x || 0;
+      const dz = desloc?.z || 0;
+      const bias = redonda ? 0 : SOUTH_BIAS;
+      const x = corpoEstado.x + dx;
+      const y = corpoEstado.y + dz;
 
       if (naParede) {
         const e = corpoEstado.escalada;
@@ -137,11 +160,11 @@ export function criarSombraContato3d() {
         alto.visible = true;
         baixo.visible = false;
         alto.material.opacity = BASE_ALPHA * 0.85;
-        alto.scale.set(RX, 1, RY);
+        alto.scale.set(raioX, 1, raioZ);
         alto.position.set(
-          sx,
+          sx + dx,
           (zChao - elevGrupo) * ALTURA_BLOCO + LIFT_Y,
-          sz + SOUTH_BIAS,
+          sz + dz + bias,
         );
         return;
       }
@@ -158,19 +181,19 @@ export function criarSombraContato3d() {
 
       alto.visible = alpha > 0.04;
       alto.material.opacity = Math.max(0.06, alpha);
-      alto.scale.set(RX * shrink, 1, RY * shrink);
-      alto.position.set(0, (solo - elev) * ALTURA_BLOCO + LIFT_Y, SOUTH_BIAS);
+      alto.scale.set(raioX * shrink, 1, raioZ * shrink);
+      alto.position.set(dx, (solo - elev) * ALTURA_BLOCO + LIFT_Y, dz + bias);
 
-      const { baixos, zBaixo } = coletarToposPerto(x, y, solo);
+      const { baixos, zBaixo } = coletarToposPerto(x, y, solo, raioX, raioZ);
       if (baixos.length && zBaixo !== null && solo > zBaixo) {
         const proj = projetarNoChaoBaixo(x, y, baixos);
         baixo.visible = true;
         baixo.material.opacity = ALPHA_BAIXA * shrink * (corpoEstado.noChao ? 1 : 0.7);
-        baixo.scale.set(RX * 0.85 * shrink, 1, RY * 0.85 * shrink);
+        baixo.scale.set(raioX * 0.85 * shrink, 1, raioZ * 0.85 * shrink);
         baixo.position.set(
-          proj.x - x,
+          proj.x - corpoEstado.x,
           (proj.z - elev) * ALTURA_BLOCO + LIFT_Y,
-          proj.y - y + SOUTH_BIAS,
+          proj.y - corpoEstado.y + bias,
         );
       } else {
         baixo.visible = false;

@@ -4,7 +4,7 @@ import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
 import { obterBola } from "./captura.js";
 import { dropsNoChao } from "./drops.js";
 import { projeteisVivos } from "./combate/projeteis.js";
-import { blitQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
+import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
 import { atoresVisiveis } from "./sistema.js";
 import { COR_TIPO } from "./tipos.js";
 
@@ -15,20 +15,22 @@ function desenharSombra(ctx, x, y, escala) {
   ctx.save();
   ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
   ctx.beginPath();
-  ctx.ellipse(x, y, 11 * escala, 5 * escala, 0, 0, Math.PI * 2);
+  ctx.arc(x, y, 8 * escala, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
 
 function desenharCorpo(ctx, ator) {
-  const { escala, offsetY, dx, dy } = medidaSprite(ator);
+  const medida = medidaSprite(ator);
+  const { escala, offsetY, dx, dy } = medida;
   const chaoX = mundoParaTelaX(ator.x);
   const chaoY = mundoParaTelaY(ator.y, ator.z, ator.hopLift || 0);
   const footX = chaoX;
   const footY = chaoY + offsetY * TILE * ESCALA;
-  desenharSombra(ctx, chaoX, chaoY, escala);
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
   const fr = quadroDe(ator, pack);
+  const centro = centroDoQuadro(fr, medida);
+  desenharSombra(ctx, chaoX + centro.x * PX * escala, chaoY, escala);
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (fr && pack.img && pack.estado === "pronto") {

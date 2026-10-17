@@ -142,6 +142,29 @@ export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala, a
   ctx.restore();
 }
 
+/**
+ * Centro do recorte, em px do canvas 1:1, relativo ao pé.
+ * x para a direita, y para cima. Sem quadro, o círculo de fallback.
+ */
+export function centroDoQuadro(fr, ajuste) {
+  if (!fr || !(fr.w > 0)) return { x: 0, y: 18 };
+  const trimX = fr.trimX || 0;
+  const trimW = fr.trimW || fr.w;
+  const trimH = fr.trimH || fr.h;
+  const pivotX = 1 - (fr.pivotX ?? 0.5);
+  const trimEsq = fr.w - trimX - trimW;
+  const ox = Number(ajuste?.dx);
+  const oy = Number(ajuste?.dy);
+  const dx = Number.isFinite(ox) ? ox : 0;
+  const dy = Number.isFinite(oy) ? oy : 0;
+  const esquerda = -pivotX * fr.w + trimEsq + dx;
+  const topo = -trimH + dy;
+  return {
+    x: esquerda + trimW * 0.5,
+    y: -(topo + trimH * 0.5),
+  };
+}
+
 export function medidaSprite(ator) {
   const escala = Number(ator?.especie?.escala);
   const offsetY = Number(ator?.especie?.offsetY);

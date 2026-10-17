@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, TILE } from "../config.js";
-import { criarSombraContato3d } from "../render/3d/sombraContato3d.js";
+import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 import { obterBola, particulasCaptura } from "./captura.js";
 import { projeteisVivos } from "./combate/projeteis.js";
 import { dropsNoChao } from "./drops.js";
-import { blitQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
+import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
 import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
@@ -32,6 +32,7 @@ const MAX_BRILHO = 4;
 const _mundo = new THREE.Vector3();
 const _luzCidade = new THREE.Color();
 const _branco = new THREE.Color(1, 1, 1);
+const _desloc = { x: 0, z: 0 };
 
 let cena = null;
 let atores = [];
@@ -88,7 +89,7 @@ function criarAtorSlot() {
   silhueta.center.copy(sprite.center);
   silhueta.scale.copy(sprite.scale);
   grupo.add(silhueta);
-  const sombra = criarSombraContato3d();
+  const sombra = criarSombraContato3d({ redonda: true });
   grupo.add(sombra.grupo);
   const brilhos = [];
   for (let i = 0; i < MAX_BRILHO; i++) {
@@ -255,7 +256,7 @@ function pegarLivre() {
   return null;
 }
 
-export function atualizarPokemon3d(yawCam = 0) {
+export function atualizarPokemon3d(yawCam = 0, camera = null) {
   if (!cena || !pokemonLigado()) return;
   const lista = atoresVisiveis();
   const naSala = !!estadoJogo.interior?.sala3d;
@@ -295,9 +296,14 @@ export function atualizarPokemon3d(yawCam = 0) {
     );
     slot.grupo.visible = some > 0.04;
     if (visual && dirMundo != null) visual.dir = dirMundo;
+    const centro = centroDoQuadro(fr, medidaSprite(ator));
+    const vistaX = (centro.x / LADO) * slot.sprite.scale.x;
+    const vistaY = (centro.y / LADO) * slot.sprite.scale.y;
+    projetarCentroNoChao(camera, vistaX, vistaY, _desloc);
     slot.sombra.atualizar(
       { x: ator.x, y: ator.y, z: ator.z, noChao: true, elevacao: ator.z },
       elev,
+      _desloc,
     );
     aplicarBrilho(slot, ator, offsetY);
     const py = slot.grupo.position.y;

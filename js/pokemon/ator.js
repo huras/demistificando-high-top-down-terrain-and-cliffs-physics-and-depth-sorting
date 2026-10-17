@@ -24,6 +24,32 @@ export function golpeBasico() {
   return BASICO;
 }
 
+/**
+ * Pé no mundo. No ar, elevacao já é a altura; hopLift só entra com os pés no chão
+ * (senão o voo conta duas vezes).
+ */
+export function alturaPe(ator) {
+  if (!ator) return 0;
+  const elev = ator.elevacao ?? ator.z ?? 0;
+  const z = ator.z ?? elev;
+  if (elev > z + 0.05) return elev;
+  return elev + (ator.hopLift || 0);
+}
+
+export function alturaCorpo(ator) {
+  const h = ator?.alturaCorpo;
+  return h > 0 ? h : 1.8;
+}
+
+/** Corpos se cruzam na vertical (golpe no chão não alcança quem está voando). */
+export function cruzaAltura(a, b, margem = 0.35) {
+  const a0 = alturaPe(a);
+  const b0 = alturaPe(b);
+  const a1 = a0 + alturaCorpo(a);
+  const b1 = b0 + alturaCorpo(b);
+  return a0 <= b1 + margem && b0 <= a1 + margem;
+}
+
 function montarGolpes(especie, nivel) {
   const lista = especie.learnset || [];
   const sabidos = [];

@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { ALTURA_BLOCO, TILE } from "../config.js";
 import { particulasVivas } from "../pokemon/combate/particulas.js";
 import { projeteisVivos } from "../pokemon/combate/projeteis.js";
-import { blitQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
+import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
+import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 
 const PX_MUNDO = 1 / TILE;
 const LADO = 256;
@@ -27,7 +28,7 @@ const alvo = new THREE.Vector3(0, 1.15, 0);
 const ponto = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _direita = new THREE.Vector3();
-const _frente = new THREE.Vector3();
+const _desloc = { x: 0, z: 0 };
 const slots = [];
 const tiros = [];
 const faiscas = [];
@@ -268,8 +269,12 @@ function pintarAtor(slot, ator) {
   slot.mat.opacity = ator.morto ? 0.45 : 1;
   const hop = ator.hopLift || 0;
   const encolhe = Math.max(0.42, 1 - hop * 0.85);
-  slot.sombra.position.set(ator.x, 0.03, ator.y);
-  slot.sombra.scale.set(encolhe, 1, encolhe * 0.62);
+  const centro = centroDoQuadro(fr, medidaSprite(ator));
+  const vistaX = (centro.x / LADO) * slot.sprite.scale.x;
+  const vistaY = (centro.y / LADO) * slot.sprite.scale.y;
+  projetarCentroNoChao(camera, vistaX, vistaY, _desloc);
+  slot.sombra.position.set(ator.x + _desloc.x, 0.03, ator.y + _desloc.z);
+  slot.sombra.scale.set(encolhe, 1, encolhe);
   slot.sombra.material.opacity = (ator.morto ? 0.2 : 0.4) * Math.max(0.3, 1 - hop);
 }
 
