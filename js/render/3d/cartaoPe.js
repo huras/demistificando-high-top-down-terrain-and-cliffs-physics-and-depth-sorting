@@ -11,6 +11,7 @@ import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 import { fotoCuraMaquina, SLOTS_CURA } from "../../jogo/maquinaCura.js";
 
 const PX = 16;
+const FOLGA_PE = 0.08;
 const cartoes = [];
 
 export function imagem(url) {
@@ -43,7 +44,7 @@ export function recortar(img, def) {
   return tela;
 }
 
-export function materialSprite(tela) {
+export function materialSprite(tela, folga = FOLGA_PE) {
   const tex = new THREE.CanvasTexture(tela);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.magFilter = THREE.NearestFilter;
@@ -58,7 +59,7 @@ export function materialSprite(tela) {
     depthWrite: true,
   });
   aplicarLuzCidade(mat);
-  aplicarLuzBillboard(mat);
+  aplicarLuzBillboard(mat, folga);
   return mat;
 }
 
@@ -68,6 +69,11 @@ export function moldePe(tela, escala = 1) {
   const altura = (tela.height / PX) * escala;
   const geo = new THREE.PlaneGeometry(largura, altura);
   geo.translate(largura * (0.5 - pivo.x), altura * (pivo.y - 0.5), 0);
+  geo.computeBoundingSphere();
+  const esfera = geo.boundingSphere;
+  const alcance = esfera.center.length() + esfera.radius;
+  esfera.center.set(0, 0, 0);
+  esfera.radius = alcance;
   return { geo, material: materialSprite(tela) };
 }
 
@@ -75,7 +81,7 @@ export function moldeChao(tela) {
   const largura = tela.width / PX;
   const altura = tela.height / PX;
   const geo = new THREE.PlaneGeometry(largura, altura);
-  return { geo, material: materialSprite(tela) };
+  return { geo, material: materialSprite(tela, 1.5) };
 }
 
 export function emPe(grupo) {
@@ -126,6 +132,16 @@ export function girarCartoes(yaw, inclinacao) {
     cartoes[i].rotation.x = inclinacao;
     cartoes[i].rotation.y = yaw;
   }
+}
+
+/** Sul, leste e oeste não gravam depth. Topo e norte continuam normais. */
+export function facesParedeInterior(lateral, topo) {
+  lateral.depthWrite = false;
+  const fechado = lateral.clone();
+  fechado.depthWrite = true;
+  const cima = topo && topo !== lateral ? topo : fechado;
+  cima.depthWrite = true;
+  return [lateral, lateral, cima, fechado, lateral, fechado];
 }
 
 export function criarBolasCura(cartao) {

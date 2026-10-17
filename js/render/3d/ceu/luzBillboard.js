@@ -94,7 +94,8 @@ const VERT_PIVO = `
 varying float vProfundidadePivo;
 `;
 
-const VERT_PIVO_CALC = `
+function calcPivo(folgaTxt) {
+  return `
 {
   vec4 pivoLocal = vec4(0.0, 0.0, 0.0, 1.0);
   #ifdef USE_INSTANCING
@@ -104,17 +105,18 @@ const VERT_PIVO_CALC = `
     pivoLocal = batchingMatrix * pivoLocal;
   #endif
   vec4 pivoVista = modelViewMatrix * pivoLocal;
-  pivoVista.z += ${FOLGA_PIVO.toFixed(2)};
+  pivoVista.z += ${folgaTxt};
   vec4 pivoClip = projectionMatrix * pivoVista;
   vProfundidadePivo = pivoClip.z / pivoClip.w * 0.5 + 0.5;
 }
 `;
+}
 
-function achatarProfundidade(shader) {
+function achatarProfundidade(shader, folgaTxt) {
   if (shader.vertexShader.includes("vProfundidadePivo")) return;
   shader.vertexShader = shader.vertexShader
     .replace("#include <common>", `#include <common>\n${VERT_PIVO}`)
-    .replace("#include <project_vertex>", `#include <project_vertex>\n${VERT_PIVO_CALC}`);
+    .replace("#include <project_vertex>", `#include <project_vertex>\n${calcPivo(folgaTxt)}`);
   shader.fragmentShader = shader.fragmentShader
     .replace("#include <common>", `#include <common>\n${VERT_PIVO}`)
     .replace(
@@ -211,11 +213,12 @@ export function aplicarProfundidadeVolume(material, baseLocalY) {
 }
 
 /** Troca a normal de iluminação e achata o depth no pivô. A sombra fica no cartão real. */
-export function aplicarLuzBillboard(material) {
+export function aplicarLuzBillboard(material, folgaPivo = FOLGA_PIVO) {
   if (!material || material.userData?.luzBillboard) return material;
   if (!material.userData) material.userData = {};
   material.userData.luzBillboard = true;
 
+  const folgaTxt = Number(folgaPivo).toFixed(2);
   const anterior = material.onBeforeCompile;
   const chaveAnterior = material.customProgramCacheKey;
   material.onBeforeCompile = (shader, renderer) => {
@@ -228,11 +231,11 @@ export function aplicarLuzBillboard(material) {
       "#include <normal_fragment_maps>",
       "#include <normal_fragment_maps>\nnormal = normalize( mat3( viewMatrix ) * uNormalSol );",
     );
-    achatarProfundidade(shader);
+    achatarProfundidade(shader, folgaTxt);
   };
   material.customProgramCacheKey = function chaveLuzBillboard() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-billboard|pivo`;
+    return `${base}|luz-billboard|pivo|${folgaTxt}`;
   };
   return material;
 }

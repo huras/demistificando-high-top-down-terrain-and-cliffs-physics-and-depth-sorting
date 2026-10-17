@@ -1,8 +1,7 @@
 /**
- * Sala do Centro: chão, paredes, balcão, enfermeira, máquina e o PC do Bill.
+ * Sala do Centro: chão, paredes, balcão, enfermeira, máquina, PC e os móveis.
  */
 import * as THREE from "three";
-import { ALTURA_BLOCO } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { ALTURA_PAREDE_HUB } from "../../mundo/cidade/plantaHub.js";
 import { plantaCentro } from "../../mundo/cidade/centro.js";
@@ -15,20 +14,29 @@ import {
   porBillboard,
   quadroGente,
   recortar,
+  facesParedeInterior,
 } from "./cartaoPe.js";
 
 const FOLHA = "/ref/sprites/interiors/pokecenter-emerald-bg.png";
 const FOLHA_FRENTE = "/ref/sprites/interiors/pokecenter-emerald-fg.png";
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
+const FOLHA_SALA = "/ref/sprites/interiors/Safari-Zone-Inner-Room-Hospital-Tileset-629434880.png";
 const FOLHA_GENTE =
   "/ref/sprites/people/logic 2/DS _ DSi - Pokemon Platinum - Non-Playable Characters - NPCs.png";
 const RECORTE_CURA = Object.freeze({ col: 6, row: 43, cols: 2, rows: 3, tile: 16 });
 const RECORTE_PC = Object.freeze({ col: 5, row: 42, cols: 1, rows: 2, tile: 16 });
+const DECOR = Object.freeze({
+  vaso: Object.freeze({ url: FOLHA_MOVEIS, col: 5, row: 40, cols: 1, rows: 2, tile: 16 }),
+  estante: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 45, cols: 2, rows: 2, tile: 16 }),
+  mesa: Object.freeze({ url: FOLHA_SALA, col: 42, row: 15, cols: 3, rows: 3, tile: 16, escala: 0.5 }),
+  cadeira: Object.freeze({ url: FOLHA_SALA, col: 45, row: 15, cols: 3, rows: 3, tile: 16, escala: 0.5 }),
+});
 const bolas = [];
 const COLUNAS = 32;
 const TILE = 16;
 const SPRITE_CHAO = 1;
-const SPRITE_PAREDE = 16;
+const SPRITE_PAREDE_CIMA = 9;
+const SPRITE_PAREDE_BAIXO = 16;
 const ALTURA_BALCAO = 2;
 const FAIXA_TOPO = 6;
 
@@ -53,6 +61,23 @@ function texturaSprite(img, id) {
   const sx = (id % COLUNAS) * TILE;
   const sy = Math.floor(id / COLUNAS) * TILE;
   ctx.drawImage(img, sx, sy, TILE, TILE, 0, 0, TILE, TILE);
+  return texturaDeTela(tela);
+}
+
+function pintarSprite(ctx, img, id, dy) {
+  const sx = (id % COLUNAS) * TILE;
+  const sy = Math.floor(id / COLUNAS) * TILE;
+  ctx.drawImage(img, sx, sy, TILE, TILE, 0, dy, TILE, TILE);
+}
+
+function texturaParede(img) {
+  const tela = document.createElement("canvas");
+  tela.width = TILE;
+  tela.height = TILE * 2;
+  const ctx = tela.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  pintarSprite(ctx, img, SPRITE_PAREDE_CIMA, 0);
+  pintarSprite(ctx, img, SPRITE_PAREDE_BAIXO, TILE);
   return texturaDeTela(tela);
 }
 
@@ -93,23 +118,28 @@ function anexarPeca(sala, planta, moveis, id, recorte, aoColocar) {
 }
 
 function anexarBalcao(sala, planta, frente) {
-  const peca = planta.balcao;
-  if (!peca || !frente) return;
-  const matLado = material(texturaSprite(frente, peca.sprite), true);
-  const matTopo = material(texturaFaixa(frente, peca.sprite, 0, FAIXA_TOPO), true);
-  const geo = new THREE.BoxGeometry(1, ALTURA_BALCAO, peca.h);
+  const pecas = planta.balcoes;
+  if (!pecas || !frente) return;
+  const matLado = material(texturaSprite(frente, pecas[0].sprite), true);
+  const matTopo = material(texturaFaixa(frente, pecas[0].sprite, 0, FAIXA_TOPO), true);
+  const geo = new THREE.BoxGeometry(1, ALTURA_BALCAO, 1);
   const materiais = [matLado, matLado, matTopo, matLado, matLado, matLado];
   const y = ALTURA_PRACA + ALTURA_BALCAO * 0.5;
-  for (let i = 0; i < peca.w; i++) {
-    const mesh = new THREE.Mesh(geo, materiais);
-    mesh.position.set(
-      planta.origemX + peca.x + i + 0.5,
-      y,
-      planta.origemY + peca.y + peca.h * 0.5,
-    );
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-    sala.add(mesh);
+  for (let p = 0; p < pecas.length; p++) {
+    const peca = pecas[p];
+    for (let iz = 0; iz < peca.h; iz++) {
+      for (let ix = 0; ix < peca.w; ix++) {
+        const mesh = new THREE.Mesh(geo, materiais);
+        mesh.position.set(
+          planta.origemX + peca.x + ix + 0.5,
+          y,
+          planta.origemY + peca.y + iz + 0.5,
+        );
+        mesh.castShadow = false;
+        mesh.receiveShadow = true;
+        sala.add(mesh);
+      }
+    }
   }
 }
 
@@ -123,6 +153,24 @@ function anexarEnfermeira(sala, planta, gente) {
     if (!molde) {
       molde = moldePe(quadroGente(gente, prop.coluna));
       moldes.set(prop.coluna, molde);
+    }
+    const inst = porBillboard(molde, planta.origemX + prop.x, planta.origemY + prop.y);
+    if (inst) sala.add(inst);
+  }
+}
+
+function anexarDecor(sala, planta, imagens) {
+  const moldes = new Map();
+  for (let i = 0; i < planta.props.length; i++) {
+    const prop = planta.props[i];
+    const recorte = DECOR[prop.id];
+    if (!recorte) continue;
+    const img = imagens.get(recorte.url);
+    if (!img) continue;
+    let molde = moldes.get(prop.id);
+    if (!molde) {
+      molde = moldePe(recortar(img, recorte), recorte.escala || 1);
+      moldes.set(prop.id, molde);
     }
     const inst = porBillboard(molde, planta.origemX + prop.x, planta.origemY + prop.y);
     if (inst) sala.add(inst);
@@ -147,15 +195,12 @@ function anexarSala(sala, planta, img) {
     sala.add(mesh);
   }
 
-  const lado = texturaSprite(img, SPRITE_PAREDE);
-  lado.repeat.set(1, ALTURA_PAREDE_HUB * ALTURA_BLOCO);
-  const topo = lado.clone();
-  topo.repeat.set(1, 1);
-  topo.needsUpdate = true;
+  const lado = texturaParede(img);
+  const topo = texturaFaixa(img, SPRITE_PAREDE_CIMA, 1, 4);
   const matLado = material(lado, true);
   const matTopo = material(topo, true);
   const geo = new THREE.BoxGeometry(1, ALTURA_PAREDE_HUB, 1);
-  const materiais = [matLado, matLado, matTopo, matLado, matLado, matLado];
+  const materiais = facesParedeInterior(matLado, matTopo);
   const y = ALTURA_PRACA + ALTURA_PAREDE_HUB * 0.5;
   for (let row = 0; row < planta.rows; row++) {
     for (let col = 0; col < planta.cols; col++) {
@@ -177,10 +222,14 @@ export function montarCentro3d(grupo) {
   return Promise.all([
     imagemPronta(FOLHA),
     imagemPronta(FOLHA_MOVEIS).catch(() => null),
+    imagemPronta(FOLHA_SALA).catch(() => null),
     imagemPronta(FOLHA_FRENTE).catch(() => null),
     imagemPronta(FOLHA_GENTE).catch(() => null),
   ])
-    .then(([img, moveis, frente, gente]) => {
+    .then(([img, moveis, salaImg, frente, gente]) => {
+      const imagens = new Map();
+      if (moveis) imagens.set(FOLHA_MOVEIS, moveis);
+      if (salaImg) imagens.set(FOLHA_SALA, salaImg);
       anexarSala(sala, planta, img);
       anexarBalcao(sala, planta, frente);
       anexarPeca(sala, planta, moveis, "cura", RECORTE_CURA, (inst) => {
@@ -189,6 +238,7 @@ export function montarCentro3d(grupo) {
         for (let b = 0; b < novas.length; b++) bolas.push(novas[b]);
       });
       anexarPeca(sala, planta, moveis, "pc", RECORTE_PC);
+      anexarDecor(sala, planta, imagens);
       anexarEnfermeira(sala, planta, gente);
     })
     .catch((erro) => {

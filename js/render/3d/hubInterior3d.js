@@ -12,6 +12,7 @@ import {
   porBillboard,
   quadroGente,
   criarBolasCura,
+  facesParedeInterior,
 } from "./cartaoPe.js";
 
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
@@ -45,7 +46,7 @@ function bloco(largura, altura, fundo, x, y, z, mat) {
 }
 
 function anexarCaixas(grupo, planta) {
-  const parede = materialCaixa(planta.corParede);
+  const parede = facesParedeInterior(materialCaixa(planta.corParede));
   const balcao = materialCaixa(planta.corBalcao);
   const h = ALTURA_PAREDE_HUB;
   const y = ALTURA_PRACA + h * 0.5;

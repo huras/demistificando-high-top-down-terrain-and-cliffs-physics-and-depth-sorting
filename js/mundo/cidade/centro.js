@@ -1,5 +1,5 @@
 /**
- * Centro Pokémon. Sala 14×9, um tile por célula.
+ * Centro Pokémon. Sala 28×9, o dobro da largura do mapa.
  * A borda é parede, com a porta no sul. O balcão fica na frente da enfermeira.
  */
 import { criarPlantaHub, aplicarPlantaNoChunk, naSaidaPlanta, alvoDaPlanta } from "./plantaHub.js";
@@ -19,45 +19,77 @@ const CAMADA = Object.freeze([
   Object.freeze([32, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 30, 39, 40]),
 ]);
 
-const enfermeira = { x: 7.5, y: 2.55, coluna: 64 };
-const pc = { x: 10.5, y: 3 };
-const maquina = { x: 6, y: 2.55 };
-const balcao = { x: 4, y: 3, w: 6, h: 1, sprite: 25 };
+const enfermeira = { x: 14.5, y: 2.55, coluna: 64 };
+const pc = { x: 17.5, y: 3 };
+const maquina = { x: 13, y: 2.55 };
+const base = 1.55;
+const vaso = { x: 1.75, y: base };
+const vasoDireito = { x: 26.25, y: base };
+const estantes = [
+  { x: 3.4, y: base },
+  { x: 5.45, y: base },
+  { x: 7.5, y: base },
+];
+const mesa = { x: 24.3, y: 5.7 };
+const cadeiras = [
+  { x: 23.05, y: 5.7 },
+  { x: 25.55, y: 5.7 },
+  { x: 24.3, y: 6.95 },
+];
+const balcoes = [
+  { x: 11, y: 3, w: 6, h: 1, sprite: 25 },
+  { x: 11, y: 1, w: 1, h: 2, sprite: 25 },
+  { x: 16, y: 1, w: 1, h: 2, sprite: 25 },
+];
 
 const PLANTA = criarPlantaHub({
   papel: "centro",
   origemX: ORIGEM_CENTRO_X,
   origemY: ORIGEM_CENTRO_Y,
-  tilesX: 14,
+  tilesX: 28,
   tilesY: 9,
   anel: true,
   camada: CAMADA,
   corParede: "#f3c1cf",
   corBalcao: "#fff6f8",
   saidas: [
-    { tx: 6, ty: 8 },
-    { tx: 7, ty: 8 },
+    { tx: 13, ty: 8 },
+    { tx: 14, ty: 8 },
   ],
   props: [
     { id: "cura", x: maquina.x, y: maquina.y, disco: true, raio: 0.62 },
     { id: "pc", x: pc.x, y: pc.y, disco: true, raio: 0.42 },
     { id: "npc", coluna: enfermeira.coluna, x: enfermeira.x, y: enfermeira.y, disco: true, raio: 0.36 },
+    { id: "vaso", x: vaso.x, y: vaso.y, disco: true, raio: 0.36 },
+    { id: "vaso", x: vasoDireito.x, y: vasoDireito.y, disco: true, raio: 0.36 },
+    { id: "estante", x: estantes[0].x, y: estantes[0].y, disco: true, raio: 0.72 },
+    { id: "estante", x: estantes[1].x, y: estantes[1].y, disco: true, raio: 0.72 },
+    { id: "estante", x: estantes[2].x, y: estantes[2].y, disco: true, raio: 0.72 },
+    { id: "mesa", x: mesa.x, y: mesa.y, disco: true, raio: 0.55 },
+    { id: "cadeira", x: cadeiras[0].x, y: cadeiras[0].y, disco: true, raio: 0.36 },
+    { id: "cadeira", x: cadeiras[1].x, y: cadeiras[1].y, disco: true, raio: 0.36 },
+    { id: "cadeira", x: cadeiras[2].x, y: cadeiras[2].y, disco: true, raio: 0.36 },
   ],
   alvos: [
-    { tipo: "cura", nome: "Enfermeira", x: 7.5, y: 4.5, alcance: 1.25 },
-    { tipo: "cura", nome: "Máquina", x: 6, y: 4.5, alcance: 1.25 },
+    { tipo: "cura", nome: "Enfermeira", x: 14.5, y: 4.5, alcance: 1.25 },
+    { tipo: "cura", nome: "Máquina", x: 13, y: 4.5, alcance: 1.25 },
     { tipo: "pc", nome: "PC", x: pc.x, y: pc.y + 0.7, alcance: 1.25 },
   ],
 });
 
-PLANTA.balcao = balcao;
-for (let i = 0; i < balcao.w; i++) {
-  PLANTA.discos.push({
-    x: ORIGEM_CENTRO_X + balcao.x + i + 0.5,
-    y: ORIGEM_CENTRO_Y + balcao.y + balcao.h * 0.5,
-    z: PLANTA.spawn.z,
-    r: 0.48,
-  });
+PLANTA.balcoes = balcoes;
+for (let p = 0; p < balcoes.length; p++) {
+  const peca = balcoes[p];
+  for (let iz = 0; iz < peca.h; iz++) {
+    for (let ix = 0; ix < peca.w; ix++) {
+      PLANTA.discos.push({
+        x: ORIGEM_CENTRO_X + peca.x + ix + 0.5,
+        y: ORIGEM_CENTRO_Y + peca.y + iz + 0.5,
+        z: PLANTA.spawn.z,
+        r: 0.48,
+      });
+    }
+  }
 }
 
 export function plantaCentro() {

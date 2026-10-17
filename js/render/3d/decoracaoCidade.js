@@ -11,6 +11,7 @@ import {
 import { medidasSala } from "../../mundo/cidade/sala3d.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
+import { facesParedeInterior } from "./cartaoPe.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 
 const FOLHA_CORREIO = "/ref/sprites/buildings/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png";
@@ -296,7 +297,7 @@ export function anexarCascaSala(grupo, piso) {
     mesh.name = "piso-sala";
     grupo.add(mesh);
   }
-  const parede = materialSala("#f3e7cf");
+  const parede = facesParedeInterior(materialSala("#f3e7cf"));
   const h = m.alturaParede + 0.2;
   const y = ALTURA_PRACA + h * 0.5;
   const meioX = (m.x0 + m.x1) * 0.5;
