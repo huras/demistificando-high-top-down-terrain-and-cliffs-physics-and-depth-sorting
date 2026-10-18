@@ -4,21 +4,12 @@ import {
   PULO_BUFFER,
   PULO_CORTE_SOLTAR,
   PULO_COYOTE,
-  PULO_EMPURRAO_POUSO,
   PULO_EPS_POUSO,
   PULO_VELOCIDADE,
-  RAIO_CORPO,
 } from "../config.js";
 import { teclaBaixa } from "../entrada/teclado.js";
-import { dentroDoMapa } from "../mundo/altura.js";
 import { resolverAguaAereo } from "./agua.js";
-import {
-  alturaSobPes,
-  aplicarTetoOverhang,
-  chaoSobElevacao,
-  corpoColideSolido,
-  podeEntrar,
-} from "./colisao.js";
+import { alturaSobPes, aplicarTetoOverhang } from "./colisao.js";
 
 /** Edge de pulo com buffer (aperta um pouco antes de pousar). */
 export function registrarBufferPulo(corpo, apertou) {
@@ -150,7 +141,6 @@ export function pousarNoChao(corpo, zChao) {
   corpo.segurarPulo = false;
   corpo.coyoteT = 0;
   corpo.tempoAr = 0;
-  empurrarForaDeCliff(corpo);
 
   const queda = Math.max(0, Math.round(zAntes) - zChao);
   corpo.acao = queda >= 2 ? `pousou ${queda}↓` : "pousou";
@@ -160,172 +150,3 @@ export function pousarNoChao(corpo, zChao) {
   }
 }
 
-/**
- * Beirada: cantos ainda no piso alto travam o XY no ar (AABB entra no sólido).
- * Empurra até nenhum canto ficar em célula com piso > zMaxPiso.
- */
-export function empurrarForaDePisoAlto(corpo, zMaxPiso) {
-  const r = RAIO_CORPO;
-  const elev = corpo.elevacao ?? corpo.z;
-  const lim = zMaxPiso + 0.05;
-  const scanZ = Math.max(elev, lim) + 0.35;
-
-  for (let iter = 0; iter < 6; iter++) {
-    let empX = 0;
-    let empY = 0;
-    let n = 0;
-    const cantos = [
-      [corpo.x - r, corpo.y - r],
-      [corpo.x + r, corpo.y - r],
-      [corpo.x - r, corpo.y + r],
-      [corpo.x + r, corpo.y + r],
-    ];
-    for (const [px, py] of cantos) {
-      const cx = Math.floor(px);
-      const cy = Math.floor(py);
-      if (!dentroDoMapa(cx, cy)) continue;
-      const hz = chaoSobElevacao(cx, cy, scanZ);
-      if (hz <= lim) continue;
-      const sx = Math.sign(corpo.x - (cx + 0.5));
-      const sy = Math.sign(corpo.y - (cy + 0.5));
-      empX += sx !== 0 ? sx : corpo.x >= cx + 0.5 ? 1 : -1;
-      empY += sy !== 0 ? sy : corpo.y >= cy + 0.5 ? 1 : -1;
-      n++;
-    }
-    if (n === 0) return false;
-    const len = Math.hypot(empX, empY) || 1;
-    corpo.x += (empX / len) * 0.22;
-    corpo.y += (empY / len) * 0.22;
-  }
-  return true;
-}
-
-/**
- * Pulo de 1 bloco: o canto já passou da altura da borda, mas o centro ainda
- * está no piso de baixo. Sobe para o tile em vez de ser empurrado de volta.
- */
-export function montarDegrauNoAr(corpo) {
-  if (!corpo || corpo.noChao || corpo.escalando || corpo.planando || corpo.voando || corpo.mantle) {
-    return false;
-  }
-  const elev = corpo.elevacao ?? corpo.z ?? 0;
-  const zPe = alturaSobPes(corpo.x, corpo.y, elev);
-  if (zPe <= 0) return false;
-  const raio = Math.max(RAIO_CORPO, corpo.raioCorpo || 0);
-  const vx = corpo.vx || corpo.dirX || 0;
-  const vy = corpo.vy || corpo.dirY || 0;
-  let melhor = null;
-  let melhorDot = -Infinity;
-  for (const [px, py] of [
-    [corpo.x - RAIO_CORPO, corpo.y - RAIO_CORPO],
-    [corpo.x + RAIO_CORPO, corpo.y - RAIO_CORPO],
-    [corpo.x - RAIO_CORPO, corpo.y + RAIO_CORPO],
-    [corpo.x + RAIO_CORPO, corpo.y + RAIO_CORPO],
-  ]) {
-    const cx = Math.floor(px);
-    const cy = Math.floor(py);
-    if (!dentroDoMapa(cx, cy)) continue;
-    const hz = chaoSobElevacao(cx, cy, elev + 0.35);
-    if (hz !== zPe + 1) continue;
-    if (elev < hz - 0.25 || elev > hz + 0.6) continue;
-    const dot = (cx + 0.5 - corpo.x) * vx + (cy + 0.5 - corpo.y) * vy;
-    if (dot < melhorDot) continue;
-    melhorDot = dot;
-    melhor = { cx, cy, hz };
-  }
-  if (!melhor || melhorDot < 0) return false;
-  const m = raio + 0.04;
-  const x0 = corpo.x;
-  const y0 = corpo.y;
-  if (corpo.x < melhor.cx + m) corpo.x = melhor.cx + m;
-  else if (corpo.x > melhor.cx + 1 - m) corpo.x = melhor.cx + 1 - m;
-  if (corpo.y < melhor.cy + m) corpo.y = melhor.cy + m;
-  else if (corpo.y > melhor.cy + 1 - m) corpo.y = melhor.cy + 1 - m;
-  if (corpo.x === x0 && corpo.y === y0) return false;
-  if (elev < melhor.hz) corpo.elevacao = melhor.hz;
-  return true;
-}
-
-/**
- * Só resolve penetração em sólido.
- * Não empurra piso alto genérico aqui — isso impede pular pro degrau +1.
- * O push de beirada fica no walk-off (`empurrarForaDePisoAlto`).
- */
-export function liberarCorpoAereo(corpo) {
-  if (montarDegrauNoAr(corpo)) return;
-  if (cantoPenetraSolido(corpo)) empurrarForaDeCliff(corpo);
-}
-
-function cantoPenetraSolido(corpo) {
-  const r = RAIO_CORPO;
-  const elev = corpo.elevacao ?? corpo.z;
-  const cantos = [
-    [corpo.x - r, corpo.y - r],
-    [corpo.x + r, corpo.y - r],
-    [corpo.x - r, corpo.y + r],
-    [corpo.x + r, corpo.y + r],
-  ];
-  for (const [px, py] of cantos) {
-    if (corpoColideSolido(Math.floor(px), Math.floor(py), elev)) return true;
-  }
-  return false;
-}
-
-/** Se algum canto ainda pisa célula mais alta, empurra pro centro seguro. */
-export function empurrarForaDeCliff(corpo) {
-  const r = RAIO_CORPO;
-  const z = corpo.z;
-  const elev = corpo.elevacao ?? z;
-  let empX = 0;
-  let empY = 0;
-  const cantos = [
-    [corpo.x - r, corpo.y - r],
-    [corpo.x + r, corpo.y - r],
-    [corpo.x - r, corpo.y + r],
-    [corpo.x + r, corpo.y + r],
-  ];
-  for (const [px, py] of cantos) {
-    const cx = Math.floor(px);
-    const cy = Math.floor(py);
-    if (!dentroDoMapa(cx, cy)) continue;
-    if (corpoColideSolido(cx, cy, elev)) {
-      empX += Math.sign(corpo.x - (cx + 0.5));
-      empY += Math.sign(corpo.y - (cy + 0.5));
-    }
-  }
-  if (empX === 0 && empY === 0) {
-    const cx = Math.floor(corpo.x);
-    const cy = Math.floor(corpo.y);
-    const hz = chaoSobElevacao(cx, cy, elev);
-    if (hz === Math.floor(elev + 1e-4) || Math.abs(hz - elev) < 0.05) return;
-    for (const [dx, dy] of [
-      [0, 1],
-      [0, -1],
-      [1, 0],
-      [-1, 0],
-    ]) {
-      if (
-        podeEntrar(cx + dx, cy + dy, z, "andar", elev) &&
-        Math.abs(chaoSobElevacao(cx + dx, cy + dy, elev) - elev) < 0.05
-      ) {
-        corpo.x = cx + dx + 0.5;
-        corpo.y = cy + dy + 0.5;
-        return;
-      }
-    }
-    return;
-  }
-  const len = Math.hypot(empX, empY) || 1;
-  corpo.x += (empX / len) * (0.25 + PULO_EMPURRAO_POUSO);
-  corpo.y += (empY / len) * (0.25 + PULO_EMPURRAO_POUSO);
-  const cx = Math.floor(corpo.x);
-  const cy = Math.floor(corpo.y);
-  if (Math.abs(chaoSobElevacao(cx, cy, elev) - elev) < 0.05) {
-    corpo.x = clamp(corpo.x, cx + r + 0.02, cx + 1 - r - 0.02);
-    corpo.y = clamp(corpo.y, cy + r + 0.02, cy + 1 - r - 0.02);
-  }
-}
-
-function clamp(v, a, b) {
-  return Math.max(a, Math.min(b, v));
-}

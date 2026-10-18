@@ -5,7 +5,6 @@ import {
   GRAVIDADE,
   PATH_GLIDE_DIST_MIN,
   PATH_GLIDE_PULO_BONUS,
-  RAIO_CORPO,
   VELOCIDADE_MAX,
   VELOCIDADE_SPRINT,
 } from "../config.js";
@@ -31,7 +30,7 @@ import {
   fimPassoChao,
   inicioPassoChao,
 } from "./agua.js";
-import { alturaSobPes, corpoColideSolido, moverAereo, moverComColisao } from "./colisao.js";
+import { alturaSobPes, moverAereo, moverComColisao } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
 import { ritmoAndar } from "./ritmoAndar.js";
 import {
@@ -43,11 +42,8 @@ import {
 } from "./escalada.js";
 import {
   atualizarAereo,
-  empurrarForaDeCliff,
-  empurrarForaDePisoAlto,
   iniciarPulo,
   iniciarQueda,
-  liberarCorpoAereo,
   podeIniciarPulo,
 } from "./pulo.js";
 import { iniciarStamina, regenerarStamina } from "./stamina.js";
@@ -385,7 +381,6 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
     if (fase === "queda") {
       iniciarQueda(agente);
       agente.elevacao = agente.z;
-      empurrarForaDePisoAlto(agente, 0);
       atualizarAereo(agente, dt);
       agente.andando = false;
       return;
@@ -413,7 +408,6 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
     if (zChao <= 0 || zChao < agente.z) {
       iniciarQueda(agente);
       agente.elevacao = agente.z;
-      empurrarForaDePisoAlto(agente, zChao);
       if (deveAbrirAsaAgora(agente, abrirAsa || lancarGlide)) abrirAsaDelta(agente);
       if (estaPlanando(agente)) {
         atualizarNoArPlanando(agente, ix, iy, dt);
@@ -432,9 +426,6 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
       agente.hopLift = 0;
       agente.vz = 0;
     }
-
-    // Em climb, não empurra pra longe da parede
-    if (!querEscalar && cantoEmCliffAlto(agente)) empurrarForaDeCliff(agente);
 
     if (querEscalar && !agente.escalando && tentarGrudarClimb(agente, ix, iy)) {
       return;
@@ -478,7 +469,6 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
       atualizarNoArPlanando(agente, ix, iy, dt);
     } else {
       atualizarCorrida(agente, ix, iy, dt, false, velMax * 0.9);
-      liberarCorpoAereo(agente);
       const pos = moverAereo(
         agente,
         agente.vx * dt,
@@ -489,7 +479,6 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
       if (pos.bloqueouY) agente.vy = 0;
       agente.x = pos.x;
       agente.y = pos.y;
-      liberarCorpoAereo(agente);
       atualizarAereo(agente, dt);
       if (deveAbrirAsaAgora(agente, querAbrir && !querEscalar)) {
         abrirAsaDelta(agente);
@@ -525,7 +514,6 @@ function tentarGrudarClimb(agente, ix, iy) {
 
 function atualizarNoArPlanando(agente, ix, iy, dt) {
   atualizarCorridaAsaDelta(agente, ix, iy, dt);
-  liberarCorpoAereo(agente);
   const pos = moverAereo(
     agente,
     agente.vx * dt,
@@ -536,7 +524,6 @@ function atualizarNoArPlanando(agente, ix, iy, dt) {
   if (pos.bloqueouY) agente.vy = 0;
   agente.x = pos.x;
   agente.y = pos.y;
-  liberarCorpoAereo(agente);
   atualizarAsaDelta(agente, dt);
   if (estaPlanando(agente)) agente.acao = "asa-delta";
 }
@@ -544,18 +531,4 @@ function atualizarNoArPlanando(agente, ix, iy, dt) {
 function facingDeDir(dx, dy) {
   if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 1 : 2;
   return dy < 0 ? 3 : 0;
-}
-
-function cantoEmCliffAlto(corpo) {
-  const r = RAIO_CORPO;
-  const elev = corpo.elevacao ?? corpo.z;
-  for (const [px, py] of [
-    [corpo.x - r, corpo.y - r],
-    [corpo.x + r, corpo.y - r],
-    [corpo.x - r, corpo.y + r],
-    [corpo.x + r, corpo.y + r],
-  ]) {
-    if (corpoColideSolido(Math.floor(px), Math.floor(py), elev)) return true;
-  }
-  return false;
 }

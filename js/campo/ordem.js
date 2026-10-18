@@ -26,7 +26,7 @@ export function ordenarCampo(indice, acao, prop) {
   for (let i = 0; i < party.length; i++) {
     if (i !== indice) party[i].ordemCampo = null;
   }
-  const jaEmCampo = pokemonNoCampo() === ator && ator._colocado;
+  const jaEmCampo = pokemonNoCampo() === ator && !ator.capturado && ator._colocado;
   definirDeployado(indice);
   if (jaEmCampo) ator._colocado = true;
   const vivo = party[indice];

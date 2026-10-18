@@ -4,6 +4,13 @@ import { particulasVivas } from "../pokemon/combate/particulas.js";
 import { impactosVivos, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "../pokemon/combate/folhasGolpe.js";
 import { aurasVivas, ORBES_KI } from "../pokemon/combate/ki.js";
+import {
+  CHAO,
+  pecaCobertura,
+  quantidadeCobertura,
+  tipoMetade,
+  versaoCobertura,
+} from "./arenas.js";
 import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
 import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 
@@ -12,6 +19,7 @@ const LADO = 256;
 const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;
 const CAP_TIRO = 64;
+const CAP_COBERTURA = 6;
 const CAP_FAISCA = 160;
 const CAP_TRACO = 24;
 const CAP_KI = 8;
@@ -41,6 +49,13 @@ const tracos = [];
 const kiHalos = [];
 const kiNucleos = [];
 const kiOrbes = [];
+const chaoTex = new Map();
+const spriteTex = new Map();
+const metadesChao = [];
+const coberturas = [];
+let chaoNormal = null;
+let coberturaVista = -1;
+let spritesVista = -1;
 
 function texturaSuave() {
   const c = document.createElement("canvas");
@@ -128,6 +143,145 @@ function texturaChao() {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   return tex;
+}
+
+function recortarPreto(img) {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const px = data.data;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i] < 12 && px[i + 1] < 12 && px[i + 2] < 12) px[i + 3] = 0;
+  }
+  ctx.putImageData(data, 0, 0);
+  return canvas;
+}
+
+function texturaRepetida(url) {
+  let tex = chaoTex.get(url);
+  if (tex) return tex;
+  tex = new THREE.Texture();
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  chaoTex.set(url, tex);
+  const img = new Image();
+  img.onload = () => {
+    tex.image = img;
+    tex.needsUpdate = true;
+    coberturaVista = -1;
+  };
+  img.src = url;
+  return tex;
+}
+
+function texturaSprite(url) {
+  let tex = spriteTex.get(url);
+  if (tex) return tex;
+  tex = new THREE.Texture();
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  spriteTex.set(url, tex);
+  const img = new Image();
+  img.onload = () => {
+    const tela = recortarPreto(img);
+    tex.image = tela;
+    tex.userData.w = tela.width;
+    tex.userData.h = tela.height;
+    tex.needsUpdate = true;
+    coberturaVista = -1;
+  };
+  img.src = url;
+  return tex;
+}
+
+function geometriaMetade(thetaStart, repetir) {
+  const geo = new THREE.CircleGeometry(10.4, 40, thetaStart, Math.PI);
+  if (repetir) {
+    const pos = geo.attributes.position;
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+      uv.setXY(i, pos.getX(i) / 2.4, pos.getY(i) / 2.4);
+    }
+  }
+  geo.rotateX(-Math.PI / 2);
+  return geo;
+}
+
+function aplicarMetade(slot, tipo) {
+  const repetir = tipo !== "normal";
+  const geo = geometriaMetade(slot.theta, repetir);
+  slot.mesh.geometry.dispose();
+  slot.mesh.geometry = geo;
+  slot.mat.map = repetir ? texturaRepetida(CHAO[tipo]) : chaoNormal;
+  slot.mat.needsUpdate = true;
+}
+
+function criarCobertura() {
+  const mat = new THREE.SpriteMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    alphaTest: 0.15,
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.center.set(0.5, 0);
+  sprite.visible = false;
+  sprite.renderOrder = 3;
+  cena.add(sprite);
+  const sombra = criarSombra();
+  return { sprite, mat, sombra, url: "" };
+}
+
+function sincronizarCobertura() {
+  const versao = versaoCobertura();
+  if (versao !== coberturaVista) {
+    coberturaVista = versao;
+    aplicarMetade(metadesChao[0], tipoMetade("esquerda"));
+    aplicarMetade(metadesChao[1], tipoMetade("direita"));
+    spritesVista = -1;
+  }
+  const espera = coberturas.some((c) => c.visiblePendencia);
+  if (versao === spritesVista && !espera) return;
+  spritesVista = versao;
+  const n = quantidadeCobertura();
+  for (let i = 0; i < CAP_COBERTURA; i++) {
+    const slot = coberturas[i];
+    const peca = i < n ? pecaCobertura(i) : null;
+    if (!peca) {
+      slot.sprite.visible = false;
+      slot.sombra.visible = false;
+      slot.visiblePendencia = false;
+      slot.url = "";
+      continue;
+    }
+    const tex = texturaSprite(peca.url);
+    if (slot.url !== peca.url) {
+      slot.mat.map = tex;
+      slot.mat.needsUpdate = true;
+      slot.url = peca.url;
+    }
+    const pronta = tex.userData.w > 0;
+    slot.sprite.visible = pronta;
+    slot.sombra.visible = pronta;
+    slot.visiblePendencia = !pronta;
+    if (!pronta) continue;
+    const w = (tex.userData.w / TILE) || 1;
+    const h = (tex.userData.h / TILE) || 1;
+    slot.sprite.scale.set(w, h, 1);
+    slot.sprite.position.set(peca.x, 0, peca.y);
+    slot.sombra.position.set(peca.x, 0.03, peca.y);
+    const s = Math.max(0.55, peca.r / 0.62);
+    slot.sombra.scale.set(s, 1, s);
+  }
 }
 
 function posicionarCamera() {
@@ -473,16 +627,24 @@ export function ligarArena(elemento) {
   fill.position.set(10, 8, -6);
   cena.add(fill);
 
-  const chao = new THREE.Mesh(
-    new THREE.CircleGeometry(10.4, 72),
-    new THREE.MeshStandardMaterial({
-      map: texturaChao(),
+  chaoNormal = texturaChao();
+  const especMetade = [
+    { lado: "esquerda", theta: Math.PI / 2, y: 0 },
+    { lado: "direita", theta: -Math.PI / 2, y: 0.004 },
+  ];
+  for (let i = 0; i < especMetade.length; i++) {
+    const espec = especMetade[i];
+    const geo = geometriaMetade(espec.theta, false);
+    const mat = new THREE.MeshStandardMaterial({
+      map: chaoNormal,
       roughness: 0.92,
       metalness: 0,
-    }),
-  );
-  chao.rotation.x = -Math.PI / 2;
-  cena.add(chao);
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.y = espec.y;
+    cena.add(mesh);
+    metadesChao.push({ mesh, mat, theta: espec.theta });
+  }
 
   const anel = new THREE.Mesh(
     new THREE.TorusGeometry(10.15, 0.16, 8, 72),
@@ -503,6 +665,7 @@ export function ligarArena(elemento) {
     kiNucleos.push(criarPonto(nucleo, 7, true));
     for (let k = 0; k < ORBES_KI; k++) kiOrbes.push(criarPonto(suave, 6, true));
   }
+  for (let i = 0; i < CAP_COBERTURA; i++) coberturas.push(criarCobertura());
 
   ligarPonteiro();
   ajustarTamanho();
@@ -552,6 +715,7 @@ function pintarKi() {
 
 export function desenharArena(atores) {
   if (!renderer) return;
+  sincronizarCobertura();
   ajustarTamanho();
   for (let i = 0; i < slots.length; i++) pintarAtor(slots[i], atores?.[i] || null);
   pintarTiros();

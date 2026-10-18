@@ -85,7 +85,6 @@ export const PULO_CORTE_SOLTAR = 0.42;
 export const PULO_COYOTE = 0.09;
 export const PULO_BUFFER = 0.12;
 export const PULO_EPS_POUSO = 0.08;
-export const PULO_EMPURRAO_POUSO = 0.2;
 
 /**
  * Asa-delta — só com 2º toque de Space no ar (nunca hold).

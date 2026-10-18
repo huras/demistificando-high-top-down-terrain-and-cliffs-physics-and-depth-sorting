@@ -180,7 +180,8 @@ function barra(ctx, x, y, w, h, t, cor, fundo) {
 
 function painel(ctx) {
   if (!pokemonLigado()) return;
-  const mon = pokemonNoCampo();
+  const slot = pokemonNoCampo();
+  const mon = slot && !slot.capturado ? slot : null;
   const treino = obterTreinador();
   ctx.save();
   ctx.font = "600 13px Segoe UI, sans-serif";

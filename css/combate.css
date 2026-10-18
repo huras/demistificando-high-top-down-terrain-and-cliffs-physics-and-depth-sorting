@@ -83,6 +83,23 @@ button, input, select {
   color: var(--destaque);
 }
 
+.topo__metade {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--suave);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.topo__metade select {
+  border: 1px solid var(--borda);
+  background: #243028;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
 .miolo {
   flex: 1;
   display: flex;

@@ -22,6 +22,7 @@ import {
 import { definirCorposAtores } from "../fisica/obstaculos.js";
 import { atualizarPopulacao, selvagensAtivos } from "./populacao.js";
 import { tickVisual } from "./sprites.js";
+import { tickFxBola } from "../fx/fxBola.js";
 
 let agora = 0;
 let ligado = false;
@@ -120,6 +121,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     impactoProjetil(p, alvo, agora, efeitos);
   });
   atualizarCaptura(corpo, passo, agora, efeitos);
+  tickFxBola(passo);
   atualizarDrops(corpo, passo, flutuar);
   const visiveis = atoresVisiveis();
   tickEmocoes(visiveis, passo);

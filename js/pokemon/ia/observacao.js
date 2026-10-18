@@ -1,4 +1,5 @@
-import { POKEMON } from "../../config.js";
+import { POKEMON, RAIO_POKEMON } from "../../config.js";
+import { sondarCobertura } from "../../combate/arenas.js";
 import {
   CORREDOR_REDE,
   ENTRADAS,
@@ -96,7 +97,9 @@ function recargaTiro(ator) {
 /**
  * 0 distância, 1 erro até a parada, 2 lateral do alvo (0),
  * 3–4 velocidade relativa, 5–6 vida, 7 esquiva, 8 recarga,
- * 9 alcance, 10–13 ameaça, 14 borda, 15 velocidade.
+ * 9 alcance, 10–13 ameaça, 14 borda, 15 velocidade,
+ * 16 visada coberta, 17 lado do desvio, 18 obstáculo à frente,
+ * 19 aperto do corpo, 20 lado do disco mais perto.
  */
 export function observar(ator, alvo, tiros, alcance, buf) {
   const dst = buf || entrada;
@@ -123,6 +126,12 @@ export function observar(ator, alvo, tiros, alcance, buf) {
   dst[13] = a.tem ? a.ax * q.lx + a.ay * q.ly : 0;
   dst[14] = Math.max(0, Math.min(1, 1 - raio / RAIO_ARENA));
   dst[15] = Math.max(0, Math.min(2, Math.hypot(ator.vx || 0, ator.vy || 0) / VEL));
+  const cobertura = sondarCobertura(ator.x, ator.y, q.fx, q.fy, alvo.x, alvo.y, RAIO_POKEMON);
+  dst[16] = cobertura.bloqueia;
+  dst[17] = cobertura.lado;
+  dst[18] = cobertura.frente;
+  dst[19] = 1 - cobertura.folga;
+  dst[20] = cobertura.pertoLado;
   return dst;
 }
 

@@ -23,6 +23,7 @@ import { empilharAlvoEscalada } from "./alvoEscalada.js";
 import { empilharAgente, empilharPersonagem } from "./personagem.js";
 import { empilharPokemon } from "../pokemon/render2d.js";
 import { empilharPoeiraPasso } from "./poeiraPasso2d.js";
+import { empilharFxBola } from "./fxBola2d.js";
 import { empilharFxAguaChao, empilharFxAguaGotas } from "./fxAgua2d.js";
 import { desenharAlvoOrdem, desenharHudPokemon, desenharHoverPokemon, projetar2d, projetarPes2d, projetar3d, projetarChao3d } from "../pokemon/hud.js";
 import { avancarTempoAgua, empilharAgua2d } from "./agua2d.js";
@@ -65,6 +66,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   if (agente) empilharAgente(lista, atlas, agente);
   empilharPersonagem(lista, atlas, corpo);
   empilharPokemon(lista);
+  empilharFxBola(lista);
   empilharPoeiraPasso(lista);
   empilharFxAguaGotas(lista);
   desenharLista(lista, ctx);

@@ -1,3 +1,5 @@
+import { RAIO_POKEMON } from "../js/config.js";
+import { cenarioAleatorio, cortaVisada, definirCenario, desviarRumo, empurrarCorpo } from "../js/combate/arenas.js";
 import { ALVO_REDE, FOLGA_PARADA, LEAD_MAX, RAIO_ARENA, RAIO_PROJETIL, VIDA_FUGA } from "../js/pokemon/ia/constantes.js";
 import { alcanceSoco, golpeDeCorpo, golpeProntoForma, limitarArena, regua, sentidoParada } from "../js/pokemon/ia/espaco.js";
 import { ladoAmeaca } from "../js/pokemon/ia/observacao.js";
@@ -27,22 +29,24 @@ export function rotulo(hab, ator, alvo, tiros, dst) {
       wx /= m;
       wy /= m;
     }
-    dst[0] = (wx * fx + wy * fy) * ALVO_REDE;
-    dst[1] = (wx * lx + wy * ly) * ALVO_REDE;
-    dst[2] = ALVO_REDE;
+    gravarRumo(dst, ator, wx, wy, fx, fy, lx, ly);
     return;
   }
   const faixa = regua(ator, hab);
   const sentido = sentidoParada(d, faixa.parada, faixa.forma);
-  const circular = hab === "atirar" && sentido === 0;
+  const bloqueado = cortaVisada(ator.x, ator.y, alvo.x, alvo.y);
+  const circular = hab === "atirar" && sentido === 0 && !bloqueado;
   if (circular) {
     dst[0] = 0;
     dst[1] = ALVO_REDE;
     dst[2] = ALVO_REDE;
-  } else {
-    dst[0] = sentido * ALVO_REDE;
+  } else if (sentido === 0 && !bloqueado) {
+    dst[0] = 0;
     dst[1] = 0;
-    dst[2] = sentido === 0 ? -ALVO_REDE : ALVO_REDE;
+    dst[2] = -ALVO_REDE;
+  } else {
+    const passo = sentido === 0 ? 1 : sentido;
+    gravarRumo(dst, ator, fx * passo, fy * passo, fx, fy, lx, ly);
   }
   if (hab !== "atirar") return;
   const vel = faixa.vel || 14;
@@ -51,6 +55,13 @@ export function rotulo(hab, ator, alvo, tiros, dst) {
   const leadY = (alvo.vy || 0) * tempo;
   dst[3] = Math.max(-ALVO_REDE, Math.min(ALVO_REDE, (leadX * fx + leadY * fy) / LEAD_MAX));
   dst[4] = Math.max(-ALVO_REDE, Math.min(ALVO_REDE, (leadX * lx + leadY * ly) / LEAD_MAX));
+}
+
+function gravarRumo(dst, ator, wx, wy, fx, fy, lx, ly) {
+  const rumo = desviarRumo(ator.x, ator.y, wx, wy, RAIO_POKEMON);
+  dst[0] = (rumo.x * fx + rumo.y * fy) * ALVO_REDE;
+  dst[1] = (rumo.x * lx + rumo.y * ly) * ALVO_REDE;
+  dst[2] = ALVO_REDE;
 }
 
 function marcarEsquiva(dst, ax, ay, gastar) {
@@ -87,13 +98,22 @@ function rotuloEsquiva(ator, alvo, tiros, dst, d) {
   marcarEsquiva(dst, 0, 0, false);
 }
 
-function afastar(ator, alvo, dist, ang) {
-  alvo.x = ator.x + Math.cos(ang) * dist;
-  alvo.y = ator.y + Math.sin(ang) * dist;
+function assentar(ator, alvo) {
+  empurrarCorpo(ator, RAIO_POKEMON);
+  empurrarCorpo(alvo, RAIO_POKEMON);
+  limitarArena(ator);
   limitarArena(alvo);
 }
 
+function afastar(ator, alvo, dist, ang) {
+  alvo.x = ator.x + Math.cos(ang) * dist;
+  alvo.y = ator.y + Math.sin(ang) * dist;
+  assentar(ator, alvo);
+}
+
 export function prepararAmostra(hab, ator, alvo, tiros, rng) {
+  if (hab === "esquivar") definirCenario("normal", "normal");
+  else cenarioAleatorio(rng);
   const ang = rng() * Math.PI * 2;
   const raio = rng() * (RAIO_ARENA - 0.6);
   ator.x = Math.cos(ang) * raio;
@@ -123,8 +143,7 @@ export function prepararAmostra(hab, ator, alvo, tiros, rng) {
   const ang2 = rng() * Math.PI * 2;
   alvo.x = ator.x + Math.cos(ang2) * dist;
   alvo.y = ator.y + Math.sin(ang2) * dist;
-  limitarArena(ator);
-  limitarArena(alvo);
+  assentar(ator, alvo);
   if (hab === "atirar" && rng() < 0.42) {
       const parada = regua(ator, hab).parada;
       afastar(ator, alvo, Math.max(0.35, parada), rng() * Math.PI * 2);

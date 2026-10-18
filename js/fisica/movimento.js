@@ -1,4 +1,4 @@
-import { ASA_DELTA_CORRIDA_MUL, RAIO_CORPO, VELOCIDADE_MAX, VELOCIDADE_SPRINT } from "../config.js";
+import { ASA_DELTA_CORRIDA_MUL, VELOCIDADE_MAX, VELOCIDADE_SPRINT } from "../config.js";
 import {
   teclaAgora,
   teclaBaixa,
@@ -11,12 +11,7 @@ import {
   estaPlanando,
   tratarInputAsaDelta,
 } from "./asaDelta.js";
-import {
-  alturaSobPes,
-  corpoColideSolido,
-  moverAereo,
-  moverComColisao,
-} from "./colisao.js";
+import { alturaSobPes, moverAereo, moverComColisao } from "./colisao.js";
 import {
   aplicarCorrenteChao,
   atualizarNado,
@@ -35,11 +30,8 @@ import {
 } from "./escalada.js";
 import {
   atualizarAereo,
-  empurrarForaDeCliff,
-  empurrarForaDePisoAlto,
   iniciarPulo,
   iniciarQueda,
-  liberarCorpoAereo,
   podeIniciarPulo,
   registrarBufferPulo,
 } from "./pulo.js";
@@ -313,8 +305,6 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   if (zChao <= 0 || zChao < corpo.z) {
     iniciarQueda(corpo);
     corpo.elevacao = corpo.z;
-    // Tira cantos do piso alto — senão o AABB trava o XY a queda inteira.
-    empurrarForaDePisoAlto(corpo, zChao);
     atualizarAereo(corpo, dt);
     corpo.andando = false;
     corpo.correndo = false;
@@ -325,8 +315,6 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   corpo.elevacao = zChao;
   corpo.hopLift = 0;
   corpo.vz = 0;
-
-  if (cantoEmCliffAlto(corpo)) empurrarForaDeCliff(corpo);
 
   corpo.andando = movendo && (dx !== 0 || dy !== 0);
   if (corpo.andando) {
@@ -358,8 +346,6 @@ function atualizarNoAr(corpo, dx, dy, dt) {
     atualizarCorrida(corpo, dx, dy, dt, false);
   }
 
-  liberarCorpoAereo(corpo);
-
   const passoX = corpo.vx * dt;
   const passoY = corpo.vy * dt;
   const pos = moverAereo(corpo, passoX, passoY, corpo.elevacao);
@@ -369,8 +355,6 @@ function atualizarNoAr(corpo, dx, dy, dt) {
 
   corpo.x = pos.x;
   corpo.y = pos.y;
-
-  liberarCorpoAereo(corpo);
 
   if (planando) {
     atualizarAsaDelta(corpo, dt, teclaBaixa("ControlLeft"));
@@ -385,18 +369,4 @@ function atualizarNoAr(corpo, dx, dy, dt) {
 function facingDeDir(dx, dy) {
   if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 1 : 2;
   return dy < 0 ? 3 : 0;
-}
-
-function cantoEmCliffAlto(corpo) {
-  const r = RAIO_CORPO;
-  const elev = corpo.elevacao ?? corpo.z;
-  for (const [px, py] of [
-    [corpo.x - r, corpo.y - r],
-    [corpo.x + r, corpo.y - r],
-    [corpo.x - r, corpo.y + r],
-    [corpo.x + r, corpo.y + r],
-  ]) {
-    if (corpoColideSolido(Math.floor(px), Math.floor(py), elev)) return true;
-  }
-  return false;
 }

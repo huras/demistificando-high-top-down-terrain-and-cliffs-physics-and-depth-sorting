@@ -42,10 +42,19 @@ const TROVAO = {
   longe: ["SFX/weather/far-away-lightning.mp3"],
 };
 
+const SOM_ENVIO = "SFX/party/pkmn-out-of-pokeball.wav";
+const SOM_RECOLHER = "SFX/party/recall.wav";
+const SOM_SHINY = "SFX/party/shiny.wav";
+const ESPERA_SHINY = 220;
+
 let ctx = null;
 let mudo = false;
 let liberado = false;
 let abaixaBgm = 0;
+let ultimoShiny = 0;
+const stings = new Map();
+const gritos = new Map();
+const CAP_GRITO = 4;
 
 const PPQ_CURA = 120;
 const TEMPO_CURA = 454545 / 1e6;
@@ -167,6 +176,31 @@ function cama(id) {
   return slot;
 }
 
+function elementoDe(mapa, rel) {
+  let el = mapa.get(rel);
+  if (el) return el;
+  el = new Audio(urlRef(rel));
+  el.preload = "auto";
+  mapa.set(rel, el);
+  return el;
+}
+
+function tocarCurto(el, volume) {
+  if (!el || !liberado || mudo) return;
+  el.volume = volume;
+  try {
+    el.currentTime = 0;
+  } catch {
+    /* ainda não tem duração */
+  }
+  el.play().catch(() => {});
+}
+
+function calarCurtos() {
+  for (const el of stings.values()) el.pause();
+  for (const el of gritos.values()) el.pause();
+}
+
 export function destravarAudio() {
   liberado = true;
   const ac = audio();
@@ -175,6 +209,45 @@ export function destravarAudio() {
   for (const slot of camadas.values()) {
     if (slot.alvo > 0.012) garantirToco(slot.el);
   }
+  elementoDe(stings, SOM_ENVIO);
+  elementoDe(stings, SOM_RECOLHER);
+  elementoDe(stings, SOM_SHINY);
+}
+
+export function tocarEnvioBola() {
+  tocarCurto(elementoDe(stings, SOM_ENVIO), 0.92);
+}
+
+export function tocarRecolherBola() {
+  tocarCurto(elementoDe(stings, SOM_RECOLHER), 0.92);
+}
+
+export function tocarShiny() {
+  const agora = performance.now();
+  if (agora - ultimoShiny < ESPERA_SHINY) return;
+  ultimoShiny = agora;
+  tocarCurto(elementoDe(stings, SOM_SHINY), 0.95);
+}
+
+export function tocarGrito(ator) {
+  const dex = ator?.especie?.dex | 0;
+  const chave = ator?.especie?.key;
+  if (!dex || !chave) return;
+  const rel = `SFX/cries/${String(dex).padStart(3, "0")}-${String(chave).toLowerCase()}.mp3`;
+  if (!gritos.has(rel) && gritos.size >= CAP_GRITO) {
+    for (const [id, el] of gritos) {
+      if (el.paused || el.ended) {
+        gritos.delete(id);
+        break;
+      }
+    }
+    if (gritos.size >= CAP_GRITO) {
+      const primeiro = gritos.keys().next().value;
+      gritos.get(primeiro)?.pause();
+      gritos.delete(primeiro);
+    }
+  }
+  tocarCurto(elementoDe(gritos, rel), 0.85);
 }
 
 export function definirBgm(chave) {
@@ -306,6 +379,7 @@ export function alternarMudo() {
     voz?.el.pause();
     saindo?.el.pause();
     for (const slot of camadas.values()) slot.el.pause();
+    calarCurtos();
   } else {
     destravarAudio();
   }

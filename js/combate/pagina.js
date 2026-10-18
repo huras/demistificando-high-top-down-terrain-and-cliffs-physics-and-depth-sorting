@@ -4,6 +4,7 @@ import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
 import { desenharArena, ligarArena, projetarArena } from "./arena3d.js";
+import { definirMetade } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
 import { atoresArena, definirUso, estadoLuta, iniciarLuta, logArena, montarLados, tickLuta } from "./luta.js";
 
@@ -680,6 +681,15 @@ function quadro(t) {
   requestAnimationFrame(quadro);
 }
 
+function ligarMetades() {
+  const lados = ["esquerda", "direita"];
+  for (let i = 0; i < lados.length; i++) {
+    const lado = lados[i];
+    const el = document.getElementById(`metade-${lado}`);
+    el.addEventListener("change", () => definirMetade(lado, el.value));
+  }
+}
+
 function ligarTempo() {
   const botoes = document.querySelectorAll(".tempo button");
   botoes.forEach((el) => {
@@ -723,6 +733,7 @@ async function iniciar() {
   prepararDanos();
   ligarTempo();
   ligarNivel();
+  ligarMetades();
   aplicar();
   botao.disabled = false;
   botao.addEventListener("click", () => {

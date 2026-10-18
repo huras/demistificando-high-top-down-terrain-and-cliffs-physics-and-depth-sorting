@@ -38,9 +38,11 @@ import { promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
 import { acaoContexto, acaoConsomeE } from "./acaoContexto.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
+import { alternarCampo } from "../pokemon/party.js";
 
 let viewport = null;
 let toastAte = 0;
+const TECLAS_PARTY = ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6"];
 
 function campoFocado() {
   const tag = document.activeElement?.tagName;
@@ -175,6 +177,15 @@ function lerTeclas(corpo) {
     else abrirPainel("mochila");
   }
   if (teclaAgora("KeyR") && !estado.roda) interagir(corpo);
+  if (estado.painel || estado.dialogo || estado.roda || estado.construir || estado.craft) return;
+  if (teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight")) {
+    for (let i = 0; i < TECLAS_PARTY.length; i++) {
+      if (teclaAgora(TECLAS_PARTY[i])) {
+        alternarCampo(i);
+        break;
+      }
+    }
+  }
 }
 
 function interagir(corpo) {

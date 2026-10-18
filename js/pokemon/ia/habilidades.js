@@ -1,3 +1,5 @@
+import { RAIO_POKEMON } from "../../config.js";
+import { cortaVisada, desviarRumo, sondarCobertura } from "../../combate/arenas.js";
 import { comecarEsquiva, emAvanco, emEsquiva, emRecuo, presoNoGolpe, velocidadeDe } from "../ator.js";
 import { LEAD_MAX } from "./constantes.js";
 import { limitarArena, regua, sentidoParada } from "./espaco.js";
@@ -121,19 +123,27 @@ export function integrarComando(ator, alvo, dt) {
     const sentido = sentidoParada(q.d, faixa.parada, faixa.forma);
     if (sentido === 0) {
       const lat = cx * q.lx + cy * q.ly;
-      if (Math.abs(lat) < 0.2) {
+      if (Math.abs(lat) < 0.2 && !cortaVisada(ator.x, ator.y, alvo.x, alvo.y)) {
         ator.vx = 0;
         ator.vy = 0;
         ator.andando = false;
         return;
       }
-      dirX = q.lx * Math.sign(lat);
-      dirY = q.ly * Math.sign(lat);
+      if (Math.abs(lat) < 0.2) {
+        dirX = q.fx;
+        dirY = q.fy;
+      } else {
+        dirX = q.lx * Math.sign(lat);
+        dirY = q.ly * Math.sign(lat);
+      }
       mag = 1;
     } else {
       const aoLongo = mag > 0.2 ? (cx * q.fx + cy * q.fy) / mag : 0;
+      const latAbs = mag > 0.2 ? Math.abs(cx * q.lx + cy * q.ly) / mag : 0;
+      const cobertura = sondarCobertura(ator.x, ator.y, q.fx, q.fy, alvo.x, alvo.y, RAIO_POKEMON);
+      const temCobertura = cobertura.lado !== 0 || cobertura.bloqueia === 1;
       const concorda = sentido > 0 ? aoLongo > 0.15 : aoLongo < -0.15;
-      if (!concorda) {
+      if (!concorda && (latAbs < 0.45 || !temCobertura)) {
         dirX = q.fx * sentido;
         dirY = q.fy * sentido;
         mag = 1;
@@ -152,6 +162,12 @@ export function integrarComando(ator, alvo, dt) {
     ator.vy = 0;
     ator.andando = false;
     return;
+  }
+  const curva = desviarRumo(ator.x, ator.y, dirX, dirY, RAIO_POKEMON);
+  if (curva.desviou) {
+    dirX = curva.x;
+    dirY = curva.y;
+    mag = 1;
   }
   const inv = 1 / mag;
   ator.x += dirX * inv * passo;

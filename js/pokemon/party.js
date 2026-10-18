@@ -7,6 +7,7 @@ import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
 import { anunciarGanho } from "../jogo/ganhoItem.js";
+import { soltarFxEnvio, soltarFxRecolher } from "../fx/fxBola.js";
 
 const party = [];
 let deployado = 0;
@@ -42,7 +43,26 @@ export function pokemonNoCampo() {
 
 export function pokemonDeployado() {
   const p = party[deployado];
-  return p && !p.morto ? p : null;
+  return p && !p.morto && !p.capturado ? p : null;
+}
+
+function recolher(ator) {
+  if (!ator || ator.capturado) return false;
+  soltarFxRecolher(ator);
+  ator.capturado = true;
+  ator._colocado = false;
+  ator.ordemCampo = null;
+  ator.ordemAlvo = null;
+  ator.alvo = null;
+  if (ator.modo === "agro") ator.modo = "roam";
+  return true;
+}
+
+function pedirEnvio(ator) {
+  ator.capturado = false;
+  ator.morto = false;
+  ator._colocado = false;
+  ator._pedidoEnvio = true;
 }
 
 /** O Pokémon em campo persegue e ataca esse selvagem. */
@@ -137,24 +157,37 @@ export function curarParty() {
 export function definirDeployado(indice) {
   if (indice < 0 || indice >= party.length) return false;
   const atual = party[deployado];
-  if (atual && atual !== party[indice]) atual.capturado = true;
+  const prox = party[indice];
+  if (atual && atual !== prox) recolher(atual);
   deployado = indice;
-  const prox = party[deployado];
-  prox.capturado = false;
-  prox.morto = false;
-  prox._colocado = false;
+  const jaNoMundo = atual === prox && !prox.capturado && prox._colocado;
+  if (!jaNoMundo) pedirEnvio(prox);
+  else prox.morto = false;
   return true;
+}
+
+/** Clique no slot: se já está fora, recolhe. Senão manda para o campo. */
+export function alternarCampo(indice) {
+  if (indice < 0 || indice >= party.length) return false;
+  const alvo = party[indice];
+  const atual = party[deployado];
+  if (alvo === atual && !alvo.capturado) return recolher(alvo);
+  return definirDeployado(indice);
 }
 
 export function tirarDaParty(indice) {
   if (indice < 0 || indice >= party.length || party.length <= 1) return null;
-  const [ator] = party.splice(indice, 1);
+  const ator = party[indice];
+  const eraCampo = indice === deployado && ator && !ator.capturado;
+  if (eraCampo) recolher(ator);
+  party.splice(indice, 1);
   if (deployado >= party.length) deployado = party.length - 1;
   else if (indice < deployado) deployado -= 1;
   const vivo = party[deployado];
   if (vivo) {
     vivo.capturado = false;
     vivo._colocado = false;
+    if (eraCampo) vivo._pedidoEnvio = true;
   }
   return ator;
 }
@@ -193,10 +226,8 @@ export function trocarMembro(indice, ator) {
   ator.capturado = indice !== deployado;
   party[indice] = ator;
   if (indice === deployado) {
-    ator.capturado = false;
-    ator.morto = false;
-    ator._colocado = false;
-    if (antigo) antigo.capturado = true;
+    if (antigo && antigo !== ator && !antigo.capturado) recolher(antigo);
+    pedirEnvio(ator);
   }
   return antigo;
 }
@@ -267,20 +298,25 @@ export function itensBolsa() {
 
 export function atualizarParty(corpo, dt, agora, perfil) {
   const mon = pokemonNoCampo();
-  if (mon?.morto && mon.mortoAte > 0 && agora >= mon.mortoAte) {
+  if (mon && !mon.capturado && mon.morto && mon.mortoAte > 0 && agora >= mon.mortoAte) {
     const z = corpo.elevacao ?? corpo.z ?? mon.z;
     reviverAtor(mon, corpo.x + OFFSET_MON.x, corpo.y + OFFSET_MON.y, z);
   }
   const vivo = pokemonDeployado();
-  if (!vivo || vivo.capturado) return;
-  const z = corpo.elevacao ?? corpo.z ?? mon.z;
-  if (!mon._colocado) {
-    mon.x = corpo.x + OFFSET_MON.x;
-    mon.y = corpo.y + OFFSET_MON.y;
-    mon.z = z;
-    mon.elevacao = z;
-    mon._colocado = true;
+  if (!vivo) return;
+  const z = corpo.elevacao ?? corpo.z ?? vivo.z;
+  if (!vivo._colocado) {
+    vivo.x = corpo.x + OFFSET_MON.x;
+    vivo.y = corpo.y + OFFSET_MON.y;
+    vivo.z = z;
+    vivo.elevacao = z;
+    vivo._colocado = true;
+    if (vivo._pedidoEnvio) {
+      vivo._pedidoEnvio = false;
+      soltarFxEnvio(vivo);
+    }
   }
+  if (vivo.brilhoBola > 0) vivo.brilhoBola = Math.max(0, vivo.brilhoBola - dt);
   if (mon.ordemCampo) return;
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;
   const usar = perfil || PERFIL_COMPANHEIRO;

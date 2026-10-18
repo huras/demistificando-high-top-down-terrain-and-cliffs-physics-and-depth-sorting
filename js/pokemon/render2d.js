@@ -1,5 +1,6 @@
 import { ESCALA, TILE } from "../config.js";
 import { oscilacaoNado } from "../fx/fxAgua.js";
+import { cobrirPernasAgua } from "../render/agua2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
 import { obterBola } from "./captura.js";
@@ -33,11 +34,12 @@ function desenharCorpo(ctx, ator) {
   const footY = mundoParaTelaY(ator.y, ator.z, hop + oscilacaoNado(ator)) + offsetY * TILE * ESCALA;
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
   const fr = quadroDe(ator, pack);
+  const pronto = !!(fr && pack.img && pack.estado === "pronto");
   const centro = centroDoQuadro(fr, medida);
   desenharSombra(ctx, chaoX + centro.x * PX * escala, chaoY, escala);
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  if (fr && pack.img && pack.estado === "pronto") {
+  if (pronto) {
     blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala, { dx, dy });
   } else {
     const cor = ator.especie.cor || COR_TIPO[ator.tipos?.[0]] || "#94a3b8";
@@ -47,7 +49,52 @@ function desenharCorpo(ctx, ator) {
     ctx.fill();
   }
   ctx.restore();
+  cobrirPernasAgua(ctx, ator, retanguloAgua(pronto ? fr : null, medida, footX, footY));
   desenharKi(ctx, ator, footX, footY, escala);
+  desenharFlashCorpo(ctx, ator, footX, footY, escala);
+}
+
+/** Caixa do sprite, do mesmo jeito que o blit, para o véu da água. */
+function retanguloAgua(fr, medida, footX, footY) {
+  const escala = PX * medida.escala;
+  if (!fr || !(fr.w > 0)) {
+    const r = 12 * medida.escala;
+    return {
+      px: footX - r,
+      py: footY - 28 * medida.escala,
+      dw: r * 2,
+      peY: footY - 4 * medida.escala,
+    };
+  }
+  const trimX = fr.trimX || 0;
+  const trimW = fr.trimW || fr.w;
+  const trimH = fr.trimH || fr.h;
+  const quadro = fr.w * escala;
+  const destW = trimW * escala;
+  const destH = trimH * escala;
+  const pivotX = 1 - (fr.pivotX ?? 0.5);
+  const trimEsq = fr.w - trimX - trimW;
+  const px = footX - pivotX * quadro + trimEsq * escala + medida.dx * escala;
+  const py = footY - destH + medida.dy * escala;
+  return { px, py, dw: destW, peY: py + destH };
+}
+
+function desenharFlashCorpo(ctx, ator, x, y, escala) {
+  const max = ator.brilhoBolaTipo === "recolher" ? 0.35 : 0.4;
+  const resto = ator.brilhoBola;
+  if (!(resto > 0) || ator.brilhoBolaTipo !== "envio") return;
+  const t = Math.min(1, resto / max);
+  const pulso = 0.6 + 0.4 * Math.sin((1 - t) * Math.PI * 5);
+  const base = 0.4 * TILE * ESCALA;
+  const externo = base * (1.25 + (1 - t) * 0.55);
+  const cy = y - 18 * escala;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, cy, externo, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255,255,255,${0.28 + 0.55 * t * pulso})`;
+  ctx.lineWidth = Math.max(2, base * 0.12);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function desenharKi(ctx, ator, x, y, escala) {

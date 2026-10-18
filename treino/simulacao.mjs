@@ -1,3 +1,5 @@
+import { RAIO_POKEMON } from "../js/config.js";
+import { cenarioIndice, cortaVisada, definirCenario, desviarRumo, empurrarCorpo } from "../js/combate/arenas.js";
 import { comecarEsquiva, emAvanco, emEsquiva, emRecuo, passoEsquiva, recarregarBarraEsquiva, velocidadeDe } from "../js/pokemon/ator.js";
 import {
   CORREDOR_TIRO,
@@ -113,7 +115,9 @@ function moverHeuristica(ator, alvo, dt) {
     return d;
   }
   const parada = paradaDe(def);
-  const sentido = sentidoParada(d, parada, def.forma);
+  const sentidoFaixa = sentidoParada(d, parada, def.forma);
+  const bloqueado = cortaVisada(ator.x, ator.y, alvo.x, alvo.y);
+  const sentido = bloqueado && sentidoFaixa === 0 ? 1 : sentidoFaixa;
   if (sentido === 0) {
     ator.vx = 0;
     ator.vy = 0;
@@ -122,18 +126,19 @@ function moverHeuristica(ator, alvo, dt) {
   }
   const vel = velocidadeDe(ator, true);
   let passo = vel * dt;
-  if (sentido > 0) passo = Math.min(passo, Math.max(0, d - parada));
-  else passo = Math.min(passo, Math.max(0, parada - d));
+  if (sentidoFaixa > 0) passo = Math.min(passo, Math.max(0, d - parada));
+  else if (sentidoFaixa < 0) passo = Math.min(passo, Math.max(0, parada - d));
   if (passo <= 0.0001) {
     ator.vx = 0;
     ator.vy = 0;
     ator.andando = false;
     return d;
   }
-  ator.x += (dx / d) * sentido * passo;
-  ator.y += (dy / d) * sentido * passo;
-  ator.vx = (dx / d) * sentido * vel;
-  ator.vy = (dy / d) * sentido * vel;
+  const rumo = desviarRumo(ator.x, ator.y, (dx / d) * sentido, (dy / d) * sentido, RAIO_POKEMON);
+  ator.x += rumo.x * passo;
+  ator.y += rumo.y * passo;
+  ator.vx = rumo.x * vel;
+  ator.vy = rumo.y * vel;
   ator.andando = true;
   limitarArena(ator);
   return Math.hypot(alvo.x - ator.x, alvo.y - ator.y);
@@ -152,6 +157,7 @@ export function quadro(ator, alvo, dt, tiros, modo, forcar) {
     d = Math.hypot(alvo.x - ator.x, alvo.y - ator.y);
   }
   recarregarBarraEsquiva(ator, dt);
+  empurrarCorpo(ator, RAIO_POKEMON);
   limitarArena(ator);
   if (modo === "heuristica") {
     if (ameacaHeuristica(ator, alvo, tiros)) esquivarHeuristica(ator, alvo);
@@ -168,6 +174,7 @@ export function avaliarAproximacao(modo, n = 24) {
   let falhas = 0;
   const dt = 1 / 30;
   for (let i = 0; i < n; i++) {
+    cenarioIndice(i);
     const ang = (i / n) * Math.PI * 2;
     const ator = lutador({
       x: Math.cos(ang) * 4,
@@ -181,6 +188,8 @@ export function avaliarAproximacao(modo, n = 24) {
       usaDistancia: false,
       faccao: "b",
     });
+    empurrarCorpo(ator, RAIO_POKEMON);
+    empurrarCorpo(alvo, RAIO_POKEMON);
     const parada = paradaDe(posturaDe(ator));
     const meta = parada + FOLGA_PARADA;
     let t = 0;
@@ -226,6 +235,7 @@ function acertou(p, ator) {
 }
 
 function cenaEsquiva(modo, episodios, comGolpes) {
+  definirCenario("normal", "normal");
   const dt = 1 / 30;
   const intervalo = 1.6;
   let tiros = 0;
@@ -291,6 +301,7 @@ export function avaliarEsquiva(modo, episodios = 16) {
 }
 
 export function avaliarAcerto(modo, n = 24) {
+  definirCenario("normal", "normal");
   let acertos = 0;
   const dt = 1 / 60;
   for (let i = 0; i < n; i++) {
@@ -346,6 +357,7 @@ export function avaliarFuga(n = 12) {
   let borda = 0;
   let passos = 0;
   for (let i = 0; i < n; i++) {
+    cenarioIndice(i);
     const ator = lutador({ x: 0.2, y: 0, faccao: "a", usaCorpo: false, hp: 20 });
     const alvo = lutador({ x: 1.4, y: 0, faccao: "b", usaCorpo: true, usaDistancia: false });
     for (let t = 0; t < 2.2; t += dt) {
@@ -362,6 +374,7 @@ export function avaliarFuga(n = 12) {
 }
 
 export function bancada(segundos = 10) {
+  definirCenario("planta", "pedra");
   const n = 30;
   const atores = [];
   const alvos = [];

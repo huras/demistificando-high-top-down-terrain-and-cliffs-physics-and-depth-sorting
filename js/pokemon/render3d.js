@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, TILE } from "../config.js";
 import { oscilacaoNado } from "../fx/fxAgua.js";
+import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaPe } from "./ator.js";
 import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 import { obterBola, particulasCaptura } from "./captura.js";
@@ -98,6 +99,24 @@ function criarAtorSlot() {
   silhueta.center.copy(sprite.center);
   silhueta.scale.copy(sprite.scale);
   grupo.add(silhueta);
+  const planoVeu = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+  const veuMat = new THREE.SpriteMaterial({
+    map: tex,
+    color: 0x1a6fbf,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    depthTest: true,
+    alphaTest: 0.12,
+    clippingPlanes: [planoVeu],
+  });
+  aplicarProfundidadeSprite(veuMat);
+  const veu = new THREE.Sprite(veuMat);
+  veu.center.copy(sprite.center);
+  veu.scale.copy(sprite.scale);
+  veu.renderOrder = 4;
+  veu.visible = false;
+  grupo.add(veu);
   const sombra = criarSombraContato3d({ redonda: true });
   grupo.add(sombra.grupo);
   const brilhos = [];
@@ -107,6 +126,19 @@ function criarAtorSlot() {
     grupo.add(brilho);
     brilhos.push(brilho);
   }
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texturaKi(),
+    color: 0xffffff,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+    opacity: 0,
+  }));
+  flash.visible = false;
+  flash.renderOrder = 8;
+  flash.center.set(0.5, 0.5);
+  grupo.add(flash);
   grupo.visible = false;
   cena.add(grupo);
   return {
@@ -117,8 +149,11 @@ function criarAtorSlot() {
     mat,
     sprite,
     silhueta,
+    veu,
+    planoVeu,
     sombra,
     brilhos,
+    flash,
     chave: "",
     livre: true,
   };
@@ -287,6 +322,23 @@ function fallback(slot, ator) {
   ancorar(slot);
 }
 
+function aplicarFlashCorpo(slot, ator) {
+  const flash = slot.flash;
+  if (!flash) return;
+  const resto = ator.brilhoBola;
+  if (!(resto > 0) || ator.brilhoBolaTipo !== "envio") {
+    if (flash.visible) flash.visible = false;
+    return;
+  }
+  const t = Math.min(1, resto / 0.4);
+  const pulso = 0.6 + 0.4 * Math.sin((1 - t) * Math.PI * 5);
+  const externo = 0.4 * (1.25 + (1 - t) * 0.55);
+  flash.visible = true;
+  flash.position.set(0, 0.9, 0.02);
+  flash.scale.set(externo * 2.2, externo * 2.2, 1);
+  flash.material.opacity = Math.min(1, 0.35 + 0.5 * t * pulso);
+}
+
 function aplicarBrilho(slot, ator, offsetY) {
   const pontos = ator.morto ? [] : pontosDoModelo(ator.especie?.key);
   const n = Math.min(pontos.length, slot.brilhos.length);
@@ -361,6 +413,12 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
     slot.sprite.visible = true;
     slot.sprite.scale.multiplyScalar(some);
     copiarCartao(slot.silhueta, slot.sprite);
+    copiarCartao(slot.veu, slot.sprite);
+    const agua = colunaAgua(ator.x, ator.y);
+    const pe = alturaPe(ator);
+    const imerso = agua.superficie > 0 && pe < agua.superficie - 0.05;
+    slot.veu.visible = imerso && some > 0.04;
+    if (imerso) slot.planoVeu.constant = agua.superficie * ALTURA_BLOCO;
     slot.silhueta.material.color.setHex(
       ator.faccao === "party" ? COR_SILHUETA_JOGADOR : COR_SILHUETA_SELVAGEM,
     );
@@ -376,6 +434,7 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
       _desloc,
     );
     aplicarBrilho(slot, ator, offsetY);
+    aplicarFlashCorpo(slot, ator);
     const py = slot.grupo.position.y;
     amostrarLuzCidade(ator.x, py + 0.6, ator.y, _luzCidade);
     aplicarCorSprite(slot.mat, _branco, fatorSombraMundo(ator.x, py, ator.y), _luzCidade);
@@ -386,6 +445,8 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
     slot.livre = true;
     slot.chave = "";
     for (let b = 0; b < slot.brilhos.length; b++) slot.brilhos[b].visible = false;
+    if (slot.flash) slot.flash.visible = false;
+    if (slot.veu) slot.veu.visible = false;
     porId.delete(id);
   }
 

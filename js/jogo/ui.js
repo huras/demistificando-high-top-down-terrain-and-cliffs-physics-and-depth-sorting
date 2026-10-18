@@ -21,7 +21,7 @@ import {
 import { especie, listarEspecies } from "../pokemon/dados.js";
 import {
   curarParty,
-  definirDeployado,
+  alternarCampo,
   listaParty,
   pokemonNoCampo,
   tirarDaParty,
@@ -100,7 +100,7 @@ function noClique(ev) {
   else if (act === "usar-jogador") usarSelecionado(tipo, key, "jogador");
   else if (act === "slot") alternarSlot(i); else if (act === "ciclo") cicloSlot(i);
   else if (act === "limpar-slot") atribuirSlot(i, null, null);
-  else if (act === "deploy") definirDeployado(i);
+  else if (act === "deploy") alternarCampo(i);
   else if (act === "depositar") toast(moverDaPartyParaCaixa(i));
   else if (act === "retirar") toast(moverDaCaixaParaParty(i));
   else if (act === "soltar-caixa") toast(soltarDaCaixa(i));
@@ -364,8 +364,9 @@ function pintarEquipe() {
   if (!host) return;
   const party = listaParty();
   const campo = pokemonNoCampo();
+  const fora = campo && !campo.capturado;
   const sig = party
-    .map((ator) => `${ator.id}:${ator.nivel}:${ator.shiny ? 1 : 0}:${ator.hpMax}:${campo === ator ? 1 : 0}:${ator.especie?.dex || 0}`)
+    .map((ator) => `${ator.id}:${ator.nivel}:${ator.shiny ? 1 : 0}:${ator.hpMax}:${fora && campo === ator ? 1 : 0}:${ator.capturado ? 1 : 0}:${ator.especie?.dex || 0}`)
     .join("|");
   if (sig !== assinaturaEquipe) {
     assinaturaEquipe = sig;
@@ -376,7 +377,7 @@ function pintarEquipe() {
             const face = url
               ? `<img class="jogo-mon__face" src="${url}" alt="" draggable="false" />`
               : `<span class="jogo-mon__face">${nomeEspecie(ator).slice(0, 1)}</span>`;
-            return `<button type="button" class="jogo-mon${campo === ator ? " is-on" : ""}" data-act="deploy" data-i="${i}">
+            return `<button type="button" class="jogo-mon${fora && campo === ator ? " is-on" : ""}" data-act="deploy" data-i="${i}">
               ${face}
               <span class="jogo-mon__nome">${nomeEspecie(ator)} <small>Nv${ator.nivel}</small></span>
               <span class="jogo-mon__barra"><i data-hp="${i}"></i></span>

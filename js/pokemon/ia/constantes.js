@@ -17,6 +17,6 @@ export const FOLGA_PROJETIL = 0.38;
 export const RAIO_PROJETIL = 0.45;
 export const VIDA_FUGA = 0.28;
 export const LEAD_MAX = 6;
-export const ENTRADAS = 16;
+export const ENTRADAS = 21;
 export const OCULTOS = 16;
 export const ALVO_REDE = 0.9;

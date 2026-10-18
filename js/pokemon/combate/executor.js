@@ -7,6 +7,7 @@ import { soltarProjetil } from "./projeteis.js";
 import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
 import { folhaGolpe } from "./folhasGolpe.js";
 import { marcarPose } from "../sprites.js";
+import { cortaVisada } from "../../combate/arenas.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
 
@@ -82,6 +83,10 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
   if (emRolamentoAtivo(alvo)) {
     efeitos.flutuar(alvo, "rolou", "#67e8f9");
     notar(efeitos, { tipo: "dodge", ator: atacante, alvo });
+    return;
+  }
+  if ((forma === "contact" || forma === "radius") && cortaVisada(atacante.x, atacante.y, alvo.x, alvo.y)) {
+    efeitos.flutuar(alvo, "cobriu", "#cbd5e1");
     return;
   }
   if (errouGolpe(acerto)) {

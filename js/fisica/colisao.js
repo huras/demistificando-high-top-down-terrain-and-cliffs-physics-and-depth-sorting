@@ -92,6 +92,7 @@ export function podeEntrar(cx, cy, zAtual, modo = "andar", elevacao = zAtual, zM
 
 /**
  * Movimento no chão. Pode entrar em célula mais baixa — o caller inicia a queda.
+ * Sobreposição que já existe não gera empurrão: o passo só não pode afundar mais.
  */
 export function moverComColisao(corpo, dx, dy, modo = "andar") {
   let { x, y, z } = corpo;
@@ -99,19 +100,14 @@ export function moverComColisao(corpo, dx, dy, modo = "andar") {
   const x0 = x;
   const y0 = y;
   const elev = corpo.elevacao ?? z;
-  const chao = modo === "andar";
 
   if (dx !== 0) {
     const nx = x + dx;
-    if (cantosLivres(nx, y, elev, r, modo, elev) && (!chao || !invadeDisco(nx, y, elev, r))) {
-      x = nx;
-    }
+    if (podeAvancar(nx, y, x, y, elev, r, modo, elev, 0)) x = nx;
   }
   if (dy !== 0) {
     const ny = y + dy;
-    if (cantosLivres(x, ny, elev, r, modo, elev) && (!chao || !invadeDisco(x, ny, elev, r))) {
-      y = ny;
-    }
+    if (podeAvancar(x, ny, x, y, elev, r, modo, elev, 0)) y = ny;
   }
 
   return {
@@ -125,6 +121,7 @@ export function moverComColisao(corpo, dx, dy, modo = "andar") {
 
 /**
  * Movimento no ar: AABB vs sólidos na faixa do corpo.
+ * Não expulsa da quina — só recusa o eixo que entra mais no sólido.
  */
 export function moverAereo(corpo, dx, dy, elevacao, zMin = 0) {
   let { x, y } = corpo;
@@ -135,11 +132,11 @@ export function moverAereo(corpo, dx, dy, elevacao, zMin = 0) {
 
   if (dx !== 0) {
     const nx = x + dx;
-    if (cantosLivres(nx, y, zRef, r, "aereo", elevacao, zMin)) x = nx;
+    if (podeAvancar(nx, y, x, y, zRef, r, "aereo", elevacao, zMin)) x = nx;
   }
   if (dy !== 0) {
     const ny = y + dy;
-    if (cantosLivres(x, ny, zRef, r, "aereo", elevacao, zMin)) y = ny;
+    if (podeAvancar(x, ny, x, y, zRef, r, "aereo", elevacao, zMin)) y = ny;
   }
 
   return {
@@ -154,19 +151,86 @@ export function espacoVoxelLivre(x, y, elev, raio, modo = "andar") {
   return cantosLivres(x, y, elev, raio, modo, elev);
 }
 
-function cantosLivres(x, y, z, r, modo, elevacao, zMin = 0) {
-  const pontos = [
+function cantosDoCorpo(x, y, r) {
+  return [
     [x - r, y - r],
     [x + r, y - r],
     [x - r, y + r],
     [x + r, y + r],
   ];
-  for (const [px, py] of pontos) {
+}
+
+function cantosLivres(x, y, z, r, modo, elevacao, zMin = 0) {
+  for (const [px, py] of cantosDoCorpo(x, y, r)) {
     const cx = Math.floor(px);
     const cy = Math.floor(py);
     if (!podeEntrar(cx, cy, z, modo, elevacao, zMin)) return false;
   }
   return true;
+}
+
+/** Distância do ponto até sair da célula, pelo lado mais perto. */
+function profundidadeCanto(px, py) {
+  const cx = Math.floor(px);
+  const cy = Math.floor(py);
+  return Math.min(px - cx, cx + 1 - px, py - cy, cy + 1 - py);
+}
+
+function profNoSolido(px, py, elev, zMin) {
+  const cx = Math.floor(px);
+  const cy = Math.floor(py);
+  if (!corpoColideSolido(cx, cy, elev, ALTURA_CORPO, zMin)) return 0;
+  return profundidadeCanto(px, py);
+}
+
+/**
+ * Livre, ou já estava no sólido e nenhum canto aprofunda.
+ * Buraco e fora do mapa continuam bloqueando.
+ */
+function podeAvancar(x, y, x0, y0, z, r, modo, elev, zMin) {
+  const noChao = modo === "andar";
+  if (cantosLivres(x, y, z, r, modo, elev, zMin) && (!noChao || !invadeDisco(x, y, elev, r))) {
+    return true;
+  }
+  if (noChao && invadeDisco(x, y, elev, r)) return false;
+  if (modo !== "andar" && modo !== "aereo") return false;
+  if (!jaPenetra(x0, y0, elev, r, zMin)) return false;
+  if (bloqueioSemSolido(x, y, r, modo, elev, zMin)) return false;
+  return !afundaMais(x, y, x0, y0, elev, r, zMin);
+}
+
+function jaPenetra(x, y, elev, r, zMin) {
+  for (const [px, py] of cantosDoCorpo(x, y, r)) {
+    if (profNoSolido(px, py, elev, zMin) > 1e-4) return true;
+  }
+  return false;
+}
+
+function afundaMais(x, y, x0, y0, elev, r, zMin) {
+  const antes = cantosDoCorpo(x0, y0, r);
+  const depois = cantosDoCorpo(x, y, r);
+  for (let i = 0; i < 4; i++) {
+    const p0 = profNoSolido(antes[i][0], antes[i][1], elev, zMin);
+    const p1 = profNoSolido(depois[i][0], depois[i][1], elev, zMin);
+    if (p1 > p0 + 1e-4) return true;
+  }
+  return false;
+}
+
+function bloqueioSemSolido(x, y, r, modo, elev, zMin) {
+  for (const [px, py] of cantosDoCorpo(x, y, r)) {
+    const cx = Math.floor(px);
+    const cy = Math.floor(py);
+    if (podeEntrar(cx, cy, zRefAndar(elev), modo, elev, zMin)) continue;
+    if (!dentroDoMapa(cx, cy)) return true;
+    if (modo !== "andar") continue;
+    if (chaoSobElevacao(cx, cy, elev + 0.35) <= 0) return true;
+  }
+  return false;
+}
+
+function zRefAndar(elev) {
+  return Math.floor(elev + 1e-4);
 }
 
 /** Célula logo à frente do olhar (cardinal puro). */

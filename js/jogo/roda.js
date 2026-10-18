@@ -210,10 +210,13 @@ export function tickRoda() {
     }
   }
   let baixa = "";
-  for (let i = 0; i < TECLAS.length; i++) {
-    if (teclaBaixa(TECLAS[i])) {
-      baixa = TECLAS[i];
-      break;
+  const shift = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+  if (!shift) {
+    for (let i = 0; i < TECLAS.length; i++) {
+      if (teclaBaixa(TECLAS[i])) {
+        baixa = TECLAS[i];
+        break;
+      }
     }
   }
   if (baixa && !tecla) {

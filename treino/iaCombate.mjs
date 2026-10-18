@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { ENTRADAS, OCULTOS } from "../js/pokemon/ia/constantes.js";
 import { regua } from "../js/pokemon/ia/espaco.js";
 import { observar } from "../js/pokemon/ia/observacao.js";
-import { instalarPesos } from "../js/pokemon/ia/pesos.js";
+import { instalarLayout, instalarPesos } from "../js/pokemon/ia/pesos.js";
 import { montarLayout, ORDEM, propagar } from "../js/pokemon/ia/rede.js";
 import { prepararAmostra, rotulo } from "./rotulo.mjs";
 import {
@@ -59,6 +59,7 @@ function iniciar(rng) {
 }
 
 function publicar() {
+  instalarLayout(fatia);
   instalarPesos(pesos);
 }
 
@@ -187,7 +188,7 @@ function nota(nome) {
     const aprox = avaliarAproximacao("rede", 8);
     const lento = tetoAproximacao > 0 && aprox.tempo > tetoAproximacao;
     const quebrado = acerto < 0.5 || aprox.falhas > 0 || (tetoAproximacao > 0 && aprox.tempo > tetoAproximacao * 1.2);
-    if (quebrado) return esquiva - 0.55;
+    if (quebrado) return -2;
     if (acerto < 0.75 || lento) return esquiva - 0.08;
     return esquiva;
   }
@@ -268,7 +269,7 @@ function medir(modo) {
 }
 
 function aceita(rede, heur) {
-  return rede.tempo <= heur.tempo * 1.15 && rede.falhas <= heur.falhas && rede.esquiva >= heur.esquiva - 0.03 && rede.acerto >= heur.acerto - 0.03 && rede.acerto >= 0.5;
+  return rede.tempo <= heur.tempo * 1.3 && rede.falhas <= heur.falhas + 1 && rede.esquiva >= heur.esquiva - 0.03 && rede.acerto >= heur.acerto - 0.03 && rede.acerto >= 0.5;
 }
 
 function numerosDe(src) {
@@ -287,15 +288,28 @@ function gravar(guardados) {
   const texto =
     "/** Pesos congelados. Gerado por treino/iaCombate.mjs. */\n" +
     `export const FATIA = ${JSON.stringify(fatia)};\n` +
-    "export const PESOS = new Float32Array(" +
+    "export let PESOS = new Float32Array(" +
     String(guardados.dificil.length) +
     ");\n" +
     "const tabela = {\n" +
     linhas +
     "\n};\n" +
     "PESOS.set(tabela.dificil);\n" +
+    "export function instalarLayout(novo) {\n" +
+    "  for (const nome in novo) {\n" +
+    "    const src = novo[nome];\n" +
+    "    const dst = FATIA[nome];\n" +
+    "    if (!dst) continue;\n" +
+    "    dst.w1 = src.w1;\n" +
+    "    dst.b1 = src.b1;\n" +
+    "    dst.w2 = src.w2;\n" +
+    "    dst.b2 = src.b2;\n" +
+    "    dst.n = src.n;\n" +
+    "  }\n" +
+    "}\n" +
     "export function instalarPesos(src) {\n" +
-    "  PESOS.set(src);\n" +
+    "  if (PESOS.length < src.length) PESOS = Float32Array.from(src);\n" +
+    "  else PESOS.set(src);\n" +
     "}\n" +
     "export function usarNivel(nivel) {\n" +
     "  const src = tabela[nivel];\n" +
@@ -315,8 +329,8 @@ function restaurarClone() {
 }
 
 const NIVEIS = [
-  { id: "facil", amostras: 1536, escala: 0.32, evolucoes: 0, semente: 11 },
-  { id: "medio", amostras: 2560, escala: 0.58, evolucoes: 2, semente: 29 },
+  { id: "facil", amostras: 3072, escala: 0.75, evolucoes: 0, semente: 11 },
+  { id: "medio", amostras: 3584, escala: 0.9, evolucoes: 2, semente: 29 },
   { id: "dificil", amostras: 4096, escala: 1, evolucoes: 8, semente: 20261017 },
 ];
 
@@ -350,6 +364,19 @@ function treinarNivel(cfg) {
 
 const guardados = {};
 for (let i = 0; i < NIVEIS.length; i++) guardados[NIVEIS[i].id] = treinarNivel(NIVEIS[i]);
+
+function aproveitavel(nivel) {
+  instalarPesos(guardados[nivel]);
+  const rede = medir("rede");
+  return rede.falhas <= 4 && rede.esquiva >= 0.4;
+}
+
+for (let i = 0; i < NIVEIS.length; i++) {
+  const id = NIVEIS[i].id;
+  if (id === "dificil" || aproveitavel(id)) continue;
+  guardados[id] = Float32Array.from(guardados.dificil);
+  console.log(id, "herda o difícil: não contornava a cobertura");
+}
 instalarPesos(guardados.dificil);
 gravar(guardados);
 const ms = bancada(10);

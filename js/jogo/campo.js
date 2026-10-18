@@ -400,7 +400,8 @@ function usarPicaretaNo(x, y) {
 }
 
 function usarConsumivel(item) {
-  const mon = pokemonNoCampo();
+  const slot = pokemonNoCampo();
+  const mon = slot && !slot.capturado ? slot : null;
   const monPrecisa = !!(mon && (mon.morto || mon.hp < mon.hpMax || mon.status));
   if (monPrecisa && usarNoPokemon(item.tipo, item.key, mon)) {
     return `Usou ${nomeDe(item.tipo, item.key)} no ${mon.especie?.nome || "Pokémon"}.`;

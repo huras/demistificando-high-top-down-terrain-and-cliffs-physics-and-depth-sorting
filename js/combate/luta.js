@@ -9,6 +9,8 @@ import { montarGrade } from "../pokemon/grade.js";
 import { tickVisual } from "../pokemon/sprites.js";
 import { CORREDOR_TIRO, JANELA_TIRO, RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
 import { limitarArena, paradaDe, posturaDe, sentidoParada, vaiMelee } from "../pokemon/ia/espaco.js";
+import { empurrarCorpo } from "./arenas.js";
+import { RAIO_POKEMON } from "../config.js";
 import { integrarComando } from "../pokemon/ia/habilidades.js";
 import { iaRedeLigada, pensar, reagirEsquiva } from "../pokemon/ia/seletor.js";
 
@@ -412,6 +414,10 @@ export function tickLuta(dt) {
   tickPassivo(direita, passo, agora);
   soltarPoeiraDash(esquerda, passo);
   soltarPoeiraDash(direita, passo);
+  limitarArena(esquerda);
+  limitarArena(direita);
+  empurrarCorpo(esquerda, RAIO_POKEMON);
+  empurrarCorpo(direita, RAIO_POKEMON);
   limitarArena(esquerda);
   limitarArena(direita);
 

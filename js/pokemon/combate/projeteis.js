@@ -3,6 +3,8 @@ import { FOLGA_PROJETIL, RAIO_PROJETIL } from "../ia/constantes.js";
 import { alturaCorpo, alturaPe } from "../ator.js";
 import { COR_TIPO } from "../tipos.js";
 import { FOLHAS } from "./folhasGolpe.js";
+import { rajada } from "./particulas.js";
+import { bloqueioNoTrecho } from "../../combate/arenas.js";
 
 const vivos = [];
 const impactos = [];
@@ -125,6 +127,15 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
     if (p.cresce > 1) {
       const u = Math.min(1, p.viajou / (p.distCresce || 7));
       p.escala = (p.escala0 || 0.2) * (1 + (p.cresce - 1) * u);
+    }
+    const cobertura = bloqueioNoTrecho(p.antX, p.antY, p.x, p.y, p.raio || RAIO_PROJETIL);
+    if (cobertura) {
+      p.x = cobertura.x;
+      p.y = cobertura.y;
+      rajada(p.x, p.y, p.z, p.tipo, 4, 0.55);
+      nascerImpacto(p);
+      vivos.splice(i, 1);
+      continue;
     }
     let bateu = false;
     for (let k = 0; k < candidatos.length; k++) {
