@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, TILE } from "../config.js";
 import { particulasVivas } from "../pokemon/combate/particulas.js";
-import { projeteisVivos } from "../pokemon/combate/projeteis.js";
+import { impactosVivos, projeteisVivos } from "../pokemon/combate/projeteis.js";
+import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "../pokemon/combate/folhasGolpe.js";
 import { aurasVivas, ORBES_KI } from "../pokemon/combate/ki.js";
 import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
 import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
@@ -212,6 +213,7 @@ function criarPonto(mapa, ordem, aditivo) {
   const sprite = new THREE.Sprite(mat);
   sprite.renderOrder = ordem;
   sprite.visible = false;
+  sprite.userData.mapa = mapa;
   cena.add(sprite);
   return sprite;
 }
@@ -286,24 +288,30 @@ function pintarAtor(slot, ator) {
   slot.sombra.material.opacity = (ator.morto ? 0.2 : 0.4) * Math.max(0.3, 1 - hop);
 }
 
-function pintarTiros() {
-  const vivos = projeteisVivos();
-  for (let i = 0; i < tiros.length; i++) {
-    const mesh = tiros[i];
-    const p = vivos[i];
-    if (!p) {
-      mesh.visible = false;
-      continue;
+function pintarUmTiro(mesh, p) {
+  mesh.visible = true;
+  const pose = p.impacto ? poseImpacto(p) : poseTiro(p);
+  if (!pose || !aplicarPose(mesh, pose)) {
+    if (mesh.material.map !== mesh.userData.mapa) {
+      mesh.material.map = mesh.userData.mapa;
+      mesh.material.needsUpdate = true;
     }
-    mesh.visible = true;
     mesh.material.color.set(p.cor || "#ffffff");
     mesh.material.opacity = 1;
     mesh.material.rotation = p.ang || 0;
     const s = p.escala || Math.max(0.22, (p.raio || 0.45) * 0.42);
-    const folha = p.giro ? 0.42 : 1;
-    mesh.scale.set(s, s * folha, 1);
-    mesh.position.set(p.x, Math.max(0.08, p.z * ALTURA_BLOCO), p.y);
+    mesh.scale.set(s, p.giro ? s * 0.42 : s, 1);
   }
+  mesh.position.set(p.x, Math.max(0.08, p.z * ALTURA_BLOCO), p.y);
+}
+
+function pintarTiros() {
+  const vivos = projeteisVivos();
+  const impactos = impactosVivos();
+  let i = 0;
+  for (let k = 0; k < vivos.length && i < tiros.length; k++, i++) pintarUmTiro(tiros[i], vivos[k]);
+  for (let k = 0; k < impactos.length && i < tiros.length; k++, i++) pintarUmTiro(tiros[i], impactos[k]);
+  for (; i < tiros.length; i++) tiros[i].visible = false;
 }
 
 function criarTraco() {
@@ -438,6 +446,7 @@ function ligarPonteiro() {
 
 export function ligarArena(elemento) {
   if (renderer) return;
+  carregarFolhasGolpe();
   canvas = elemento;
   renderer = new THREE.WebGLRenderer({
     canvas,

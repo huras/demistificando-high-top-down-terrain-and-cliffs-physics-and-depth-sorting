@@ -137,15 +137,17 @@ function ligarLuzSala(dentro) {
 function aplicarVazioSala(dentro) {
   const cena = estado.scene;
   const domo = cena.getObjectByName("ceu-domo");
+  const terreno = estado.terreno.grupo;
+  const agua = terreno.getObjectByName("terreno-agua");
   if (!dentro) {
+    if (agua) agua.visible = true;
+    if (estado.terrenoSuave?.mesh) estado.terrenoSuave.mesh.visible = true;
     if (domoNoVazio && domo) domo.visible = true;
     domoNoVazio = false;
     return;
   }
-  const terreno = estado.terreno.grupo;
   const cubos = terreno.getObjectByName("terreno-cubos");
   const real = terreno.getObjectByName("terreno-real");
-  const agua = terreno.getObjectByName("terreno-agua");
   if (cubos) cubos.visible = false;
   if (real) real.visible = false;
   if (agua) agua.visible = false;

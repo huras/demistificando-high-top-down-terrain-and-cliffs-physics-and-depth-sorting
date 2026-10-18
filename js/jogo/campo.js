@@ -1,6 +1,5 @@
 /** Campo: porta, enxada, regador, plantar, colher, machado e picareta. */
 
-import { RAIO_CORPO } from "../config.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
@@ -40,10 +39,13 @@ import {
 } from "./estado.js";
 
 const PAPEIS = new Set(["casa", "loja", "centro", "lab"]);
-/** Encosta na caixa: o corpo já conta como colisão. */
-const RAIO_TOQUE = RAIO_CORPO + 0.06;
-/** Solta um pouco depois, pra o aviso não piscar no limite do volume. */
-const RAIO_SOLTA = RAIO_CORPO + 0.22;
+/**
+ * Frente da porta, maior que o alcance de grudar na parede.
+ * Entrar ganha de escalar enquanto o corpo está nessa faixa.
+ */
+const RAIO_AVISO = 1.45;
+/** Segura o aviso um pouco depois, pra não piscar na borda. */
+const RAIO_SOLTA = 1.8;
 let portaSegura = "";
 
 export function loteSob(x, y) {
@@ -118,7 +120,7 @@ function predioDoVao(zona, vao) {
 function considerarPorta(zona, ax, ay, predio, d, estadoBusca) {
   if (!predio || !PAPEIS.has(predio.papel) || predio.porta === false) return;
   const chave = chavePorta(ax, ay, predio);
-  const toque2 = RAIO_TOQUE * RAIO_TOQUE;
+  const toque2 = RAIO_AVISO * RAIO_AVISO;
   const solta2 = RAIO_SOLTA * RAIO_SOLTA;
   if (d <= toque2 && d < estadoBusca.toqueD) {
     estadoBusca.toqueD = d;
@@ -137,7 +139,7 @@ function fecharBusca(estadoBusca) {
   return { zona: escolhido.zona, predio: escolhido.predio, ax: escolhido.ax, ay: escolhido.ay };
 }
 
-/** Enquanto o corpo tocar a caixa da porta, dá pra entrar. Cada contato novo vale. */
+/** Na frente da porta, dá pra entrar. Cada contato novo vale. */
 export function entradaPerto(x, y) {
   const zona = zonaNoMundo(x, y);
   if (!zona?.layout || zona.tipo !== "cidade") {

@@ -5,6 +5,7 @@ import { calcularDano, COR_TIPO } from "../tipos.js";
 import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
 import { soltarProjetil } from "./projeteis.js";
 import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
+import { folhaGolpe } from "./folhasGolpe.js";
 import { marcarPose } from "../sprites.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
@@ -321,6 +322,7 @@ function soltarTiro(ator, slot, ang, extra) {
     cresce: extra.cresce || 0,
     distCresce: extra.distCresce || 7,
     escala: extra.escala || 0,
+    folha: extra.folha || "",
   });
 }
 
@@ -347,7 +349,8 @@ function soltarLeque(ator, slot, receita) {
       amp: receita.amp || 0,
       freq: receita.freq || 0,
       fase: (i / Math.max(1, receita.n)) * Math.PI * 2,
-      escala: receita.giro ? 0.34 : receita.amp ? 0.28 : 0.32,
+      escala: folhaGolpe(slot.def.key)?.escalaVoo || 0.4,
+      folha: slot.def.key,
       raio: receita.amp ? 0.36 : 0.32,
     });
   }
@@ -366,7 +369,8 @@ function dispararJato(ator, slot) {
     rajada: ator.jatoId,
     cresce: receita.cresce,
     distCresce: receita.distCresce,
-    escala: 0.16,
+    escala: folhaGolpe(slot.def.key)?.escalaVoo || 0.28,
+    folha: slot.def.key,
     raio: 0.34,
   });
 }

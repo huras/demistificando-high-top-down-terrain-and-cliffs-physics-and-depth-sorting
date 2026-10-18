@@ -2,11 +2,14 @@ import { POKEMON } from "../../config.js";
 import { FOLGA_PROJETIL, RAIO_PROJETIL } from "../ia/constantes.js";
 import { alturaCorpo, alturaPe } from "../ator.js";
 import { COR_TIPO } from "../tipos.js";
+import { FOLHAS } from "./folhasGolpe.js";
 
 const vivos = [];
+const impactos = [];
 
 export function limparProjeteis() {
   vivos.length = 0;
+  impactos.length = 0;
 }
 
 export function soltarProjetil(opts) {
@@ -47,6 +50,7 @@ export function soltarProjetil(opts) {
     distCresce: opts.distCresce || 7,
     escala0: opts.escala || 0,
     escala: opts.escala || 0,
+    folha: opts.folha || "",
   });
   const ultimo = vivos[vivos.length - 1];
   const vel = Math.hypot(ultimo.vx, ultimo.vy) || 1;
@@ -58,12 +62,54 @@ export function projeteisVivos() {
   return vivos;
 }
 
+export function impactosVivos() {
+  return impactos;
+}
+
+function anguloDaFolha(p, cfg) {
+  if (cfg.vertical) return 0;
+  const voo = Math.atan2(p.vy, p.vx) + (cfg.offsetAngulo || 0);
+  return voo + (cfg.giro || 0) * (p.t || 0) * Math.PI * 2;
+}
+
+function nascerImpacto(p) {
+  const cfg = FOLHAS[p.folha];
+  if (!cfg?.impacto) return;
+  let frame = 0;
+  if (cfg.animar && cfg.frames > 1) frame = Math.floor((p.t || 0) / cfg.duracao) % cfg.frames;
+  impactos.push({
+    x: p.x,
+    y: p.y,
+    z: p.z,
+    vx: p.vx,
+    vy: p.vy,
+    folha: p.folha,
+    t: 0,
+    ang: anguloDaFolha(p, cfg),
+    frame,
+    escala: cfg.impacto === "cravar" ? p.escala || cfg.escalaVoo : cfg.escalaImpacto,
+    impacto: true,
+  });
+}
+
+function atualizarImpactos(dt) {
+  for (let i = impactos.length - 1; i >= 0; i--) {
+    const imp = impactos[i];
+    imp.t += dt;
+    const cfg = FOLHAS[imp.folha];
+    const dur = cfg?.impacto === "folha"
+      ? (cfg.duracao || 0.07) * Math.max(1, cfg.frames - (cfg.frameImpacto || 0))
+      : cfg?.duracaoImpacto || 0.9;
+    if (imp.t >= dur) impactos.splice(i, 1);
+  }
+}
+
 export function atualizarProjeteis(dt, candidatos, aoAtingir) {
   for (let i = vivos.length - 1; i >= 0; i--) {
     const p = vivos[i];
     const passo = Math.hypot(p.vx, p.vy) * dt;
+    p.t += dt;
     if (p.amp > 0) {
-      p.t += dt;
       p.baseX += p.vx * dt;
       p.baseY += p.vy * dt;
       const lat = Math.sin(p.t * p.freq * Math.PI * 2 + p.fase) * p.amp;
@@ -98,6 +144,8 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
       bateu = true;
       break;
     }
+    if (bateu) nascerImpacto(p);
     if (bateu || p.viajou >= p.max || p.z < -2) vivos.splice(i, 1);
   }
+  atualizarImpactos(dt);
 }

@@ -3,7 +3,8 @@ import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
 import { obterBola } from "./captura.js";
 import { dropsNoChao } from "./drops.js";
-import { projeteisVivos } from "./combate/projeteis.js";
+import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
+import { carregarFolhasGolpe, poseImpacto, poseTiro, telaFolha } from "./combate/folhasGolpe.js";
 import { auraDe, ORBES_KI } from "./combate/ki.js";
 import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
 import { atoresVisiveis } from "./sistema.js";
@@ -93,7 +94,28 @@ function desenharDrop(ctx, item) {
   ctx.restore();
 }
 
+function desenharFolha(ctx, p, pose) {
+  const tela = telaFolha(pose.chave);
+  if (!tela) return false;
+  const x = mundoParaTelaX(p.x);
+  const y = mundoParaTelaY(p.y, p.z, 0);
+  const lado = Math.max(8, pose.escala * TILE * ESCALA);
+  const sy = pose.frame * (tela.height / pose.frames);
+  const sh = tela.height / pose.frames;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = pose.alpha == null ? 1 : pose.alpha;
+  ctx.translate(x, y);
+  ctx.rotate(pose.angulo || 0);
+  ctx.drawImage(tela, 0, sy, tela.width, sh, -lado / 2, -lado / 2, lado, lado);
+  ctx.restore();
+  return true;
+}
+
 function desenharProjetil(ctx, p) {
+  carregarFolhasGolpe();
+  const pose = p.impacto ? poseImpacto(p) : poseTiro(p);
+  if (pose && desenharFolha(ctx, p, pose)) return;
   const x = mundoParaTelaX(p.x);
   const y = mundoParaTelaY(p.y, p.z, 0);
   ctx.save();
@@ -149,6 +171,11 @@ export function empilharPokemon(lista) {
   const tiros = projeteisVivos();
   for (let i = 0; i < tiros.length; i++) {
     const p = tiros[i];
+    empilhar(lista, chaveEntidade(p.y, p.z), 0, (ctx) => desenharProjetil(ctx, p), 8, p.z);
+  }
+  const impactos = impactosVivos();
+  for (let i = 0; i < impactos.length; i++) {
+    const p = impactos[i];
     empilhar(lista, chaveEntidade(p.y, p.z), 0, (ctx) => desenharProjetil(ctx, p), 8, p.z);
   }
   const bola = obterBola();

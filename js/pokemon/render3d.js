@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { ALTURA_BLOCO, TILE } from "../config.js";
 import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 import { obterBola, particulasCaptura } from "./captura.js";
-import { projeteisVivos } from "./combate/projeteis.js";
+import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
+import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "./combate/folhasGolpe.js";
 import { aurasVivas, ORBES_KI } from "./combate/ki.js";
 import { dropsNoChao } from "./drops.js";
 import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
@@ -188,8 +189,9 @@ function criarKi(ordem) {
 }
 
 function criarPonto(cor) {
+  const mapa = texturaPonto();
   const mat = new THREE.SpriteMaterial({
-    map: texturaPonto(),
+    map: mapa,
     color: cor,
     transparent: true,
     depthWrite: false,
@@ -198,12 +200,32 @@ function criarPonto(cor) {
   const sprite = new THREE.Sprite(mat);
   sprite.renderOrder = 4;
   sprite.visible = false;
+  sprite.userData.mapa = mapa;
   cena.add(sprite);
   return sprite;
 }
 
+function pintarTiro(mesh, p) {
+  mesh.visible = true;
+  const pose = p.impacto ? poseImpacto(p) : poseTiro(p);
+  if (!pose || !aplicarPose(mesh, pose)) {
+    if (mesh.material.map !== mesh.userData.mapa) {
+      mesh.material.map = mesh.userData.mapa;
+      mesh.material.needsUpdate = true;
+    }
+    mesh.material.color.set(p.cor || "#ffffff");
+    mesh.material.opacity = 1;
+    mesh.material.rotation = p.ang || 0;
+    mesh.material.alphaTest = 0.1;
+    const s = p.escala || 0.22;
+    mesh.scale.set(s, p.giro ? s * 0.42 : s, 1);
+  }
+  mesh.position.set(p.x, p.z * ALTURA_BLOCO, p.y);
+}
+
 export function ligarPokemon3d(scene) {
   if (cena) return;
+  carregarFolhasGolpe();
   cena = scene;
   carregarCatalogoLuzes();
   for (let i = 0; i < CAP_ATOR; i++) atores.push(criarAtorSlot());
@@ -366,20 +388,15 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
   }
 
   const tirosVivos = projeteisVivos();
-  for (let i = 0; i < tiros.length; i++) {
-    const mesh = tiros[i];
-    const p = tirosVivos[i];
-    if (!p) {
-      mesh.visible = false;
-      continue;
-    }
-    mesh.visible = true;
-    mesh.material.color.set(p.cor || "#ffffff");
-    mesh.material.rotation = p.ang || 0;
-    const s = p.escala || 0.22;
-    mesh.scale.set(s, p.giro ? s * 0.42 : s, 1);
-    mesh.position.set(p.x, p.z * ALTURA_BLOCO, p.y);
+  const impactos = impactosVivos();
+  let slot = 0;
+  for (let k = 0; k < tirosVivos.length && slot < tiros.length; k++, slot++) {
+    pintarTiro(tiros[slot], tirosVivos[k]);
   }
+  for (let k = 0; k < impactos.length && slot < tiros.length; k++, slot++) {
+    pintarTiro(tiros[slot], impactos[k]);
+  }
+  for (; slot < tiros.length; slot++) tiros[slot].visible = false;
 
   const auras = aurasVivas();
   for (let i = 0; i < CAP_KI; i++) {
