@@ -205,9 +205,9 @@ function criarPonto(cor) {
   return sprite;
 }
 
-function pintarTiro(mesh, p) {
+function pintarTiro(mesh, p, camera) {
   mesh.visible = true;
-  const pose = p.impacto ? poseImpacto(p) : poseTiro(p);
+  const pose = p.impacto ? poseImpacto(p, camera) : poseTiro(p, camera);
   if (!pose || !aplicarPose(mesh, pose)) {
     if (mesh.material.map !== mesh.userData.mapa) {
       mesh.material.map = mesh.userData.mapa;
@@ -391,10 +391,10 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
   const impactos = impactosVivos();
   let slot = 0;
   for (let k = 0; k < tirosVivos.length && slot < tiros.length; k++, slot++) {
-    pintarTiro(tiros[slot], tirosVivos[k]);
+    pintarTiro(tiros[slot], tirosVivos[k], camera);
   }
   for (let k = 0; k < impactos.length && slot < tiros.length; k++, slot++) {
-    pintarTiro(tiros[slot], impactos[k]);
+    pintarTiro(tiros[slot], impactos[k], camera);
   }
   for (; slot < tiros.length; slot++) tiros[slot].visible = false;
 

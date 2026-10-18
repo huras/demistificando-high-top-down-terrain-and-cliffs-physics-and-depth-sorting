@@ -290,7 +290,7 @@ function pintarAtor(slot, ator) {
 
 function pintarUmTiro(mesh, p) {
   mesh.visible = true;
-  const pose = p.impacto ? poseImpacto(p) : poseTiro(p);
+  const pose = p.impacto ? poseImpacto(p, camera) : poseTiro(p, camera);
   if (!pose || !aplicarPose(mesh, pose)) {
     if (mesh.material.map !== mesh.userData.mapa) {
       mesh.material.map = mesh.userData.mapa;

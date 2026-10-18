@@ -66,12 +66,6 @@ export function impactosVivos() {
   return impactos;
 }
 
-function anguloDaFolha(p, cfg) {
-  if (cfg.vertical) return 0;
-  const voo = Math.atan2(p.vy, p.vx) + (cfg.offsetAngulo || 0);
-  return voo + (cfg.giro || 0) * (p.t || 0) * Math.PI * 2;
-}
-
 function nascerImpacto(p) {
   const cfg = FOLHAS[p.folha];
   if (!cfg?.impacto) return;
@@ -85,7 +79,7 @@ function nascerImpacto(p) {
     vy: p.vy,
     folha: p.folha,
     t: 0,
-    ang: anguloDaFolha(p, cfg),
+    giro: (cfg.giro || 0) * (p.t || 0) * Math.PI * 2,
     frame,
     escala: cfg.impacto === "cravar" ? p.escala || cfg.escalaVoo : cfg.escalaImpacto,
     impacto: true,

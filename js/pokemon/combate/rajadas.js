@@ -6,7 +6,7 @@ const VEL = 1170 / TILE;
 const POR_CHAVE = {
   ember: { tipo: "leque", n: 3, graus: 8, vel: VEL },
   razorLeaf: { tipo: "leque", n: 3, graus: 8, vel: VEL, giro: 4.8 },
-  bubble: { tipo: "leque", n: 2, graus: 10, vel: VEL * 0.42, amp: 22 / TILE, freq: 2.1 },
+  bubble: { tipo: "leque", n: 2, graus: 10, vel: VEL * 0.85, amp: 22 / TILE, freq: 2.1 },
   flamethrower: { tipo: "jato", n: 8, dur: 0.55, intervalo: 0.07, graus: 8, vel: VEL, cresce: 6, distCresce: 7 },
 };
 

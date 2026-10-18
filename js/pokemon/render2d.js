@@ -114,7 +114,7 @@ function desenharFolha(ctx, p, pose) {
 
 function desenharProjetil(ctx, p) {
   carregarFolhasGolpe();
-  const pose = p.impacto ? poseImpacto(p) : poseTiro(p);
+  const pose = p.impacto ? poseImpacto(p, null, true) : poseTiro(p, null, true);
   if (pose && desenharFolha(ctx, p, pose)) return;
   const x = mundoParaTelaX(p.x);
   const y = mundoParaTelaY(p.y, p.z, 0);

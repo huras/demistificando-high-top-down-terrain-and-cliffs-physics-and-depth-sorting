@@ -16,7 +16,7 @@ export const FOLHAS = {
     animar: false,
     escalaVoo: tamanho(32, 6.6),
     escalaImpacto: tamanho(32, 2.2),
-    offsetAngulo: -Math.PI / 2,
+    aponta: "cima",
     vertical: false,
     impacto: "folha",
     frameImpacto: 0,
@@ -27,6 +27,7 @@ export const FOLHAS = {
     duracao: 0.06,
     animar: true,
     giro: 4.8,
+    aponta: "direita",
     escalaVoo: tamanho(16, 4.5),
     vertical: false,
     impacto: "cravar",
@@ -109,43 +110,68 @@ export function carregarFolhasGolpe() {
   }
 }
 
-export function poseTiro(p) {
+const _direita = new THREE.Vector3();
+const _cima = new THREE.Vector3();
+const _movimento = new THREE.Vector3();
+
+/** O desenho aponta para cima ou para a direita da folha. O ângulo segue a câmera. */
+export function anguloDoMovimento(camera, vx, vy, aponta, giro, tela) {
+  const extra = giro || 0;
+  const dx = vx || 0;
+  const dy = vy || 0;
+  if (dx * dx + dy * dy < 1e-8) return extra;
+  if (tela || !camera) {
+    if (aponta === "cima") return Math.atan2(dx, -dy) + extra;
+    return Math.atan2(dy, dx) + extra;
+  }
+  camera.updateMatrixWorld();
+  _direita.setFromMatrixColumn(camera.matrixWorld, 0);
+  _cima.setFromMatrixColumn(camera.matrixWorld, 1);
+  _movimento.set(dx, 0, dy);
+  const sx = _movimento.dot(_direita);
+  const sy = _movimento.dot(_cima);
+  if (aponta === "cima") return Math.atan2(-sx, sy) + extra;
+  return Math.atan2(sy, sx) + extra;
+}
+
+export function poseTiro(p, camera, tela) {
   const cfg = FOLHAS[p?.folha];
   if (!cfg) return null;
   let frame = 0;
   if (cfg.animar && cfg.frames > 1) {
     frame = Math.floor((p.t || 0) / cfg.duracao) % cfg.frames;
   }
-  const voo = Math.atan2(p.vy || 0, p.vx || 1) + (cfg.offsetAngulo || 0);
   const giro = (cfg.giro || 0) * (p.t || 0) * Math.PI * 2;
   return {
     chave: p.folha,
     frame,
     frames: cfg.frames,
-    angulo: cfg.vertical ? 0 : voo + giro,
+    angulo: cfg.vertical ? 0 : anguloDoMovimento(camera, p.vx, p.vy, cfg.aponta, giro, tela),
     escala: p.escala || cfg.escalaVoo,
     alpha: 1,
   };
 }
 
-export function poseImpacto(imp) {
+export function poseImpacto(imp, camera, tela) {
   const cfg = FOLHAS[imp?.folha];
   if (!cfg) return null;
   const inicio = cfg.frameImpacto || 0;
   let frame = imp.frame || 0;
   let alpha = 1;
+  let angulo = 0;
   if (cfg.impacto === "folha") {
     frame = Math.min(cfg.frames - 1, inicio + Math.floor((imp.t || 0) / cfg.duracao));
   } else {
     const dur = cfg.duracaoImpacto || 0.9;
     const u = Math.min(1, (imp.t || 0) / dur);
     alpha = u < 0.32 ? 1 : 1 - (u - 0.32) / 0.68;
+    angulo = anguloDoMovimento(camera, imp.vx, imp.vy, cfg.aponta, imp.giro || 0, tela);
   }
   return {
     chave: imp.folha,
     frame,
     frames: cfg.frames,
-    angulo: cfg.impacto === "cravar" ? imp.ang || 0 : 0,
+    angulo,
     escala: imp.escala || cfg.escalaImpacto || cfg.escalaVoo,
     alpha,
   };
