@@ -50,6 +50,8 @@ import {
 import { registrarObjetoCena, verCamadaAuxiliar } from "../../cena/registroCena.js";
 import { atualizarRealceCena, ligarSelecaoCena } from "../../cena/selecaoCena.js";
 import { atualizarPokemon3d, ligarPokemon3d } from "../../pokemon/render3d.js";
+import { atoresVisiveis } from "../../pokemon/sistema.js";
+import { marcarCorposCrista } from "./texturasAgua3d.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
 
 let estado = null;
@@ -541,6 +543,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   sincronizarVisualTerreno(atlas);
   aplicarNevoa(obterRaioStream());
+  marcarCorposCrista(corpo, agente, atoresVisiveis());
   estado.terreno.tickMalha?.(corpo.x, corpo.y);
   comecarQuadroLuzes();
   comecarMapaChao();

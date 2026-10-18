@@ -36,6 +36,14 @@ const MAPA_AGUA = `
 		float s1 = sin(fract(aoLongo * 0.3421846 + uFase1) * 6.2831853) * 0.2;
 		float s2 = sin(fract(aoLongo * 0.747868 + uFase2) * 6.2831853) * 0.06;
 		float campo = atraves - s1 - s2 - uScroll;
+		for (int i = 0; i < 8; i++) {
+			float amp = uCorpos[i].z;
+			if (amp <= 0.0) continue;
+			vec2 d = vMundoAgua - uCorpos[i].xy;
+			float r2 = dot(d, d);
+			if (r2 >= 4.0) continue;
+			campo -= exp(-r2 * 1.2) * amp;
+		}
 		float f = fract(campo / 2.6);
 		float dist = min(f, 1.0 - f) * 2.6;
 		faixa = 1.0 - smoothstep(0.012, 0.055, dist);
@@ -74,7 +82,7 @@ function canvasChato(cor) {
   return c;
 }
 
-function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey) {
+function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey, corpos) {
   const mat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: textura,
@@ -91,6 +99,7 @@ function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey) {
   });
   mat.userData.quadros = quadros;
   mat.userData.eixoLinha = eixoLinha;
+  mat.userData.corpos = corpos;
   mat.customProgramCacheKey = () => cacheKey;
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uQuadro = { value: 0 };
@@ -100,6 +109,7 @@ function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey) {
     shader.uniforms.uScroll = { value: 0 };
     shader.uniforms.uFase1 = { value: 0 };
     shader.uniforms.uFase2 = { value: 0 };
+    shader.uniforms.uCorpos = { value: mat.userData.corpos };
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
@@ -112,7 +122,7 @@ function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey) {
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nvarying vec2 vMundoAgua;\nuniform highp float uQuadro;\nuniform highp float uQuadros;\nuniform highp float uLinha;\nuniform highp float uEixoLinha;\nuniform highp float uScroll;\nuniform highp float uFase1;\nuniform highp float uFase2;",
+        "#include <common>\nvarying vec2 vMundoAgua;\nuniform highp float uQuadro;\nuniform highp float uQuadros;\nuniform highp float uLinha;\nuniform highp float uEixoLinha;\nuniform highp float uScroll;\nuniform highp float uFase1;\nuniform highp float uFase2;\nuniform vec4 uCorpos[8];",
       )
       .replace("#include <map_fragment>", MAPA_AGUA);
     mat.userData.shader = shader;
@@ -150,11 +160,29 @@ function carregar(url) {
   });
 }
 
+const CAP_CRISTA = 8;
+const CRISTA_RAIO2 = 36;
+const CRISTA_AMP = 0.62;
+
+function slotsCrista() {
+  const lista = new Array(CAP_CRISTA);
+  for (let i = 0; i < CAP_CRISTA; i++) lista[i] = new THREE.Vector4();
+  return lista;
+}
+
+const corposLago = slotsCrista();
+const corposLonge = slotsCrista();
+const corposQueda = slotsCrista();
+const cristaX = new Float32Array(CAP_CRISTA);
+const cristaY = new Float32Array(CAP_CRISTA);
+const cristaA = new Float32Array(CAP_CRISTA);
+const cristaD = new Float32Array(CAP_CRISTA);
+
 const texLago = texturaPixel(canvasChato("#7ec8e3"));
 const texQueda = texturaPixel(canvasChato("#9fd4ea"));
-const matLago = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-centro"));
-const matLagoLonge = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-longe"));
-const matQueda = aplicarSombraNuvem(materialFolha(texQueda, 1, 0.92, 1, "agua-queda-centro"));
+const matLago = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-centro", corposLago));
+const matLagoLonge = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-longe", corposLonge));
+const matQueda = aplicarSombraNuvem(materialFolha(texQueda, 1, 0.92, 1, "agua-queda-centro", corposQueda));
 
 carregar(LAGO_URL).then((img) => {
   if (!img) return;
@@ -209,6 +237,74 @@ function quadro(segundos, periodo, quadros) {
 function faseDe(segundos, voltas) {
   const t = segundos * voltas;
   return t - Math.floor(t);
+}
+
+function imersoNaCrista(e) {
+  if (!e || e.morto || e.capturado) return false;
+  if (e.voando || e.planando || e.escalando) return false;
+  if (e.nadando) return true;
+  return (e.aguaProf || 0) >= 0.12;
+}
+
+function ampCrista(e) {
+  const v = Math.hypot(e.vx || 0, e.vy || 0);
+  return CRISTA_AMP + Math.min(0.28, v * 0.06);
+}
+
+function oferecerCrista(e, origem, n) {
+  if (!imersoNaCrista(e) || !origem) return n;
+  const dx = e.x - origem.x;
+  const dy = e.y - origem.y;
+  const d2 = dx * dx + dy * dy;
+  if (d2 > CRISTA_RAIO2) return n;
+  const amp = ampCrista(e);
+  if (n < CAP_CRISTA) {
+    cristaX[n] = e.x;
+    cristaY[n] = e.y;
+    cristaA[n] = amp;
+    cristaD[n] = d2;
+    return n + 1;
+  }
+  let pior = 0;
+  for (let i = 1; i < CAP_CRISTA; i++) {
+    if (cristaD[i] > cristaD[pior]) pior = i;
+  }
+  if (d2 >= cristaD[pior]) return n;
+  cristaX[pior] = e.x;
+  cristaY[pior] = e.y;
+  cristaA[pior] = amp;
+  cristaD[pior] = d2;
+  return n;
+}
+
+function publicarCrista(slots, n) {
+  for (let i = 0; i < CAP_CRISTA; i++) {
+    const v = slots[i];
+    if (i < n) {
+      v.x = cristaX[i];
+      v.y = cristaY[i];
+      v.z = cristaA[i];
+    } else {
+      v.z = 0;
+    }
+  }
+}
+
+/** Até 8 corpos na água, perto de quem joga. O shader só curva a crista. */
+export function marcarCorposCrista(corpo, agente, atores) {
+  const origem = corpo || agente;
+  let n = 0;
+  n = oferecerCrista(corpo, origem, n);
+  if (agente !== corpo) n = oferecerCrista(agente, origem, n);
+  if (atores) {
+    for (let i = 0; i < atores.length; i++) {
+      const a = atores[i];
+      if (a === corpo || a === agente) continue;
+      n = oferecerCrista(a, origem, n);
+    }
+  }
+  publicarCrista(corposLago, n);
+  publicarCrista(corposLonge, n);
 }
 
 /** Um uniforme por material — vale para todo chunk já montado. */

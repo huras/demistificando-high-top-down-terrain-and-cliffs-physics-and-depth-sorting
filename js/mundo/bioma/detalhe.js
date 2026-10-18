@@ -230,20 +230,74 @@ function planoDe(bioma) {
   return plano;
 }
 
-function passaGrama(x, y) {
+function valorGrama(x, y) {
   const g = dados?.grama;
-  if (!g) return false;
+  if (!g) return null;
   const seed = g.semente | 0;
-  const n = fbm(
-    (x + seed * 23.9) * (Number(g.escala) || 0.0055),
-    (y + seed * 11.4) * (Number(g.escala) || 0.0055),
-    g.oitavas | 0 || 2,
-    g.persistencia,
-    g.lacunaridade,
-    0,
-  );
-  if (n < (Number(g.limiar) || 0)) return false;
-  return hash2(x, y, seed ^ 0x6c078965) <= (Number(g.densidade) || 0);
+  return {
+    n: fbm(
+      (x + seed * 23.9) * (Number(g.escala) || 0.0055),
+      (y + seed * 11.4) * (Number(g.escala) || 0.0055),
+      g.oitavas | 0 || 2,
+      g.persistencia,
+      g.lacunaridade,
+      0,
+    ),
+    limiar: Number(g.limiar) || 0,
+    densidade: Number(g.densidade) || 0,
+    seed,
+  };
+}
+
+function valorArvore(x, y) {
+  const a = dados?.arvore;
+  if (!a) return null;
+  const seed = a.semente | 0;
+  return {
+    n: fbm(
+      (x + seed * 17.3) * (Number(a.escala) || 0.0452),
+      (y + seed * 31.7) * (Number(a.escala) || 0.0452),
+      a.oitavas | 0 || 4,
+      a.persistencia,
+      a.lacunaridade,
+      0,
+    ),
+    limiar: Number(a.limiar) || 0,
+    densidade: Number(a.densidade) || 0,
+    seed,
+  };
+}
+
+function passaGrama(x, y) {
+  const v = valorGrama(x, y);
+  if (!v || v.n < v.limiar) return false;
+  return hash2(x, y, v.seed ^ 0x6c078965) <= v.densidade;
+}
+
+const VEG = { arvore: 0, grama: 0, mote: 0 };
+
+/** Cobertura do campo no ponto. O hash vira mote só quando o mapa pede o zoom perto. */
+export function vegetacaoNoPonto(x, y, comHash, saida = VEG) {
+  const xi = x | 0;
+  const yi = y | 0;
+  saida.arvore = 0;
+  saida.grama = 0;
+  saida.mote = 0;
+  const a = valorArvore(xi, yi);
+  if (a && a.n >= a.limiar) {
+    const faixa = Math.max(0.25, 0.7 - a.limiar);
+    saida.arvore = Math.min(1, (a.n - a.limiar) / faixa);
+    if (comHash && hash2(xi, yi, a.seed) <= a.densidade) saida.mote = 2;
+  }
+  const g = valorGrama(xi, yi);
+  if (g && g.n >= g.limiar) {
+    const faixa = Math.max(0.25, 0.7 - g.limiar);
+    saida.grama = Math.min(1, (g.n - g.limiar) / faixa);
+    if (comHash && saida.mote === 0 && hash2(xi, yi, g.seed ^ 0x6c078965) <= g.densidade) {
+      saida.mote = 1;
+    }
+  }
+  return saida;
 }
 
 function uVariante(x, y) {
@@ -301,17 +355,9 @@ function passaArvore(x, y) {
   const a = dados?.arvore;
   if (!a) return false;
   return lembrar(`a${x},${y}`, () => {
-    const seed = a.semente | 0;
-    const n = fbm(
-      (x + seed * 17.3) * (Number(a.escala) || 0.0452),
-      (y + seed * 31.7) * (Number(a.escala) || 0.0452),
-      a.oitavas | 0 || 4,
-      a.persistencia,
-      a.lacunaridade,
-      0,
-    );
-    if (n < (Number(a.limiar) || 0)) return false;
-    return hash2(x, y, seed) <= (Number(a.densidade) || 0);
+    const v = valorArvore(x, y);
+    if (!v || v.n < v.limiar) return false;
+    return hash2(x, y, v.seed) <= v.densidade;
   });
 }
 

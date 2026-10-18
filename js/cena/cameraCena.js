@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { CAMERA3D_MOUSE_SENS } from "../config.js";
 import { teclaBaixa } from "../entrada/teclado.js";
+import { mapaAberto } from "../ui/mapa/mapaMundo.js";
 import { estaEmCena } from "./modoCena.js";
 import { caixaDaSelecao, selecionarNoNdc } from "./selecaoCena.js";
 import { verCamadaAuxiliar } from "./registroCena.js";
@@ -39,6 +40,7 @@ let ligado = false;
 const ndc = new THREE.Vector2();
 
 function tecladoLivre() {
+  if (mapaAberto()) return false;
   const tag = document.activeElement?.tagName;
   return tag !== "INPUT" && tag !== "SELECT" && tag !== "TEXTAREA";
 }

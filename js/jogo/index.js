@@ -39,6 +39,7 @@ import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
 import { acaoContexto, acaoConsomeE } from "./acaoContexto.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
 import { alternarCampo } from "../pokemon/party.js";
+import { abrirMapa, fecharMapa, mapaAberto, zoomMapa } from "../ui/mapa/mapaMundo.js";
 
 let viewport = null;
 let toastAte = 0;
@@ -50,7 +51,7 @@ function campoFocado() {
 }
 
 export function jogoTravaMundo() {
-  return uiAberta();
+  return uiAberta() || mapaAberto();
 }
 
 export function montarJogo(opts) {
@@ -83,7 +84,14 @@ export function tickJogo(dt, corpo) {
   }
   if (estado.interior?.sala3d) {
     checarSaidaSala(corpo);
-  } else if (estado.interior && !estado.dialogo && !estado.painel && !estado.construir && !estado.craft) {
+  } else if (
+    estado.interior &&
+    !estado.dialogo &&
+    !estado.painel &&
+    !estado.construir &&
+    !estado.craft &&
+    !mapaAberto()
+  ) {
     moverSala(dt);
     if (estado.interior?.saindo) sairInterior(corpo);
   }
@@ -121,8 +129,8 @@ export function tickJogo(dt, corpo) {
   estado.promptRotulo = acao?.rotulo || "Entrar";
   estado.promptAncora = acao?.ancora || null;
   const livreDeMenu = !estado.painel && !estado.roda && !estado.construir && !estado.craft && !estado.ganhoAberto;
-  if (!campoFocado() && estado.dialogo && teclaAgora("KeyE")) avancarDialogo();
-  else if (!campoFocado() && livreDeMenu && acaoConsomeE(acao) && teclaAgora("KeyE")) {
+  if (!mapaAberto() && !campoFocado() && estado.dialogo && teclaAgora("KeyE")) avancarDialogo();
+  else if (!mapaAberto() && !campoFocado() && livreDeMenu && acaoConsomeE(acao) && teclaAgora("KeyE")) {
     executarAcaoE(acao, corpo, porta, alvoLab, alvoHub);
   }
   const texto =
@@ -160,6 +168,12 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
 }
 
 function lerTeclas(corpo) {
+  if (mapaAberto()) {
+    if (teclaAgora("Escape") || teclaAgora("KeyM")) fecharMapa();
+    if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) zoomMapa(1.18);
+    if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) zoomMapa(1 / 1.18);
+    return;
+  }
   if (estado.ganhoAberto && teclaAgora("Escape")) {
     fecharCartaGanho();
     return;
@@ -178,6 +192,7 @@ function lerTeclas(corpo) {
   }
   if (teclaAgora("KeyR") && !estado.roda) interagir(corpo);
   if (estado.painel || estado.dialogo || estado.roda || estado.construir || estado.craft) return;
+  if (teclaAgora("KeyM")) abrirMapa(corpo.x, corpo.y);
   if (teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight")) {
     for (let i = 0; i < TECLAS_PARTY.length; i++) {
       if (teclaAgora(TECLAS_PARTY[i])) {

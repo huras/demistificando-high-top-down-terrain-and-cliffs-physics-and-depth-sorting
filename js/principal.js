@@ -55,6 +55,7 @@ import { tickPoeiraPasso } from "./fx/poeiraPasso.js";
 import { tickFxAgua } from "./fx/fxAgua.js";
 import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
 import { ligarMapaKanto, atualizarMapaKanto } from "./ui/mapaKanto.js";
+import { ligarMapaMundo, mapaAberto, tickMapaMundo } from "./ui/mapa/mapaMundo.js";
 import { ligarDicasPainel } from "./ui/dicasPainel.js";
 import { ligarPainelCeu, sincronizarPainelCeu } from "./ui/painelCeu.js";
 import { ligarPainelCamera, sincronizarPainelCamera } from "./ui/painelCamera.js";
@@ -168,6 +169,7 @@ async function iniciar() {
   ligarAjudaAtalhos();
   ligarMapaKanto();
   atualizarMapaKanto(SPAWN.x, SPAWN.y);
+  ligarMapaMundo();
   ligarHierarquiaCena();
   ligarInspetorCena();
   try {
@@ -204,6 +206,7 @@ async function iniciar() {
 
   const onWheel = (ev) => {
     ev.preventDefault();
+    if (mapaAberto()) return;
     if (rolarCategoria(ev.deltaY)) return;
     if (obterModo() === "3d" && estaEmCena()) {
       aplicarScrollCena(ev.deltaY);
@@ -434,6 +437,7 @@ function loop(agora) {
   atualizarStreaming(corpo.x, corpo.y);
   definirCorposAtores(listarSolidosPokemon());
   atualizarMapaKanto(corpo.x, corpo.y);
+  tickMapaMundo(corpo.x, corpo.y);
   if (!passeioAtivo() && !trava) atualizarMovimento(corpo, dt);
   tickFilaPath();
   if (passeioAtivo() && !trava) atualizarPasseio(corpo, dt);

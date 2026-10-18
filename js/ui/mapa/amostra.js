@@ -1,0 +1,389 @@
+/**
+ * Amostra do mapa. Mesmas sementes do terreno, sem o cache de uma célula
+ * que o mundo usa o frame inteiro. A costa sai de um campo de distância
+ * da grade de relevo, perturbado pelo mesmo fbm.
+ */
+import { vegetacaoNoPonto } from "../../mundo/bioma/detalhe.js";
+import { obterKit } from "../../mundo/bioma/kits.js";
+import { BIOMA_KANTO } from "../../mundo/regiao/amostraKanto.js";
+import {
+  AREA_KANTO,
+  CENTRO_AREA,
+  EXTENSAO_KANTO,
+  LADO_KANTO,
+  SAIDA_LESTE,
+  SAIDA_NORTE,
+  SAIDA_OESTE,
+  SAIDA_SUL,
+  zonaNoMundo,
+} from "../../mundo/regiao/grafoKanto.js";
+import {
+  RELEVO_FUNDO,
+  RELEVO_MONTANHA,
+  RELEVO_RASO,
+  RELEVO_TERRA,
+  relevoEm,
+} from "../../mundo/regiao/kantoRelevo.js";
+import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "../../mundo/regiao/volumesCidade.js";
+import { fbm2 } from "../../mundo/voxel/ruido.js";
+
+const COTA_CIDADE = 16;
+const COTA_MONTANHA = 34;
+const COTA_RASO = 10;
+const COTA_FUNDO = 8;
+const SEMENTE = 1337;
+const MEIO_RUA = 3.5;
+const SANGRIA = 4;
+const AVENTAL = 18;
+const N = 512;
+const PASSO = EXTENSAO_KANTO / N;
+
+const AGUA_FUNDO = [20, 62, 102];
+const AGUA_RASO = [58, 142, 184];
+const COPA = [18, 62, 32];
+const GRAMA_LAVA = [198, 214, 120];
+const MOTE_ARVORE = [10, 42, 20];
+const MOTE_GRAMA = [176, 198, 88];
+
+const PALETA = new Map();
+const SAIDA = { h: 0, u: 0, r: 0, g: 0, b: 0 };
+
+let distAgua = null;
+let distTerra = null;
+let distForaMonte = null;
+
+function rgbDe(hex) {
+  const cru = (hex || "#7dce6a").replace("#", "");
+  const h = cru.length === 3 ? cru.replace(/./g, (c) => c + c) : cru.slice(0, 6);
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+for (const chave of Object.keys(BIOMA_KANTO)) {
+  PALETA.set(BIOMA_KANTO[chave], rgbDe(BIOMA_KANTO[chave].cor));
+}
+
+function edt1d(f, d, v, z) {
+  const n = f.length;
+  let k = 0;
+  v[0] = 0;
+  z[0] = -Infinity;
+  z[1] = Infinity;
+  for (let q = 1; q < n; q++) {
+    let s = (f[q] + q * q - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    while (s <= z[k]) {
+      k -= 1;
+      s = (f[q] + q * q - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    }
+    k += 1;
+    v[k] = q;
+    z[k] = s;
+    z[k + 1] = Infinity;
+  }
+  k = 0;
+  for (let q = 0; q < n; q++) {
+    while (z[k + 1] < q) k += 1;
+    const dx = q - v[k];
+    d[q] = dx * dx + f[v[k]];
+  }
+}
+
+function distancia(mask) {
+  const inf = N * N;
+  const g = new Float64Array(N * N);
+  for (let i = 0; i < g.length; i++) g[i] = mask[i] ? 0 : inf;
+  const f = new Float64Array(N);
+  const d = new Float64Array(N);
+  const v = new Int32Array(N);
+  const z = new Float64Array(N + 1);
+  for (let y = 0; y < N; y++) {
+    const o = y * N;
+    for (let x = 0; x < N; x++) f[x] = g[o + x];
+    edt1d(f, d, v, z);
+    for (let x = 0; x < N; x++) g[o + x] = d[x];
+  }
+  for (let x = 0; x < N; x++) {
+    for (let y = 0; y < N; y++) f[y] = g[y * N + x];
+    edt1d(f, d, v, z);
+    for (let y = 0; y < N; y++) g[y * N + x] = d[y];
+  }
+  const out = new Float32Array(N * N);
+  for (let i = 0; i < out.length; i++) {
+    const blocos = Math.sqrt(g[i]) * PASSO;
+    out[i] = blocos > 480 ? 480 : blocos;
+  }
+  return out;
+}
+
+function pintarMascara(mask, casa) {
+  const cel = N / LADO_KANTO;
+  for (let ay = 0; ay < LADO_KANTO; ay++) {
+    for (let ax = 0; ax < LADO_KANTO; ax++) {
+      if (!casa(relevoEm(ax, ay))) continue;
+      const x0 = ax * cel;
+      const y0 = ay * cel;
+      const x1 = x0 + cel;
+      const y1 = y0 + cel;
+      for (let y = y0; y < y1; y++) {
+        const o = y * N;
+        for (let x = x0; x < x1; x++) mask[o + x] = 1;
+      }
+    }
+  }
+}
+
+export function prepararMapa() {
+  if (distAgua) return;
+  const agua = new Uint8Array(N * N);
+  const terra = new Uint8Array(N * N);
+  const fora = new Uint8Array(N * N);
+  pintarMascara(agua, (b) => b === RELEVO_FUNDO || b === RELEVO_RASO || b === 255);
+  pintarMascara(terra, (b) => b === RELEVO_TERRA || b === RELEVO_MONTANHA);
+  pintarMascara(fora, (b) => b !== RELEVO_MONTANHA && b !== 255);
+  distAgua = distancia(agua);
+  distTerra = distancia(terra);
+  distForaMonte = distancia(fora);
+}
+
+function ler(campo, wx, wy) {
+  const u = wx / PASSO - 0.5;
+  const v = wy / PASSO - 0.5;
+  const x0 = Math.max(0, Math.min(N - 1, Math.floor(u)));
+  const y0 = Math.max(0, Math.min(N - 1, Math.floor(v)));
+  const x1 = Math.min(N - 1, x0 + 1);
+  const y1 = Math.min(N - 1, y0 + 1);
+  const tx = Math.max(0, Math.min(1, u - x0));
+  const ty = Math.max(0, Math.min(1, v - y0));
+  const i00 = campo[y0 * N + x0];
+  const i10 = campo[y0 * N + x1];
+  const i01 = campo[y1 * N + x0];
+  const i11 = campo[y1 * N + x1];
+  const a = i00 + (i10 - i00) * tx;
+  const b = i01 + (i11 - i01) * tx;
+  return a + (b - a) * ty;
+}
+
+function perfilEm(x, y) {
+  const onda = (fbm2(x * 0.006, y * 0.006, SEMENTE + 17, 4) - 0.5) * 110;
+  const afast = ler(distAgua, x, y) - ler(distTerra, x, y) + onda;
+  const faixa = 30;
+  let u = (afast + faixa) / (faixa * 2);
+  if (u < 0) u = 0;
+  else if (u > 1) u = 1;
+  u = u * u * (3 - 2 * u);
+  return { u, dentro: ler(distForaMonte, x, y) };
+}
+
+function distTrecho(px, py, ax, ay, bx, by) {
+  const abx = bx - ax;
+  const aby = by - ay;
+  const len2 = abx * abx + aby * aby;
+  if (len2 < 1e-4) return Math.hypot(px - ax, py - ay);
+  let t = ((px - ax) * abx + (py - ay) * aby) / len2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  return Math.hypot(px - (ax + abx * t), py - (ay + aby * t));
+}
+
+function noCaminho(lx, ly, pontos) {
+  const px = lx + 0.5;
+  const py = ly + 0.5;
+  for (let i = 1; i < pontos.length; i++) {
+    const a = pontos[i - 1];
+    const b = pontos[i];
+    if (distTrecho(px, py, a[0], a[1], b[0], b[1]) <= MEIO_RUA) return true;
+  }
+  return false;
+}
+
+function corredor(lx, ly, saidas) {
+  if (!saidas) return false;
+  const px = lx + 0.5;
+  const py = ly + 0.5;
+  const noX = Math.abs(px - CENTRO_AREA) <= MEIO_RUA;
+  const noY = Math.abs(py - CENTRO_AREA) <= MEIO_RUA;
+  if (noX && noY) return true;
+  if ((saidas & SAIDA_NORTE) && noX && py < CENTRO_AREA) return true;
+  if ((saidas & SAIDA_SUL) && noX && py > CENTRO_AREA) return true;
+  if ((saidas & SAIDA_OESTE) && noY && px < CENTRO_AREA) return true;
+  if ((saidas & SAIDA_LESTE) && noY && px > CENTRO_AREA) return true;
+  return false;
+}
+
+function ruaCidade(lx, ly, zona) {
+  const layout = zona.layout;
+  if (noFootprint(lx, ly, layout)) return ruaNoLayout(lx, ly, layout);
+  const px = lx + 0.5;
+  const py = ly + 0.5;
+  const fp = layout.fp;
+  const noX = Math.abs(px - CENTRO_AREA) <= MEIO_RUA;
+  const noY = Math.abs(py - CENTRO_AREA) <= MEIO_RUA;
+  if ((zona.saidas & SAIDA_NORTE) && noX && py <= fp.y0) return true;
+  if ((zona.saidas & SAIDA_SUL) && noX && py >= fp.y1) return true;
+  if ((zona.saidas & SAIDA_OESTE) && noY && px <= fp.x0) return true;
+  if ((zona.saidas & SAIDA_LESTE) && noY && px >= fp.x1) return true;
+  return false;
+}
+
+function ehRua(lx, ly, zona) {
+  if (!zona) return false;
+  if (zona.tipo === "cidade") return zona.layout ? ruaCidade(lx, ly, zona) : false;
+  if (zona.tipo !== "rota") return false;
+  if (zona.caminho) return noCaminho(lx, ly, zona.caminho);
+  return corredor(lx, ly, zona.saidas);
+}
+
+function florestaEm(lx, ly, zona) {
+  if (zona.densa || zona.floresta) return true;
+  if (!zona.sangria) return false;
+  if ((zona.sangria & SAIDA_NORTE) && ly < SANGRIA) return true;
+  if ((zona.sangria & SAIDA_SUL) && ly >= AREA_KANTO - SANGRIA) return true;
+  if ((zona.sangria & SAIDA_OESTE) && lx < SANGRIA) return true;
+  if ((zona.sangria & SAIDA_LESTE) && lx >= AREA_KANTO - SANGRIA) return true;
+  return false;
+}
+
+function biomaDoMiolo(x, y) {
+  const n = fbm2(x * 0.0032, y * 0.0032, SEMENTE + 41, 3);
+  const detalhe = fbm2(x * 0.012, y * 0.012, SEMENTE + 77, 2);
+  if (n > 0.74 && detalhe > 0.5) return BIOMA_KANTO.mata;
+  if (n < 0.3) return BIOMA_KANTO.savana;
+  if (n < 0.46) return BIOMA_KANTO.outono;
+  if (detalhe < 0.2) return BIOMA_KANTO.seco;
+  return BIOMA_KANTO.grama;
+}
+
+function distanciaFora(lx, ly, fp) {
+  let dist = 0;
+  if (lx < fp.x0) dist = fp.x0 - lx;
+  else if (lx >= fp.x1) dist = lx - fp.x1 + 1;
+  if (ly < fp.y0) dist = Math.max(dist, fp.y0 - ly);
+  else if (ly >= fp.y1) dist = Math.max(dist, ly - fp.y1 + 1);
+  return dist;
+}
+
+function alturaNatural(x, y, zona, perfil) {
+  const byte = relevoEm(zona.ax, zona.ay);
+  if (zona.agua) return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
+  const n = fbm2(x * 0.02, y * 0.02, SEMENTE, 2);
+  const plano = COTA_CIDADE + Math.round((n - 0.5) * 3);
+  const montanha = zona.montanha || byte === RELEVO_MONTANHA;
+  let terra = plano;
+  if (montanha) {
+    const t = Math.min(1, perfil.dentro / 40);
+    const pico = Math.max(22, Math.min(48, Math.round(COTA_MONTANHA + (n - 0.5) * 16)));
+    terra = Math.round(plano + (pico - plano) * t);
+  }
+  return Math.round(COTA_FUNDO + (terra - COTA_FUNDO) * perfil.u);
+}
+
+function cotaDaRua(zona) {
+  if (!zona || zona.tipo === "cidade" || zona.agua) return COTA_CIDADE;
+  const byte = relevoEm(zona.ax, zona.ay);
+  if (zona.montanha || byte === RELEVO_MONTANHA) return COTA_MONTANHA;
+  return COTA_CIDADE;
+}
+
+function alturaEm(x, y, lx, ly, zona, perfil, rua) {
+  if (!zona) return COTA_FUNDO;
+  if (zona.agua) return alturaNatural(x, y, zona, perfil);
+  if (rua) return cotaDaRua(zona);
+  if (zona.tipo === "cidade" && zona.layout) {
+    if (noFootprint(lx, ly, zona.layout)) return COTA_CIDADE;
+    const natural = alturaNatural(x, y, zona, perfil);
+    const dist = distanciaFora(lx, ly, zona.layout.fp);
+    if (dist >= AVENTAL) return natural;
+    return Math.round(COTA_CIDADE + (natural - COTA_CIDADE) * (dist / AVENTAL));
+  }
+  return alturaNatural(x, y, zona, perfil);
+}
+
+function escolherBioma(x, y, lx, ly, zona, perfil, rua, predio) {
+  if (predio) return BIOMA_KANTO.pedra;
+  if (rua) return BIOMA_KANTO.caminho;
+  if (perfil.u < 0.34) return BIOMA_KANTO.areiaFundo;
+  if (perfil.u < 0.72) return BIOMA_KANTO.praia;
+  if (perfil.dentro > 24) return BIOMA_KANTO.montanha;
+  if (!rua && !predio && zona && florestaEm(lx, ly, zona)) {
+    const mancha = fbm2(x * 0.02, y * 0.02, SEMENTE + 5, 2);
+    if (mancha > 0.34) return BIOMA_KANTO.mata;
+  }
+  return biomaDoMiolo(x, y);
+}
+
+function corBase(bioma, u) {
+  if (u < 0.34) {
+    const t = u / 0.34;
+    const s = t * t;
+    return [
+      AGUA_FUNDO[0] + (AGUA_RASO[0] - AGUA_FUNDO[0]) * s,
+      AGUA_FUNDO[1] + (AGUA_RASO[1] - AGUA_FUNDO[1]) * s,
+      AGUA_FUNDO[2] + (AGUA_RASO[2] - AGUA_FUNDO[2]) * s,
+    ];
+  }
+  return PALETA.get(bioma) || PALETA.get(BIOMA_KANTO.grama);
+}
+
+function aplicarVeg(rgb, bioma, limpo, x, y, comMote) {
+  if (limpo) return rgb;
+  const kit = obterKit(bioma?.kit);
+  const veg = vegetacaoNoPonto(x, y, comMote);
+  const podeArvore = !!kit?.arvore?.length;
+  const podeGrama = !!kit?.grama?.length;
+  let r = rgb[0];
+  let g = rgb[1];
+  let b = rgb[2];
+  if (podeArvore && veg.arvore > 0.04) {
+    const t = Math.min(0.78, veg.arvore * 0.85);
+    r += (COPA[0] - r) * t;
+    g += (COPA[1] - g) * t;
+    b += (COPA[2] - b) * t;
+  } else if (podeGrama && veg.grama > 0.04) {
+    const t = Math.min(0.5, veg.grama * 0.55);
+    r += (GRAMA_LAVA[0] - r) * t;
+    g += (GRAMA_LAVA[1] - g) * t;
+    b += (GRAMA_LAVA[2] - b) * t;
+  }
+  if (comMote && veg.mote === 2 && podeArvore) {
+    r += (MOTE_ARVORE[0] - r) * 0.7;
+    g += (MOTE_ARVORE[1] - g) * 0.7;
+    b += (MOTE_ARVORE[2] - b) * 0.7;
+  } else if (comMote && veg.mote === 1 && podeGrama) {
+    r += (MOTE_GRAMA[0] - r) * 0.45;
+    g += (MOTE_GRAMA[1] - g) * 0.45;
+    b += (MOTE_GRAMA[2] - b) * 0.45;
+  }
+  return [r, g, b];
+}
+
+/** Preenche `saida` com altura, costa e cor. `comMote` liga o pontilhado do zoom perto. */
+export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
+  prepararMapa();
+  const x = Math.max(0, Math.min(EXTENSAO_KANTO - 0.01, wx));
+  const y = Math.max(0, Math.min(EXTENSAO_KANTO - 0.01, wy));
+  const zona = zonaNoMundo(x, y);
+  const ax = (x / AREA_KANTO) | 0;
+  const ay = (y / AREA_KANTO) | 0;
+  const lx = x - ax * AREA_KANTO;
+  const ly = y - ay * AREA_KANTO;
+  const perfil = perfilEm(x, y);
+  const rua = ehRua(lx, ly, zona);
+  const predio = !!(zona?.tipo === "cidade" && zona.layout && !rua && predioNoLayout(lx, ly, zona.layout));
+  const entrada = !!(zona?.tipo === "cidade" && zona.layout && naEntradaDoLab(lx, ly, zona.layout));
+  const bioma = escolherBioma(x, y, lx, ly, zona, perfil, rua, predio);
+  const limpo =
+    rua ||
+    predio ||
+    entrada ||
+    perfil.u < 0.72 ||
+    bioma === BIOMA_KANTO.pedra ||
+    bioma === BIOMA_KANTO.montanha;
+  const h = alturaEm(x, y, lx, ly, zona, perfil, rua || predio);
+  const rgb = aplicarVeg(corBase(bioma, perfil.u), bioma, limpo, x, y, comMote);
+  saida.h = h;
+  saida.u = perfil.u;
+  saida.r = rgb[0];
+  saida.g = rgb[1];
+  saida.b = rgb[2];
+  return saida;
+}

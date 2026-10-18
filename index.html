@@ -6,6 +6,7 @@
   <title>High Top-Down — Cliffs, Física e Depth Sorting</title>
   <link rel="stylesheet" href="css/demo.css" />
   <link rel="stylesheet" href="css/jogo.css" />
+  <link rel="stylesheet" href="css/mapa.css" />
   <link rel="stylesheet" href="css/interiores.css" />
   <link rel="stylesheet" href="css/pc-hud.css" />
   <script type="importmap">
@@ -75,6 +76,7 @@
               <li><span class="ajuda-atalhos__teclas"><kbd>G</kbd></span> clima (3D)</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>1</kbd>–<kbd>6</kbd></span> toque liga ou desliga; segurar abre a roda</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>I</kbd> <kbd>B</kbd></span> mochila</li>
+              <li><span class="ajuda-atalhos__teclas"><kbd>M</kbd></span> mapa</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>E</kbd></span> entrar, ler placa, cápsula, PC e escalar</li>
               <li><span class="ajuda-atalhos__teclas"><kbd>R</kbd></span> falar</li>
               <li><span class="ajuda-atalhos__teclas">LMB</span> usa o item da mão: picareta quebra, bloco coloca, bola arremessa</li>
@@ -167,6 +169,13 @@
                 </div>
               </div>
               <p class="cena-vel" id="cena-vel">10.0 u/s</p>
+            </div>
+          </div>
+          <div class="mapa-mundo" id="mapa-mundo" hidden>
+            <div class="mapa-mundo__moldura">
+              <canvas id="mapa-mundo-tela" class="mapa-mundo__tela" aria-label="Mapa de Kanto"></canvas>
+              <p class="mapa-mundo__titulo" id="mapa-mundo-titulo">Kanto</p>
+              <p class="mapa-mundo__dica">Arraste para mover · scroll para zoom · M ou Esc fecha</p>
             </div>
           </div>
         </div>
