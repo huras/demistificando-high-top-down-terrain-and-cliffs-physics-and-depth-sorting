@@ -98,8 +98,11 @@ function desenharProjetil(ctx, p) {
   const y = mundoParaTelaY(p.y, p.z, 0);
   ctx.save();
   ctx.fillStyle = p.cor || "#fff";
+  ctx.translate(x, y);
+  ctx.rotate(p.ang || 0);
+  const raio = Math.max(4, (p.escala || 0.45) * 16);
   ctx.beginPath();
-  ctx.arc(x, y, 5, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, raio, p.giro ? raio * 0.45 : raio, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }

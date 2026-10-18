@@ -26,7 +26,7 @@ const LADO = 256;
 const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;
 const CAP_ATOR = 20;
-const CAP_TIRO = 32;
+const CAP_TIRO = 64;
 const CAP_DROP = 48;
 const CAP_FAISCA = 36;
 const CAP_KI = 8;
@@ -375,7 +375,9 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
     }
     mesh.visible = true;
     mesh.material.color.set(p.cor || "#ffffff");
-    mesh.scale.set(0.22, 0.22, 1);
+    mesh.material.rotation = p.ang || 0;
+    const s = p.escala || 0.22;
+    mesh.scale.set(s, p.giro ? s * 0.42 : s, 1);
     mesh.position.set(p.x, p.z * ALTURA_BLOCO, p.y);
   }
 

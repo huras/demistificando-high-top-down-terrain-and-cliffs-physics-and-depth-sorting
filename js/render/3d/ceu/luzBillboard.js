@@ -171,7 +171,7 @@ export function aplicarProfundidadeSprite(material) {
  * da luminária tem profundidade e a altura não fura a fila do pé.
  * Sem a folga do ator: no mesmo ponto, o personagem ganha.
  */
-export function aplicarProfundidadeVolume(material, baseLocalY) {
+export function aplicarProfundidadeVolume(material, baseLocalY, folgaPivo = FOLGA_PIVO) {
   if (!material || material.userData?.profundidadeVolume) return material;
   if (!material.userData) material.userData = {};
   material.userData.profundidadeVolume = true;
@@ -179,7 +179,7 @@ export function aplicarProfundidadeVolume(material, baseLocalY) {
   const anterior = material.onBeforeCompile;
   const chaveAnterior = material.customProgramCacheKey;
   const y = Number(baseLocalY).toFixed(4);
-  const folga = FOLGA_PIVO.toFixed(2);
+  const folga = Number(folgaPivo).toFixed(2);
   const decl = "varying float vProfundidadeVolume;";
   const calc = `
 {

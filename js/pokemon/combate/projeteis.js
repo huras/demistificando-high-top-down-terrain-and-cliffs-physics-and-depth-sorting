@@ -32,7 +32,26 @@ export function soltarProjetil(opts) {
     viajou: 0,
     max: opts.max || 12,
     viva: true,
+    rajada: opts.rajada || 0,
+    giro: opts.giro || 0,
+    ang: opts.ang || 0,
+    amp: opts.amp || 0,
+    freq: opts.freq || 0,
+    fase: opts.fase || 0,
+    t: 0,
+    baseX: opts.x,
+    baseY: opts.y,
+    dirX: 0,
+    dirY: 0,
+    cresce: opts.cresce || 0,
+    distCresce: opts.distCresce || 7,
+    escala0: opts.escala || 0,
+    escala: opts.escala || 0,
   });
+  const ultimo = vivos[vivos.length - 1];
+  const vel = Math.hypot(ultimo.vx, ultimo.vy) || 1;
+  ultimo.dirX = ultimo.vx / vel;
+  ultimo.dirY = ultimo.vy / vel;
 }
 
 export function projeteisVivos() {
@@ -43,11 +62,25 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
   for (let i = vivos.length - 1; i >= 0; i--) {
     const p = vivos[i];
     const passo = Math.hypot(p.vx, p.vy) * dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
+    if (p.amp > 0) {
+      p.t += dt;
+      p.baseX += p.vx * dt;
+      p.baseY += p.vy * dt;
+      const lat = Math.sin(p.t * p.freq * Math.PI * 2 + p.fase) * p.amp;
+      p.x = p.baseX - p.dirY * lat;
+      p.y = p.baseY + p.dirX * lat;
+    } else {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+    }
     p.z += p.vz * dt;
     p.vz -= p.grav * dt;
     p.viajou += passo;
+    if (p.giro) p.ang += p.giro * Math.PI * 2 * dt;
+    if (p.cresce > 1) {
+      const u = Math.min(1, p.viajou / (p.distCresce || 7));
+      p.escala = (p.escala0 || 0.2) * (1 + (p.cresce - 1) * u);
+    }
     let bateu = false;
     for (let k = 0; k < candidatos.length; k++) {
       const alvo = candidatos[k];

@@ -253,7 +253,7 @@ function voa(ator, passo) {
 function escolherFaixa(ator, pack, agora, passo) {
   if (ator.morto) return pack.anims?.Sleep ? "Sleep" : "Idle";
   if ((ator.recuoRestante || 0) > 0 && pack.anims?.Hurt) return "Hurt";
-  const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0;
+  const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0;
   if (noGolpe && ator.golpePose && pack.anims?.[ator.golpePose]) return ator.golpePose;
   if ((ator.conjuroRestante || 0) > 0 && pack.anims?.Shoot) return "Shoot";
   if (agora < ator.poseAte && POSE_GOLPE.has(ator.pose)) return faixaDoGolpe(pack, ator.pose);

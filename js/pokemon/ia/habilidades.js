@@ -5,8 +5,20 @@ import { entrada, quadroDe, saida } from "./observacao.js";
 import { FATIA, PESOS } from "./pesos.js";
 import { propagar } from "./rede.js";
 
+const perfil = { portao: 0.05, mira: 1, passo: 0.1 };
+
+export function definirPerfilIa(prox) {
+  perfil.portao = prox.portao;
+  perfil.mira = prox.mira;
+  perfil.passo = prox.passo;
+}
+
+export function passoDecisaoIa() {
+  return perfil.passo;
+}
+
 function aplicarEsquiva(ator, alvo) {
-  if (Math.tanh(saida[2]) < 0.05) return false;
+  if (Math.tanh(saida[2]) < perfil.portao) return false;
   const q = quadroDe(ator, alvo);
   const ax = Math.tanh(saida[0]);
   const ay = Math.tanh(saida[1]);
@@ -40,12 +52,16 @@ function gravarComando(ator, alvo, comMira) {
   if (!comMira) {
     ator.miraX = NaN;
     ator.miraY = NaN;
+    ator.leadX = 0;
+    ator.leadY = 0;
     return;
   }
-  const ox = Math.tanh(saida[3]) * LEAD_MAX;
-  const oy = Math.tanh(saida[4]) * LEAD_MAX;
-  ator.miraX = alvo.x + ox * q.fx + oy * q.lx;
-  ator.miraY = alvo.y + ox * q.fy + oy * q.ly;
+  const ox = Math.tanh(saida[3]) * LEAD_MAX * perfil.mira;
+  const oy = Math.tanh(saida[4]) * LEAD_MAX * perfil.mira;
+  ator.leadX = ox * q.fx + oy * q.lx;
+  ator.leadY = ox * q.fy + oy * q.ly;
+  ator.miraX = alvo.x + ator.leadX;
+  ator.miraY = alvo.y + ator.leadY;
 }
 
 export function calcularHabilidade(nome) {

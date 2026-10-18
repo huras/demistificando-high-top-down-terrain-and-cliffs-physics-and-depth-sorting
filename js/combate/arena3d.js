@@ -10,7 +10,7 @@ const PX_MUNDO = 1 / TILE;
 const LADO = 256;
 const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;
-const CAP_TIRO = 32;
+const CAP_TIRO = 64;
 const CAP_FAISCA = 160;
 const CAP_TRACO = 24;
 const CAP_KI = 8;
@@ -298,8 +298,10 @@ function pintarTiros() {
     mesh.visible = true;
     mesh.material.color.set(p.cor || "#ffffff");
     mesh.material.opacity = 1;
-    const s = Math.max(0.22, (p.raio || 0.45) * 0.42);
-    mesh.scale.set(s, s, 1);
+    mesh.material.rotation = p.ang || 0;
+    const s = p.escala || Math.max(0.22, (p.raio || 0.45) * 0.42);
+    const folha = p.giro ? 0.42 : 1;
+    mesh.scale.set(s, s * folha, 1);
     mesh.position.set(p.x, Math.max(0.08, p.z * ALTURA_BLOCO), p.y);
   }
 }

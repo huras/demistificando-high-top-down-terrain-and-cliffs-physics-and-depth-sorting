@@ -6,6 +6,7 @@ import { ALTURA_BLOCO } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { ALTURA_PAREDE_HUB } from "../../mundo/cidade/plantaHub.js";
 import { plantaCentro } from "../../mundo/cidade/centro.js";
+import { aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 import {
   atualizarBolasCura,
@@ -272,6 +273,10 @@ function materiaisDaCasca(texLado, texTopo, aoLongoX, repetir) {
   const matLongo = material(longo, true);
   const matCurto = material(texLado.clone(), true);
   const matCima = material(texTopo.clone(), true);
+  const base = -ALTURA_PAREDE_HUB * 0.5;
+  aplicarProfundidadeVolume(matLongo, base, 0);
+  aplicarProfundidadeVolume(matCurto, base, 0);
+  aplicarProfundidadeVolume(matCima, base, 0);
   if (aoLongoX) return [matCurto, matCurto, matCima, matLongo, matLongo, matLongo];
   return [matLongo, matLongo, matCima, matCurto, matCurto, matCurto];
 }

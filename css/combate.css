@@ -60,12 +60,14 @@ button, input, select {
   white-space: nowrap;
 }
 
-.tempo {
+.tempo,
+.nivel-ia {
   display: flex;
   gap: 4px;
 }
 
 .tempo button,
+.nivel-ia button,
 .coluna button,
 .lado__controles select {
   border: 1px solid var(--borda);
@@ -75,7 +77,8 @@ button, input, select {
   cursor: pointer;
 }
 
-.tempo button.ativo {
+.tempo button.ativo,
+.nivel-ia button.ativo {
   border-color: var(--destaque);
   color: var(--destaque);
 }

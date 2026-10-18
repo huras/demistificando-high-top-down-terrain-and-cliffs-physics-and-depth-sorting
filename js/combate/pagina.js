@@ -4,6 +4,7 @@ import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
 import { desenharArena, ligarArena, projetarArena } from "./arena3d.js";
+import { definirNivelIa } from "../pokemon/ia/seletor.js";
 import { atoresArena, definirUso, estadoLuta, iniciarLuta, logArena, montarLados, tickLuta } from "./luta.js";
 
 const TIPO = {
@@ -179,6 +180,15 @@ function pintarRecargaUm(raiz, ator, nome, chave) {
     barra.style.width = `${Math.max(0, Math.min(1, u)) * 100}%`;
     barra.style.background = "#f59e0b";
     rotulo.textContent = "Preparando";
+    return;
+  }
+  const atirando = !!(slot && ator.jatoSlot === slot && (ator.jatoDur || 0) > 0);
+  if (atirando) {
+    const dur = ator.jatoDur || 1;
+    const u = 1 - Math.max(0, ator.jatoTempo || 0) / dur;
+    barra.style.width = `${Math.max(0, Math.min(1, u)) * 100}%`;
+    barra.style.background = "#fb923c";
+    rotulo.textContent = "Atirando";
     return;
   }
   const recuperando = !!(slot && ator.golpeSlot === slot && (ator.golpeRecRestante || 0) > 0);
@@ -680,6 +690,17 @@ function ligarTempo() {
   });
 }
 
+function ligarNivel() {
+  const botoes = document.querySelectorAll(".nivel-ia button");
+  botoes.forEach((el) => {
+    el.addEventListener("click", () => {
+      definirNivelIa(el.dataset.nivel);
+      botoes.forEach((b) => b.classList.toggle("ativo", b === el));
+    });
+  });
+  definirNivelIa("dificil");
+}
+
 function prepararDanos() {
   for (let i = 0; i < 16; i++) {
     const el = document.createElement("div");
@@ -701,6 +722,7 @@ async function iniciar() {
   ligarArena(document.getElementById("vista"));
   prepararDanos();
   ligarTempo();
+  ligarNivel();
   aplicar();
   botao.disabled = false;
   botao.addEventListener("click", () => {

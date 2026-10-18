@@ -101,9 +101,9 @@ function acumular(fat, x, alvo) {
   }
 }
 
-function clonar(hab, rng) {
+function clonar(hab, rng, amostras, escalaEpocas) {
   const fat = fatia[hab];
-  const n = 4096;
+  const n = amostras;
   const lote = 128;
   const x = new Float32Array(n * ENTRADAS);
   const y = new Float32Array(n * fat.n);
@@ -128,7 +128,8 @@ function clonar(hab, rng) {
   for (let i = 0; i < n; i++) idx[i] = i;
   const i0 = fat.w1;
   const i1 = fat.b2 + fat.n;
-  const epocas = hab === "esquivar" ? 96 : hab === "fugir" ? 56 : 72;
+  const baseEpocas = hab === "esquivar" ? 96 : hab === "fugir" ? 56 : 72;
+  const epocas = Math.max(8, Math.round(baseEpocas * escalaEpocas));
   for (let epoca = 0; epoca < epocas; epoca++) {
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
@@ -162,9 +163,9 @@ function clonar(hab, rng) {
       erro += diff * diff;
     }
   }
-  const amostras = Math.ceil(n / 8);
+  const vistos = Math.ceil(n / 8);
   console.log(
-    `${hab}: erro ${((erro / (amostras * fat.n)) ** 0.5).toFixed(3)}` +
+    `${hab}: erro ${((erro / (vistos * fat.n)) ** 0.5).toFixed(3)}` +
       (hab === "esquivar" ? `  dash ${dash} segura ${segura}` : ""),
   );
 }
@@ -184,7 +185,10 @@ function nota(nome) {
     const esquiva = avaliarEsquiva("rede", 8);
     const acerto = avaliarAcerto("rede", 12);
     const aprox = avaliarAproximacao("rede", 8);
-    if (acerto < 0.75 || aprox.falhas > 0 || (tetoAproximacao > 0 && aprox.tempo > tetoAproximacao)) return esquiva - 1;
+    const lento = tetoAproximacao > 0 && aprox.tempo > tetoAproximacao;
+    const quebrado = acerto < 0.5 || aprox.falhas > 0 || (tetoAproximacao > 0 && aprox.tempo > tetoAproximacao * 1.2);
+    if (quebrado) return esquiva - 0.55;
+    if (acerto < 0.75 || lento) return esquiva - 0.08;
     return esquiva;
   }
   if (nome === "atirar") return avaliarAcerto("rede", 12);
@@ -192,7 +196,7 @@ function nota(nome) {
   return f.distancia - f.borda * 5;
 }
 
-function evoluir(nome, rng) {
+function evoluir(nome, rng, vezes) {
   const fat = fatia[nome];
   const i0 = fat.w1;
   const i1 = fat.b2 + fat.n;
@@ -200,10 +204,12 @@ function evoluir(nome, rng) {
   const theta = pesos.slice(i0, i1);
   publicar();
   const base = nota(nome);
+  let melhorNota = base;
+  const melhor = theta.slice();
   const sigma = 0.05;
   const pares = 8;
   const lr = 0.03;
-  for (let it = 0; it < 5; it++) {
+  for (let it = 0; it < vezes; it++) {
     const g = new Float64Array(largura);
     for (let k = 0; k < pares; k++) {
       const eps = new Float64Array(largura);
@@ -220,9 +226,16 @@ function evoluir(nome, rng) {
     }
     for (let i = 0; i < largura; i++) theta[i] += (lr / pares) * g[i];
     for (let i = 0; i < largura; i++) pesos[i0 + i] = theta[i];
+    publicar();
+    const agora = nota(nome);
+    if (agora > melhorNota + 1e-3) {
+      melhorNota = agora;
+      melhor.set(theta);
+    }
   }
+  for (let i = 0; i < largura; i++) pesos[i0 + i] = melhor[i];
   publicar();
-  const depois = nota(nome);
+  const depois = melhorNota;
   if (depois <= base + 1e-3) {
     const clone = thetaAntes(nome);
     for (let i = 0; i < largura; i++) pesos[i0 + i] = clone[i];
@@ -258,18 +271,35 @@ function aceita(rede, heur) {
   return rede.tempo <= heur.tempo * 1.15 && rede.falhas <= heur.falhas && rede.esquiva >= heur.esquiva - 0.03 && rede.acerto >= heur.acerto - 0.03 && rede.acerto >= 0.5;
 }
 
-function gravar() {
-  const nums = new Array(pesos.length);
-  for (let i = 0; i < pesos.length; i++) {
-    const n = pesos[i];
+function numerosDe(src) {
+  const nums = new Array(src.length);
+  for (let i = 0; i < src.length; i++) {
+    const n = src[i];
     nums[i] = Number.isFinite(n) ? Number(n.toFixed(6)) : 0;
   }
+  return nums;
+}
+
+function gravar(guardados) {
+  const linhas = ["facil", "medio", "dificil"]
+    .map((id) => `  ${id}: new Float32Array(${JSON.stringify(numerosDe(guardados[id]))}),`)
+    .join("\n");
   const texto =
     "/** Pesos congelados. Gerado por treino/iaCombate.mjs. */\n" +
     `export const FATIA = ${JSON.stringify(fatia)};\n` +
-    `export const PESOS = new Float32Array(${JSON.stringify(nums)});\n` +
+    "export const PESOS = new Float32Array(" +
+    String(guardados.dificil.length) +
+    ");\n" +
+    "const tabela = {\n" +
+    linhas +
+    "\n};\n" +
+    "PESOS.set(tabela.dificil);\n" +
     "export function instalarPesos(src) {\n" +
     "  PESOS.set(src);\n" +
+    "}\n" +
+    "export function usarNivel(nivel) {\n" +
+    "  const src = tabela[nivel];\n" +
+    "  if (src) PESOS.set(src);\n" +
     "}\n";
   fs.writeFileSync(arquivoPesos, texto);
 }
@@ -284,32 +314,44 @@ function restaurarClone() {
   publicar();
 }
 
-const rng = mulberry32(20261017);
-iniciar(rng);
-for (let k = 0; k < ORDEM.length; k++) {
-  clonar(ORDEM[k], rng);
-  guardarClone(ORDEM[k]);
+const NIVEIS = [
+  { id: "facil", amostras: 1536, escala: 0.32, evolucoes: 0, semente: 11 },
+  { id: "medio", amostras: 2560, escala: 0.58, evolucoes: 2, semente: 29 },
+  { id: "dificil", amostras: 4096, escala: 1, evolucoes: 8, semente: 20261017 },
+];
+
+function treinarNivel(cfg) {
+  const rng = mulberry32(cfg.semente);
+  iniciar(rng);
+  for (let k = 0; k < ORDEM.length; k++) {
+    clonar(ORDEM[k], rng, cfg.amostras, cfg.escala);
+    guardarClone(ORDEM[k]);
+  }
+  publicar();
+  const heur = medir("heuristica");
+  let rede = medir("rede");
+  console.log(cfg.id, "heurística", formatar(heur));
+  console.log(cfg.id, "clone", formatar(rede));
+  tetoAproximacao = heur.tempo * 1.12;
+  if (cfg.evolucoes > 0) {
+    for (let k = 0; k < ORDEM.length; k++) evoluir(ORDEM[k], rng, cfg.evolucoes);
+    publicar();
+    rede = medir("rede");
+    console.log(cfg.id, "evoluída", formatar(rede));
+  }
+  if (cfg.id === "dificil" && cfg.evolucoes > 0 && !aceita(rede, heur)) {
+    restaurarClone();
+    rede = medir("rede");
+    console.log(cfg.id, "clone de novo", formatar(rede));
+    if (!aceita(rede, heur)) console.error("Difícil ficou atrás da heurística. O clone foi gravado mesmo assim.");
+  }
+  return Float32Array.from(pesos);
 }
-publicar();
-const heur = medir("heuristica");
-let rede = medir("rede");
-console.log("heurística", formatar(heur));
-console.log("clone", formatar(rede));
-tetoAproximacao = heur.tempo * 1.12;
-for (let k = 0; k < ORDEM.length; k++) evoluir(ORDEM[k], rng);
-publicar();
-rede = medir("rede");
-console.log("evoluída", formatar(rede));
-if (!aceita(rede, heur)) {
-  restaurarClone();
-  rede = medir("rede");
-  console.log("clone de novo", formatar(rede));
-}
-if (!aceita(rede, heur)) {
-  console.error("A rede perdeu para a heurística. Pesos não foram adotados.");
-  process.exit(1);
-}
-gravar();
+
+const guardados = {};
+for (let i = 0; i < NIVEIS.length; i++) guardados[NIVEIS[i].id] = treinarNivel(NIVEIS[i]);
+instalarPesos(guardados.dificil);
+gravar(guardados);
 const ms = bancada(10);
 console.log(`banca 30 lutadores: ${ms.toFixed(2)} ms por segundo simulado`);
 console.log("pesos gravados");

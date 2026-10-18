@@ -8,10 +8,29 @@ import {
   VIDA_FUGA,
 } from "./constantes.js";
 import { alcanceSoco, golpeDeCorpo, golpeProntoForma, regua, vaiMelee } from "./espaco.js";
-import { aplicarHabilidade, calcularHabilidade } from "./habilidades.js";
+import { aplicarHabilidade, calcularHabilidade, definirPerfilIa, passoDecisaoIa } from "./habilidades.js";
+import { usarNivel } from "./pesos.js";
 import { entrada, observar, tiroNaJanela } from "./observacao.js";
 
+const PERFIL_NIVEL = {
+  facil: { portao: 0.34, mira: 0.62, passo: 0.24 },
+  medio: { portao: 0.16, mira: 0.84, passo: 0.15 },
+  dificil: { portao: 0.05, mira: 1, passo: PASSO_DECISAO },
+};
+
 let redeLigada = true;
+let nivelIa = "dificil";
+
+export function definirNivelIa(nivel) {
+  const id = PERFIL_NIVEL[nivel] ? nivel : "dificil";
+  nivelIa = id;
+  definirPerfilIa(PERFIL_NIVEL[id]);
+  usarNivel(id);
+}
+
+export function nivelIaAtual() {
+  return nivelIa;
+}
 
 export function definirIaRede(ligada) {
   redeLigada = ligada !== false;
@@ -22,7 +41,7 @@ export function iaRedeLigada() {
 }
 
 function ocupado(ator) {
-  return emRecuo(ator) || emAvanco(ator) || emEsquiva(ator) || (ator.conjuroRestante || 0) > 0;
+  return emRecuo(ator) || emAvanco(ator) || emEsquiva(ator) || (ator.conjuroRestante || 0) > 0 || (ator.jatoDur || 0) > 0;
 }
 
 function corredorRede() {
@@ -66,8 +85,18 @@ export function pensar(ator, alvo, dt, tiros, forcar) {
     return;
   }
   if (pensarEsquiva(ator, alvo, tiros)) return;
+  if ((ator.jatoDur || 0) > 0) {
+    ator._iaT = (ator._iaT || 0) + (dt || 0);
+    if (!forcar && ator._iaT < passoDecisaoIa()) return;
+    ator._iaT = 0;
+    const faixa = regua(ator, "atirar");
+    observar(ator, alvo, tiros, faixa.parada, entrada);
+    calcularHabilidade("atirar");
+    aplicarHabilidade("atirar", ator, alvo);
+    return;
+  }
   ator._iaT = (ator._iaT || 0) + (dt || 0);
-  if (!forcar && ator.hab && ator._iaT < PASSO_DECISAO) return;
+  if (!forcar && ator.hab && ator._iaT < passoDecisaoIa()) return;
   ator._iaT = 0;
   const hab = forcar || escolherHabilidade(ator, alvo);
   const faixa = regua(ator, hab);

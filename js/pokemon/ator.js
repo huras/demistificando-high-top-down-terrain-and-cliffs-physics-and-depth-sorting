@@ -183,6 +183,14 @@ export function criarAtor(opts) {
     golpeSlot: null,
     golpePose: "",
     golpeClip: 0,
+    jatoDur: 0,
+    jatoTempo: 0,
+    jatoProx: 0,
+    jatoFila: 0,
+    jatoSlot: null,
+    jatoId: 0,
+    leadX: 0,
+    leadY: 0,
     esquivaLado: 1,
     participantes: new Set(),
     emocao: null,
@@ -240,6 +248,14 @@ export function reviverAtor(ator, x, y, z) {
   ator.golpeSlot = null;
   ator.golpePose = "";
   ator.golpeClip = 0;
+  ator.jatoDur = 0;
+  ator.jatoTempo = 0;
+  ator.jatoProx = 0;
+  ator.jatoFila = 0;
+  ator.jatoSlot = null;
+  ator.jatoId = 0;
+  ator.leadX = 0;
+  ator.leadY = 0;
 }
 
 export function aplicarNivel(ator, nivelNovo) {
@@ -427,7 +443,7 @@ export function comecarAvanco(ator, dirX, dirY, dist) {
 export function comecarEsquiva(ator, dirX, dirY) {
   if (!ator || (ator.esquiva || 0) < 1) return false;
   if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) return false;
-  if ((ator.conjuroRestante || 0) > 0) return false;
+  if ((ator.conjuroRestante || 0) > 0 || (ator.jatoDur || 0) > 0) return false;
   const rec = ator.golpeRecRestante || 0;
   const recDur = ator.golpeRecDur || 0;
   if (rec > 0 && rec > recDur * 0.55) return false;
@@ -466,7 +482,7 @@ export function recarregarBarraEsquiva(ator, dt) {
   const vel = Math.max(1, ator.stats?.velocidade || 50);
   const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
   const ritmo = ator.andando ? 1.25 : 1;
-  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 10 * ritmo);
+  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 5 * ritmo);
 }
 
 export function tickPassivo(ator, dt, agora) {

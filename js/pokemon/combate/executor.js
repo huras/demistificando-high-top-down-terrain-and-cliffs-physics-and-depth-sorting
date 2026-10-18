@@ -4,6 +4,7 @@ import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
 import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
 import { soltarProjetil } from "./projeteis.js";
+import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
 import { marcarPose } from "../sprites.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
@@ -72,8 +73,9 @@ function errouGolpe(acerto) {
   return Math.floor(Math.random() * 100) + 1 > p;
 }
 
-function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma) {
-  if (!alvo || alvo.morto || alvo.capturado || alvo.iframe > 0 || alvo.invulneravel) return;
+function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma, rajada) {
+  const mesmaRajada = rajada && alvo?.iframeRajada === rajada;
+  if (!alvo || alvo.morto || alvo.capturado || (alvo.iframe > 0 && !mesmaRajada) || alvo.invulneravel) return;
   if (!inimigo(atacante, alvo)) return;
   if (forma !== "projectile" && forma !== "arc" && !cruzaAltura(atacante, alvo, forma === "radius" ? 0.55 : 0.35)) return;
   if (emRolamentoAtivo(alvo)) {
@@ -94,7 +96,13 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     return;
   }
   alvo.hp -= dano;
-  alvo.iframe = 0.15;
+  if (rajada) {
+    alvo.iframe = 0.02;
+    alvo.iframeRajada = rajada;
+  } else {
+    alvo.iframe = 0.15;
+    alvo.iframeRajada = 0;
+  }
   if (alvo.hp > 0) subirFuria(alvo, efeitos);
   marcarPose(alvo, "Hurt", agora);
   const recuo = iniciarRecuo(alvo, atacante, dano, agora);
@@ -219,6 +227,12 @@ export function cancelarGolpe(ator) {
   ator.golpeSlot = null;
   ator.golpePose = "";
   ator.golpeClip = 0;
+  ator.jatoDur = 0;
+  ator.jatoTempo = 0;
+  ator.jatoProx = 0;
+  ator.jatoFila = 0;
+  ator.jatoSlot = null;
+  ator.jatoId = 0;
   fecharKi(ator);
 }
 
@@ -276,25 +290,129 @@ function abrirRecuperacao(ator, slot) {
   if (!emAvanco(ator)) pararNoLugar(ator);
 }
 
-function soltarProjetilDoAtor(ator, slot) {
+let rajadaSeq = 1;
+
+function soltarTiro(ator, slot, ang, extra) {
   const def = slot.def;
+  const dirX = Math.cos(ang);
+  const dirY = Math.sin(ang);
+  const vel = extra.vel || def.vel || 14;
   soltarProjetil({
-    x: ator.x + ator.dirX * 0.4,
-    y: ator.y + ator.dirY * 0.4,
+    x: ator.x + dirX * 0.4,
+    y: ator.y + dirY * 0.4,
     z: alturaPe(ator),
-    vx: ator.dirX * (def.vel || 14),
-    vy: ator.dirY * (def.vel || 14),
+    vx: dirX * vel,
+    vy: dirY * vel,
     dono: ator,
     faccao: ator.faccao,
-    poder: def.poder,
+    poder: extra.poder ?? def.poder,
     tipo: def.tipo,
     categoria: def.categoria,
     acerto: def.acerto,
     forma: def.forma,
-    raio: def.raio,
+    raio: extra.raio || def.raio,
     max: def.alcance || 12,
-    arco: def.forma === "arc",
+    arco: !!extra.arco,
+    rajada: extra.rajada || 0,
+    giro: extra.giro || 0,
+    amp: extra.amp || 0,
+    freq: extra.freq || 0,
+    fase: extra.fase || 0,
+    cresce: extra.cresce || 0,
+    distCresce: extra.distCresce || 7,
+    escala: extra.escala || 0,
   });
+}
+
+function miraViva(ator, alvo) {
+  const mx = (alvo?.x ?? ator.x) + (ator.leadX || 0);
+  const my = (alvo?.y ?? ator.y) + (ator.leadY || 0);
+  ator.miraX = mx;
+  ator.miraY = my;
+  return { mx, my };
+}
+
+function soltarLeque(ator, slot, receita) {
+  const base = Math.atan2(ator.dirY, ator.dirX);
+  const angs = angulosLeque(receita.n, receita.graus);
+  const id = rajadaSeq++;
+  const poder = (slot.def.poder || 0) / receita.n;
+  for (let i = 0; i < angs.length; i++) {
+    const folga = 0.85 + Math.random() * 0.2;
+    soltarTiro(ator, slot, base + angs[i], {
+      vel: receita.vel * folga,
+      poder,
+      rajada: id,
+      giro: receita.giro || 0,
+      amp: receita.amp || 0,
+      freq: receita.freq || 0,
+      fase: (i / Math.max(1, receita.n)) * Math.PI * 2,
+      escala: receita.giro ? 0.34 : receita.amp ? 0.28 : 0.32,
+      raio: receita.amp ? 0.36 : 0.32,
+    });
+  }
+}
+
+function dispararJato(ator, slot) {
+  const receita = receitaRajada(slot.def.key);
+  if (!receita) return;
+  const alvo = ator.alvo;
+  const mira = miraViva(ator, alvo);
+  apontar(ator, mira.mx, mira.my);
+  const base = Math.atan2(ator.dirY, ator.dirX);
+  soltarTiro(ator, slot, base + desvioJato(receita.graus), {
+    vel: receita.vel,
+    poder: (slot.def.poder || 0) / receita.n,
+    rajada: ator.jatoId,
+    cresce: receita.cresce,
+    distCresce: receita.distCresce,
+    escala: 0.16,
+    raio: 0.34,
+  });
+}
+
+function abrirJato(ator, slot) {
+  const receita = receitaRajada(slot.def.key);
+  ator.jatoSlot = slot;
+  ator.jatoDur = receita.dur;
+  ator.jatoTempo = 0;
+  ator.jatoProx = receita.intervalo;
+  ator.jatoFila = receita.n - 1;
+  ator.jatoId = rajadaSeq++;
+  ator.conjuroRestante = 0;
+  ator.conjuroSlot = null;
+  ator.golpePose = "Shoot";
+  dispararJato(ator, slot);
+}
+
+function encerrarJato(ator, slot) {
+  ator.jatoDur = 0;
+  ator.jatoTempo = 0;
+  ator.jatoProx = 0;
+  ator.jatoFila = 0;
+  ator.jatoSlot = null;
+  ator.jatoId = 0;
+  abrirRecuperacao(ator, slot);
+}
+
+function tickJato(ator, dt, agora) {
+  const slot = ator.jatoSlot;
+  const alvo = ator.alvo;
+  if (!slot || !alvo || alvo.morto) {
+    cancelarGolpe(ator);
+    return;
+  }
+  ator.jatoTempo += dt;
+  while (ator.jatoFila > 0 && ator.jatoTempo >= ator.jatoProx && ator.jatoTempo < ator.jatoDur) {
+    dispararJato(ator, slot);
+    ator.jatoProx += receitaRajada(slot.def.key).intervalo;
+    ator.jatoFila -= 1;
+  }
+  const mira = miraViva(ator, alvo);
+  apontar(ator, mira.mx, mira.my);
+  manterPoseGolpe(ator, agora);
+  if (ator.jatoTempo < ator.jatoDur) return;
+  encerrarJato(ator, slot);
 }
 
 function soltarGolpe(ator, slot, alvo, agora, efeitos) {
@@ -321,7 +439,18 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
   }
 
   if (def.forma === "projectile" || def.forma === "arc") {
-    soltarProjetilDoAtor(ator, slot);
+    const receita = def.forma === "projectile" ? receitaRajada(def.key) : null;
+    if (receita?.tipo === "jato") {
+      abrirJato(ator, slot);
+      return;
+    }
+    if (receita?.tipo === "leque") soltarLeque(ator, slot, receita);
+    else {
+      soltarTiro(ator, slot, Math.atan2(ator.dirY, ator.dirX), {
+        vel: def.vel || 14,
+        arco: def.forma === "arc",
+      });
+    }
     abrirRecuperacao(ator, slot);
     return;
   }
@@ -357,7 +486,11 @@ function manterPoseGolpe(ator, agora) {
 
 export function tickConjuracao(ator, dt, agora, efeitos) {
   if (ator.morto || ator.capturado || emRecuo(ator) || emEsquiva(ator)) {
-    if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0) cancelarGolpe(ator);
+    if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0) cancelarGolpe(ator);
+    return;
+  }
+  if ((ator.jatoDur || 0) > 0) {
+    tickJato(ator, dt, agora);
     return;
   }
   if (emConjuracao(ator)) {
@@ -405,7 +538,7 @@ function executar(ator, slot, alvo, agora, efeitos) {
 }
 
 export function tentarGolpe(ator, agora, efeitos) {
-  if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0) return;
+  if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0) return;
   const recuoHerdado = ator.recuoNoTick == null ? emRecuo(ator) : ator.recuoNoTick > 0;
   if (ator.morto || ator.capturado || ator.dormindo > 0 || recuoHerdado || emAvanco(ator) || emEsquiva(ator)) return;
   const alvo = ator.alvo;
@@ -428,6 +561,7 @@ export function impactoProjetil(projetil, alvo, agora, efeitos) {
     efeitos,
     projetil.acerto,
     projetil.forma,
+    projetil.rajada,
   );
 }
 
