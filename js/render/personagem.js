@@ -1,4 +1,5 @@
 import { ESCALA, FACE_H, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
+import { oscilacaoNado } from "../fx/fxAgua.js";
 import { cobrirPernasAgua } from "./agua2d.js";
 import { desenharAsaDelta } from "./asaDeltaVisual.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
@@ -86,7 +87,9 @@ export function retanguloDoPersonagem(atlas, corpo) {
   const aj = pivoDoJogador();
   const pxSprite = dw / frame;
   const footX = mundoParaTelaX(corpo.x);
-  const footY = mundoParaTelaY(corpo.y, corpo.z, corpo.hopLift) + aj.offsetY * TILE * ESCALA;
+  const footY =
+    mundoParaTelaY(corpo.y, corpo.z, (corpo.hopLift || 0) + oscilacaoNado(corpo)) +
+    aj.offsetY * TILE * ESCALA;
   return {
     sheet,
     frame,
@@ -129,7 +132,7 @@ export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
 }
 
 export function formulasPersonagem(corpo) {
-  const elev = corpo.elevacao ?? corpo.z + (corpo.hopLift || 0);
+  const elev = (corpo.elevacao ?? corpo.z + (corpo.hopLift || 0)) + oscilacaoNado(corpo);
   const screenY = corpo.y * TILE - elev * FACE_H;
   const sortKey = chaveEntidade(corpo.y, corpo.z);
   return {

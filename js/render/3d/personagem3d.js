@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, ALTURA_SPRITE_JOGADOR, JOGADOR_FRAME } from "../../config.js";
+import { oscilacaoNado } from "../../fx/fxAgua.js";
 import { pivoDoFrame } from "../pivoPe.js";
 import { carregarPivoJogador, pivoDoJogador } from "../pivoJogador.js";
 import { colunaAgua } from "../../mundo/agua/fluxo.js";
@@ -143,8 +144,9 @@ export function criarPersonagem3d(opts = {}) {
      * @param {number} [yawCam]
      */
     atualizar(corpoEstado, camera = null, yawCam = 0) {
-      const elev =
+      const elevFisica =
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
+      const elev = elevFisica + oscilacaoNado(corpoEstado);
       grupo.position.set(corpoEstado.x, elev * ALTURA_BLOCO, corpoEstado.y);
       const folgaPe = -pivoDoJogador().offsetY;
       sprite.position.y = folgaPe;
@@ -155,7 +157,7 @@ export function criarPersonagem3d(opts = {}) {
       aplicarCorSprite(spriteMat, corBase, sombraNuvem, _luzCidade);
 
       const agua = colunaAgua(corpoEstado.x, corpoEstado.y);
-      const imerso = agua.superficie > 0 && elev < agua.superficie - 0.05;
+      const imerso = agua.superficie > 0 && elevFisica < agua.superficie - 0.05;
       veu.visible = imerso && sprite.visible;
       if (imerso) planoVeu.constant = agua.superficie * ALTURA_BLOCO;
 

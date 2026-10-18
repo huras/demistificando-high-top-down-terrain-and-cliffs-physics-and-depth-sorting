@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, TILE } from "../config.js";
+import { oscilacaoNado } from "../fx/fxAgua.js";
+import { alturaPe } from "./ator.js";
 import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 import { obterBola, particulasCaptura } from "./captura.js";
 import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
@@ -342,7 +344,7 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
     }
     vistos.add(ator.id);
     slot.grupo.visible = true;
-    const elev = (ator.elevacao ?? ator.z ?? 0) + (ator.hopLift || 0);
+    const elev = alturaPe(ator) + oscilacaoNado(ator);
     slot.grupo.position.set(ator.x, elev * ALTURA_BLOCO, ator.y);
     const pack = garantirAtlas(ator.especie.dex, ator.shiny);
     const visual = ator.visual;

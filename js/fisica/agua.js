@@ -5,6 +5,7 @@
 import {
   ACELERACAO_AR,
   ACELERACAO_CHAO,
+  AGUA_AFOGA_EXTRA,
   AGUA_AFOGA_SEG,
   AGUA_BRACADA_CUSTO,
   AGUA_BRACADA_VZ,
@@ -202,7 +203,7 @@ export function atualizarNado(corpo, dx, dy, dt) {
   } else if ((corpo.stamina ?? 0) <= 1e-4 && !corpo.invulneravel) {
     corpo.afogandoT = (corpo.afogandoT || 0) + dt;
     const linha = agua.caindo ? agua.pisoQueda : agua.superficie;
-    const alvo = linha - 1.15;
+    const alvo = linha - (AGUA_FLUTUA + AGUA_AFOGA_EXTRA);
     corpo.elevacao += (alvo - corpo.elevacao) * Math.min(1, dt * 1.6);
     corpo.acao = "afogando";
     if (corpo.afogandoT >= AGUA_AFOGA_SEG) {

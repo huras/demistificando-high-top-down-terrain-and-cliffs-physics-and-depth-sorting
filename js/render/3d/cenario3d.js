@@ -28,6 +28,7 @@ import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarFxCampo } from "../../campo/fx.js";
 import { criarPoeiraPasso3d } from "./poeiraPasso3d.js";
+import { criarFxAgua3d } from "./fxAgua3d.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
@@ -268,6 +269,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const poeiraPasso = criarPoeiraPasso3d();
   scene.add(poeiraPasso.grupo);
 
+  const fxAgua = criarFxAgua3d();
+  scene.add(fxAgua.grupo);
+
   const personagem = criarPersonagem3d({
     nome: "personagem",
     sprite: atlas?.jogador ?? null,
@@ -320,6 +324,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     vegetacaoDistante,
     fxCampo,
     poeiraPasso,
+    fxAgua,
     personagem,
     agente3d,
     ventoAsa,
@@ -565,6 +570,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw, inclinacao);
   estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   estado.poeiraPasso?.atualizar?.();
+  estado.fxAgua?.atualizar?.(camRender);
   anotarEstadoSim(estado.personagem.grupo, corpo);
   estado.personagem.atualizar(corpo, camRender, yaw);
   if (agente && estado.agente3d) {

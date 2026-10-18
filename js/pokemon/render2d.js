@@ -1,4 +1,5 @@
 import { ESCALA, TILE } from "../config.js";
+import { oscilacaoNado } from "../fx/fxAgua.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
 import { obterBola } from "./captura.js";
@@ -26,9 +27,10 @@ function desenharCorpo(ctx, ator) {
   const medida = medidaSprite(ator);
   const { escala, offsetY, dx, dy } = medida;
   const chaoX = mundoParaTelaX(ator.x);
-  const chaoY = mundoParaTelaY(ator.y, ator.z, ator.hopLift || 0);
+  const hop = ator.hopLift || 0;
+  const chaoY = mundoParaTelaY(ator.y, ator.z, hop);
   const footX = chaoX;
-  const footY = chaoY + offsetY * TILE * ESCALA;
+  const footY = mundoParaTelaY(ator.y, ator.z, hop + oscilacaoNado(ator)) + offsetY * TILE * ESCALA;
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
   const fr = quadroDe(ator, pack);
   const centro = centroDoQuadro(fr, medida);

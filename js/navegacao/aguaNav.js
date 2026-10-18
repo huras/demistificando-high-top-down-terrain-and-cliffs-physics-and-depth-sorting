@@ -1,10 +1,11 @@
 /**
- * Água no grafo: vau no piso, nado na linha da superfície, queda e subida da cachoeira.
- * A altura de nado é superfície−1, que fica a < 0.85 dos pés (superfície − AGUA_FLUTUA).
+ * Água no grafo: vau no piso, nado na linha dos pés, queda e subida da cachoeira.
+ * A altura de nado no grafo é o bloco mais perto de superfície − AGUA_FLUTUA.
  */
 import {
   AGUA_CUSTO_NAV,
   AGUA_CUSTO_NAV_RASO,
+  AGUA_FLUTUA,
   AGUA_LIMIAR_VADO,
   ESCALADA_VEL,
   PATH_CUSTO_ESCALADA,
@@ -41,7 +42,9 @@ export function alturasLocomocao(pisosBrutos, agua, perfil) {
     if (!podeNadar(perfil)) {
       return pisos.filter((z) => z > agua.superficie);
     }
-    const swimZ = agua.superficie - 1;
+    // O grafo só liga degraus inteiros. O nó é o bloco mais perto dos pés
+    // (superfície − AGUA_FLUTUA).
+    const swimZ = Math.round(agua.superficie - AGUA_FLUTUA);
     const out = [];
     let temNado = false;
     for (const z of pisos) {

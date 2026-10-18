@@ -117,14 +117,17 @@ export const STAMINA_REGEN = 28;
 
 /**
  * Água. Profundidade = superfície − piso sólido.
- * Até o limiar dá pra vadear; acima disso o corpo flutua.
+ * Até o limiar dá pra vadear; acima disso o corpo flutua
+ * na mesma imersão de quem ainda pisa no limite.
  */
 export const AGUA_LIMIAR_VADO = 1.05;
+/** Pés no nado: a mesma linha do vau no limite. */
+export const AGUA_FLUTUA = AGUA_LIMIAR_VADO;
+/** Além de AGUA_FLUTUA, o quanto o corpo desce ao afogar. */
+export const AGUA_AFOGA_EXTRA = 0.8;
 export const AGUA_VEL_NADO = 2.4;
 export const AGUA_CORRENTE = 2.2;
 export const AGUA_QUEDA_VEL = 7.5;
-/** Pés ficam isto abaixo da superfície ao nadar. */
-export const AGUA_FLUTUA = 0.35;
 export const AGUA_DRAIN_NADO = 10;
 export const AGUA_DRAIN_NADO_PARADO = 4;
 export const AGUA_AFOGA_SEG = 2.5;
@@ -132,6 +135,39 @@ export const AGUA_BRACADA_VZ = 8.1;
 export const AGUA_BRACADA_CUSTO = 22;
 export const AGUA_CUSTO_NAV = 4;
 export const AGUA_CUSTO_NAV_RASO = 1.65;
+
+/** Balanço só visual do nado, em blocos. Não entra na física. */
+export const AGUA_NADO_BOB_A = 0.05;
+export const AGUA_NADO_BOB_B = 0.03;
+export const AGUA_NADO_BOB_PARADO = 0.62;
+
+/** Elipse na lâmina. rx cresce até CRESCE vezes; ry é fração de rx. */
+export const AGUA_ONDA_INTERVALO = 0.12;
+export const AGUA_ONDA_INTERVALO_PARADO = 0.55;
+export const AGUA_ONDA_VIDA = 0.9;
+export const AGUA_ONDA_RX = 0.7;
+export const AGUA_ONDA_CRESCE = 2.6;
+export const AGUA_ONDA_RY = 0.38;
+export const AGUA_ONDA_ATRAS = 0.25;
+export const AGUA_ONDA_PASSO = 0.022;
+export const AGUA_IMERSAO_MIN = 0.12;
+
+/** Gota ao sair e enquanto o molhado durar. */
+export const AGUA_GOTA_VIDA = 0.35;
+export const AGUA_GOTA_GRAV = 14;
+export const AGUA_GOTA_RAJADA = 5;
+export const AGUA_GOTA_PINGA = 0.4;
+export const AGUA_MOLHA_SEG = 5;
+
+/** Pegada no seco, carregada na água. */
+export const AGUA_PEGADA_CARGA = 6;
+export const AGUA_PEGADA_DIST = 0.62;
+export const AGUA_PEGADA_INTERVALO = 0.14;
+export const AGUA_PEGADA_VEL = 0.2;
+export const AGUA_PEGADA_VIDA = 6.2;
+export const AGUA_PEGADA_TAM = 0.28;
+export const AGUA_PEGADA_LATERAL = 0.14;
+export const AGUA_PEGADA_CHEIO = 0.55;
 
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 3.5;
