@@ -1,6 +1,6 @@
-import { ALVO_REDE, LEAD_MAX, RAIO_ARENA, RAIO_PROJETIL } from "../js/pokemon/ia/constantes.js";
-import { limitarArena, regua, sentidoParada } from "../js/pokemon/ia/espaco.js";
-import { classeEsquiva } from "../js/pokemon/ia/observacao.js";
+import { ALVO_REDE, FOLGA_PARADA, LEAD_MAX, RAIO_ARENA, RAIO_PROJETIL, VIDA_FUGA } from "../js/pokemon/ia/constantes.js";
+import { alcanceSoco, golpeDeCorpo, golpeProntoForma, limitarArena, regua, sentidoParada } from "../js/pokemon/ia/espaco.js";
+import { ladoAmeaca } from "../js/pokemon/ia/observacao.js";
 
 export function rotulo(hab, ator, alvo, tiros, dst) {
   const dx = alvo.x - ator.x;
@@ -11,10 +11,7 @@ export function rotulo(hab, ator, alvo, tiros, dst) {
   const lx = -fy;
   const ly = fx;
   if (hab === "esquivar") {
-    const c = classeEsquiva(ator, alvo, tiros);
-    dst[0] = c === 0 ? ALVO_REDE : -ALVO_REDE;
-    dst[1] = c === 1 ? ALVO_REDE : -ALVO_REDE;
-    dst[2] = -ALVO_REDE;
+    rotuloEsquiva(ator, alvo, tiros, dst, d);
     return;
   }
   if (hab === "fugir") {
@@ -47,6 +44,46 @@ export function rotulo(hab, ator, alvo, tiros, dst) {
   const leadY = (alvo.vy || 0) * tempo;
   dst[3] = Math.max(-ALVO_REDE, Math.min(ALVO_REDE, (leadX * fx + leadY * fy) / LEAD_MAX));
   dst[4] = Math.max(-ALVO_REDE, Math.min(ALVO_REDE, (leadX * lx + leadY * ly) / LEAD_MAX));
+}
+
+function marcarEsquiva(dst, ax, ay, gastar) {
+  dst[0] = ax;
+  dst[1] = ay;
+  dst[2] = gastar ? ALVO_REDE : -ALVO_REDE;
+}
+
+/** Barra cheia: lado do tiro, para trás se dói, para a frente se o corpo a corpo está longe. */
+function rotuloEsquiva(ator, alvo, tiros, dst, d) {
+  const cheia = (ator.esquiva || 0) >= 1;
+  const lado = ladoAmeaca(ator, alvo, tiros);
+  if (lado !== 0) {
+    marcarEsquiva(dst, 0, lado * ALVO_REDE, cheia);
+    return;
+  }
+  const hp = ator.hpMax > 0 ? ator.hp / ator.hpMax : 1;
+  if (hp < VIDA_FUGA) {
+    marcarEsquiva(dst, -ALVO_REDE, 0, cheia);
+    return;
+  }
+  const corpo = golpeDeCorpo(ator);
+  const parada = corpo ? regua(ator, "perseguir").parada : 0;
+  if (corpo && d < parada - FOLGA_PARADA) {
+    marcarEsquiva(dst, -ALVO_REDE, 0, cheia);
+    return;
+  }
+  const tiro = ator.usaDistancia !== false && golpeProntoForma(ator, "projectile", "arc");
+  const querFechar = corpo && (!tiro || d <= alcanceSoco(alvo));
+  if (querFechar && d > parada + FOLGA_PARADA) {
+    marcarEsquiva(dst, ALVO_REDE, 0, cheia);
+    return;
+  }
+  marcarEsquiva(dst, 0, 0, false);
+}
+
+function afastar(ator, alvo, dist, ang) {
+  alvo.x = ator.x + Math.cos(ang) * dist;
+  alvo.y = ator.y + Math.sin(ang) * dist;
+  limitarArena(alvo);
 }
 
 export function prepararAmostra(hab, ator, alvo, tiros, rng) {
@@ -82,26 +119,88 @@ export function prepararAmostra(hab, ator, alvo, tiros, rng) {
   limitarArena(alvo);
   tiros.length = 0;
   if (hab !== "esquivar") return;
-  const dir = rng() * Math.PI * 2;
-  const c = Math.cos(dir);
-  const s = Math.sin(dir);
-  const t = 0.06 + rng() * 0.36;
-  const lat = (rng() * 2 - 1) * 1.05;
-  const vel = 14;
-  const px = ator.x - c * vel * t + -s * lat;
-  const py = ator.y - s * vel * t + c * lat;
-  alvo.x = ator.x - c * 4;
-  alvo.y = ator.y - s * 4;
-  limitarArena(alvo);
-  tiros.push({
-    x: px,
-    y: py,
-    vx: c * vel,
-    vy: s * vel,
-    raio: RAIO_PROJETIL,
-    faccao: "b",
-    dono: alvo,
-    viajou: 0,
-    max: 12,
-  });
+  ator.esquiva = rng() < 0.88 ? 1 : rng() * 0.85;
+  ator.pp = 30;
+  const tipo = rng();
+  if (tipo < 0.28) {
+    ator.usaCorpo = false;
+    ator.usaDistancia = false;
+    ator.hp = 80 + rng() * 20;
+    const dir = rng() * Math.PI * 2;
+    const c = Math.cos(dir);
+    const s = Math.sin(dir);
+    const t = 0.08 + rng() * 0.28;
+    const lat = (rng() < 0.5 ? -1 : 1) * (0.15 + rng() * 0.85);
+    const vel = 14;
+    afastar(ator, alvo, 5.2 + rng() * 1.4, dir + Math.PI);
+    tiros.push({
+      x: ator.x - c * vel * t - s * lat,
+      y: ator.y - s * vel * t + c * lat,
+      vx: c * vel,
+      vy: s * vel,
+      raio: RAIO_PROJETIL,
+      faccao: "b",
+      dono: alvo,
+      viajou: 0,
+      max: 12,
+    });
+    return;
+  }
+  if (tipo < 0.5) {
+    ator.usaCorpo = rng() < 0.55;
+    ator.usaDistancia = rng() < 0.65;
+    ator.hp = 40 + rng() * 60;
+    const dir = rng() * Math.PI * 2;
+    const c = Math.cos(dir);
+    const s = Math.sin(dir);
+    const t = 0.06 + rng() * 0.36;
+    const lat = (rng() * 2 - 1) * 1.05;
+    const vel = 14;
+    afastar(ator, alvo, 2.4 + rng() * 4.2, dir + Math.PI);
+    tiros.push({
+      x: ator.x - c * vel * t - s * lat,
+      y: ator.y - s * vel * t + c * lat,
+      vx: c * vel,
+      vy: s * vel,
+      raio: RAIO_PROJETIL,
+      faccao: "b",
+      dono: alvo,
+      viajou: 0,
+      max: 12,
+    });
+    return;
+  }
+  if (tipo < 0.68) {
+    ator.usaCorpo = true;
+    ator.usaDistancia = false;
+    ator.hp = 45 + rng() * 55;
+    afastar(ator, alvo, 2.2 + rng() * 5.5, rng() * Math.PI * 2);
+    return;
+  }
+  if (tipo < 0.78) {
+    ator.usaCorpo = true;
+    ator.usaDistancia = rng() < 0.5;
+    ator.hp = 45 + rng() * 55;
+    afastar(ator, alvo, 0.35 + rng() * 0.5, rng() * Math.PI * 2);
+    return;
+  }
+  if (tipo < 0.86) {
+    ator.hp = 6 + rng() * 18;
+    ator.usaCorpo = rng() < 0.5;
+    ator.usaDistancia = rng() < 0.5;
+    afastar(ator, alvo, 0.9 + rng() * 4, rng() * Math.PI * 2);
+    return;
+  }
+  if (tipo < 0.96) {
+    ator.usaCorpo = true;
+    ator.usaDistancia = true;
+    ator.pp = 30;
+    ator.hp = 55 + rng() * 45;
+    afastar(ator, alvo, 2.6 + rng() * 2.4, rng() * Math.PI * 2);
+    return;
+  }
+  ator.usaCorpo = false;
+  ator.usaDistancia = false;
+  ator.hp = 70 + rng() * 30;
+  afastar(ator, alvo, 4 + rng() * 3, rng() * Math.PI * 2);
 }

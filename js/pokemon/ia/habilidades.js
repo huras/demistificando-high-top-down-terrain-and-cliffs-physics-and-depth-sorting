@@ -6,20 +6,16 @@ import { FATIA, PESOS } from "./pesos.js";
 import { propagar } from "./rede.js";
 
 function aplicarEsquiva(ator, alvo) {
-  let k = 0;
-  if (saida[1] > saida[k]) k = 1;
-  if (saida[2] > saida[k]) k = 2;
+  if (Math.tanh(saida[2]) < 0.05) return false;
   const q = quadroDe(ator, alvo);
-  let sx = q.lx;
-  let sy = q.ly;
-  if (k === 1) {
-    sx = -q.lx;
-    sy = -q.ly;
-  } else if (k === 2) {
-    sx = -q.fx;
-    sy = -q.fy;
-  }
-  comecarEsquiva(ator, sx, sy);
+  const ax = Math.tanh(saida[0]);
+  const ay = Math.tanh(saida[1]);
+  if (ax * ax + ay * ay < 0.02) return false;
+  const wx = ax * q.fx + ay * q.lx;
+  const wy = ax * q.fy + ay * q.ly;
+  const ok = comecarEsquiva(ator, wx, wy);
+  if (ok) ator.hab = "esquivar";
+  return ok;
 }
 
 function gravarComando(ator, alvo, comMira) {
@@ -58,12 +54,10 @@ export function calcularHabilidade(nome) {
 }
 
 export function aplicarHabilidade(nome, ator, alvo) {
+  if (nome === "esquivar") return aplicarEsquiva(ator, alvo);
   ator.hab = nome;
-  if (nome === "esquivar") {
-    aplicarEsquiva(ator, alvo);
-    return;
-  }
   gravarComando(ator, alvo, nome === "atirar");
+  return false;
 }
 
 /** Integra o último comando. Perseguir e atirar não atravessam a parada. */

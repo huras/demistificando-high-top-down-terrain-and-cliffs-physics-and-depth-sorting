@@ -126,10 +126,15 @@ export function observar(ator, alvo, tiros, alcance, buf) {
   return dst;
 }
 
-/** 0 esquerda, 1 direita. O lado que aumenta o erro do tiro. */
-export function classeEsquiva(ator, alvo, tiros) {
+/** 1 se o desvio para a esquerda do alvo aumenta o erro. -1 para a direita. 0 sem tiro. */
+export function ladoAmeaca(ator, alvo, tiros) {
   const q = preencherQuadro(ator, alvo);
   const a = buscarAmeaca(ator, tiros, q.lx, q.ly, JANELA_REDE, CORREDOR_REDE);
   if (!a.tem) return 0;
-  return a.lat >= 0 ? 0 : 1;
+  return a.lat >= 0 ? 1 : -1;
+}
+
+/** 0 esquerda, 1 direita. O lado que aumenta o erro do tiro. */
+export function classeEsquiva(ator, alvo, tiros) {
+  return ladoAmeaca(ator, alvo, tiros) < 0 ? 1 : 0;
 }

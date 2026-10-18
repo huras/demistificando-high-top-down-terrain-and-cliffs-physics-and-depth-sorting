@@ -1,4 +1,5 @@
 import { emAvanco, emEsquiva, emRecuo } from "../ator.js";
+import { cancelarConjuracao } from "../combate/executor.js";
 import {
   CORREDOR_TIRO,
   FOLGA_PROJETIL,
@@ -44,8 +45,15 @@ export function escolherHabilidade(ator, alvo) {
   return "perseguir";
 }
 
-function pensarEsquiva() {
-  return false;
+/** Com a barra cheia, o dash pode sair para qualquer lado. A rede decide se vale a pena. */
+function pensarEsquiva(ator, alvo, tiros) {
+  if (!ator || !alvo || (ator.esquiva || 0) < 1 || ocupado(ator)) return false;
+  const faixa = regua(ator, "esquivar");
+  observar(ator, alvo, tiros, faixa.parada, entrada);
+  calcularHabilidade("esquivar");
+  if (!aplicarHabilidade("esquivar", ator, alvo)) return false;
+  if (emEsquiva(ator)) cancelarConjuracao(ator);
+  return true;
 }
 
 /** Decide no máximo a 10 Hz. */

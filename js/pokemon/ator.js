@@ -1,4 +1,5 @@
 import { POKEMON, RAIO_POKEMON } from "../config.js";
+import { ESQUIVA_DIST, ESQUIVA_DUR } from "./ia/constantes.js";
 import { golpe } from "./dados.js";
 import { totalParaNivel } from "./experiencia.js";
 import { calcularStats, escalaRecarga, escalaVelocidade } from "./tipos.js";
@@ -335,16 +336,32 @@ export function comecarAvanco(ator, dirX, dirY, dist) {
   integrarAvanco(ator, 0.05);
 }
 
-/** Passo lateral. Desligada: o corpo não sai do lugar. */
-export function comecarEsquiva() {
-  return false;
+/** Passo em qualquer direção. Gasta a barra inteira. */
+export function comecarEsquiva(ator, dirX, dirY) {
+  if (!ator || (ator.esquiva || 0) < 1) return false;
+  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) return false;
+  const len = Math.hypot(dirX, dirY) || 1;
+  ator.esquiva = 0;
+  ator.esquivaDur = ESQUIVA_DUR;
+  ator.esquivaRestante = ESQUIVA_DUR;
+  ator.esquivaDist = ESQUIVA_DIST;
+  ator.esquivaDirX = dirX / len;
+  ator.esquivaDirY = dirY / len;
+  ator.hopLift = Math.max(ator.hopLift || 0, 0.2);
+  integrarEsquiva(ator, 0.05);
+  return true;
 }
 
 export function passoEsquiva(ator, dt) {
   integrarEsquiva(ator, dt);
 }
 
-export function recarregarBarraEsquiva() {}
+export function recarregarBarraEsquiva(ator, dt) {
+  if (!ator || (ator.esquivaRestante || 0) > 0) return;
+  const vel = Math.max(1, ator.stats?.velocidade || 50);
+  const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
+  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 10);
+}
 
 export function tickPassivo(ator, dt, agora) {
   if (ator.hopLift > 0) ator.hopLift = Math.max(0, ator.hopLift - dt * 3.2);

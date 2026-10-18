@@ -177,9 +177,8 @@ button, input, select {
   background: #4ade80;
 }
 
-.esquiva,
-.marca__esquiva {
-  display: none;
+.esquiva {
+  margin-top: 8px;
 }
 
 .tubos {

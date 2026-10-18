@@ -111,8 +111,8 @@ function clonar(hab, rng) {
   const alvo = lutador({ faccao: "b" });
   const tiros = [];
   const rot = new Float32Array(5);
-  let esquerda = 0;
-  let direita = 0;
+  let dash = 0;
+  let segura = 0;
   for (let s = 0; s < n; s++) {
     prepararAmostra(hab, ator, alvo, tiros, rng);
     const faixa = reguaSegura(ator, hab);
@@ -120,22 +120,23 @@ function clonar(hab, rng) {
     rotulo(hab, ator, alvo, tiros, rot);
     for (let o = 0; o < fat.n; o++) y[s * fat.n + o] = rot[o];
     if (hab === "esquivar") {
-      if (rot[1] > 0) direita += 1;
-      else esquerda += 1;
+      if (rot[2] > 0) dash += 1;
+      else segura += 1;
     }
   }
   const idx = new Uint16Array(n);
   for (let i = 0; i < n; i++) idx[i] = i;
   const i0 = fat.w1;
   const i1 = fat.b2 + fat.n;
-  for (let epoca = 0; epoca < 56; epoca++) {
+  const epocas = hab === "esquivar" ? 96 : 56;
+  for (let epoca = 0; epoca < epocas; epoca++) {
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       const tmp = idx[i];
       idx[i] = idx[j];
       idx[j] = tmp;
     }
-    const lr = epoca < 28 ? 0.08 : 0.025;
+    const lr = epoca < epocas / 2 ? 0.08 : 0.025;
     for (let b = 0; b < n; b += lote) {
       for (let g = i0; g < i1; g++) grad[g] = 0;
       const fim = Math.min(n, b + lote);
@@ -164,7 +165,7 @@ function clonar(hab, rng) {
   const amostras = Math.ceil(n / 8);
   console.log(
     `${hab}: erro ${((erro / (amostras * fat.n)) ** 0.5).toFixed(3)}` +
-      (hab === "esquivar" ? `  esquerda ${esquerda} direita ${direita}` : ""),
+      (hab === "esquivar" ? `  dash ${dash} segura ${segura}` : ""),
   );
 }
 
@@ -177,7 +178,12 @@ function nota(nome) {
     const r = avaliarAproximacao("rede", 8);
     return -r.tempo - r.falhas * 2;
   }
-  if (nome === "esquivar") return avaliarEsquiva("rede", 8);
+  if (nome === "esquivar") {
+    const esquiva = avaliarEsquiva("rede", 8);
+    const acerto = avaliarAcerto("rede", 12);
+    if (acerto < 0.75) return esquiva - 1;
+    return esquiva;
+  }
   if (nome === "atirar") return avaliarAcerto("rede", 12);
   const f = avaliarFuga(6);
   return f.distancia - f.borda * 5;
