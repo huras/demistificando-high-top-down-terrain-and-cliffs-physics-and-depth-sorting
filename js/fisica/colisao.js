@@ -37,11 +37,15 @@ export function tetoSobreCabeca(cx, cy, elevPes, altura = ALTURA_CORPO) {
   return Infinity;
 }
 
-/** True se há sólido na faixa vertical [elevPes, elevPes+altura). */
-export function corpoColideSolido(cx, cy, elevPes, altura = ALTURA_CORPO) {
+/**
+ * True se há sólido na faixa vertical [elevPes, elevPes+altura).
+ * zMin corta a parte de baixo: o nado ignora a quina submersa da margem.
+ */
+export function corpoColideSolido(cx, cy, elevPes, altura = ALTURA_CORPO, zMin = 0) {
   if (!dentroDoMapa(cx, cy)) return true;
-  const z0 = Math.floor(elevPes + 1e-4);
+  const z0 = Math.max(Math.floor(elevPes + 1e-4), zMin | 0);
   const z1 = Math.floor(elevPes + altura - 1e-4);
+  if (z0 > z1) return false;
   for (let z = Math.max(0, z0); z <= z1 && z < CHUNK_Y; z++) {
     if (ehSolido(obterBloco(cx, cy, z))) return true;
   }
@@ -63,11 +67,11 @@ export function alturaSobPes(x, y, elevRef = null, _elevAnterior = null) {
  * Pode ocupar a célula destino?
  * modo: "andar" | "aereo" | "escalar"
  */
-export function podeEntrar(cx, cy, zAtual, modo = "andar", elevacao = zAtual) {
+export function podeEntrar(cx, cy, zAtual, modo = "andar", elevacao = zAtual, zMin = 0) {
   if (!dentroDoMapa(cx, cy)) return false;
 
   if (modo === "aereo") {
-    return !corpoColideSolido(cx, cy, elevacao);
+    return !corpoColideSolido(cx, cy, elevacao, ALTURA_CORPO, zMin);
   }
 
   const zDest = chaoSobElevacao(cx, cy, elevacao + 0.35);
@@ -122,7 +126,7 @@ export function moverComColisao(corpo, dx, dy, modo = "andar") {
 /**
  * Movimento no ar: AABB vs sólidos na faixa do corpo.
  */
-export function moverAereo(corpo, dx, dy, elevacao) {
+export function moverAereo(corpo, dx, dy, elevacao, zMin = 0) {
   let { x, y } = corpo;
   const r = RAIO_CORPO;
   const x0 = x;
@@ -131,11 +135,11 @@ export function moverAereo(corpo, dx, dy, elevacao) {
 
   if (dx !== 0) {
     const nx = x + dx;
-    if (cantosLivres(nx, y, zRef, r, "aereo", elevacao)) x = nx;
+    if (cantosLivres(nx, y, zRef, r, "aereo", elevacao, zMin)) x = nx;
   }
   if (dy !== 0) {
     const ny = y + dy;
-    if (cantosLivres(x, ny, zRef, r, "aereo", elevacao)) y = ny;
+    if (cantosLivres(x, ny, zRef, r, "aereo", elevacao, zMin)) y = ny;
   }
 
   return {
@@ -150,7 +154,7 @@ export function espacoVoxelLivre(x, y, elev, raio, modo = "andar") {
   return cantosLivres(x, y, elev, raio, modo, elev);
 }
 
-function cantosLivres(x, y, z, r, modo, elevacao) {
+function cantosLivres(x, y, z, r, modo, elevacao, zMin = 0) {
   const pontos = [
     [x - r, y - r],
     [x + r, y - r],
@@ -160,7 +164,7 @@ function cantosLivres(x, y, z, r, modo, elevacao) {
   for (const [px, py] of pontos) {
     const cx = Math.floor(px);
     const cy = Math.floor(py);
-    if (!podeEntrar(cx, cy, z, modo, elevacao)) return false;
+    if (!podeEntrar(cx, cy, z, modo, elevacao, zMin)) return false;
   }
   return true;
 }

@@ -222,7 +222,10 @@ export function atualizarNado(corpo, dx, dy, dt) {
   corpo.hopLift = corpo.elevacao - corpo.z;
 
   const andando = integrarHorizontal(corpo, dx, dy, dt, AGUA_VEL_NADO, agua, false);
-  const pos = moverAereo(corpo, corpo.vx * dt, corpo.vy * dt, corpo.elevacao);
+  // A quina da margem fica na linha d'água. O pé submerso não pode travar nela.
+  const zMin =
+    agua.caindo || agua.superficie <= 0 ? 0 : Math.floor(agua.superficie);
+  const pos = moverAereo(corpo, corpo.vx * dt, corpo.vy * dt, corpo.elevacao, zMin);
   if (pos.bloqueouX) corpo.vx = 0;
   if (pos.bloqueouY) corpo.vy = 0;
   corpo.x = pos.x;
