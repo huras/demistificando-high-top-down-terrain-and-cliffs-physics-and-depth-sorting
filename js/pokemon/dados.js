@@ -38,6 +38,8 @@ function dobrarCustoPp(tabela) {
     const g = tabela[chaves[i]];
     if (!g) continue;
     g.pp = (g.pp | 0 || 1) * 2;
+    if (g.forma !== "contact" && g.forma !== "radius") continue;
+    g.pp = Math.max(1, Math.round(g.pp / 2));
   }
 }
 

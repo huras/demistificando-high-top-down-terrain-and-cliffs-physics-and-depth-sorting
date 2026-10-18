@@ -567,7 +567,7 @@ export function alvoDoLaboratorio(x, y) {
 export function promptDoLaboratorio(alvo) {
   if (!alvo) return "";
   if (alvo.tipo === "cura") return "Recuperar";
-  if (alvo.tipo === "capsula") return "Cápsula — R";
+  if (alvo.tipo === "capsula") return "";
   if (alvo.tipo === "inicial") return `Pokébola de ${alvo.ref.especie} — R`;
   if (alvo.tipo === "npc") return `${alvo.ref.nome} — R`;
   return "";

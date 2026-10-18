@@ -31,6 +31,7 @@ const alvo = new THREE.Vector3(0, 1.15, 0);
 const ponto = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _direita = new THREE.Vector3();
+const _frente = new THREE.Vector3();
 const _desloc = { x: 0, z: 0 };
 const slots = [];
 const tiros = [];

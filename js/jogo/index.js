@@ -32,11 +32,12 @@ import {
 import { ligarRoda, tickRoda } from "./roda.js";
 import { desenharSala, ligarSala, moverSala, pertoDe, redimensionarSala } from "./sala.js";
 import { alvoLaboratorio, executarAlvoLaboratorio } from "./laboratorio.js";
-import { alvoDoHub, ancoraDoHub, executarAlvoHub, promptDoHub } from "./hub.js";
+import { alvoDoHub, executarAlvoHub, promptDoHub } from "./hub.js";
 import { atualizarCuraMaquina, curaOcupada } from "./maquinaCura.js";
-import { ORIGEM_LAB_X, ORIGEM_LAB_Y, promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
+import { promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
-import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, ligarUi, pintar, promptDe } from "./ui.js";
+import { acaoContexto, acaoConsomeE } from "./acaoContexto.js";
+import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
 
 let viewport = null;
 let toastAte = 0;
@@ -93,10 +94,7 @@ export function tickJogo(dt, corpo) {
     !estado.craft &&
     !corpo.escalando &&
     !corpo.voando;
-  if (livre && !campoFocado()) {
-    porta = entradaPerto(corpo.x, corpo.y);
-    if (porta && teclaAgora("KeyE")) tentarEntrar(corpo, porta);
-  }
+  if (livre && !campoFocado()) porta = entradaPerto(corpo.x, corpo.y);
   const alvo = estado.interior && !estado.interior.sala3d ? pertoDe(estado.interior) : null;
   const ferramenta = dicaFerramenta();
   const noLab = estado.interior?.sala3d && estado.interior.papel === "lab";
@@ -108,24 +106,26 @@ export function tickJogo(dt, corpo) {
       : null;
   const curaPerto = (alvoLab?.tipo === "cura" || alvoHub?.tipo === "cura") && !curaOcupada();
   const entrarPorta = !!porta && !estado.interior && !(estado.saidaGrace > 0);
-  estado.promptEntrar = entrarPorta || curaPerto;
-  estado.promptRotulo = curaPerto ? "Recuperar" : "Entrar";
-  estado.promptAncora = curaPerto
-    ? alvoHub
-      ? ancoraDoHub(papelHub, alvoHub)
-      : { x: ORIGEM_LAB_X + alvoLab.ref.x, y: ORIGEM_LAB_Y + alvoLab.ref.footY, z: corpo.z }
-    : null;
-  if (curaPerto && !campoFocado() && teclaAgora("KeyE")) {
-    if (alvoHub?.tipo === "cura") executarAlvoHub(alvoHub);
-    else executarAlvoLaboratorio(alvoLab);
+  const acao = acaoContexto({
+    corpo,
+    entrarPorta,
+    curaPerto,
+    alvoLab,
+    alvoHub,
+    papelHub,
+    interior: estado.interior,
+  });
+  estado.promptEntrar = !!acao;
+  estado.promptRotulo = acao?.rotulo || "Entrar";
+  estado.promptAncora = acao?.ancora || null;
+  const livreDeMenu = !estado.painel && !estado.roda && !estado.construir && !estado.craft && !estado.ganhoAberto;
+  if (!campoFocado() && estado.dialogo && teclaAgora("KeyE")) avancarDialogo();
+  else if (!campoFocado() && livreDeMenu && acaoConsomeE(acao) && teclaAgora("KeyE")) {
+    executarAcaoE(acao, corpo, porta, alvoLab, alvoHub);
   }
-  estado.prompt = curaPerto
-    ? ""
-    : alvoLab
-      ? promptDoLaboratorio(alvoLab)
-      : alvoHub
-        ? promptDoHub(papelHub, alvoHub)
-        : promptDe(alvo, ferramenta);
+  const texto =
+    alvoLab ? promptDoLaboratorio(alvoLab) : alvoHub ? promptDoHub(papelHub, alvoHub) : promptDe(alvo, ferramenta);
+  estado.prompt = acaoConsomeE(acao) ? "" : texto;
   const zona = zonaNoMundo(corpo.x, corpo.y);
   definirBgm(chaveBgm(zona, obterClima(), estado.interior?.sala?.kind));
   atualizarAudio(dt, lerMixClima(), !!estado.interior);
@@ -145,6 +145,15 @@ export function tickJogo(dt, corpo) {
   const sala = document.getElementById("jogo-sala");
   if (sala && (sala.width !== w || sala.height !== h)) redimensionarSala(w, h);
   desenharSala(w, h);
+}
+
+function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
+  if (acao.id === "entrar") tentarEntrar(corpo, porta);
+  else if (acao.id === "cura") {
+    if (alvoHub?.tipo === "cura") executarAlvoHub(alvoHub);
+    else executarAlvoLaboratorio(alvoLab);
+  } else if (acao.id === "capsula") executarAlvoLaboratorio(alvoLab);
+  else if (acao.id === "placa") lerPlaca(acao.placa);
 }
 
 function lerTeclas(corpo) {

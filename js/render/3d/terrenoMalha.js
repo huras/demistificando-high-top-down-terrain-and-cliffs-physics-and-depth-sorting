@@ -1486,10 +1486,14 @@ function geoProp(p) {
     pintarVertices(pedra, "#8a8680", "#5a564e");
     out.push(pedra);
   } else if (p.tipo === "placa") {
-    const poste = new THREE.BoxGeometry(0.08, 0.7, 0.08);
-    poste.translate(p.x, base + 0.35, p.y);
-    pintarVertices(poste, "#c4a060", "#8a6a30");
+    const poste = new THREE.BoxGeometry(0.08, 0.92, 0.08);
+    poste.translate(p.x, base + 0.46, p.y);
+    pintarVertices(poste, "#6b4a2a", "#4a3018");
     out.push(poste);
+    const painel = new THREE.BoxGeometry(0.78, 0.4, 0.06);
+    painel.translate(p.x, base + 1.02, p.y);
+    pintarVertices(painel, "#f3e6bc", "#e4d29a");
+    out.push(painel);
   }
   return out;
 }

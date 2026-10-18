@@ -245,14 +245,18 @@ const _ancora = new THREE.Vector3();
 function pintarPrompt() {
   const entrar = el("#jogo-entrar");
   const host = el("#jogo-prompt");
-  const mostraEntrar = !!estado.promptEntrar && !estado.dialogo && !estado.painel;
+  const bloqueia =
+    estado.dialogo || estado.painel || estado.roda || estado.construir || estado.craft || estado.ganhoAberto;
+  const mostraEntrar = !!estado.promptEntrar && !bloqueia;
   if (entrar) {
     const estava = !entrar.hidden;
     entrar.hidden = !mostraEntrar;
     if (mostraEntrar) {
       const rotulo = entrar.querySelector(".acao-prompt__rotulo");
-      if (rotulo) rotulo.textContent = estado.promptRotulo || "Entrar";
-      if (!estava) {
+      const texto = estado.promptRotulo || "Entrar";
+      const mudou = !!rotulo && rotulo.textContent !== texto;
+      if (rotulo) rotulo.textContent = texto;
+      if (!estava || mudou) {
         entrar.classList.remove("acao-prompt--nova");
         void entrar.offsetWidth;
         entrar.classList.add("acao-prompt--nova");
@@ -263,7 +267,7 @@ function pintarPrompt() {
     }
   }
   if (!host) return;
-  host.hidden = mostraEntrar || !estado.prompt;
+  host.hidden = !estado.prompt;
   host.textContent = estado.prompt || "";
 }
 
@@ -674,6 +678,16 @@ let corpoRef = null;
 
 export function definirCorpo(corpo) {
   corpoRef = corpo;
+}
+
+export function lerPlaca(placa) {
+  if (!placa || estado.dialogo || estado.painel) return;
+  estado.dialogo = {
+    nome: placa.nome,
+    linhas: placa.linhas.slice(),
+    i: 0,
+  };
+  avisar();
 }
 
 export function falarCom(alvo) {

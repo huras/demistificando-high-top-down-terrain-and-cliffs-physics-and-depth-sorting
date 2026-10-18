@@ -15,7 +15,6 @@ import {
   porBillboard,
   quadroGente,
   recortar,
-  facesParedeInterior,
 } from "./cartaoPe.js";
 
 const FOLHA = "/ref/sprites/interiors/pokecenter-emerald-bg.png";
@@ -246,21 +245,48 @@ function anexarSala(sala, planta, img) {
 
   const lado = texturaParede(img);
   const topo = texturaFaixa(img, SPRITE_PAREDE_CIMA, 1, 4);
-  const matLado = material(lado, true);
-  const matTopo = material(topo, true);
-  const geo = new THREE.BoxGeometry(1, ALTURA_PAREDE_HUB, 1);
-  const materiais = facesParedeInterior(matLado, matTopo);
   const y = ALTURA_PRACA + ALTURA_PAREDE_HUB * 0.5;
-  for (let row = 0; row < planta.rows; row++) {
-    for (let col = 0; col < planta.cols; col++) {
-      if (!planta.muro[row * planta.cols + col]) continue;
-      const mesh = new THREE.Mesh(geo, materiais);
-      mesh.position.set(planta.origemX + col + 0.5, y, planta.origemY + row + 0.5);
-      mesh.castShadow = false;
-      mesh.receiveShadow = true;
-      sala.add(mesh);
-    }
+  const cascas = planta.cascas;
+  for (let i = 0; i < cascas.length; i++) {
+    const faixa = cascas[i];
+    const aoLongoX = faixa.w >= faixa.h;
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(faixa.w, ALTURA_PAREDE_HUB, faixa.h),
+      materiaisDaCasca(lado, topo, aoLongoX, aoLongoX ? faixa.w : faixa.h),
+    );
+    mesh.position.set(
+      planta.origemX + faixa.x + faixa.w * 0.5,
+      y,
+      planta.origemY + faixa.y + faixa.h * 0.5,
+    );
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    sala.add(mesh);
   }
+}
+
+function materiaisDaCasca(texLado, texTopo, aoLongoX, repetir) {
+  const longo = texLado.clone();
+  longo.repeat.set(repetir, 1);
+  longo.needsUpdate = true;
+  const matLongo = material(longo, true);
+  const matCurto = material(texLado.clone(), true);
+  const matCima = material(texTopo.clone(), true);
+  matLongo.depthWrite = false;
+  matCurto.depthWrite = false;
+  matCima.depthWrite = true;
+  if (aoLongoX) {
+    const norte = matLongo.clone();
+    norte.depthWrite = true;
+    const baixo = matLongo.clone();
+    baixo.depthWrite = true;
+    return [matCurto, matCurto, matCima, baixo, matLongo, norte];
+  }
+  const norte = matCurto.clone();
+  norte.depthWrite = true;
+  const baixo = matCurto.clone();
+  baixo.depthWrite = true;
+  return [matLongo, matLongo, matCima, baixo, matCurto, norte];
 }
 
 export function montarCentro3d(grupo) {
