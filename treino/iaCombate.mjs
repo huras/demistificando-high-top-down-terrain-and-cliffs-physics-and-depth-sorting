@@ -128,7 +128,7 @@ function clonar(hab, rng) {
   for (let i = 0; i < n; i++) idx[i] = i;
   const i0 = fat.w1;
   const i1 = fat.b2 + fat.n;
-  const epocas = hab === "esquivar" ? 96 : 56;
+  const epocas = hab === "esquivar" ? 96 : hab === "fugir" ? 56 : 72;
   for (let epoca = 0; epoca < epocas; epoca++) {
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
@@ -173,6 +173,8 @@ function reguaSegura(ator, hab) {
   return regua(ator, hab).parada;
 }
 
+let tetoAproximacao = 0;
+
 function nota(nome) {
   if (nome === "perseguir") {
     const r = avaliarAproximacao("rede", 8);
@@ -181,7 +183,8 @@ function nota(nome) {
   if (nome === "esquivar") {
     const esquiva = avaliarEsquiva("rede", 8);
     const acerto = avaliarAcerto("rede", 12);
-    if (acerto < 0.75) return esquiva - 1;
+    const aprox = avaliarAproximacao("rede", 8);
+    if (acerto < 0.75 || aprox.falhas > 0 || (tetoAproximacao > 0 && aprox.tempo > tetoAproximacao)) return esquiva - 1;
     return esquiva;
   }
   if (nome === "atirar") return avaliarAcerto("rede", 12);
@@ -292,6 +295,7 @@ const heur = medir("heuristica");
 let rede = medir("rede");
 console.log("heurística", formatar(heur));
 console.log("clone", formatar(rede));
+tetoAproximacao = heur.tempo * 1.12;
 for (let k = 0; k < ORDEM.length; k++) evoluir(ORDEM[k], rng);
 publicar();
 rede = medir("rede");

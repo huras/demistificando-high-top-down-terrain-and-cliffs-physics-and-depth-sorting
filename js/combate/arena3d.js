@@ -12,6 +12,7 @@ const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;
 const CAP_TIRO = 32;
 const CAP_FAISCA = 160;
+const CAP_TRACO = 24;
 const CAP_KI = 8;
 
 let canvas = null;
@@ -34,6 +35,7 @@ const _desloc = { x: 0, z: 0 };
 const slots = [];
 const tiros = [];
 const faiscas = [];
+const tracos = [];
 const kiHalos = [];
 const kiNucleos = [];
 const kiOrbes = [];
@@ -301,23 +303,60 @@ function pintarTiros() {
   }
 }
 
+function criarTraco() {
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xf4f1ea,
+    transparent: true,
+    depthWrite: false,
+    opacity: 0,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  mesh.rotation.order = "XYZ";
+  mesh.visible = false;
+  mesh.renderOrder = 2;
+  cena.add(mesh);
+  return mesh;
+}
+
+function pintarTraco(mesh, p) {
+  const t = Math.max(0, 1 - p.idade / p.vida);
+  mesh.visible = true;
+  mesh.material.color.set(p.cor || "#f4f1ea");
+  mesh.material.opacity = t * 0.85;
+  mesh.position.set(p.x, 0.08, p.y);
+  mesh.rotation.set(-Math.PI / 2, p.ang || 0, 0);
+  mesh.scale.set(Math.max(0.4, p.tam || 0.9), 0.11, 1);
+}
+
 function pintarFaiscas() {
   const lista = particulasVivas();
+  let tracoI = 0;
   for (let i = 0; i < faiscas.length; i++) {
     const mesh = faiscas[i];
     const p = lista[i];
-    if (!p?.viva) {
+    if (!p?.viva || p.modo === "traco") {
       mesh.visible = false;
+      if (p?.viva && p.modo === "traco" && tracoI < tracos.length) {
+        pintarTraco(tracos[tracoI], p);
+        tracoI += 1;
+      }
       continue;
     }
     const t = 1 - p.idade / p.vida;
+    const poeira = p.modo === "poeira";
+    const mistura = poeira ? THREE.NormalBlending : THREE.AdditiveBlending;
+    if (mesh.material.blending !== mistura) {
+      mesh.material.blending = mistura;
+      mesh.material.needsUpdate = true;
+    }
     mesh.visible = true;
     mesh.material.color.set(p.cor || "#fff");
-    mesh.material.opacity = Math.max(0, t);
+    mesh.material.opacity = Math.max(0, t) * (poeira ? 0.92 : 1);
     const s = p.tam * (0.55 + t);
     mesh.scale.set(s, s, 1);
     mesh.position.set(p.x, Math.max(0.06, p.z * ALTURA_BLOCO), p.y);
   }
+  for (let i = tracoI; i < tracos.length; i++) tracos[i].visible = false;
 }
 
 function ajustarTamanho() {
@@ -446,6 +485,7 @@ export function ligarArena(elemento) {
   for (let i = 0; i < 2; i++) slots.push(criarAtorSlot());
   for (let i = 0; i < CAP_TIRO; i++) tiros.push(criarPonto(nucleo, 4, false));
   for (let i = 0; i < CAP_FAISCA; i++) faiscas.push(criarPonto(suave, 5, true));
+  for (let i = 0; i < CAP_TRACO; i++) tracos.push(criarTraco());
   for (let i = 0; i < CAP_KI; i++) {
     kiHalos.push(criarPonto(suave, 6, true));
     kiNucleos.push(criarPonto(nucleo, 7, true));

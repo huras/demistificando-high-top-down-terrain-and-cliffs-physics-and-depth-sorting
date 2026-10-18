@@ -96,6 +96,7 @@ export function criarBusca(grade, startKey, goalKey) {
 }
 
 export function expandirBusca(busca, orcamento) {
+  if (!busca) return false;
   if (busca.pronto) return true;
   const { grade, goalKey, gScore, veioDe, veioTipo, fechado, heap } = busca;
   let restam = orcamento;

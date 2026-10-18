@@ -94,7 +94,11 @@ export function solicitarPath(
     coalesce: ck,
   };
   pedidos.set(entidadeId, pedido);
-  if (grade && !filaOrdem.includes(entidadeId)) filaOrdem.push(entidadeId);
+  if (grade) {
+    if (!filaOrdem.includes(entidadeId)) filaOrdem.push(entidadeId);
+  } else {
+    filaOrdem = filaOrdem.filter((id) => id !== entidadeId);
+  }
 }
 
 function promoverGradePronta() {
@@ -136,7 +140,7 @@ export function tickFilaPath(orcamento = PATH_EXPAND_POR_FRAME) {
     i++;
     const id = filaOrdem[0];
     const p = pedidos.get(id);
-    if (!p || p.estado === "pronto") {
+    if (!p || p.estado === "pronto" || !p.busca) {
       filaOrdem.shift();
       continue;
     }

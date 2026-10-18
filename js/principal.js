@@ -51,6 +51,7 @@ import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
 import { carregarVisuaisKits } from "./render/visuaisKit.js";
 import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
+import { tickPoeiraPasso } from "./fx/poeiraPasso.js";
 import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
 import { ligarMapaKanto, atualizarMapaKanto } from "./ui/mapaKanto.js";
 import { ligarDicasPainel } from "./ui/dicasPainel.js";
@@ -437,6 +438,7 @@ function loop(agora) {
   if (passeioAtivo() && !trava) atualizarPasseio(corpo, dt);
   atualizarAgente(agente, corpo, dt, 0, AGENTE_DIST_SEGUIR);
   tickPokemon(corpo, dt, agente.perfil);
+  if (!trava) tickPoeiraPasso(dt, corpo, agente);
   if (corpo._renasceu) {
     corpo._renasceu = false;
     agente.x = corpo.x + OFFSET_NPC.x;

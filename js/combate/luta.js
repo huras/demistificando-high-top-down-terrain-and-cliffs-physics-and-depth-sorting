@@ -1,7 +1,7 @@
 import { comecarEsquiva, criarAtor, emAvanco, emEsquiva, emRecuo, equiparGolpes, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
 import { cancelarConjuracao, impactoProjetil, tentarGolpe, tickConjuracao } from "../pokemon/combate/executor.js";
 import { limparKi } from "../pokemon/combate/ki.js";
-import { limparParticulas, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
+import { limparParticulas, poeiraDash, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { tickEmocoes } from "../pokemon/emocoes.js";
 import { flutuar, limparFlutuantes, tickFlutuantes } from "../pokemon/flutuantes.js";
@@ -272,6 +272,20 @@ function limparCampo() {
   limparKi();
 }
 
+function soltarPoeiraDash(ator, dt) {
+  if (!emEsquiva(ator)) {
+    ator._poeiraAcum = 0;
+    ator._poeiraNoDash = false;
+    return;
+  }
+  const primeiro = !ator._poeiraNoDash;
+  ator._poeiraNoDash = true;
+  ator._poeiraAcum = (ator._poeiraAcum || 0) + dt;
+  if (!primeiro && ator._poeiraAcum < 0.04) return;
+  ator._poeiraAcum = 0;
+  poeiraDash(ator.x, ator.y, ator.esquivaDirX || 0, ator.esquivaDirY || 0, primeiro);
+}
+
 function soltarRastros() {
   const tiros = projeteisVivos();
   for (let i = 0; i < tiros.length; i++) {
@@ -379,6 +393,8 @@ export function tickLuta(dt) {
 
   tickPassivo(esquerda, passo, agora);
   tickPassivo(direita, passo, agora);
+  soltarPoeiraDash(esquerda, passo);
+  soltarPoeiraDash(direita, passo);
   limitarArena(esquerda);
   limitarArena(direita);
 

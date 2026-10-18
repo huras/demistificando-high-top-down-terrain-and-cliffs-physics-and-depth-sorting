@@ -104,20 +104,27 @@ export function integrarComando(ator, alvo, dt) {
     const faixa = regua(ator, hab);
     const sentido = sentidoParada(q.d, faixa.parada, faixa.forma);
     if (sentido === 0) {
-      ator.vx = 0;
-      ator.vy = 0;
-      ator.andando = false;
-      return;
-    }
-    const aoLongo = mag > 0.2 ? (cx * q.fx + cy * q.fy) / mag : 0;
-    const concorda = sentido > 0 ? aoLongo > 0.15 : aoLongo < -0.15;
-    if (!concorda) {
-      dirX = q.fx * sentido;
-      dirY = q.fy * sentido;
+      const lat = cx * q.lx + cy * q.ly;
+      if (Math.abs(lat) < 0.2) {
+        ator.vx = 0;
+        ator.vy = 0;
+        ator.andando = false;
+        return;
+      }
+      dirX = q.lx * Math.sign(lat);
+      dirY = q.ly * Math.sign(lat);
       mag = 1;
+    } else {
+      const aoLongo = mag > 0.2 ? (cx * q.fx + cy * q.fy) / mag : 0;
+      const concorda = sentido > 0 ? aoLongo > 0.15 : aoLongo < -0.15;
+      if (!concorda) {
+        dirX = q.fx * sentido;
+        dirY = q.fy * sentido;
+        mag = 1;
+      }
+      if (sentido > 0) passo = Math.min(passo, Math.max(0, q.d - faixa.parada));
+      else passo = Math.min(passo, Math.max(0, faixa.parada - q.d));
     }
-    if (sentido > 0) passo = Math.min(passo, Math.max(0, q.d - faixa.parada));
-    else passo = Math.min(passo, Math.max(0, faixa.parada - q.d));
   } else if (mag < 0.2) {
     ator.vx = 0;
     ator.vy = 0;

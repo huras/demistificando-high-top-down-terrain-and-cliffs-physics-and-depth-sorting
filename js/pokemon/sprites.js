@@ -80,7 +80,10 @@ function encolher() {
   if (velho) cache.delete(velho.id);
 }
 
+const SEM_ATLAS = Object.freeze({ id: "", estado: "falhou", uso: 0, anims: null });
+
 export function garantirAtlas(dex, shiny) {
+  if ((dex | 0) <= 0) return SEM_ATLAS;
   const id = idPack(dex, shiny);
   let item = cache.get(id);
   if (!item) {

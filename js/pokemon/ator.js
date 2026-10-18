@@ -90,7 +90,8 @@ export function equiparGolpe(ator, chave) {
 
 export function ppMaximo(nivel, velocidade) {
   const speBonus = Math.round(((velocidade || 50) - 50) * 0.06);
-  return Math.max(8, Math.round(20 + nivel * 0.25 + speBonus));
+  const cheio = Math.max(8, Math.round(20 + nivel * 0.25 + speBonus));
+  return Math.max(3, Math.round((cheio / 3) * 1.3));
 }
 
 /**
@@ -356,11 +357,16 @@ export function passoEsquiva(ator, dt) {
   integrarEsquiva(ator, dt);
 }
 
+function emMovimento(ator) {
+  return !!(ator.andando || (ator.esquivaRestante || 0) > 0 || (ator.avancoRestante || 0) > 0);
+}
+
 export function recarregarBarraEsquiva(ator, dt) {
   if (!ator || (ator.esquivaRestante || 0) > 0) return;
   const vel = Math.max(1, ator.stats?.velocidade || 50);
   const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
-  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 10);
+  const ritmo = ator.andando ? 1.25 : 1;
+  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 10 * ritmo);
 }
 
 export function tickPassivo(ator, dt, agora) {
@@ -377,7 +383,8 @@ export function tickPassivo(ator, dt, agora) {
     ator.andando = false;
     return;
   }
-  const regen = (1 / 10) * (1 / escalaRecarga(ator.stats.velocidade));
+  let regen = (1 / 10) * (1 / escalaRecarga(ator.stats.velocidade));
+  if (emMovimento(ator)) regen += 1;
   ator.pp = Math.min(ator.ppMax, ator.pp + regen * dt);
   recarregarBarraEsquiva(ator, dt);
   if (ator.cdBasico > 0) ator.cdBasico = Math.max(0, ator.cdBasico - dt);

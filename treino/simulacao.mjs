@@ -225,14 +225,20 @@ function acertou(p, ator) {
   return dx * dx + dy * dy <= r * r;
 }
 
-export function avaliarEsquiva(modo, episodios = 16) {
+function cenaEsquiva(modo, episodios, comGolpes) {
   const dt = 1 / 30;
   const intervalo = 1.6;
   let tiros = 0;
   let salvos = 0;
   for (let e = 0; e < episodios; e++) {
     const ang = (e / episodios) * Math.PI * 2;
-    const ator = lutador({ x: 0, y: 0, faccao: "a", usaDistancia: false, usaCorpo: false });
+    const ator = lutador({
+      x: 0,
+      y: 0,
+      faccao: "a",
+      usaDistancia: comGolpes,
+      usaCorpo: comGolpes,
+    });
     const alvo = lutador({
       x: Math.cos(ang) * 6,
       y: Math.sin(ang) * 6,
@@ -275,6 +281,13 @@ export function avaliarEsquiva(modo, episodios = 16) {
     }
   }
   return tiros > 0 ? salvos / tiros : 0;
+}
+
+/** O pior dos dois: sem golpe e com tiro pronto, como na arena. */
+export function avaliarEsquiva(modo, episodios = 16) {
+  const seco = cenaEsquiva(modo, episodios, false);
+  const luta = cenaEsquiva(modo, episodios, true);
+  return Math.min(seco, luta);
 }
 
 export function avaliarAcerto(modo, n = 24) {

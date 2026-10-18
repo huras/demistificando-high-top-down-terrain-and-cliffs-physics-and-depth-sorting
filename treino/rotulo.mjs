@@ -34,9 +34,16 @@ export function rotulo(hab, ator, alvo, tiros, dst) {
   }
   const faixa = regua(ator, hab);
   const sentido = sentidoParada(d, faixa.parada, faixa.forma);
-  dst[0] = sentido * ALVO_REDE;
-  dst[1] = 0;
-  dst[2] = sentido === 0 ? -ALVO_REDE : ALVO_REDE;
+  const circular = hab === "atirar" && sentido === 0;
+  if (circular) {
+    dst[0] = 0;
+    dst[1] = ALVO_REDE;
+    dst[2] = ALVO_REDE;
+  } else {
+    dst[0] = sentido * ALVO_REDE;
+    dst[1] = 0;
+    dst[2] = sentido === 0 ? -ALVO_REDE : ALVO_REDE;
+  }
   if (hab !== "atirar") return;
   const vel = faixa.vel || 14;
   const tempo = d / vel;
@@ -102,6 +109,7 @@ export function prepararAmostra(hab, ator, alvo, tiros, rng) {
   if (ator.golpes[1]) ator.golpes[1].cd = rng() < 0.45 ? rng() * 1.2 : 0;
   if (hab === "perseguir") ator.usaDistancia = rng() < 0.5;
   if (hab === "atirar") ator.usaCorpo = rng() < 0.5;
+  if (hab === "perseguir" || hab === "atirar") ator.pp = rng() < 0.4 ? rng() * 0.9 : 30;
   if (hab === "fugir") {
     ator.usaCorpo = rng() < 0.45;
     ator.hp = rng() < 0.5 ? 15 : ator.hp;
@@ -117,22 +125,40 @@ export function prepararAmostra(hab, ator, alvo, tiros, rng) {
   alvo.y = ator.y + Math.sin(ang2) * dist;
   limitarArena(ator);
   limitarArena(alvo);
+  if (hab === "atirar" && rng() < 0.42) {
+      const parada = regua(ator, hab).parada;
+      afastar(ator, alvo, Math.max(0.35, parada), rng() * Math.PI * 2);
+      const sorte = rng();
+      if (sorte < 0.45) {
+        ator.esquiva = rng() * 0.65;
+        ator.pp = 30;
+      } else if (sorte < 0.8) {
+        ator.esquiva = 1;
+        ator.pp = rng() * 0.85;
+        ator.usaDistancia = true;
+      } else {
+        ator.esquiva = 1;
+        ator.pp = 30;
+      }
+  }
   tiros.length = 0;
   if (hab !== "esquivar") return;
   ator.esquiva = rng() < 0.88 ? 1 : rng() * 0.85;
   ator.pp = 30;
   const tipo = rng();
-  if (tipo < 0.28) {
-    ator.usaCorpo = false;
-    ator.usaDistancia = false;
-    ator.hp = 80 + rng() * 20;
+  if (tipo < 0.46) {
+    ator.usaCorpo = true;
+    ator.usaDistancia = true;
+    ator.pp = rng() < 0.35 ? rng() * 0.8 : 30;
+    ator.esquiva = 1;
+    ator.hp = 70 + rng() * 30;
     const dir = rng() * Math.PI * 2;
     const c = Math.cos(dir);
     const s = Math.sin(dir);
-    const t = 0.08 + rng() * 0.28;
-    const lat = (rng() < 0.5 ? -1 : 1) * (0.15 + rng() * 0.85);
+    const t = 0.05 + rng() * 0.38;
+    const lat = (rng() < 0.5 ? -1 : 1) * rng() * 1.05;
     const vel = 14;
-    afastar(ator, alvo, 5.2 + rng() * 1.4, dir + Math.PI);
+    afastar(ator, alvo, 4.2 + rng() * 2.2, dir + Math.PI);
     tiros.push({
       x: ator.x - c * vel * t - s * lat,
       y: ator.y - s * vel * t + c * lat,
@@ -146,15 +172,17 @@ export function prepararAmostra(hab, ator, alvo, tiros, rng) {
     });
     return;
   }
-  if (tipo < 0.5) {
-    ator.usaCorpo = rng() < 0.55;
-    ator.usaDistancia = rng() < 0.65;
-    ator.hp = 40 + rng() * 60;
+  if (tipo < 0.64) {
+    ator.usaCorpo = false;
+    ator.usaDistancia = false;
+    ator.pp = 30;
+    ator.esquiva = 1;
+    ator.hp = 80 + rng() * 20;
     const dir = rng() * Math.PI * 2;
     const c = Math.cos(dir);
     const s = Math.sin(dir);
-    const t = 0.06 + rng() * 0.36;
-    const lat = (rng() * 2 - 1) * 1.05;
+    const t = 0.05 + rng() * 0.38;
+    const lat = (rng() < 0.5 ? -1 : 1) * rng() * 1.05;
     const vel = 14;
     afastar(ator, alvo, 2.4 + rng() * 4.2, dir + Math.PI);
     tiros.push({
