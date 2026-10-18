@@ -90,16 +90,26 @@ function uvChao(p) {
 }
 
 function emitirQuad(lote, q, wx, wy, h) {
-  const a = noMundo(q[0], wx, wy);
-  const b = noMundo(q[1], wx, wy);
-  const c = noMundo(q[2], wx, wy);
-  const d = noMundo(q[3], wx, wy);
-  const oa = oclusaoDe(q[0].y, h);
-  const ob = oclusaoDe(q[1].y, h);
-  const oc = oclusaoDe(q[2].y, h);
-  const od = oclusaoDe(q[3].y, h);
-  tri(lote, a, b, c, uvChao(a), uvChao(b), uvChao(c), oa, ob, oc, [0, 1, 0]);
-  tri(lote, b, d, c, uvChao(b), uvChao(d), uvChao(c), ob, od, oc, [0, 1, 0]);
+  const pts = q.map((p) => noMundo(p, wx, wy));
+  const oc = q.map((p) => oclusaoDe(p.y, h));
+  const uv = pts.map(uvChao);
+  if (q.length === 3) {
+    tri(lote, pts[0], pts[1], pts[2], uv[0], uv[1], uv[2], oc[0], oc[1], oc[2], [0, 1, 0]);
+    return;
+  }
+  tri(lote, pts[0], pts[1], pts[2], uv[0], uv[1], uv[2], oc[0], oc[1], oc[2], [0, 1, 0]);
+  tri(lote, pts[1], pts[3], pts[2], uv[1], uv[3], uv[2], oc[1], oc[3], oc[2], [0, 1, 0]);
+}
+
+function chanfrosDe(viz) {
+  const h = viz[4];
+  const convexo = (hX, hZ, hXZ) => hX >= h - 1e-4 && hZ >= h - 1e-4 && hXZ < h - 1e-4;
+  return {
+    nw: convexo(viz[3], viz[1], viz[0]),
+    ne: convexo(viz[5], viz[1], viz[2]),
+    sw: convexo(viz[3], viz[7], viz[6]),
+    se: convexo(viz[5], viz[7], viz[8]),
+  };
 }
 
 function indiceCanto(lado, perp) {
@@ -223,6 +233,7 @@ export function carimbarBorda(loteTopo, loteParede, grade, lx, ly, wx, wy, _y, _
   const viz = vizinhanca(grade, lx, ly, wx, wy);
   const h = viz[4];
   const cap = capDe(viz);
+  const chanfros = chanfrosDe(viz);
   const { topo, saia } = quadsDaCelula(viz);
   for (let i = 0; i < saia.length; i++) emitirQuad(loteParede, saia[i], wx, wy, h);
   for (let i = 0; i < topo.length; i++) {
@@ -263,7 +274,7 @@ export function carimbarBorda(loteTopo, loteParede, grade, lx, ly, wx, wy, _y, _
     quedas.push({ nome, yBase: hViz, queda: h - hViz });
   }
 
-  return { cap, quedas };
+  return { cap, chanfros, quedas };
 }
 
 function unico(valores) {

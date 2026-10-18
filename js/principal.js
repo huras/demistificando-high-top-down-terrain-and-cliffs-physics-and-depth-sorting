@@ -53,6 +53,8 @@ import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
 import { tickPoeiraPasso } from "./fx/poeiraPasso.js";
 import { tickFxAgua } from "./fx/fxAgua.js";
+import { tickAguaPulo } from "./jogo/som/aguaPulo.js";
+import { tickPassos } from "./jogo/som/passos.js";
 import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
 import { ligarMapaKanto, atualizarMapaKanto } from "./ui/mapaKanto.js";
 import { ligarMapaMundo, mapaAberto, tickMapaMundo } from "./ui/mapa/mapaMundo.js";
@@ -479,6 +481,8 @@ function loop(agora) {
     camera.pronta = false;
     atualizarStreaming(corpo.x, corpo.y, undefined, true);
   }
+  if (!trava) tickPassos(dt, corpo, agente);
+  if (!trava) tickAguaPulo(dt, corpo, agente);
   despenetrarCorpos();
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();

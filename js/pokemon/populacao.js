@@ -22,6 +22,7 @@ import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
+import { aquecerGrito, tocarGrito } from "../jogo/som/gritos.js";
 
 const POOL = [
   "pidgey",
@@ -403,6 +404,8 @@ function tentarGrama(corpo) {
   ator.modo = "agro";
   grama.push(ator);
   cooldownGrama = POKEMON.COOLDOWN_GRAMA;
+  aquecerGrito(ator);
+  tocarGrito(ator, { x: ator.x, y: ator.y, importante: true });
 }
 
 function tickGrama() {

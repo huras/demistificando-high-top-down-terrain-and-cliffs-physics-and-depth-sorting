@@ -8,6 +8,7 @@ import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
 import { folhaGolpe } from "./folhasGolpe.js";
 import { marcarPose } from "../sprites.js";
 import { cortaVisada } from "../../combate/arenas.js";
+import { tocarGrito } from "../../jogo/som/gritos.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
 
@@ -544,6 +545,7 @@ function avancarNoGolpe(ator, alvo) {
 }
 
 function executar(ator, slot, alvo, agora, efeitos) {
+  tocarGrito(ator, { x: ator.x, y: ator.y, importante: true });
   const mira = miraDoGolpe(ator, slot, alvo);
   comecarPreparacao(ator, slot, mira.mx, mira.my, agora, efeitos);
 }

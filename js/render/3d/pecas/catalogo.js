@@ -74,6 +74,13 @@ function ponto(ys, ix, iz) {
  * Quads da superfície. `topo` fica na textura do chão, `saia` na do penhasco.
  * Cada quad: quatro pontos em ordem (x0,z0), (x0,z1), (x1,z0), (x1,z1).
  */
+function quinaExterna(ix, iz, iBaixo) {
+  if (iBaixo === 0) return ix === 0 && iz === 0;
+  if (iBaixo === 1) return ix === 0 && iz === 2;
+  if (iBaixo === 2) return ix === 2 && iz === 0;
+  return ix === 2 && iz === 2;
+}
+
 export function quadsDaCelula(viz) {
   const h = viz[4];
   const ys = alturasGrade(viz);
@@ -82,11 +89,18 @@ export function quadsDaCelula(viz) {
   for (let iz = 0; iz < 3; iz++) {
     for (let ix = 0; ix < 3; ix++) {
       const q = [ponto(ys, ix, iz), ponto(ys, ix, iz + 1), ponto(ys, ix + 1, iz), ponto(ys, ix + 1, iz + 1)];
-      let baixo = false;
+      const baixos = [];
       for (let i = 0; i < 4; i++) {
-        if (q[i].y < h - 1e-4) baixo = true;
+        if (q[i].y < h - 1e-4) baixos.push(i);
       }
-      (baixo ? saia : topo).push(q);
+      if (baixos.length === 1 && quinaExterna(ix, iz, baixos[0])) {
+        const i = baixos[0];
+        const adj = i === 0 || i === 3 ? [1, 2] : [0, 3];
+        const oposto = i === 0 ? 3 : i === 3 ? 0 : i === 1 ? 2 : 1;
+        saia.push([q[adj[0]], q[i], q[adj[1]]]);
+        topo.push([q[oposto], q[adj[0]], q[adj[1]]]);
+      } else if (baixos.length) saia.push(q);
+      else topo.push(q);
     }
   }
   return { topo, saia, h };

@@ -2,7 +2,7 @@
  * Mapa de Kanto em tela cheia. M abre e fecha. Arraste, scroll e o zoom
  * trocam o quanto do ruído do terreno cabe na tela.
  */
-import { AREA_KANTO, EXTENSAO_KANTO, zonaNoMundo } from "../../mundo/regiao/grafoKanto.js";
+import { AREA_KANTO, CENTRO_AREA, EXTENSAO_KANTO, zonaNoMundo } from "../../mundo/regiao/grafoKanto.js";
 import { estado } from "../../jogo/estado.js";
 import { comecarSubida, teleporteOcupado } from "../../jogo/teleporte.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
@@ -135,10 +135,34 @@ export function zoomMapa(fator) {
 
 export function abrirMapa(x, y) {
   if (!raiz) return;
+  if (estado.interior && Number.isFinite(estado.interior.ax)) {
+    x = estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5;
+    y = estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5;
+  }
   cx = x;
   cy = y;
   aberto = true;
   raiz.hidden = false;
+  soltarFoco();
+}
+
+function soltarFoco() {
+  const limpar = () => {
+    const ativo = document.activeElement;
+    if (!ativo || ativo === document.body || ativo === document.documentElement) return;
+    const tag = ativo.tagName;
+    if (
+      tag === "INPUT" ||
+      tag === "SELECT" ||
+      tag === "TEXTAREA" ||
+      tag === "BUTTON" ||
+      raiz?.contains(ativo)
+    ) {
+      ativo.blur();
+    }
+  };
+  limpar();
+  requestAnimationFrame(limpar);
 }
 
 export function fecharMapa() {
@@ -149,6 +173,7 @@ export function fecharMapa() {
   tela?.classList.remove("mapa-mundo__tela--arraste");
   tela?.classList.remove("mapa-mundo__tela--cidade");
   raiz.hidden = true;
+  soltarFoco();
 }
 
 export function ligarMapaMundo() {
@@ -207,7 +232,12 @@ export function ligarMapaMundo() {
 }
 
 export function tickMapaMundo(px, py, dt = 1 / 60) {
+  try {
   tickAtlas();
+  if (estado.interior && Number.isFinite(estado.interior.ax)) {
+    px = estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5;
+    py = estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5;
+  }
   jogadorX = px;
   jogadorY = py;
   if (!aberto || !tela) return;
@@ -256,5 +286,11 @@ export function tickMapaMundo(px, py, dt = 1 / 60) {
     const zona = zonaNoMundo(px, py);
     const nome = zona?.nome || "Kanto";
     if (titulo.textContent !== nome) titulo.textContent = nome;
+  }
+  } catch (err) {
+    console.error(err);
+    viagem = null;
+    aberto = false;
+    if (raiz) raiz.hidden = true;
   }
 }

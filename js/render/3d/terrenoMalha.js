@@ -27,7 +27,7 @@ import { kitDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { urlPele } from "../../mundo/bioma/detalhe.js";
 import { aplicarPeleSplat } from "./peleSplat.js";
 import { pecasNoMundo, pesoSplat } from "./peleAutotile.js";
-import { PASSOS } from "./pecas/catalogo.js";
+import { LABIO, PASSOS } from "./pecas/catalogo.js";
 import { carimbarBorda, carimbarPlano, planaNo } from "./pecas/carimbar.js";
 import { fundirChao } from "./pecas/fundir.js";
 import { alturaLocal, gradeDoChunk, mascaraLocal } from "./pecas/mascara.js";
@@ -297,40 +297,6 @@ function cortesConvexosL(wx, wy, lz) {
     out.push({ dir: "nw", i });
   }
   return out;
-}
-
-/** Triângulo vertical/inclinado que fecha a mitra do canto convexo. */
-function triMitraConvexo(wx, wy, wz, dir, i) {
-  const y0 = wz;
-  const y1 = wz + 1 - INSET_TOPO;
-  if (dir === "se") {
-    // P0 canto baixo do ar; TB = topo oeste do bevel S de B; TC = topo norte do bevel E de C
-    return triLivre(
-      { x: wx + 1, y: y0, z: wy + 1 },
-      { x: wx + 1, y: y1, z: wy + 1 - i },
-      { x: wx + 1 - i, y: y1, z: wy + 1 },
-    );
-  }
-  if (dir === "sw") {
-    return triLivre(
-      { x: wx, y: y0, z: wy + 1 },
-      { x: wx + i, y: y1, z: wy + 1 },
-      { x: wx, y: y1, z: wy + 1 - i },
-    );
-  }
-  if (dir === "ne") {
-    return triLivre(
-      { x: wx + 1, y: y0, z: wy },
-      { x: wx + 1 - i, y: y1, z: wy },
-      { x: wx + 1, y: y1, z: wy + i },
-    );
-  }
-  // nw
-  return triLivre(
-    { x: wx, y: y0, z: wy },
-    { x: wx, y: y1, z: wy + i },
-    { x: wx + i, y: y1, z: wy },
-  );
 }
 
 /**
@@ -754,6 +720,53 @@ function clipPeca(peca, x0, z0, x1, z1) {
   };
 }
 
+function pushTriChao(lote, y, pts, uvs, splat) {
+  lote._splat = splat;
+  lote._n = [0, 1, 0];
+  for (let i = 0; i < 3; i++) lote.pos.push(pts[i][0], y, pts[i][1]);
+  for (let i = 0; i < 3; i++) lote.uv.push(uvs[i].bu, uvs[i].bv);
+  for (let i = 0; i < 3; i++) lote.nor.push(0, 1, 0);
+  if (lote.cor) {
+    const r = lote._rgb ? lote._rgb[0] : 1;
+    const g = lote._rgb ? lote._rgb[1] : 1;
+    const b = lote._rgb ? lote._rgb[2] : 1;
+    for (let i = 0; i < 3; i++) lote.cor.push(r, g, b);
+  }
+  empurrarSplat(lote, 3);
+  if (lote.pele) {
+    for (let i = 0; i < 3; i++) lote.pele.push(uvs[i].pu, uvs[i].pv);
+  }
+}
+
+function uvNaFaixa(x, z, x0, z0, x1, z1, peca) {
+  const tx = (x - x0) / ((x1 - x0) || 1);
+  const tz = (z - z0) / ((z1 - z0) || 1);
+  const mistura = (a, b, t) => a + (b - a) * t;
+  return {
+    bu: peca ? mistura(peca.bu0, peca.bu1, tx) : x,
+    bv: peca ? mistura(peca.bv1, peca.bv0, tz) : 1 - z,
+    pu: peca ? mistura(peca.pu0, peca.pu1, tx) : 0,
+    pv: peca ? mistura(peca.pv1, peca.pv0, tz) : 0,
+  };
+}
+
+function cantoExterno(xa, za, xb, zb) {
+  const l = LABIO;
+  const e = 1e-4;
+  if (Math.abs(xb - 1) < e && Math.abs(zb - 1) < e && Math.abs(xa - (1 - l)) < e && Math.abs(za - (1 - l)) < e) return "se";
+  if (Math.abs(xa) < e && Math.abs(zb - 1) < e && Math.abs(xb - l) < e && Math.abs(za - (1 - l)) < e) return "sw";
+  if (Math.abs(xb - 1) < e && Math.abs(za) < e && Math.abs(xa - (1 - l)) < e && Math.abs(zb - l) < e) return "ne";
+  if (Math.abs(xa) < e && Math.abs(za) < e && Math.abs(xb - l) < e && Math.abs(zb - l) < e) return "nw";
+  return "";
+}
+
+function triSoloChanfro(canto, xa, za, xb, zb) {
+  if (canto === "se") return [[xa, za], [xa, zb], [xb, za]];
+  if (canto === "sw") return [[xb, za], [xa, za], [xb, zb]];
+  if (canto === "ne") return [[xa, zb], [xb, zb], [xa, za]];
+  return [[xb, zb], [xb, za], [xa, zb]];
+}
+
 function pushQuadChao(lote, x0, y, z0, x1, z1, peca, splat) {
   lote._splat = splat;
   lote._n = [0, 1, 0];
@@ -792,7 +805,7 @@ function amostrasGrade(a, b) {
   return out;
 }
 
-function subdividirChao(lote, wx, wy, y, x0, z0, x1, z1, peca) {
+function subdividirChao(lote, wx, wy, y, x0, z0, x1, z1, peca, chanfros) {
   const xs = amostrasGrade(x0, x1);
   const zs = amostrasGrade(z0, z1);
   const largura = x1 - x0 || 1;
@@ -804,6 +817,19 @@ function subdividirChao(lote, wx, wy, y, x0, z0, x1, z1, peca) {
       const xb = xs[ix + 1];
       const za = zs[iz];
       const zb = zs[iz + 1];
+      const canto = cantoExterno(xa, za, xb, zb);
+      if (canto && chanfros?.[canto]) {
+        const local = triSoloChanfro(canto, xa, za, xb, zb);
+        const uvs = local.map(([x, z]) => uvNaFaixa(x, z, x0, z0, x1, z1, peca));
+        pushTriChao(
+          lote,
+          y,
+          local.map(([x, z]) => [wx + x, wy + z]),
+          uvs,
+          peca ? 1 : 0,
+        );
+        continue;
+      }
       const tx0 = (xa - x0) / largura;
       const tx1 = (xb - x0) / largura;
       const tz0 = (za - z0) / altura;
@@ -835,16 +861,16 @@ function subdividirChao(lote, wx, wy, y, x0, z0, x1, z1, peca) {
   }
 }
 
-function emitirTopo(lote, wx, wy, y, x0, z0, x1, z1) {
+function emitirTopo(lote, wx, wy, y, x0, z0, x1, z1, chanfros) {
   const pecas = pecasNoMundo(wx, wy);
   if (!pecas) {
-    subdividirChao(lote, wx, wy, y, x0, z0, x1, z1, null);
+    subdividirChao(lote, wx, wy, y, x0, z0, x1, z1, null, chanfros);
     return;
   }
   for (let i = 0; i < pecas.length; i++) {
     const recorte = clipPeca(pecas[i], x0, z0, x1, z1);
     if (!recorte) continue;
-    subdividirChao(lote, wx, wy, y, recorte.x0, recorte.z0, recorte.x1, recorte.z1, recorte);
+    subdividirChao(lote, wx, wy, y, recorte.x0, recorte.z0, recorte.x1, recorte.z1, recorte, chanfros);
   }
 }
 
@@ -1042,6 +1068,33 @@ function quadEspuma(x0, z0, x1, z1, y, v00, v10, v11, v01) {
   return geo;
 }
 
+/** Triângulo da quina. O vértice da terra fica com costa 1. */
+function triEspuma(ax, az, bx, bz, cx, cz, y, va, vb, vc) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute(
+    "position",
+    new THREE.BufferAttribute(new Float32Array([
+      ax, y, az,
+      bx, y, bz,
+      cx, y, cz,
+    ]), 3),
+  );
+  geo.setAttribute(
+    "uv",
+    new THREE.BufferAttribute(new Float32Array([0, va, 0, vb, 0, vc]), 2),
+  );
+  geo.setAttribute(
+    "color",
+    new THREE.BufferAttribute(new Float32Array([
+      va, va, va,
+      vb, vb, vb,
+      vc, vc, vc,
+    ]), 3),
+  );
+  geo.setIndex([0, 1, 2]);
+  return geo;
+}
+
 /**
  * Faixa só onde a água encosta na terra. O canto fecha o vão
  * entre duas bordas secas. A face da queda não entra aqui.
@@ -1051,7 +1104,11 @@ function empurrarEspuma(lista, wx, wy, y) {
   const sul = terraSeca(wx, wy + 1);
   const oeste = terraSeca(wx - 1, wy);
   const leste = terraSeca(wx + 1, wy);
-  if (!norte && !sul && !oeste && !leste) return;
+  const se = terraSeca(wx + 1, wy + 1);
+  const sw = terraSeca(wx - 1, wy + 1);
+  const ne = terraSeca(wx + 1, wy - 1);
+  const nw = terraSeca(wx - 1, wy - 1);
+  if (!norte && !sul && !oeste && !leste && !se && !sw && !ne && !nw) return;
 
   const x0 = wx;
   const x1 = wx + 1;
@@ -1086,6 +1143,22 @@ function empurrarEspuma(lista, wx, wy, y) {
   if (norte && oeste) {
     lista.push(quadEspuma(x0, z0, x0 + ESPUMA_LARGO, z0 + ESPUMA_LARGO, y, 1, 1, 0, 1));
   }
+
+  // Quina convexa: a terra só encosta na diagonal. As duas faixas vizinhas
+  // param na borda da célula e deixam este triângulo aberto.
+  const largo = ESPUMA_LARGO;
+  if (!sul && !leste && se) {
+    lista.push(triEspuma(x1, z1, x1 - largo, z1, x1, z1 - largo, y, 1, 0, 0));
+  }
+  if (!sul && !oeste && sw) {
+    lista.push(triEspuma(x0, z1, x0, z1 - largo, x0 + largo, z1, y, 1, 0, 0));
+  }
+  if (!norte && !leste && ne) {
+    lista.push(triEspuma(x1, z0, x1, z0 + largo, x1 - largo, z0, y, 1, 0, 0));
+  }
+  if (!norte && !oeste && nw) {
+    lista.push(triEspuma(x0, z0, x0 + largo, z0, x0, z0 + largo, y, 1, 0, 0));
+  }
 }
 
 function planoQueda(wx, wy, y0, y1, dir) {
@@ -1109,6 +1182,106 @@ function planoQueda(wx, wy, y0, y1, dir) {
   return geo;
 }
 
+/** Metade do quadrado do canto que continua sendo topo. A outra metade é o chanfro. */
+function triCantoTopo(lote, wx, wy, y, ax, az, bx, bz, cx, cz) {
+  const pts = [
+    { x: wx + ax, y, z: wy + az, u: ax, v: 1 - az },
+    { x: wx + bx, y, z: wy + bz, u: bx, v: 1 - bz },
+    { x: wx + cx, y, z: wy + cz, u: cx, v: 1 - cz },
+  ];
+  const ux = pts[1].x - pts[0].x;
+  const uz = pts[1].z - pts[0].z;
+  const vx = pts[2].x - pts[0].x;
+  const vz = pts[2].z - pts[0].z;
+  if (uz * vx - ux * vz < 0) {
+    const tmp = pts[1];
+    pts[1] = pts[2];
+    pts[2] = tmp;
+  }
+  lote._n = [0, 1, 0];
+  lote.pos.push(
+    pts[0].x, y, pts[0].z,
+    pts[1].x, y, pts[1].z,
+    pts[2].x, y, pts[2].z,
+  );
+  lote.uv.push(pts[0].u, pts[0].v, pts[1].u, pts[1].v, pts[2].u, pts[2].v);
+  for (let k = 0; k < 3; k++) lote.nor.push(0, 1, 0);
+  if (lote.cor) {
+    const r = lote._rgb ? lote._rgb[0] : 1;
+    const g = lote._rgb ? lote._rgb[1] : 1;
+    const b = lote._rgb ? lote._rgb[2] : 1;
+    for (let k = 0; k < 3; k++) lote.cor.push(r, g, b);
+  }
+  empurrarSplat(lote, 3);
+  if (lote.pele) for (let k = 0; k < 6; k++) lote.pele.push(0);
+}
+
+function emitirTopoMenosCantos(lote, wx, wy, y, iW, iN, iE, iS, cortes) {
+  const x0 = iW;
+  const z0 = iN;
+  const x1 = 1 - iE;
+  const z1 = 1 - iS;
+  const c = { se: 0, sw: 0, ne: 0, nw: 0 };
+  for (let k = 0; k < cortes.length; k++) c[cortes[k].dir] = cortes[k].i;
+  const xa = x0 + Math.max(c.nw, c.sw);
+  const xb = x1 - Math.max(c.ne, c.se);
+  if (xb - xa > 1e-4 && z1 - z0 > 1e-4) emitirTopo(lote, wx, wy, y, xa, z0, xb, z1);
+  if (xa - x0 > 1e-4) {
+    const zn = z0 + c.nw;
+    const zs = z1 - c.sw;
+    if (zs - zn > 1e-4) emitirTopo(lote, wx, wy, y, x0, zn, xa, zs);
+    if (c.nw > 0) triCantoTopo(lote, wx, wy, y, xa, zn, xa, z0, x0, zn);
+    if (c.sw > 0) triCantoTopo(lote, wx, wy, y, xa, zs, x0, zs, xa, z1);
+  }
+  if (x1 - xb > 1e-4) {
+    const zn = z0 + c.ne;
+    const zs = z1 - c.se;
+    if (zs - zn > 1e-4) emitirTopo(lote, wx, wy, y, xb, zn, x1, zs);
+    if (c.ne > 0) triCantoTopo(lote, wx, wy, y, xb, zn, xb, z0, x1, zn);
+    if (c.se > 0) triCantoTopo(lote, wx, wy, y, xb, zs, xb, z1, x1, zs);
+  }
+}
+
+function empurrarMitras(lote, wx, wy, y0, y1, cortes) {
+  for (let k = 0; k < cortes.length; k++) {
+    const c = cortes[k];
+    const i = c.i;
+    if (c.dir === "se") {
+      pushTriParaFora(
+        lote,
+        { x: wx + 1, y: y0, z: wy + 1 },
+        { x: wx + 1, y: y1, z: wy + 1 - i },
+        { x: wx + 1 - i, y: y1, z: wy + 1 },
+        1, 0, 1,
+      );
+    } else if (c.dir === "sw") {
+      pushTriParaFora(
+        lote,
+        { x: wx, y: y0, z: wy + 1 },
+        { x: wx + i, y: y1, z: wy + 1 },
+        { x: wx, y: y1, z: wy + 1 - i },
+        -1, 0, 1,
+      );
+    } else if (c.dir === "ne") {
+      pushTriParaFora(
+        lote,
+        { x: wx + 1, y: y0, z: wy },
+        { x: wx + 1 - i, y: y1, z: wy },
+        { x: wx + 1, y: y1, z: wy + i },
+        1, 0, -1,
+      );
+    } else {
+      pushTriParaFora(
+        lote,
+        { x: wx, y: y0, z: wy },
+        { x: wx, y: y1, z: wy + i },
+        { x: wx + i, y: y1, z: wy },
+        -1, 0, -1,
+      );
+    }
+  }
+}
+
 function empurrarBevel(loteTop, loteFaces, wx, wy, wz, lateraisExpostas) {
   const i = insetTronco();
   const y0 = wz;
@@ -1119,7 +1292,9 @@ function empurrarBevel(loteTop, loteFaces, wx, wy, wz, lateraisExpostas) {
   const iN = exp.has("n") ? i : 0;
   const iE = exp.has("e") ? i : 0;
   const iW = exp.has("w") ? i : 0;
-  emitirTopo(loteTop, wx, wy, y1, iW, iN, 1 - iE, 1 - iS);
+  const cortesL = cortesConvexosL(wx, wy, wz);
+  emitirTopoMenosCantos(loteTop, wx, wy, y1, iW, iN, iE, iS, cortesL);
+  empurrarMitras(loteFaces, wx, wy, y0, y1, cortesL);
   if (exp.has("s")) {
     const xs = faixaComCortes(wx, wx + 1, cortesNoVizinho(wx, wy, y0, 0, 1));
     const zTopo = wy + 1 - iS;
@@ -1399,9 +1574,7 @@ function* construirGeosChunk(chunk) {
               for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
                 extrasTop.push(comSplat(pintarPlano(t, loteTop._rgb), 0));
               }
-              for (const c of cortesL) {
-                faces.push(pintarPlano(triMitraConvexo(wx, wy, lz, c.dir, c.i), loteFaces._rgb));
-              }
+              empurrarMitras(loteFaces, wx, wy, lz, yTopo, cortesL);
             } else {
               pushTopoLote(loteTop, wx, wy, lz + 1);
               for (const lat of lateraisAr) {
@@ -1511,7 +1684,7 @@ function* construirGeosChunk(chunk) {
         emitirTopo(sacoTopo.lote, wx, wy, y, 0, 0, 1, 1);
         continue;
       }
-      const { cap } = carimbarBorda(
+      const { cap, chanfros } = carimbarBorda(
         sacoTopo.lote,
         sacoParede.lote,
         grade,
@@ -1524,7 +1697,7 @@ function* construirGeosChunk(chunk) {
         !splat,
       );
       if (splat && cap.x1 - cap.x0 > 1e-4 && cap.z1 - cap.z0 > 1e-4) {
-        emitirTopo(sacoTopo.lote, wx, wy, y, cap.x0, cap.z0, cap.x1, cap.z1);
+        emitirTopo(sacoTopo.lote, wx, wy, y, cap.x0, cap.z0, cap.x1, cap.z1, chanfros);
       }
     }
   }

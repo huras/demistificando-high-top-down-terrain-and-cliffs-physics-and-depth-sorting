@@ -32,7 +32,10 @@ export function criarTeleporte3d(scene) {
   });
   mat.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying float vAlfa;")
+      .replace(
+        "#include <common>",
+        "#include <common>\nattribute float alfaPeca;\nvarying float vAlfa;",
+      )
       .replace("#include <begin_vertex>", "#include <begin_vertex>\nvAlfa = alfaPeca;");
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", "#include <common>\nvarying float vAlfa;")

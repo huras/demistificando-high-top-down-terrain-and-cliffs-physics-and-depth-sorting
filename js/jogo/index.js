@@ -47,8 +47,11 @@ let toastAte = 0;
 const TECLAS_PARTY = ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6"];
 
 function campoFocado() {
-  const tag = document.activeElement?.tagName;
-  return tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+  const el = document.activeElement;
+  if (el?.tagName === "TEXTAREA") return true;
+  if (el?.tagName !== "INPUT") return false;
+  const tipo = el.type;
+  return tipo === "text" || tipo === "search" || tipo === "number" || tipo === "password";
 }
 
 export function jogoTravaMundo() {

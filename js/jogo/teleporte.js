@@ -245,8 +245,19 @@ function marcarMon(valor) {
   monMarcado = mon;
 }
 
+function encerrar(ctx) {
+  fase = "ocioso";
+  faseT = 0;
+  alfa = 1;
+  pecasN = 0;
+  ancoras = null;
+  soltarCamera(ctx);
+  marcarMon(null);
+}
+
 export function tickTeleporte(dt, ctx) {
   if (fase === "ocioso") return;
+  try {
   faseT += Math.min(0.05, dt || 0);
   if (fase === "subida" && faseT >= SUBIDA) {
     cortar(ctx);
@@ -254,13 +265,7 @@ export function tickTeleporte(dt, ctx) {
     faseT = 0;
   }
   if (fase === "descida" && faseT >= DESCIDA) {
-    fase = "ocioso";
-    faseT = 0;
-    alfa = 1;
-    pecasN = 0;
-    ancoras = null;
-    soltarCamera(ctx);
-    marcarMon(null);
+    encerrar(ctx);
     return;
   }
   const subindo = fase === "subida";
@@ -270,4 +275,8 @@ export function tickTeleporte(dt, ctx) {
   aplicarCamera(ctx, extra);
   montarPecas(subindo ? origensVivas(ctx) : ancoras || origensVivas(ctx), u, subindo);
   marcarMon(alfa);
+  } catch (err) {
+    console.error(err);
+    encerrar(ctx);
+  }
 }

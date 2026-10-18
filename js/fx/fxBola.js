@@ -1,6 +1,7 @@
 /** Burst de soltar e recolher. Piscina fixa, os mesmos números do Pokémon AI. */
 
-import { tocarEnvioBola, tocarGrito, tocarRecolherBola, tocarShiny } from "../jogo/audio.js";
+import { tocarEnvioBola, tocarRecolherBola, tocarShiny } from "../jogo/audio.js";
+import { tocarGrito } from "../jogo/som/gritos.js";
 
 const CAP_FAISCA = 72;
 const CAP_ANEL = 8;
@@ -204,7 +205,7 @@ function flashMundo(x, y, z, raio, tipo, vida) {
 export function soltarFxEnvio(ator) {
   tocarEnvioBola();
   if (ator?.shiny) tocarShiny();
-  tocarGrito(ator);
+  tocarGrito(ator, { x: ator?.x, y: ator?.y, importante: true });
   if (!pode(ator)) return;
   const acento = acentoDe(ator);
   const z = ator.elevacao ?? ator.z ?? 0;

@@ -23,6 +23,12 @@ import { definirCorposAtores } from "../fisica/obstaculos.js";
 import { atualizarPopulacao, selvagensAtivos } from "./populacao.js";
 import { tickVisual } from "./sprites.js";
 import { tickFxBola } from "../fx/fxBola.js";
+import { aoLiberarSom } from "../jogo/audio.js";
+import { aquecerGrito, tickGritosAmbiente } from "../jogo/som/gritos.js";
+
+aoLiberarSom(() => {
+  aquecerGrito(pokemonNoCampo());
+});
 
 let agora = 0;
 let ligado = false;
@@ -110,6 +116,8 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   atualizarParty(corpo, passo, agora, perfilSeguidor);
   const mon = pokemonDeployado();
   const selvagens = selvagensAtivos();
+  aquecerGrito(pokemonNoCampo());
+  tickGritosAmbiente(passo, corpo, selvagens);
   atualizarIa(selvagens, mon, treinador, passo);
 
   const atores = mon ? selvagens.concat(mon) : selvagens;

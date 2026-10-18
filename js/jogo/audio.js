@@ -1,5 +1,11 @@
 /** Trilha, chuva e trovão. Os arquivos ficam no Pokemon AI e saem por /ref/music. */
 
+import {
+  anexarContexto,
+  definirMudoBarramento,
+  destravarBarramento,
+} from "./som/barramento.js";
+
 const REF = "/ref/music/";
 const VOL_BGM = 0.34;
 const VOL_CAMADA = 0.28;
@@ -71,8 +77,8 @@ let liberado = false;
 let abaixaBgm = 0;
 let ultimoShiny = 0;
 const stings = new Map();
-const gritos = new Map();
-const CAP_GRITO = 4;
+/** @type {Array<() => void>} */
+const aoLiberar = [];
 
 const PPQ_CURA = 120;
 const TEMPO_CURA = 454545 / 1e6;
@@ -216,13 +222,34 @@ function tocarCurto(el, volume) {
 
 function calarCurtos() {
   for (const el of stings.values()) el.pause();
-  for (const el of gritos.values()) el.pause();
+}
+
+function avisarLiberou() {
+  for (let i = 0; i < aoLiberar.length; i++) aoLiberar[i]();
+}
+
+/** O contexto único. O barramento de one-shots pendura o ganho mestre aqui. */
+export function contextoAudio() {
+  return audio();
+}
+
+export function somLiberado() {
+  return liberado;
+}
+
+/** Roda no desbloqueio e na hora, se o áudio já estiver liberado. */
+export function aoLiberarSom(fn) {
+  aoLiberar.push(fn);
+  if (liberado) fn();
 }
 
 export function destravarAudio() {
   liberado = true;
   const ac = audio();
   if (ac && ac.state === "suspended") ac.resume();
+  anexarContexto(ac);
+  definirMudoBarramento(mudo);
+  destravarBarramento();
   if (voz) garantirToco(voz.el);
   for (const slot of camadas.values()) {
     if (slot.alvo > 0.012) garantirToco(slot.el);
@@ -230,6 +257,7 @@ export function destravarAudio() {
   elementoDe(stings, SOM_ENVIO);
   elementoDe(stings, SOM_RECOLHER);
   elementoDe(stings, SOM_SHINY);
+  avisarLiberou();
 }
 
 export function tocarEnvioBola() {
@@ -245,27 +273,6 @@ export function tocarShiny() {
   if (agora - ultimoShiny < ESPERA_SHINY) return;
   ultimoShiny = agora;
   tocarCurto(elementoDe(stings, SOM_SHINY), 0.95);
-}
-
-export function tocarGrito(ator) {
-  const dex = ator?.especie?.dex | 0;
-  const chave = ator?.especie?.key;
-  if (!dex || !chave) return;
-  const rel = `SFX/cries/${String(dex).padStart(3, "0")}-${String(chave).toLowerCase()}.mp3`;
-  if (!gritos.has(rel) && gritos.size >= CAP_GRITO) {
-    for (const [id, el] of gritos) {
-      if (el.paused || el.ended) {
-        gritos.delete(id);
-        break;
-      }
-    }
-    if (gritos.size >= CAP_GRITO) {
-      const primeiro = gritos.keys().next().value;
-      gritos.get(primeiro)?.pause();
-      gritos.delete(primeiro);
-    }
-  }
-  tocarCurto(elementoDe(gritos, rel), 0.85);
 }
 
 export function definirBgm(chave) {
@@ -398,6 +405,7 @@ export function estaMudo() {
 export function alternarMudo() {
   mudo = !mudo;
   gravarMudo(mudo);
+  definirMudoBarramento(mudo);
   if (mudo) {
     voz?.el.pause();
     saindo?.el.pause();
