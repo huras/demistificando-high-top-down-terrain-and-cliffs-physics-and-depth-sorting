@@ -1,5 +1,5 @@
 import { POKEMON, RAIO_POKEMON } from "../config.js";
-import { ESQUIVA_DIST, ESQUIVA_DUR } from "./ia/constantes.js";
+import { ESQUIVA_ATIVA, ESQUIVA_DIST, ESQUIVA_DUR, ESQUIVA_PREP, ESQUIVA_REC } from "./ia/constantes.js";
 import { golpe } from "./dados.js";
 import { totalParaNivel } from "./experiencia.js";
 import { calcularStats, escalaRecarga, escalaVelocidade } from "./tipos.js";
@@ -174,6 +174,15 @@ export function criarAtor(opts) {
     esquivaDist: 0,
     esquivaDirX: 0,
     esquivaDirY: 0,
+    esquivaFase: 0,
+    esquivaFaseRestante: 0,
+    esquivaFaseDur: 0,
+    esquivaInv: false,
+    golpeRecRestante: 0,
+    golpeRecDur: 0,
+    golpeSlot: null,
+    golpePose: "",
+    golpeClip: 0,
     esquivaLado: 1,
     participantes: new Set(),
     emocao: null,
@@ -222,6 +231,15 @@ export function reviverAtor(ator, x, y, z) {
   ator.esquivaRestante = 0;
   ator.esquivaDur = 0;
   ator.esquivaDist = 0;
+  ator.esquivaFase = 0;
+  ator.esquivaFaseRestante = 0;
+  ator.esquivaFaseDur = 0;
+  ator.esquivaInv = false;
+  ator.golpeRecRestante = 0;
+  ator.golpeRecDur = 0;
+  ator.golpeSlot = null;
+  ator.golpePose = "";
+  ator.golpeClip = 0;
 }
 
 export function aplicarNivel(ator, nivelNovo) {
@@ -244,12 +262,30 @@ export function emAvanco(ator) {
 }
 
 export function emEsquiva(ator) {
-  return (ator?.esquivaRestante || 0) > 0;
+  return (ator?.esquivaFase || 0) > 0;
+}
+
+/** Janela em que o rolamento não toma golpe. */
+export function emRolamentoAtivo(ator) {
+  return (ator?.esquivaFase || 0) === 2;
+}
+
+/** Preparação ou recuperação de um golpe. O corpo não anda. */
+export function presoNoGolpe(ator) {
+  return (ator?.conjuroRestante || 0) > 0 || (ator?.golpeRecRestante || 0) > 0;
+}
+
+function zerarRolamento(ator) {
+  ator.esquivaRestante = 0;
+  ator.esquivaFase = 0;
+  ator.esquivaFaseRestante = 0;
+  ator.esquivaFaseDur = 0;
+  ator.esquivaInv = false;
 }
 
 function integrarRecuo(ator, dt) {
   ator.avancoRestante = 0;
-  ator.esquivaRestante = 0;
+  zerarRolamento(ator);
   if ((ator.recuoTrava || 0) > 0) {
     const gasto = Math.min(ator.recuoTrava, dt);
     ator.recuoTrava -= gasto;
@@ -303,28 +339,78 @@ function integrarAvanco(ator, dt) {
   ator.vy = 0;
 }
 
-function integrarEsquiva(ator, dt) {
-  const dur = ator.esquivaDur || ator.esquivaRestante;
-  if (dur <= 0) {
-    ator.esquivaRestante = 0;
-    return;
-  }
-  const antes = ator.esquivaRestante;
-  const depois = Math.max(0, antes - dt);
-  const u0 = 1 - antes / dur;
-  const u1 = 1 - depois / dur;
+const FASE_PREP = 1;
+const FASE_ATIVA = 2;
+const FASE_REC = 3;
+
+function durFaseRolamento(fase) {
+  if (fase === FASE_PREP) return ESQUIVA_PREP;
+  if (fase === FASE_ATIVA) return ESQUIVA_ATIVA;
+  return ESQUIVA_REC;
+}
+
+function distFaseRolamento(fase) {
+  if (fase === FASE_PREP) return ESQUIVA_DIST * 0.07;
+  if (fase === FASE_ATIVA) return ESQUIVA_DIST * 0.8;
+  return ESQUIVA_DIST * 0.13;
+}
+
+function restanteRolamento(fase, faseRestante) {
+  let t = faseRestante;
+  for (let f = fase + 1; f <= FASE_REC; f++) t += durFaseRolamento(f);
+  return t;
+}
+
+function aplicarFatiaRolamento(ator, fase, antes, depois, dur) {
+  const u0 = dur > 0 ? 1 - antes / dur : 1;
+  const u1 = dur > 0 ? 1 - depois / dur : 1;
   const fatia = (1 - u0) * (1 - u0) - (1 - u1) * (1 - u1);
-  const anda = (ator.esquivaDist || 0) * Math.max(0, fatia);
-  ator.x += (ator.esquivaDirX || 0) * anda;
-  ator.y += (ator.esquivaDirY || 0) * anda;
-  const vel = (ator.esquivaDist * 2 * Math.max(0, 1 - u0)) / dur;
-  ator.vx = (ator.esquivaDirX || 0) * vel;
-  ator.vy = (ator.esquivaDirY || 0) * vel;
+  const dist = distFaseRolamento(fase);
+  const anda = dist * Math.max(0, fatia);
+  const dx = ator.esquivaDirX || 0;
+  const dy = ator.esquivaDirY || 0;
+  ator.x += dx * anda;
+  ator.y += dy * anda;
+  const vel = dur > 0 ? (dist * 2 * Math.max(0, 1 - u0)) / dur : 0;
+  ator.vx = dx * vel;
+  ator.vy = dy * vel;
   ator.andando = false;
-  ator.esquivaRestante = depois;
-  if (depois > 0) return;
-  ator.vx = 0;
-  ator.vy = 0;
+  ator.esquivaInv = fase === FASE_ATIVA;
+  const pulo = fase === FASE_ATIVA ? 0.36 : fase === FASE_PREP ? 0.05 : 0.1;
+  ator.hopLift = Math.max(ator.hopLift || 0, pulo);
+}
+
+function integrarEsquiva(ator, dt) {
+  let sobra = dt;
+  for (let i = 0; i < 3 && sobra > 1e-6; i++) {
+    const fase = ator.esquivaFase || 0;
+    if (fase < FASE_PREP || fase > FASE_REC) {
+      zerarRolamento(ator);
+      return;
+    }
+    const dur = ator.esquivaFaseDur || durFaseRolamento(fase);
+    const antes = ator.esquivaFaseRestante;
+    const gasto = Math.min(antes, sobra);
+    const depois = antes - gasto;
+    aplicarFatiaRolamento(ator, fase, antes, depois, dur);
+    sobra -= gasto;
+    if (depois > 1e-5) {
+      ator.esquivaFaseRestante = depois;
+      ator.esquivaRestante = restanteRolamento(fase, depois);
+      return;
+    }
+    if (fase >= FASE_REC) {
+      zerarRolamento(ator);
+      ator.vx = 0;
+      ator.vy = 0;
+      return;
+    }
+    const prox = fase + 1;
+    ator.esquivaFase = prox;
+    ator.esquivaFaseDur = durFaseRolamento(prox);
+    ator.esquivaFaseRestante = ator.esquivaFaseDur;
+    ator.esquivaRestante = restanteRolamento(prox, ator.esquivaFaseRestante);
+  }
 }
 
 /** Passo curto para o alvo. O primeiro pedaço sai no quadro do golpe. */
@@ -337,19 +423,33 @@ export function comecarAvanco(ator, dirX, dirY, dist) {
   integrarAvanco(ator, 0.05);
 }
 
-/** Passo em qualquer direção. Gasta a barra inteira. */
+/** Rolamento. A barra gasta na hora. A preparação do golpe não deixa sair. */
 export function comecarEsquiva(ator, dirX, dirY) {
   if (!ator || (ator.esquiva || 0) < 1) return false;
   if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) return false;
+  if ((ator.conjuroRestante || 0) > 0) return false;
+  const rec = ator.golpeRecRestante || 0;
+  const recDur = ator.golpeRecDur || 0;
+  if (rec > 0 && rec > recDur * 0.55) return false;
   const len = Math.hypot(dirX, dirY) || 1;
   ator.esquiva = 0;
+  ator.golpeRecRestante = 0;
+  ator.golpeSlot = null;
+  ator.golpePose = "";
+  ator.golpeClip = 0;
+  ator.esquivaFase = FASE_PREP;
+  ator.esquivaFaseDur = ESQUIVA_PREP;
+  ator.esquivaFaseRestante = ESQUIVA_PREP;
   ator.esquivaDur = ESQUIVA_DUR;
   ator.esquivaRestante = ESQUIVA_DUR;
   ator.esquivaDist = ESQUIVA_DIST;
   ator.esquivaDirX = dirX / len;
   ator.esquivaDirY = dirY / len;
-  ator.hopLift = Math.max(ator.hopLift || 0, 0.2);
-  integrarEsquiva(ator, 0.05);
+  ator.esquivaInv = false;
+  ator.vx = 0;
+  ator.vy = 0;
+  ator.andando = false;
+  if (ator.pose === "Attack" || ator.pose === "Shoot" || ator.pose === "Strike") ator.poseAte = 0;
   return true;
 }
 
@@ -358,11 +458,11 @@ export function passoEsquiva(ator, dt) {
 }
 
 function emMovimento(ator) {
-  return !!(ator.andando || (ator.esquivaRestante || 0) > 0 || (ator.avancoRestante || 0) > 0);
+  return !!(ator.andando || emEsquiva(ator) || (ator.avancoRestante || 0) > 0);
 }
 
 export function recarregarBarraEsquiva(ator, dt) {
-  if (!ator || (ator.esquivaRestante || 0) > 0) return;
+  if (!ator || emEsquiva(ator)) return;
   const vel = Math.max(1, ator.stats?.velocidade || 50);
   const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
   const ritmo = ator.andando ? 1.25 : 1;
@@ -374,7 +474,7 @@ export function tickPassivo(ator, dt, agora) {
   if (ator.iframe > 0) ator.iframe = Math.max(0, ator.iframe - dt);
   if ((ator.recuoRestante || 0) > 0) integrarRecuo(ator, dt);
   else if ((ator.avancoRestante || 0) > 0) integrarAvanco(ator, dt);
-  else if ((ator.esquivaRestante || 0) > 0) integrarEsquiva(ator, dt);
+  else if (emEsquiva(ator)) integrarEsquiva(ator, dt);
   if (ator.velMulAte > 0 && agora >= ator.velMulAte) {
     ator.velMul = 1;
     ator.velMulAte = 0;

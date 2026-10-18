@@ -22,7 +22,7 @@ export function iaRedeLigada() {
 }
 
 function ocupado(ator) {
-  return emRecuo(ator) || emAvanco(ator) || emEsquiva(ator);
+  return emRecuo(ator) || emAvanco(ator) || emEsquiva(ator) || (ator.conjuroRestante || 0) > 0;
 }
 
 function corredorRede() {

@@ -2,8 +2,12 @@
 
 export const RAIO_ARENA = 9.2;
 export const FOLGA_PARADA = 0.18;
-export const ESQUIVA_DUR = 0.18;
-export const ESQUIVA_DIST = 1.15;
+/** Rolamento: preparação vulnerável, janela invulnerável, recuperação vulnerável. */
+export const ESQUIVA_PREP = 0.09;
+export const ESQUIVA_ATIVA = 0.16;
+export const ESQUIVA_REC = 0.18;
+export const ESQUIVA_DUR = ESQUIVA_PREP + ESQUIVA_ATIVA + ESQUIVA_REC;
+export const ESQUIVA_DIST = 3.45;
 export const PASSO_DECISAO = 0.1;
 export const JANELA_TIRO = 0.22;
 export const JANELA_REDE = 0.45;

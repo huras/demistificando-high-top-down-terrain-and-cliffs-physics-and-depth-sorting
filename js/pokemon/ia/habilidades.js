@@ -1,4 +1,4 @@
-import { comecarEsquiva, emAvanco, emEsquiva, emRecuo, velocidadeDe } from "../ator.js";
+import { comecarEsquiva, emAvanco, emEsquiva, emRecuo, presoNoGolpe, velocidadeDe } from "../ator.js";
 import { LEAD_MAX } from "./constantes.js";
 import { limitarArena, regua, sentidoParada } from "./espaco.js";
 import { entrada, quadroDe, saida } from "./observacao.js";
@@ -75,7 +75,7 @@ export function integrarComando(ator, alvo, dt) {
     ator.dirX = q.fx;
     ator.dirY = q.fy;
   }
-  if ((ator.conjuroRestante || 0) > 0) {
+  if (presoNoGolpe(ator) && !emAvanco(ator)) {
     ator.vx = 0;
     ator.vy = 0;
     ator.andando = false;

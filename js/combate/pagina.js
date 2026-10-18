@@ -172,13 +172,22 @@ function pintarRecargaUm(raiz, ator, nome, chave) {
     return;
   }
   const slot = slotDoGolpe(ator, chave);
-  const conjurando = !!(slot && ator.conjuroSlot === slot && (ator.conjuroRestante || 0) > 0);
-  if (conjurando) {
+  const preparando = !!(slot && ator.conjuroSlot === slot && (ator.conjuroRestante || 0) > 0);
+  if (preparando) {
     const dur = ator.conjuroDur || 1;
     const u = 1 - Math.max(0, ator.conjuroRestante) / dur;
     barra.style.width = `${Math.max(0, Math.min(1, u)) * 100}%`;
     barra.style.background = "#f59e0b";
-    rotulo.textContent = "Carregando";
+    rotulo.textContent = "Preparando";
+    return;
+  }
+  const recuperando = !!(slot && ator.golpeSlot === slot && (ator.golpeRecRestante || 0) > 0);
+  if (recuperando) {
+    const dur = ator.golpeRecDur || 1;
+    const u = Math.max(0, ator.golpeRecRestante) / dur;
+    barra.style.width = `${Math.max(0, Math.min(1, u)) * 100}%`;
+    barra.style.background = "#f87171";
+    rotulo.textContent = "Recuperando";
     return;
   }
   const custo = slot?.def?.pp || 1;

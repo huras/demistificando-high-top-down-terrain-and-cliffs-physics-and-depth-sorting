@@ -88,5 +88,10 @@
     "offsetY": 0.01,
     "dx": 0,
     "dy": 0
+  },
+  "kadabra": {
+    "offsetY": -0.04,
+    "dx": 0,
+    "dy": 0
   }
 }

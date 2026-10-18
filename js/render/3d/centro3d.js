@@ -272,21 +272,8 @@ function materiaisDaCasca(texLado, texTopo, aoLongoX, repetir) {
   const matLongo = material(longo, true);
   const matCurto = material(texLado.clone(), true);
   const matCima = material(texTopo.clone(), true);
-  matLongo.depthWrite = false;
-  matCurto.depthWrite = false;
-  matCima.depthWrite = true;
-  if (aoLongoX) {
-    const norte = matLongo.clone();
-    norte.depthWrite = true;
-    const baixo = matLongo.clone();
-    baixo.depthWrite = true;
-    return [matCurto, matCurto, matCima, baixo, matLongo, norte];
-  }
-  const norte = matCurto.clone();
-  norte.depthWrite = true;
-  const baixo = matCurto.clone();
-  baixo.depthWrite = true;
-  return [matLongo, matLongo, matCima, baixo, matCurto, norte];
+  if (aoLongoX) return [matCurto, matCurto, matCima, matLongo, matLongo, matLongo];
+  return [matLongo, matLongo, matCima, matCurto, matCurto, matCurto];
 }
 
 export function montarCentro3d(grupo) {

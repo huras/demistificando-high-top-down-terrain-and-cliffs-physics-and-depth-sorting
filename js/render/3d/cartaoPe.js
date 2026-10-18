@@ -134,14 +134,10 @@ export function girarCartoes(yaw, inclinacao) {
   }
 }
 
-/** Sul, leste e oeste não gravam depth. Topo e norte continuam normais. */
+/** Todas as faces gravam depth, pra uma parede não pintar por cima da outra. O cartão já usa o depth do pé. */
 export function facesParedeInterior(lateral, topo) {
-  lateral.depthWrite = false;
-  const fechado = lateral.clone();
-  fechado.depthWrite = true;
-  const cima = topo && topo !== lateral ? topo : fechado;
-  cima.depthWrite = true;
-  return [lateral, lateral, cima, fechado, lateral, fechado];
+  const cima = topo && topo !== lateral ? topo : lateral;
+  return [lateral, lateral, cima, lateral, lateral, lateral];
 }
 
 export function criarBolasCura(cartao) {

@@ -1,5 +1,5 @@
 import { atoresPerto } from "../grade.js";
-import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo } from "../ator.js";
+import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, emRolamentoAtivo } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
 import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
@@ -45,6 +45,7 @@ function iniciarRecuo(alvo, atacante, dano, agora) {
   alvo.andando = false;
   alvo.avancoRestante = 0;
   alvo.poseAte = agora + trava + tempo;
+  cancelarGolpe(alvo);
   if (alvo.visual) {
     alvo.visual.anim = "Hurt";
     alvo.visual.frame = 0;
@@ -71,17 +72,12 @@ function errouGolpe(acerto) {
   return Math.floor(Math.random() * 100) + 1 > p;
 }
 
-function chanceEsquiva(forma) {
-  if (forma === "projectile" || forma === "arc") return 0.3;
-  return 0.25;
-}
-
 function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma) {
   if (!alvo || alvo.morto || alvo.capturado || alvo.iframe > 0 || alvo.invulneravel) return;
   if (!inimigo(atacante, alvo)) return;
   if (forma !== "projectile" && forma !== "arc" && !cruzaAltura(atacante, alvo, forma === "radius" ? 0.55 : 0.35)) return;
-  if (emEsquiva(alvo) && Math.random() < chanceEsquiva(forma)) {
-    efeitos.flutuar(alvo, "dodge", "#67e8f9");
+  if (emRolamentoAtivo(alvo)) {
+    efeitos.flutuar(alvo, "rolou", "#67e8f9");
     notar(efeitos, { tipo: "dodge", ator: atacante, alvo });
     return;
   }
@@ -183,10 +179,24 @@ function escolher(ator, alvo, d) {
   return null;
 }
 
-/** Golpe forte demora mais para juntar o Ki. */
+/** Preparação. Corpo a corpo sai mais cedo que o tiro. O poder alonga os dois. */
+export function tempoPreparacao(def) {
+  const poder = Math.max(0, def?.poder || 0);
+  if (poder <= 0) return 0.16;
+  const base = 0.2 + Math.min(0.32, poder / 240);
+  if (def?.forma === "contact" || def?.forma === "radius") return Math.max(0.12, base * 0.72);
+  return base;
+}
+
+/** Cauda depois que o golpe sai. O rolamento com a barra cheia corta a recuperação. */
+export function tempoRecuperacao(def) {
+  const prep = tempoPreparacao(def);
+  if (def?.forma === "contact" || def?.forma === "radius") return Math.max(0.22, Math.min(0.32, prep * 0.9));
+  return Math.max(0.12, Math.min(0.24, prep * 0.48));
+}
+
 export function tempoConjuracao(def) {
-  const poder = Math.max(1, def?.poder || 20);
-  return 0.22 + Math.min(0.34, poder / 220);
+  return tempoPreparacao(def);
 }
 
 export function emConjuracao(ator) {
@@ -199,40 +209,75 @@ function pararNoLugar(ator) {
   ator.andando = false;
 }
 
-export function cancelarConjuracao(ator) {
+export function cancelarGolpe(ator) {
   if (!ator) return;
   ator.conjuroRestante = 0;
   ator.conjuroDur = 0;
   ator.conjuroSlot = null;
+  ator.golpeRecRestante = 0;
+  ator.golpeRecDur = 0;
+  ator.golpeSlot = null;
+  ator.golpePose = "";
+  ator.golpeClip = 0;
   fecharKi(ator);
 }
 
-function comecarConjuro(ator, slot, mx, my, agora, efeitos) {
-  const dur = tempoConjuracao(slot.def);
-  ator.conjuroRestante = dur;
-  ator.conjuroDur = dur;
-  ator.conjuroSlot = slot;
-  ator.conjuroMx = mx;
-  ator.conjuroMy = my;
-  pararNoLugar(ator);
-  marcarPose(ator, "Shoot", agora);
-  ator.poseAte = agora + dur + 0.2;
-  abrirKi(ator, slot.def.tipo);
-  if (efeitos?.flutuar) efeitos.flutuar(ator, slot.def.nome, COR_TIPO[slot.def.tipo] || "#e2e8f0");
+export function cancelarConjuracao(ator) {
+  cancelarGolpe(ator);
 }
 
-function disparar(ator, slot, mx, my, agora, efeitos) {
+function miraDoGolpe(ator, slot, alvo) {
   const def = slot.def;
+  let mx = alvo?.x ?? ator.x;
+  let my = alvo?.y ?? ator.y;
+  if ((def.forma === "projectile" || def.forma === "arc") && Number.isFinite(ator.miraX) && Number.isFinite(ator.miraY)) {
+    mx = ator.miraX;
+    my = ator.miraY;
+  }
+  return { mx, my };
+}
+
+function apontar(ator, mx, my) {
   const dx = mx - ator.x;
   const dy = my - ator.y;
   const len = Math.hypot(dx, dy) || 1;
   ator.dirX = dx / len;
   ator.dirY = dy / len;
-  gastar(ator, slot, agora);
-  marcarFuria(ator, def);
-  if (efeitos.aoGolpe) efeitos.aoGolpe(ator, def);
-  notar(efeitos, { tipo: "golpe", ator, def });
-  marcarPose(ator, "Shoot", agora);
+}
+
+function comecarPreparacao(ator, slot, mx, my, agora, efeitos) {
+  const def = slot.def;
+  const dur = tempoPreparacao(def);
+  const rec = tempoRecuperacao(def);
+  const distancia = def.forma === "projectile" || def.forma === "arc";
+  ator.conjuroRestante = dur;
+  ator.conjuroDur = dur;
+  ator.conjuroSlot = slot;
+  ator.conjuroMx = mx;
+  ator.conjuroMy = my;
+  ator.golpeRecDur = rec;
+  ator.golpeRecRestante = 0;
+  ator.golpeSlot = null;
+  ator.golpeClip = dur + rec;
+  pararNoLugar(ator);
+  marcarPose(ator, distancia ? "Shoot" : "Attack", agora);
+  ator.golpePose = ator.pose;
+  ator.poseAte = agora + dur + rec;
+  if (distancia && def.poder > 0) abrirKi(ator, def.tipo);
+  if (efeitos?.flutuar) efeitos.flutuar(ator, def.nome, COR_TIPO[def.tipo] || "#e2e8f0");
+}
+
+function abrirRecuperacao(ator, slot) {
+  ator.golpeSlot = slot;
+  ator.golpeRecRestante = ator.golpeRecDur || tempoRecuperacao(slot.def);
+  ator.conjuroRestante = 0;
+  ator.conjuroSlot = null;
+  fecharKi(ator);
+  if (!emAvanco(ator)) pararNoLugar(ator);
+}
+
+function soltarProjetilDoAtor(ator, slot) {
+  const def = slot.def;
   soltarProjetil({
     x: ator.x + ator.dirX * 0.4,
     y: ator.y + ator.dirY * 0.4,
@@ -252,51 +297,98 @@ function disparar(ator, slot, mx, my, agora, efeitos) {
   });
 }
 
+function soltarGolpe(ator, slot, alvo, agora, efeitos) {
+  const def = slot.def;
+  apontar(ator, ator.conjuroMx, ator.conjuroMy);
+  gastar(ator, slot, agora);
+  marcarFuria(ator, def);
+  if (efeitos.aoGolpe) efeitos.aoGolpe(ator, def);
+  notar(efeitos, { tipo: "golpe", ator, def });
+
+  if (def.poder <= 0) {
+    if (CURA.test(def.key || "")) {
+      const antes = ator.hp;
+      ator.hp = Math.min(ator.hpMax, ator.hp + Math.ceil(ator.hpMax * 0.22));
+      efeitos.flutuar(ator, "cura", "#4ade80");
+      notar(efeitos, { tipo: "cura", ator, ganho: ator.hp - antes });
+    } else {
+      ator.velMul = 1.25;
+      ator.velMulAte = agora + 4;
+      efeitos.flutuar(ator, def.nome, "#93c5fd");
+    }
+    abrirRecuperacao(ator, slot);
+    return;
+  }
+
+  if (def.forma === "projectile" || def.forma === "arc") {
+    soltarProjetilDoAtor(ator, slot);
+    abrirRecuperacao(ator, slot);
+    return;
+  }
+
+  if (def.forma === "radius") {
+    avancarNoGolpe(ator, alvo);
+    const raio = Math.max(2.2, def.alcance || 2.2);
+    const perto = atoresPerto(ator.x, ator.y, raio);
+    for (let i = 0; i < perto.length; i++) {
+      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
+    }
+    abrirRecuperacao(ator, slot);
+    return;
+  }
+
+  const alcance = Math.max(0.8, def.alcance || 1) + 0.55;
+  if (alvo && dist(ator, alvo) <= alcance) {
+    avancarNoGolpe(ator, alvo);
+    ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
+    aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
+  } else if (efeitos?.flutuar) {
+    efeitos.flutuar(ator, "errou", "#cbd5e1");
+    notar(efeitos, { tipo: "erro", ator, alvo });
+  }
+  abrirRecuperacao(ator, slot);
+}
+
+function manterPoseGolpe(ator, agora) {
+  if (!ator.golpePose) return;
+  ator.pose = ator.golpePose;
+  ator.poseAte = agora + Math.max(ator.conjuroRestante || 0, ator.golpeRecRestante || 0, 0.05);
+}
+
 export function tickConjuracao(ator, dt, agora, efeitos) {
-  if (!emConjuracao(ator)) return;
-  if (ator.morto || ator.capturado) {
-    cancelarConjuracao(ator);
+  if (ator.morto || ator.capturado || emRecuo(ator) || emEsquiva(ator)) {
+    if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0) cancelarGolpe(ator);
     return;
   }
-  const slot = ator.conjuroSlot;
-  const alvo = ator.alvo;
-  if (!slot || !alvo) {
-    cancelarConjuracao(ator);
+  if (emConjuracao(ator)) {
+    const slot = ator.conjuroSlot;
+    const alvo = ator.alvo;
+    if (!slot || !alvo || alvo.morto) {
+      cancelarGolpe(ator);
+      return;
+    }
+    const mira = miraDoGolpe(ator, slot, alvo);
+    ator.conjuroMx = mira.mx;
+    ator.conjuroMy = mira.my;
+    apontar(ator, mira.mx, mira.my);
+    pararNoLugar(ator);
+    ator.conjuroRestante -= dt;
+    const dur = ator.conjuroDur || tempoPreparacao(slot.def);
+    const u = 1 - Math.max(0, ator.conjuroRestante) / dur;
+    if (slot.def.forma === "projectile" || slot.def.forma === "arc") pulsarKi(ator, u, dt);
+    manterPoseGolpe(ator, agora);
+    if (ator.conjuroRestante > 0) return;
+    soltarGolpe(ator, slot, alvo, agora, efeitos);
     return;
   }
-  let mx = ator.conjuroMx;
-  let my = ator.conjuroMy;
-  if (Number.isFinite(ator.miraX) && Number.isFinite(ator.miraY)) {
-    mx = ator.miraX;
-    my = ator.miraY;
-  } else {
-    mx = alvo.x;
-    my = alvo.y;
-  }
-  ator.conjuroMx = mx;
-  ator.conjuroMy = my;
-  const dx = mx - ator.x;
-  const dy = my - ator.y;
-  const len = Math.hypot(dx, dy) || 1;
-  ator.dirX = dx / len;
-  ator.dirY = dy / len;
-  const noRecuo = emRecuo(ator);
-  if (!noRecuo) pararNoLugar(ator);
-  const passo = noRecuo ? dt * 0.5 : dt;
-  ator.conjuroRestante -= passo;
-  const dur = ator.conjuroDur || tempoConjuracao(slot.def);
-  const u = 1 - Math.max(0, ator.conjuroRestante) / dur;
-  pulsarKi(ator, u, passo);
-  ator.hopLift = Math.max(ator.hopLift || 0, 0.05 + u * 0.2);
-  if (!noRecuo) {
-    ator.pose = "Shoot";
-    ator.poseAte = agora + 0.45;
-  }
-  if (ator.conjuroRestante > 0) return;
-  ator.conjuroRestante = 0;
-  ator.conjuroSlot = null;
-  fecharKi(ator);
-  disparar(ator, slot, mx, my, agora, efeitos);
+  if ((ator.golpeRecRestante || 0) <= 0) return;
+  if (!emAvanco(ator)) pararNoLugar(ator);
+  ator.golpeRecRestante = Math.max(0, ator.golpeRecRestante - dt);
+  manterPoseGolpe(ator, agora);
+  if (ator.golpeRecRestante > 0) return;
+  ator.golpeSlot = null;
+  ator.golpePose = "";
+  ator.golpeClip = 0;
 }
 
 function avancarNoGolpe(ator, alvo) {
@@ -308,63 +400,12 @@ function avancarNoGolpe(ator, alvo) {
 }
 
 function executar(ator, slot, alvo, agora, efeitos) {
-  const def = slot.def;
-  let mx = alvo?.x ?? ator.x;
-  let my = alvo?.y ?? ator.y;
-  if ((def.forma === "projectile" || def.forma === "arc") && Number.isFinite(ator.miraX) && Number.isFinite(ator.miraY)) {
-    mx = ator.miraX;
-    my = ator.miraY;
-  }
-  if (def.forma === "projectile" || def.forma === "arc") {
-    if (def.poder > 0) {
-      comecarConjuro(ator, slot, mx, my, agora, efeitos);
-      return;
-    }
-  }
-  const dx = mx - ator.x;
-  const dy = my - ator.y;
-  const len = Math.hypot(dx, dy) || 1;
-  ator.dirX = dx / len;
-  ator.dirY = dy / len;
-  gastar(ator, slot, agora);
-  marcarFuria(ator, def);
-  if (efeitos.aoGolpe) efeitos.aoGolpe(ator, def);
-  notar(efeitos, { tipo: "golpe", ator, def });
-
-  if (def.poder <= 0) {
-    if (CURA.test(def.key)) {
-      const antes = ator.hp;
-      ator.hp = Math.min(ator.hpMax, ator.hp + Math.ceil(ator.hpMax * 0.22));
-      efeitos.flutuar(ator, "cura", "#4ade80");
-      notar(efeitos, { tipo: "cura", ator, ganho: ator.hp - antes });
-    } else {
-      ator.velMul = 1.25;
-      ator.velMulAte = agora + 4;
-      efeitos.flutuar(ator, def.nome, "#93c5fd");
-    }
-  marcarPose(ator, "Attack", agora);
-  return;
-  }
-
-  if (def.forma === "radius" || def.forma === "contact") avancarNoGolpe(ator, alvo);
-
-  if (def.forma === "radius") {
-    marcarPose(ator, "Attack", agora);
-    const raio = Math.max(2.2, def.alcance || 2.2);
-    const perto = atoresPerto(ator.x, ator.y, raio);
-    for (let i = 0; i < perto.length; i++) {
-      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
-    }
-    return;
-  }
-
-  marcarPose(ator, "Attack", agora);
-  ator.hopLift = Math.max(ator.hopLift, 0.42);
-  if (alvo) aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
+  const mira = miraDoGolpe(ator, slot, alvo);
+  comecarPreparacao(ator, slot, mira.mx, mira.my, agora, efeitos);
 }
 
 export function tentarGolpe(ator, agora, efeitos) {
-  if (emConjuracao(ator)) return;
+  if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0) return;
   const recuoHerdado = ator.recuoNoTick == null ? emRecuo(ator) : ator.recuoNoTick > 0;
   if (ator.morto || ator.capturado || ator.dormindo > 0 || recuoHerdado || emAvanco(ator) || emEsquiva(ator)) return;
   const alvo = ator.alvo;

@@ -201,6 +201,10 @@ export function marcarPose(ator, nome, agora) {
   ator.pose = faixa;
   ator.poseMedida = !!pack?.anims?.[faixa];
   ator.poseAte = agora + duracaoFaixa(pack, faixa);
+  if (!ator.visual) return;
+  ator.visual.anim = faixa;
+  ator.visual.frame = 0;
+  ator.visual.t = 0;
 }
 
 function velocidadePlana(ator) {
@@ -249,6 +253,8 @@ function voa(ator, passo) {
 function escolherFaixa(ator, pack, agora, passo) {
   if (ator.morto) return pack.anims?.Sleep ? "Sleep" : "Idle";
   if ((ator.recuoRestante || 0) > 0 && pack.anims?.Hurt) return "Hurt";
+  const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0;
+  if (noGolpe && ator.golpePose && pack.anims?.[ator.golpePose]) return ator.golpePose;
   if ((ator.conjuroRestante || 0) > 0 && pack.anims?.Shoot) return "Shoot";
   if (agora < ator.poseAte && POSE_GOLPE.has(ator.pose)) return faixaDoGolpe(pack, ator.pose);
   if (voa(ator, passo) && pack.anims?.FlapAround) return "FlapAround";
@@ -276,9 +282,12 @@ export function tickVisual(ator, dt, agora) {
   }
   const spec = pack.anims?.[v.anim];
   if (!spec) return pack;
+  const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0;
   const ritmo = v.anim === "Walk" || v.anim === "FlapAround"
     ? ritmoLocomocao(spec, v.anim, ator)
-    : 1;
+    : noGolpe && ator.golpeClip > 0
+      ? duracaoFaixa(pack, v.anim) / ator.golpeClip
+      : 1;
   if ((ator.recuoTrava || 0) > 0) return pack;
   v.t += dt * ritmo;
   for (let i = 0; i < 6; i++) {
@@ -289,7 +298,11 @@ export function tickVisual(ator, dt, agora) {
     if (v.frame >= spec.frameCount) {
       v.frame = 0;
       if (POSE_GOLPE.has(anim)) {
-        if ((ator.conjuroRestante || 0) > 0) continue;
+        if ((ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0) {
+          v.frame = Math.max(0, spec.frameCount - 1);
+          v.t = 0;
+          break;
+        }
         if (anim === "Hurt" && (ator.recuoRestante || 0) > 0) continue;
         ator.poseAte = 0;
         ator.poseMedida = false;

@@ -192,7 +192,7 @@ function avancar(ator, tx, ty, dt) {
   const d = Math.hypot(dx, dy) || 0.0001;
   ator.dirX = dx / d;
   ator.dirY = dy / d;
-  if ((ator.conjuroRestante || 0) > 0) {
+  if (((ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0) && !emAvanco(ator)) {
     ator.vx = 0;
     ator.vy = 0;
     ator.andando = false;
@@ -273,7 +273,7 @@ function limparCampo() {
 }
 
 function soltarPoeiraDash(ator, dt) {
-  if (!emEsquiva(ator)) {
+  if (ator.esquivaFase !== 2) {
     ator._poeiraAcum = 0;
     ator._poeiraNoDash = false;
     return;
