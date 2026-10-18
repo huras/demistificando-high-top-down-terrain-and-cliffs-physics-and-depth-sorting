@@ -10,6 +10,17 @@ import { chaveProfundidade, empilhar } from "./ordenacaoProfundidade.js";
 
 let tempo = 0;
 
+/** Crista fina. Os números batem com o shader da lâmina 3D. */
+const CRISTA_ESPACO = 2.6;
+const CRISTA_VEL = 0.72;
+const CRISTA_AMP = 0.2;
+const CRISTA_AMP2 = 0.06;
+const CRISTA_K1 = 2.15;
+const CRISTA_K2 = 4.7;
+const CRISTA_W1 = 1.35;
+const CRISTA_W2 = 0.62;
+const CRISTA_PASSOS = 6;
+
 /** Folha do Pokemon AI: 4 frames × 3 colunas × 4 linhas, tile de 16. */
 const WF_URL = "assets/terrain/waterfall-strip.png";
 const WF_CEL = 16;
@@ -132,20 +143,45 @@ function desenharTopoAgua(ctx, cx, cy, col) {
     ctx.fillStyle = cssAgua(prof, alpha);
     ctx.fillRect(px, py, s, s);
   }
-  const faixa = Math.max(2, ESCALA + 1);
-  const ciclo = s + faixa;
-  const vel = col.fluxoX || col.fluxoY ? 28 : 10;
-  const desloc = (tempo * vel) % ciclo;
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = "rgba(255,255,255,0.28)";
-  if (Math.abs(col.fluxoX) > Math.abs(col.fluxoY)) {
-    const x = px + (col.fluxoX < 0 ? ciclo - desloc : desloc) - faixa;
-    ctx.fillRect(x, py, faixa, s);
-  } else {
-    const y = py + (col.fluxoY < 0 ? ciclo - desloc : desloc) - faixa;
-    ctx.fillRect(px, y, s, faixa);
-  }
+  desenharCristas(ctx, px, py, s, cx, cy, col);
   ctx.restore();
+}
+
+function ondular(aoLongo) {
+  return (
+    Math.sin(aoLongo * CRISTA_K1 + tempo * CRISTA_W1) * CRISTA_AMP +
+    Math.sin(aoLongo * CRISTA_K2 - tempo * CRISTA_W2) * CRISTA_AMP2
+  );
+}
+
+/** Linha fina que serpenteia. O recorte do tile emenda com o vizinho. */
+function desenharCristas(ctx, px, py, s, cx, cy, col) {
+  const aoLongoX = Math.abs(col.fluxoX) <= Math.abs(col.fluxoY);
+  const sentido = aoLongoX ? (col.fluxoY < 0 ? -1 : 1) : col.fluxoX < 0 ? -1 : 1;
+  const scroll = tempo * CRISTA_VEL * sentido;
+  const margem = CRISTA_AMP + CRISTA_AMP2 + 0.08;
+  const origem = aoLongoX ? cy : cx;
+  const n0 = Math.floor((origem - margem - scroll) / CRISTA_ESPACO);
+  const n1 = Math.floor((origem + 1 + margem - scroll) / CRISTA_ESPACO);
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = Math.max(1, ESCALA * 0.7);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(236, 248, 255, 0.62)";
+  for (let n = n0; n <= n1; n++) {
+    const base = n * CRISTA_ESPACO + scroll;
+    ctx.beginPath();
+    for (let i = 0; i <= CRISTA_PASSOS; i++) {
+      const u = i / CRISTA_PASSOS;
+      const aoLongo = (aoLongoX ? cx : cy) + u;
+      const atraves = base + ondular(aoLongo);
+      const x = px + (aoLongoX ? u : atraves - cx) * s;
+      const y = py + (aoLongoX ? atraves - cy : u) * s;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
 }
 
 /**

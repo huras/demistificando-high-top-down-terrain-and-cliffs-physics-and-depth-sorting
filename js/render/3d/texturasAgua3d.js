@@ -2,7 +2,7 @@
  * Lâmina e cachoeira 3D: tile CENTER das folhas do Pokémon AI.
  * Quadros lado a lado. O include do mapa é trocado antes de o Three
  * expandir os chunks — senão o fract não entra e o tile estica.
- * A faixa branca desliza por cima do sprite, como a corrente antiga.
+ * No lago a crista é fina e ondula no mundo. Na queda, um fio desliza.
  */
 import * as THREE from "three";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
@@ -20,7 +20,8 @@ const WF_LINHA_MIOLO = 2;
 const WF_COL_MIOLO = 1;
 const WF_FRAME_S = 0.11;
 
-const LINHA_VEL = 0.35;
+const LINHA_VEL = 0.72;
+const CRISTA_ESPACO = 2.6;
 
 const MAPA_AGUA = `
 #ifdef USE_MAP
@@ -28,9 +29,22 @@ const MAPA_AGUA = `
 	float nQ = max(uQuadros, 1.0);
 	float q = mod(floor(uQuadro), nQ);
 	vec4 sampledDiffuseColor = texture2D(map, vec2((q + uvAgua.x) / nQ, uvAgua.y));
-	float eixo = mix(vMapUv.x, vMapUv.y, uEixoLinha);
-	float faixa = step(fract(eixo + uLinha), 0.25);
-	sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(1.0), faixa * 0.8);
+	float faixa = 0.0;
+	if (uEixoLinha < 0.5) {
+		float aoLongo = vMundoAgua.x;
+		float atraves = vMundoAgua.y;
+		float s1 = sin(fract(aoLongo * 0.3421846 + uFase1) * 6.2831853) * 0.2;
+		float s2 = sin(fract(aoLongo * 0.747868 + uFase2) * 6.2831853) * 0.06;
+		float campo = atraves - s1 - s2 - uScroll;
+		float f = fract(campo / 2.6);
+		float dist = min(f, 1.0 - f) * 2.6;
+		faixa = 1.0 - smoothstep(0.012, 0.055, dist);
+	} else {
+		float eixo = vMapUv.y;
+		float d = min(fract(eixo + uLinha), 1.0 - fract(eixo + uLinha));
+		faixa = 1.0 - smoothstep(0.012, 0.04, d);
+	}
+	sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.93, 0.98, 1.0), faixa * 0.62);
 	#ifdef DECODE_VIDEO_TEXTURE
 		sampledDiffuseColor = sRGBTransferEOTF(sampledDiffuseColor);
 	#endif
@@ -83,10 +97,22 @@ function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey) {
     shader.uniforms.uQuadros = { value: mat.userData.quadros };
     shader.uniforms.uLinha = { value: 0 };
     shader.uniforms.uEixoLinha = { value: mat.userData.eixoLinha };
+    shader.uniforms.uScroll = { value: 0 };
+    shader.uniforms.uFase1 = { value: 0 };
+    shader.uniforms.uFase2 = { value: 0 };
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nvarying vec2 vMundoAgua;",
+      )
+      .replace(
+        "#include <begin_vertex>",
+        "#include <begin_vertex>\nvMundoAgua = vec2(position.x, position.z);",
+      );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform highp float uQuadro;\nuniform highp float uQuadros;\nuniform highp float uLinha;\nuniform highp float uEixoLinha;",
+        "#include <common>\nvarying vec2 vMundoAgua;\nuniform highp float uQuadro;\nuniform highp float uQuadros;\nuniform highp float uLinha;\nuniform highp float uEixoLinha;\nuniform highp float uScroll;\nuniform highp float uFase1;\nuniform highp float uFase2;",
       )
       .replace("#include <map_fragment>", MAPA_AGUA);
     mat.userData.shader = shader;
@@ -180,20 +206,29 @@ function quadro(segundos, periodo, quadros) {
   return t - Math.floor(t / n) * n;
 }
 
+function faseDe(segundos, voltas) {
+  const t = segundos * voltas;
+  return t - Math.floor(t);
+}
+
 /** Um uniforme por material — vale para todo chunk já montado. */
 export function avancarMateriaisAgua(segundos) {
-  const linha = segundos * LINHA_VEL;
-  const faixa = linha - Math.floor(linha);
+  const rolagem = segundos * LINHA_VEL;
+  const scroll = rolagem - Math.floor(rolagem / CRISTA_ESPACO) * CRISTA_ESPACO;
+  const f1 = faseDe(segundos, 1.35 / (Math.PI * 2));
+  const f2 = faseDe(segundos, 0.62 / (Math.PI * 2));
   for (const mat of [matLago, matLagoLonge]) {
     const lago = mat.userData.shader;
     if (!lago) continue;
     lago.uniforms.uQuadro.value = quadro(segundos, LAGO_FRAME_S, mat.userData.quadros);
-    lago.uniforms.uLinha.value = faixa;
+    lago.uniforms.uScroll.value = scroll;
+    lago.uniforms.uFase1.value = f1;
+    lago.uniforms.uFase2.value = f2;
   }
   const queda = matQueda.userData.shader;
   if (queda) {
     queda.uniforms.uQuadro.value = quadro(segundos, WF_FRAME_S, matQueda.userData.quadros);
-    queda.uniforms.uLinha.value = faixa;
+    queda.uniforms.uLinha.value = scroll - Math.floor(scroll);
   }
 }
 
