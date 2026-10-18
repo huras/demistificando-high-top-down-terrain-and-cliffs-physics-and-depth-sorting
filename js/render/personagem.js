@@ -1,4 +1,5 @@
 import { ESCALA, FACE_H, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
+import { alfaSprites } from "../jogo/teleporte.js";
 import { oscilacaoNado } from "../fx/fxAgua.js";
 import { cobrirPernasAgua } from "./agua2d.js";
 import { desenharAsaDelta } from "./asaDeltaVisual.js";
@@ -109,6 +110,7 @@ export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
 
   ctx.save();
   ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = alfaSprites();
   if (tint) ctx.filter = tint;
   ctx.drawImage(
     sheet,

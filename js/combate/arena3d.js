@@ -145,19 +145,52 @@ function texturaChao() {
   return tex;
 }
 
+function pixelDeCorpo(r, g, b, a) {
+  if (a < 48) return false;
+  if (r < 16 && g < 16 && b < 20) return false;
+  const maior = Math.max(r, g, b);
+  const menor = Math.min(r, g, b);
+  if (maior - menor < 8 && maior < 150) return false;
+  return true;
+}
+
 function recortarPreto(img) {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
   const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(img, 0, 0);
-  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = ctx.getImageData(0, 0, w, h);
   const px = data.data;
-  for (let i = 0; i < px.length; i += 4) {
-    if (px[i] < 12 && px[i + 1] < 12 && px[i + 2] < 12) px[i + 3] = 0;
+  let minX = w;
+  let minY = h;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < h; y++) {
+    const linha = y * w;
+    for (let x = 0; x < w; x++) {
+      const i = (linha + x) * 4;
+      if (!pixelDeCorpo(px[i], px[i + 1], px[i + 2], px[i + 3])) {
+        px[i + 3] = 0;
+        continue;
+      }
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
   }
   ctx.putImageData(data, 0, 0);
-  return canvas;
+  if (maxX < 0) return canvas;
+  const cw = maxX - minX + 1;
+  const ch = maxY - minY + 1;
+  const corte = document.createElement("canvas");
+  corte.width = cw;
+  corte.height = ch;
+  corte.getContext("2d").drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
+  return corte;
 }
 
 function texturaRepetida(url) {

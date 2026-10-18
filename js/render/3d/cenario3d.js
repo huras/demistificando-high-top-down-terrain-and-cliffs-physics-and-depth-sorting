@@ -18,7 +18,9 @@ import {
 } from "./camera3d.js";
 import { criarFlechas3d } from "./flechas3d.js";
 import { criarRigCamera3d } from "./rigCamera3d.js";
+import { alfaSprites } from "../../jogo/teleporte.js";
 import { criarPersonagem3d } from "./personagem3d.js";
+import { atualizarTeleporte3d, criarTeleporte3d } from "./teleporte3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarEdificiosCidade } from "./edificiosCidade.js";
 import { criarDebugVaosPorta } from "./debugVaosPorta.js";
@@ -290,6 +292,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     tint: 0x5ec8e8,
   });
   scene.add(agente3d.grupo);
+  criarTeleporte3d(scene);
 
   const ventoAsa = criarVentoAsa3d();
   scene.add(ventoAsa.objeto);
@@ -586,6 +589,10 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     anotarEstadoSim(estado.agente3d.grupo, agente);
     estado.agente3d.atualizar(agente, camRender, yaw);
   }
+  const sumico = alfaSprites();
+  estado.personagem.definirSumico(sumico);
+  estado.agente3d?.definirSumico(sumico);
+  atualizarTeleporte3d(camRender);
   estado.alvoEscalada.atualizar(corpo, dt);
   estado.hoverTile?.atualizar();
 

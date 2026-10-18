@@ -22,7 +22,27 @@
   <div class="app">
     <header class="cabecalho">
       <div class="cabecalho__texto">
-        <h1>High Top-Down</h1>
+        <div class="cabecalho__marca">
+          <h1>High Top-Down</h1>
+          <button
+            type="button"
+            id="btn-som"
+            class="btn-som"
+            aria-pressed="false"
+            aria-label="Desligar música e efeitos sonoros"
+            title="Música e efeitos"
+          >
+            <svg class="btn-som__ligado" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M3 9.5v5h4.2L13 19.2V4.8L7.2 9.5H3z" />
+              <path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M16.2 9.2a3.4 3.4 0 010 5.6" />
+              <path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M18.6 6.6a6.6 6.6 0 010 10.8" />
+            </svg>
+            <svg class="btn-som__mudo" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M3 9.5v5h4.2L13 19.2V4.8L7.2 9.5H3z" />
+              <path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M16 9.5l5 5M21 9.5l-5 5" />
+            </svg>
+          </button>
+        </div>
         <p>Física + depth sorting — tiles reais do jogo (T = cubos didáticos)</p>
       </div>
       <div class="cabecalho__controles">

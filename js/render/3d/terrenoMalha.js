@@ -36,6 +36,7 @@ import { obterKit } from "../../mundo/bioma/kits.js";
 import {
   avancarMateriaisAgua,
   liberarMateriaisAgua,
+  obterMaterialEspuma,
   obterMaterialLago,
   obterMaterialQueda,
 } from "./texturasAgua3d.js";
@@ -1001,6 +1002,92 @@ function geoSuperficieAgua(wx, wy, y, fx, fy, cor) {
   return geo;
 }
 
+const ESPUMA_LARGO = 0.46;
+
+function terraSeca(wx, wy) {
+  return colunaAgua(wx, wy).superficie <= 0;
+}
+
+/** Retângulo no XZ. v é a costa: 1 na terra, 0 na água. */
+function quadEspuma(x0, z0, x1, z1, y, v00, v10, v11, v01) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute(
+    "position",
+    new THREE.BufferAttribute(new Float32Array([
+      x0, y, z0,
+      x1, y, z0,
+      x1, y, z1,
+      x0, y, z1,
+    ]), 3),
+  );
+  geo.setAttribute(
+    "uv",
+    new THREE.BufferAttribute(new Float32Array([
+      0, v00,
+      0, v10,
+      0, v11,
+      0, v01,
+    ]), 2),
+  );
+  geo.setAttribute(
+    "color",
+    new THREE.BufferAttribute(new Float32Array([
+      v00, v00, v00,
+      v10, v10, v10,
+      v11, v11, v11,
+      v01, v01, v01,
+    ]), 3),
+  );
+  geo.setIndex([0, 2, 1, 0, 3, 2]);
+  return geo;
+}
+
+/**
+ * Faixa só onde a água encosta na terra. O canto fecha o vão
+ * entre duas bordas secas. A face da queda não entra aqui.
+ */
+function empurrarEspuma(lista, wx, wy, y) {
+  const norte = terraSeca(wx, wy - 1);
+  const sul = terraSeca(wx, wy + 1);
+  const oeste = terraSeca(wx - 1, wy);
+  const leste = terraSeca(wx + 1, wy);
+  if (!norte && !sul && !oeste && !leste) return;
+
+  const x0 = wx;
+  const x1 = wx + 1;
+  const z0 = wy;
+  const z1 = wy + 1;
+  const xa = oeste ? x0 + ESPUMA_LARGO : x0;
+  const xb = leste ? x1 - ESPUMA_LARGO : x1;
+  const za = norte ? z0 + ESPUMA_LARGO : z0;
+  const zb = sul ? z1 - ESPUMA_LARGO : z1;
+
+  if (sul && xb - xa > 1e-3) {
+    lista.push(quadEspuma(xa, z1 - ESPUMA_LARGO, xb, z1, y, 0, 0, 1, 1));
+  }
+  if (norte && xb - xa > 1e-3) {
+    lista.push(quadEspuma(xa, z0, xb, z0 + ESPUMA_LARGO, y, 1, 1, 0, 0));
+  }
+  if (leste && zb - za > 1e-3) {
+    lista.push(quadEspuma(x1 - ESPUMA_LARGO, za, x1, zb, y, 0, 1, 1, 0));
+  }
+  if (oeste && zb - za > 1e-3) {
+    lista.push(quadEspuma(x0, za, x0 + ESPUMA_LARGO, zb, y, 1, 0, 0, 1));
+  }
+  if (sul && leste) {
+    lista.push(quadEspuma(x1 - ESPUMA_LARGO, z1 - ESPUMA_LARGO, x1, z1, y, 0, 1, 1, 1));
+  }
+  if (sul && oeste) {
+    lista.push(quadEspuma(x0, z1 - ESPUMA_LARGO, x0 + ESPUMA_LARGO, z1, y, 1, 0, 1, 1));
+  }
+  if (norte && leste) {
+    lista.push(quadEspuma(x1 - ESPUMA_LARGO, z0, x1, z0 + ESPUMA_LARGO, y, 1, 1, 1, 0));
+  }
+  if (norte && oeste) {
+    lista.push(quadEspuma(x0, z0, x0 + ESPUMA_LARGO, z0 + ESPUMA_LARGO, y, 1, 1, 0, 1));
+  }
+}
+
 function planoQueda(wx, wy, y0, y1, dir) {
   const h = Math.max(0.2, y1 - y0);
   const geo = new THREE.PlaneGeometry(1, h);
@@ -1221,6 +1308,7 @@ function rebaixarModelo(grade, cx, cy) {
 function* construirGeosChunk(chunk) {
   const ledges = [];
   const aguas = [];
+  const espumas = [];
   const quedas = [];
   const sacosTopo = new Map();
   const sacosParede = new Map();
@@ -1362,6 +1450,7 @@ function* construirGeosChunk(chunk) {
             tintaLago(prof || 1),
           ),
         );
+        empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
         if (caindo) {
           let yBase = chunk.aguaFundo[ia] | 0;
           let dir = "s";
@@ -1457,6 +1546,7 @@ function* construirGeosChunk(chunk) {
     geoLedges: mesclarLista(ledges),
     geoCubos: geoDoLote(loteCubos),
     geoAgua: mesclarLista(aguas),
+    geoEspuma: mesclarLista(espumas),
     geoQueda: mesclarLista(quedas),
   };
   return out;
@@ -1529,6 +1619,7 @@ export function criarTerrenoMalha(atlas = null) {
   grupo.add(grupoAgua);
 
   const matAgua = obterMaterialLago();
+  const matEspuma = obterMaterialEspuma();
   const matQueda = obterMaterialQueda();
   const depthCubos = profundidadeSemTopo();
 
@@ -1676,12 +1767,17 @@ export function criarTerrenoMalha(atlas = null) {
   function liberarGrupoChunk(entry) {
     if (!entry) return;
     soltarRegistro(entry.agua);
+    soltarRegistro(entry.espuma);
     soltarRegistro(entry.queda);
     soltarRegistro(entry.cubos);
     soltarRegistro(entry.real);
     if (entry.agua) {
       grupoAgua.remove(entry.agua);
       entry.agua.geometry?.dispose();
+    }
+    if (entry.espuma) {
+      grupoAgua.remove(entry.espuma);
+      entry.espuma.geometry?.dispose();
     }
     if (entry.queda) {
       grupoAgua.remove(entry.queda);
@@ -1727,6 +1823,15 @@ export function criarTerrenoMalha(atlas = null) {
       mesh.renderOrder = 2;
       grupoAgua.add(mesh);
       entry.agua = mesh;
+    }
+    if (geos.geoEspuma) {
+      const mesh = new THREE.Mesh(geos.geoEspuma, matEspuma);
+      mesh.name = `espuma-${key}`;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.renderOrder = 4;
+      grupoAgua.add(mesh);
+      entry.espuma = mesh;
     }
     if (geos.geoQueda) {
       const mesh = new THREE.Mesh(geos.geoQueda, matQueda);
@@ -1775,6 +1880,7 @@ export function criarTerrenoMalha(atlas = null) {
     publicarMalha(entry.cubos, "Terreno");
     publicarMalha(entry.real, "Terreno");
     publicarMalha(entry.agua, "Água");
+    publicarMalha(entry.espuma, "Água");
     publicarMalha(entry.queda, "Água");
     limparSujo(chunk);
   }

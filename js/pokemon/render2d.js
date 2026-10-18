@@ -1,4 +1,5 @@
 import { ESCALA, TILE } from "../config.js";
+import { alfaSprites } from "../jogo/teleporte.js";
 import { oscilacaoNado } from "../fx/fxAgua.js";
 import { cobrirPernasAgua } from "../render/agua2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
@@ -25,6 +26,7 @@ function desenharSombra(ctx, x, y, escala) {
 }
 
 function desenharCorpo(ctx, ator) {
+  const alfa = ator.faccao === "party" ? alfaSprites() : 1;
   const medida = medidaSprite(ator);
   const { escala, offsetY, dx, dy } = medida;
   const chaoX = mundoParaTelaX(ator.x);
@@ -36,8 +38,9 @@ function desenharCorpo(ctx, ator) {
   const fr = quadroDe(ator, pack);
   const pronto = !!(fr && pack.img && pack.estado === "pronto");
   const centro = centroDoQuadro(fr, medida);
-  desenharSombra(ctx, chaoX + centro.x * PX * escala, chaoY, escala);
+  if (alfa > 0.04) desenharSombra(ctx, chaoX + centro.x * PX * escala, chaoY, escala * alfa);
   ctx.save();
+  ctx.globalAlpha = alfa;
   ctx.imageSmoothingEnabled = false;
   if (pronto) {
     blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala, { dx, dy });

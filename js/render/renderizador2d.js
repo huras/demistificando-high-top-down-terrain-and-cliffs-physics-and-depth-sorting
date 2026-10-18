@@ -30,6 +30,7 @@ import { avancarTempoAgua, empilharAgua2d } from "./agua2d.js";
 import { empilharTerreno } from "./terreno.js";
 import { usarTiles } from "./atlas.js";
 import { obterVisaoCaverna2d } from "./visaoCaverna2d.js";
+import { pecasAgora, pecasContagem } from "../jogo/teleporte.js";
 
 const lista = criarListaProfundidade();
 
@@ -70,6 +71,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   empilharPoeiraPasso(lista);
   empilharFxAguaGotas(lista);
   desenharLista(lista, ctx);
+  desenharPecasTeleporte(ctx);
   desenharHoverTile2d(ctx);
 
   if (debug) {
@@ -86,6 +88,30 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   desenharLabelHoverHud(ctx, canvas.width, canvas.height);
 
   return { ocl, modoVisual };
+}
+
+function desenharPecasTeleporte(ctx) {
+  const n = pecasContagem();
+  if (n <= 0) return;
+  const lista = pecasAgora();
+  for (let i = 0; i < n; i++) {
+    const p = lista[i];
+    const x = mundoParaTelaX(p.x);
+    const y = mundoParaTelaY(p.y, p.z, 0);
+    const r = p.tam * 32;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(p.giro);
+    ctx.globalAlpha = p.alfa;
+    ctx.fillStyle = "#f4f7ff";
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.86, r * 0.62);
+    ctx.lineTo(-r * 0.86, r * 0.62);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 function desenharPathAgente(ctx, agente) {

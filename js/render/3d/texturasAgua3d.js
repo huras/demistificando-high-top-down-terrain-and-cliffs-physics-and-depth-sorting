@@ -227,6 +227,84 @@ export function obterMaterialQueda() {
   return matQueda;
 }
 
+const ESPUMA_FUNCS = `
+float hashEspuma(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float ruidoEspuma(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	float a = hashEspuma(i);
+	float b = hashEspuma(i + vec2(1.0, 0.0));
+	float c = hashEspuma(i + vec2(0.0, 1.0));
+	float d = hashEspuma(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, f.x), mix(c, d, f.y), f.y);
+}
+`;
+
+const ESPUMA_FRAG = `
+float costa = clamp(vEspumaCosta, 0.0, 1.0);
+float shore = sqrt(costa);
+vec2 uvN = fract(vMundoEspuma * 0.17 + vec2(uTempo * 0.04, uTempo * 0.03));
+float n1 = ruidoEspuma(uvN * 8.0);
+float n2 = ruidoEspuma(uvN.yx * 8.0 + 0.37);
+float d1 = (n1 - 0.5) * (1.0 - shore) * 0.45;
+float d2 = (n2 - 0.5) * (1.0 - shore) * 0.45;
+float f1 = sin((shore + d1) * 6.2831853 - uTempo * 2.4);
+float f2 = sin((shore + d2) * 6.2831853 + uTempo * 2.1 + 2.0);
+f1 *= f1;
+f2 *= f2 * 0.7;
+float miolo = smoothstep(0.04, 0.42, costa);
+float espuma = max(max(f1, f2) * shore, miolo);
+diffuseColor = vec4(vec3(0.93, 0.98, 1.0), espuma);
+`;
+
+function materialEspuma() {
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
+  });
+  mat.customProgramCacheKey = () => "agua-espuma-margem";
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTempo = { value: 0 };
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nvarying float vEspumaCosta;\nvarying vec2 vMundoEspuma;",
+      )
+      .replace(
+        "#include <begin_vertex>",
+        "#include <begin_vertex>\nvMundoEspuma = vec2(position.x, position.z);",
+      )
+      .replace(
+        "#include <color_vertex>",
+        "#include <color_vertex>\nvEspumaCosta = vColor.r;",
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>\nvarying float vEspumaCosta;\nvarying vec2 vMundoEspuma;\nuniform float uTempo;\n${ESPUMA_FUNCS}`,
+      )
+      .replace("#include <color_fragment>", `#include <color_fragment>\n${ESPUMA_FRAG}`);
+    mat.userData.shader = shader;
+  };
+  return mat;
+}
+
+const matEspuma = materialEspuma();
+
+export function obterMaterialEspuma() {
+  return matEspuma;
+}
+
 /** Índice pequeno: mediump perde o quadro quando o valor passa de ~1000. */
 function quadro(segundos, periodo, quadros) {
   const n = Math.max(1, quadros | 0);
@@ -326,12 +404,18 @@ export function avancarMateriaisAgua(segundos) {
     queda.uniforms.uQuadro.value = quadro(segundos, WF_FRAME_S, matQueda.userData.quadros);
     queda.uniforms.uLinha.value = scroll - Math.floor(scroll);
   }
+  const espuma = matEspuma.userData.shader;
+  if (espuma) {
+    const t = segundos - Math.floor(segundos / 1000) * 1000;
+    espuma.uniforms.uTempo.value = t;
+  }
 }
 
 export function liberarMateriaisAgua() {
   matLago.dispose();
   matLagoLonge.dispose();
   matQueda.dispose();
+  matEspuma.dispose();
   texLago.dispose();
   texQueda.dispose();
 }

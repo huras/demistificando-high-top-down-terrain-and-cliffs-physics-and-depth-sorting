@@ -47,8 +47,26 @@ const SOM_RECOLHER = "SFX/party/recall.wav";
 const SOM_SHINY = "SFX/party/shiny.wav";
 const ESPERA_SHINY = 220;
 
+const CHAVE_MUDO = "som-mudo";
+
+function lerMudoSalvo() {
+  try {
+    return localStorage.getItem(CHAVE_MUDO) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function gravarMudo(valor) {
+  try {
+    localStorage.setItem(CHAVE_MUDO, valor ? "1" : "0");
+  } catch {
+    /* navegador sem armazenamento */
+  }
+}
+
 let ctx = null;
-let mudo = false;
+let mudo = lerMudoSalvo();
 let liberado = false;
 let abaixaBgm = 0;
 let ultimoShiny = 0;
@@ -373,8 +391,13 @@ export function sfx(tipo) {
   o.stop(agora + 0.14);
 }
 
+export function estaMudo() {
+  return mudo;
+}
+
 export function alternarMudo() {
   mudo = !mudo;
+  gravarMudo(mudo);
   if (mudo) {
     voz?.el.pause();
     saindo?.el.pause();

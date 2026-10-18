@@ -86,6 +86,7 @@ import { carregarDados } from "./pokemon/dados.js";
 import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
+import { tickTeleporte } from "./jogo/teleporte.js";
 import { rolarCategoria } from "./jogo/roda.js";
 
 const SPAWN = USAR_PATCH_DEMO ? SPAWN_DEMO : SPAWN_PALLET;
@@ -428,8 +429,8 @@ function loop(agora) {
   } else {
     consumirSolturaEsquerda();
     definirPuxadaFlecha(false, false);
-    if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom(camera, ZOOM_PASSO);
-    if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
+    if (!trava && (teclaAgora("Equal") || teclaAgora("NumpadAdd"))) ajustarZoom(camera, ZOOM_PASSO);
+    if (!trava && (teclaAgora("Minus") || teclaAgora("NumpadSubtract"))) {
       ajustarZoom(camera, 1 / ZOOM_PASSO);
     }
   }
@@ -437,12 +438,19 @@ function loop(agora) {
   atualizarStreaming(corpo.x, corpo.y);
   definirCorposAtores(listarSolidosPokemon());
   atualizarMapaKanto(corpo.x, corpo.y);
-  tickMapaMundo(corpo.x, corpo.y);
+  tickMapaMundo(corpo.x, corpo.y, dt);
   if (!passeioAtivo() && !trava) atualizarMovimento(corpo, dt);
   tickFilaPath();
   if (passeioAtivo() && !trava) atualizarPasseio(corpo, dt);
   atualizarAgente(agente, corpo, dt, 0, AGENTE_DIST_SEGUIR);
   tickPokemon(corpo, dt, agente.perfil);
+  tickTeleporte(dt, {
+    corpo,
+    agente,
+    camera,
+    camera3d: obterCenario3d()?.camera3d,
+    modo,
+  });
   if (!trava) tickPoeiraPasso(dt, corpo, agente);
   if (!trava) tickFxAgua(dt, corpo, agente);
   if (corpo._renasceu) {

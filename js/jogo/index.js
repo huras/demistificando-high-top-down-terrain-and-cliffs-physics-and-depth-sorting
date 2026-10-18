@@ -4,7 +4,7 @@ import { teclaAgora, teclaBaixa } from "../entrada/teclado.js";
 import { lerMixClima } from "../render/3d/ceu/clima.js";
 import { obterClima } from "../render/3d/ceu/controleCeu.js";
 import { zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
-import { atualizarAudio, chaveBgm, definirBgm, destravarAudio } from "./audio.js";
+import { alternarMudo, atualizarAudio, chaveBgm, definirBgm, destravarAudio, estaMudo } from "./audio.js";
 import { tickBlocos } from "./blocos.js";
 import { atualizarBillboardsBerry } from "./billboards.js";
 import {
@@ -39,7 +39,8 @@ import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
 import { acaoContexto, acaoConsomeE } from "./acaoContexto.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
 import { alternarCampo } from "../pokemon/party.js";
-import { abrirMapa, fecharMapa, mapaAberto, zoomMapa } from "../ui/mapa/mapaMundo.js";
+import { abrirMapa, fecharMapa, mapaAberto, mapaViajando, zoomMapa } from "../ui/mapa/mapaMundo.js";
+import { teleporteOcupado } from "./teleporte.js";
 
 let viewport = null;
 let toastAte = 0;
@@ -51,7 +52,28 @@ function campoFocado() {
 }
 
 export function jogoTravaMundo() {
-  return uiAberta() || mapaAberto();
+  return uiAberta() || mapaAberto() || teleporteOcupado();
+}
+
+function pintarBotaoSom(botao) {
+  const off = estaMudo();
+  botao.setAttribute("aria-pressed", off ? "true" : "false");
+  botao.setAttribute(
+    "aria-label",
+    off ? "Ligar música e efeitos sonoros" : "Desligar música e efeitos sonoros",
+  );
+  botao.title = off ? "Som desligado" : "Música e efeitos";
+}
+
+function ligarBotaoSom() {
+  const botao = document.getElementById("btn-som");
+  if (!botao) return;
+  pintarBotaoSom(botao);
+  botao.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+  botao.addEventListener("click", () => {
+    alternarMudo();
+    pintarBotaoSom(botao);
+  });
 }
 
 export function montarJogo(opts) {
@@ -63,6 +85,7 @@ export function montarJogo(opts) {
   carregar();
   aoMudar(pintar);
   pintar();
+  ligarBotaoSom();
   window.addEventListener("pointerdown", destravarAudio, { once: true });
   window.addEventListener("keydown", destravarAudio, { once: true });
   window.addEventListener("beforeunload", () => salvar());
@@ -169,6 +192,15 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
 
 function lerTeclas(corpo) {
   if (mapaAberto()) {
+    if (mapaViajando()) {
+      teclaAgora("Escape");
+      teclaAgora("KeyM");
+      teclaAgora("Equal");
+      teclaAgora("NumpadAdd");
+      teclaAgora("Minus");
+      teclaAgora("NumpadSubtract");
+      return;
+    }
     if (teclaAgora("Escape") || teclaAgora("KeyM")) fecharMapa();
     if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) zoomMapa(1.18);
     if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) zoomMapa(1 / 1.18);
@@ -192,7 +224,8 @@ function lerTeclas(corpo) {
   }
   if (teclaAgora("KeyR") && !estado.roda) interagir(corpo);
   if (estado.painel || estado.dialogo || estado.roda || estado.construir || estado.craft) return;
-  if (teclaAgora("KeyM")) abrirMapa(corpo.x, corpo.y);
+  if (teleporteOcupado()) teclaAgora("KeyM");
+  else if (teclaAgora("KeyM")) abrirMapa(corpo.x, corpo.y);
   if (teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight")) {
     for (let i = 0; i < TECLAS_PARTY.length; i++) {
       if (teclaAgora(TECLAS_PARTY[i])) {

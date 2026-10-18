@@ -328,8 +328,9 @@ function alinharCostas(camera3d, corpo, dt) {
 }
 
 function poseOrbita(camera3d, tx, tyBase, tz) {
-  const distDesejada = camera3d.distancia;
-  const pitch = camera3d.pitchOrbita;
+  const folga = camera3d.folgaTeleporte || 0;
+  const distDesejada = camera3d.distancia + folga * 22;
+  const pitch = Math.min(CAMERA3D_PITCH_MAX, camera3d.pitchOrbita + folga * 0.38);
   const cosP = Math.cos(pitch);
   const sinP = Math.sin(pitch);
   const sinY = Math.sin(camera3d.yaw);

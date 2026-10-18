@@ -412,6 +412,13 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
     slot.sprite.visible = true;
     slot.sprite.scale.multiplyScalar(some);
+    if (ator.faccao === "party" && ator._sumicoTeleporte) {
+      slot.sprite.material.opacity = some;
+      slot.silhueta.material.opacity = some;
+    } else if (ator.faccao === "party" && slot.sprite.material.opacity !== 1) {
+      slot.sprite.material.opacity = 1;
+      slot.silhueta.material.opacity = 1;
+    }
     copiarCartao(slot.silhueta, slot.sprite);
     copiarCartao(slot.veu, slot.sprite);
     const agua = colunaAgua(ator.x, ator.y);

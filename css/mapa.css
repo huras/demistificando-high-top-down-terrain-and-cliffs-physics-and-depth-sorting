@@ -47,6 +47,10 @@
   cursor: grabbing;
 }
 
+.mapa-mundo__tela--cidade {
+  cursor: pointer;
+}
+
 .mapa-mundo__titulo,
 .mapa-mundo__dica {
   position: absolute;

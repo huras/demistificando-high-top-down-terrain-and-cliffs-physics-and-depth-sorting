@@ -48,11 +48,58 @@ body {
   border-bottom: 1px solid var(--borda);
 }
 
+.cabecalho__marca {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .cabecalho h1 {
   margin: 0;
   font-size: 1.1rem;
   letter-spacing: 0.02em;
   color: var(--destaque);
+}
+
+.btn-som {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--destaque);
+  cursor: pointer;
+}
+
+.btn-som:hover {
+  background: rgba(125, 206, 106, 0.14);
+}
+
+.btn-som svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.btn-som__mudo {
+  display: none;
+}
+
+.btn-som[aria-pressed="true"] {
+  color: var(--texto-suave);
+}
+
+.btn-som[aria-pressed="true"] .btn-som__ligado {
+  display: none;
+}
+
+.btn-som[aria-pressed="true"] .btn-som__mudo {
+  display: block;
 }
 
 .cabecalho p {

@@ -138,6 +138,28 @@ export function criarPersonagem3d(opts = {}) {
   return {
     grupo,
     definirSprite,
+    definirSumico(alfa) {
+      const a = alfa == null ? 1 : Math.max(0, Math.min(1, alfa));
+      spriteMat.opacity = a;
+      silhueta.material.opacity = a;
+      silhueta.material.transparent = true;
+      if (a >= 0.999) {
+        sprite.visible = !!sheet;
+        silhueta.visible = !!sheet;
+        veuMat.opacity = 0.55;
+        sombra.grupo.visible = true;
+        return;
+      }
+      veuMat.opacity = 0.55 * a;
+      const mostra = a > 0.03 && !!sheet;
+      sprite.visible = mostra;
+      silhueta.visible = mostra;
+      sombra.grupo.visible = mostra;
+      if (!mostra) {
+        veu.visible = false;
+        asa.grupo.visible = false;
+      }
+    },
     /**
      * @param {object} corpoEstado
      * @param {THREE.Camera|null} camera
