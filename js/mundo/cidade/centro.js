@@ -119,6 +119,6 @@ export function alvoDoCentro(x, y) {
 export function promptDoCentro(alvo) {
   if (!alvo) return "";
   if (alvo.tipo === "cura") return "Recuperar";
-  if (alvo.tipo === "pc") return "PC — R";
+  if (alvo.tipo === "pc") return "";
   return "";
 }

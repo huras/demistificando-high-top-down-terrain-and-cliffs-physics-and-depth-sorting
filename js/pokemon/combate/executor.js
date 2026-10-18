@@ -323,6 +323,7 @@ function soltarTiro(ator, slot, ang, extra) {
     distCresce: extra.distCresce || 7,
     escala: extra.escala || 0,
     folha: extra.folha || "",
+    rastroEspaco: def.key === "ember" || def.key === "waterGun" ? 0.14 : 0,
   });
 }
 
@@ -339,10 +340,11 @@ function soltarLeque(ator, slot, receita) {
   const angs = angulosLeque(receita.n, receita.graus);
   const id = rajadaSeq++;
   const poder = (slot.def.poder || 0) / receita.n;
+  const velocidade = receita.vel || slot.def.vel || 14;
   for (let i = 0; i < angs.length; i++) {
-    const folga = 0.85 + Math.random() * 0.2;
+    const folga = receita.vel ? 0.85 + Math.random() * 0.2 : 1;
     soltarTiro(ator, slot, base + angs[i], {
-      vel: receita.vel * folga,
+      vel: velocidade * folga,
       poder,
       rajada: id,
       giro: receita.giro || 0,

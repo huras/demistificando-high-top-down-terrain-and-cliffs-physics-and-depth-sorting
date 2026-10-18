@@ -290,9 +290,26 @@ function soltarRastros() {
   const tiros = projeteisVivos();
   for (let i = 0; i < tiros.length; i++) {
     const t = tiros[i];
-    if (t.viajou - (t.rastroEm || 0) < 0.28) continue;
-    t.rastroEm = t.viajou;
-    rastro(t.x, t.y, t.z, t.cor);
+    const espaco = t.rastroEspaco || 0.28;
+    const fim = t.viajou || 0;
+    let marca = t.rastroEm || 0;
+    if (fim - marca < espaco) continue;
+    const ax = t.antX ?? t.x;
+    const ay = t.antY ?? t.y;
+    const az = t.antZ ?? t.z;
+    const comeco = t.viajouAntes ?? marca;
+    const trecho = fim - comeco;
+    let n = 0;
+    while (marca + espaco <= fim + 1e-4 && n < 10) {
+      marca += espaco;
+      n += 1;
+      let u = 1;
+      if (trecho > 1e-6) u = (marca - comeco) / trecho;
+      if (u < 0) u = 0;
+      else if (u > 1) u = 1;
+      rastro(ax + (t.x - ax) * u, ay + (t.y - ay) * u, az + (t.z - az) * u, t.cor);
+    }
+    t.rastroEm = marca;
   }
 }
 

@@ -51,6 +51,7 @@ export function soltarProjetil(opts) {
     escala0: opts.escala || 0,
     escala: opts.escala || 0,
     folha: opts.folha || "",
+    rastroEspaco: opts.rastroEspaco || 0,
   });
   const ultimo = vivos[vivos.length - 1];
   const vel = Math.hypot(ultimo.vx, ultimo.vy) || 1;
@@ -101,6 +102,10 @@ function atualizarImpactos(dt) {
 export function atualizarProjeteis(dt, candidatos, aoAtingir) {
   for (let i = vivos.length - 1; i >= 0; i--) {
     const p = vivos[i];
+    p.antX = p.x;
+    p.antY = p.y;
+    p.antZ = p.z;
+    p.viajouAntes = p.viajou;
     const passo = Math.hypot(p.vx, p.vy) * dt;
     p.t += dt;
     if (p.amp > 0) {

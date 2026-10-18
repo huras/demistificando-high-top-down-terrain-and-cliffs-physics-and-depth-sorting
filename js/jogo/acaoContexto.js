@@ -1,5 +1,5 @@
 /**
- * Uma tecla E, um aviso. Porta, cura, cápsula, placa e escalada
+ * Uma tecla E, um aviso. Porta, cura, PC, cápsula, placa e escalada
  * disputam o mesmo letreiro. Quem ganha consome o E; escalar deixa
  * a tecla pro movimento.
  */
@@ -58,6 +58,11 @@ export function acaoContexto(ctx) {
           z: corpo.z,
         };
     return { id: "cura", rotulo: "Recuperar", ancora };
+  }
+
+  if (alvoHub?.tipo === "pc") {
+    escaladaAte = 0;
+    return { id: "pc", rotulo: "PC", ancora: ancoraDoHub(papelHub, alvoHub) };
   }
 
   if (alvoLab?.tipo === "capsula") {

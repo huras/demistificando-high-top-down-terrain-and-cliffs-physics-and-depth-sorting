@@ -17,6 +17,7 @@ export const FOLHAS = {
     escalaVoo: tamanho(32, 6.6),
     escalaImpacto: tamanho(32, 2.2),
     aponta: "cima",
+    offsetAngulo: Math.PI,
     vertical: false,
     impacto: "folha",
     frameImpacto: 0,
@@ -146,7 +147,7 @@ export function poseTiro(p, camera, tela) {
     chave: p.folha,
     frame,
     frames: cfg.frames,
-    angulo: cfg.vertical ? 0 : anguloDoMovimento(camera, p.vx, p.vy, cfg.aponta, giro, tela),
+    angulo: cfg.vertical ? 0 : anguloDoMovimento(camera, p.vx, p.vy, cfg.aponta, giro, tela) + (cfg.offsetAngulo || 0),
     escala: p.escala || cfg.escalaVoo,
     alpha: 1,
   };

@@ -54,6 +54,7 @@ import { celulaLivre } from "../wild/salas.js";
 import { sfx } from "./audio.js";
 import { htmlIcone } from "./icones.js";
 import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarCliqueCapsula, tratarInputCapsula } from "./capsula.js";
+import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
 import { htmlLoja, quantidadeLoja, tratarLoja } from "./loja.js";
 import { obterClima, obterHora } from "../render/3d/ceu/controleCeu.js";
 import { obterBloco, superficieEm } from "../mundo/voxel/storeMundo.js";
@@ -67,6 +68,7 @@ export function ligarUi(overlay) {
   raiz.addEventListener("change", noChange);
   raiz.addEventListener("input", tratarInputCapsula);
   ligarCapsula(raiz);
+  ligarJanelaPc(raiz);
   raiz.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape" || !estado.painel) return;
     ev.preventDefault();
@@ -401,6 +403,13 @@ function pintarPainel() {
   const host = el("#jogo-painel");
   if (!host) return;
   const nome = estado.painel;
+  if (nome === "pc") {
+    host.hidden = true;
+    host.innerHTML = "";
+    sincronizarJanelaPc(true);
+    return;
+  }
+  sincronizarJanelaPc(false);
   host.hidden = !nome;
   host.classList.toggle("jogo-painel--capsula", nome === "capsula");
   if (!nome) {
@@ -408,7 +417,6 @@ function pintarPainel() {
     return;
   }
   if (nome === "loja") host.innerHTML = htmlLoja();
-  else if (nome === "pc") host.innerHTML = htmlPc();
   else if (nome === "capsula") {
     host.innerHTML = htmlCapsula();
     montarJanelaCapsula();
@@ -510,32 +518,6 @@ function htmlParty(comSoltar) {
     })
     .join("");
 }
-
-function htmlPc() {
-  const caixa = estado.caixas[estado.caixaAtiva];
-  const opcoes = estado.caixas
-    .map((c, i) => `<option${i === estado.caixaAtiva ? " selected" : ""}>${c.nome}</option>`)
-    .join("");
-  const slots = caixa.slots
-    .map((snap, i) => {
-      if (!snap) return `<div class="jogo-item"><span>vazio</span></div>`;
-      const esp = especie(snap.especieKey);
-      const nome = esp?.nome || snap.especieKey;
-      const dex = esp?.dex | 0;
-      const url = !dex
-        ? ""
-        : snap.shiny
-          ? `/ref/sprites/pokemon-portraits/shiny/${dex}.png`
-          : `/ref/sprites/pokemon-portraits/${dex}.png`;
-      const img = url ? `<img class="pc-retrato" alt="" src="${url}" />` : "";
-      return `<div class="jogo-item">${img}<span>${escHtml(nome)} Lv${snap.nivel}${snap.shiny ? " ✦" : ""}</span><button type="button" data-act="retirar" data-i="${i}">Retirar</button><button type="button" data-act="soltar-caixa" data-i="${i}">Soltar</button></div>`;
-    })
-    .join("");
-  return `<header class="jogo-topo"><h2>PC</h2><button type="button" data-act="fechar">Fechar</button></header>
-    <select data-caixa>${opcoes}</select>
-    <h3>Time</h3>${htmlParty(false)}<h3>${caixa.nome}</h3><div class="jogo-grade">${slots}</div>`;
-}
-
 
 function htmlDex() {
   if (!temChave("pokedex")) return "<p>Você não tem a Pokédex.</p>";

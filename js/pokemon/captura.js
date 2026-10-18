@@ -2,6 +2,7 @@ import { POKEMON } from "../config.js";
 import { estaEmCena } from "../cena/modoCena.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { selvagensAtivos } from "./populacao.js";
+import { guardarCapturaNaCaixa, vagasNasCaixas } from "../jogo/estado.js";
 import { gastarBola, obterBolas, partyCheia, receberCaptura } from "./party.js";
 
 export const ALCANCE_BOLA = 10;
@@ -127,8 +128,12 @@ function tremoresDe(chance, sucesso) {
   return Math.max(1, Math.min(2, Math.round(chance * 3) || 1));
 }
 
+function semLugarParaCaptura() {
+  return partyCheia() && vagasNasCaixas() <= 0;
+}
+
 function soltar(corpo) {
-  if (obterBolas() <= 0 || partyCheia()) return;
+  if (obterBolas() <= 0 || semLugarParaCaptura()) return;
   if (!gastarBola()) return;
   const geo = obterMiraBola(corpo);
   const ux = geo?.ux ?? (corpo.dirX || 0);
@@ -166,8 +171,8 @@ export function atualizarCaptura(corpo, dt, agora, efeitos) {
         efeitos.flutuar(corpo, "sem bola", "#fca5a5");
         pedidoSegurar = false;
         soltarPendente = false;
-      } else if (partyCheia()) {
-        efeitos.flutuar(corpo, "party cheia", "#fca5a5");
+      } else if (semLugarParaCaptura()) {
+        efeitos.flutuar(corpo, "PC cheio", "#fca5a5");
         pedidoSegurar = false;
         soltarPendente = false;
       } else segurando = true;
@@ -241,14 +246,19 @@ export function atualizarCaptura(corpo, dt, agora, efeitos) {
     if (bola.alvo) bola.alvo._sumindo = some;
     if (bola.tremor >= bola.tremores && bola.faseT >= bola.tremores * 0.55) {
       if (bola.sucesso) {
-        const mon = receberCaptura(bola.alvo);
+        let ok = !partyCheia() && !!receberCaptura(bola.alvo);
+        let texto = "pego!";
+        if (!ok) {
+          ok = guardarCapturaNaCaixa(bola.alvo);
+          texto = ok ? "enviado ao PC" : "PC cheio";
+        }
         bola.alvo.capturado = true;
         bola.alvo.preso = false;
         bola.alvo._sumindo = 0;
         estourar(bola.x, bola.y, bola.z, "#facc15", 18, true);
         estourar(bola.x, bola.y, bola.z, "#4ade80", 10, true);
-        efeitos.flutuar(bola.alvo, mon ? "pego!" : "party cheia", "#4ade80");
-        if (!mon) {
+        efeitos.flutuar(bola.alvo, texto, ok ? "#4ade80" : "#fca5a5");
+        if (!ok) {
           bola.alvo.capturado = false;
           bola.alvo.preso = false;
           bola.alvo._sumindo = 1;

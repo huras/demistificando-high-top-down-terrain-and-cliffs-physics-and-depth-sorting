@@ -168,6 +168,39 @@ export function colocarNaParty(ator) {
   return true;
 }
 
+export function trocarOrdemParty(a, b) {
+  const i = a | 0;
+  const j = b | 0;
+  if (i === j || i < 0 || j < 0 || i >= party.length || j >= party.length) return false;
+  const tmp = party[i];
+  party[i] = party[j];
+  party[j] = tmp;
+  if (deployado === i) deployado = j;
+  else if (deployado === j) deployado = i;
+  const vivo = party[deployado];
+  if (vivo) {
+    vivo.capturado = false;
+    vivo._colocado = false;
+  }
+  return true;
+}
+
+export function trocarMembro(indice, ator) {
+  if (!ator || indice < 0 || indice >= party.length) return null;
+  const antigo = party[indice];
+  ator.faccao = "party";
+  ator.hostil = false;
+  ator.capturado = indice !== deployado;
+  party[indice] = ator;
+  if (indice === deployado) {
+    ator.capturado = false;
+    ator.morto = false;
+    ator._colocado = false;
+    if (antigo) antigo.capturado = true;
+  }
+  return antigo;
+}
+
 export function especieNoTime(chave) {
   for (let i = 0; i < party.length; i++) {
     if (party[i].especie?.key === chave) return true;

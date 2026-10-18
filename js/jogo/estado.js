@@ -37,6 +37,8 @@ import {
   obterBolas,
   substituirParty,
   tirarDaParty,
+  trocarMembro,
+  trocarOrdemParty,
 } from "../pokemon/party.js";
 
 const CHAVE_SAVE = "demo-jogo-v1";
@@ -297,6 +299,121 @@ export function guardarNaCaixa(snap, silencioso = false) {
     return true;
   }
   return false;
+}
+
+/** Captura curada na primeira vaga das caixas. Não avisa: quem chama decide o texto. */
+export function guardarCapturaNaCaixa(selvagem) {
+  if (!selvagem?.especie) return false;
+  const ator = criarAtor({
+    id: `pc-${selvagem.especie.key}`,
+    especie: selvagem.especie,
+    nivel: Math.max(1, selvagem.nivel | 0),
+    shiny: !!selvagem.shiny,
+    faccao: "party",
+    x: 0,
+    y: 0,
+    z: 1,
+    hostil: false,
+  });
+  ator.exp = selvagem.exp ?? ator.exp;
+  ator.hp = ator.hpMax;
+  return guardarNaCaixa(snapshot(ator), true);
+}
+
+function caixaDe(id) {
+  const n = id | 0;
+  if (n < 0 || n >= estado.caixas.length) return null;
+  return estado.caixas[n];
+}
+
+export function depositarNoSlot(indiceParty, caixaId, slot) {
+  const caixa = caixaDe(caixaId);
+  if (!caixa) return "Caixa inválida.";
+  const i = slot | 0;
+  if (i < 0 || i >= caixa.slots.length) return "Slot inválido.";
+  if (caixa.slots[i]) return "Slot ocupado.";
+  const tirado = tirarDaParty(indiceParty);
+  if (!tirado) return "O time precisa de pelo menos um Pokémon.";
+  caixa.slots[i] = snapshot(tirado);
+  estado.caixaAtiva = caixaId | 0;
+  avisar();
+  return "";
+}
+
+export function retirarDoSlot(caixaId, slot) {
+  const caixa = caixaDe(caixaId);
+  if (!caixa) return "Caixa inválida.";
+  const i = slot | 0;
+  if (i < 0 || i >= caixa.slots.length) return "Slot inválido.";
+  const snap = caixa.slots[i];
+  if (!snap) return "Slot vazio.";
+  const ator = atorDoSnapshot(snap);
+  if (!ator) return "Espécie desconhecida.";
+  if (!colocarNaParty(ator)) return "O time está cheio.";
+  caixa.slots[i] = null;
+  estado.caixaAtiva = caixaId | 0;
+  avisar();
+  return "";
+}
+
+export function trocarPartyComCaixa(indiceParty, caixaId, slot) {
+  const caixa = caixaDe(caixaId);
+  if (!caixa) return "Caixa inválida.";
+  const i = slot | 0;
+  if (i < 0 || i >= caixa.slots.length) return "Slot inválido.";
+  if (!caixa.slots[i]) return depositarNoSlot(indiceParty, caixaId, i);
+  const atual = listaParty()[indiceParty];
+  if (!atual) return "Slot vazio.";
+  const novo = atorDoSnapshot(caixa.slots[i]);
+  if (!novo) return "Espécie desconhecida.";
+  const antigo = trocarMembro(indiceParty, novo);
+  if (!antigo) return "Não deu para trocar.";
+  caixa.slots[i] = snapshot(antigo);
+  estado.caixaAtiva = caixaId | 0;
+  avisar();
+  return "";
+}
+
+export function moverEntreCaixas(deCaixa, deSlot, paraCaixa, paraSlot) {
+  const origem = caixaDe(deCaixa);
+  const destino = caixaDe(paraCaixa);
+  if (!origem || !destino) return "Caixa inválida.";
+  const a = deSlot | 0;
+  const b = paraSlot | 0;
+  if (a < 0 || b < 0 || a >= origem.slots.length || b >= destino.slots.length) return "Slot inválido.";
+  if ((deCaixa | 0) === (paraCaixa | 0) && a === b) return "";
+  const snap = origem.slots[a];
+  if (!snap) return "Slot vazio.";
+  const outro = destino.slots[b];
+  origem.slots[a] = outro || null;
+  destino.slots[b] = snap;
+  estado.caixaAtiva = paraCaixa | 0;
+  avisar();
+  return "";
+}
+
+export function soltarDoSlot(caixaId, slot) {
+  const caixa = caixaDe(caixaId);
+  if (!caixa) return "Caixa inválida.";
+  const i = slot | 0;
+  if (i < 0 || i >= caixa.slots.length || !caixa.slots[i]) return "Slot vazio.";
+  caixa.slots[i] = null;
+  estado.caixaAtiva = caixaId | 0;
+  avisar();
+  return "";
+}
+
+export function soltarDoTime(indice) {
+  if (listaParty().length <= 1) return "O time precisa de pelo menos um Pokémon.";
+  if (!tirarDaParty(indice)) return "Não deu para soltar.";
+  avisar();
+  return "";
+}
+
+export function reordenarTime(a, b) {
+  if (!trocarOrdemParty(a, b)) return "Não deu para trocar.";
+  avisar();
+  return "";
 }
 
 export function guardarVariosNaCaixa(snaps) {
