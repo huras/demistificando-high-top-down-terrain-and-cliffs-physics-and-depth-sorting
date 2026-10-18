@@ -100,6 +100,10 @@ function anotar(item) {
     registrar({ tipo: "cura", ...sujeito(item.ator), ganho: item.ganho });
     return;
   }
+  if (item.tipo === "ataque") {
+    registrar({ tipo: "ataque", ...sujeito(item.alvo), estagio: item.estagio });
+    return;
+  }
   if (item.tipo === "queda") registrar({ tipo: "queda", ...sujeito(item.alvo) });
 }
 

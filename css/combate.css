@@ -177,8 +177,57 @@ button, input, select {
   background: #4ade80;
 }
 
-.esquiva {
-  margin-top: 8px;
+.esquiva,
+.marca__esquiva {
+  display: none;
+}
+
+.tubos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tubos[hidden] {
+  display: none;
+}
+
+.tubos__nome {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fca5a5;
+}
+
+.tubos__trilho {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.tubos__trilho i {
+  display: block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: #3a241c;
+  border: 1px solid #7c3a22;
+}
+
+.tubos__trilho i.cheio {
+  background: #ef4444;
+  border-color: #fecaca;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.55);
+}
+
+.marca .tubos {
+  margin-top: 3px;
+}
+
+.marca .tubos__trilho i {
+  width: 8px;
+  height: 5px;
 }
 
 .esquiva__trilho,
@@ -524,6 +573,11 @@ button, input, select {
 
 .log__cura {
   color: #4ade80;
+  font-weight: 750;
+}
+
+.log__ataque {
+  color: #f87171;
   font-weight: 750;
 }
 

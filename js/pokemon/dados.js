@@ -32,6 +32,15 @@ export function dropsDaEspecie(chave) {
   };
 }
 
+function dobrarCustoPp(tabela) {
+  const chaves = Object.keys(tabela);
+  for (let i = 0; i < chaves.length; i++) {
+    const g = tabela[chaves[i]];
+    if (!g) continue;
+    g.pp = (g.pp | 0 || 1) * 2;
+  }
+}
+
 function aplicarPivos(arquivo) {
   if (!arquivo || typeof arquivo !== "object" || Array.isArray(arquivo)) return;
   const chaves = Object.keys(arquivo);
@@ -58,6 +67,7 @@ export async function carregarDados() {
   const cat = await catRes.json();
   especies = cat.especies || {};
   golpes = cat.golpes || {};
+  dobrarCustoPp(golpes);
   if (dropRes.ok) {
     const bruto = await dropRes.json();
     drops = {

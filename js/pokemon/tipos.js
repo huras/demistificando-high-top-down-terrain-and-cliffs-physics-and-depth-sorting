@@ -138,10 +138,19 @@ export function escalaRecarga(vel) {
   return Math.max(0.7, Math.min(1.25, 50 / Math.max(1, vel || 50)));
 }
 
+/** Multiplicador de estágio, de −6 a +6. +1 vale 1,5; +6 vale 4. */
+export function multiplicadorEstagio(estagio) {
+  const e = Math.max(-6, Math.min(6, estagio | 0));
+  if (e >= 0) return (2 + e) / 2;
+  return 2 / (2 - e);
+}
+
 function danoGen(atacante, alvo, poder, categoria) {
   const nivel = Math.max(1, atacante.nivel | 0);
   const especial = categoria === "special";
-  const atk = Math.max(1, especial ? atacante.stats.ataqueEsp : atacante.stats.ataque);
+  const bruto = Math.max(1, especial ? atacante.stats.ataqueEsp : atacante.stats.ataque);
+  const estagio = especial ? atacante.estagioSpa || 0 : atacante.estagioAtk || 0;
+  const atk = Math.max(1, Math.floor(bruto * multiplicadorEstagio(estagio)));
   const def = Math.max(1, especial ? alvo.stats.defesaEsp : alvo.stats.defesa);
   return (
     Math.floor(Math.floor((Math.floor((2 * nivel) / 5 + 2) * poder * atk) / def) / 50) + 2

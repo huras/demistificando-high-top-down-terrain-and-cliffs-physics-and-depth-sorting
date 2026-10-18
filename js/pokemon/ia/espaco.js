@@ -1,4 +1,3 @@
-import { golpeBasico } from "../ator.js";
 import { FOLGA_PARADA, RAIO_ARENA } from "./constantes.js";
 
 export function paradaDe(def) {
@@ -30,7 +29,6 @@ export function golpeProntoForma(ator, formaA, formaB) {
     const g = ator.golpes[i];
     const f = g.def.forma;
     if (f !== formaA && f !== formaB) continue;
-    if (g.cd > 0) continue;
     if ((g.def.pp || 1) > ator.pp) continue;
     return g.def;
   }
@@ -46,7 +44,7 @@ function golpeEquipadoForma(ator, formaA, formaB) {
   return null;
 }
 
-/** Mesma prioridade da arena: tiro pronto, senão corpo, senão o básico. */
+/** Tiro pronto, senão o corpo equipado. Sem Investida. */
 export function posturaDe(ator) {
   const corpo = ator.usaCorpo !== false;
   const distancia = ator.usaDistancia !== false;
@@ -57,20 +55,27 @@ export function posturaDe(ator) {
   if (corpo) {
     const perto = golpeProntoForma(ator, "contact", "radius");
     if (perto) return perto;
-    return golpeBasico();
+    const equipado = golpeEquipadoForma(ator, "contact", "radius");
+    if (equipado && equipado.poder > 0) return equipado;
   }
   if (distancia) return golpeEquipadoForma(ator, "projectile", "arc");
   return null;
 }
 
+export function golpeDeCorpo(ator) {
+  if (!ator || ator.usaCorpo === false) return null;
+  const def = golpeEquipadoForma(ator, "contact", "radius");
+  if (!def || def.poder <= 0) return null;
+  return def;
+}
+
 /** Distância que a habilidade tenta segurar. */
 export function regua(ator, hab) {
   if (hab === "perseguir") {
-    const contato = ator.usaCorpo !== false ? golpeProntoForma(ator, "contact", "contact") : null;
-    const area = ator.usaCorpo !== false ? golpeProntoForma(ator, "radius", "radius") : null;
-    const def = contato || (area && area.poder > 0 ? area : null) || golpeBasico();
-    const forma = def.forma === "radius" ? "radius" : "contact";
-    return { parada: paradaDe({ forma, alcance: def.alcance, poder: def.poder ?? 18 }), forma };
+    const corpo = golpeDeCorpo(ator);
+    if (!corpo) return { parada: paradaDe({ forma: "projectile", alcance: 8, poder: 40 }), forma: "projectile", vel: 14 };
+    const forma = corpo.forma === "radius" ? "radius" : "contact";
+    return { parada: paradaDe({ forma, alcance: corpo.alcance, poder: corpo.poder ?? 18 }), forma };
   }
   if (hab === "atirar") {
     const tiro = golpeProntoForma(ator, "projectile", "arc") || golpeEquipadoForma(ator, "projectile", "arc");
@@ -78,16 +83,15 @@ export function regua(ator, hab) {
     return { parada: paradaDe(tiro), forma: tiro.forma, vel: tiro.vel || 14 };
   }
   const post = posturaDe(ator);
-  if (!post) return { parada: paradaDe(golpeBasico()), forma: "contact", vel: 14 };
+  if (!post) return { parada: paradaDe({ forma: "projectile", alcance: 8, poder: 40 }), forma: "projectile", vel: 14 };
   return { parada: paradaDe(post), forma: post.forma, vel: post.vel || 14 };
 }
 
 export function alcanceSoco(oponente) {
-  const basico = golpeBasico().alcance;
-  if (!oponente || oponente.usaCorpo === false) return basico;
-  const contato = golpeProntoForma(oponente, "contact", "contact");
-  if (contato) return Math.max(basico, contato.alcance);
-  return basico;
+  const corpo = golpeDeCorpo(oponente);
+  if (!corpo) return 0;
+  if (corpo.forma === "radius") return Math.max(2.2, corpo.alcance || 2.2);
+  return corpo.alcance || 1.15;
 }
 
 export function vaiMelee(oponente, ator) {
@@ -98,14 +102,13 @@ export function vaiMelee(oponente, ator) {
   const dx = ator.x - oponente.x;
   const dy = ator.y - oponente.y;
   const d = Math.hypot(dx, dy);
-  const basico = golpeBasico().alcance;
   const contato = golpeProntoForma(oponente, "contact", "contact");
-  if (contato && d <= Math.max(basico, contato.alcance)) return true;
+  if (contato && d <= (contato.alcance || 1.15)) return true;
   const tiro = oponente.usaDistancia !== false && golpeProntoForma(oponente, "projectile", "arc");
   if (tiro && d <= tiro.alcance) return false;
   const area = golpeProntoForma(oponente, "radius", "radius");
   if (area && area.poder > 0 && d <= Math.max(2.2, area.alcance)) return true;
-  return d <= basico && (oponente.cdBasico || 0) <= 0;
+  return false;
 }
 
 export function limitarArena(ator) {

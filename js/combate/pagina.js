@@ -1,5 +1,4 @@
 import { ALTURA_BLOCO } from "../config.js";
-import { golpeBasico, recargaDe, recargaDoGolpe } from "../pokemon/ator.js";
 import { carregarDados, especie, golpe, listarEspecies } from "../pokemon/dados.js";
 import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
@@ -150,9 +149,9 @@ function textoFicha(def, vazio) {
   const forma = FORMA[def.forma] || def.forma;
   const categoria = CATEGORIA[def.categoria] || def.categoria;
   const acerto = def.acerto === null ? "não erra" : def.acerto ?? 100;
-  let recarga = Number(def.recarga) || 0;
-  if (def.forma === "projectile" || def.forma === "arc") recarga = Math.round(recarga * 70) / 100;
-  return `${forma} · ${categoria} · poder ${def.poder | 0} · acerto ${acerto} · alcance ${Number(def.alcance) || 0} · ${recarga} s · custo ${def.pp || 0} PP`;
+  const base = `${forma} · ${categoria} · poder ${def.poder | 0} · acerto ${acerto} · alcance ${Number(def.alcance) || 0} · custo ${def.pp || 0} PP`;
+  if (def.key === "rage") return `${base} · cada golpe recebido enche 1 tubo de ataque, até 6`;
+  return base;
 }
 
 function slotDoGolpe(ator, chave) {
@@ -163,20 +162,16 @@ function slotDoGolpe(ator, chave) {
   return null;
 }
 
-function textoSegundos(seg) {
-  return `${seg.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`;
-}
-
-function pintarRecargaUm(raiz, ator, nome, chave, basico) {
+function pintarRecargaUm(raiz, ator, nome, chave) {
   const barra = campo(raiz, `cd-${nome}`);
   const rotulo = campo(raiz, `cd-${nome}-num`);
-  if (!chave && !basico) {
+  if (!chave) {
     barra.style.width = "0%";
     barra.style.background = "#334155";
     rotulo.textContent = "Sem golpe";
     return;
   }
-  const slot = basico ? null : slotDoGolpe(ator, chave);
+  const slot = slotDoGolpe(ator, chave);
   const conjurando = !!(slot && ator.conjuroSlot === slot && (ator.conjuroRestante || 0) > 0);
   if (conjurando) {
     const dur = ator.conjuroDur || 1;
@@ -186,14 +181,12 @@ function pintarRecargaUm(raiz, ator, nome, chave, basico) {
     rotulo.textContent = "Carregando";
     return;
   }
-  const def = basico ? golpeBasico() : slot?.def;
-  const total = !def ? 0 : basico ? recargaDe(ator, def.recarga || 0.55) : recargaDoGolpe(ator, def);
-  const cd = basico ? ator.cdBasico || 0 : slot?.cd || 0;
-  const u = total <= 0 ? 1 : 1 - Math.min(1, Math.max(0, cd) / total);
+  const custo = slot?.def?.pp || 1;
+  const u = Math.max(0, Math.min(1, (ator.pp || 0) / custo));
   barra.style.width = `${u * 100}%`;
-  if (cd > 0.05) {
+  if (u < 1) {
     barra.style.background = "#38bdf8";
-    rotulo.textContent = textoSegundos(cd);
+    rotulo.textContent = `PP ${Math.floor(ator.pp || 0)}/${custo}`;
   } else {
     barra.style.background = "#7dce6a";
     rotulo.textContent = "Pronto";
@@ -204,8 +197,8 @@ function pintarRecarga(lado) {
   const ator = estadoLuta()[lado];
   const raiz = raizDe(lado);
   if (!ator) return;
-  pintarRecargaUm(raiz, ator, "corpo", ui[lado].corpo, !ui[lado].corpo);
-  pintarRecargaUm(raiz, ator, "distancia", ui[lado].distancia, false);
+  pintarRecargaUm(raiz, ator, "corpo", ui[lado].corpo);
+  pintarRecargaUm(raiz, ator, "distancia", ui[lado].distancia);
 }
 
 function corVida(pct) {
@@ -259,6 +252,10 @@ function montarColuna(lado) {
       <div class="vida__trilho"><span data-campo="barra"></span></div>
       <p class="vida__num" data-campo="hp">—</p>
       <p class="pp" data-campo="pp">PP —</p>
+      <div class="tubos" data-campo="tubos" hidden>
+        <span class="tubos__nome">Ataque</span>
+        <span class="tubos__trilho"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
       <div class="esquiva">
         <div class="esquiva__trilho"><span data-campo="esquiva"></span></div>
         <p class="pp" data-campo="esquiva-num">Esquiva 0%</p>
@@ -419,7 +416,7 @@ function pintarFichaGolpe(lado) {
   campo(raiz, "usa-distancia").checked = usaDistancia;
   campo(raiz, "bloco-corpo").classList.toggle("campo--off", !usaCorpo);
   campo(raiz, "bloco-distancia").classList.toggle("campo--off", !usaDistancia);
-  campo(raiz, "ficha-corpo").textContent = textoFicha(corpo, usaCorpo ? "Perto, usa Investida." : "Desligado.");
+  campo(raiz, "ficha-corpo").textContent = textoFicha(corpo, usaCorpo ? "Sem golpe de corpo a corpo." : "Desligado.");
   campo(raiz, "ficha-distancia").textContent = textoFicha(distancia, usaDistancia ? "Sem golpe à distância." : "Desligado.");
 }
 
@@ -453,6 +450,14 @@ function pintarStats(lado) {
   `;
 }
 
+function pintarTubos(el, ator) {
+  if (!el) return;
+  const n = Math.max(0, Math.min(6, ator.estagioAtk || 0));
+  el.hidden = !ator.furia && n <= 0;
+  const tubos = el.querySelectorAll(".tubos__trilho i");
+  for (let i = 0; i < tubos.length; i++) tubos[i].classList.toggle("cheio", i < n);
+}
+
 function pintarVida(lado) {
   const ator = estadoLuta()[lado];
   const raiz = raizDe(lado);
@@ -469,6 +474,7 @@ function pintarVida(lado) {
   trilha.style.background = carga >= 1 ? "#7dce6a" : "#67e8f9";
   campo(raiz, "esquiva-num").textContent = carga >= 1 ? "Esquiva pronta" : `Esquiva ${Math.round(carga * 100)}%`;
   campo(raiz, "estado").textContent = textoEstado(lado, ator);
+  pintarTubos(campo(raiz, "tubos"), ator);
 
   const marca = hud.querySelector(`[data-marca="${lado}"]`);
   const pe = ((ator.z || 0) + (ator.hopLift || 0)) * ALTURA_BLOCO;
@@ -488,6 +494,7 @@ function pintarVida(lado) {
     esquiva.style.width = `${carga * 100}%`;
     esquiva.style.background = carga >= 1 ? "#7dce6a" : "#67e8f9";
   }
+  pintarTubos(marca.querySelector("[data-tubos]"), ator);
 }
 
 function pintarDanos() {
@@ -617,6 +624,8 @@ function pintarLog() {
       li.append(pedaco("log__dodge", " dodge"));
     } else if (linha.tipo === "cura") {
       li.append(pedaco("log__cura", ` +${linha.ganho}`));
+    } else if (linha.tipo === "ataque") {
+      li.append(pedaco("log__ataque", ` ataque +${linha.estagio}`));
     } else if (linha.tipo === "queda") {
       li.append(pedaco("log__queda", " caiu"));
     }

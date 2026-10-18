@@ -1,5 +1,5 @@
 import { atoresPerto } from "../grade.js";
-import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, golpeBasico, recargaDe, recargaDoGolpe } from "../ator.js";
+import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
 import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
@@ -99,6 +99,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
   }
   alvo.hp -= dano;
   alvo.iframe = 0.15;
+  if (alvo.hp > 0) subirFuria(alvo, efeitos);
   marcarPose(alvo, "Hurt", agora);
   const recuo = iniciarRecuo(alvo, atacante, dano, agora);
   efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
@@ -123,22 +124,32 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
   notar(efeitos, { tipo: "queda", alvo });
 }
 
+function marcarFuria(ator, def) {
+  ator.furia = def?.key === "rage";
+}
+
+/** Rage: cada golpe que acerta enche um tubo de ataque, até +6. */
+function subirFuria(alvo, efeitos) {
+  if (!alvo?.furia) return;
+  const atual = alvo.estagioAtk || 0;
+  if (atual >= 6) return;
+  alvo.estagioAtk = atual + 1;
+  efeitos.flutuar(alvo, `Ataque +${alvo.estagioAtk}`, "#f87171");
+  notar(efeitos, { tipo: "ataque", alvo, estagio: alvo.estagioAtk });
+}
+
 function atorMorreu(alvo, agora) {
   alvo.morreuEm = agora;
   alvo.mortoAte = agora + 60;
   alvo.andando = false;
+  alvo.furia = false;
   alvo.alvo = null;
   alvo.pose = "Idle";
   definirEmocao(alvo, EMOCAO.SUOR, { presa: true });
 }
 
 function gastar(ator, slot, agora) {
-  if (slot.basico) {
-    ator.cdBasico = recargaDe(ator, slot.def.recarga);
-    return;
-  }
   ator.pp = Math.max(0, ator.pp - (slot.def.pp || 1));
-  slot.cd = recargaDoGolpe(ator, slot.def);
   slot.usadoEm = agora;
 }
 
@@ -146,7 +157,6 @@ function escolher(ator, alvo, d) {
   const prontos = [];
   for (let i = 0; i < ator.golpes.length; i++) {
     const g = ator.golpes[i];
-    if (g.cd > 0) continue;
     if ((g.def.pp || 1) > ator.pp) continue;
     prontos.push(g);
   }
@@ -155,7 +165,7 @@ function escolher(ator, alvo, d) {
   const noPlano = !alvo || cruzaAltura(ator, alvo);
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (corpo && noPlano && g.def.forma === "contact" && d <= Math.max(golpeBasico().alcance, g.def.alcance)) return g;
+    if (corpo && noPlano && g.def.forma === "contact" && d <= Math.max(0.8, g.def.alcance || 1)) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
@@ -170,7 +180,6 @@ function escolher(ator, alvo, d) {
       if (prontos[i].def.poder <= 0) return prontos[i];
     }
   }
-  if (corpo && noPlano && d <= golpeBasico().alcance && ator.cdBasico <= 0) return { basico: true, def: golpeBasico(), cd: ator.cdBasico };
   return null;
 }
 
@@ -220,6 +229,7 @@ function disparar(ator, slot, mx, my, agora, efeitos) {
   ator.dirX = dx / len;
   ator.dirY = dy / len;
   gastar(ator, slot, agora);
+  marcarFuria(ator, def);
   if (efeitos.aoGolpe) efeitos.aoGolpe(ator, def);
   notar(efeitos, { tipo: "golpe", ator, def });
   marcarPose(ator, "Shoot", agora);
@@ -317,6 +327,7 @@ function executar(ator, slot, alvo, agora, efeitos) {
   ator.dirX = dx / len;
   ator.dirY = dy / len;
   gastar(ator, slot, agora);
+  marcarFuria(ator, def);
   if (efeitos.aoGolpe) efeitos.aoGolpe(ator, def);
   notar(efeitos, { tipo: "golpe", ator, def });
 

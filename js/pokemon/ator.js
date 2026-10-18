@@ -1,5 +1,4 @@
 import { POKEMON, RAIO_POKEMON } from "../config.js";
-import { ESQUIVA_DIST, ESQUIVA_DUR } from "./ia/constantes.js";
 import { golpe } from "./dados.js";
 import { totalParaNivel } from "./experiencia.js";
 import { calcularStats, escalaRecarga, escalaVelocidade } from "./tipos.js";
@@ -67,7 +66,7 @@ function montarGolpes(especie, nivel) {
   return slots;
 }
 
-/** A arena equipa os golpes escolhidos. Sem nenhum, fica a Investida. */
+/** A arena equipa só os golpes escolhidos. */
 export function equiparGolpes(ator, chaves) {
   if (!ator) return;
   const slots = [];
@@ -116,6 +115,8 @@ export function criarAtor(opts) {
     pp,
     ppMax: pp,
     cdBasico: 0,
+    furia: false,
+    estagioAtk: 0,
     shiny: !!opts.shiny,
     faccao: opts.faccao,
     x: opts.x,
@@ -334,32 +335,16 @@ export function comecarAvanco(ator, dirX, dirY, dist) {
   integrarAvanco(ator, 0.05);
 }
 
-/** Passo lateral. Gasta a barra inteira. */
-export function comecarEsquiva(ator, dirX, dirY) {
-  if ((ator.esquiva || 0) < 1) return false;
-  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) return false;
-  const len = Math.hypot(dirX, dirY) || 1;
-  ator.esquiva = 0;
-  ator.esquivaDur = ESQUIVA_DUR;
-  ator.esquivaRestante = ESQUIVA_DUR;
-  ator.esquivaDist = ESQUIVA_DIST;
-  ator.esquivaDirX = dirX / len;
-  ator.esquivaDirY = dirY / len;
-  ator.hopLift = Math.max(ator.hopLift || 0, 0.2);
-  integrarEsquiva(ator, 0.05);
-  return true;
+/** Passo lateral. Desligada: o corpo não sai do lugar. */
+export function comecarEsquiva() {
+  return false;
 }
 
 export function passoEsquiva(ator, dt) {
   integrarEsquiva(ator, dt);
 }
 
-export function recarregarBarraEsquiva(ator, dt) {
-  if ((ator.esquivaRestante || 0) > 0) return;
-  const vel = Math.max(1, ator.stats?.velocidade || 50);
-  const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
-  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 5);
-}
+export function recarregarBarraEsquiva() {}
 
 export function tickPassivo(ator, dt, agora) {
   if (ator.hopLift > 0) ator.hopLift = Math.max(0, ator.hopLift - dt * 3.2);
@@ -379,10 +364,6 @@ export function tickPassivo(ator, dt, agora) {
   ator.pp = Math.min(ator.ppMax, ator.pp + regen * dt);
   recarregarBarraEsquiva(ator, dt);
   if (ator.cdBasico > 0) ator.cdBasico = Math.max(0, ator.cdBasico - dt);
-  for (let i = 0; i < ator.golpes.length; i++) {
-    const g = ator.golpes[i];
-    if (g.cd > 0) g.cd = Math.max(0, g.cd - dt);
-  }
   ator.animT += dt;
 }
 

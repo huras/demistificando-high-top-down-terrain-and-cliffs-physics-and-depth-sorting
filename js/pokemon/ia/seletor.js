@@ -1,5 +1,4 @@
 import { emAvanco, emEsquiva, emRecuo } from "../ator.js";
-import { cancelarConjuracao } from "../combate/executor.js";
 import {
   CORREDOR_TIRO,
   FOLGA_PROJETIL,
@@ -7,7 +6,7 @@ import {
   PASSO_DECISAO,
   VIDA_FUGA,
 } from "./constantes.js";
-import { alcanceSoco, golpeProntoForma, regua, vaiMelee } from "./espaco.js";
+import { alcanceSoco, golpeDeCorpo, golpeProntoForma, regua, vaiMelee } from "./espaco.js";
 import { aplicarHabilidade, calcularHabilidade } from "./habilidades.js";
 import { entrada, observar, tiroNaJanela } from "./observacao.js";
 
@@ -41,21 +40,15 @@ export function escolherHabilidade(ator, alvo) {
   const tiroPronto = ator.usaDistancia !== false && golpeProntoForma(ator, "projectile", "arc");
   if (tiroPronto && d > alcanceSoco(alvo)) return "atirar";
   const hp = ator.hpMax > 0 ? ator.hp / ator.hpMax : 1;
-  if (ator.usaCorpo === false || hp < VIDA_FUGA) return "fugir";
+  if (!golpeDeCorpo(ator) || hp < VIDA_FUGA) return "fugir";
   return "perseguir";
 }
 
-function pensarEsquiva(ator, alvo, tiros) {
-  if (!ameacaIminente(ator, alvo, tiros)) return false;
-  const faixa = regua(ator, "esquivar");
-  observar(ator, alvo, tiros, faixa.parada, entrada);
-  calcularHabilidade("esquivar");
-  aplicarHabilidade("esquivar", ator, alvo);
-  if (emEsquiva(ator)) cancelarConjuracao(ator);
-  return true;
+function pensarEsquiva() {
+  return false;
 }
 
-/** Decide no máximo a 10 Hz. A esquiva corre no quadro em que a ameaça aparece. */
+/** Decide no máximo a 10 Hz. */
 export function pensar(ator, alvo, dt, tiros, forcar) {
   if (!ator || !alvo || ator.morto || alvo.morto) {
     if (ator) {
