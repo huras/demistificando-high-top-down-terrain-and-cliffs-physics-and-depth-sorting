@@ -130,7 +130,7 @@ function clonar(hab, rng, amostras, escalaEpocas) {
   const i0 = fat.w1;
   const i1 = fat.b2 + fat.n;
   const baseEpocas = hab === "esquivar" ? 96 : hab === "fugir" ? 56 : 72;
-  const epocas = Math.max(8, Math.round(baseEpocas * escalaEpocas));
+  const epocas = Math.max(8, Math.round(baseEpocas * escalaEpocas * 3));
   for (let epoca = 0; epoca < epocas; epoca++) {
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));

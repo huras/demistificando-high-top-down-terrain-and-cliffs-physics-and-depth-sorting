@@ -39,8 +39,9 @@ const GRAMAS = [
   { url: "assets/vegetation/jungle-grass.png", peso: 0.1 },
 ];
 
-const N_GRAMA = 12;
+const N_GRAMA = 20;
 const TOQUE_GRAMA = 0.32;
+const RAIO_GRAMA = 9.55;
 
 const pecas = [];
 for (let i = 0; i < 6; i++) {
@@ -80,8 +81,10 @@ function aleatorio(s) {
 }
 
 function cabe(x, y, r, n) {
-  if (x * x + y * y > 8.4 * 8.4) return false;
-  const casa = x < 0 ? -5.2 : 5.2;
+  const sinal = x < 0 ? -1 : 1;
+  if (x * sinal < r + 0.35) return false;
+  if (x * x + y * y > (9.35 - r) * (9.35 - r)) return false;
+  const casa = sinal * 5.2;
   if (Math.hypot(x - casa, y) < r + 1.05) return false;
   for (let i = 0; i < n; i++) {
     const outra = pecas[i];
@@ -110,26 +113,32 @@ function espalhar(lado, lista, rng) {
   }
   for (let i = 0; i < ordem.length; i++) {
     const visual = lista[ordem[i]];
+    const raioMax = 9.35 - visual.r;
+    const raioMin = visual.r + 0.55;
     let x = sinal * 2.4;
     let y = (i - 1) * 1.8;
     let achou = false;
     for (let t = 0; t < 40; t++) {
-      const along = 1.35 + rng() * 2.75;
-      const ladoY = (rng() * 2 - 1) * 3.8;
-      if (!cabe(sinal * along, ladoY, visual.r, nPecas)) continue;
-      x = sinal * along;
-      y = ladoY;
+      const ang = -Math.PI / 2 + rng() * Math.PI;
+      const raio = Math.sqrt(raioMin * raioMin + rng() * (raioMax * raioMax - raioMin * raioMin));
+      const px = sinal * Math.cos(ang) * raio;
+      const py = Math.sin(ang) * raio;
+      if (!cabe(px, py, visual.r, nPecas)) continue;
+      x = px;
+      y = py;
       achou = true;
       break;
     }
     if (!achou) {
-      for (let along = 1.4; along <= 4.05 && !achou; along += 0.32) {
-        for (let ladoY = -3.6; ladoY <= 3.6; ladoY += 0.32) {
-          if (!cabe(sinal * along, ladoY, visual.r, nPecas)) continue;
-          x = sinal * along;
-          y = ladoY;
+      for (let raio = raioMin; raio <= raioMax && !achou; raio += 0.45) {
+        const passo = Math.max(0.22, 0.7 / raio);
+        for (let ang = -1.45; ang <= 1.45 && !achou; ang += passo) {
+          const px = sinal * Math.cos(ang) * raio;
+          const py = Math.sin(ang) * raio;
+          if (!cabe(px, py, visual.r, nPecas)) continue;
+          x = px;
+          y = py;
           achou = true;
-          break;
         }
       }
     }
@@ -150,8 +159,8 @@ function sortearGrama(rng) {
 }
 
 function cabeGrama(x, y, sinal) {
-  if (x * sinal < 0.55) return false;
-  if (x * x + y * y > 8.6 * 8.6) return false;
+  if (x * sinal < 0.4) return false;
+  if (x * x + y * y > RAIO_GRAMA * RAIO_GRAMA) return false;
   if (Math.hypot(x - sinal * 5.2, y) < 1.2) return false;
   for (let i = 0; i < nPecas; i++) {
     const peca = pecas[i];
@@ -172,22 +181,26 @@ function semearGrama(lado, rng) {
     let y = 0;
     let achou = false;
     for (let t = 0; t < 36; t++) {
-      const along = 0.8 + rng() * 7.2;
-      const ladoY = (rng() * 2 - 1) * 7.4;
-      if (!cabeGrama(sinal * along, ladoY, sinal)) continue;
-      x = sinal * along;
-      y = ladoY;
+      const ang = -Math.PI / 2 + rng() * Math.PI;
+      const raio = Math.sqrt(rng()) * RAIO_GRAMA;
+      const px = sinal * Math.cos(ang) * raio;
+      const py = Math.sin(ang) * raio;
+      if (!cabeGrama(px, py, sinal)) continue;
+      x = px;
+      y = py;
       achou = true;
       break;
     }
     if (!achou) {
-      for (let along = 0.9; along <= 8.1 && !achou; along += 0.7) {
-        for (let ladoY = -7.2; ladoY <= 7.2; ladoY += 0.7) {
-          if (!cabeGrama(sinal * along, ladoY, sinal)) continue;
-          x = sinal * along;
-          y = ladoY;
+      for (let raio = 1.15; raio <= RAIO_GRAMA - 0.1 && !achou; raio += 0.75) {
+        const passo = Math.max(0.28, 0.85 / raio);
+        for (let ang = -1.5; ang <= 1.5 && !achou; ang += passo) {
+          const px = sinal * Math.cos(ang) * raio;
+          const py = Math.sin(ang) * raio;
+          if (!cabeGrama(px, py, sinal)) continue;
+          x = px;
+          y = py;
           achou = true;
-          break;
         }
       }
     }
