@@ -139,9 +139,11 @@ export function criarAtor(opts) {
     animT: 0,
     pose: "Idle",
     poseAte: 0,
+    poseSeguinte: "",
     morto: false,
     morreuEm: 0,
     mortoAte: 0,
+    desmaioEm: 0,
     capturado: false,
     efemero: !!opts.efemero,
     hostil: !!opts.hostil,
@@ -230,6 +232,8 @@ export function reviverAtor(ator, x, y, z) {
   ator.emocao = null;
   ator.emocaoPresa = false;
   ator.pose = "Idle";
+  ator.poseSeguinte = "";
+  ator.desmaioEm = 0;
   ator.iframe = 0.4;
   ator.dormindo = 0.6;
   ator.recuoRestante = 0;
@@ -457,6 +461,7 @@ export function comecarEsquiva(ator, dirX, dirY) {
   ator.golpeSlot = null;
   ator.golpePose = "";
   ator.golpeClip = 0;
+  ator.poseSeguinte = "";
   ator.esquivaFase = FASE_PREP;
   ator.esquivaFaseDur = ESQUIVA_PREP;
   ator.esquivaFaseRestante = ESQUIVA_PREP;

@@ -8,7 +8,7 @@ import { puloNoGolpe } from "./pulo.js";
 import { soltarProjetil } from "./projeteis.js";
 import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
 import { folhaGolpe } from "./folhasGolpe.js";
-import { marcarPose } from "../sprites.js";
+import { agendarDesmaio, marcarPose, tempoClipGolpe } from "../sprites.js";
 import { bloqueioNoTrecho, cortaVisada } from "../../combate/arenas.js";
 import { RAIO_PROJETIL } from "../ia/constantes.js";
 import { tocarGrito } from "../../jogo/som/gritos.js";
@@ -78,7 +78,7 @@ function resultadoTravado(atacante, alvo) {
 }
 
 function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
-  if (!alvo || alvo.morto || alvo.capturado) return;
+  if (!alvo || alvo.morto || alvo.capturado || alvo.hp <= 0) return;
   if (!inimigo(atacante, alvo)) return;
   travado.gasto = true;
   if (travado.imune) {
@@ -115,11 +115,7 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
     if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
   }
   if (alvo.hp > 0) return;
-  alvo.hp = 0;
-  alvo.morto = true;
-  atorMorreu(alvo, agora);
-  efeitos.aoDerrotar(alvo, atacante);
-  notar(efeitos, { tipo: "queda", alvo });
+  derrubar(alvo, atacante, agora, efeitos);
 }
 
 function errouGolpe(acerto) {
@@ -137,7 +133,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     return;
   }
   const mesmaRajada = rajada && alvo?.iframeRajada === rajada;
-  if (!alvo || alvo.morto || alvo.capturado || (alvo.iframe > 0 && !mesmaRajada) || alvo.invulneravel) return;
+  if (!alvo || alvo.morto || alvo.capturado || alvo.hp <= 0 || (alvo.iframe > 0 && !mesmaRajada) || alvo.invulneravel) return;
   if (!inimigo(atacante, alvo)) return;
   if (forma !== "projectile" && forma !== "arc" && !cruzaAltura(atacante, alvo, forma === "radius" ? 0.55 : 0.35)) return;
   if (emRolamentoAtivo(alvo) && forma !== "contact") {
@@ -187,11 +183,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
   }
   if (alvo.hp > 0) return;
-  alvo.hp = 0;
-  alvo.morto = true;
-  atorMorreu(alvo, agora);
-  efeitos.aoDerrotar(alvo, atacante);
-  notar(efeitos, { tipo: "queda", alvo });
+  derrubar(alvo, atacante, agora, efeitos);
 }
 
 function marcarFuria(ator, def) {
@@ -208,14 +200,35 @@ function subirFuria(alvo, efeitos) {
   notar(efeitos, { tipo: "ataque", alvo, estagio: alvo.estagioAtk });
 }
 
+/** HP a zero: Hurt na folha, depois morto / Sleep / faint. */
+function derrubar(alvo, atacante, agora, efeitos) {
+  alvo.hp = 0;
+  if (!agendarDesmaio(alvo, agora)) {
+    alvo.morto = true;
+    atorMorreu(alvo, agora);
+  }
+  efeitos.aoDerrotar(alvo, atacante);
+  notar(efeitos, { tipo: "queda", alvo });
+}
+
 function atorMorreu(alvo, agora) {
   alvo.morreuEm = agora;
   alvo.mortoAte = agora + 60;
+  alvo.desmaioEm = 0;
   alvo.andando = false;
   alvo.furia = false;
   alvo.alvo = null;
   alvo.pose = "Idle";
+  alvo.poseSeguinte = "";
   definirEmocao(alvo, EMOCAO.SUOR, { presa: true });
+}
+
+/** Fecha o desmaio quando o Hurt acabou. Chamado do tick passivo. */
+export function tickDesmaio(ator, agora) {
+  if (!ator || ator.morto || ator.capturado) return;
+  if (ator.hp > 0 || !(ator.desmaioEm > 0) || agora < ator.desmaioEm) return;
+  ator.morto = true;
+  atorMorreu(ator, agora);
 }
 
 function gastar(ator, slot, agora) {
@@ -309,6 +322,7 @@ export function cancelarGolpe(ator) {
   ator.golpeSlot = null;
   ator.golpePose = "";
   ator.golpeClip = 0;
+  ator.poseSeguinte = "";
   ator.jatoDur = 0;
   ator.jatoTempo = 0;
   ator.jatoProx = 0;
@@ -344,8 +358,10 @@ function apontar(ator, mx, my) {
 function comecarPreparacao(ator, slot, mx, my, agora, efeitos) {
   const def = slot.def;
   const dur = tempoPreparacao(def);
-  const rec = tempoRecuperacao(def);
   const distancia = def.forma === "projectile" || def.forma === "arc";
+  const pose = distancia ? "Shoot" : "Attack";
+  const clip = distancia ? 0 : tempoClipGolpe(ator, "Attack");
+  const rec = distancia ? tempoRecuperacao(def) : Math.max(tempoRecuperacao(def), Math.max(0, clip - dur));
   ator.conjuroRestante = dur;
   ator.conjuroDur = dur;
   ator.conjuroSlot = slot;
@@ -354,12 +370,13 @@ function comecarPreparacao(ator, slot, mx, my, agora, efeitos) {
   ator.golpeRecDur = rec;
   ator.golpeRecRestante = 0;
   ator.golpeSlot = null;
-  ator.golpeClip = dur + rec;
+  ator.golpeClip = distancia ? dur + rec : 0;
   puloNoGolpe(ator);
   pararNoLugar(ator);
-  marcarPose(ator, distancia ? "Shoot" : "Attack", agora);
+  marcarPose(ator, pose, agora);
   ator.golpePose = ator.pose;
-  ator.poseAte = agora + dur + rec;
+  const ate = agora + (distancia ? dur + rec : Math.max(dur + rec, clip));
+  if (ate > ator.poseAte) ator.poseAte = ate;
   if (distancia && def.poder > 0) abrirKi(ator, def.tipo);
   if (efeitos?.flutuar) efeitos.flutuar(ator, def.nome, COR_TIPO[def.tipo] || "#e2e8f0");
 }
@@ -587,7 +604,8 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
 function manterPoseGolpe(ator, agora) {
   if (!ator.golpePose) return;
   ator.pose = ator.golpePose;
-  ator.poseAte = agora + Math.max(ator.conjuroRestante || 0, ator.golpeRecRestante || 0, 0.05);
+  const ate = agora + Math.max(ator.conjuroRestante || 0, ator.golpeRecRestante || 0, 0.05);
+  if (ate > (ator.poseAte || 0)) ator.poseAte = ate;
 }
 
 export function tickConjuracao(ator, dt, agora, efeitos) {
@@ -649,12 +667,15 @@ function soltarImediato(ator, slot, alvo, agora, efeitos) {
   const mira = miraDoGolpe(ator, slot, alvo);
   ator.conjuroMx = mira.mx;
   ator.conjuroMy = mira.my;
-  ator.golpeRecDur = 0.16;
   apontar(ator, mira.mx, mira.my);
   const distancia = slot.def.forma === "projectile" || slot.def.forma === "arc";
-  marcarPose(ator, distancia ? "Shoot" : "Attack", agora);
+  const pose = distancia ? "Shoot" : "Attack";
+  marcarPose(ator, pose, agora);
   ator.golpePose = ator.pose;
-  ator.poseAte = agora + 0.4;
+  const clip = distancia ? Math.max(0.4, tempoClipGolpe(ator, "Shoot")) : tempoClipGolpe(ator, "Attack");
+  ator.golpeRecDur = Math.max(0.16, clip);
+  ator.golpeClip = 0;
+  if (ator.poseAte < agora + clip) ator.poseAte = agora + clip;
   if (efeitos?.flutuar) efeitos.flutuar(ator, slot.def.nome, COR_TIPO[slot.def.tipo] || "#e2e8f0");
   soltarGolpe(ator, slot, alvo, agora, efeitos);
 }
@@ -706,13 +727,16 @@ export function ensaiarGolpe(ator, agora, efeitos) {
   ator.conjuroMy = mira.my;
   ator.miraX = mira.mx;
   ator.miraY = mira.my;
-  ator.golpeRecDur = 0.14;
   apontar(ator, mira.mx, mira.my);
   const def = slot.def;
   const distancia = def.forma === "projectile" || def.forma === "arc";
-  marcarPose(ator, distancia ? "Shoot" : "Attack", agora);
+  const pose = distancia ? "Shoot" : "Attack";
+  marcarPose(ator, pose, agora);
   ator.golpePose = ator.pose;
-  ator.poseAte = agora + 0.35;
+  const clip = distancia ? 0.35 : tempoClipGolpe(ator, "Attack");
+  ator.golpeRecDur = Math.max(0.14, clip);
+  ator.golpeClip = 0;
+  if (ator.poseAte < agora + clip) ator.poseAte = agora + clip;
   tocarGrito(ator, { x: ator.x, y: ator.y, importante: false });
   if (efeitos?.flutuar) efeitos.flutuar(ator, def.nome, COR_TIPO[def.tipo] || "#e2e8f0");
   if (efeitos?.aoGolpe) efeitos.aoGolpe(ator, def);

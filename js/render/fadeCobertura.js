@@ -225,7 +225,7 @@ function marcarPecasCobrindo(corpo, atlas) {
 
   for (let i = 0; i < PROPS.length; i++) {
     const prop = PROPS[i];
-    if (prop.tipo === "placa") continue;
+    if (prop.tipo === "placa" || prop.tipo === "grama" || prop.tipo === "mata") continue;
     const px = Math.floor(prop.x);
     const py = Math.floor(prop.y);
     if (px < x0 || px > x1 || py < y0 - 2 || py > y1 + 2) continue;
@@ -235,7 +235,7 @@ function marcarPecasCobrindo(corpo, atlas) {
     if (sk <= sortPlayer) continue;
     const box = aabbProp(prop, z, atlas);
     if (!box) continue;
-      if (aabbTocaCirculo(box, zona)) {
+    if (aabbTocaCirculo(box, zona)) {
       cobrindoAgora.add(chaveFadeProp(i));
     }
   }
@@ -243,6 +243,7 @@ function marcarPecasCobrindo(corpo, atlas) {
   const plantas = vegetacaoNaArea(x0, y0, x1, y1);
   for (let i = 0; i < plantas.length; i++) {
     const prop = plantas[i];
+    if (prop.tipo === "grama" || prop.tipo === "mata") continue;
     const z = alturaEm(Math.floor(prop.x), Math.floor(prop.y));
     if (z <= zMinFade) continue;
     const sk = chaveEntidade(prop.y, z);

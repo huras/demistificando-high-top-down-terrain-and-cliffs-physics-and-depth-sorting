@@ -66,13 +66,19 @@ export function concluirFoco() {
   abrirTurno();
 }
 
+const poseVolta = { tipo: "volta", alvo: null, raio: 5.2, altura: 3, giro: 0.5 };
+
 export function enquadramentoTurno() {
   if (modo !== "turnos" || fase === "ocioso") return null;
   if ((fase === "teatro" || aproximandoCorpo()) && esquerda && direita) {
     return { tipo: "teatro", a: esquerda, b: direita };
   }
   if (!ator || !alvo) return null;
-  return { de: ator, para: alvo, perto: fase === "foco" || fase === "escolha" };
+  if (fase === "escolha") {
+    poseVolta.alvo = ator;
+    return poseVolta;
+  }
+  return { de: ator, para: alvo, perto: fase === "foco" };
 }
 
 export function pedidoEscolha() {

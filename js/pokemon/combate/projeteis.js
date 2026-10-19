@@ -67,6 +67,14 @@ export function projeteisVivos() {
   return vivos;
 }
 
+export function primeiroTiro() {
+  for (let i = 0; i < vivos.length; i++) {
+    const p = vivos[i];
+    if (p.viva && !p.ensaio && p.garantirAlvo) return p;
+  }
+  return null;
+}
+
 export function impactosVivos() {
   return impactos;
 }

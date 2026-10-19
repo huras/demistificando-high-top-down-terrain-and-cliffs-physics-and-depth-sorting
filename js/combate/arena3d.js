@@ -850,7 +850,7 @@ function pintarKi() {
 export function definirOmbro(pose, dt) {
   let vale = false;
   if (pose?.tipo === "teatro") vale = !!(pose.a && pose.b);
-  else if (pose?.tipo === "impacto") vale = !!pose.alvo;
+  else if (pose?.tipo === "impacto" || pose?.tipo === "volta" || pose?.tipo === "tiro") vale = !!pose.alvo;
   else vale = !!(pose?.de && pose?.para);
   ombro = vale ? pose : null;
   ombroDt = Number.isFinite(dt) && dt > 0 ? Math.min(0.05, dt) : 0.016;
@@ -868,6 +868,27 @@ function destinoOmbro() {
     const oz = (quem.recuoDirY || 0) * avance;
     ombroFim.set(quem.x + ox + Math.sin(teatroAng) * raio, altura, quem.y + oz + Math.cos(teatroAng) * raio);
     ombroOlharFim.set(quem.x + ox * 0.45, 1.05, quem.y + oz * 0.45);
+    return;
+  }
+  if (ombro.tipo === "volta") {
+    const quem = ombro.alvo;
+    const giro = Number.isFinite(ombro.giro) ? ombro.giro : 0.5;
+    teatroAng += ombroDt * giro;
+    const raio = ombro.raio || 5.2;
+    const altura = ombro.altura || 3;
+    ombroFim.set(quem.x + Math.sin(teatroAng) * raio, altura, quem.y + Math.cos(teatroAng) * raio);
+    ombroOlharFim.set(quem.x, 1.05, quem.y);
+    return;
+  }
+  if (ombro.tipo === "tiro") {
+    const p = ombro.alvo;
+    const destino = p.garantirAlvo;
+    const dx = p.dirX || 0;
+    const dz = p.dirY || 0;
+    ombroFim.set(p.x - dx * 2.6, (p.z || 1) + 1.6, p.y - dz * 2.6);
+    const lx = destino ? destino.x : p.x + dx * 4;
+    const lz = destino ? destino.y : p.y + dz * 4;
+    ombroOlharFim.set(lx, 1.1, lz);
     return;
   }
   if (ombro.tipo === "teatro") {
@@ -909,7 +930,8 @@ function aplicarOmbro() {
     ombroOlhar.copy(alvo);
     ombroSegurando = true;
   } else {
-    const k = 1 - Math.exp(-7 * ombroDt);
+    const aperto = ombro.tipo === "tiro" ? 14 : 7;
+    const k = 1 - Math.exp(-aperto * ombroDt);
     ombroPos.lerp(ombroFim, k);
     ombroOlhar.lerp(ombroOlharFim, k);
   }

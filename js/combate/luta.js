@@ -1,5 +1,5 @@
 import { comecarEsquiva, criarAtor, emAvanco, emEsquiva, emRecuo, equiparGolpes, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
-import { cancelarConjuracao, ensaiarGolpe, impactoProjetil, tentarGolpe, tickConjuracao } from "../pokemon/combate/executor.js";
+import { cancelarConjuracao, ensaiarGolpe, impactoProjetil, tentarGolpe, tickConjuracao, tickDesmaio } from "../pokemon/combate/executor.js";
 import { limparKi } from "../pokemon/combate/ki.js";
 import { limparParticulas, poeiraDash, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
@@ -472,6 +472,8 @@ export function tickLuta(dt) {
 
   tickPassivo(esquerda, passo, agora);
   tickPassivo(direita, passo, agora);
+  tickDesmaio(esquerda, agora);
+  tickDesmaio(direita, agora);
   soltarPoeiraDash(esquerda, passo);
   soltarPoeiraDash(direita, passo);
   limitarArena(esquerda);

@@ -8,6 +8,7 @@ import { definirMetade, definirSemente } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
 import { atoresArena, definirUso, estadoLuta, iniciarLuta, limparInterludio, logArena, montarLados, tickLuta } from "./luta.js";
 import { poseImpacto, ritmoImpacto } from "./impacto.js";
+import { primeiroTiro } from "../pokemon/combate/projeteis.js";
 import { avisoTurno, concluirFoco, definirModoLuta, emFoco, escolherGolpeTurno, enquadramentoTurno, modoTurnos, pedidoEscolha } from "./turnos.js";
 
 const TIPO = {
@@ -661,9 +662,16 @@ function pintarLog() {
   logLista.scrollTop = logLista.scrollHeight;
 }
 
+const poseTiro = { tipo: "tiro", alvo: null };
+
 function poseDoQuadro() {
   const impacto = poseImpacto();
   if (impacto) return impacto;
+  const tiro = primeiroTiro();
+  if (tiro) {
+    poseTiro.alvo = tiro;
+    return poseTiro;
+  }
   const e = estadoLuta();
   if (e.acabou && e.esquerda && e.direita) {
     return { tipo: "teatro", a: e.esquerda, b: e.direita, giro: Math.PI * 0.12 };

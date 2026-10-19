@@ -152,6 +152,7 @@ export function aplicarEfeito(ator, efeito) {
     if (!ator.morto && ator.hp > 0) return false;
     ator.morto = false;
     ator.mortoAte = 0;
+    ator.desmaioEm = 0;
     ator.hp = Math.max(1, Math.round(ator.hpMax * efeito.reviver));
     return true;
   }

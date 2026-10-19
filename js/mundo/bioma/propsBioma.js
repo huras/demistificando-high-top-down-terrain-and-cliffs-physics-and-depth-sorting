@@ -42,15 +42,20 @@ export function reindexarEm(x, y) {
 
 export function vegetacaoNaArea(x0, y0, x1, y1) {
   const saida = [];
+  visitarVegetacaoNaArea(x0, y0, x1, y1, (p) => {
+    saida.push(p);
+  });
+  return saida;
+}
+
+/** Visita props na caixa sem alocar lista. */
+export function visitarVegetacaoNaArea(x0, y0, x1, y1, fn) {
   for (const lista of porChunk.values()) {
     for (let i = 0; i < lista.length; i++) {
       const p = lista[i];
-      if (p.x >= x0 && p.x <= x1 + 1 && p.y >= y0 - 2 && p.y <= y1 + 2) {
-        saida.push(p);
-      }
+      if (p.x >= x0 && p.x <= x1 + 1 && p.y >= y0 - 2 && p.y <= y1 + 2) fn(p);
     }
   }
-  return saida;
 }
 
 export function todaVegetacao() {

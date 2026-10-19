@@ -1,4 +1,4 @@
-/** Recortes da folha GBA: crescimento 1 (arbusto/flor) e 2 (maduro), quadro 0. [topoX, topoY, peX, peY]. */
+/** Recortes da folha GBA: crescimento 1 (arbusto/flor) e 2 (maduro), quadro 0. Quadro 1 = x+16. [topoX, topoY, peX, peY]. */
 
 export const UV_ARBUSTO = Object.freeze({
   aguav: Object.freeze({ 1: Object.freeze([224, 96, 224, 112]), 2: Object.freeze([256, 96, 256, 112]) }),

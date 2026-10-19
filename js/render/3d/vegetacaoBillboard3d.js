@@ -18,10 +18,11 @@ import { registrarObjetoCena, removerObjetoCena, marcarAuxiliar } from "../../ce
 import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
 import { onDirty } from "../../mundo/voxel/storeMundo.js";
 import { STENCIL_GRAMA, marcarStencilSolido } from "./silhuetaSprite.js";
+import { alphaDoProp, tickFadeObstaculo } from "./fadeObstaculo3d.js";
 import { FASE } from "../../campo/estadoProps.js";
 import { imagemToco } from "../../campo/visualToco.js";
 import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "../../campo/sacudida.js";
-import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto } from "./folhaBerry.js";
+import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto, quadroArbusto } from "./folhaBerry.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
@@ -101,6 +102,7 @@ export function criarVegetacaoBillboard3d() {
   let yawSolAplicado = null;
   let inclinacaoAplicada = 0;
   let alturasSujas = true;
+  let quadroBerry = -1;
 
   const corInst = new THREE.Color();
 
@@ -113,12 +115,16 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function imagemDe(prop) {
-    if (prop?.tipo === "berry") return imagemArbusto(prop.berryKey, prop.estagio || "maduro");
+    if (prop?.tipo === "berry") return imagemArbusto(prop.berryKey, prop.estagio || "maduro", 0);
     const base = imagemBase(prop);
     if (!base) return null;
     if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return imagemToco(base, false);
     if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return imagemToco(base, true);
     return base;
+  }
+
+  function ehLoteBerry(chave) {
+    return typeof chave === "string" && chave.startsWith("berry:");
   }
 
   function corDe(prop) {
@@ -147,8 +153,42 @@ export function criarVegetacaoBillboard3d() {
     lote.material.dispose();
     lote.matSombra?.dispose();
     lote.depth.dispose();
-    lote.textura.dispose();
+    if (lote.texturasAnim) {
+      const vistas = new Set();
+      for (let i = 0; i < lote.texturasAnim.length; i++) {
+        const t = lote.texturasAnim[i];
+        if (!t || vistas.has(t)) continue;
+        vistas.add(t);
+        t.dispose();
+      }
+    } else {
+      lote.textura.dispose();
+    }
     lote.geo?.dispose();
+  }
+
+  function aplicarMapaBerry(lote, quadro) {
+    if (!lote.texturasAnim) return;
+    const tex = lote.texturasAnim[quadro & 1];
+    if (!tex || lote.textura === tex) return;
+    lote.textura = tex;
+    lote.material.map = tex;
+    lote.matSombra.map = tex;
+    lote.depth.map = tex;
+    lote.material.needsUpdate = true;
+    lote.matSombra.needsUpdate = true;
+    lote.depth.needsUpdate = true;
+  }
+
+  function sincronizarAnimBerry(agora) {
+    const quadro = quadroArbusto(agora);
+    if (quadro === quadroBerry) return false;
+    quadroBerry = quadro;
+    for (const lote of lotes.values()) {
+      if (!ehLoteBerry(lote.chave)) continue;
+      aplicarMapaBerry(lote, quadro);
+    }
+    return true;
   }
 
 /** Quad unitário com o pé opaco na origem. A escala não tira o pé do chão. */
@@ -156,6 +196,36 @@ export function criarVegetacaoBillboard3d() {
     const geo = new THREE.PlaneGeometry(1, 1);
     geo.translate(0.5 - pivotX, pivotY - 0.5, 0);
     return geo;
+  }
+
+  function aplicarAlfaInstancia(material) {
+    const anterior = material.onBeforeCompile;
+    const chaveAnterior = material.customProgramCacheKey;
+    material.transparent = true;
+    material.onBeforeCompile = (shader, renderer) => {
+      if (anterior) anterior.call(material, shader, renderer);
+      if (shader.vertexShader.includes("alfaPeca")) return;
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nattribute float alfaPeca;\nvarying float vAlfaPeca;",
+        )
+        .replace(
+          "#include <begin_vertex>",
+          "#include <begin_vertex>\nvAlfaPeca = alfaPeca;",
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace("#include <common>", "#include <common>\nvarying float vAlfaPeca;")
+        .replace(
+          "#include <opaque_fragment>",
+          "#include <opaque_fragment>\ngl_FragColor.a *= vAlfaPeca;",
+        );
+    };
+    material.customProgramCacheKey = function chaveAlfaPeca() {
+      const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
+      return `${base}|alfa-peca`;
+    };
+    return material;
   }
 
   function criarTextura(img) {
@@ -175,13 +245,21 @@ export function criarVegetacaoBillboard3d() {
     if (anterior) soltarLote(anterior);
 
     const { largura, altura } = medidasDe(img, def.escala);
-    const tex = criarTextura(img);
-    const grama = def.amostra?.tipo === "grama";
+    const berry = def.amostra?.tipo === "berry";
+    let texturasAnim = null;
+    let tex = criarTextura(img);
+    if (berry) {
+      const img1 = imagemArbusto(def.amostra.berryKey, def.amostra.estagio || "maduro", 1);
+      texturasAnim = [tex, img1 ? criarTextura(img1) : tex];
+      const quadro = quadroBerry >= 0 ? quadroBerry : quadroArbusto();
+      tex = texturasAnim[quadro & 1];
+    }
+    const grama = def.amostra?.tipo === "grama" || def.amostra?.tipo === "mata";
     const material = aplicarSombraNuvem(aplicarLuzBillboard(new THREE.MeshStandardMaterial({
       map: tex,
       roughness: 1,
       metalness: 0,
-      transparent: false,
+      transparent: !grama,
       alphaTest: VEG_ALPHA_TEST,
       depthWrite: true,
       depthTest: true,
@@ -194,8 +272,9 @@ export function criarVegetacaoBillboard3d() {
       material.stencilFail = THREE.KeepStencilOp;
       material.stencilZFail = THREE.KeepStencilOp;
       material.stencilZPass = THREE.ReplaceStencilOp;
-    } else if (def.amostra?.tipo === "arvore") {
-      marcarStencilSolido(material);
+    } else {
+      aplicarAlfaInstancia(material);
+      if (def.amostra?.tipo === "arvore") marcarStencilSolido(material);
     }
     const depth = new THREE.MeshDepthMaterial({
       depthPacking: THREE.RGBADepthPacking,
@@ -207,6 +286,14 @@ export function criarVegetacaoBillboard3d() {
     const pivo = pivoDaImagem(img);
     const geo = geometriaNoPe(pivo.x, pivo.y);
     const pivotY = pivo.y;
+    let alfas = null;
+    let attrAlfa = null;
+    if (!grama) {
+      alfas = new Float32Array(CAP_INSTANCIAS);
+      alfas.fill(1);
+      attrAlfa = new THREE.InstancedBufferAttribute(alfas, 1);
+      geo.setAttribute("alfaPeca", attrAlfa);
+    }
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
     mesh.name = `veg-${def.chave}`;
     mesh.castShadow = false;
@@ -242,12 +329,16 @@ export function criarVegetacaoBillboard3d() {
       matSombra,
       depth,
       textura: tex,
+      texturasAnim,
       img,
       itens: def.itens,
       largura,
       altura,
       geo,
       pivotY,
+      grama,
+      alfas,
+      attrAlfa,
     };
     lotes.set(def.chave, lote);
     usarRaycastBillboard(mesh, () => lote);
@@ -306,6 +397,20 @@ export function criarVegetacaoBillboard3d() {
     dummy.rotation.set(inclinacao, yaw, roll);
     dummy.scale.set(largura * (1 + esmaga * 0.03), altura * (1 - esmaga * 0.045), 1);
     dummy.updateMatrix();
+  }
+
+  function escreverAlfas(lote) {
+    if (!lote || lote.grama || !lote.alfas || !lote.attrAlfa) return;
+    const { itens, alfas, attrAlfa } = lote;
+    let mudou = false;
+    for (let i = 0; i < itens.length; i++) {
+      const a = alphaDoProp(itens[i]);
+      if (alfas[i] !== a) {
+        alfas[i] = a;
+        mudou = true;
+      }
+    }
+    if (mudou) attrAlfa.needsUpdate = true;
   }
 
   function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora) {
@@ -425,10 +530,11 @@ export function criarVegetacaoBillboard3d() {
     const mudouSol = yawDiferente(yawSol, yawSolAplicado);
     const mudouTilt = Math.abs(tilt - inclinacaoAplicada) > VEG_YAW_EPS;
     const agora = performance.now();
+    const animou = sincronizarAnimBerry(agora);
     const acabaram = podarSacudidas(agora);
     const sacode = temSacudida() || acabaram.length > 0;
     const primeira = yawAplicado == null;
-    if (!mudouYaw && !mudouSol && !mudouTilt && !alturasSujas && !sacode && !primeira) return;
+    if (!mudouYaw && !mudouSol && !mudouTilt && !alturasSujas && !sacode && !primeira && !animou) return;
     yawAplicado = yaw;
     yawSolAplicado = yawSol;
     inclinacaoAplicada = tilt;
@@ -439,7 +545,13 @@ export function criarVegetacaoBillboard3d() {
       sincronizarVisivel();
       return;
     }
-    pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
+    if (sacode) pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
+  }
+
+  /** Fade de obstáculo: roda todo frame, independente do yaw. */
+  function tickFade(foco, dt, camera) {
+    tickFadeObstaculo(foco, dt, camera);
+    for (const lote of lotes.values()) escreverAlfas(lote);
   }
 
   const cancelarDirty = onDirty(() => {
@@ -454,6 +566,7 @@ export function criarVegetacaoBillboard3d() {
     aplicarAtlas,
     reconstruir,
     atualizar,
+    tickFade,
     liberar() {
       cancelarDirty();
       for (const lote of lotes.values()) soltarLote(lote);

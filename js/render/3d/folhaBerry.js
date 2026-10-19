@@ -1,12 +1,13 @@
 /**
- * Folha GBA dos arbustos. Recorta uma vez o topo e o pé de cada espécie.
- * iapapa usa o quadro lapapa da folha.
+ * Folha GBA dos arbustos. Recorta topo e pé de cada espécie e quadro.
+ * iapapa usa o quadro lapapa da folha. Quadro 1 fica 16 px à direita do 0.
  */
 
 import { UV_ARBUSTO } from "./uvArbustoBerry.js";
 
 const LADO = 16;
 export const ESCALA_ARBUSTO = 1.15;
+export const ARBUSTO_ANIM_MS = 380;
 
 const CRESCIMENTO = Object.freeze({
   arbusto: 1,
@@ -52,8 +53,35 @@ function especieDaFolha(chave) {
   return chave;
 }
 
-/** Canvas 16×32, ou null enquanto a folha não chegou. */
-export function imagemArbusto(chave, estagio) {
+/** 0 ou 1, mesmo relógio do Pokémon AI. */
+export function quadroArbusto(agora = performance.now()) {
+  return Math.floor(agora / ARBUSTO_ANIM_MS) % 2;
+}
+
+function recortar(especie, crescimento, quadro) {
+  const id = `${especie}:${crescimento}:${quadro}`;
+  const pronto = recortes.get(id);
+  if (pronto) return pronto;
+  const uv = UV_ARBUSTO[especie]?.[crescimento];
+  if (!uv) return null;
+  const dx = quadro ? LADO : 0;
+  const canvas = document.createElement("canvas");
+  canvas.width = LADO;
+  canvas.height = LADO * 2;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(folha, uv[0] + dx, uv[1], LADO, LADO, 0, 0, LADO, LADO);
+  ctx.drawImage(folha, uv[2] + dx, uv[3], LADO, LADO, 0, LADO, LADO, LADO);
+  recortes.set(id, canvas);
+  return canvas;
+}
+
+/**
+ * Canvas 16×32, ou null enquanto a folha não chegou.
+ * Sem quadro explícito, usa o relógio global de 380 ms.
+ */
+export function imagemArbusto(chave, estagio, quadro) {
   if (!chave) return null;
   if (!folha?.complete || folha.naturalWidth <= 0) {
     garantirFolhaBerry();
@@ -61,19 +89,6 @@ export function imagemArbusto(chave, estagio) {
   }
   const especie = especieDaFolha(chave);
   const crescimento = CRESCIMENTO[estagio] || CRESCIMENTO.maduro;
-  const id = `${especie}:${crescimento}`;
-  const pronto = recortes.get(id);
-  if (pronto) return pronto;
-  const uv = UV_ARBUSTO[especie]?.[crescimento];
-  if (!uv) return null;
-  const canvas = document.createElement("canvas");
-  canvas.width = LADO;
-  canvas.height = LADO * 2;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(folha, uv[0], uv[1], LADO, LADO, 0, 0, LADO, LADO);
-  ctx.drawImage(folha, uv[2], uv[3], LADO, LADO, 0, LADO, LADO, LADO);
-  recortes.set(id, canvas);
-  return canvas;
+  const frame = quadro == null ? quadroArbusto() : (quadro | 0) & 1;
+  return recortar(especie, crescimento, frame);
 }

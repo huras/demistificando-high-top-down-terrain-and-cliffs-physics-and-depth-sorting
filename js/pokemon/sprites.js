@@ -195,12 +195,41 @@ function faixaDoGolpe(pack, nome) {
   return nome;
 }
 
+/** Tempo real da folha: Attack + Strike quando as duas existem. */
+export function tempoClipGolpe(ator, nome) {
+  const pack = garantirAtlas(ator?.especie?.dex, ator?.shiny);
+  const faixa = faixaDoGolpe(pack, nome);
+  let t = duracaoFaixa(pack, faixa);
+  if (nome === "Attack" && faixa === "Attack" && pack?.anims?.Strike) {
+    t += duracaoFaixa(pack, "Strike");
+  }
+  return t;
+}
+
+/** Hurt existe na folha: agenda o desmaio depois do clipe. Senão desmaia na hora. */
+export function agendarDesmaio(ator, agora) {
+  const pack = garantirAtlas(ator?.especie?.dex, ator?.shiny);
+  if (!pack?.anims?.Hurt) {
+    ator.desmaioEm = 0;
+    return false;
+  }
+  ator.desmaioEm = agora + duracaoFaixa(pack, "Hurt");
+  return true;
+}
+
 export function marcarPose(ator, nome, agora) {
   const pack = garantirAtlas(ator.especie?.dex, ator.shiny);
   const faixa = faixaDoGolpe(pack, nome);
   ator.pose = faixa;
   ator.poseMedida = !!pack?.anims?.[faixa];
-  ator.poseAte = agora + duracaoFaixa(pack, faixa);
+  let ate = agora + duracaoFaixa(pack, faixa);
+  if (nome === "Attack" && faixa === "Attack" && pack?.anims?.Strike) {
+    ator.poseSeguinte = "Strike";
+    ate += duracaoFaixa(pack, "Strike");
+  } else {
+    ator.poseSeguinte = "";
+  }
+  ator.poseAte = ate;
   if (!ator.visual) return;
   ator.visual.anim = faixa;
   ator.visual.frame = 0;
@@ -252,6 +281,7 @@ function voa(ator, passo) {
 
 function escolherFaixa(ator, pack, agora, passo) {
   if (ator.morto) return pack.anims?.Sleep ? "Sleep" : "Idle";
+  if ((ator.desmaioEm || 0) > agora && pack.anims?.Hurt) return "Hurt";
   if ((ator.recuoRestante || 0) > 0 && pack.anims?.Hurt) return "Hurt";
   const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0;
   if (noGolpe && ator.golpePose && pack.anims?.[ator.golpePose]) return ator.golpePose;
@@ -280,12 +310,13 @@ export function tickVisual(ator, dt, agora) {
     v.frame = 0;
     v.t = 0;
   }
-  const spec = pack.anims?.[v.anim];
+  let spec = pack.anims?.[v.anim];
   if (!spec) return pack;
   const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0;
+  const estica = noGolpe && ator.golpeClip > 0 && !ator.poseSeguinte;
   const ritmo = v.anim === "Walk" || v.anim === "FlapAround"
     ? ritmoLocomocao(spec, v.anim, ator)
-    : noGolpe && ator.golpeClip > 0
+    : estica
       ? duracaoFaixa(pack, v.anim) / ator.golpeClip
       : 1;
   if ((ator.recuoTrava || 0) > 0) return pack;
@@ -295,20 +326,36 @@ export function tickVisual(ator, dt, agora) {
     if (v.t < dur) break;
     v.t -= dur;
     v.frame++;
-    if (v.frame >= spec.frameCount) {
+    if (v.frame < spec.frameCount) continue;
+    v.frame = 0;
+    if (!POSE_GOLPE.has(anim)) continue;
+    const prox = ator.poseSeguinte;
+    if (prox && pack.anims?.[prox]) {
+      ator.poseSeguinte = "";
+      ator.pose = prox;
+      ator.golpePose = prox;
+      ator.poseMedida = true;
+      anim = prox;
+      v.anim = prox;
       v.frame = 0;
-      if (POSE_GOLPE.has(anim)) {
-        if ((ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0) {
-          v.frame = Math.max(0, spec.frameCount - 1);
-          v.t = 0;
-          break;
-        }
-        if (anim === "Hurt" && (ator.recuoRestante || 0) > 0) continue;
-        ator.poseAte = 0;
-        ator.poseMedida = false;
-        break;
-      }
+      v.t = 0;
+      spec = pack.anims[prox];
+      continue;
     }
+    if ((ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0) {
+      v.frame = Math.max(0, spec.frameCount - 1);
+      v.t = 0;
+      break;
+    }
+    if (anim === "Hurt" && (ator.desmaioEm || 0) > agora) {
+      v.frame = Math.max(0, spec.frameCount - 1);
+      v.t = 0;
+      break;
+    }
+    if (anim === "Hurt" && (ator.recuoRestante || 0) > 0) continue;
+    ator.poseAte = 0;
+    ator.poseMedida = false;
+    break;
   }
   return pack;
 }
