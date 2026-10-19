@@ -59,14 +59,21 @@ export function escolherHabilidade(ator, alvo) {
   const d = Math.hypot(alvo.x - ator.x, alvo.y - ator.y);
   const tiroPronto = ator.usaDistancia !== false && golpeProntoForma(ator, "projectile", "arc");
   if (tiroPronto && d > alcanceSoco(alvo)) return "atirar";
+  const corpo = golpeDeCorpo(ator);
+  if (!corpo) return "fugir";
   const hp = ator.hpMax > 0 ? ator.hp / ator.hpMax : 1;
-  if (!golpeDeCorpo(ator) || hp < VIDA_FUGA) return "fugir";
+  // Sem tiro, a vida baixa não pode abrir distância: o soco é o único dano.
+  if (hp < VIDA_FUGA && tiroPronto) return "fugir";
   return "perseguir";
 }
 
 /** Com a barra cheia, o dash pode sair para qualquer lado. A rede decide se vale a pena. */
 function pensarEsquiva(ator, alvo, tiros) {
   if (!ator || !alvo || (ator.esquiva || 0) < 1 || ocupado(ator)) return false;
+  const tiroPronto = ator.usaDistancia !== false && golpeProntoForma(ator, "projectile", "arc");
+  const hp = ator.hpMax > 0 ? ator.hp / ator.hpMax : 1;
+  // Vida baixa ensina o dash para trás. Sem tiro, os dois só se afastam e a luta para.
+  if (hp < VIDA_FUGA && !tiroPronto && !tiroNaJanela(ator, alvo, tiros, JANELA_REDE, corredorRede())) return false;
   const faixa = regua(ator, "esquivar");
   observar(ator, alvo, tiros, faixa.parada, entrada);
   calcularHabilidade("esquivar");

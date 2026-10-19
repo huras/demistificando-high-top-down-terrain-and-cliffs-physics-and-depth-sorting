@@ -1,5 +1,6 @@
 import { atoresPerto } from "../grade.js";
 import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, emRolamentoAtivo } from "../ator.js";
+import { acertoCorpo, alcanceCorpo } from "../ia/espaco.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
 import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
@@ -83,7 +84,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
   if (!alvo || alvo.morto || alvo.capturado || (alvo.iframe > 0 && !mesmaRajada) || alvo.invulneravel) return;
   if (!inimigo(atacante, alvo)) return;
   if (forma !== "projectile" && forma !== "arc" && !cruzaAltura(atacante, alvo, forma === "radius" ? 0.55 : 0.35)) return;
-  if (emRolamentoAtivo(alvo)) {
+  if (emRolamentoAtivo(alvo) && forma !== "contact") {
     efeitos.flutuar(alvo, "rolou", "#67e8f9");
     notar(efeitos, { tipo: "dodge", ator: atacante, alvo });
     return;
@@ -190,7 +191,7 @@ function escolher(ator, alvo, d) {
   const linhaLivre = tiroLimpo(ator, alvo);
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (corpo && noPlano && g.def.forma === "contact" && d <= Math.max(0.8, g.def.alcance || 1)) return g;
+    if (corpo && noPlano && g.def.forma === "contact" && d <= alcanceCorpo(g.def)) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
@@ -497,11 +498,12 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
     return;
   }
 
-  const alcance = Math.max(0.8, def.alcance || 1) + 0.55;
-  if (alvo && dist(ator, alvo) <= alcance) {
+  const alcance = alcanceCorpo(def);
+  const d = alvo ? dist(ator, alvo) : Infinity;
+  if (alvo && d <= alcance) {
     avancarNoGolpe(ator, alvo);
     ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
-    aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
+    aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, acertoCorpo(def.acerto, d, alcance), def.forma);
   } else if (efeitos?.flutuar) {
     efeitos.flutuar(ator, "errou", "#cbd5e1");
     notar(efeitos, { tipo: "erro", ator, alvo });

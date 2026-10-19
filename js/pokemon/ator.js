@@ -283,7 +283,7 @@ export function emEsquiva(ator) {
   return (ator?.esquivaFase || 0) > 0;
 }
 
-/** Janela em que o rolamento não toma golpe. */
+/** Janela em que o rolamento não toma tiro. Corpo a corpo ignora isso. */
 export function emRolamentoAtivo(ator) {
   return (ator?.esquivaFase || 0) === 2;
 }

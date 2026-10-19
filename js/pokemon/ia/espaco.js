@@ -1,9 +1,30 @@
 import { FOLGA_PARADA, RAIO_ARENA } from "./constantes.js";
 
+/** Corpo a corpo nunca fica mais curto que isto. */
+export const ALCANCE_CORPO_MIN = 2.5;
+/** No limite do alcance sobra esta fração da taxa do golpe. */
+const ACERTO_NO_LIMITE = 0.45;
+
+export function alcanceCorpo(def) {
+  const lista = Number(def?.alcance);
+  const base = Number.isFinite(lista) && lista > 0 ? lista : ALCANCE_CORPO_MIN;
+  return Math.max(ALCANCE_CORPO_MIN, base);
+}
+
+/** Taxa do golpe no instante do acerto. Perto vale a taxa cheia; no limite, cai. */
+export function acertoCorpo(acerto, distancia, alcance) {
+  if (acerto == null) return acerto;
+  const base = Number(acerto);
+  if (!Number.isFinite(base)) return acerto;
+  const faixa = alcance > 0 ? alcance : ALCANCE_CORPO_MIN;
+  const t = Math.max(0, Math.min(1, distancia / faixa));
+  return base * (1 - (1 - ACERTO_NO_LIMITE) * t);
+}
+
 export function paradaDe(def) {
   if (!def || def.forma === "contact") {
-    const alcance = Math.max(0.9, def?.alcance || 1.05);
-    return Math.min(alcance * 0.85, Math.max(0.8, alcance - 0.15));
+    const alcance = alcanceCorpo(def);
+    return Math.min(alcance * 0.5, Math.max(1.05, alcance - 1.15));
   }
   if ((def.poder || 0) <= 0) return 2.8;
   const alcance = Math.max(0.6, def.alcance || 1);
@@ -91,7 +112,7 @@ export function alcanceSoco(oponente) {
   const corpo = golpeDeCorpo(oponente);
   if (!corpo) return 0;
   if (corpo.forma === "radius") return Math.max(2.2, corpo.alcance || 2.2);
-  return corpo.alcance || 1.15;
+  return alcanceCorpo(corpo);
 }
 
 export function vaiMelee(oponente, ator) {
@@ -103,7 +124,7 @@ export function vaiMelee(oponente, ator) {
   const dy = ator.y - oponente.y;
   const d = Math.hypot(dx, dy);
   const contato = golpeProntoForma(oponente, "contact", "contact");
-  if (contato && d <= (contato.alcance || 1.15)) return true;
+  if (contato && d <= alcanceCorpo(contato)) return true;
   const tiro = oponente.usaDistancia !== false && golpeProntoForma(oponente, "projectile", "arc");
   if (tiro && d <= tiro.alcance) return false;
   const area = golpeProntoForma(oponente, "radius", "radius");

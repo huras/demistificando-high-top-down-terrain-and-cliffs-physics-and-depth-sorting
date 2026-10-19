@@ -2,7 +2,7 @@
 
 export const RAIO_ARENA = 9.2;
 export const FOLGA_PARADA = 0.18;
-/** Rolamento: preparação vulnerável, janela invulnerável, recuperação vulnerável. */
+/** Rolamento: preparação, janela que desvia tiro, recuperação. Corpo a corpo não desvia. */
 export const ESQUIVA_PREP = 0.09;
 export const ESQUIVA_ATIVA = 0.16;
 export const ESQUIVA_REC = 0.18;
