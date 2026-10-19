@@ -26,16 +26,34 @@ const ROCHAS = [
 ];
 
 export const CHAO = {
-  planta: "assets/terrain/centro/dirt.png",
+  planta: "assets/terrain/skins/brow-dirt-skin.png",
   pedra: "assets/terrain/centro/stone.png",
 };
+
+/** Touceiras da metade planta. Não bloqueiam. `toque` é o raio de contato do fogo futuro. */
+const GRAMAS = [
+  { url: "assets/vegetation/tuft.png", peso: 1.55 },
+  { url: "assets/vegetation/green-grass.png", peso: 0.4 },
+  { url: "assets/vegetation/greeny-grass.png", peso: 0.3 },
+  { url: "assets/vegetation/grass.png", peso: 0.35 },
+  { url: "assets/vegetation/jungle-grass.png", peso: 0.1 },
+];
+
+const N_GRAMA = 12;
+const TOQUE_GRAMA = 0.32;
 
 const pecas = [];
 for (let i = 0; i < 6; i++) {
   pecas.push({ x: 0, y: 0, r: 0, url: "", tipo: "", lado: "" });
 }
 
+const gramas = [];
+for (let i = 0; i < N_GRAMA * 2; i++) {
+  gramas.push({ x: 0, y: 0, toque: TOQUE_GRAMA, url: "", lado: "" });
+}
+
 let nPecas = 0;
+let nGramas = 0;
 let versao = 0;
 let semente = 0;
 
@@ -120,8 +138,73 @@ function espalhar(lado, lista, rng) {
   }
 }
 
+function sortearGrama(rng) {
+  let soma = 0;
+  for (let i = 0; i < GRAMAS.length; i++) soma += GRAMAS[i].peso;
+  let acc = rng() * soma;
+  for (let i = 0; i < GRAMAS.length; i++) {
+    acc -= GRAMAS[i].peso;
+    if (acc <= 0) return GRAMAS[i];
+  }
+  return GRAMAS[0];
+}
+
+function cabeGrama(x, y, sinal) {
+  if (x * sinal < 0.55) return false;
+  if (x * x + y * y > 8.6 * 8.6) return false;
+  if (Math.hypot(x - sinal * 5.2, y) < 1.2) return false;
+  for (let i = 0; i < nPecas; i++) {
+    const peca = pecas[i];
+    if (Math.hypot(x - peca.x, y - peca.y) < peca.r + 0.45) return false;
+  }
+  for (let i = 0; i < nGramas; i++) {
+    const outra = gramas[i];
+    if (Math.hypot(x - outra.x, y - outra.y) < 0.95) return false;
+  }
+  return true;
+}
+
+function semearGrama(lado, rng) {
+  const sinal = lado === "esquerda" ? -1 : 1;
+  for (let i = 0; i < N_GRAMA; i++) {
+    const visual = sortearGrama(rng);
+    let x = 0;
+    let y = 0;
+    let achou = false;
+    for (let t = 0; t < 36; t++) {
+      const along = 0.8 + rng() * 7.2;
+      const ladoY = (rng() * 2 - 1) * 7.4;
+      if (!cabeGrama(sinal * along, ladoY, sinal)) continue;
+      x = sinal * along;
+      y = ladoY;
+      achou = true;
+      break;
+    }
+    if (!achou) {
+      for (let along = 0.9; along <= 8.1 && !achou; along += 0.7) {
+        for (let ladoY = -7.2; ladoY <= 7.2; ladoY += 0.7) {
+          if (!cabeGrama(sinal * along, ladoY, sinal)) continue;
+          x = sinal * along;
+          y = ladoY;
+          achou = true;
+          break;
+        }
+      }
+    }
+    if (!achou) continue;
+    const tufo = gramas[nGramas];
+    tufo.x = x;
+    tufo.y = y;
+    tufo.toque = TOQUE_GRAMA;
+    tufo.url = visual.url;
+    tufo.lado = lado;
+    nGramas += 1;
+  }
+}
+
 function remontar() {
   nPecas = 0;
+  nGramas = 0;
   const rng = semente === 0 ? null : aleatorio(semente);
   for (let s = 0; s < LADOS.length; s++) {
     const lado = LADOS[s];
@@ -137,6 +220,12 @@ function remontar() {
       continue;
     }
     espalhar(lado, lista, rng);
+  }
+  const rngGrama = aleatorio((semente + 0x9e3779b9) | 0);
+  for (let s = 0; s < LADOS.length; s++) {
+    const lado = LADOS[s];
+    if (METADE[lado] !== "planta") continue;
+    semearGrama(lado, rngGrama);
   }
   versao += 1;
 }
@@ -174,6 +263,14 @@ export function quantidadeCobertura() {
 
 export function pecaCobertura(i) {
   return pecas[i];
+}
+
+export function quantidadeGrama() {
+  return nGramas;
+}
+
+export function pecaGrama(i) {
+  return gramas[i];
 }
 
 function raiz(a, b, c) {

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ALTURA_BLOCO, TILE } from "../config.js";
+import { ALTURA_BLOCO, TILE, VEG_MATA_ESCALA } from "../config.js";
 import { particulasVivas } from "../pokemon/combate/particulas.js";
 import { impactosVivos, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "../pokemon/combate/folhasGolpe.js";
@@ -7,7 +7,9 @@ import { aurasVivas, ORBES_KI } from "../pokemon/combate/ki.js";
 import {
   CHAO,
   pecaCobertura,
+  pecaGrama,
   quantidadeCobertura,
+  quantidadeGrama,
   tipoMetade,
   versaoCobertura,
 } from "./arenas.js";
@@ -20,6 +22,7 @@ const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;
 const CAP_TIRO = 64;
 const CAP_COBERTURA = 6;
+const CAP_GRAMA = 24;
 const CAP_FAISCA = 160;
 const CAP_TRACO = 24;
 const CAP_KI = 8;
@@ -53,6 +56,7 @@ const chaoTex = new Map();
 const spriteTex = new Map();
 const metadesChao = [];
 const coberturas = [];
+const gramas = [];
 let chaoNormal = null;
 let coberturaVista = -1;
 let spritesVista = -1;
@@ -193,6 +197,43 @@ function recortarPreto(img) {
   return corte;
 }
 
+function tileCheio(img) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h || w % 16 || h % 16 || (w === 16 && h === 16)) return null;
+  const leitura = document.createElement("canvas");
+  leitura.width = w;
+  leitura.height = h;
+  const ctx = leitura.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const px = ctx.getImageData(0, 0, w, h).data;
+  let tx = 0;
+  let ty = 0;
+  let melhor = 0;
+  for (let y0 = 0; y0 < h; y0 += 16) {
+    for (let x0 = 0; x0 < w; x0 += 16) {
+      let n = 0;
+      for (let y = 0; y < 16; y++) {
+        const linha = (y0 + y) * w;
+        for (let x = 0; x < 16; x++) {
+          if (px[((linha + x0 + x) * 4) + 3] > 250) n += 1;
+        }
+      }
+      if (n > melhor) {
+        melhor = n;
+        tx = x0;
+        ty = y0;
+      }
+    }
+  }
+  if (melhor < 256) return null;
+  const corte = document.createElement("canvas");
+  corte.width = 16;
+  corte.height = 16;
+  corte.getContext("2d").drawImage(leitura, tx, ty, 16, 16, 0, 0, 16, 16);
+  return corte;
+}
+
 function texturaRepetida(url) {
   let tex = chaoTex.get(url);
   if (tex) return tex;
@@ -206,7 +247,7 @@ function texturaRepetida(url) {
   chaoTex.set(url, tex);
   const img = new Image();
   img.onload = () => {
-    tex.image = img;
+    tex.image = tileCheio(img) || img;
     tex.needsUpdate = true;
     coberturaVista = -1;
   };
@@ -274,6 +315,21 @@ function criarCobertura() {
   return { sprite, mat, sombra, url: "" };
 }
 
+function criarGrama() {
+  const mat = new THREE.SpriteMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    alphaTest: 0.15,
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.center.set(0.5, 0);
+  sprite.visible = false;
+  sprite.renderOrder = 3;
+  cena.add(sprite);
+  return { sprite, mat, url: "" };
+}
+
 function sincronizarCobertura() {
   const versao = versaoCobertura();
   if (versao !== coberturaVista) {
@@ -282,7 +338,7 @@ function sincronizarCobertura() {
     aplicarMetade(metadesChao[1], tipoMetade("direita"));
     spritesVista = -1;
   }
-  const espera = coberturas.some((c) => c.visiblePendencia);
+  const espera = coberturas.some((c) => c.visiblePendencia) || gramas.some((g) => g.visiblePendencia);
   if (versao === spritesVista && !espera) return;
   spritesVista = versao;
   const n = quantidadeCobertura();
@@ -314,6 +370,31 @@ function sincronizarCobertura() {
     slot.sombra.position.set(peca.x, 0.03, peca.y);
     const s = Math.max(0.55, peca.r / 0.62);
     slot.sombra.scale.set(s, 1, s);
+  }
+  const ng = quantidadeGrama();
+  for (let i = 0; i < CAP_GRAMA; i++) {
+    const slot = gramas[i];
+    const tufo = i < ng ? pecaGrama(i) : null;
+    if (!tufo) {
+      slot.sprite.visible = false;
+      slot.visiblePendencia = false;
+      slot.url = "";
+      continue;
+    }
+    const tex = texturaSprite(tufo.url);
+    if (slot.url !== tufo.url) {
+      slot.mat.map = tex;
+      slot.mat.needsUpdate = true;
+      slot.url = tufo.url;
+    }
+    const pronta = tex.userData.w > 0;
+    slot.sprite.visible = pronta;
+    slot.visiblePendencia = !pronta;
+    if (!pronta) continue;
+    const w = ((tex.userData.w / TILE) || 1) * VEG_MATA_ESCALA;
+    const h = ((tex.userData.h / TILE) || 1) * VEG_MATA_ESCALA;
+    slot.sprite.scale.set(w, h, 1);
+    slot.sprite.position.set(tufo.x, 0, tufo.y);
   }
 }
 
@@ -699,6 +780,7 @@ export function ligarArena(elemento) {
     for (let k = 0; k < ORBES_KI; k++) kiOrbes.push(criarPonto(suave, 6, true));
   }
   for (let i = 0; i < CAP_COBERTURA; i++) coberturas.push(criarCobertura());
+  for (let i = 0; i < CAP_GRAMA; i++) gramas.push(criarGrama());
 
   ligarPonteiro();
   ajustarTamanho();
