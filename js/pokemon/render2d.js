@@ -6,6 +6,7 @@ import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
 import { obterBola } from "./captura.js";
 import { dropsNoChao } from "./drops.js";
+import { imagemIcone } from "../jogo/icones.js";
 import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
 import { carregarFolhasGolpe, poseImpacto, poseTiro, telaFolha } from "./combate/folhasGolpe.js";
 import { auraDe, ORBES_KI } from "./combate/ki.js";
@@ -134,6 +135,15 @@ function desenharKi(ctx, ator, x, y, escala) {
 function desenharDrop(ctx, item) {
   const x = mundoParaTelaX(item.x);
   const y = mundoParaTelaY(item.y, item.z, 0);
+  const img = item.chave ? imagemIcone(item.chave) : null;
+  if (img) {
+    const s = 18;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, x - s / 2, y - s, s, s);
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.fillStyle = "#fbbf24";
   ctx.beginPath();

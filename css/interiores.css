@@ -7,6 +7,24 @@
   font-weight: 700;
 }
 
+.jogo-canto__topo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.jogo-idioma select {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 250, 241, 0.94);
+  border: 1px solid #1c1917;
+  font: inherit;
+  font-weight: 700;
+  color: #1c1917;
+}
+
 .loja-abas,
 .loja-qtd {
   display: flex;

@@ -1,5 +1,7 @@
 /** Ícones: PNG de itens, ou o recorte de tileset definido no Pokémon AI. */
 
+import { CHAVES_BERRY, MAPA_ICONE, SOBRESCREVE_ICONE } from "./iconesRef.js";
+
 const FOLHA = Object.freeze({
   tileset_1: {
     url: "/ref/sprites/items-tileset/tileset_1.png",
@@ -87,41 +89,99 @@ const REL = Object.freeze({
   blocoPedra: "hold-items/hard-stone.png",
 });
 
-/** Mesmos recortes de src/items/iconOverrides.json. */
-const TILESET = Object.freeze({
-  axe: { folha: "tileset_1", r: 10, c: 1 },
-  hoe: { folha: "iconset_2", r: 7, c: 10 },
-  pickaxe: { folha: "iconset_2", r: 13, c: 8 },
-  hammer: { folha: "tileset_1", r: 9, c: 3 },
-  wood: { folha: "iconset_2", r: 18, c: 7 },
-  plantFiber: { folha: "tileset_1", r: 18, c: 6 },
-});
-
 const EXIBE = 36;
+const imagens = new Map();
+const folhasImg = new Map();
+const recortes = new Map();
+
+function refIcone(chave) {
+  return SOBRESCREVE_ICONE[chave]
+    || MAPA_ICONE[chave]
+    || (CHAVES_BERRY.has(chave) ? `berries/${chave}-berry.png` : null)
+    || (REL[chave] ? `local:${REL[chave]}` : null);
+}
+
+function corteDe(ref) {
+  const m = /^tileset:(?:(iconset_2):)?r(\d+)_c(\d+)$/.exec(ref || "");
+  if (!m) return null;
+  return { folha: m[1] ? "iconset_2" : "tileset_1", r: Number(m[2]), c: Number(m[3]) };
+}
+
+function urlDeRef(ref) {
+  if (!ref || ref.startsWith("tileset:")) return "";
+  if (ref.startsWith("local:")) return `assets/itens/${ref.slice(6)}`;
+  if (ref.startsWith("world:")) return `/ref/sprites/${ref.slice(6)}`;
+  return `/ref/sprites/items-icons/${ref}`;
+}
 
 export function urlIcone(chave) {
-  const rel = REL[chave];
-  return rel ? `assets/itens/${rel}` : "";
+  return urlDeRef(refIcone(chave));
+}
+
+function estiloTileset(corte, exibe) {
+  const folha = FOLHA[corte.folha];
+  const x = folha.ox + corte.c * (folha.tile + folha.px);
+  const y = folha.oy + corte.r * (folha.tile + folha.py);
+  const s = exibe / folha.tile;
+  return [
+    `background-image:url(${folha.url})`,
+    "background-repeat:no-repeat",
+    `background-size:${folha.w * s}px ${folha.h * s}px`,
+    `background-position:-${x * s}px -${y * s}px`,
+  ].join(";");
 }
 
 export function htmlIcone(chave, classe, tamanho) {
   const base = classe || "jogo-icone";
   const exibe = tamanho > 0 ? tamanho : EXIBE;
-  const corte = TILESET[chave];
+  const corte = corteDe(refIcone(chave));
   if (corte) {
-    const folha = FOLHA[corte.folha];
-    const x = folha.ox + corte.c * (folha.tile + folha.px);
-    const y = folha.oy + corte.r * (folha.tile + folha.py);
-    const s = exibe / folha.tile;
-    const estilo = [
-      `background-image:url(${folha.url})`,
-      "background-repeat:no-repeat",
-      `background-size:${folha.w * s}px ${folha.h * s}px`,
-      `background-position:-${x * s}px -${y * s}px`,
-    ].join(";");
+    const estilo = estiloTileset(corte, exibe);
     return `<span class="${base} jogo-icone--tileset" style="${estilo};width:${exibe}px;height:${exibe}px"></span>`;
   }
   const url = urlIcone(chave);
   if (!url) return `<span class="${base} jogo-icone--vazio" style="width:${exibe}px;height:${exibe}px"></span>`;
   return `<img class="${base}" src="${url}" alt="" width="${exibe}" height="${exibe}" draggable="false" />`;
+}
+
+function folhaPronta(id) {
+  if (typeof document === "undefined") return null;
+  let img = folhasImg.get(id);
+  if (!img) {
+    img = new Image();
+    img.src = FOLHA[id].url;
+    folhasImg.set(id, img);
+  }
+  return img.complete && img.naturalWidth ? img : null;
+}
+
+export function imagemIcone(chave) {
+  if (typeof document === "undefined") return null;
+  const ref = refIcone(chave);
+  if (!ref) return null;
+  const corte = corteDe(ref);
+  if (corte) {
+    const pronto = recortes.get(chave);
+    if (pronto) return pronto;
+    const folhaImg = folhaPronta(corte.folha);
+    if (!folhaImg) return null;
+    const folha = FOLHA[corte.folha];
+    const x = folha.ox + corte.c * (folha.tile + folha.px);
+    const y = folha.oy + corte.r * (folha.tile + folha.py);
+    const canvas = document.createElement("canvas");
+    canvas.width = folha.tile;
+    canvas.height = folha.tile;
+    canvas.getContext("2d").drawImage(folhaImg, x, y, folha.tile, folha.tile, 0, 0, folha.tile, folha.tile);
+    recortes.set(chave, canvas);
+    return canvas;
+  }
+  const url = urlDeRef(ref);
+  if (!url) return null;
+  let img = imagens.get(url);
+  if (!img) {
+    img = new Image();
+    img.src = url;
+    imagens.set(url, img);
+  }
+  return img.complete && img.naturalWidth ? img : null;
 }

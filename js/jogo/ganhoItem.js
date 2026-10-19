@@ -7,11 +7,14 @@ import { itensBolsa, obterBolas } from "../pokemon/party.js";
 import { classificarChave, defItem } from "../wild/catalogo.js";
 import { estado, avisar } from "./estado.js";
 import { htmlIcone } from "./icones.js";
+import { aoMudarIdioma, t } from "./i18n.js";
+import { nomeDoItem } from "./nomeItem.js";
 
 const SUMIR_MS = 3200;
 const fila = [];
 const avisos = new Map();
 let carta = null;
+let itemAberto = null;
 let dock = null;
 let relogio = 0;
 
@@ -24,9 +27,9 @@ function ficha(chave) {
   const def = defItem(classificarChave(chave), chave);
   return {
     chave,
-    nome: def?.nome || chave,
+    nome: nomeDoItem(chave),
     cor: def?.cor || "#d6d3d1",
-    desc: def?.dica || "Dá para guardar na bolsa.",
+    desc: def?.dica || t("ui.guarda"),
   };
 }
 
@@ -66,6 +69,8 @@ function abrirCarta(item) {
 }
 
 function montarCarta(item) {
+  const fresco = { ...ficha(item.chave), qtd: item.qtd };
+  itemAberto = fresco;
   estado.ganhoAberto = true;
   if (typeof document !== "undefined" && document.pointerLockElement) document.exitPointerLock();
   if (carta) carta.remove();
@@ -75,16 +80,18 @@ function montarCarta(item) {
   raiz.innerHTML =
     `<div class="ganho-carta__brilhos" aria-hidden="true"></div>` +
     `<div class="ganho-carta__folha">` +
-    `<p class="ganho-carta__olho">Você obteve</p>` +
-    `<div class="ganho-carta__icone">${htmlIcone(item.chave, "ganho-carta__sprite", 72)}</div>` +
+    `<p class="ganho-carta__olho"></p>` +
+    `<div class="ganho-carta__icone">${htmlIcone(fresco.chave, "ganho-carta__sprite", 72)}</div>` +
     `<h2 class="ganho-carta__nome"></h2>` +
     `<p class="ganho-carta__qtd"></p>` +
     `<p class="ganho-carta__desc"></p>` +
-    `<p class="ganho-carta__continua">Clique para continuar</p>` +
+    `<p class="ganho-carta__continua"></p>` +
     `</div>`;
-  raiz.querySelector(".ganho-carta__nome").textContent = item.nome;
-  raiz.querySelector(".ganho-carta__qtd").textContent = item.qtd > 1 ? `×${item.qtd}` : "";
-  raiz.querySelector(".ganho-carta__desc").textContent = item.desc;
+  raiz.querySelector(".ganho-carta__olho").textContent = t("ui.obteve");
+  raiz.querySelector(".ganho-carta__nome").textContent = fresco.nome;
+  raiz.querySelector(".ganho-carta__qtd").textContent = fresco.qtd > 1 ? `×${fresco.qtd}` : "";
+  raiz.querySelector(".ganho-carta__desc").textContent = fresco.desc;
+  raiz.querySelector(".ganho-carta__continua").textContent = t("ui.continua");
   const brilhos = raiz.querySelector(".ganho-carta__brilhos");
   for (let i = 0; i < 8; i++) {
     const p = document.createElement("span");
@@ -107,6 +114,7 @@ export function fecharCartaGanho() {
     return;
   }
   estado.ganhoAberto = false;
+  itemAberto = null;
   if (carta) {
     carta.remove();
     carta = null;
@@ -163,3 +171,11 @@ export function tickGanho(dt) {
     avisos.delete(chave);
   }
 }
+
+aoMudarIdioma(() => {
+  for (const [chave, linha] of avisos) {
+    const nome = linha.el.querySelector(".item-obtain-toast__name");
+    if (nome) nome.textContent = nomeDoItem(chave);
+  }
+  if (itemAberto && estado.ganhoAberto) montarCarta(itemAberto);
+});

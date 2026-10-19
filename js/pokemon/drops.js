@@ -1,7 +1,8 @@
 import { POKEMON } from "../config.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
-import { dropsDaEspecie } from "./dados.js";
+import { dropsDaEspecie, fallbackDoTipo } from "./dados.js";
+import { nomeDoItem } from "../jogo/nomeItem.js";
 import { guardarItem, pokemonDeployado } from "./party.js";
 
 const itens = [];
@@ -26,9 +27,7 @@ export function soltarDrop(ator) {
   const chaves = [];
   rolarLista(tabela.berries, chaves);
   rolarLista(tabela.materials, chaves);
-  if (!chaves.length && Math.random() < 0.4) {
-    chaves.push(`fragmento-${ator.tipos?.[0] || "normal"}`);
-  }
+  if (!chaves.length) rolarLista(fallbackDoTipo(ator.tipos?.[0]), chaves);
   for (let i = 0; i < chaves.length; i++) {
     if (itens.length >= POKEMON.DROPS_MAX) itens.shift();
     const jx = (Math.random() - 0.5) * 0.7;
@@ -85,7 +84,7 @@ export function atualizarDrops(corpo, dt, flutuar) {
     }
     const chave = pegar(item, quem);
     itens.splice(i, 1);
-    flutuar(quem.faccao ? quem : { x: corpo.x, y: corpo.y, z: corpo.elevacao ?? corpo.z }, chave, "#fde68a");
+    flutuar(quem.faccao ? quem : { x: corpo.x, y: corpo.y, z: corpo.elevacao ?? corpo.z }, nomeDoItem(chave), "#fde68a");
   }
 }
 

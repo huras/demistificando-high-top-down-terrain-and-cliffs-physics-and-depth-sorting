@@ -12,7 +12,6 @@ import {
   REMEDIOS,
   SLOTS_HOTBAR,
   TIPO_ITEM,
-  classificarChave,
   defItem,
   precoCompra,
   precoVenda,
@@ -25,6 +24,7 @@ import { especie } from "../pokemon/dados.js";
 import { obterTreinador } from "../pokemon/sistema.js";
 import { hidratarCampo, idsRemovidos, reaplicarCarregados, serializarCampo } from "../campo/estadoProps.js";
 import { anunciarGanho, semearVistosDaBolsa } from "./ganhoItem.js";
+import { nomeDoItem } from "./nomeItem.js";
 import {
   ajustarItem,
   colocarNaParty,
@@ -746,7 +746,7 @@ function semearInicio() {
 }
 
 export function nomeDe(tipo, key) {
-  return defItem(tipo, key)?.nome || defItem(classificarChave(key), key)?.nome || key;
+  return nomeDoItem(key, tipo);
 }
 
 export { ESTAGIO, TIPO_ITEM, BOLAS, BERRIES, REMEDIOS, FERRAMENTAS, MOVEIS, RECEITAS_BOLA, CHAVES };

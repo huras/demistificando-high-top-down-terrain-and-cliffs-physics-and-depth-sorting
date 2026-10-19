@@ -9,6 +9,7 @@ import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "./combate/folhasGolpe.js";
 import { aurasVivas, ORBES_KI } from "./combate/ki.js";
 import { dropsNoChao } from "./drops.js";
+import { imagemIcone } from "../jogo/icones.js";
 import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
@@ -225,6 +226,23 @@ function criarKi(ordem) {
   sprite.visible = false;
   cena.add(sprite);
   return sprite;
+}
+
+const texturasDrop = new Map();
+
+function texturaDoItem(chave) {
+  const img = imagemIcone(chave);
+  if (!img) return null;
+  const pronta = texturasDrop.get(chave);
+  if (pronta && pronta.image === img) return pronta;
+  const tex = new THREE.Texture(img);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+  texturasDrop.set(chave, tex);
+  return tex;
 }
 
 function criarPonto(cor) {
@@ -521,10 +539,24 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
     }
     const item = i < noChao.length ? noChao[i] : blocos[i - noChao.length];
     mesh.visible = true;
-    mesh.material.color.set(item.cor || "#fbbf24");
-    mesh.material.opacity = 1;
+    const tex = item.chave ? texturaDoItem(item.chave) : null;
     const bob = Math.sin((item.idade || 0) * 4) * 0.06;
-    mesh.scale.set(0.22, 0.22, 1);
+    if (tex) {
+      if (mesh.material.map !== tex) {
+        mesh.material.map = tex;
+        mesh.material.needsUpdate = true;
+      }
+      mesh.material.color.set("#ffffff");
+      mesh.scale.set(0.42, 0.42, 1);
+    } else {
+      if (mesh.material.map !== mesh.userData.mapa) {
+        mesh.material.map = mesh.userData.mapa;
+        mesh.material.needsUpdate = true;
+      }
+      mesh.material.color.set(item.cor || "#fbbf24");
+      mesh.scale.set(0.22, 0.22, 1);
+    }
+    mesh.material.opacity = 1;
     mesh.position.set(item.x, item.z * ALTURA_BLOCO + 0.28 + bob, item.y);
   }
 

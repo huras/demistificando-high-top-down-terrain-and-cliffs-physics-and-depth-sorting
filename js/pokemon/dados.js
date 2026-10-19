@@ -2,7 +2,7 @@
 
 let especies = null;
 let golpes = null;
-let drops = { berries: {}, materials: {} };
+let drops = { berries: {}, materials: {}, typeFallback: {} };
 let pronto = false;
 
 export function dadosProntos() {
@@ -30,6 +30,11 @@ export function dropsDaEspecie(chave) {
     berries: drops.berries?.[chave] || null,
     materials: drops.materials?.[chave] || null,
   };
+}
+
+export function fallbackDoTipo(tipo) {
+  const chave = String(tipo || "normal").toLowerCase();
+  return drops.typeFallback?.[chave] || drops.typeFallback?.normal || null;
 }
 
 function dobrarCustoPp(tabela) {
@@ -75,6 +80,7 @@ export async function carregarDados() {
     drops = {
       berries: bruto.berries || {},
       materials: bruto.materials || {},
+      typeFallback: bruto.typeFallback || {},
     };
   }
   if (pivoRes.ok) aplicarPivos(await pivoRes.json());

@@ -1,5 +1,7 @@
 /** Catálogos de item, loja, craft e móvel. Dados no formato do jogo de origem. */
 
+import { MATERIAIS_DROP } from "./materiaisDrop.js";
+
 export const TIPO_ITEM = Object.freeze({
   BOLA: "ball",
   BERRY: "berry",
@@ -36,6 +38,7 @@ function berry(key, nome, cor, efeito) {
   return Object.freeze({
     key,
     nome,
+    nameKey: `berries.${key}`,
     tipo: TIPO_ITEM.BERRY,
     cor,
     plantavel: true,
@@ -82,16 +85,16 @@ export const BERRIES = Object.freeze({
 });
 
 export const REMEDIOS = Object.freeze({
-  potion: Object.freeze({ key: "potion", nome: "Poção", tipo: TIPO_ITEM.REMEDIO, compra: 300, venda: 150, efeito: Object.freeze({ curaHp: 20 }) }),
-  superPotion: Object.freeze({ key: "superPotion", nome: "Super Poção", tipo: TIPO_ITEM.REMEDIO, compra: 700, venda: 350, efeito: Object.freeze({ curaHp: 50 }) }),
-  hyperPotion: Object.freeze({ key: "hyperPotion", nome: "Hiper Poção", tipo: TIPO_ITEM.REMEDIO, compra: 1200, venda: 600, efeito: Object.freeze({ curaHp: 200 }) }),
-  antidote: Object.freeze({ key: "antidote", nome: "Antídoto", tipo: TIPO_ITEM.REMEDIO, compra: 100, venda: 50, efeito: Object.freeze({ cura: "poison" }) }),
-  paralyzeHeal: Object.freeze({ key: "paralyzeHeal", nome: "Antiparalisia", tipo: TIPO_ITEM.REMEDIO, compra: 200, venda: 100, efeito: Object.freeze({ cura: "paralysis" }) }),
-  awakening: Object.freeze({ key: "awakening", nome: "Despertar", tipo: TIPO_ITEM.REMEDIO, compra: 250, venda: 125, efeito: Object.freeze({ cura: "sleep" }) }),
-  burnHeal: Object.freeze({ key: "burnHeal", nome: "Cura de Queimadura", tipo: TIPO_ITEM.REMEDIO, compra: 250, venda: 125, efeito: Object.freeze({ cura: "burn" }) }),
-  iceHeal: Object.freeze({ key: "iceHeal", nome: "Cura de Gelo", tipo: TIPO_ITEM.REMEDIO, compra: 250, venda: 125, efeito: Object.freeze({ cura: "freeze" }) }),
-  fullHeal: Object.freeze({ key: "fullHeal", nome: "Cura Total", tipo: TIPO_ITEM.REMEDIO, compra: 600, venda: 300, efeito: Object.freeze({ cura: "all" }) }),
-  revive: Object.freeze({ key: "revive", nome: "Revivir", tipo: TIPO_ITEM.REMEDIO, compra: 1500, venda: 750, efeito: Object.freeze({ reviver: 0.5 }) }),
+  potion: Object.freeze({ key: "potion", nome: "Poção", nameKey: "medicine.potion", tipo: TIPO_ITEM.REMEDIO, compra: 300, venda: 150, efeito: Object.freeze({ curaHp: 20 }) }),
+  superPotion: Object.freeze({ key: "superPotion", nome: "Super Poção", nameKey: "medicine.superPotion", tipo: TIPO_ITEM.REMEDIO, compra: 700, venda: 350, efeito: Object.freeze({ curaHp: 50 }) }),
+  hyperPotion: Object.freeze({ key: "hyperPotion", nome: "Hiper Poção", nameKey: "medicine.hyperPotion", tipo: TIPO_ITEM.REMEDIO, compra: 1200, venda: 600, efeito: Object.freeze({ curaHp: 200 }) }),
+  antidote: Object.freeze({ key: "antidote", nome: "Antídoto", nameKey: "medicine.antidote", tipo: TIPO_ITEM.REMEDIO, compra: 100, venda: 50, efeito: Object.freeze({ cura: "poison" }) }),
+  paralyzeHeal: Object.freeze({ key: "paralyzeHeal", nome: "Antiparalisia", nameKey: "medicine.paralyzeHeal", tipo: TIPO_ITEM.REMEDIO, compra: 200, venda: 100, efeito: Object.freeze({ cura: "paralysis" }) }),
+  awakening: Object.freeze({ key: "awakening", nome: "Despertar", nameKey: "medicine.awakening", tipo: TIPO_ITEM.REMEDIO, compra: 250, venda: 125, efeito: Object.freeze({ cura: "sleep" }) }),
+  burnHeal: Object.freeze({ key: "burnHeal", nome: "Cura de Queimadura", nameKey: "medicine.burnHeal", tipo: TIPO_ITEM.REMEDIO, compra: 250, venda: 125, efeito: Object.freeze({ cura: "burn" }) }),
+  iceHeal: Object.freeze({ key: "iceHeal", nome: "Cura de Gelo", nameKey: "medicine.iceHeal", tipo: TIPO_ITEM.REMEDIO, compra: 250, venda: 125, efeito: Object.freeze({ cura: "freeze" }) }),
+  fullHeal: Object.freeze({ key: "fullHeal", nome: "Cura Total", nameKey: "medicine.fullHeal", tipo: TIPO_ITEM.REMEDIO, compra: 600, venda: 300, efeito: Object.freeze({ cura: "all" }) }),
+  revive: Object.freeze({ key: "revive", nome: "Revivir", nameKey: "medicine.revive", tipo: TIPO_ITEM.REMEDIO, compra: 1500, venda: 750, efeito: Object.freeze({ reviver: 0.5 }) }),
 });
 
 export const BOLAS = Object.freeze({
@@ -102,24 +105,24 @@ export const BOLAS = Object.freeze({
 });
 
 export const FERRAMENTAS = Object.freeze({
-  hoe: Object.freeze({ key: "hoe", nome: "Enxada", tipo: TIPO_ITEM.FERRAMENTA, cor: "#a16207", dica: "Cava grama para plantar." }),
-  wateringCan: Object.freeze({ key: "wateringCan", nome: "Regador", tipo: TIPO_ITEM.FERRAMENTA, cor: "#0ea5e9", dica: "Rega a planta para ela crescer." }),
-  axe: Object.freeze({ key: "axe", nome: "Machado", tipo: TIPO_ITEM.FERRAMENTA, cor: "#92400e", dica: "Corta a árvore. Ela cai e vira toco." }),
-  pickaxe: Object.freeze({ key: "pickaxe", nome: "Picareta", tipo: TIPO_ITEM.FERRAMENTA, cor: "#64748b", dica: "Clique esquerdo quebra o bloco, ou a pedra sob o cursor." }),
-  hammer: Object.freeze({ key: "hammer", nome: "Martelo", tipo: TIPO_ITEM.FERRAMENTA, cor: "#78716c", dica: "Abre o catálogo dentro de casa." }),
+  hoe: Object.freeze({ key: "hoe", nome: "Enxada", nameKey: "tools.hoe", tipo: TIPO_ITEM.FERRAMENTA, cor: "#a16207", dica: "Cava grama para plantar." }),
+  wateringCan: Object.freeze({ key: "wateringCan", nome: "Regador", nameKey: "tools.wateringCan", tipo: TIPO_ITEM.FERRAMENTA, cor: "#0ea5e9", dica: "Rega a planta para ela crescer." }),
+  axe: Object.freeze({ key: "axe", nome: "Machado", nameKey: "tools.axe", tipo: TIPO_ITEM.FERRAMENTA, cor: "#92400e", dica: "Corta a árvore. Ela cai e vira toco." }),
+  pickaxe: Object.freeze({ key: "pickaxe", nome: "Picareta", nameKey: "tools.pickaxe", tipo: TIPO_ITEM.FERRAMENTA, cor: "#64748b", dica: "Clique esquerdo quebra o bloco, ou a pedra sob o cursor." }),
+  hammer: Object.freeze({ key: "hammer", nome: "Martelo", nameKey: "tools.hammer", tipo: TIPO_ITEM.FERRAMENTA, cor: "#78716c", dica: "Abre o catálogo dentro de casa." }),
 });
 
 export const MATERIAIS = Object.freeze({
-  wood: Object.freeze({ key: "wood", nome: "Madeira", tipo: TIPO_ITEM.MATERIAL, compra: 36, venda: 18, cor: "#a16207" }),
-  coal: Object.freeze({ key: "coal", nome: "Carvão", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 28, cor: "#44403c" }),
-  stone: Object.freeze({ key: "stone", nome: "Pedra", tipo: TIPO_ITEM.MATERIAL, compra: 30, venda: 15, cor: "#78716c" }),
-  plantFiber: Object.freeze({ key: "plantFiber", nome: "Fibra", tipo: TIPO_ITEM.MATERIAL, compra: 20, venda: 10, cor: "#65a30d" }),
-  blueCrystal: Object.freeze({ key: "blueCrystal", nome: "Cristal azul", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#38bdf8" }),
-  redCrystal: Object.freeze({ key: "redCrystal", nome: "Cristal vermelho", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#f43f5e" }),
-  yellowCrystal: Object.freeze({ key: "yellowCrystal", nome: "Cristal amarelo", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#facc15" }),
-  purpleCrystal: Object.freeze({ key: "purpleCrystal", nome: "Cristal roxo", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#a855f7" }),
-  greenCrystal: Object.freeze({ key: "greenCrystal", nome: "Cristal verde", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#22c55e" }),
-  pinkCrystal: Object.freeze({ key: "pinkCrystal", nome: "Cristal rosa", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#f9a8d4" }),
+  wood: Object.freeze({ key: "wood", nome: "Madeira", nameKey: "materials.wood", tipo: TIPO_ITEM.MATERIAL, compra: 36, venda: 18, cor: "#a16207" }),
+  coal: Object.freeze({ key: "coal", nome: "Carvão", nameKey: "materials.coal", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 28, cor: "#44403c" }),
+  stone: Object.freeze({ key: "stone", nome: "Pedra", nameKey: "materials.stone", tipo: TIPO_ITEM.MATERIAL, compra: 30, venda: 15, cor: "#78716c" }),
+  plantFiber: Object.freeze({ key: "plantFiber", nome: "Fibra", nameKey: "materials.plantFiber", tipo: TIPO_ITEM.MATERIAL, compra: 20, venda: 10, cor: "#65a30d" }),
+  blueCrystal: Object.freeze({ key: "blueCrystal", nome: "Cristal azul", nameKey: "materials.blueCrystal", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#38bdf8" }),
+  redCrystal: Object.freeze({ key: "redCrystal", nome: "Cristal vermelho", nameKey: "materials.redCrystal", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#f43f5e" }),
+  yellowCrystal: Object.freeze({ key: "yellowCrystal", nome: "Cristal amarelo", nameKey: "materials.yellowCrystal", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#facc15" }),
+  purpleCrystal: Object.freeze({ key: "purpleCrystal", nome: "Cristal roxo", nameKey: "materials.purpleCrystal", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#a855f7" }),
+  greenCrystal: Object.freeze({ key: "greenCrystal", nome: "Cristal verde", nameKey: "materials.greenCrystal", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#22c55e" }),
+  pinkCrystal: Object.freeze({ key: "pinkCrystal", nome: "Cristal rosa", nameKey: "materials.pinkCrystal", tipo: TIPO_ITEM.MATERIAL, compra: 0, venda: 40, cor: "#f9a8d4" }),
 });
 
 export const CHAVES = Object.freeze({
@@ -178,7 +181,7 @@ export function defItem(tipo, key) {
   if (tipo === TIPO_ITEM.BERRY) return BERRIES[key] || null;
   if (tipo === TIPO_ITEM.REMEDIO) return REMEDIOS[key] || null;
   if (tipo === TIPO_ITEM.FERRAMENTA) return FERRAMENTAS[key] || null;
-  if (tipo === TIPO_ITEM.MATERIAL) return MATERIAIS[key] || null;
+  if (tipo === TIPO_ITEM.MATERIAL) return MATERIAIS[key] || MATERIAIS_DROP[key] || null;
   if (tipo === TIPO_ITEM.CHAVE) return CHAVES[key] || null;
   if (tipo === TIPO_ITEM.BLOCO) return BLOCOS[key] || null;
   return null;
@@ -189,7 +192,7 @@ export function classificarChave(key) {
   if (BERRIES[key]) return TIPO_ITEM.BERRY;
   if (REMEDIOS[key]) return TIPO_ITEM.REMEDIO;
   if (FERRAMENTAS[key]) return TIPO_ITEM.FERRAMENTA;
-  if (MATERIAIS[key]) return TIPO_ITEM.MATERIAL;
+  if (MATERIAIS[key] || MATERIAIS_DROP[key]) return TIPO_ITEM.MATERIAL;
   if (CHAVES[key]) return TIPO_ITEM.CHAVE;
   if (BLOCOS[key]) return TIPO_ITEM.BLOCO;
   return TIPO_ITEM.MATERIAL;
@@ -200,6 +203,15 @@ export function precoCompra(tipo, key) {
   if (!def) return -1;
   if (def.compra == null) return -1;
   return def.compra;
+}
+
+export function materiaisDaBolsa() {
+  const mapa = {};
+  const drop = Object.keys(MATERIAIS_DROP);
+  for (let i = 0; i < drop.length; i++) mapa[drop[i]] = MATERIAIS_DROP[drop[i]];
+  const base = Object.keys(MATERIAIS);
+  for (let i = 0; i < base.length; i++) mapa[base[i]] = MATERIAIS[base[i]];
+  return mapa;
 }
 
 export function precoVenda(tipo, key) {

@@ -10,12 +10,12 @@ import {
   BLOCOS,
   CHAVES,
   FERRAMENTAS,
-  MATERIAIS,
   MOVEIS,
   RECEITAS_BOLA,
   REMEDIOS,
   TIPO_ITEM,
   classificarChave,
+  materiaisDaBolsa,
   teclaDoSlot,
 } from "../wild/catalogo.js";
 import { especie, listarEspecies } from "../pokemon/dados.js";
@@ -53,6 +53,7 @@ import { celulaConstrucao, pertoDe, propsDaSala } from "./sala.js";
 import { celulaLivre } from "../wild/salas.js";
 import { sfx } from "./audio.js";
 import { htmlIcone } from "./icones.js";
+import { aoMudarIdioma, definirIdioma, idiomaAtual, t } from "./i18n.js";
 import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarCliqueCapsula, tratarInputCapsula } from "./capsula.js";
 import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
 import { htmlLoja, quantidadeLoja, tratarLoja } from "./loja.js";
@@ -64,6 +65,7 @@ let raiz = null;
 
 export function ligarUi(overlay) {
   raiz = overlay;
+  ligarIdioma();
   raiz.addEventListener("click", noClique);
   raiz.addEventListener("change", noChange);
   raiz.addEventListener("input", tratarInputCapsula);
@@ -74,6 +76,24 @@ export function ligarUi(overlay) {
     ev.preventDefault();
     fecharTopo();
     pintar();
+  });
+}
+
+function ligarIdioma() {
+  const sel = document.getElementById("jogo-idioma");
+  if (!sel || sel.dataset.pronto) return;
+  sel.dataset.pronto = "1";
+  sel.innerHTML =
+    `<option value="pt-BR">Português (BR)</option>` +
+    `<option value="en">English</option>` +
+    `<option value="ja">日本語</option>`;
+  sel.value = idiomaAtual();
+  sel.addEventListener("change", () => {
+    definirIdioma(sel.value);
+  });
+  aoMudarIdioma(() => {
+    sel.value = idiomaAtual();
+    avisar();
   });
 }
 
@@ -450,13 +470,13 @@ function htmlMenu(nome) {
 
 function htmlMochila() {
   const cats = [
-    ["balls", "Bolas"],
-    ["berries", "Berries"],
-    ["medicine", "Remédios"],
-    ["materials", "Materiais"],
-    ["blocks", "Blocos"],
-    ["tools", "Ferramentas"],
-    ["key", "Chave"],
+    ["balls", t("ui.bolas")],
+    ["berries", t("ui.berries")],
+    ["medicine", t("ui.remedios")],
+    ["materials", t("ui.materiais")],
+    ["blocks", t("ui.blocos")],
+    ["tools", t("ui.ferramentas")],
+    ["key", t("ui.chave")],
   ];
   const botoes = cats
     .map(([id, rotulo]) => `<button type="button" data-act="cat" data-cat="${id}" class="${estado.categoria === id ? "is-on" : ""}">${rotulo}</button>`)
@@ -469,13 +489,13 @@ function linhasCategoria(cat) {
     balls: entradas(BOLAS, TIPO_ITEM.BOLA),
     berries: entradas(BERRIES, TIPO_ITEM.BERRY),
     medicine: entradas(REMEDIOS, TIPO_ITEM.REMEDIO),
-    materials: entradas(MATERIAIS, TIPO_ITEM.MATERIAL),
+    materials: entradas(materiaisDaBolsa(), TIPO_ITEM.MATERIAL),
     blocks: entradas(BLOCOS, TIPO_ITEM.BLOCO),
     tools: entradas(FERRAMENTAS, TIPO_ITEM.FERRAMENTA),
     key: entradas(CHAVES, TIPO_ITEM.CHAVE),
   };
   const lista = mapa[cat] || [];
-  if (!lista.length) return "<p>Vazio.</p>";
+  if (!lista.length) return `<p>${t("ui.vazio")}</p>`;
   return lista
     .map((item) => {
       const qtd = contar(item.tipo, item.key);
@@ -490,7 +510,8 @@ function linhasCategoria(cat) {
       const usar = equipa
         ? `<button type="button" data-act="usar" data-tipo="${item.tipo}" data-key="${item.key}">Equipar</button>`
         : "";
-      return `<div class="jogo-item">${htmlIcone(item.key, "jogo-item__icone")}<span>${item.nome} ×${qtd || 1}</span>${usar}</div>`;
+      const nome = nomeDe(item.tipo, item.key);
+      return `<div class="jogo-item">${htmlIcone(item.key, "jogo-item__icone")}<span>${nome} ×${qtd || 1}</span>${usar}</div>`;
     })
     .join("");
 }
