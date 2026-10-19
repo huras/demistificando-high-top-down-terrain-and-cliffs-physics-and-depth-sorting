@@ -7,6 +7,7 @@ import { emAvanco, velocidadeDe } from "../pokemon/ator.js";
 import { RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
 import { limitarArena, paradaDe } from "../pokemon/ia/espaco.js";
 import { notaGolpeTurno, resolverTurno } from "../pokemon/combate/acertoClassico.js";
+import { emImpacto } from "./impacto.js";
 
 const ESPERA_LINHA = 1.6;
 const ESPERA_CARGA = 0.85;
@@ -410,6 +411,7 @@ function soltar(agora, efeitos) {
 }
 
 function ocupado(quem) {
+  if (emImpacto()) return true;
   if (!quem) return false;
   if ((quem.conjuroRestante || 0) > 0) return true;
   if ((quem.golpeRecRestante || 0) > 0) return true;

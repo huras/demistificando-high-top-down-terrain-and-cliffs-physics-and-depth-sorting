@@ -848,12 +848,28 @@ function pintarKi() {
 }
 
 export function definirOmbro(pose, dt) {
-  const vale = pose && (pose.tipo === "teatro" ? pose.a && pose.b : pose.de && pose.para);
+  let vale = false;
+  if (pose?.tipo === "teatro") vale = !!(pose.a && pose.b);
+  else if (pose?.tipo === "impacto") vale = !!pose.alvo;
+  else vale = !!(pose?.de && pose?.para);
   ombro = vale ? pose : null;
   ombroDt = Number.isFinite(dt) && dt > 0 ? Math.min(0.05, dt) : 0.016;
 }
 
 function destinoOmbro() {
+  if (ombro.tipo === "impacto") {
+    const quem = ombro.alvo;
+    const giro = Number.isFinite(ombro.giro) ? ombro.giro : 0.45;
+    teatroAng += ombroDt * giro;
+    const raio = ombro.raio || 4.6;
+    const altura = ombro.altura || 2.4;
+    const avance = Math.min(1.2, (quem.recuoDist || 0) * 0.28);
+    const ox = (quem.recuoDirX || 0) * avance;
+    const oz = (quem.recuoDirY || 0) * avance;
+    ombroFim.set(quem.x + ox + Math.sin(teatroAng) * raio, altura, quem.y + oz + Math.cos(teatroAng) * raio);
+    ombroOlharFim.set(quem.x + ox * 0.45, 1.05, quem.y + oz * 0.45);
+    return;
+  }
   if (ombro.tipo === "teatro") {
     const a = ombro.a;
     const b = ombro.b;

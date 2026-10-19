@@ -18,6 +18,7 @@ import {
   fimPassoChao,
   inicioPassoChao,
   tentarBracada,
+  tickFluido,
 } from "./agua.js";
 import { atualizarCorrida } from "./corrida.js";
 import { ritmoAndar } from "./ritmoAndar.js";
@@ -89,6 +90,7 @@ export function criarCorpo(spawn) {
 }
 
 export function atualizarMovimento(corpo, dt) {
+  tickFluido(corpo, dt);
   if (entradaJogadorSuspensa()) {
     simularSemInput(corpo, dt);
     return;

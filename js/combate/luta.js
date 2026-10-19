@@ -14,6 +14,7 @@ import { RAIO_POKEMON } from "../config.js";
 import { integrarComando } from "../pokemon/ia/habilidades.js";
 import { deslizarNoAr, integrarPulo, lembrarEmbalo, quererPulo } from "../pokemon/combate/pulo.js";
 import { iaRedeLigada, pensar, reagirEsquiva } from "../pokemon/ia/seletor.js";
+import { limparImpacto, marcarImpacto, tickImpacto } from "./impacto.js";
 import { emCena, emTeatro, encerrarTurnos, modoTurnos, prepararTurnos, tickTurnos } from "./turnos.js";
 
 export { definirIaRede } from "../pokemon/ia/seletor.js";
@@ -77,6 +78,7 @@ function anotar(item) {
     });
     return;
   }
+  if (modoTurnos() && (item.tipo === "dano" || item.tipo === "erro")) marcarImpacto(item);
   if (item.tipo === "dano") {
     registrar({
       tipo: "dano",
@@ -418,6 +420,7 @@ export function iniciarLuta() {
     direita = montar("direita", cfg.direita);
   }
   limparCampo();
+  limparImpacto();
   inicio = agora;
   limparLog();
   acabou = false;
@@ -435,6 +438,7 @@ export function tickLuta(dt) {
   const passo = Math.min(0.05, dt);
   if (passo <= 0) return;
   agora += passo;
+  tickImpacto(passo);
 
   if (lutando) {
     if (modoTurnos()) {

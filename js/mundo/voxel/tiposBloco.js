@@ -6,6 +6,7 @@ export const BLOCO = {
   TERRA: 2,
   PEDRA: 3,
   AGUA: 4,
+  LAVA: 5,
 };
 
 const FLAGS = {
@@ -14,6 +15,7 @@ const FLAGS = {
   [BLOCO.TERRA]: { solido: true, climbavel: true, liquido: false },
   [BLOCO.PEDRA]: { solido: true, climbavel: true, liquido: false },
   [BLOCO.AGUA]: { solido: false, climbavel: false, liquido: true },
+  [BLOCO.LAVA]: { solido: false, climbavel: false, liquido: true },
 };
 
 export function ehSolido(id) {
@@ -24,7 +26,7 @@ export function ehClimbavel(id) {
   return !!FLAGS[id | 0]?.climbavel;
 }
 
-/** Só o id de água. Ids desconhecidos continuam sendo ar. */
+/** Água ou lava. Ids desconhecidos continuam sendo ar. */
 export function ehLiquido(id) {
   return !!FLAGS[id | 0]?.liquido;
 }
@@ -39,6 +41,8 @@ export function nomeBloco(id) {
       return "pedra";
     case BLOCO.AGUA:
       return "agua";
+    case BLOCO.LAVA:
+      return "lava";
     default:
       return "ar";
   }

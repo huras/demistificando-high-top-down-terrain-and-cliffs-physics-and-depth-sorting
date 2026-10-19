@@ -21,6 +21,10 @@ export function criarChunk(cx, cy) {
     fluxoX: new Int8Array(CHUNK_XZ * CHUNK_XZ),
     fluxoY: new Int8Array(CHUNK_XZ * CHUNK_XZ),
     aguaCaindo: new Uint8Array(CHUNK_XZ * CHUNK_XZ),
+    /** Família do líquido (fluidos.js). 0 = mar, tratado como água. */
+    fluido: new Uint8Array(CHUNK_XZ * CHUNK_XZ),
+    /** 1 se um corpo (lago, rio, vulcão) reescreveu a coluna. */
+    corpo: new Uint8Array(CHUNK_XZ * CHUNK_XZ),
     aguaSuperficie: new Int16Array(CHUNK_XZ * CHUNK_XZ),
     aguaFundo: new Int16Array(CHUNK_XZ * CHUNK_XZ),
     aguaProf: new Int16Array(CHUNK_XZ * CHUNK_XZ),

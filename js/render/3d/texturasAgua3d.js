@@ -53,6 +53,11 @@ const MAPA_AGUA = `
 		faixa = 1.0 - smoothstep(0.012, 0.04, d);
 	}
 	sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.93, 0.98, 1.0), faixa * 0.62);
+	if (uForca > 0.0) {
+		float luma = dot(sampledDiffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+		vec3 tinta = uTom * (0.42 + luma);
+		sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, tinta, uForca);
+	}
 	#ifdef DECODE_VIDEO_TEXTURE
 		sampledDiffuseColor = sRGBTransferEOTF(sampledDiffuseColor);
 	#endif
@@ -82,7 +87,7 @@ function canvasChato(cor) {
   return c;
 }
 
-function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey, corpos) {
+function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey, corpos, tom, forca) {
   const mat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: textura,
@@ -110,6 +115,8 @@ function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey, corpos)
     shader.uniforms.uFase1 = { value: 0 };
     shader.uniforms.uFase2 = { value: 0 };
     shader.uniforms.uCorpos = { value: mat.userData.corpos };
+    shader.uniforms.uTom = { value: new THREE.Color(tom || "#ffffff") };
+    shader.uniforms.uForca = { value: forca || 0 };
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
@@ -122,7 +129,7 @@ function materialFolha(textura, quadros, opacidade, eixoLinha, cacheKey, corpos)
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nvarying vec2 vMundoAgua;\nuniform highp float uQuadro;\nuniform highp float uQuadros;\nuniform highp float uLinha;\nuniform highp float uEixoLinha;\nuniform highp float uScroll;\nuniform highp float uFase1;\nuniform highp float uFase2;\nuniform vec4 uCorpos[8];",
+        "#include <common>\nvarying vec2 vMundoAgua;\nuniform highp float uQuadro;\nuniform highp float uQuadros;\nuniform highp float uLinha;\nuniform highp float uEixoLinha;\nuniform highp float uScroll;\nuniform highp float uFase1;\nuniform highp float uFase2;\nuniform vec4 uCorpos[8];\nuniform vec3 uTom;\nuniform float uForca;",
       )
       .replace("#include <map_fragment>", MAPA_AGUA);
     mat.userData.shader = shader;
@@ -182,7 +189,14 @@ const texLago = texturaPixel(canvasChato("#7ec8e3"));
 const texQueda = texturaPixel(canvasChato("#9fd4ea"));
 const matLago = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-centro", corposLago));
 const matLagoLonge = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-longe", corposLonge));
+const matPantano = aplicarSombraNuvem(materialFolha(texLago, 1, 0.86, 0, "agua-pantano", corposLago, "#3a6840", 1));
+const matLava = aplicarSombraNuvem(materialFolha(texLago, 1, 0.92, 0, "agua-lava", corposLago, "#ff6418", 1));
 const matQueda = aplicarSombraNuvem(materialFolha(texQueda, 1, 0.92, 1, "agua-queda-centro", corposQueda));
+const matQuedaLava = aplicarSombraNuvem(materialFolha(texQueda, 1, 0.94, 1, "agua-queda-lava", corposQueda, "#ffb450", 1));
+matLava.emissive = new THREE.Color("#ff4a10");
+matLava.emissiveIntensity = 0.45;
+matQuedaLava.emissive = new THREE.Color("#ff6a18");
+matQuedaLava.emissiveIntensity = 0.55;
 
 carregar(LAGO_URL).then((img) => {
   if (!img) return;
@@ -199,6 +213,8 @@ carregar(LAGO_URL).then((img) => {
   const folha = fita(img, amostras);
   aplicarFita(texLago, matLago, folha);
   aplicarFita(texLago, matLagoLonge, folha);
+  aplicarFita(texLago, matPantano, folha);
+  aplicarFita(texLago, matLava, folha);
 });
 
 carregar(WF_URL).then((img) => {
@@ -211,7 +227,9 @@ carregar(WF_URL).then((img) => {
       sy: WF_LINHA_MIOLO * CEL,
     });
   }
-  aplicarFita(texQueda, matQueda, fita(img, amostras));
+  const folha = fita(img, amostras);
+  aplicarFita(texQueda, matQueda, folha);
+  aplicarFita(texQueda, matQuedaLava, folha);
 });
 
 export function obterMaterialLago() {
@@ -224,6 +242,17 @@ export function obterMaterialLagoLonge() {
 }
 
 export function obterMaterialQueda() {
+  return matQueda;
+}
+
+export function obterMaterialLagoFamilia(id) {
+  if (id === 3) return matLava;
+  if (id === 2) return matPantano;
+  return matLago;
+}
+
+export function obterMaterialQuedaFamilia(id) {
+  if (id === 3) return matQuedaLava;
   return matQueda;
 }
 
@@ -399,7 +428,7 @@ export function avancarMateriaisAgua(segundos) {
   const scroll = rolagem - Math.floor(rolagem / CRISTA_ESPACO) * CRISTA_ESPACO;
   const f1 = faseDe(segundos, 1.35 / (Math.PI * 2));
   const f2 = faseDe(segundos, 0.62 / (Math.PI * 2));
-  for (const mat of [matLago, matLagoLonge]) {
+  for (const mat of [matLago, matLagoLonge, matPantano, matLava]) {
     const lago = mat.userData.shader;
     if (!lago) continue;
     lago.uniforms.uQuadro.value = quadro(segundos, LAGO_FRAME_S, mat.userData.quadros);
@@ -407,9 +436,10 @@ export function avancarMateriaisAgua(segundos) {
     lago.uniforms.uFase1.value = f1;
     lago.uniforms.uFase2.value = f2;
   }
-  const queda = matQueda.userData.shader;
-  if (queda) {
-    queda.uniforms.uQuadro.value = quadro(segundos, WF_FRAME_S, matQueda.userData.quadros);
+  for (const mat of [matQueda, matQuedaLava]) {
+    const queda = mat.userData.shader;
+    if (!queda) continue;
+    queda.uniforms.uQuadro.value = quadro(segundos, WF_FRAME_S, mat.userData.quadros);
     queda.uniforms.uLinha.value = scroll - Math.floor(scroll);
   }
   const espuma = matEspuma.userData.shader;
@@ -422,7 +452,10 @@ export function avancarMateriaisAgua(segundos) {
 export function liberarMateriaisAgua() {
   matLago.dispose();
   matLagoLonge.dispose();
+  matPantano.dispose();
+  matLava.dispose();
   matQueda.dispose();
+  matQuedaLava.dispose();
   matEspuma.dispose();
   texLago.dispose();
   texQueda.dispose();

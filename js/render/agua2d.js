@@ -5,6 +5,7 @@
 import { ESCALA, TILE } from "../config.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { cssAgua } from "../mundo/agua/amostra.js";
+import { FLUIDO } from "../mundo/agua/fluidos.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 import { chaveProfundidade, empilhar } from "./ordenacaoProfundidade.js";
 
@@ -136,11 +137,12 @@ function desenharTopoAgua(ctx, cx, cy, col) {
   ctx.beginPath();
   ctx.rect(px, py, s, s);
   ctx.clip();
-  if (!blitCentroLago(ctx, px, py, s, s, alpha)) {
-    const prof = col.caindo
-      ? Math.max(1, col.superficie - col.pisoQueda)
-      : col.profundidade || 1;
-    ctx.fillStyle = cssAgua(prof, alpha);
+  const fluido = col.fluido || FLUIDO.AGUA;
+  const prof = col.caindo
+    ? Math.max(1, col.superficie - col.pisoQueda)
+    : col.profundidade || 1;
+  if (fluido !== FLUIDO.AGUA || !blitCentroLago(ctx, px, py, s, s, alpha)) {
+    ctx.fillStyle = cssAgua(prof, alpha, fluido);
     ctx.fillRect(px, py, s, s);
   }
   desenharCristas(ctx, px, py, s, cx, cy, col);
@@ -167,7 +169,11 @@ function desenharCristas(ctx, px, py, s, cx, cy, col) {
   ctx.lineWidth = Math.max(1, ESCALA * 0.7);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = "rgba(236, 248, 255, 0.62)";
+  ctx.strokeStyle = (col.fluido | 0) === FLUIDO.LAVA
+    ? "rgba(255, 220, 140, 0.7)"
+    : (col.fluido | 0) === FLUIDO.PANTANO
+      ? "rgba(170, 210, 140, 0.45)"
+      : "rgba(236, 248, 255, 0.62)";
   for (let n = n0; n <= n1; n++) {
     const base = n * CRISTA_ESPACO + scroll;
     ctx.beginPath();
@@ -213,7 +219,16 @@ function desenharQueda(ctx, cx, cy, col) {
   const y1 = Math.round(base);
   const altura = y1 - y0;
   const img = folhaCachoeira();
-  if (!img || altura < 2) return;
+  if (altura < 2) return;
+  if ((col.fluido | 0) === FLUIDO.LAVA || !img) {
+    ctx.fillStyle = cssAgua(
+      Math.max(1, col.superficie - (col.pisoQueda || col.fundo || 0)),
+      0.9,
+      col.fluido || FLUIDO.AGUA,
+    );
+    ctx.fillRect(px, y0, s, altura);
+    return;
+  }
 
   const frames = Math.max(1, Math.floor(img.naturalWidth / (WF_COLS * WF_CEL)));
   const frame = Math.floor(tempo / WF_FRAME_S) % frames;
@@ -268,7 +283,7 @@ export function cobrirPernasAgua(ctx, corpo, rect) {
     const prof = agua.caindo
       ? Math.max(1, agua.superficie - agua.pisoQueda)
       : agua.profundidade || agua.imersao;
-    ctx.fillStyle = cssAgua(prof, 0.62);
+    ctx.fillStyle = cssAgua(prof, 0.62, agua.fluido || FLUIDO.AGUA);
     ctx.fillRect(px, y0, dw, h);
   }
   ctx.restore();

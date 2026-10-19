@@ -8,6 +8,7 @@ import {
   MESH_CHUNKS_POR_FRAME,
   TRONCO_INSET,
 } from "../../config.js";
+import { FLUIDO } from "../../mundo/agua/fluidos.js";
 import { colunaAgua, garantirFluxoChunk } from "../../mundo/agua/fluxo.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { alturaEm, colunaTemArInterno, espessuraTopo } from "../../mundo/altura.js";
@@ -39,7 +40,9 @@ import {
   liberarMateriaisAgua,
   obterMaterialEspuma,
   obterMaterialLago,
+  obterMaterialLagoFamilia,
   obterMaterialQueda,
+  obterMaterialQuedaFamilia,
 } from "./texturasAgua3d.js";
 import { canvasParaTextura, criarTexturasTerreno3d } from "./texturasTerreno3d.js";
 
@@ -1510,8 +1513,11 @@ function rebaixarModelo(grade, cx, cy) {
 function* construirGeosChunk(chunk) {
   const ledges = [];
   const aguas = [];
+  const aguasPantano = [];
+  const aguasLava = [];
   const espumas = [];
   const quedas = [];
+  const quedasLava = [];
   const sacosTopo = new Map();
   const sacosParede = new Map();
   function sacoDe(mapa, kit) {
@@ -1640,18 +1646,21 @@ function* construirGeosChunk(chunk) {
         const prof = caindo
           ? Math.max(1, supAgua - (chunk.aguaPiso[ia] | 0))
           : chunk.aguaProf[ia] | 0;
-        aguas.push(
+        const fam = chunk.fluido[ia] | 0;
+        const listaAgua = fam === FLUIDO.LAVA ? aguasLava : fam === FLUIDO.PANTANO ? aguasPantano : aguas;
+        const corAgua = fam === FLUIDO.LAVA || fam === FLUIDO.PANTANO ? "#ffffff" : tintaLago(prof || 1);
+        listaAgua.push(
           geoSuperficieAgua(
             wx,
             wy,
             supAgua - 0.04,
             chunk.fluxoX[ia] | 0,
             chunk.fluxoY[ia] | 0,
-            tintaLago(prof || 1),
+            corAgua,
           ),
         );
         empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
-        if (caindo) {
+        if (caindo && fam !== FLUIDO.PANTANO) {
           let yBase = chunk.aguaFundo[ia] | 0;
           let dir = "s";
           const fx = chunk.fluxoX[ia] | 0;
@@ -1666,7 +1675,10 @@ function* construirGeosChunk(chunk) {
             else if (fx > 0) dir = "e";
             else dir = "w";
           }
-          if (supAgua - yBase > 0.15) quedas.push(planoQueda(wx, wy, yBase, supAgua, dir));
+          if (supAgua - yBase > 0.15) {
+            const listaQueda = fam === FLUIDO.LAVA ? quedasLava : quedas;
+            listaQueda.push(planoQueda(wx, wy, yBase, supAgua, dir));
+          }
         }
       }
     }
@@ -1746,8 +1758,11 @@ function* construirGeosChunk(chunk) {
     geoLedges: mesclarLista(ledges),
     geoCubos: geoDoLote(loteCubos),
     geoAgua: mesclarLista(aguas),
+    geoAguaPantano: mesclarLista(aguasPantano),
+    geoAguaLava: mesclarLista(aguasLava),
     geoEspuma: mesclarLista(espumas),
     geoQueda: mesclarLista(quedas),
+    geoQuedaLava: mesclarLista(quedasLava),
   };
   return out;
 }
@@ -1975,6 +1990,14 @@ export function criarTerrenoMalha(atlas = null) {
       grupoAgua.remove(entry.agua);
       entry.agua.geometry?.dispose();
     }
+    if (entry.folhas) {
+      for (let i = 0; i < entry.folhas.length; i++) {
+        const folha = entry.folhas[i];
+        soltarRegistro(folha);
+        grupoAgua.remove(folha);
+        folha.geometry?.dispose();
+      }
+    }
     if (entry.espuma) {
       grupoAgua.remove(entry.espuma);
       entry.espuma.geometry?.dispose();
@@ -2015,6 +2038,18 @@ export function criarTerrenoMalha(atlas = null) {
       entry.cubos = mesh;
     }
 
+    entry.folhas = [];
+    function porAgua(geo, mat, nome) {
+      if (!geo) return;
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.name = nome;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.renderOrder = 2;
+      grupoAgua.add(mesh);
+      publicarMalha(mesh, "agua");
+      entry.folhas.push(mesh);
+    }
     if (geos.geoAgua) {
       const mesh = new THREE.Mesh(geos.geoAgua, matAgua);
       mesh.name = `agua-${key}`;
@@ -2024,6 +2059,8 @@ export function criarTerrenoMalha(atlas = null) {
       grupoAgua.add(mesh);
       entry.agua = mesh;
     }
+    porAgua(geos.geoAguaPantano, obterMaterialLagoFamilia(FLUIDO.PANTANO), `pantano-${key}`);
+    porAgua(geos.geoAguaLava, obterMaterialLagoFamilia(FLUIDO.LAVA), `lava-${key}`);
     if (geos.geoEspuma) {
       const mesh = new THREE.Mesh(geos.geoEspuma, matEspuma);
       mesh.name = `espuma-${key}`;
@@ -2042,6 +2079,16 @@ export function criarTerrenoMalha(atlas = null) {
       mesh.renderOrder = 3;
       grupoAgua.add(mesh);
       entry.queda = mesh;
+    }
+    if (geos.geoQuedaLava) {
+      const mesh = new THREE.Mesh(geos.geoQuedaLava, obterMaterialQuedaFamilia(FLUIDO.LAVA));
+      mesh.name = `queda-lava-${key}`;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.renderOrder = 3;
+      grupoAgua.add(mesh);
+      publicarMalha(mesh, "agua");
+      entry.folhas.push(mesh);
     }
 
     function add(geo, mat, nome, opts = {}) {

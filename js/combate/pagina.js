@@ -7,6 +7,7 @@ import { definirOmbro, desenharArena, ligarArena, projetarArena } from "./arena3
 import { definirMetade, definirSemente } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
 import { atoresArena, definirUso, estadoLuta, iniciarLuta, limparInterludio, logArena, montarLados, tickLuta } from "./luta.js";
+import { poseImpacto, ritmoImpacto } from "./impacto.js";
 import { avisoTurno, concluirFoco, definirModoLuta, emFoco, escolherGolpeTurno, enquadramentoTurno, modoTurnos, pedidoEscolha } from "./turnos.js";
 
 const TIPO = {
@@ -661,6 +662,8 @@ function pintarLog() {
 }
 
 function poseDoQuadro() {
+  const impacto = poseImpacto();
+  if (impacto) return impacto;
   const e = estadoLuta();
   if (e.acabou && e.esquerda && e.direita) {
     return { tipo: "teatro", a: e.esquerda, b: e.direita, giro: Math.PI * 0.12 };
@@ -669,8 +672,14 @@ function poseDoQuadro() {
 }
 
 function andarRitmo(bruto) {
+  const pedidoRitmo = ritmoImpacto();
+  if (pedidoRitmo < 1) {
+    const passo = bruto / 0.12;
+    ritmo = ritmo > pedidoRitmo ? Math.max(pedidoRitmo, ritmo - passo) : Math.min(pedidoRitmo, ritmo + passo);
+    return;
+  }
   if (!modoTurnos() || !estadoLuta().lutando) {
-    ritmo = 1;
+    ritmo = ritmo < 1 ? Math.min(1, ritmo + bruto / 0.35) : 1;
     return;
   }
   if (emFoco()) {

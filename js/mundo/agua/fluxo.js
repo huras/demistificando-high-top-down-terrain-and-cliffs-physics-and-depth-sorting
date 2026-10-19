@@ -205,6 +205,7 @@ const CACHE_VAZIA = Object.freeze({
   pisoQueda: 0,
   fluxoX: 0,
   fluxoY: 0,
+  fluido: 0,
 });
 
 /** Profundidade em repouso. Cachoeira e seco devolvem 0. Sem objeto. */
@@ -245,5 +246,6 @@ export function colunaAgua(wx, wy) {
     pisoQueda: chunk.aguaPiso[i] | 0,
     fluxoX: chunk.fluxoX[i] | 0,
     fluxoY: chunk.fluxoY[i] | 0,
+    fluido: chunk.fluido[i] | 0,
   };
 }

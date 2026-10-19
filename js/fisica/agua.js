@@ -28,6 +28,7 @@ function aproximar(atual, alvo, maxDelta) {
 
 export function deveNadar(agua, elev) {
   if (!agua || agua.caindo || agua.profundidade <= AGUA_LIMIAR_VADO) return false;
+  if (agua.familia && !agua.familia.nada) return false;
   return elev <= agua.superficie + 0.08;
 }
 
@@ -42,6 +43,56 @@ export function lembrarChaoSeguro(corpo) {
   const agua = amostraAgua(corpo.x, corpo.y, corpo.z);
   if (agua.caindo || agua.profundidade > AGUA_LIMIAR_VADO) return;
   corpo.aguaSegura = { x: corpo.x, y: corpo.y, z: corpo.z };
+}
+
+const SAI_LAVA = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+];
+
+/** Lava não se nada: drena stamina e empurra para a margem. */
+export function tickFluido(corpo, dt) {
+  if (!corpo || dt <= 0) return;
+  const agua = amostraAgua(corpo.x, corpo.y, corpo.elevacao ?? corpo.z);
+  if (!agua.familia?.queima || agua.superficie <= 0) return;
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  if (elev > agua.superficie + 0.2) return;
+  const max = corpo.staminaMax || STAMINA_MAX;
+  corpo.stamina = Math.max(0, (corpo.stamina ?? max) - 64 * dt);
+  let px = 0;
+  let py = 0;
+  const x = corpo.x | 0;
+  const y = corpo.y | 0;
+  for (let i = 0; i < SAI_LAVA.length; i++) {
+    const dx = SAI_LAVA[i][0];
+    const dy = SAI_LAVA[i][1];
+    const viz = amostraAgua(x + dx + 0.5, y + dy + 0.5, elev);
+    if (!viz.familia?.queima) {
+      px += dx;
+      py += dy;
+    }
+  }
+  if (px === 0 && py === 0) px = 1;
+  const m = Math.hypot(px, py) || 1;
+  corpo.vx += (px / m) * 14 * dt;
+  corpo.vy += (py / m) * 14 * dt;
+  corpo.acao = "lava";
+  if ((corpo.stamina ?? 0) > 1e-4 || corpo.invulneravel) return;
+  const s = corpo.aguaSegura;
+  if (!s) return;
+  corpo.x = s.x;
+  corpo.y = s.y;
+  corpo.z = s.z;
+  corpo.elevacao = s.z;
+  corpo.hopLift = 0;
+  corpo.vx = 0;
+  corpo.vy = 0;
+  corpo.vz = 0;
+  corpo.nadando = false;
+  corpo.noChao = true;
+  corpo.stamina = max * 0.35;
 }
 
 function gravarAmostra(corpo, agua) {
@@ -114,7 +165,8 @@ export function inicioPassoChao(corpo, velMax) {
     return "nado";
   }
   lembrarChaoSeguro(corpo);
-  corpo._velAgua = velMax * fatorVado(agua.profundidade);
+  const lento = agua.familia?.lento ?? 1;
+  corpo._velAgua = velMax * fatorVado(agua.profundidade) * lento;
   corpo._aguaPasso = agua;
   return "chao";
 }
@@ -124,6 +176,7 @@ export function fimPassoChao(corpo) {
   const agua = amostraAgua(corpo.x, corpo.y, corpo.elevacao ?? corpo.z);
   gravarAmostra(corpo, agua);
   if (agua.caindo) return "queda";
+  if (agua.familia && !agua.familia.nada) return "chao";
   if (agua.profundidade > AGUA_LIMIAR_VADO) {
     entrarNado(corpo, agua);
     return "nado";

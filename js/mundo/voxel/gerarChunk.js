@@ -16,6 +16,8 @@ import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { aplicarNaLista } from "../../campo/estadoProps.js";
 import { arbustoNaCelula, MAX_ARBUSTO_CHUNK, spriteBerry } from "../bioma/berriesBioma.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
+import { carimbarCorpos } from "../agua/carimbar.js";
+import { FLUIDO } from "../agua/fluidos.js";
 import { definirLocal, preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
 import { valueNoise3 } from "./ruido.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
@@ -56,6 +58,7 @@ export function* passosChunk(chunk, seed) {
         for (let lz = h; lz < topo; lz++) {
           chunk.blocos[((ly * CHUNK_XZ + lx) * CHUNK_Y + lz) | 0] = BLOCO.AGUA;
         }
+        chunk.fluido[ly * CHUNK_XZ + lx] = FLUIDO.AGUA;
       }
       if ((++coluna & 15) === 0) yield;
     }
@@ -132,6 +135,8 @@ export function* passosChunk(chunk, seed) {
     }
   }
 
+  carimbarCorpos(chunk);
+
   const props = [];
   let arbustos = 0;
   coluna = 0;
@@ -139,6 +144,7 @@ export function* passosChunk(chunk, seed) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
       const wy = baseY + ly;
+      if (chunk.corpo[ly * CHUNK_XZ + lx]) continue;
       if (USAR_PATCH_DEMO && wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
       const h = alturas[ly * CHUNK_XZ + lx];
       let cliff = false;

@@ -37,6 +37,8 @@ import {
   relevoEm,
 } from "../../mundo/regiao/kantoRelevo.js";
 import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "../../mundo/regiao/volumesCidade.js";
+import { amostraCorpo } from "../../mundo/agua/corpos.js";
+import { fluidoDe } from "../../mundo/agua/fluidos.js";
 import { fbm2 } from "../../mundo/voxel/ruido.js";
 
 const COTA_CIDADE = 16;
@@ -55,6 +57,7 @@ const AGUA_RASO = [58, 142, 184];
 
 const PALETA = new Map();
 const SAIDA = { h: 0, u: 0, r: 0, g: 0, b: 0 };
+const CORPO = { tem: 0 };
 
 let distAgua = null;
 let distTerra = null;
@@ -371,24 +374,44 @@ function lerPonto(wx, wy) {
     entrada ||
     perfil.u < 0.72 ||
     bioma.superficie === "pedra";
-  return { x, y, h, u: perfil.u, par, bioma, limpo };
+  return { x, y, h, u: perfil.u, par, bioma, limpo, rua, predio };
+}
+
+function aplicarCorpo(ponto, rgb) {
+  amostraCorpo(ponto.x, ponto.y, CORPO);
+  if (!CORPO.tem || ponto.rua || ponto.predio) {
+    return { h: ponto.h, u: ponto.u, rgb };
+  }
+  if (CORPO.fluido) {
+    const fam = fluidoDe(CORPO.fluido);
+    return {
+      h: CORPO.altura,
+      u: CORPO.queda ? 0.28 : 0.16,
+      rgb: CORPO.queda ? fam.clara : fam.lamina,
+    };
+  }
+  if (CORPO.altura > ponto.h) return { h: CORPO.altura, u: ponto.u, rgb };
+  return { h: ponto.h, u: ponto.u, rgb };
 }
 
 /** Preenche `saida` com altura, costa e cor. `comMote` liga o pontilhado do zoom perto. */
 export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
   const ponto = lerPonto(wx, wy);
-  const rgb = aplicarVeg(corDoPar(ponto.par, ponto.u), ponto.bioma, ponto.limpo, ponto.x, ponto.y, comMote);
-  saida.h = ponto.h;
-  saida.u = ponto.u;
-  saida.r = rgb[0];
-  saida.g = rgb[1];
-  saida.b = rgb[2];
+  const base = aplicarVeg(corDoPar(ponto.par, ponto.u), ponto.bioma, ponto.limpo, ponto.x, ponto.y, comMote);
+  const corpo = aplicarCorpo(ponto, base);
+  saida.h = corpo.h;
+  saida.u = corpo.u;
+  saida.r = corpo.rgb[0];
+  saida.g = corpo.rgb[1];
+  saida.b = corpo.rgb[2];
   return saida;
 }
 
 /** Um byte por bloco para o zoom íntimo. Rua, prédio e água ficam zerados. */
 export function byteNoPonto(wx, wy) {
   const ponto = lerPonto(wx, wy);
+  amostraCorpo(ponto.x, ponto.y, CORPO);
+  if (CORPO.tem && CORPO.fluido && !ponto.rua && !ponto.predio) return 0;
   if (ponto.limpo) return 0;
   const kit = obterKit(ponto.bioma?.kit);
   const veg = vegetacaoNoPonto(ponto.x, ponto.y, true);
