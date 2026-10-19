@@ -2002,7 +2002,8 @@ export function criarTerrenoMalha(atlas = null) {
       mesh.name = `espuma-${key}`;
       mesh.castShadow = false;
       mesh.receiveShadow = false;
-      mesh.renderOrder = 4;
+      // Depois da água (2) e antes do sprite (3). O véu das pernas continua em 4.
+      mesh.renderOrder = 2.5;
       grupoAgua.add(mesh);
       entry.espuma = mesh;
     }

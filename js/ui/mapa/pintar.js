@@ -128,7 +128,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   ctx.imageSmoothingQuality = "high";
   const atlas = canvasAtlas();
   if (atlas) ctx.drawImage(atlas, 0, 0, EXTENSAO_KANTO, EXTENSAO_KANTO);
-  if (vista.zoom >= 0.42) {
+  if (!vista.mini && vista.zoom >= 0.42) {
     const visiveis = listarTiles();
     for (let i = 0; i < visiveis.length; i++) {
       const tile = visiveis[i];
@@ -162,7 +162,8 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     const sx = (cidade.x - vista.cx) * z + w / 2;
     const sy = (cidade.y - vista.cy) * z + h / 2;
     if (sx < -20 || sy < -20 || sx > w + 20 || sy > h + 20) continue;
-    orbe(ctx, sx, sy, raio);
+    orbe(ctx, sx, sy, vista.mini ? raio * 0.72 : raio);
+    if (vista.mini) continue;
     nomes.push({
       texto: cidade.nome,
       x: sx + raio + 4 * dpr,
@@ -183,7 +184,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     ctx.beginPath();
     ctx.arc(sx, sy, 4.5 * dpr, 0, Math.PI * 2);
     ctx.fill();
-    if (marca.nome) {
+    if (!vista.mini && marca.nome) {
       nomes.push({
         texto: marca.nome,
         x: sx + 8 * dpr,
@@ -195,7 +196,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     }
   }
 
-  if (vista.zoom >= ZOOM_NOME_ROTA) {
+  if (!vista.mini && vista.zoom >= ZOOM_NOME_ROTA) {
     for (let i = 0; i < rotas.length; i++) {
       const rota = rotas[i];
       const meio = rota.pontos[(rota.pontos.length / 2) | 0];

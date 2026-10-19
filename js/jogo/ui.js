@@ -57,8 +57,8 @@ import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarClique
 import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
 import { htmlLoja, quantidadeLoja, tratarLoja } from "./loja.js";
 import { obterClima, obterHora } from "../render/3d/ceu/controleCeu.js";
-import { obterBloco, superficieEm } from "../mundo/voxel/storeMundo.js";
-import { BLOCO } from "../mundo/voxel/tiposBloco.js";
+import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
+import { pintarMapa } from "../ui/mapa/pintar.js";
 
 let raiz = null;
 
@@ -575,14 +575,6 @@ function pintarCraft() {
     .join("")}`;
 }
 
-function corChao(id) {
-  if (id === BLOCO.AGUA) return "#1d4ed8";
-  if (id === BLOCO.PEDRA) return "#78716c";
-  if (id === BLOCO.TERRA) return "#8a5a32";
-  if (id === BLOCO.GRAMA) return "#3f8f46";
-  return "#102018";
-}
-
 function periodoDe(hora) {
   if (hora < 5 || hora >= 20) return { nome: "Noite", chave: "noite" };
   if (hora < 8) return { nome: "Amanhecer", chave: "aurora" };
@@ -611,50 +603,37 @@ function pintarRelogio() {
   if (cliEl) cliEl.textContent = nomes[clima] || clima;
 }
 
-let miniEm = 0;
+const ZOOM_MINI = 0.42;
+
+function pontoMini() {
+  if (estado.interior && Number.isFinite(estado.interior.ax)) {
+    return {
+      x: estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5,
+      y: estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5,
+    };
+  }
+  return { x: corpoRef?.x || 0, y: corpoRef?.y || 0 };
+}
 
 function pintarMini() {
   const tela = el("#jogo-mini");
   if (!tela) return;
-  const agora = performance.now();
-  if (agora - miniEm < 180) return;
-  miniEm = agora;
-  const ctx = tela.getContext("2d");
-  const w = tela.width;
-  const h = tela.height;
-  ctx.fillStyle = "#102018";
-  ctx.fillRect(0, 0, w, h);
-  const corpo = corpoRef;
-  if (!corpo) return;
-  const alcance = 18;
-  const cel = w / (alcance * 2);
-  const ox = Math.floor(corpo.x);
-  const oy = Math.floor(corpo.y);
-  for (let dy = -alcance; dy < alcance; dy++) {
-    for (let dx = -alcance; dx < alcance; dx++) {
-      const x = ox + dx;
-      const y = oy + dy;
-      const topo = superficieEm(x, y);
-      const id = topo > 0 ? obterBloco(x, y, topo - 1) : BLOCO.AR;
-      ctx.fillStyle = corChao(id);
-      ctx.fillRect((dx + alcance) * cel, (dy + alcance) * cel, Math.ceil(cel), Math.ceil(cel));
-    }
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const px = Math.round(144 * dpr);
+  if (tela.width !== px || tela.height !== px) {
+    tela.width = px;
+    tela.height = px;
   }
-  for (let i = 0; i < estado.plots.length; i++) {
-    const p = estado.plots[i];
-    const dx = p.x - ox;
-    const dy = p.y - oy;
-    if (Math.abs(dx) >= alcance || Math.abs(dy) >= alcance) continue;
-    ctx.fillStyle = p.stage === "ripe" ? "#facc15" : "#f59e0b";
-    ctx.fillRect((dx + alcance) * cel, (dy + alcance) * cel, Math.ceil(cel), Math.ceil(cel));
-  }
-  ctx.fillStyle = "#f8fafc";
-  ctx.beginPath();
-  ctx.arc(w / 2, h / 2, 3.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#111827";
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  const ponto = pontoMini();
+  pintarMapa(tela.getContext("2d"), px, px, dpr, {
+    cx: ponto.x,
+    cy: ponto.y,
+    zoom: ZOOM_MINI,
+    jogadorX: ponto.x,
+    jogadorY: ponto.y,
+    agora: performance.now(),
+    mini: true,
+  });
 }
 
 let corpoRef = null;
