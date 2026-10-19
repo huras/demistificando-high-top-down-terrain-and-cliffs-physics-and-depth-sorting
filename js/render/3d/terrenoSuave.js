@@ -7,8 +7,8 @@ import {
   RAIO_SUAVE_MAX,
   RAIO_SUAVE_MIN,
 } from "../../config.js";
-import { alturaDoRelevo, amostrarRegiao, kitDoRelevo, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
-import { dentroDoKanto } from "../../mundo/regiao/amostraKanto.js";
+import { alturaDoRelevo, amostrarRegiao, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
+import { amostraKanto, dentroDoKanto } from "../../mundo/regiao/amostraKanto.js";
 import { cruSplat, urlPele } from "../../mundo/bioma/detalhe.js";
 import { obterKits } from "../../mundo/bioma/kits.js";
 import { imagemPele } from "./peleSplat.js";
@@ -77,8 +77,18 @@ function celulaDe(kit) {
  */
 function parNoPonto(wx, wy) {
   if (dentroDoKanto(wx, wy)) {
-    const kit = kitDoRelevo(wx, wy) || "_";
-    return { a: kit, b: kit, peso: 1 };
+    const amostra = amostraKanto(wx, wy);
+    let a = amostra?.bioma?.kit || "_";
+    let b = amostra?.biomaB?.kit || a;
+    let peso = amostra ? amostra.dominio : 1;
+    if (a === b) return { a, b, peso: 1 };
+    if (a > b) {
+      const troca = a;
+      a = b;
+      b = troca;
+      peso = 1 - peso;
+    }
+    return { a, b, peso };
   }
   const reg = amostrarRegiao(wx, wy);
   let a = reg?.a?.kit || "_";

@@ -55,6 +55,7 @@ export function soltarProjetil(opts) {
     folha: opts.folha || "",
     rastroEspaco: opts.rastroEspaco || 0,
     garantirAlvo: opts.garantirAlvo || null,
+    ensaio: !!opts.ensaio,
   });
   const ultimo = vivos[vivos.length - 1];
   const vel = Math.hypot(ultimo.vx, ultimo.vy) || 1;

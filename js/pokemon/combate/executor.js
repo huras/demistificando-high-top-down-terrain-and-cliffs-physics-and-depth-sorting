@@ -395,11 +395,12 @@ function soltarTiro(ator, slot, ang, extra) {
     poder: extra.poder ?? def.poder,
     tipo: def.tipo,
     categoria: def.categoria,
-    acerto: def.acerto,
+    acerto: extra.acerto != null ? extra.acerto : def.acerto,
     forma: def.forma,
     raio: extra.raio || def.raio,
     max: Math.max(def.alcance || 12, longe),
     garantirAlvo: travado?.alvo || null,
+    ensaio: !!extra.ensaio,
     arco: !!extra.arco,
     rajada: extra.rajada || 0,
     giro: extra.giro || 0,
@@ -656,6 +657,89 @@ function soltarImediato(ator, slot, alvo, agora, efeitos) {
   ator.poseAte = agora + 0.4;
   if (efeitos?.flutuar) efeitos.flutuar(ator, slot.def.nome, COR_TIPO[slot.def.tipo] || "#e2e8f0");
   soltarGolpe(ator, slot, alvo, agora, efeitos);
+}
+
+function slotEnsaio(ator, alvo, d) {
+  const golpes = ator?.golpes;
+  if (!golpes || !alvo) return null;
+  const evitar = ator.ensaioEvitar || "";
+  let reserva = null;
+  for (let i = 0; i < golpes.length; i++) {
+    const g = golpes[i];
+    const def = g.def;
+    if (!def || (def.poder || 0) <= 0) continue;
+    if (def.key && def.key === evitar) {
+      if (!reserva) reserva = g;
+      continue;
+    }
+    if (serveEnsaio(ator, alvo, def, d)) return g;
+  }
+  if (reserva && serveEnsaio(ator, alvo, reserva.def, d)) return reserva;
+  return null;
+}
+
+function serveEnsaio(ator, alvo, def, d) {
+  const forma = def.forma;
+  if ((forma === "projectile" || forma === "arc") && usaDistancia(ator)) {
+    return d <= (def.alcance || 12) && tiroLimpo(ator, alvo);
+  }
+  if (!usaCorpo(ator)) return false;
+  if (forma === "contact") return d <= alcanceCorpo(def);
+  if (forma === "radius") return d <= Math.max(2.2, def.alcance || 2.2);
+  return false;
+}
+
+/** Golpe de mentira entre os turnos. Não gasta PP e o acerto sai zerado. */
+export function ensaiarGolpe(ator, agora, efeitos) {
+  if (!ator || ator.ensaioFeito) return;
+  if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0) return;
+  if (ator.morto || ator.capturado || emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) return;
+  const alvo = ator.alvo;
+  if (!alvo || alvo.morto) return;
+  const d = dist(ator, alvo);
+  const slot = slotEnsaio(ator, alvo, d);
+  if (!slot) return;
+  ator.ensaioFeito = true;
+  ator.resultadoTurno = null;
+  const mira = miraDoGolpe(ator, slot, alvo);
+  ator.conjuroMx = mira.mx;
+  ator.conjuroMy = mira.my;
+  ator.miraX = mira.mx;
+  ator.miraY = mira.my;
+  ator.golpeRecDur = 0.14;
+  apontar(ator, mira.mx, mira.my);
+  const def = slot.def;
+  const distancia = def.forma === "projectile" || def.forma === "arc";
+  marcarPose(ator, distancia ? "Shoot" : "Attack", agora);
+  ator.golpePose = ator.pose;
+  ator.poseAte = agora + 0.35;
+  tocarGrito(ator, { x: ator.x, y: ator.y, importante: false });
+  if (efeitos?.flutuar) efeitos.flutuar(ator, def.nome, COR_TIPO[def.tipo] || "#e2e8f0");
+  if (efeitos?.aoGolpe) efeitos.aoGolpe(ator, def);
+  if (distancia) {
+    soltarTiro(ator, slot, Math.atan2(ator.dirY, ator.dirX), {
+      vel: def.vel || 14,
+      arco: def.forma === "arc",
+      acerto: 0,
+      ensaio: true,
+    });
+    abrirRecuperacao(ator, slot);
+    return;
+  }
+  if (def.forma === "radius") {
+    avancarNoGolpe(ator, alvo);
+    const raio = Math.max(2.2, def.alcance || 2.2);
+    const perto = atoresPerto(ator.x, ator.y, raio);
+    for (let i = 0; i < perto.length; i++) {
+      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, 0, def.forma);
+    }
+    abrirRecuperacao(ator, slot);
+    return;
+  }
+  avancarNoGolpe(ator, alvo);
+  ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
+  aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, 0, def.forma);
+  abrirRecuperacao(ator, slot);
 }
 
 export function dispararGolpeTurno(ator, slot, agora, efeitos) {

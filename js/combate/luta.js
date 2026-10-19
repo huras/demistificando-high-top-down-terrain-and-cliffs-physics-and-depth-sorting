@@ -1,5 +1,5 @@
 import { comecarEsquiva, criarAtor, emAvanco, emEsquiva, emRecuo, equiparGolpes, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
-import { cancelarConjuracao, impactoProjetil, tentarGolpe, tickConjuracao } from "../pokemon/combate/executor.js";
+import { cancelarConjuracao, ensaiarGolpe, impactoProjetil, tentarGolpe, tickConjuracao } from "../pokemon/combate/executor.js";
 import { limparKi } from "../pokemon/combate/ki.js";
 import { limparParticulas, poeiraDash, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
@@ -14,7 +14,7 @@ import { RAIO_POKEMON } from "../config.js";
 import { integrarComando } from "../pokemon/ia/habilidades.js";
 import { deslizarNoAr, integrarPulo, lembrarEmbalo, quererPulo } from "../pokemon/combate/pulo.js";
 import { iaRedeLigada, pensar, reagirEsquiva } from "../pokemon/ia/seletor.js";
-import { encerrarTurnos, modoTurnos, prepararTurnos, tickTurnos } from "./turnos.js";
+import { emTeatro, encerrarTurnos, modoTurnos, prepararTurnos, tickTurnos } from "./turnos.js";
 
 export { definirIaRede } from "../pokemon/ia/seletor.js";
 
@@ -128,6 +128,14 @@ const efeitos = {
   },
 };
 
+const efeitosTeatro = {
+  flutuar,
+  anotar() {},
+  aoDerrotar() {},
+  aoGolpe: efeitos.aoGolpe,
+  aoImpacto() {},
+};
+
 function publicar() {
   estado.lutando = lutando;
   estado.acabou = acabou;
@@ -183,6 +191,27 @@ function reagirPar(a, b) {
     const dy = a.y - b.y;
     tentarEsquiva(b, dx, dy, Math.hypot(dx, dy) || 0.0001);
   }
+}
+
+function mexerTeatro(quem, outro, dt, lado) {
+  if (!quem || quem.morto) return;
+  avancar(quem, outro.x, outro.y, dt);
+  if (quem.andando || emEsquiva(quem) || emAvanco(quem) || emRecuo(quem)) return;
+  if ((quem.golpeRecRestante || 0) > 0 || (quem.conjuroRestante || 0) > 0) return;
+  const dx = outro.x - quem.x;
+  const dy = outro.y - quem.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const vel = velocidadeDe(quem, true);
+  const passo = vel * dt;
+  if (passo <= 0.0001) return;
+  quem.x += (-dy / d) * lado * passo;
+  quem.y += (dx / d) * lado * passo;
+  quem.vx = (-dy / d) * lado * vel;
+  quem.vy = (dx / d) * lado * vel;
+  quem.dirX = dx / d;
+  quem.dirY = dy / d;
+  quem.andando = true;
+  limitarArena(quem);
 }
 
 function avancar(ator, tx, ty, dt) {
@@ -325,7 +354,7 @@ function soltarRastros() {
 }
 
 function aoTiro(p, alvo) {
-  impactoProjetil(p, alvo, agora, efeitos);
+  impactoProjetil(p, alvo, agora, p.ensaio ? efeitosTeatro : efeitos);
 }
 
 function encerrar() {
@@ -403,7 +432,16 @@ export function tickLuta(dt) {
 
   if (lutando) {
     if (modoTurnos()) {
+      const noTeatro = emTeatro();
       tickTurnos(passo, agora, efeitos);
+      if (noTeatro && !emTeatro()) {
+        cancelarConjuracao(esquerda);
+        cancelarConjuracao(direita);
+        limparProjeteis();
+      } else if (emTeatro()) {
+        mexerTeatro(esquerda, direita, passo, 1);
+        mexerTeatro(direita, esquerda, passo, -1);
+      }
     } else {
       const ax = esquerda.x;
       const ay = esquerda.y;
@@ -451,7 +489,11 @@ export function tickLuta(dt) {
     }
     tickConjuracao(esquerda, passo, agora, efeitos);
     tickConjuracao(direita, passo, agora, efeitos);
-    if (!modoTurnos()) {
+    if (emTeatro()) {
+      ensaiarGolpe(esquerda, agora, efeitosTeatro);
+      ensaiarGolpe(direita, agora, efeitosTeatro);
+      reagirPar(esquerda, direita);
+    } else if (!modoTurnos()) {
       tentarGolpe(esquerda, agora, efeitos);
       tentarGolpe(direita, agora, efeitos);
       const tiros = projeteisVivos();

@@ -6,6 +6,7 @@
 import { vegetacaoNoPonto } from "../../mundo/bioma/detalhe.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
 import { BIOMA_KANTO } from "../../mundo/regiao/amostraKanto.js";
+import { parBiomaKanto } from "../../mundo/regiao/biomasKanto.js";
 import {
   AREA_KANTO,
   CENTRO_AREA,
@@ -234,6 +235,7 @@ function ehRua(lx, ly, zona) {
 }
 
 function florestaEm(lx, ly, zona) {
+  if (!zona) return false;
   if (zona.densa || zona.floresta) return true;
   if (!zona.sangria) return false;
   if ((zona.sangria & SAIDA_NORTE) && ly < SANGRIA) return true;
@@ -241,16 +243,6 @@ function florestaEm(lx, ly, zona) {
   if ((zona.sangria & SAIDA_OESTE) && lx < SANGRIA) return true;
   if ((zona.sangria & SAIDA_LESTE) && lx >= AREA_KANTO - SANGRIA) return true;
   return false;
-}
-
-function biomaDoMiolo(x, y) {
-  const n = fbm2(x * 0.0032, y * 0.0032, SEMENTE + 41, 3);
-  const detalhe = fbm2(x * 0.012, y * 0.012, SEMENTE + 77, 2);
-  if (n > 0.74 && detalhe > 0.5) return BIOMA_KANTO.mata;
-  if (n < 0.3) return BIOMA_KANTO.savana;
-  if (n < 0.46) return BIOMA_KANTO.outono;
-  if (detalhe < 0.2) return BIOMA_KANTO.seco;
-  return BIOMA_KANTO.grama;
 }
 
 function distanciaFora(lx, ly, fp) {
@@ -298,19 +290,6 @@ function alturaEm(x, y, lx, ly, zona, perfil, rua) {
   return alturaNatural(x, y, zona, perfil);
 }
 
-function escolherBioma(x, y, lx, ly, zona, perfil, rua, predio) {
-  if (predio) return BIOMA_KANTO.pedra;
-  if (rua) return BIOMA_KANTO.caminho;
-  if (perfil.u < 0.34) return BIOMA_KANTO.areiaFundo;
-  if (perfil.u < 0.72) return BIOMA_KANTO.praia;
-  if (perfil.dentro > 24) return BIOMA_KANTO.montanha;
-  if (!rua && !predio && zona && florestaEm(lx, ly, zona)) {
-    const mancha = fbm2(x * 0.02, y * 0.02, SEMENTE + 5, 2);
-    if (mancha > 0.34) return BIOMA_KANTO.mata;
-  }
-  return biomaDoMiolo(x, y);
-}
-
 function corBase(bioma, u) {
   if (u < 0.34) {
     const t = u / 0.34;
@@ -322,6 +301,18 @@ function corBase(bioma, u) {
     ];
   }
   return PALETA.get(bioma) || PALETA.get(BIOMA_KANTO.grama);
+}
+
+function corDoPar(par, u) {
+  const a = corBase(par.bioma, u);
+  if (u < 0.34 || par.dominio >= 1 || par.bioma === par.biomaB) return a;
+  const b = corBase(par.biomaB, u);
+  const t = par.dominio;
+  return [
+    a[0] * t + b[0] * (1 - t),
+    a[1] * t + b[1] * (1 - t),
+    a[2] * t + b[2] * (1 - t),
+  ];
 }
 
 function aplicarVeg(rgb, bioma, limpo, x, y, comMote) {
@@ -370,16 +361,17 @@ export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
   const rua = ehRua(lx, ly, zona);
   const predio = !!(zona?.tipo === "cidade" && zona.layout && !rua && predioNoLayout(lx, ly, zona.layout));
   const entrada = !!(zona?.tipo === "cidade" && zona.layout && naEntradaDoLab(lx, ly, zona.layout));
-  const bioma = escolherBioma(x, y, lx, ly, zona, perfil, rua, predio);
+  const h = alturaEm(x, y, lx, ly, zona, perfil, rua || predio);
+  const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
+  const par = parBiomaKanto(x, y, perfil.u, perfil.dentro, floresta, predio, rua);
+  const bioma = par.bioma;
   const limpo =
     rua ||
     predio ||
     entrada ||
     perfil.u < 0.72 ||
-    bioma === BIOMA_KANTO.pedra ||
-    bioma === BIOMA_KANTO.montanha;
-  const h = alturaEm(x, y, lx, ly, zona, perfil, rua || predio);
-  const rgb = aplicarVeg(corBase(bioma, perfil.u), bioma, limpo, x, y, comMote);
+    bioma.superficie === "pedra";
+  const rgb = aplicarVeg(corDoPar(par, perfil.u), bioma, limpo, x, y, comMote);
   saida.h = h;
   saida.u = perfil.u;
   saida.r = rgb[0];

@@ -3,6 +3,7 @@
  * Uma consulta por célula; o grafo já está montado.
  */
 import { fbm2 } from "../voxel/ruido.js";
+import { parBiomaKanto } from "./biomasKanto.js";
 import {
   AREA_KANTO,
   CENTRO_AREA,
@@ -37,78 +38,7 @@ const MEIO_RUA = 3.5;
 const SANGRIA = 4;
 const AVENTAL = 18;
 
-export const BIOMA_KANTO = Object.freeze({
-  grama: Object.freeze({
-    id: "light-grass",
-    kit: "light-grass",
-    superficie: "grama",
-    cor: "#7dce6a",
-    camada: "terra",
-  }),
-  mata: Object.freeze({
-    id: "lush-grass",
-    kit: "lush-grass",
-    superficie: "grama",
-    cor: "#3e8f45",
-    camada: "terra",
-  }),
-  caminho: Object.freeze({
-    id: "brown-earth",
-    kit: "brown-earth",
-    superficie: "terra",
-    cor: "#a67c52",
-    camada: "terra",
-  }),
-  pedra: Object.freeze({
-    id: "stone",
-    kit: "stone",
-    superficie: "pedra",
-    cor: "#8d8680",
-    camada: "terra",
-  }),
-  montanha: Object.freeze({
-    id: "pewter-massif",
-    kit: "pewter-massif",
-    superficie: "pedra",
-    cor: "#6e6874",
-    camada: "terra",
-  }),
-  praia: Object.freeze({
-    id: "dirty-sand",
-    kit: "dirty-sand",
-    superficie: "terra",
-    cor: "#d6c48a",
-    camada: "terra",
-  }),
-  areiaFundo: Object.freeze({
-    id: "sandy-shelf",
-    kit: "sandy-shelf",
-    superficie: "terra",
-    cor: "#c9b07a",
-    camada: "mar",
-  }),
-  savana: Object.freeze({
-    id: "savanna",
-    kit: "savanna",
-    superficie: "grama",
-    cor: "#c4a24a",
-    camada: "terra",
-  }),
-  outono: Object.freeze({
-    id: "autum-forest",
-    kit: "autum-forest",
-    superficie: "grama",
-    cor: "#b07840",
-    camada: "terra",
-  }),
-  seco: Object.freeze({
-    id: "brown-earth",
-    kit: "brown-earth",
-    superficie: "terra",
-    cor: "#8d6844",
-    camada: "terra",
-  }),
-});
+export { BIOMA_KANTO } from "./biomasKanto.js";
 
 let cacheX = 1e9;
 let cacheY = 1e9;
@@ -273,16 +203,6 @@ function alturaDoTerreno(x, y, zona, perfil) {
   return Math.round(plano + (pico - plano) * t);
 }
 
-function biomaDoMiolo(x, y) {
-  const n = fbm2(x * 0.0032, y * 0.0032, SEMENTE + 41, 3);
-  const detalhe = fbm2(x * 0.012, y * 0.012, SEMENTE + 77, 2);
-  if (n > 0.74 && detalhe > 0.5) return BIOMA_KANTO.mata;
-  if (n < 0.3) return BIOMA_KANTO.savana;
-  if (n < 0.46) return BIOMA_KANTO.outono;
-  if (detalhe < 0.2) return BIOMA_KANTO.seco;
-  return BIOMA_KANTO.grama;
-}
-
 function alturaNatural(x, y, zona) {
   const byte = relevoEm(zona.ax, zona.ay);
   if (zona.agua) return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
@@ -337,20 +257,13 @@ function calcular(x, y) {
 
   const perfil = perfilCosta(x, y);
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
-  let bioma = BIOMA_KANTO.grama;
-  if (predio) bioma = BIOMA_KANTO.pedra;
-  else if (rua) bioma = BIOMA_KANTO.caminho;
-  else if (perfil.u < 0.34) bioma = BIOMA_KANTO.areiaFundo;
-  else if (perfil.u < 0.72) bioma = BIOMA_KANTO.praia;
-  else if (perfil.dentroMontanha > 24) bioma = BIOMA_KANTO.montanha;
-  else if (floresta) {
-    const mancha = fbm2(x * 0.02, y * 0.02, SEMENTE + 5, 2);
-    bioma = mancha > 0.34 ? BIOMA_KANTO.mata : biomaDoMiolo(x, y);
-  } else bioma = biomaDoMiolo(x, y);
+  const par = parBiomaKanto(x, y, perfil.u, perfil.dentroMontanha, floresta, predio, rua);
 
   return {
     h,
-    bioma,
+    bioma: par.bioma,
+    biomaB: par.biomaB,
+    dominio: par.dominio,
     rua,
     floresta,
     predio: predio && !predioSprite(predio.papel) ? predio.altura : 0,

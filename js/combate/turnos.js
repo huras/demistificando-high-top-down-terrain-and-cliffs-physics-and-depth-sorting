@@ -10,6 +10,7 @@ import { notaGolpeTurno, resolverTurno } from "../pokemon/combate/acertoClassico
 
 const ESPERA_LINHA = 1.6;
 const ESPERA_CARGA = 0.85;
+const ESPERA_TEATRO = 1;
 
 const RECARREGA_DEPOIS = {
   hyperBeam: true,
@@ -34,6 +35,7 @@ let versaoEscolha = 0;
 let esperaLinha = 0;
 let esperaCorpo = 0;
 let esperaCarregar = 0;
+let esperaTeatro = 0;
 let avisouCarregar = false;
 let disparou = false;
 
@@ -43,6 +45,10 @@ export function definirModoLuta(proximo) {
 
 export function modoTurnos() {
   return modo === "turnos";
+}
+
+export function emTeatro() {
+  return modo === "turnos" && fase === "teatro";
 }
 
 export function enquadramentoTurno() {
@@ -137,10 +143,32 @@ export function tickTurnos(dt, agora, efeitos) {
   if (fase === "golpe") {
     if (!disparou) soltar(agora, efeitos);
     if (ocupado(ator)) return;
+    if (!disparou) return;
     ator.resultadoTurno = null;
+    comecarTeatro();
+    return;
+  }
+  if (fase === "teatro") {
+    esperaTeatro -= dt;
+    if (esperaTeatro > 0) return;
     indice += 1;
     abrirTurno();
   }
+}
+
+function comecarTeatro() {
+  fase = "teatro";
+  esperaTeatro = ESPERA_TEATRO;
+  if (ator && slot?.def?.key) ator.ensaioEvitar = slot.def.key;
+  soltarEnsaio(esquerda);
+  soltarEnsaio(direita);
+}
+
+function soltarEnsaio(quem) {
+  if (!quem) return;
+  quem.resultadoTurno = null;
+  quem.ensaioFeito = false;
+  quem.esquiva = 1;
 }
 
 function golpeLegal(quem, def) {
