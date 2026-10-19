@@ -198,7 +198,7 @@ function marcarVizinhosSujos(cx, cy, lx, ly) {
   if (ly === CHUNK_XZ - 1) obterChunk(cx, cy + 1) && (obterChunk(cx, cy + 1).sujo = true);
 }
 
-/** Marca o chunk e os 4 vizinhos (borda de stream / faces de cliff). */
+/** Marca o chunk, os 4 lados e as 4 diagonais. A quina da espuma depende da diagonal. */
 function marcarChunkVizinhosSujos(cx, cy) {
   for (const [dx, dy] of [
     [0, 0],
@@ -206,6 +206,10 @@ function marcarChunkVizinhosSujos(cx, cy) {
     [-1, 0],
     [0, 1],
     [0, -1],
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
   ]) {
     const c = obterChunk(cx + dx, cy + dy);
     if (c) {

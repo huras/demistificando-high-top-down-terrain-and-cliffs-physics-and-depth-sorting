@@ -21,6 +21,7 @@ import {
   criarSpriteSilhueta,
 } from "../render/3d/silhuetaSprite.js";
 import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
+import { marcarReflexo } from "../render/3d/ceu/reflexoPoca.js";
 import { dropsBloco } from "../jogo/blocos.js";
 import { estado as estadoJogo } from "../jogo/estado.js";
 
@@ -94,6 +95,7 @@ function criarAtorSlot() {
   sprite.center.set(PE_X / LADO, (LADO - PE_Y) / LADO);
   sprite.scale.set(LADO * PX_MUNDO, LADO * PX_MUNDO, 1);
   sprite.renderOrder = 3;
+  marcarReflexo(sprite);
   grupo.add(sprite);
   const silhueta = criarSpriteSilhueta(tex, COR_SILHUETA_SELVAGEM);
   silhueta.center.copy(sprite.center);

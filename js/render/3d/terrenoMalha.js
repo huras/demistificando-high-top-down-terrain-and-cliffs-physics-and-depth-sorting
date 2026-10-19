@@ -13,6 +13,7 @@ import { PROPS } from "../../mundo/mapaDemo.js";
 import { alturaEm, colunaTemArInterno, espessuraTopo } from "../../mundo/altura.js";
 import {
   baseTopoEm,
+  chunkCarregadoEm,
   limparSujo,
   listarChunksSujos,
   obterChunk,
@@ -1031,6 +1032,8 @@ function geoSuperficieAgua(wx, wy, y, fx, fy, cor) {
 const ESPUMA_LARGO = 0.46;
 
 function terraSeca(wx, wy) {
+  // Chunk ainda não gerado devolve ar. Isso não é margem.
+  if (!chunkCarregadoEm(wx, wy)) return false;
   return colunaAgua(wx, wy).superficie <= 0;
 }
 

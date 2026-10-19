@@ -1,5 +1,9 @@
 import * as THREE from "three";
 
+const texVazia = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+texVazia.needsUpdate = true;
+texVazia.name = "reflexo-poca-vazio";
+
 /** Mesmos objetos entram em todo material de terreno. Atualizar aqui basta. */
 export const uniformsPoca = {
   uPoca: { value: 0 },
@@ -9,6 +13,10 @@ export const uniformsPoca = {
   uCorSol: { value: new THREE.Color() },
   uDirSol: { value: new THREE.Vector3(0, 1, 0) },
   uBrilhoSol: { value: 1 },
+  uReflexoPoca: { value: texVazia },
+  uMatReflexo: { value: new THREE.Matrix4() },
+  uPlanoPoca: { value: 0 },
+  uTemReflexo: { value: 0 },
 };
 
 let nivel = 0;
@@ -42,6 +50,14 @@ uniform vec3 uCorHorizonte;
 uniform vec3 uCorSol;
 uniform vec3 uDirSol;
 uniform float uBrilhoSol;
+uniform sampler2D uReflexoPoca;
+uniform mat4 uMatReflexo;
+uniform float uPlanoPoca;
+uniform float uTemReflexo;
+float pesoReflexoPoca = 0.0;
+float usoReflexoPoca = 0.0;
+vec2 uvReflexoPoca = vec2(0.0);
+vec3 ceuFallbackPoca = vec3(0.0);
 
 float hashPoca(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -90,8 +106,13 @@ export const FRAG_POCA_SAIDA = `
   float manchaPoca;
   float pesoPoca;
   float ondaPoca;
+  float ondaZp;
   float ndvPoca;
   float fresnelPoca;
+  float dentroUv;
+  float longePlano;
+  vec3 pEsp;
+  vec4 clipR;
   nPoca = nLen > 1e-5 ? nPoca / nLen : vec3(0.0, 1.0, 0.0);
   if (dot(nPoca, paraCamPoca) < 0.0) nPoca = -nPoca;
   chaoPoca = smoothstep(0.72, 0.9, nPoca.y);
@@ -110,7 +131,42 @@ export const FRAG_POCA_SAIDA = `
   fresnelPoca = mix(0.55, 0.94, pow(1.0 - ndvPoca, 3.0));
   escuroPoca = outgoingLight * mix(vec3(1.0), vec3(0.32, 0.38, 0.44), pesoPoca);
   ceuRef = max(ceuPoca(rdPoca), vec3(0.18, 0.24, 0.32));
-  outgoingLight = mix(escuroPoca, ceuRef, clamp(pesoPoca * fresnelPoca, 0.0, 0.88));
+  pesoReflexoPoca = 0.0;
+  usoReflexoPoca = 0.0;
+  if (uTemReflexo < 0.5) {
+    outgoingLight = mix(escuroPoca, ceuRef, clamp(pesoPoca * fresnelPoca, 0.0, 0.88));
+  } else {
+    outgoingLight = escuroPoca;
+    ondaZp = sin(vMundoCeu.z * 2.3 + uTempoPoca * 1.8);
+    pEsp = vMundoCeu;
+    pEsp.x += ondaPoca * 0.15 * manchaPoca;
+    pEsp.z += ondaZp * 0.1 * manchaPoca;
+    pEsp.y = uPlanoPoca * 2.0 - pEsp.y;
+    clipR = uMatReflexo * vec4(pEsp, 1.0);
+    uvReflexoPoca = clipR.xy / max(clipR.w, 1e-4) * 0.5 + 0.5;
+    dentroUv = step(0.0, uvReflexoPoca.x) * step(uvReflexoPoca.x, 1.0);
+    dentroUv *= step(0.0, uvReflexoPoca.y) * step(uvReflexoPoca.y, 1.0);
+    dentroUv *= step(0.0, clipR.w);
+    longePlano = 1.0 - smoothstep(0.45, 2.0, abs(vMundoCeu.y - uPlanoPoca));
+    usoReflexoPoca = dentroUv * longePlano;
+    pesoReflexoPoca = clamp(pesoPoca * fresnelPoca, 0.0, 0.88);
+    ceuFallbackPoca = ceuRef;
+  }
+}
+`;
+
+/** O alvo do passe fica linear. O Three só codifica sRGB no canvas. */
+export const FRAG_POCA_REFLEXO = `
+if (uTemReflexo > 0.5 && pesoReflexoPoca > 0.001) {
+  vec3 amostraPoca = ceuFallbackPoca;
+  #ifdef TONE_MAPPING
+    amostraPoca = toneMapping(amostraPoca);
+  #endif
+  if (usoReflexoPoca > 0.001) {
+    vec3 texPoca = texture2D(uReflexoPoca, uvReflexoPoca).rgb;
+    amostraPoca = mix(amostraPoca, texPoca, usoReflexoPoca);
+  }
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, amostraPoca, pesoReflexoPoca);
 }
 `;
 
@@ -122,4 +178,8 @@ export function ligarUniformsPoca(shader) {
   shader.uniforms.uCorSol = uniformsPoca.uCorSol;
   shader.uniforms.uDirSol = uniformsPoca.uDirSol;
   shader.uniforms.uBrilhoSol = uniformsPoca.uBrilhoSol;
+  shader.uniforms.uReflexoPoca = uniformsPoca.uReflexoPoca;
+  shader.uniforms.uMatReflexo = uniformsPoca.uMatReflexo;
+  shader.uniforms.uPlanoPoca = uniformsPoca.uPlanoPoca;
+  shader.uniforms.uTemReflexo = uniformsPoca.uTemReflexo;
 }

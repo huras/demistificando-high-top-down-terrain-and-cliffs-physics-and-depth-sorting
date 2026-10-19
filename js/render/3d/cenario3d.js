@@ -35,6 +35,7 @@ import { criarFxAgua3d } from "./fxAgua3d.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
+import { desenharReflexo, marcarLuzReflexo } from "./ceu/reflexoPoca.js";
 import { atualizarLuzBillboard } from "./ceu/luzBillboard.js";
 import { comecarQuadroLuzes, criarPoolLuzes, definirPesoNoite, resolverLuzes } from "./luzes/pool.js";
 import { comecarMapaChao, resolverMapaChao } from "./luzes/mapaChao.js";
@@ -90,6 +91,7 @@ function criarLuzSala(cena) {
   luz.name = "luz-sala";
   luz.position.set(x, y, z);
   luz.castShadow = false;
+  marcarLuzReflexo(luz);
   cena.add(luz);
 
   const bulbo = new THREE.Mesh(
@@ -217,14 +219,17 @@ export function iniciarCenario3d(canvas, atlas = null) {
 
   const hemi = new THREE.HemisphereLight(0xf5e6c8, 0x292524, 0.35);
   hemi.name = "luz-ceu";
+  marcarLuzReflexo(hemi);
   scene.add(hemi);
 
   const ambient = new THREE.AmbientLight(0xc4b5a5, 0.32);
   ambient.name = "luz-ambiente";
+  marcarLuzReflexo(ambient);
   scene.add(ambient);
 
   const sol = new THREE.DirectionalLight(0xffe4c4, 1.55);
   sol.name = "luz-sol";
+  marcarLuzReflexo(sol);
   sol.position.set(28, 42, 18);
   sol.castShadow = true;
   sol.shadow.mapSize.set(1024, 1024);
@@ -241,11 +246,13 @@ export function iniciarCenario3d(canvas, atlas = null) {
 
   const fill = new THREE.DirectionalLight(0x9db4c8, 0.42);
   fill.name = "luz-preenchimento";
+  marcarLuzReflexo(fill);
   fill.position.set(-20, 12, -10);
   scene.add(fill);
 
   const rim = new THREE.DirectionalLight(0xf0a060, 0.58);
   rim.name = "luz-contorno";
+  marcarLuzReflexo(rim);
   rim.position.set(2, 8, -18);
   scene.add(rim);
 
@@ -618,6 +625,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   resolverMapaChao(camPos.x, camPos.z);
   atualizarRealceCena();
   aplicarVazioSala(!!estadoJogo.interior?.sala3d);
+  desenharReflexo(estado.renderer, estado.scene, camRender, elevVis, !!estadoJogo.interior?.sala3d);
   estado.renderer.render(estado.scene, camRender);
   return estado;
 }

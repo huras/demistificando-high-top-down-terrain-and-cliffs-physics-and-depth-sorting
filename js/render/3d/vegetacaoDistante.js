@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
+import { marcarReflexo, soltarReflexo } from "./ceu/reflexoPoca.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import {
   ALTURA_BLOCO,
@@ -53,6 +54,7 @@ export function criarVegetacaoDistante() {
   }
 
   function soltarLote(lote) {
+    soltarReflexo(lote.mesh);
     removerObjetoCena(lote.mesh?.userData?.cenaId);
     grupo.remove(lote.mesh);
     lote.material.dispose();
@@ -112,6 +114,7 @@ export function criarVegetacaoDistante() {
     mesh.frustumCulled = true;
     mesh.count = 0;
     grupo.add(mesh);
+    marcarReflexo(mesh);
     const lote = {
       sprite,
       mesh,

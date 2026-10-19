@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { marcarReflexo } from "./reflexoPoca.js";
 import { ALTURA_CIRRUS, ALTURA_NUVEM, ESCALA_NUVEM, uniformsNuvem } from "./parametros.js";
 
 const VERT = /* glsl */ `
@@ -165,6 +166,7 @@ export function criarAtmosfera() {
   mesh.name = "ceu-domo";
   mesh.frustumCulled = false;
   mesh.renderOrder = -10;
+  marcarReflexo(mesh);
   mesh.matrixAutoUpdate = true;
 
   let tempo = 0;

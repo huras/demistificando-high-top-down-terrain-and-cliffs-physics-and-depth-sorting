@@ -12,6 +12,7 @@ import { carregarCatalogoLuzes, pontosDoModelo } from "./luzes/catalogo.js";
 import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
 import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
 import { aplicarLuzBillboard, aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
+import { marcarReflexo } from "./ceu/reflexoPoca.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../../mundo/cidade/catalogoCasas.js";
 import { anexarCascaSala, anexarDecoracaoCidade, anexarInteriores, carregarSpritesPraca, criarDecoracaoRotas } from "./decoracaoCidade.js";
@@ -505,6 +506,7 @@ export function criarEdificiosCidade() {
         grupo.add(rotas[i].grupo);
         grupo.userData.cidades.push(rotas[i]);
       }
+      marcarReflexo(grupo);
     })
     .catch((erro) => {
       console.error("modelos da cidade", erro);
@@ -513,6 +515,7 @@ export function criarEdificiosCidade() {
   montarLaboratorio3d(grupo);
   montarCentro3d(grupo);
   montarLoja3d(grupo);
+  marcarReflexo(grupo);
 
   return {
     grupo,

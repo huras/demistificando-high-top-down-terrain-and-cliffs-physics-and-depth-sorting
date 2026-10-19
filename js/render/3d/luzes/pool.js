@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { marcarLuzReflexo } from "../ceu/reflexoPoca.js";
 
 const CAP = 8;
 const FUNDIR = 2.5;
@@ -55,6 +56,7 @@ export function criarPoolLuzes(scene) {
     const luz = new THREE.PointLight("#fff1d0", 0, 6, 2);
     luz.castShadow = false;
     luz.name = `luz-local-${i}`;
+    marcarLuzReflexo(luz);
     scene.add(luz);
     luzes.push(luz);
   }

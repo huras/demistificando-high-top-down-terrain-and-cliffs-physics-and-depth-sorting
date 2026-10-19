@@ -10,6 +10,7 @@ import { criarSombraContato3d } from "./sombraContato3d.js";
 import { aplicarCorSprite, aplicarProfundidadeSprite } from "./ceu/luzBillboard.js";
 import { fatorSombraMundo } from "./ceu/mapaNuvem.js";
 import { amostrarLuzCidade } from "./luzes/mapaChao.js";
+import { marcarReflexo } from "./ceu/reflexoPoca.js";
 import { COR_SILHUETA_JOGADOR, criarSpriteSilhueta } from "./silhuetaSprite.js";
 
 const _luzCidade = new THREE.Color();
@@ -52,6 +53,7 @@ export function criarPersonagem3d(opts = {}) {
   sprite.renderOrder = 3;
   sprite.castShadow = false;
   sprite.receiveShadow = false;
+  marcarReflexo(sprite);
   grupo.add(sprite);
 
   const silhueta = criarSpriteSilhueta(tex, COR_SILHUETA_JOGADOR);

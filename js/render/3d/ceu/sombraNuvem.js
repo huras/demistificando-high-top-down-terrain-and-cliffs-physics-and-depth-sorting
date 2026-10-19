@@ -1,4 +1,4 @@
-import { FRAG_POCA, FRAG_POCA_SAIDA, ligarUniformsPoca } from "./pocaChao.js";
+import { FRAG_POCA, FRAG_POCA_REFLEXO, FRAG_POCA_SAIDA, ligarUniformsPoca } from "./pocaChao.js";
 import { uniformsNuvem } from "./parametros.js";
 import { GLSL_LUZ_CIDADE, ligarUniformsLuzCidade } from "../luzes/mapaChao.js";
 
@@ -114,11 +114,17 @@ export function aplicarSombraNuvem(material) {
       avisouPoca = true;
       console.warn("ceu: shader sem opaque_fragment, poça não entrou");
     }
+    if (frag.includes("#include <colorspace_fragment>")) {
+      frag = frag.replace(
+        "#include <colorspace_fragment>",
+        `${FRAG_POCA_REFLEXO}\n#include <colorspace_fragment>`,
+      );
+    }
     shader.fragmentShader = frag;
   };
   material.customProgramCacheKey = function chaveSombra() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|sombra-nuvem|poca|luz-cidade|clareia-branco`;
+    return `${base}|sombra-nuvem|poca|reflexo-planar|luz-cidade|clareia-branco`;
   };
   return material;
 }

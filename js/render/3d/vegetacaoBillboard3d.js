@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { aplicarLuzBillboard, yawCartaoSol } from "./ceu/luzBillboard.js";
+import { marcarReflexo, soltarReflexo } from "./ceu/reflexoPoca.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import {
   ALTURA_BLOCO,
@@ -132,6 +133,7 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function soltarLote(lote) {
+    soltarReflexo(lote.mesh);
     removerObjetoCena(lote.mesh?.userData?.cenaId);
     grupo.remove(lote.mesh);
     lote.mesh.dispatchEvent({ type: "dispose" });
@@ -209,6 +211,7 @@ export function criarVegetacaoBillboard3d() {
     mesh.frustumCulled = true;
     mesh.count = Math.min(def.itens.length, CAP_INSTANCIAS);
     grupo.add(mesh);
+    if (!grama) marcarReflexo(mesh);
 
     const matSombra = new THREE.MeshBasicMaterial({
       map: tex,
