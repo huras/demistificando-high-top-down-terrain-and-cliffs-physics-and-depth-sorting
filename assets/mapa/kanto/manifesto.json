@@ -1,0 +1,8 @@
+{
+  "semente": 1337,
+  "visao": 1024,
+  "passoVisao": 4,
+  "ladoTile": 512,
+  "passoTile": 1,
+  "grade": 8
+}

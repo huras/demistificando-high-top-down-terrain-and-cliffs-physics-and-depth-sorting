@@ -6,7 +6,6 @@ import { AREA_KANTO, CENTRO_AREA, EXTENSAO_KANTO, zonaNoMundo } from "../../mund
 import { estado } from "../../jogo/estado.js";
 import { comecarSubida, teleporteOcupado } from "../../jogo/teleporte.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
-import { prepararMapa } from "./amostra.js";
 import { cidadesDoMapa } from "./marcas.js";
 import { pintarMapa } from "./pintar.js";
 
@@ -181,7 +180,6 @@ export function ligarMapaMundo() {
   tela = document.getElementById("mapa-mundo-tela");
   titulo = document.getElementById("mapa-mundo-titulo");
   if (!raiz || !tela) return;
-  prepararMapa();
   iniciarAtlas();
 
   tela.addEventListener("pointerdown", (ev) => {

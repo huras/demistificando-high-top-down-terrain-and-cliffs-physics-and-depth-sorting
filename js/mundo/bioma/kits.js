@@ -3,10 +3,14 @@
 /** @type {object | null} */
 let dados = null;
 
+export function definirKits(proximo) {
+  dados = proximo || null;
+}
+
 export async function carregarKits() {
   const res = await fetch("biomas/kits.json", { cache: "no-store" });
   if (!res.ok) throw new Error("biomas/kits.json");
-  dados = await res.json();
+  definirKits(await res.json());
 }
 
 export function obterKits() {

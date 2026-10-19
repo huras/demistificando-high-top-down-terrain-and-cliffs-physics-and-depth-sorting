@@ -2,7 +2,8 @@
  * Pintura do mapa: terreno, rotas, layout da cidade, orbes e o jogador.
  */
 import { EXTENSAO_KANTO } from "../../mundo/regiao/grafoKanto.js";
-import { LADO_TILE, LADO_TILE_MUNDO, PASSO_TILE, canvasAtlas, listarTiles } from "./atlas.js";
+import { canvasAtlas, listarTiles } from "./atlas.js";
+import { LADO_TILE, LADO_TILE_MUNDO } from "./grade.js";
 import { cidadesDoMapa, layoutDaCidade, marcasExtras, rotasDoMapa } from "./marcas.js";
 
 const ZOOM_NOME_ROTA = 0.36;
@@ -132,18 +133,17 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     const visiveis = listarTiles();
     for (let i = 0; i < visiveis.length; i++) {
       const tile = visiveis[i];
-      const srcH = tile.linhas;
-      if (srcH < 1) continue;
+      if (!tile.canvas) continue;
       ctx.drawImage(
         tile.canvas,
         0,
         0,
         LADO_TILE,
-        srcH,
+        LADO_TILE,
         tile.tx * LADO_TILE_MUNDO,
         tile.ty * LADO_TILE_MUNDO,
         LADO_TILE_MUNDO,
-        srcH * PASSO_TILE,
+        LADO_TILE_MUNDO,
       );
     }
   }

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node servidor.mjs",
     "treino:ia": "node treino/iaCombate.mjs",
-    "treino:seguir": "node treino/seguir.mjs"
+    "treino:seguir": "node treino/seguir.mjs",
+    "mapa:assar": "node js/ui/mapa/assarMapa.mjs"
   },
   "dependencies": {
     "pngjs": "^7.0.0",
