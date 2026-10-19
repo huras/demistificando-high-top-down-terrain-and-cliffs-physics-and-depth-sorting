@@ -3,6 +3,7 @@ import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, emR
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
 import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
+import { puloNoGolpe } from "./pulo.js";
 import { soltarProjetil } from "./projeteis.js";
 import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
 import { folhaGolpe } from "./folhasGolpe.js";
@@ -232,6 +233,10 @@ export function emConjuracao(ator) {
 }
 
 function pararNoLugar(ator) {
+  if (ator?.pulando) {
+    ator.andando = false;
+    return;
+  }
   ator.vx = 0;
   ator.vy = 0;
   ator.andando = false;
@@ -293,6 +298,7 @@ function comecarPreparacao(ator, slot, mx, my, agora, efeitos) {
   ator.golpeRecRestante = 0;
   ator.golpeSlot = null;
   ator.golpeClip = dur + rec;
+  puloNoGolpe(ator);
   pararNoLugar(ator);
   marcarPose(ator, distancia ? "Shoot" : "Attack", agora);
   ator.golpePose = ator.pose;

@@ -1,6 +1,7 @@
 import { RAIO_POKEMON } from "../../config.js";
 import { cortaVisada, desviarRumo, sondarCobertura } from "../../combate/arenas.js";
 import { comecarEsquiva, emAvanco, emEsquiva, emRecuo, presoNoGolpe, velocidadeDe } from "../ator.js";
+import { deslizarNoAr, lembrarEmbalo, quererPulo } from "../combate/pulo.js";
 import { LEAD_MAX } from "./constantes.js";
 import { limitarArena, regua, sentidoParada } from "./espaco.js";
 import { entrada, quadroDe, saida } from "./observacao.js";
@@ -93,13 +94,17 @@ export function integrarComando(ator, alvo, dt) {
     ator.dirX = q.fx;
     ator.dirY = q.fy;
   }
-  if (presoNoGolpe(ator) && !emAvanco(ator)) {
-    ator.vx = 0;
-    ator.vy = 0;
+  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
     ator.andando = false;
     return;
   }
-  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
+  if (presoNoGolpe(ator)) {
+    if (deslizarNoAr(ator, dt)) {
+      limitarArena(ator);
+      return;
+    }
+    ator.vx = 0;
+    ator.vy = 0;
     ator.andando = false;
     return;
   }
@@ -176,4 +181,6 @@ export function integrarComando(ator, alvo, dt) {
   ator.vy = dirY * inv * vel;
   ator.andando = true;
   limitarArena(ator);
+  lembrarEmbalo(ator);
+  quererPulo(ator);
 }

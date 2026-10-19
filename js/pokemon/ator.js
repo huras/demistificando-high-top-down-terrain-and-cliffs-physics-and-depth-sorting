@@ -131,6 +131,8 @@ export function criarAtor(opts) {
     dirY: 1,
     andando: false,
     noChao: true,
+    pulando: false,
+    vz: 0,
     hopLift: 0,
     animT: 0,
     pose: "Idle",

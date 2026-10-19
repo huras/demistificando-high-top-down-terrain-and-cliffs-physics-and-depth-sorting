@@ -12,6 +12,7 @@ import { limitarArena, paradaDe, posturaDe, sentidoParada, vaiMelee } from "../p
 import { empurrarCorpo } from "./arenas.js";
 import { RAIO_POKEMON } from "../config.js";
 import { integrarComando } from "../pokemon/ia/habilidades.js";
+import { deslizarNoAr, integrarPulo, lembrarEmbalo, quererPulo } from "../pokemon/combate/pulo.js";
 import { iaRedeLigada, pensar, reagirEsquiva } from "../pokemon/ia/seletor.js";
 
 export { definirIaRede } from "../pokemon/ia/seletor.js";
@@ -194,13 +195,17 @@ function avancar(ator, tx, ty, dt) {
   const d = Math.hypot(dx, dy) || 0.0001;
   ator.dirX = dx / d;
   ator.dirY = dy / d;
-  if (((ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0) && !emAvanco(ator)) {
-    ator.vx = 0;
-    ator.vy = 0;
+  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
     ator.andando = false;
     return;
   }
-  if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
+  if (((ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0) && !emAvanco(ator)) {
+    if (deslizarNoAr(ator, dt)) {
+      limitarArena(ator);
+      return;
+    }
+    ator.vx = 0;
+    ator.vy = 0;
     ator.andando = false;
     return;
   }
@@ -235,6 +240,8 @@ function avancar(ator, tx, ty, dt) {
   ator.vy = (dy / d) * sentido * vel;
   ator.andando = true;
   limitarArena(ator);
+  lembrarEmbalo(ator);
+  quererPulo(ator);
 }
 
 function apresentar(ator) {
@@ -443,6 +450,8 @@ export function tickLuta(dt) {
       reagirPar(esquerda, direita);
     }
   }
+  integrarPulo(esquerda, passo);
+  integrarPulo(direita, passo);
   atualizarProjeteis(passo, lutando ? par : vazio, aoTiro);
   if (lutando && (esquerda.hp <= 0 || direita.hp <= 0)) encerrar();
 
