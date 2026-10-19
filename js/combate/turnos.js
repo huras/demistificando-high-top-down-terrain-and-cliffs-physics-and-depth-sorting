@@ -67,7 +67,7 @@ export function concluirFoco() {
 
 export function enquadramentoTurno() {
   if (modo !== "turnos" || fase === "ocioso") return null;
-  if (fase === "teatro" && esquerda && direita) {
+  if ((fase === "teatro" || aproximandoCorpo()) && esquerda && direita) {
     return { tipo: "teatro", a: esquerda, b: direita };
   }
   if (!ator || !alvo) return null;
@@ -319,6 +319,10 @@ function corpoDoGolpe(def) {
   return def?.forma === "contact" || def?.forma === "radius";
 }
 
+function aproximandoCorpo() {
+  return fase === "aproximar" && corpoDoGolpe(slot?.def);
+}
+
 function linhaLivre(de, para) {
   return !bloqueioNoTrecho(de.x, de.y, para.x, para.y, RAIO_PROJETIL);
 }
@@ -342,17 +346,39 @@ function passoAproximar(dt) {
   const parada = paradaDe(def);
   esperaCorpo += dt;
   if (d <= parada + 0.08 || esperaCorpo >= 3.2) {
-    ator.vx = 0;
-    ator.vy = 0;
-    ator.andando = false;
+    pararPasso(ator);
+    pararPasso(alvo);
     return true;
   }
-  andar(ator, dx / d, dy / d, dt, Math.max(0, d - parada));
+  fecharEmArco(dx / d, dy / d, dt, Math.max(0, d - parada));
   return false;
 }
 
-function andar(quem, dirX, dirY, dt, limite) {
-  const vel = velocidadeDe(quem, true);
+function fecharEmArco(ux, uy, dt, falta) {
+  const curva = Math.sin(esperaCorpo * 2.4);
+  const ax = ux - uy * curva * 0.55;
+  const ay = uy + ux * curva * 0.55;
+  const al = Math.hypot(ax, ay) || 1;
+  const bx = -ux + uy * curva * 0.55;
+  const by = -uy - ux * curva * 0.55;
+  const bl = Math.hypot(bx, by) || 1;
+  andar(ator, ax / al, ay / al, dt, falta * 0.68, 1);
+  andar(alvo, bx / bl, by / bl, dt, falta * 0.32, 0.62);
+  ator.dirX = ux;
+  ator.dirY = uy;
+  alvo.dirX = -ux;
+  alvo.dirY = -uy;
+}
+
+function pararPasso(quem) {
+  if (!quem) return;
+  quem.vx = 0;
+  quem.vy = 0;
+  quem.andando = false;
+}
+
+function andar(quem, dirX, dirY, dt, limite, folga) {
+  const vel = velocidadeDe(quem, true) * (folga == null ? 1 : folga);
   let passo = vel * dt;
   if (limite != null) passo = Math.min(passo, limite);
   if (passo <= 0.0001) {

@@ -9,6 +9,7 @@ import { placaPerto } from "../mundo/placas.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { predioNoLayout } from "../mundo/regiao/volumesCidade.js";
 import { ancoraDoHub } from "./hub.js";
+import { arbustoMaduroPerto } from "../campo/colherBerry.js";
 
 const FOLGA_ESCALADA_MS = 160;
 let escaladaAte = 0;
@@ -90,6 +91,18 @@ export function acaoContexto(ctx) {
         rotulo: "Ler",
         ancora: { x: placa.x, y: placa.y, z: placa.z },
         placa,
+      };
+    }
+  }
+
+  if (noMundo && !corpo.escalando) {
+    const arbusto = arbustoMaduroPerto(corpo.x, corpo.y, corpo.z || 0);
+    if (arbusto) {
+      return {
+        id: "colher",
+        rotulo: "Colher",
+        ancora: { x: arbusto.x, y: arbusto.y, z: arbusto.z },
+        arbusto,
       };
     }
   }

@@ -21,6 +21,7 @@ import { STENCIL_GRAMA, marcarStencilSolido } from "./silhuetaSprite.js";
 import { FASE } from "../../campo/estadoProps.js";
 import { imagemToco } from "../../campo/visualToco.js";
 import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "../../campo/sacudida.js";
+import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto } from "./folhaBerry.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
@@ -31,6 +32,7 @@ import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "..
 const CAP_INSTANCIAS = 4096;
 
 function estiloDe(prop) {
+  if (prop.tipo === "berry") return ESCALA_ARBUSTO;
   if (prop.tipo === "arvore") return VEG_ARVORE_ESCALA;
   if (prop.tipo === "pedra" || prop.tipo === "cristal") return 1;
   return VEG_MATA_ESCALA;
@@ -111,6 +113,7 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function imagemDe(prop) {
+    if (prop?.tipo === "berry") return imagemArbusto(prop.berryKey, prop.estagio || "maduro");
     const base = imagemBase(prop);
     if (!base) return null;
     if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return imagemToco(base, false);
@@ -440,6 +443,9 @@ export function criarVegetacaoBillboard3d() {
   }
 
   const cancelarDirty = onDirty(() => {
+    alturasSujas = true;
+  });
+  garantirFolhaBerry(() => {
     alturasSujas = true;
   });
 

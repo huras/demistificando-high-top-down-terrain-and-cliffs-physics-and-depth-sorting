@@ -14,6 +14,7 @@ import { aplicarLojaNoChunk, plantaLoja } from "../cidade/loja.js";
 import { dentroDoTerrenoHub } from "../cidade/plantaHub.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { aplicarNaLista } from "../../campo/estadoProps.js";
+import { arbustoNaCelula, MAX_ARBUSTO_CHUNK, spriteBerry } from "../bioma/berriesBioma.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { definirLocal, preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
 import { valueNoise3 } from "./ruido.js";
@@ -132,6 +133,7 @@ export function* passosChunk(chunk, seed) {
   }
 
   const props = [];
+  let arbustos = 0;
   coluna = 0;
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
@@ -156,18 +158,30 @@ export function* passosChunk(chunk, seed) {
       if (dentroDoTerrenoHub(plantaCentro(), wx, wy)) continue;
       if (dentroDoTerrenoHub(plantaLoja(), wx, wy)) continue;
       const planta = plantaDoRelevo(wx, wy);
-      if (!planta) {
-        if ((++coluna & 31) === 0) yield;
-        continue;
+      const livre = !planta || planta.classe === "grama";
+      const chaveBerry = livre && arbustos < MAX_ARBUSTO_CHUNK && h >= nivel ? arbustoNaCelula(wx, wy) : null;
+      if (chaveBerry) {
+        arbustos++;
+        props.push({
+          id: `b${wx}_${wy}`,
+          x: wx + 0.5,
+          y: wy + 0.5,
+          z: h,
+          tipo: "berry",
+          berryKey: chaveBerry,
+          estagio: "maduro",
+          sprite: spriteBerry(chaveBerry, "maduro"),
+        });
+      } else if (planta) {
+        props.push({
+          id: `v${wx}_${wy}`,
+          x: wx + 0.5,
+          y: wy + 0.5,
+          z: h,
+          tipo: planta.classe,
+          sprite: planta.sprite,
+        });
       }
-      props.push({
-        id: `v${wx}_${wy}`,
-        x: wx + 0.5,
-        y: wy + 0.5,
-        z: h,
-        tipo: planta.classe,
-        sprite: planta.sprite,
-      });
       if ((++coluna & 31) === 0) yield;
     }
   }

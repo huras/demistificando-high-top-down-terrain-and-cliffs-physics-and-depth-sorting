@@ -31,13 +31,15 @@ export function slotDaTecla(codigo) {
 }
 
 function berry(key, nome, cor, efeito) {
+  const base = efeito ? { ...efeito } : {};
+  if (!base.curaHp && !base.curaFrac && !base.pp) base.curaHp = 2;
   return Object.freeze({
     key,
     nome,
     tipo: TIPO_ITEM.BERRY,
     cor,
     plantavel: true,
-    efeito: Object.freeze(efeito),
+    efeito: Object.freeze(base),
     compra: 80,
     venda: 20,
   });
@@ -49,10 +51,34 @@ export const BERRIES = Object.freeze({
   pecha: berry("pecha", "Pecha Berry", "#f472b6", { cura: "poison" }),
   rawst: berry("rawst", "Rawst Berry", "#fb923c", { cura: "burn" }),
   aspear: berry("aspear", "Aspear Berry", "#facc15", { cura: "freeze" }),
+  persim: berry("persim", "Persim Berry", "#f97316", { cura: "confusion" }),
   lum: berry("lum", "Lum Berry", "#84cc16", { cura: "all" }),
   oran: berry("oran", "Oran Berry", "#3b82f6", { curaHp: 10 }),
   sitrus: berry("sitrus", "Sitrus Berry", "#eab308", { curaFrac: 0.25 }),
+  figy: berry("figy", "Figy Berry", "#d97706", { curaFrac: 0.125 }),
+  wiki: berry("wiki", "Wiki Berry", "#a855f7", { curaFrac: 0.125 }),
+  mago: berry("mago", "Mago Berry", "#ec4899", { curaFrac: 0.125 }),
+  aguav: berry("aguav", "Aguav Berry", "#22c55e", { curaFrac: 0.125 }),
+  iapapa: berry("iapapa", "Iapapa Berry", "#ca8a04", { curaFrac: 0.125 }),
   leppa: berry("leppa", "Leppa Berry", "#dc2626", { pp: 10 }),
+  razz: berry("razz", "Razz Berry", "#dc2626"),
+  bluk: berry("bluk", "Bluk Berry", "#4f46e5"),
+  pinap: berry("pinap", "Pinap Berry", "#eab308"),
+  cornn: berry("cornn", "Cornn Berry", "#6366f1"),
+  magost: berry("magost", "Magost Berry", "#f472b6"),
+  rabuta: berry("rabuta", "Rabuta Berry", "#65a30d"),
+  nomel: berry("nomel", "Nomel Berry", "#facc15"),
+  spelon: berry("spelon", "Spelon Berry", "#e11d48"),
+  pamtre: berry("pamtre", "Pamtre Berry", "#78716c"),
+  watmel: berry("watmel", "Watmel Berry", "#2dd4bf"),
+  durin: berry("durin", "Durin Berry", "#4d7c0f"),
+  belue: berry("belue", "Belue Berry", "#1d4ed8"),
+  pomeg: berry("pomeg", "Pomeg Berry", "#e11d48"),
+  kelpsy: berry("kelpsy", "Kelpsy Berry", "#2563eb"),
+  qualot: berry("qualot", "Qualot Berry", "#f59e0b"),
+  hondew: berry("hondew", "Hondew Berry", "#16a34a"),
+  grepa: berry("grepa", "Grepa Berry", "#eab308"),
+  tamato: berry("tamato", "Tamato Berry", "#dc2626"),
 });
 
 export const REMEDIOS = Object.freeze({

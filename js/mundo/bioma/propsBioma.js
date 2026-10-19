@@ -21,7 +21,7 @@ export function limparPropsChunk(cx, cy) {
 }
 
 export function propPorId(id) {
-  const m = /^v(-?\d+)_(-?\d+)$/.exec(id || "");
+  const m = /^[vb](-?\d+)_(-?\d+)$/.exec(id || "");
   if (!m) return null;
   const wx = Number(m[1]);
   const wy = Number(m[2]);

@@ -53,9 +53,9 @@ function pontoNoChao(raio, z) {
 }
 
 function dispararItem(corpo, celula, alvo, mira) {
+  if (uiAberta()) return;
   const item = hotbarAtivo();
-  if (!item || uiAberta()) return;
-  if (item.tipo === TIPO_ITEM.BOLA) {
+  if (item?.tipo === TIPO_ITEM.BOLA) {
     definirSegurarBola(true, mira.x, mira.y);
     return;
   }

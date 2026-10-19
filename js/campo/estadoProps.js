@@ -4,6 +4,7 @@
  */
 
 import { CHUNK_XZ } from "../config.js";
+import { MS_FLOR, spriteBerry } from "../mundo/bioma/berriesBioma.js";
 import { propPorId, reindexarEm } from "../mundo/bioma/propsBioma.js";
 import { avisarDirty } from "../mundo/voxel/storeMundo.js";
 
@@ -76,6 +77,9 @@ function foto(prop) {
     voltaMs: prop.voltaMs || 0,
     queimadas: prop.queimadas || 0,
     tipo: prop.tipo || "",
+    berryKey: prop.berryKey || "",
+    estagio: prop.estagio || "",
+    maduraEm: prop.maduraEm || 0,
   };
 }
 
@@ -97,6 +101,7 @@ export function aplicarNoProp(prop) {
     prop.lado = 1;
     prop.oculto = false;
     prop.r = 0;
+    if (prop.tipo === "berry") aplicarBerry(prop, null);
     return;
   }
   prop.fase = salvo.fase;
@@ -110,6 +115,7 @@ export function aplicarNoProp(prop) {
   prop.queimadas = salvo.queimadas || 0;
   prop.oculto = salvo.fase === FASE.REMOVIDO;
   prop.r = raioColisao(prop);
+  if (prop.tipo === "berry") aplicarBerry(prop, salvo);
 }
 
 export function aplicarNaLista(lista) {
@@ -121,7 +127,26 @@ export function preparar(prop) {
   if (!prop.fase) aplicarNoProp(prop);
 }
 
+function berryAindaEspera(e, agora) {
+  if ((e.estagio || "maduro") === "maduro") return false;
+  if (!e.maduraEm || agora < e.maduraEm) return true;
+  if (e.estagio === "arbusto") {
+    e.estagio = "flor";
+    e.maduraEm += MS_FLOR;
+    if (agora < e.maduraEm) return true;
+  }
+  return false;
+}
+
+function aplicarBerry(prop, salvo) {
+  prop.berryKey = salvo?.berryKey || prop.berryKey || "";
+  prop.estagio = salvo?.estagio || "maduro";
+  prop.maduraEm = salvo?.maduraEm || 0;
+  prop.sprite = spriteBerry(prop.berryKey, prop.estagio);
+}
+
 function intacto(prop) {
+  if (prop.tipo === "berry" && (prop.estagio || "maduro") !== "maduro") return false;
   return prop.fase === FASE.EM_PE && prop.hp + 1e-4 >= prop.hpMax && !(prop.queimadas > 0);
 }
 
@@ -206,6 +231,9 @@ export function hidratarCampo(campo, cortados) {
       voltaMs: Number(e.voltaMs) || 0,
       queimadas: Number(e.queimadas) || 0,
       tipo: e.tipo || "",
+      berryKey: e.berryKey || "",
+      estagio: e.estagio || "",
+      maduraEm: Number(e.maduraEm) || 0,
     });
   }
   const velhos = Array.isArray(cortados) ? cortados : [];
@@ -227,6 +255,7 @@ export function hidratarCampo(campo, cortados) {
   }
   for (const [id, e] of porId) {
     if (e.tipo === "grama" && e.voltaMs && agora >= e.voltaMs) porId.delete(id);
+    if (e.tipo === "berry" && !berryAindaEspera(e, agora)) porId.delete(id);
   }
   revisao++;
 }

@@ -12,6 +12,7 @@ import {
   dicaFerramenta,
   entradaPerto,
   plantarOuColher,
+  colherSilvestre,
   checarSaidaSala,
   sairInterior,
   tentarEntrar,
@@ -191,6 +192,10 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
   } else if (acao.id === "pc") executarAlvoHub(alvoHub);
   else if (acao.id === "capsula") executarAlvoLaboratorio(alvoLab);
   else if (acao.id === "placa") lerPlaca(acao.placa);
+  else if (acao.id === "colher") {
+    const msg = colherSilvestre(acao.arbusto);
+    if (msg) mostrar(msg);
+  }
 }
 
 function lerTeclas(corpo) {

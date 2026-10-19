@@ -17,6 +17,7 @@ import { ajustarItem, pokemonNoCampo } from "../pokemon/party.js";
 import { executarNoProp, textoDoAcerto } from "../campo/acoes.js";
 import { tickArvores } from "../campo/cicloArvore.js";
 import { tickGrama } from "../campo/grama.js";
+import { arbustoMaduroPerto, colherArbusto, tickBerries } from "../campo/colherBerry.js";
 import { tickOrdens } from "../campo/ordem.js";
 import { yawCamera } from "../render/3d/camera3d.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
@@ -312,6 +313,7 @@ export function tickCampo(dt) {
   for (let i = 0; i < estado.plots.length; i++) simularPlot(estado.plots[i], agora);
   tickArvores(dt, agora);
   tickGrama(dt, agora);
+  tickBerries(agora);
   if (!estado.ganhoAberto) tickOrdens(dt);
 }
 
@@ -366,6 +368,16 @@ function usarRegador(alvo) {
   return "Regou.";
 }
 
+export function colherSilvestre(prop) {
+  const ganho = colherArbusto(prop);
+  if (!ganho?.key) return "";
+  darItem(TIPO_ITEM.BERRY, ganho.key, ganho.n);
+  marcarQuest("berry");
+  sfx("colher");
+  const nome = nomeDe(TIPO_ITEM.BERRY, ganho.key);
+  return ganho.n > 1 ? `Colheu ${ganho.n} ${nome}.` : `Colheu ${nome}.`;
+}
+
 export function plantarOuColher(alvo, item) {
   const plot = plotEm(alvo.x, alvo.y);
   if (!plot) return "";
@@ -416,6 +428,11 @@ function usarConsumivel(item) {
 /** Clique esquerdo usa o que está selecionado na hotbar. */
 export function usarNoClique(corpo, celula, alvoBloco) {
   const item = hotbarAtivo();
+  const ocupaClique = item && (item.tipo === TIPO_ITEM.BLOCO || item.tipo === TIPO_ITEM.FERRAMENTA);
+  if (!ocupaClique && celula && !plotEm(celula.x, celula.y)) {
+    const arbusto = arbustoMaduroPerto(celula.x + 0.5, celula.y + 0.5, corpo?.z || 0);
+    if (arbusto) return colherSilvestre(arbusto);
+  }
   if (!item || !celula) return "";
   if (contar(item.tipo, item.key) <= 0) return "Você não tem esse item.";
   if (item.tipo === TIPO_ITEM.BLOCO) {
