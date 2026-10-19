@@ -37,6 +37,7 @@ for (let i = 0; i < 6; i++) {
 
 let nPecas = 0;
 let versao = 0;
+let semente = 0;
 
 const batida = { x: 0, y: 0 };
 
@@ -50,27 +51,106 @@ function catalogo(tipo) {
   return null;
 }
 
+function aleatorio(s) {
+  let a = s | 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function cabe(x, y, r, n) {
+  if (x * x + y * y > 8.4 * 8.4) return false;
+  const casa = x < 0 ? -5.2 : 5.2;
+  if (Math.hypot(x - casa, y) < r + 1.05) return false;
+  for (let i = 0; i < n; i++) {
+    const outra = pecas[i];
+    if (Math.hypot(x - outra.x, y - outra.y) < r + outra.r + 0.4) return false;
+  }
+  return true;
+}
+
+function plantar(peca, visual, x, y, tipo, lado) {
+  peca.x = x;
+  peca.y = y;
+  peca.r = visual.r;
+  peca.url = visual.url;
+  peca.tipo = tipo;
+  peca.lado = lado;
+}
+
+function espalhar(lado, lista, rng) {
+  const sinal = lado === "esquerda" ? -1 : 1;
+  const ordem = [0, 1, 2];
+  for (let i = ordem.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = ordem[i];
+    ordem[i] = ordem[j];
+    ordem[j] = tmp;
+  }
+  for (let i = 0; i < ordem.length; i++) {
+    const visual = lista[ordem[i]];
+    let x = sinal * 2.4;
+    let y = (i - 1) * 1.8;
+    let achou = false;
+    for (let t = 0; t < 40; t++) {
+      const along = 1.35 + rng() * 2.75;
+      const ladoY = (rng() * 2 - 1) * 3.8;
+      if (!cabe(sinal * along, ladoY, visual.r, nPecas)) continue;
+      x = sinal * along;
+      y = ladoY;
+      achou = true;
+      break;
+    }
+    if (!achou) {
+      for (let along = 1.4; along <= 4.05 && !achou; along += 0.32) {
+        for (let ladoY = -3.6; ladoY <= 3.6; ladoY += 0.32) {
+          if (!cabe(sinal * along, ladoY, visual.r, nPecas)) continue;
+          x = sinal * along;
+          y = ladoY;
+          achou = true;
+          break;
+        }
+      }
+    }
+    plantar(pecas[nPecas], visual, x, y, METADE[lado], lado);
+    nPecas += 1;
+  }
+}
+
 function remontar() {
   nPecas = 0;
+  const rng = semente === 0 ? null : aleatorio(semente);
   for (let s = 0; s < LADOS.length; s++) {
     const lado = LADOS[s];
     const lista = catalogo(METADE[lado]);
     if (!lista) continue;
-    const sinal = lado === "esquerda" ? -1 : 1;
-    for (let i = 0; i < MOLDE.length; i++) {
-      const molde = MOLDE[i];
-      const visual = lista[molde.indice];
-      const peca = pecas[nPecas];
-      peca.x = sinal * molde.along;
-      peca.y = molde.ladoY;
-      peca.r = visual.r;
-      peca.url = visual.url;
-      peca.tipo = METADE[lado];
-      peca.lado = lado;
-      nPecas += 1;
+    if (!rng) {
+      const sinal = lado === "esquerda" ? -1 : 1;
+      for (let i = 0; i < MOLDE.length; i++) {
+        const molde = MOLDE[i];
+        plantar(pecas[nPecas], lista[molde.indice], sinal * molde.along, molde.ladoY, METADE[lado], lado);
+        nPecas += 1;
+      }
+      continue;
     }
+    espalhar(lado, lista, rng);
   }
   versao += 1;
+}
+
+export function definirSemente(n) {
+  const s = Number.isFinite(n) ? n | 0 : 0;
+  if (s === semente) return versao;
+  semente = s;
+  remontar();
+  return versao;
+}
+
+export function sementeCobertura() {
+  return semente;
 }
 
 export function definirMetade(lado, tipo) {
@@ -193,6 +273,7 @@ export function cenarioIndice(i) {
 }
 
 export function cenarioAleatorio(rng) {
+  definirSemente(1 + Math.floor(rng() * 0x7ffffffe));
   return cenarioIndice(Math.floor(rng() * CENARIOS.length));
 }
 

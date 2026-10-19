@@ -1037,6 +1037,30 @@ function terraSeca(wx, wy) {
   return colunaAgua(wx, wy).superficie <= 0;
 }
 
+/** Sem normal o MeshStandard fica preto. As duas faces olham para cima. */
+function orientarEspuma(geo) {
+  const pos = geo.attributes.position;
+  const idx = geo.getIndex();
+  const arr = idx.array;
+  for (let i = 0; i < arr.length; i += 3) {
+    const ia = arr[i];
+    const ib = arr[i + 1];
+    const ic = arr[i + 2];
+    const ax = pos.getX(ib) - pos.getX(ia);
+    const az = pos.getZ(ib) - pos.getZ(ia);
+    const bx = pos.getX(ic) - pos.getX(ia);
+    const bz = pos.getZ(ic) - pos.getZ(ia);
+    if (az * bx - ax * bz < 0) {
+      arr[i + 1] = ic;
+      arr[i + 2] = ib;
+    }
+  }
+  const nor = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) nor[i * 3 + 1] = 1;
+  geo.setAttribute("normal", new THREE.BufferAttribute(nor, 3));
+  return geo;
+}
+
 /** Retângulo no XZ. v é a costa: 1 na terra, 0 na água. */
 function quadEspuma(x0, z0, x1, z1, y, v00, v10, v11, v01) {
   const geo = new THREE.BufferGeometry();
@@ -1068,7 +1092,7 @@ function quadEspuma(x0, z0, x1, z1, y, v00, v10, v11, v01) {
     ]), 3),
   );
   geo.setIndex([0, 2, 1, 0, 3, 2]);
-  return geo;
+  return orientarEspuma(geo);
 }
 
 /** Triângulo da quina. O vértice da terra fica com costa 1. */
@@ -1095,7 +1119,7 @@ function triEspuma(ax, az, bx, bz, cx, cz, y, va, vb, vc) {
     ]), 3),
   );
   geo.setIndex([0, 1, 2]);
-  return geo;
+  return orientarEspuma(geo);
 }
 
 /**

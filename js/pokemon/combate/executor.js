@@ -7,7 +7,8 @@ import { soltarProjetil } from "./projeteis.js";
 import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
 import { folhaGolpe } from "./folhasGolpe.js";
 import { marcarPose } from "../sprites.js";
-import { cortaVisada } from "../../combate/arenas.js";
+import { bloqueioNoTrecho, cortaVisada } from "../../combate/arenas.js";
+import { RAIO_PROJETIL } from "../ia/constantes.js";
 import { tocarGrito } from "../../jogo/som/gritos.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
@@ -164,6 +165,17 @@ function gastar(ator, slot, agora) {
   slot.usadoEm = agora;
 }
 
+function miraDoTiro(ator, alvo) {
+  if (Number.isFinite(ator.miraX) && Number.isFinite(ator.miraY)) return { x: ator.miraX, y: ator.miraY };
+  return { x: alvo.x, y: alvo.y };
+}
+
+function tiroLimpo(ator, alvo) {
+  if (!alvo) return true;
+  const mira = miraDoTiro(ator, alvo);
+  return !bloqueioNoTrecho(ator.x, ator.y, mira.x, mira.y, RAIO_PROJETIL);
+}
+
 function escolher(ator, alvo, d) {
   const prontos = [];
   for (let i = 0; i < ator.golpes.length; i++) {
@@ -174,13 +186,14 @@ function escolher(ator, alvo, d) {
   const corpo = usaCorpo(ator);
   const distancia = usaDistancia(ator);
   const noPlano = !alvo || cruzaAltura(ator, alvo);
+  const linhaLivre = tiroLimpo(ator, alvo);
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
     if (corpo && noPlano && g.def.forma === "contact" && d <= Math.max(0.8, g.def.alcance || 1)) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (distancia && (g.def.forma === "projectile" || g.def.forma === "arc") && d <= g.def.alcance) return g;
+    if (distancia && linhaLivre && (g.def.forma === "projectile" || g.def.forma === "arc") && d <= g.def.alcance) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];

@@ -4,7 +4,7 @@ import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
 import { desenharArena, ligarArena, projetarArena } from "./arena3d.js";
-import { definirMetade } from "./arenas.js";
+import { definirMetade, definirSemente } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
 import { atoresArena, definirUso, estadoLuta, iniciarLuta, logArena, montarLados, tickLuta } from "./luta.js";
 
@@ -688,6 +688,12 @@ function ligarMetades() {
     const el = document.getElementById(`metade-${lado}`);
     el.addEventListener("change", () => definirMetade(lado, el.value));
   }
+  const semente = document.getElementById("semente-cobertura");
+  semente.addEventListener("change", () => {
+    const n = Math.max(0, Math.floor(Number(semente.value) || 0));
+    semente.value = String(n);
+    definirSemente(n);
+  });
 }
 
 function ligarTempo() {

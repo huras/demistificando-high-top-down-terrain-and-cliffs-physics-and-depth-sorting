@@ -92,12 +92,21 @@ button, input, select {
   white-space: nowrap;
 }
 
-.topo__metade select {
+.topo__metade select,
+.topo__metade input {
   border: 1px solid var(--borda);
   background: #243028;
   border-radius: 6px;
   padding: 6px 8px;
+  color: inherit;
+}
+
+.topo__metade select {
   cursor: pointer;
+}
+
+.topo__metade input {
+  width: 5.5rem;
 }
 
 .miolo {

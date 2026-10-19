@@ -255,24 +255,26 @@ float f1 = sin((shore + d1) * 6.2831853 - uTempo * 2.4);
 float f2 = sin((shore + d2) * 6.2831853 + uTempo * 2.1 + 2.0);
 f1 *= f1;
 f2 *= f2 * 0.7;
-float miolo = smoothstep(0.04, 0.42, costa);
-float espuma = max(max(f1, f2) * shore, miolo);
-diffuseColor = vec4(vec3(0.93, 0.98, 1.0), espuma);
+float miolo = smoothstep(0.62, 0.94, costa);
+float ondas = max(f1, f2) * shore;
+float espuma = max(ondas, miolo * 0.85);
+diffuseColor = vec4(vec3(1.0), espuma);
 `;
 
 function materialEspuma() {
-  const mat = new THREE.MeshBasicMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     vertexColors: true,
     transparent: true,
+    roughness: 0.86,
+    metalness: 0.02,
     depthWrite: false,
     side: THREE.DoubleSide,
-    toneMapped: false,
     polygonOffset: true,
     polygonOffsetFactor: -4,
     polygonOffsetUnits: -4,
   });
-  mat.customProgramCacheKey = () => "agua-espuma-margem";
+  mat.customProgramCacheKey = () => "agua-espuma-margem-branca";
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uTempo = { value: 0 };
     shader.vertexShader = shader.vertexShader
@@ -293,10 +295,16 @@ function materialEspuma() {
         "#include <common>",
         `#include <common>\nvarying float vEspumaCosta;\nvarying vec2 vMundoEspuma;\nuniform float uTempo;\n${ESPUMA_FUNCS}`,
       )
-      .replace("#include <color_fragment>", `#include <color_fragment>\n${ESPUMA_FRAG}`);
+      .replace("#include <color_fragment>", `#include <color_fragment>\n${ESPUMA_FRAG}`)
+      .replace(
+        "#include <opaque_fragment>",
+        `float picoEspuma = max(outgoingLight.r, max(outgoingLight.g, outgoingLight.b));
+outgoingLight = vec3(0.93, 0.98, 1.0) * picoEspuma;
+#include <opaque_fragment>`,
+      );
     mat.userData.shader = shader;
   };
-  return mat;
+  return aplicarSombraNuvem(mat);
 }
 
 const matEspuma = materialEspuma();
