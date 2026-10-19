@@ -286,7 +286,7 @@ function texturaSprite(url) {
 }
 
 function geometriaMetade(thetaStart, repetir) {
-  const geo = new THREE.CircleGeometry(10.4, 40, thetaStart, Math.PI);
+  const geo = new THREE.CircleGeometry(14.7, 48, thetaStart, Math.PI);
   if (repetir) {
     const pos = geo.attributes.position;
     const uv = geo.attributes.uv;

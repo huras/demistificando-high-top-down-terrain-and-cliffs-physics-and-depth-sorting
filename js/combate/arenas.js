@@ -41,7 +41,7 @@ const GRAMAS = [
 
 const N_GRAMA = 20;
 const TOQUE_GRAMA = 0.32;
-const RAIO_GRAMA = 9.55;
+const RAIO_GRAMA = 13.5;
 
 const pecas = [];
 for (let i = 0; i < 6; i++) {
@@ -113,7 +113,7 @@ function espalhar(lado, lista, rng) {
   }
   for (let i = 0; i < ordem.length; i++) {
     const visual = lista[ordem[i]];
-    const raioMax = 9.35 - visual.r;
+    const raioMax = 13.2 - visual.r;
     const raioMin = visual.r + 0.55;
     let x = sinal * 2.4;
     let y = (i - 1) * 1.8;

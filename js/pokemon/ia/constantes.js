@@ -1,6 +1,6 @@
 /** Números da arena e da rede. A luta, o projétil e o treino leem daqui. */
 
-export const RAIO_ARENA = 9.2;
+export const RAIO_ARENA = 13;
 export const FOLGA_PARADA = 0.18;
 /** Rolamento: preparação, janela que desvia tiro, recuperação. Corpo a corpo não desvia. */
 export const ESQUIVA_PREP = 0.09;
