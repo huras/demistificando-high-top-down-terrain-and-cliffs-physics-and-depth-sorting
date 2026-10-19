@@ -119,6 +119,8 @@ export function criarAtor(opts) {
     cdBasico: 0,
     furia: false,
     estagioAtk: 0,
+    estagioPrecisao: 0,
+    estagioEvasao: 0,
     shiny: !!opts.shiny,
     faccao: opts.faccao,
     x: opts.x,

@@ -14,6 +14,7 @@ import { RAIO_POKEMON } from "../config.js";
 import { integrarComando } from "../pokemon/ia/habilidades.js";
 import { deslizarNoAr, integrarPulo, lembrarEmbalo, quererPulo } from "../pokemon/combate/pulo.js";
 import { iaRedeLigada, pensar, reagirEsquiva } from "../pokemon/ia/seletor.js";
+import { encerrarTurnos, modoTurnos, prepararTurnos, tickTurnos } from "./turnos.js";
 
 export { definirIaRede } from "../pokemon/ia/seletor.js";
 
@@ -108,6 +109,7 @@ function anotar(item) {
     return;
   }
   if (item.tipo === "queda") registrar({ tipo: "queda", ...sujeito(item.alvo) });
+  if (item.tipo === "carregar") registrar({ tipo: "carregar", ...sujeito(item.ator) });
 }
 
 const efeitos = {
@@ -327,6 +329,7 @@ function aoTiro(p, alvo) {
 }
 
 function encerrar() {
+  encerrarTurnos();
   cancelarConjuracao(esquerda);
   cancelarConjuracao(direita);
   lutando = false;
@@ -387,6 +390,7 @@ export function iniciarLuta() {
   lutando = true;
   esquerda.alvo = direita;
   direita.alvo = esquerda;
+  prepararTurnos(esquerda, direita);
   publicar();
   return true;
 }
@@ -398,20 +402,24 @@ export function tickLuta(dt) {
   agora += passo;
 
   if (lutando) {
-    const ax = esquerda.x;
-    const ay = esquerda.y;
-    const bx = direita.x;
-    const by = direita.y;
-    if (iaRedeLigada()) {
-      integrarComando(esquerda, direita, passo);
-      integrarComando(direita, esquerda, passo);
+    if (modoTurnos()) {
+      tickTurnos(passo, agora, efeitos);
     } else {
-      esquerda.miraX = NaN;
-      esquerda.miraY = NaN;
-      direita.miraX = NaN;
-      direita.miraY = NaN;
-      avancar(esquerda, bx, by, passo);
-      avancar(direita, ax, ay, passo);
+      const ax = esquerda.x;
+      const ay = esquerda.y;
+      const bx = direita.x;
+      const by = direita.y;
+      if (iaRedeLigada()) {
+        integrarComando(esquerda, direita, passo);
+        integrarComando(direita, esquerda, passo);
+      } else {
+        esquerda.miraX = NaN;
+        esquerda.miraY = NaN;
+        direita.miraX = NaN;
+        direita.miraY = NaN;
+        avancar(esquerda, bx, by, passo);
+        avancar(direita, ax, ay, passo);
+      }
     }
     esquerda.alvo = direita;
     direita.alvo = esquerda;
@@ -432,22 +440,27 @@ export function tickLuta(dt) {
     montarGrade(par);
     esquerda.recuoNoTick = esquerda.recuoRestante || 0;
     direita.recuoNoTick = direita.recuoRestante || 0;
-    const tiros = projeteisVivos();
-    if (iaRedeLigada()) {
-      pensar(esquerda, direita, passo, tiros);
-      pensar(direita, esquerda, passo, tiros);
-    } else {
-      reagirPar(esquerda, direita);
+    if (!modoTurnos()) {
+      const tiros = projeteisVivos();
+      if (iaRedeLigada()) {
+        pensar(esquerda, direita, passo, tiros);
+        pensar(direita, esquerda, passo, tiros);
+      } else {
+        reagirPar(esquerda, direita);
+      }
     }
     tickConjuracao(esquerda, passo, agora, efeitos);
     tickConjuracao(direita, passo, agora, efeitos);
-    tentarGolpe(esquerda, agora, efeitos);
-    tentarGolpe(direita, agora, efeitos);
-    if (iaRedeLigada()) {
-      reagirEsquiva(esquerda, direita, tiros);
-      reagirEsquiva(direita, esquerda, tiros);
-    } else {
-      reagirPar(esquerda, direita);
+    if (!modoTurnos()) {
+      tentarGolpe(esquerda, agora, efeitos);
+      tentarGolpe(direita, agora, efeitos);
+      const tiros = projeteisVivos();
+      if (iaRedeLigada()) {
+        reagirEsquiva(esquerda, direita, tiros);
+        reagirEsquiva(direita, esquerda, tiros);
+      } else {
+        reagirPar(esquerda, direita);
+      }
     }
   }
   integrarPulo(esquerda, passo);

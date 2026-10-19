@@ -71,6 +71,57 @@ function inimigo(a, b) {
   return true;
 }
 
+function resultadoTravado(atacante, alvo) {
+  const r = atacante?.resultadoTurno;
+  if (!r || (r.alvo && r.alvo !== alvo)) return null;
+  return r;
+}
+
+function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
+  if (!alvo || alvo.morto || alvo.capturado) return;
+  if (!inimigo(atacante, alvo)) return;
+  travado.gasto = true;
+  if (travado.imune) {
+    efeitos.flutuar(alvo, "imune", "#94a3b8");
+    alvo.iframe = 0.2;
+    notar(efeitos, { tipo: "imune", alvo });
+    return;
+  }
+  if (!travado.acertou) {
+    efeitos.flutuar(alvo, "errou", "#cbd5e1");
+    notar(efeitos, { tipo: "erro", ator: atacante, alvo });
+    return;
+  }
+  const dano = travado.dano | 0;
+  const efet = travado.efet || 1;
+  alvo.hp -= dano;
+  alvo.iframe = 0.15;
+  alvo.iframeRajada = 0;
+  if (alvo.hp > 0) subirFuria(alvo, efeitos);
+  marcarPose(alvo, "Hurt", agora);
+  const recuo = iniciarRecuo(alvo, atacante, dano, agora);
+  efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
+  if (efeitos.aoImpacto) efeitos.aoImpacto(alvo, "", efet);
+  notar(efeitos, {
+    tipo: "dano",
+    alvo,
+    dano,
+    efet,
+    recuo: recuo.tempo,
+    dist: recuo.dist,
+  });
+  if (alvo.faccao === "selvagem") {
+    alvo.pendenteAtacante = atacante;
+    if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
+  }
+  if (alvo.hp > 0) return;
+  alvo.hp = 0;
+  alvo.morto = true;
+  atorMorreu(alvo, agora);
+  efeitos.aoDerrotar(alvo, atacante);
+  notar(efeitos, { tipo: "queda", alvo });
+}
+
 function errouGolpe(acerto) {
   if (acerto == null) return false;
   const p = Number(acerto);
@@ -80,6 +131,11 @@ function errouGolpe(acerto) {
 }
 
 function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma, rajada) {
+  const travado = resultadoTravado(atacante, alvo);
+  if (travado) {
+    if (!travado.gasto) aplicarTravado(atacante, alvo, agora, efeitos, travado);
+    return;
+  }
   const mesmaRajada = rajada && alvo?.iframeRajada === rajada;
   if (!alvo || alvo.morto || alvo.capturado || (alvo.iframe > 0 && !mesmaRajada) || alvo.invulneravel) return;
   if (!inimigo(atacante, alvo)) return;
@@ -324,6 +380,10 @@ function soltarTiro(ator, slot, ang, extra) {
   const dirX = Math.cos(ang);
   const dirY = Math.sin(ang);
   const vel = extra.vel || def.vel || 14;
+  const travado = ator.resultadoTurno;
+  const longe = travado?.alvo
+    ? Math.hypot(travado.alvo.x - ator.x, travado.alvo.y - ator.y) + 1.5
+    : 0;
   soltarProjetil({
     x: ator.x + dirX * 0.4,
     y: ator.y + dirY * 0.4,
@@ -338,7 +398,8 @@ function soltarTiro(ator, slot, ang, extra) {
     acerto: def.acerto,
     forma: def.forma,
     raio: extra.raio || def.raio,
-    max: def.alcance || 12,
+    max: Math.max(def.alcance || 12, longe),
+    garantirAlvo: travado?.alvo || null,
     arco: !!extra.arco,
     rajada: extra.rajada || 0,
     giro: extra.giro || 0,
@@ -456,6 +517,13 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
   notar(efeitos, { tipo: "golpe", ator, def });
 
   if (def.poder <= 0) {
+    const travado = resultadoTravado(ator, alvo);
+    if (travado && (!travado.acertou || travado.imune)) {
+      if (!travado.gasto) aplicarTravado(ator, alvo, agora, efeitos, travado);
+      abrirRecuperacao(ator, slot);
+      return;
+    }
+    if (travado) travado.gasto = true;
     if (CURA.test(def.key || "")) {
       const antes = ator.hp;
       ator.hp = Math.min(ator.hpMax, ator.hp + Math.ceil(ator.hpMax * 0.22));
@@ -494,13 +562,17 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
     for (let i = 0; i < perto.length; i++) {
       aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
     }
+    if (ator.resultadoTurno && !ator.resultadoTurno.gasto && alvo) {
+      aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
+    }
     abrirRecuperacao(ator, slot);
     return;
   }
 
   const alcance = alcanceCorpo(def);
   const d = alvo ? dist(ator, alvo) : Infinity;
-  if (alvo && d <= alcance) {
+  const travado = ator.resultadoTurno && !ator.resultadoTurno.gasto;
+  if (alvo && (d <= alcance || travado)) {
     avancarNoGolpe(ator, alvo);
     ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
     aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, acertoCorpo(def.acerto, d, alcance), def.forma);
@@ -569,6 +641,30 @@ function executar(ator, slot, alvo, agora, efeitos) {
   tocarGrito(ator, { x: ator.x, y: ator.y, importante: true });
   const mira = miraDoGolpe(ator, slot, alvo);
   comecarPreparacao(ator, slot, mira.mx, mira.my, agora, efeitos);
+}
+
+function soltarImediato(ator, slot, alvo, agora, efeitos) {
+  tocarGrito(ator, { x: ator.x, y: ator.y, importante: true });
+  const mira = miraDoGolpe(ator, slot, alvo);
+  ator.conjuroMx = mira.mx;
+  ator.conjuroMy = mira.my;
+  ator.golpeRecDur = 0.16;
+  apontar(ator, mira.mx, mira.my);
+  const distancia = slot.def.forma === "projectile" || slot.def.forma === "arc";
+  marcarPose(ator, distancia ? "Shoot" : "Attack", agora);
+  ator.golpePose = ator.pose;
+  ator.poseAte = agora + 0.4;
+  if (efeitos?.flutuar) efeitos.flutuar(ator, slot.def.nome, COR_TIPO[slot.def.tipo] || "#e2e8f0");
+  soltarGolpe(ator, slot, alvo, agora, efeitos);
+}
+
+export function dispararGolpeTurno(ator, slot, agora, efeitos) {
+  if (!ator || !slot) return false;
+  if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0) return false;
+  const alvo = ator.alvo;
+  if (!alvo || alvo.morto) return false;
+  soltarImediato(ator, slot, alvo, agora, efeitos);
+  return true;
 }
 
 export function tentarGolpe(ator, agora, efeitos) {

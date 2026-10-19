@@ -73,7 +73,8 @@ button, input, select {
 }
 
 .tempo,
-.nivel-ia {
+.nivel-ia,
+.modo-luta {
   display: flex;
   flex-shrink: 0;
   gap: 4px;
@@ -81,6 +82,7 @@ button, input, select {
 
 .tempo button,
 .nivel-ia button,
+.modo-luta button,
 .coluna button,
 .lado__controles select {
   border: 1px solid var(--borda);
@@ -91,9 +93,15 @@ button, input, select {
 }
 
 .tempo button.ativo,
-.nivel-ia button.ativo {
+.nivel-ia button.ativo,
+.modo-luta button.ativo {
   border-color: var(--destaque);
   color: var(--destaque);
+}
+
+.modo-luta button:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .topo__metade {
@@ -495,6 +503,65 @@ button, input, select {
   cursor: default;
 }
 
+.turno {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(440px, calc(100% - 28px));
+  transform: translateX(-50%);
+  padding: 12px;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: rgb(16 22 18 / 92%);
+}
+
+.turno[hidden] {
+  display: none !important;
+}
+
+.turno__titulo {
+  margin: 0;
+  color: var(--suave);
+  font-size: 0.82rem;
+}
+
+.turno__golpes {
+  display: flex;
+  gap: 8px;
+}
+
+.turno__golpes button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: #243028;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.turno__golpes button:hover {
+  border-color: var(--destaque);
+}
+
+.turno__nome {
+  font-weight: 750;
+}
+
+.turno__meta {
+  color: var(--suave);
+  font-size: 0.78rem;
+}
+
 .log {
   position: absolute;
   left: 12px;
@@ -606,6 +673,10 @@ button, input, select {
 
 .log__erro {
   color: #cbd5e1;
+}
+
+.log__carregar {
+  color: #93c5fd;
 }
 
 .log__dodge {

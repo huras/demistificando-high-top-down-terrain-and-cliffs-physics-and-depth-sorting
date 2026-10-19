@@ -54,6 +54,7 @@ export function soltarProjetil(opts) {
     escala: opts.escala || 0,
     folha: opts.folha || "",
     rastroEspaco: opts.rastroEspaco || 0,
+    garantirAlvo: opts.garantirAlvo || null,
   });
   const ultimo = vivos[vivos.length - 1];
   const vel = Math.hypot(ultimo.vx, ultimo.vy) || 1;
@@ -129,7 +130,7 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
       p.escala = (p.escala0 || 0.2) * (1 + (p.cresce - 1) * u);
     }
     const cobertura = bloqueioNoTrecho(p.antX, p.antY, p.x, p.y, p.raio || RAIO_PROJETIL);
-    if (cobertura) {
+    if (cobertura && !p.garantirAlvo) {
       p.x = cobertura.x;
       p.y = cobertura.y;
       rajada(p.x, p.y, p.z, p.tipo, 4, 0.55);
@@ -154,8 +155,13 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
       bateu = true;
       break;
     }
+    const acabou = p.viajou >= p.max || p.z < -2;
+    if (!bateu && acabou && p.garantirAlvo && !p.garantirAlvo.morto) {
+      aoAtingir(p, p.garantirAlvo);
+      bateu = true;
+    }
     if (bateu) nascerImpacto(p);
-    if (bateu || p.viajou >= p.max || p.z < -2) vivos.splice(i, 1);
+    if (bateu || acabou) vivos.splice(i, 1);
   }
   atualizarImpactos(dt);
 }

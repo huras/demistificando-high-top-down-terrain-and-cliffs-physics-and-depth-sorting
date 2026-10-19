@@ -20,6 +20,10 @@
     <h1>Arena de combate</h1>
     <p class="topo__nota" id="status">Carregando catálogo…</p>
     <div class="topo__acoes">
+    <div class="modo-luta" role="group" aria-label="Modo de luta">
+      <button type="button" data-modo="real" class="ativo">Combate real</button>
+      <button type="button" data-modo="turnos">Combate em turnos</button>
+    </div>
     <div class="tempo" role="group" aria-label="Velocidade">
       <button type="button" data-tempo="0.5">0,5×</button>
       <button type="button" data-tempo="1" class="ativo">1×</button>
@@ -81,6 +85,10 @@
         <summary>Log <span class="log__n" id="log-n">0</span></summary>
         <ol id="log-lista"></ol>
       </details>
+      <div class="turno" id="turno" hidden>
+        <p class="turno__titulo" id="turno-titulo">Seu turno</p>
+        <div class="turno__golpes" id="turno-golpes"></div>
+      </div>
       <div class="luta">
         <button type="button" id="lutar" disabled>Lutar</button>
       </div>

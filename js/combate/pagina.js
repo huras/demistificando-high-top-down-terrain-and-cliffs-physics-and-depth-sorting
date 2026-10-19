@@ -3,10 +3,11 @@ import { carregarDados, especie, golpe, listarEspecies } from "../pokemon/dados.
 import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
-import { desenharArena, ligarArena, projetarArena } from "./arena3d.js";
+import { definirOmbro, desenharArena, ligarArena, projetarArena } from "./arena3d.js";
 import { definirMetade, definirSemente } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
 import { atoresArena, definirUso, estadoLuta, iniciarLuta, logArena, montarLados, tickLuta } from "./luta.js";
+import { avisoTurno, definirModoLuta, escolherGolpeTurno, enquadramentoTurno, pedidoEscolha } from "./turnos.js";
 
 const TIPO = {
   normal: "normal",
@@ -557,6 +558,8 @@ function atualizarBotao() {
   if (e.lutando) botao.textContent = "Lutando";
   else if (e.acabou) botao.textContent = "De novo";
   else botao.textContent = "Lutar";
+  const modos = document.querySelectorAll(".modo-luta button");
+  for (let i = 0; i < modos.length; i++) modos[i].disabled = e.lutando;
 }
 
 function entradaDe(lado, especieLado) {
@@ -648,6 +651,8 @@ function pintarLog() {
       li.append(pedaco("log__ataque", ` ataque +${linha.estagio}`));
     } else if (linha.tipo === "queda") {
       li.append(pedaco("log__queda", " caiu"));
+    } else if (linha.tipo === "carregar") {
+      li.append(pedaco("log__carregar", " carregando"));
     }
     logLista.appendChild(li);
   }
@@ -657,14 +662,18 @@ function pintarLog() {
 function quadro(t) {
   const bruto = ultimo ? (t - ultimo) / 1000 : 0;
   ultimo = t;
-  let resto = Math.min(0.1, bruto * tempo);
+  const pedido = pedidoEscolha();
+  let resto = pedido ? 0 : Math.min(0.1, bruto * tempo);
   if (!Number.isFinite(resto) || resto < 0) resto = 0;
   while (resto > 1e-4) {
+    if (pedidoEscolha()) break;
     const passo = Math.min(0.05, resto);
     tickLuta(passo);
     resto -= passo;
   }
+  definirOmbro(enquadramentoTurno(), bruto);
   desenharArena(atoresArena());
+  pintarTurno(pedidoEscolha(), avisoTurno());
   pintarLog();
   pintarVida("esquerda");
   pintarVida("direita");
@@ -717,6 +726,76 @@ function ligarNivel() {
   definirNivelIa("dificil");
 }
 
+let versaoMenu = -1;
+
+function textoAcerto(acerto) {
+  const n = Number(acerto);
+  if (!Number.isFinite(n) || n > 100) return "sempre";
+  return `${n}%`;
+}
+
+function pintarTurno(pedido, aviso) {
+  const painel = document.getElementById("turno");
+  if (aviso) {
+    painel.hidden = false;
+    if (aviso.versao === versaoMenu && painel.dataset.modo === "carregar") return;
+    versaoMenu = aviso.versao;
+    painel.dataset.modo = "carregar";
+    document.getElementById("turno-titulo").textContent = aviso.titulo;
+    document.getElementById("turno-golpes").replaceChildren();
+    return;
+  }
+  if (!pedido) {
+    painel.hidden = true;
+    painel.dataset.modo = "";
+    versaoMenu = -1;
+    return;
+  }
+  painel.hidden = false;
+  if (pedido.versao === versaoMenu && painel.dataset.modo === "escolha") return;
+  versaoMenu = pedido.versao;
+  painel.dataset.modo = "escolha";
+  document.getElementById("turno-titulo").textContent = `Seu turno · PP ${Math.ceil(pedido.pp)}`;
+  const caixa = document.getElementById("turno-golpes");
+  caixa.replaceChildren();
+  for (let i = 0; i < pedido.golpes.length; i++) {
+    const golpeAtual = pedido.golpes[i];
+    const botaoGolpe = document.createElement("button");
+    botaoGolpe.type = "button";
+    botaoGolpe.dataset.golpe = golpeAtual.chave;
+    const nome = document.createElement("span");
+    nome.className = "turno__nome";
+    nome.textContent = golpeAtual.nome;
+    const meta = document.createElement("span");
+    meta.className = "turno__meta";
+    const forma = FORMA[golpeAtual.forma] || golpeAtual.forma;
+    const tipo = TIPO[golpeAtual.tipo] || golpeAtual.tipo;
+    meta.textContent = `${tipo} · ${forma} · poder ${golpeAtual.poder} · ${textoAcerto(golpeAtual.acerto)} · PP ${golpeAtual.custo}`;
+    botaoGolpe.append(nome, meta);
+    caixa.appendChild(botaoGolpe);
+  }
+}
+
+function ligarTurno() {
+  const caixa = document.getElementById("turno-golpes");
+  caixa.addEventListener("click", (ev) => {
+    const botaoGolpe = ev.target.closest("button");
+    if (!botaoGolpe || !caixa.contains(botaoGolpe)) return;
+    escolherGolpeTurno(botaoGolpe.dataset.golpe);
+  });
+}
+
+function ligarModo() {
+  const botoes = document.querySelectorAll(".modo-luta button");
+  botoes.forEach((el) => {
+    el.addEventListener("click", () => {
+      if (estadoLuta().lutando) return;
+      definirModoLuta(el.dataset.modo);
+      botoes.forEach((b) => b.classList.toggle("ativo", b === el));
+    });
+  });
+}
+
 function prepararDanos() {
   for (let i = 0; i < 16; i++) {
     const el = document.createElement("div");
@@ -739,6 +818,8 @@ async function iniciar() {
   prepararDanos();
   ligarTempo();
   ligarNivel();
+  ligarModo();
+  ligarTurno();
   ligarMetades();
   aplicar();
   botao.disabled = false;

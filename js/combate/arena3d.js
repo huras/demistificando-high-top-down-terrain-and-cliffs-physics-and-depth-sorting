@@ -44,6 +44,13 @@ const ponto = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _direita = new THREE.Vector3();
 const _frente = new THREE.Vector3();
+const ombroPos = new THREE.Vector3();
+const ombroFim = new THREE.Vector3();
+const ombroOlhar = new THREE.Vector3();
+const ombroOlharFim = new THREE.Vector3();
+let ombro = null;
+let ombroDt = 0.016;
+let ombroSegurando = false;
 const _desloc = { x: 0, z: 0 };
 const slots = [];
 const tiros = [];
@@ -416,7 +423,7 @@ function limitarAlvo() {
 }
 
 function enquadrar() {
-  if (!camera || distUsuario) return;
+  if (!camera || distUsuario || ombro) return;
   const aspecto = Math.max(0.35, (largura || 1) / Math.max(1, altura || 1));
   const vfov = (camera.fov * Math.PI) / 180;
   const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspecto);
@@ -522,6 +529,15 @@ function fallback(slot, ator) {
   ancorar(slot);
 }
 
+function yawDaVista() {
+  if (!camera) return az;
+  camera.getWorldDirection(_dir);
+  const dx = _dir.x;
+  const dz = _dir.z;
+  if (dx * dx + dz * dz < 1e-6) return az;
+  return Math.atan2(-dx, -dz);
+}
+
 function pintarAtor(slot, ator) {
   if (!ator) {
     slot.grupo.visible = false;
@@ -536,7 +552,7 @@ function pintarAtor(slot, ator) {
   const visual = ator.visual;
   const dirMundo = visual?.dir;
   if (visual) {
-    const rel = direcao8Camera(ator.dirX || 0, ator.dirY || 0, az);
+    const rel = direcao8Camera(ator.dirX || 0, ator.dirY || 0, yawDaVista());
     if (rel != null) visual.dir = rel;
   }
   const fr = quadroDe(ator, pack);
@@ -654,6 +670,7 @@ function ajustarTamanho() {
 function ligarPonteiro() {
   canvas.addEventListener("contextmenu", (ev) => ev.preventDefault());
   canvas.addEventListener("pointerdown", (ev) => {
+    if (ombro) return;
     if (ev.button !== 0 && ev.button !== 1 && ev.button !== 2) return;
     if (ev.button === 2) ev.preventDefault();
     camera.getWorldDirection(_dir);
@@ -681,7 +698,7 @@ function ligarPonteiro() {
     canvas.classList.add("arrastando");
   });
   canvas.addEventListener("pointermove", (ev) => {
-    if (!arraste) return;
+    if (ombro || !arraste) return;
     const dx = ev.clientX - arraste.x;
     const dy = ev.clientY - arraste.y;
     if (arraste.modo === "orbit") {
@@ -705,6 +722,7 @@ function ligarPonteiro() {
   canvas.addEventListener("pointercancel", soltar);
   canvas.addEventListener("wheel", (ev) => {
     ev.preventDefault();
+    if (ombro) return;
     distUsuario = true;
     const fator = ev.deltaY > 0 ? 1.07 : 0.93;
     dist = Math.max(10, Math.min(48, dist * fator));
@@ -828,10 +846,46 @@ function pintarKi() {
   }
 }
 
+export function definirOmbro(pose, dt) {
+  ombro = pose?.de && pose?.para ? pose : null;
+  ombroDt = Number.isFinite(dt) && dt > 0 ? Math.min(0.05, dt) : 0.016;
+}
+
+function aplicarOmbro() {
+  if (!camera) return;
+  if (!ombro) {
+    if (!ombroSegurando) return;
+    ombroSegurando = false;
+    posicionarCamera();
+    return;
+  }
+  const de = ombro.de;
+  const para = ombro.para;
+  const dx = de.x - para.x;
+  const dz = de.y - para.y;
+  const d = Math.hypot(dx, dz) || 1;
+  const ux = dx / d;
+  const uz = dz / d;
+  ombroFim.set(de.x + ux * 3.3 - uz * 0.85, 2.1, de.y + uz * 3.3 + ux * 0.85);
+  ombroOlharFim.set(para.x, 1.1, para.y);
+  if (!ombroSegurando) {
+    ombroPos.copy(camera.position);
+    ombroOlhar.copy(alvo);
+    ombroSegurando = true;
+  } else {
+    const k = 1 - Math.exp(-7 * ombroDt);
+    ombroPos.lerp(ombroFim, k);
+    ombroOlhar.lerp(ombroOlharFim, k);
+  }
+  camera.position.copy(ombroPos);
+  camera.lookAt(ombroOlhar);
+}
+
 export function desenharArena(atores) {
   if (!renderer) return;
   sincronizarCobertura();
   ajustarTamanho();
+  aplicarOmbro();
   for (let i = 0; i < slots.length; i++) pintarAtor(slots[i], atores?.[i] || null);
   pintarTiros();
   pintarFaiscas();
