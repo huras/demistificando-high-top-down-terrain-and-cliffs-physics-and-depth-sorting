@@ -51,6 +51,7 @@ const ombroOlharFim = new THREE.Vector3();
 let ombro = null;
 let ombroDt = 0.016;
 let ombroSegurando = false;
+let teatroAng = 0;
 const _desloc = { x: 0, z: 0 };
 const slots = [];
 const tiros = [];
@@ -847,8 +848,35 @@ function pintarKi() {
 }
 
 export function definirOmbro(pose, dt) {
-  ombro = pose?.de && pose?.para ? pose : null;
+  const vale = pose && (pose.tipo === "teatro" ? pose.a && pose.b : pose.de && pose.para);
+  ombro = vale ? pose : null;
   ombroDt = Number.isFinite(dt) && dt > 0 ? Math.min(0.05, dt) : 0.016;
+}
+
+function destinoOmbro() {
+  if (ombro.tipo === "teatro") {
+    const a = ombro.a;
+    const b = ombro.b;
+    const cx = (a.x + b.x) * 0.5;
+    const cz = (a.y + b.y) * 0.5;
+    const giro = Number.isFinite(ombro.giro) ? ombro.giro : Math.PI * 0.5;
+    teatroAng += ombroDt * giro;
+    ombroFim.set(cx + Math.sin(teatroAng) * 12, 6.2, cz + Math.cos(teatroAng) * 12);
+    ombroOlharFim.set(cx, 1.05, cz);
+    return;
+  }
+  const de = ombro.de;
+  const para = ombro.para;
+  const dx = de.x - para.x;
+  const dz = de.y - para.y;
+  const d = Math.hypot(dx, dz) || 1;
+  const ux = dx / d;
+  const uz = dz / d;
+  const distCam = ombro.perto ? 4.8 : 6.6;
+  const altura = ombro.perto ? 2.9 : 3.6;
+  const lado = ombro.perto ? 1.2 : 1.6;
+  ombroFim.set(de.x + ux * distCam - uz * lado, altura, de.y + uz * distCam + ux * lado);
+  ombroOlharFim.set(para.x, 1.1, para.y);
 }
 
 function aplicarOmbro() {
@@ -859,15 +887,7 @@ function aplicarOmbro() {
     posicionarCamera();
     return;
   }
-  const de = ombro.de;
-  const para = ombro.para;
-  const dx = de.x - para.x;
-  const dz = de.y - para.y;
-  const d = Math.hypot(dx, dz) || 1;
-  const ux = dx / d;
-  const uz = dz / d;
-  ombroFim.set(de.x + ux * 3.3 - uz * 0.85, 2.1, de.y + uz * 3.3 + ux * 0.85);
-  ombroOlharFim.set(para.x, 1.1, para.y);
+  destinoOmbro();
   if (!ombroSegurando) {
     ombroPos.copy(camera.position);
     ombroOlhar.copy(alvo);

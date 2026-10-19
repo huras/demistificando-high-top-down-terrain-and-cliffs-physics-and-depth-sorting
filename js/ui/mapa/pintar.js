@@ -3,7 +3,8 @@
  */
 import { EXTENSAO_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { canvasAtlas, listarTiles } from "./atlas.js";
-import { LADO_TILE, LADO_TILE_MUNDO } from "./grade.js";
+import { BLOCOS_INTIMO, LADO_INTIMO, LADO_TILE, LADO_TILE_MUNDO, ZOOM_INTIMO } from "./grade.js";
+import { listarIntimos } from "./intimo.js";
 import { cidadesDoMapa, layoutDaCidade, marcasExtras, rotasDoMapa } from "./marcas.js";
 
 const ZOOM_NOME_ROTA = 0.36;
@@ -144,6 +145,24 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
         tile.ty * LADO_TILE_MUNDO,
         LADO_TILE_MUNDO,
         LADO_TILE_MUNDO,
+      );
+    }
+  }
+  if (!vista.mini && vista.zoom >= ZOOM_INTIMO) {
+    ctx.imageSmoothingEnabled = false;
+    const intimos = listarIntimos();
+    for (let i = 0; i < intimos.length; i++) {
+      const tile = intimos[i];
+      ctx.drawImage(
+        tile.canvas,
+        0,
+        0,
+        LADO_INTIMO,
+        LADO_INTIMO,
+        tile.ox,
+        tile.oy,
+        BLOCOS_INTIMO,
+        BLOCOS_INTIMO,
       );
     }
   }

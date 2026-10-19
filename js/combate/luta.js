@@ -14,7 +14,7 @@ import { RAIO_POKEMON } from "../config.js";
 import { integrarComando } from "../pokemon/ia/habilidades.js";
 import { deslizarNoAr, integrarPulo, lembrarEmbalo, quererPulo } from "../pokemon/combate/pulo.js";
 import { iaRedeLigada, pensar, reagirEsquiva } from "../pokemon/ia/seletor.js";
-import { emTeatro, encerrarTurnos, modoTurnos, prepararTurnos, tickTurnos } from "./turnos.js";
+import { emCena, emTeatro, encerrarTurnos, modoTurnos, prepararTurnos, tickTurnos } from "./turnos.js";
 
 export { definirIaRede } from "../pokemon/ia/seletor.js";
 
@@ -405,6 +405,12 @@ export function montarLados(esqCfg, dirCfg) {
   return true;
 }
 
+export function limparInterludio() {
+  if (esquerda) cancelarConjuracao(esquerda);
+  if (direita) cancelarConjuracao(direita);
+  limparProjeteis();
+}
+
 export function iniciarLuta() {
   if (lutando || !cfg.esquerda || !cfg.direita) return false;
   if (acabou || !esquerda || !direita || esquerda.morto || direita.morto) {
@@ -432,13 +438,10 @@ export function tickLuta(dt) {
 
   if (lutando) {
     if (modoTurnos()) {
-      const noTeatro = emTeatro();
+      const naCena = emCena();
       tickTurnos(passo, agora, efeitos);
-      if (noTeatro && !emTeatro()) {
-        cancelarConjuracao(esquerda);
-        cancelarConjuracao(direita);
-        limparProjeteis();
-      } else if (emTeatro()) {
+      if (naCena && !emCena()) limparInterludio();
+      else if (emCena()) {
         mexerTeatro(esquerda, direita, passo, 1);
         mexerTeatro(direita, esquerda, passo, -1);
       }
@@ -492,6 +495,8 @@ export function tickLuta(dt) {
     if (emTeatro()) {
       ensaiarGolpe(esquerda, agora, efeitosTeatro);
       ensaiarGolpe(direita, agora, efeitosTeatro);
+      reagirPar(esquerda, direita);
+    } else if (emCena()) {
       reagirPar(esquerda, direita);
     } else if (!modoTurnos()) {
       tentarGolpe(esquerda, agora, efeitos);

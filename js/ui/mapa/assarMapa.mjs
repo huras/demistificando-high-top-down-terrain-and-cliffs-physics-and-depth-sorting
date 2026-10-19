@@ -4,12 +4,15 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { definirDetalhe } from "../../mundo/bioma/detalhe.js";
 import { definirKits } from "../../mundo/bioma/kits.js";
+import { byteNoPonto } from "./amostra.js";
 import {
   GRADE_TILE,
+  LADO_MUNDO,
   LADO_TILE,
   LADO_TILE_MUNDO,
   LADO_VISAO,
@@ -51,6 +54,20 @@ function assar(lado, origemX, origemY, passo, comMote, rotulo) {
 definirKits(lerJson("biomas/kits.json"));
 definirDetalhe(lerJson("biomas/detalhe.json"));
 
+function assarVeg() {
+  const dados = new Uint8Array(LADO_MUNDO * LADO_MUNDO);
+  const t0 = Date.now();
+  for (let y = 0; y < LADO_MUNDO; y++) {
+    const o = y * LADO_MUNDO;
+    for (let x = 0; x < LADO_MUNDO; x++) dados[o + x] = byteNoPonto(x + 0.5, y + 0.5);
+    if ((y & 127) === 127) console.log(`veg ${y + 1}/${LADO_MUNDO}`);
+  }
+  fs.writeFileSync(path.join(pasta, "veg.bin"), zlib.gzipSync(dados));
+  console.log(`veg ${(Date.now() - t0) / 1000}s`);
+}
+
+assarVeg();
+
 const visao = assar(LADO_VISAO, 0, 0, PASSO_VISAO, false, "visao");
 gravar(path.join(pasta, "visao.png"), LADO_VISAO, visao);
 
@@ -79,6 +96,7 @@ fs.writeFileSync(
       ladoTile: LADO_TILE,
       passoTile: PASSO_TILE,
       grade: GRADE_TILE,
+      veg: LADO_MUNDO,
     },
     null,
     2,

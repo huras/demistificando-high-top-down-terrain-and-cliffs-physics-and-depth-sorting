@@ -6,8 +6,8 @@ import { COR_TIPO } from "../pokemon/tipos.js";
 import { definirOmbro, desenharArena, ligarArena, projetarArena } from "./arena3d.js";
 import { definirMetade, definirSemente } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
-import { atoresArena, definirUso, estadoLuta, iniciarLuta, logArena, montarLados, tickLuta } from "./luta.js";
-import { avisoTurno, definirModoLuta, escolherGolpeTurno, enquadramentoTurno, pedidoEscolha } from "./turnos.js";
+import { atoresArena, definirUso, estadoLuta, iniciarLuta, limparInterludio, logArena, montarLados, tickLuta } from "./luta.js";
+import { avisoTurno, concluirFoco, definirModoLuta, emFoco, escolherGolpeTurno, enquadramentoTurno, modoTurnos, pedidoEscolha } from "./turnos.js";
 
 const TIPO = {
   normal: "normal",
@@ -51,6 +51,7 @@ const ui = {
 
 let especies = [];
 let tempo = 1;
+let ritmo = 1;
 let ultimo = 0;
 let lutandoAntes = false;
 
@@ -659,11 +660,41 @@ function pintarLog() {
   logLista.scrollTop = logLista.scrollHeight;
 }
 
+function poseDoQuadro() {
+  const e = estadoLuta();
+  if (e.acabou && e.esquerda && e.direita) {
+    return { tipo: "teatro", a: e.esquerda, b: e.direita, giro: Math.PI * 0.12 };
+  }
+  return enquadramentoTurno();
+}
+
+function andarRitmo(bruto) {
+  if (!modoTurnos() || !estadoLuta().lutando) {
+    ritmo = 1;
+    return;
+  }
+  if (emFoco()) {
+    ritmo = Math.max(0, ritmo - bruto / 0.5);
+    if (ritmo <= 0.02) {
+      ritmo = 0;
+      concluirFoco();
+      limparInterludio();
+    }
+    return;
+  }
+  if (pedidoEscolha()) {
+    ritmo = 0;
+    return;
+  }
+  if (ritmo < 1) ritmo = Math.min(1, ritmo + bruto / 0.4);
+}
+
 function quadro(t) {
   const bruto = ultimo ? (t - ultimo) / 1000 : 0;
   ultimo = t;
+  andarRitmo(bruto);
   const pedido = pedidoEscolha();
-  let resto = pedido ? 0 : Math.min(0.1, bruto * tempo);
+  let resto = pedido ? 0 : Math.min(0.1, bruto * tempo * ritmo);
   if (!Number.isFinite(resto) || resto < 0) resto = 0;
   while (resto > 1e-4) {
     if (pedidoEscolha()) break;
@@ -671,7 +702,7 @@ function quadro(t) {
     tickLuta(passo);
     resto -= passo;
   }
-  definirOmbro(enquadramentoTurno(), bruto);
+  definirOmbro(poseDoQuadro(), bruto);
   desenharArena(atoresArena());
   pintarTurno(pedidoEscolha(), avisoTurno());
   pintarLog();

@@ -4,6 +4,17 @@
  * da grade de relevo, perturbado pelo mesmo fbm.
  */
 import { vegetacaoNoPonto } from "../../mundo/bioma/detalhe.js";
+import {
+  COPA,
+  FORCA_COPA,
+  FORCA_GRAMA,
+  FORCA_MOTE_ARVORE,
+  FORCA_MOTE_GRAMA,
+  GRAMA_CAMPO,
+  MOTE_ARVORE,
+  MOTE_GRAMA,
+  empacotarVeg,
+} from "./coresVeg.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
 import { BIOMA_KANTO } from "../../mundo/regiao/amostraKanto.js";
 import { parBiomaKanto } from "../../mundo/regiao/biomasKanto.js";
@@ -41,10 +52,6 @@ const PASSO = EXTENSAO_KANTO / N;
 
 const AGUA_FUNDO = [20, 62, 102];
 const AGUA_RASO = [58, 142, 184];
-const COPA = [18, 62, 32];
-const GRAMA_LAVA = [198, 214, 120];
-const MOTE_ARVORE = [10, 42, 20];
-const MOTE_GRAMA = [176, 198, 88];
 
 const PALETA = new Map();
 const SAIDA = { h: 0, u: 0, r: 0, g: 0, b: 0 };
@@ -315,40 +322,33 @@ function corDoPar(par, u) {
   ];
 }
 
+function misturar(rgb, cor, t) {
+  return [
+    rgb[0] + (cor[0] - rgb[0]) * t,
+    rgb[1] + (cor[1] - rgb[1]) * t,
+    rgb[2] + (cor[2] - rgb[2]) * t,
+  ];
+}
+
 function aplicarVeg(rgb, bioma, limpo, x, y, comMote) {
   if (limpo) return rgb;
   const kit = obterKit(bioma?.kit);
   const veg = vegetacaoNoPonto(x, y, comMote);
   const podeArvore = !!kit?.arvore?.length;
   const podeGrama = !!kit?.grama?.length;
-  let r = rgb[0];
-  let g = rgb[1];
-  let b = rgb[2];
-  if (podeArvore && veg.arvore > 0.04) {
-    const t = Math.min(0.78, veg.arvore * 0.85);
-    r += (COPA[0] - r) * t;
-    g += (COPA[1] - g) * t;
-    b += (COPA[2] - b) * t;
-  } else if (podeGrama && veg.grama > 0.04) {
-    const t = Math.min(0.5, veg.grama * 0.55);
-    r += (GRAMA_LAVA[0] - r) * t;
-    g += (GRAMA_LAVA[1] - g) * t;
-    b += (GRAMA_LAVA[2] - b) * t;
+  let cor = rgb;
+  if (podeGrama && veg.grama > 0.04) {
+    cor = misturar(cor, GRAMA_CAMPO, Math.min(FORCA_GRAMA, veg.grama * 0.9));
   }
-  if (comMote && veg.mote === 2 && podeArvore) {
-    r += (MOTE_ARVORE[0] - r) * 0.7;
-    g += (MOTE_ARVORE[1] - g) * 0.7;
-    b += (MOTE_ARVORE[2] - b) * 0.7;
-  } else if (comMote && veg.mote === 1 && podeGrama) {
-    r += (MOTE_GRAMA[0] - r) * 0.45;
-    g += (MOTE_GRAMA[1] - g) * 0.45;
-    b += (MOTE_GRAMA[2] - b) * 0.45;
+  if (comMote && veg.mote === 1 && podeGrama) cor = misturar(cor, MOTE_GRAMA, FORCA_MOTE_GRAMA);
+  if (podeArvore && veg.arvore > 0.04 && veg.arvore >= veg.grama) {
+    cor = misturar(cor, COPA, Math.min(FORCA_COPA, veg.arvore * 0.85));
   }
-  return [r, g, b];
+  if (comMote && veg.mote === 2 && podeArvore) cor = misturar(cor, MOTE_ARVORE, FORCA_MOTE_ARVORE);
+  return cor;
 }
 
-/** Preenche `saida` com altura, costa e cor. `comMote` liga o pontilhado do zoom perto. */
-export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
+function lerPonto(wx, wy) {
   prepararMapa();
   const x = Math.max(0, Math.min(EXTENSAO_KANTO - 0.01, wx));
   const y = Math.max(0, Math.min(EXTENSAO_KANTO - 0.01, wy));
@@ -371,11 +371,31 @@ export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
     entrada ||
     perfil.u < 0.72 ||
     bioma.superficie === "pedra";
-  const rgb = aplicarVeg(corDoPar(par, perfil.u), bioma, limpo, x, y, comMote);
-  saida.h = h;
-  saida.u = perfil.u;
+  return { x, y, h, u: perfil.u, par, bioma, limpo };
+}
+
+/** Preenche `saida` com altura, costa e cor. `comMote` liga o pontilhado do zoom perto. */
+export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
+  const ponto = lerPonto(wx, wy);
+  const rgb = aplicarVeg(corDoPar(ponto.par, ponto.u), ponto.bioma, ponto.limpo, ponto.x, ponto.y, comMote);
+  saida.h = ponto.h;
+  saida.u = ponto.u;
   saida.r = rgb[0];
   saida.g = rgb[1];
   saida.b = rgb[2];
   return saida;
+}
+
+/** Um byte por bloco para o zoom íntimo. Rua, prédio e água ficam zerados. */
+export function byteNoPonto(wx, wy) {
+  const ponto = lerPonto(wx, wy);
+  if (ponto.limpo) return 0;
+  const kit = obterKit(ponto.bioma?.kit);
+  const veg = vegetacaoNoPonto(ponto.x, ponto.y, true);
+  const podeArvore = !!kit?.arvore?.length;
+  const podeGrama = !!kit?.grama?.length;
+  let mote = 0;
+  if (podeArvore && veg.mote === 2) mote = 2;
+  else if (podeGrama && veg.mote === 1) mote = 1;
+  return empacotarVeg(podeGrama ? veg.grama : 0, podeArvore ? veg.arvore : 0, mote);
 }

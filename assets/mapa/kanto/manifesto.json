@@ -4,5 +4,6 @@
   "passoVisao": 4,
   "ladoTile": 512,
   "passoTile": 1,
-  "grade": 8
+  "grade": 8,
+  "veg": 4096
 }

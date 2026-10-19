@@ -38,6 +38,7 @@ let esperaCarregar = 0;
 let esperaTeatro = 0;
 let avisouCarregar = false;
 let disparou = false;
+let veioDoTeatro = false;
 
 export function definirModoLuta(proximo) {
   modo = proximo === "turnos" ? "turnos" : "real";
@@ -51,9 +52,26 @@ export function emTeatro() {
   return modo === "turnos" && fase === "teatro";
 }
 
+export function emCena() {
+  return modo === "turnos" && (fase === "teatro" || fase === "foco");
+}
+
+export function emFoco() {
+  return modo === "turnos" && fase === "foco";
+}
+
+export function concluirFoco() {
+  if (fase !== "foco") return;
+  abrirTurno();
+}
+
 export function enquadramentoTurno() {
-  if (modo !== "turnos" || fase === "ocioso" || !ator || !alvo) return null;
-  return { de: ator, para: alvo };
+  if (modo !== "turnos" || fase === "ocioso") return null;
+  if (fase === "teatro" && esquerda && direita) {
+    return { tipo: "teatro", a: esquerda, b: direita };
+  }
+  if (!ator || !alvo) return null;
+  return { de: ator, para: alvo, perto: fase === "foco" || fase === "escolha" };
 }
 
 export function pedidoEscolha() {
@@ -106,6 +124,7 @@ export function encerrarTurnos() {
   slot = null;
   fila = [];
   indice = 0;
+  veioDoTeatro = false;
   if (esquerda) {
     esquerda.resultadoTurno = null;
     esquerda.carregarDepois = false;
@@ -122,7 +141,7 @@ export function avisoTurno() {
 }
 
 export function tickTurnos(dt, agora, efeitos) {
-  if (modo !== "turnos" || fase === "ocioso" || fase === "escolha") return;
+  if (modo !== "turnos" || fase === "ocioso" || fase === "escolha" || fase === "foco") return;
   if (!vivo(esquerda) || !vivo(direita)) return;
   if (fase === "carregar") {
     if (!avisouCarregar) {
@@ -152,6 +171,7 @@ export function tickTurnos(dt, agora, efeitos) {
     esperaTeatro -= dt;
     if (esperaTeatro > 0) return;
     indice += 1;
+    veioDoTeatro = true;
     abrirTurno();
   }
 }
@@ -229,6 +249,7 @@ function abrirTurno() {
     alvo = outro;
     atual.alvo = outro;
     if (atual.carregarDepois) {
+      veioDoTeatro = false;
       atual.carregarDepois = false;
       fase = "carregar";
       esperaCarregar = ESPERA_CARGA;
@@ -242,18 +263,26 @@ function abrirTurno() {
       continue;
     }
     if (atual.faccao === "esquerda") {
+      if (veioDoTeatro) {
+        veioDoTeatro = false;
+        fase = "foco";
+        return;
+      }
       fase = "escolha";
       versaoEscolha += 1;
       return;
     }
+    veioDoTeatro = false;
     armar(escolherIa(atual, outro, golpes));
     return;
   }
   if (!vivo(esquerda) || !vivo(direita)) {
+    veioDoTeatro = false;
     fase = "ocioso";
     return;
   }
   if (!golpesDisponiveis(esquerda).length && !golpesDisponiveis(direita).length) {
+    veioDoTeatro = false;
     fase = "ocioso";
     return;
   }

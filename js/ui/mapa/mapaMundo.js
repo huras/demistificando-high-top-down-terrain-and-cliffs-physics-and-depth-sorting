@@ -6,10 +6,11 @@ import { AREA_KANTO, CENTRO_AREA, EXTENSAO_KANTO, zonaNoMundo } from "../../mund
 import { estado } from "../../jogo/estado.js";
 import { comecarSubida, teleporteOcupado } from "../../jogo/teleporte.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
+import { tickIntimo } from "./intimo.js";
 import { cidadesDoMapa } from "./marcas.js";
 import { pintarMapa } from "./pintar.js";
 
-const ZOOM_MAX = 3.2;
+const ZOOM_MAX = 8;
 
 let raiz = null;
 let tela = null;
@@ -271,6 +272,7 @@ export function tickMapaMundo(px, py, dt = 1 / 60) {
   const meioW = cssW / (2 * zoom);
   const meioH = cssH / (2 * zoom);
   tickTiles(cx, cy, zoom, cx - meioW, cy - meioH, cx + meioW, cy + meioH);
+  tickIntimo(cx, cy, zoom, cx - meioW, cy - meioH, cx + meioW, cy + meioH);
   const ctx = tela.getContext("2d");
   pintarMapa(ctx, tela.width, tela.height, dpr, {
     cx,

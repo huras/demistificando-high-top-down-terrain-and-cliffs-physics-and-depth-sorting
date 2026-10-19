@@ -16,3 +16,10 @@ export const LADO_TILE_MUNDO = LADO_TILE * PASSO_TILE;
 export const GRADE_TILE = EXTENSAO_KANTO / LADO_TILE_MUNDO;
 
 export const ZOOM_TILE = 0.42;
+export const ZOOM_INTIMO = 2;
+
+export const BLOCOS_INTIMO = 128;
+export const TEXEL_INTIMO = 4;
+export const LADO_INTIMO = BLOCOS_INTIMO * TEXEL_INTIMO;
+export const GRADE_INTIMO = EXTENSAO_KANTO / BLOCOS_INTIMO;
+export const LADO_MUNDO = EXTENSAO_KANTO;
