@@ -18,7 +18,7 @@ import { hash2 } from "../../mundo/voxel/ruido.js";
 import { COLUNAS, LINHAS } from "../../mundo/regioes/mapaDemoPatch.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { obterRaioSuave } from "./terrenoSuave.js";
-import { pivoDaImagem } from "../pivoPe.js";
+import { geometriaNoPe, poseCartao, pivoDoProp, carregarPivosProps } from "./billboard/indice.js";
 import { registrarObjetoCena, removerObjetoCena } from "../../cena/registroCena.js";
 import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
 import { marcarStencilSolido } from "./silhuetaSprite.js";
@@ -34,12 +34,12 @@ export function criarVegetacaoDistante() {
 
   const dummy = new THREE.Object3D();
   dummy.rotation.order = "YXZ";
-  dummy.rotation.order = "YXZ";
   /** @type {Map<string, { arvores: object[] }>} */
   const cache = new Map();
   /** @type {Map<string, object>} */
   const lotes = new Map();
   let atlasAtual = null;
+  carregarPivosProps();
   let trabalho = null;
   let sigBanda = "";
   let sigProps = "";
@@ -103,9 +103,8 @@ export function criarVegetacaoDistante() {
       { clareia: true },
     );
     marcarStencilSolido(material);
-    const pivo = pivoDaImagem(img);
-    const geo = new THREE.PlaneGeometry(1, 1);
-    geo.translate(0.5 - pivo.x, pivo.y - 0.5, 0);
+    const pivo = pivoDoProp(img, sprite);
+    const geo = geometriaNoPe(pivo.x, pivo.y);
     const pivotY = pivo.y;
     const mesh = new THREE.InstancedMesh(geo, material, IMPOSTOR_CAP);
     mesh.name = `impostor-${sprite}`;
@@ -153,10 +152,15 @@ export function criarVegetacaoDistante() {
       algum = true;
       for (let i = 0; i < itens.length; i++) {
         const p = itens[i];
-        dummy.position.set(p.x, p.h * ALTURA_BLOCO, p.y);
-        dummy.rotation.set(inclinacao, yaw, 0);
-        dummy.scale.set(largura, altura, 1);
-        dummy.updateMatrix();
+        poseCartao(dummy, {
+          x: p.x,
+          y: p.h * ALTURA_BLOCO,
+          z: p.y,
+          largura,
+          altura,
+          yaw,
+          inclinacao,
+        });
         lote.mesh.setMatrixAt(i, dummy.matrix);
       }
       lote.mesh.instanceMatrix.needsUpdate = true;

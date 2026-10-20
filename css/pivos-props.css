@@ -1,0 +1,29 @@
+.palco--duplo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  min-width: 0;
+  flex: 1;
+  background: #0e1411;
+}
+
+.palco--duplo canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  min-width: 0;
+}
+
+#vista3d {
+  border-left: 1px solid var(--borda);
+  cursor: grab;
+}
+
+#vista3d.arrastando {
+  cursor: grabbing;
+}
+
+.coluna button#resetar {
+  margin-top: 8px;
+  width: 100%;
+}

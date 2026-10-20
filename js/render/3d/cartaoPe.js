@@ -5,6 +5,7 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
+import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
@@ -67,13 +68,7 @@ export function moldePe(tela, escala = 1) {
   const pivo = pivoDaImagem(tela);
   const largura = (tela.width / PX) * escala;
   const altura = (tela.height / PX) * escala;
-  const geo = new THREE.PlaneGeometry(largura, altura);
-  geo.translate(largura * (0.5 - pivo.x), altura * (pivo.y - 0.5), 0);
-  geo.computeBoundingSphere();
-  const esfera = geo.boundingSphere;
-  const alcance = esfera.center.length() + esfera.radius;
-  esfera.center.set(0, 0, 0);
-  esfera.radius = alcance;
+  const geo = geometriaNoPe(pivo.x, pivo.y, largura, altura);
   return { geo, material: materialSprite(tela) };
 }
 

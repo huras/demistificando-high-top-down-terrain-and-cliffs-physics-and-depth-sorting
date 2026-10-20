@@ -5,7 +5,7 @@
 import * as THREE from "three";
 import { ALTURA_BLOCO, TILE, VEG_ALPHA_TEST, VEG_ARVORE_ESCALA } from "../config.js";
 import { alturaEm } from "../mundo/altura.js";
-import { pivoDaImagem } from "../render/pivoPe.js";
+import { geometriaNoPe, poseCartao, pivoDoProp } from "../render/3d/billboard/indice.js";
 import { FASE, listarFase } from "./estadoProps.js";
 
 const CAP_QUEDA = 8;
@@ -163,8 +163,7 @@ export function criarFxCampo() {
     const k = `${pivo.x.toFixed(3)}:${pivo.y.toFixed(3)}`;
     let geo = geosPivo.get(k);
     if (geo) return geo;
-    geo = new THREE.PlaneGeometry(1, 1);
-    geo.translate(0.5 - pivo.x, pivo.y - 0.5, 0);
+    geo = geometriaNoPe(pivo.x, pivo.y);
     geosPivo.set(k, geo);
     return geo;
   }
@@ -193,7 +192,7 @@ export function criarFxCampo() {
       }
       const pw = img.naturalWidth || img.width || TILE;
       const ph = img.naturalHeight || img.height || TILE;
-      const pivo = pivoDaImagem(img);
+      const pivo = pivoDoProp(img, prop.sprite);
       const t = Math.min(1, Math.max(0, (Date.now() - (prop.inicioMs || 0)) / QUEDA_MS));
       const curva = t * t * t;
       const u = t <= 0.42 ? 0 : (t - 0.42) / 0.58;
@@ -202,9 +201,16 @@ export function criarFxCampo() {
       mesh.geometry = geoComPivo(pivo);
       mesh.visible = true;
       const folga = 0.05;
-      mesh.position.set(prop.x + Math.sin(yaw) * folga, base * ALTURA_BLOCO, prop.y + Math.cos(yaw) * folga);
-      mesh.rotation.set(inclinacao, yaw, curva * 1.15 * (prop.lado || 1));
-      mesh.scale.set((pw / TILE) * VEG_ARVORE_ESCALA, (ph / TILE) * VEG_ARVORE_ESCALA, 1);
+      poseCartao(mesh, {
+        x: prop.x + Math.sin(yaw) * folga,
+        y: base * ALTURA_BLOCO,
+        z: prop.y + Math.cos(yaw) * folga,
+        largura: (pw / TILE) * VEG_ARVORE_ESCALA,
+        altura: (ph / TILE) * VEG_ARVORE_ESCALA,
+        yaw,
+        inclinacao,
+        roll: curva * 1.15 * (prop.lado || 1),
+      });
       const opaco = fade > 0.995;
       if (mat.userData.opaco !== opaco) {
         mat.transparent = !opaco;

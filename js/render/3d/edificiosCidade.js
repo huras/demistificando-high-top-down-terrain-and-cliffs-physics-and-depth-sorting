@@ -13,6 +13,7 @@ import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
 import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
 import { aplicarLuzBillboard, aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
 import { marcarReflexo } from "./ceu/reflexoPoca.js";
+import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../../mundo/cidade/catalogoCasas.js";
 import { anexarCascaSala, anexarDecoracaoCidade, anexarInteriores, carregarSpritesPraca, criarDecoracaoRotas } from "./decoracaoCidade.js";
@@ -391,8 +392,7 @@ function materialDoCartao(tex) {
 }
 
 function criarCartaoCasa(folha) {
-  const geo = new THREE.PlaneGeometry(folha.largura, folha.altura);
-  geo.translate(folha.largura * (0.5 - folha.pivo.x), folha.altura * (folha.pivo.y - 0.5), 0);
+  const geo = geometriaNoPe(folha.pivo.x, folha.pivo.y, folha.largura, folha.altura);
   if (!folha.material) folha.material = materialDoCartao(folha.tex);
   const mesh = new THREE.Mesh(geo, folha.material);
   mesh.name = "casa-cartao";

@@ -15,14 +15,19 @@ import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
 import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
 import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
-import { aplicarCorSprite, aplicarProfundidadeSprite } from "../render/3d/ceu/luzBillboard.js";
+import { aplicarCorSprite } from "../render/3d/ceu/luzBillboard.js";
 import {
   COR_SILHUETA_JOGADOR,
   COR_SILHUETA_SELVAGEM,
-  criarSpriteSilhueta,
+  criarMalhaSilhueta,
 } from "../render/3d/silhuetaSprite.js";
 import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
 import { marcarReflexo } from "../render/3d/ceu/reflexoPoca.js";
+import {
+  aplicarPivoCartao,
+  criarAtorCartao,
+  poseAtorCartao,
+} from "../render/3d/billboard/atorCartao.js";
 import { dropsBloco } from "../jogo/blocos.js";
 import { estado as estadoJogo } from "../jogo/estado.js";
 
@@ -31,6 +36,8 @@ const PX_MUNDO = 1 / TILE;
 const LADO = 256;
 const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;
+const PIVO_X = PE_X / LADO;
+const PIVO_Y = PE_Y / LADO;
 const CAP_ATOR = 20;
 const CAP_TIRO = 64;
 const CAP_DROP = 48;
@@ -84,42 +91,38 @@ function criarAtorSlot() {
   tex.minFilter = THREE.NearestFilter;
   tex.generateMipmaps = false;
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.SpriteMaterial({
-    map: tex,
+  const sprite = criarAtorCartao(tex, {
+    nome: "pokemon-cartao",
     transparent: true,
     depthWrite: false,
-    depthTest: true,
     alphaTest: 0.12,
+    renderOrder: 3,
   });
-  aplicarProfundidadeSprite(mat);
-  const sprite = new THREE.Sprite(mat);
-  sprite.center.set(PE_X / LADO, (LADO - PE_Y) / LADO);
-  sprite.scale.set(LADO * PX_MUNDO, LADO * PX_MUNDO, 1);
-  sprite.renderOrder = 3;
+  const mat = sprite.material;
+  const lado = LADO * PX_MUNDO;
+  sprite.scale.set(lado, lado, 1);
   marcarReflexo(sprite);
   grupo.add(sprite);
-  const silhueta = criarSpriteSilhueta(tex, COR_SILHUETA_SELVAGEM);
-  silhueta.center.copy(sprite.center);
+  const silhueta = criarMalhaSilhueta(tex, COR_SILHUETA_SELVAGEM);
   silhueta.scale.copy(sprite.scale);
   grupo.add(silhueta);
   const planoVeu = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
-  const veuMat = new THREE.SpriteMaterial({
-    map: tex,
+  const veu = criarAtorCartao(tex, {
+    nome: "pokemon-veu",
     color: 0x1a6fbf,
     transparent: true,
     opacity: 0.55,
     depthWrite: false,
-    depthTest: true,
     alphaTest: 0.12,
+    renderOrder: 4,
     clippingPlanes: [planoVeu],
   });
-  aplicarProfundidadeSprite(veuMat);
-  const veu = new THREE.Sprite(veuMat);
-  veu.center.copy(sprite.center);
   veu.scale.copy(sprite.scale);
-  veu.renderOrder = 4;
   veu.visible = false;
   grupo.add(veu);
+  aplicarPivoCartao(sprite, PIVO_X, PIVO_Y);
+  aplicarPivoCartao(silhueta, PIVO_X, PIVO_Y);
+  aplicarPivoCartao(veu, PIVO_X, PIVO_Y);
   const sombra = criarSombraContato3d({ redonda: true });
   grupo.add(sombra.grupo);
   const brilhos = [];
@@ -306,14 +309,17 @@ export function ligarPokemon3d(scene) {
 }
 
 function ancorar(slot) {
-  slot.sprite.center.set(PE_X / LADO, (LADO - PE_Y) / LADO);
+  aplicarPivoCartao(slot.sprite, PIVO_X, PIVO_Y);
+  aplicarPivoCartao(slot.silhueta, PIVO_X, PIVO_Y);
+  aplicarPivoCartao(slot.veu, PIVO_X, PIVO_Y);
   slot.sprite.visible = true;
 }
 
 function aplicarMedida(slot, ator) {
   const { escala, offsetY } = medidaSprite(ator);
+  const lado = LADO * PX_MUNDO * escala;
   slot.sprite.position.y = -offsetY;
-  slot.sprite.scale.set(LADO * PX_MUNDO * escala, LADO * PX_MUNDO * escala, 1);
+  slot.sprite.scale.set(lado, lado, 1);
   return offsetY;
 }
 
@@ -385,10 +391,14 @@ function aplicarBrilho(slot, ator, offsetY) {
 }
 
 function copiarCartao(destino, origem) {
-  destino.center.copy(origem.center);
-  destino.position.y = origem.position.y;
+  destino.position.copy(origem.position);
+  destino.rotation.copy(origem.rotation);
   destino.scale.copy(origem.scale);
   destino.visible = origem.visible;
+  if (origem.userData?.pivotKey && destino.userData) {
+    const [px, py] = origem.userData.pivotKey.split(":").map(Number);
+    if (Number.isFinite(px) && Number.isFinite(py)) aplicarPivoCartao(destino, px, py);
+  }
 }
 
 function pegarLivre() {
@@ -398,10 +408,11 @@ function pegarLivre() {
   return null;
 }
 
-export function atualizarPokemon3d(yawCam = 0, camera = null) {
+export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
   if (!cena || !pokemonLigado()) return;
   const lista = atoresVisiveis();
   const naSala = !!estadoJogo.interior?.sala3d;
+  const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
   const vistos = new Set();
   for (let i = 0; i < lista.length; i++) {
     const ator = lista[i];
@@ -432,6 +443,17 @@ export function atualizarPokemon3d(yawCam = 0, camera = null) {
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
     slot.sprite.visible = true;
     slot.sprite.scale.multiplyScalar(some);
+    poseAtorCartao(slot.sprite, {
+      x: 0,
+      y: -offsetY,
+      z: 0,
+      largura: slot.sprite.scale.x,
+      altura: slot.sprite.scale.y,
+      yaw: yawCam,
+      inclinacao: tilt,
+      pivotX: PIVO_X,
+      pivotY: PIVO_Y,
+    });
     if (ator.faccao === "party" && ator._sumicoTeleporte) {
       slot.sprite.material.opacity = some;
       slot.silhueta.material.opacity = some;

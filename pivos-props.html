@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pivô dos props</title>
+  <link rel="stylesheet" href="css/pivos.css" />
+  <link rel="stylesheet" href="css/pivos-props.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Pivô de base — props</h1>
+    <p class="topo__nota" id="status">Carregando…</p>
+    <button type="button" id="salvar">Salvar</button>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna">
+      <section class="coluna__lista">
+        <h2>Sprites</h2>
+        <input id="busca" type="search" placeholder="Nome ou classe" />
+        <ul class="lista lista--alta" id="lista"></ul>
+      </section>
+      <section>
+        <h2>Pivô</h2>
+        <p class="coords" id="coords">dx 0    dy 0</p>
+        <p class="nota">Arraste o desenho para pôr o pé na cruz. A cruz é a base do billboard no chão. O preview 3D mostra o tilt sem enterrar.</p>
+        <button type="button" id="resetar">Resetar (scan)</button>
+      </section>
+    </aside>
+    <div class="palco palco--duplo">
+      <canvas id="vista"></canvas>
+      <canvas id="vista3d"></canvas>
+    </div>
+  </div>
+  <script type="module" src="js/pivos/editorProps.js"></script>
+</body>
+</html>

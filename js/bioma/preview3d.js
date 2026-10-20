@@ -1,13 +1,19 @@
 import * as THREE from "three";
 import {
   ALTURA_BLOCO,
+  BILLBOARD_INCLINACAO,
   TILE,
   VEG_ALPHA_TEST,
   VEG_ARVORE_ESCALA,
   VEG_MATA_ESCALA,
   VEG_YAW_EPS,
 } from "../config.js";
-import { pivoDaImagem } from "../render/pivoPe.js";
+import {
+  carregarPivosProps,
+  geometriaNoPe,
+  poseCartao,
+  pivoDoProp,
+} from "../render/3d/billboard/indice.js";
 import { avaliarGrafo } from "../mundo/bioma/grafo.js";
 import { arquivoSprite, obterKit } from "../mundo/bioma/kits.js";
 import { plantaNoBioma } from "../mundo/bioma/detalhe.js";
@@ -55,6 +61,8 @@ let baseY = 0;
 
 const alvo = new THREE.Vector3();
 const dummy = new THREE.Object3D();
+dummy.rotation.order = "YXZ";
+carregarPivosProps();
 let az = 0.85;
 let azAlvo = 0.85;
 let pol = 1.02;
@@ -290,13 +298,15 @@ function loteSprite(id, classe) {
     map: tex,
     alphaTest: VEG_ALPHA_TEST,
   });
+  const pivo = pivoDoProp(fonte, id);
   const lote = {
     material,
     depth,
     textura: tex,
     largura: (pw / TILE) * escala,
     altura: (ph / TILE) * escala,
-    pivotY: pivoDaImagem(fonte).y,
+    pivotX: pivo.x,
+    pivotY: pivo.y,
   };
   materiaisSprite.set(id, lote);
   return lote;
@@ -332,16 +342,13 @@ function montarProps(bioma, alturas, seed) {
       const jx = (hash2(wx, wz, seed + 42) - 0.5) * 0.55;
       const jz = (hash2(wx, wz, seed + 77) - 0.5) * 0.55;
       const variacao = 0.86 + hash2(wx, wz, seed + 19) * 0.28;
-      const y =
-        alturas[iz * LADO + ix] * ALTURA_BLOCO -
-        (1 - lote.pivotY) * lote.altura * variacao;
+      const y = alturas[iz * LADO + ix] * ALTURA_BLOCO;
       grupo.itens.push({ x: ix + 0.5 + jx, y, z: iz + 0.5 + jz, s: variacao });
     }
   }
 
   for (const grupo of grupos.values()) {
-    const geo = new THREE.PlaneGeometry(1, 1);
-    geo.translate(0, 0.5, 0);
+    const geo = geometriaNoPe(grupo.lote.pivotX, grupo.lote.pivotY);
     const mesh = new THREE.InstancedMesh(geo, grupo.lote.material, grupo.itens.length);
     mesh.castShadow = true;
     mesh.receiveShadow = false;
@@ -367,10 +374,15 @@ function escreverCartazes(yaw) {
     const altura = mesh.userData.altura;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
-      dummy.position.set(p.x, p.y, p.z);
-      dummy.rotation.set(0, yaw, 0);
-      dummy.scale.set(largura * p.s, altura * p.s, 1);
-      dummy.updateMatrix();
+      poseCartao(dummy, {
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        largura: largura * p.s,
+        altura: altura * p.s,
+        yaw,
+        inclinacao: BILLBOARD_INCLINACAO,
+      });
       mesh.setMatrixAt(i, dummy.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;

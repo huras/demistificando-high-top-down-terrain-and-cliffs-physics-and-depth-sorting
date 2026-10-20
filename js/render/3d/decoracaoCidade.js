@@ -9,6 +9,7 @@ import {
   moveisDaSala,
 } from "../../mundo/cidade/interiorCasa.js";
 import { medidasSala } from "../../mundo/cidade/sala3d.js";
+import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { facesParedeInterior } from "./cartaoPe.js";
@@ -147,8 +148,7 @@ function folhaDe(tela, pxPorUnidade) {
   const pivo = pivoDaImagem(tela);
   const largura = tela.width / pxPorUnidade;
   const altura = tela.height / pxPorUnidade;
-  const geo = new THREE.PlaneGeometry(largura, altura);
-  geo.translate(largura * (0.5 - pivo.x), altura * (pivo.y - 0.5), 0);
+  const geo = geometriaNoPe(pivo.x, pivo.y, largura, altura);
   return { geo, material: mat };
 }
 

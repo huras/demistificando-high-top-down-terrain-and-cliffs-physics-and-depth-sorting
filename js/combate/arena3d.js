@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ALTURA_BLOCO, TILE, VEG_MATA_ESCALA } from "../config.js";
+import { ALTURA_BLOCO, BILLBOARD_INCLINACAO, TILE, VEG_MATA_ESCALA } from "../config.js";
 import { particulasVivas } from "../pokemon/combate/particulas.js";
 import { impactosVivos, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "../pokemon/combate/folhasGolpe.js";
@@ -17,11 +17,18 @@ import { CAM_TURNO } from "./cameraTurno.js";
 import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
 import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 import { tickFadeArena } from "../render/3d/fadeObstaculo3d.js";
+import {
+  aplicarPivoCartao,
+  criarAtorCartao,
+  poseAtorCartao,
+} from "../render/3d/billboard/atorCartao.js";
 
 const PX_MUNDO = 1 / TILE;
 const LADO = 256;
 const PE_X = LADO * 0.5;
 const PE_Y = LADO - 64;
+const PIVO_X = PE_X / LADO;
+const PIVO_Y = PE_Y / LADO;
 const CAP_TIRO = 64;
 const CAP_COBERTURA = 6;
 const CAP_GRAMA = 40;
@@ -312,20 +319,19 @@ function aplicarMetade(slot, tipo) {
 }
 
 function criarCobertura() {
-  const mat = new THREE.SpriteMaterial({
+  const sprite = criarAtorCartao(null, {
+    nome: "arena-cobertura",
     transparent: true,
     depthWrite: false,
-    depthTest: true,
     alphaTest: 0.15,
     opacity: 1,
+    renderOrder: 3,
   });
-  const sprite = new THREE.Sprite(mat);
-  sprite.center.set(0.5, 0);
   sprite.visible = false;
-  sprite.renderOrder = 3;
+  aplicarPivoCartao(sprite, 0.5, 1);
   cena.add(sprite);
   const sombra = criarSombra();
-  return { sprite, mat, sombra, url: "", alpha: 1 };
+  return { sprite, mat: sprite.material, sombra, url: "", alpha: 1 };
 }
 
 function aplicarAlphaCobertura(chave, alpha) {
@@ -367,18 +373,17 @@ function atualizarFadeCobertura(atores, dt) {
 }
 
 function criarGrama() {
-  const mat = new THREE.SpriteMaterial({
+  const sprite = criarAtorCartao(null, {
+    nome: "arena-grama",
     transparent: true,
     depthWrite: false,
-    depthTest: true,
     alphaTest: 0.15,
+    renderOrder: 3,
   });
-  const sprite = new THREE.Sprite(mat);
-  sprite.center.set(0.5, 0);
   sprite.visible = false;
-  sprite.renderOrder = 3;
+  aplicarPivoCartao(sprite, 0.5, 1);
   cena.add(sprite);
-  return { sprite, mat, url: "" };
+  return { sprite, mat: sprite.material, url: "" };
 }
 
 function sincronizarCobertura() {
@@ -417,8 +422,21 @@ function sincronizarCobertura() {
     if (!pronta) continue;
     const w = (tex.userData.w / TILE) || 1;
     const h = (tex.userData.h / TILE) || 1;
-    slot.sprite.scale.set(w, h, 1);
-    slot.sprite.position.set(peca.x, 0, peca.y);
+    slot.sprite.userData.largura = w;
+    slot.sprite.userData.altura = h;
+    slot.sprite.userData.px = peca.x;
+    slot.sprite.userData.pz = peca.y;
+    poseAtorCartao(slot.sprite, {
+      x: peca.x,
+      y: 0,
+      z: peca.y,
+      largura: w,
+      altura: h,
+      yaw: yawDaVista(),
+      inclinacao: BILLBOARD_INCLINACAO,
+      pivotX: 0.5,
+      pivotY: 1,
+    });
     slot.sombra.position.set(peca.x, 0.03, peca.y);
     const s = Math.max(0.55, peca.r / 0.62);
     slot.sombra.scale.set(s, 1, s);
@@ -445,8 +463,59 @@ function sincronizarCobertura() {
     if (!pronta) continue;
     const w = ((tex.userData.w / TILE) || 1) * VEG_MATA_ESCALA;
     const h = ((tex.userData.h / TILE) || 1) * VEG_MATA_ESCALA;
-    slot.sprite.scale.set(w, h, 1);
-    slot.sprite.position.set(tufo.x, 0, tufo.y);
+    slot.sprite.userData.largura = w;
+    slot.sprite.userData.altura = h;
+    slot.sprite.userData.px = tufo.x;
+    slot.sprite.userData.pz = tufo.y;
+    poseAtorCartao(slot.sprite, {
+      x: tufo.x,
+      y: 0,
+      z: tufo.y,
+      largura: w,
+      altura: h,
+      yaw: yawDaVista(),
+      inclinacao: BILLBOARD_INCLINACAO,
+      pivotX: 0.5,
+      pivotY: 1,
+    });
+  }
+}
+
+function girarCartoesArena() {
+  const yaw = yawDaVista();
+  for (let i = 0; i < coberturas.length; i++) {
+    const mesh = coberturas[i].sprite;
+    if (!mesh.visible) continue;
+    const u = mesh.userData;
+    if (!(u.largura > 0)) continue;
+    poseAtorCartao(mesh, {
+      x: u.px,
+      y: 0,
+      z: u.pz,
+      largura: u.largura,
+      altura: u.altura,
+      yaw,
+      inclinacao: BILLBOARD_INCLINACAO,
+      pivotX: 0.5,
+      pivotY: 1,
+    });
+  }
+  for (let i = 0; i < gramas.length; i++) {
+    const mesh = gramas[i].sprite;
+    if (!mesh.visible) continue;
+    const u = mesh.userData;
+    if (!(u.largura > 0)) continue;
+    poseAtorCartao(mesh, {
+      x: u.px,
+      y: 0,
+      z: u.pz,
+      largura: u.largura,
+      altura: u.altura,
+      yaw,
+      inclinacao: BILLBOARD_INCLINACAO,
+      pivotX: 0.5,
+      pivotY: 1,
+    });
   }
 }
 
@@ -505,17 +574,17 @@ function criarAtorSlot() {
   tex.minFilter = THREE.NearestFilter;
   tex.generateMipmaps = false;
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.SpriteMaterial({
-    map: tex,
+  const sprite = criarAtorCartao(tex, {
+    nome: "arena-ator",
     transparent: true,
     depthWrite: false,
-    depthTest: true,
     alphaTest: 0.12,
+    renderOrder: 3,
   });
-  const sprite = new THREE.Sprite(mat);
-  sprite.center.set(PE_X / LADO, (LADO - PE_Y) / LADO);
-  sprite.scale.set(LADO * PX_MUNDO, LADO * PX_MUNDO, 1);
-  sprite.renderOrder = 3;
+  const mat = sprite.material;
+  const lado = LADO * PX_MUNDO;
+  sprite.scale.set(lado, lado, 1);
+  aplicarPivoCartao(sprite, PIVO_X, PIVO_Y);
   grupo.add(sprite);
   grupo.visible = false;
   cena.add(grupo);
@@ -539,14 +608,24 @@ function criarPonto(mapa, ordem, aditivo) {
 }
 
 function ancorar(slot) {
-  slot.sprite.center.set(PE_X / LADO, (LADO - PE_Y) / LADO);
+  aplicarPivoCartao(slot.sprite, PIVO_X, PIVO_Y);
   slot.sprite.visible = true;
 }
 
 function aplicarMedida(slot, ator) {
   const { escala, offsetY } = medidaSprite(ator);
-  slot.sprite.position.y = -offsetY;
-  slot.sprite.scale.set(LADO * PX_MUNDO * escala, LADO * PX_MUNDO * escala, 1);
+  const lado = LADO * PX_MUNDO * escala;
+  poseAtorCartao(slot.sprite, {
+    x: 0,
+    y: -offsetY,
+    z: 0,
+    largura: lado,
+    altura: lado,
+    yaw: yawDaVista(),
+    inclinacao: BILLBOARD_INCLINACAO,
+    pivotX: PIVO_X,
+    pivotY: PIVO_Y,
+  });
 }
 
 function pintar(slot, ator, fr, pack) {
@@ -988,6 +1067,7 @@ function aplicarOmbro() {
 export function desenharArena(atores, dt = 0.016) {
   if (!renderer) return;
   sincronizarCobertura();
+  girarCartoesArena();
   ajustarTamanho();
   aplicarOmbro();
   atualizarFadeCobertura(atores, dt);

@@ -250,6 +250,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/pivos-props") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 400_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarPivosProps(obj);
+        const dest = path.join(raiz, "assets", "props", "pivos.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/partes") {
     const pedacos = [];
     let total = 0;
@@ -513,6 +543,34 @@ function validarPivos(obj) {
     }
     if (item.offsetY < -4 || item.offsetY > 4) throw new Error(`${id} altura fora`);
     if (Math.abs(item.dx) > 256 || Math.abs(item.dy) > 256) throw new Error(`${id} pivô fora`);
+  }
+}
+
+function validarPivosProps(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("arquivo sem pivôs de props");
+  }
+  const ids = Object.keys(obj);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^[A-Za-z0-9_.:-]{1,96}$/.test(id)) throw new Error(`sprite inválido: ${id}`);
+    const item = obj[id];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`${id} sem ajuste`);
+    }
+    if (Number.isFinite(Number(item.pivotX)) || Number.isFinite(Number(item.pivotY))) {
+      const px = Number(item.pivotX);
+      const py = Number(item.pivotY);
+      if (!Number.isFinite(px) || !Number.isFinite(py)) throw new Error(`${id} pivot incompleto`);
+      if (px < 0 || px > 1 || py < 0 || py > 1) throw new Error(`${id} pivot fora`);
+      obj[id] = { pivotX: px, pivotY: py };
+      continue;
+    }
+    const dx = Number(item.dx);
+    const dy = Number(item.dy);
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) throw new Error(`${id} sem dx/dy`);
+    if (Math.abs(dx) > 256 || Math.abs(dy) > 256) throw new Error(`${id} pivô fora`);
+    obj[id] = { dx, dy };
   }
 }
 

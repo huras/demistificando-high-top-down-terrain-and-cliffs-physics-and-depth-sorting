@@ -56,6 +56,7 @@
         <a class="btn-modo" id="btn-faces" href="faces.html">Faces</a>
         <a class="btn-modo" href="luzes.html">Luzes</a>
         <a class="btn-modo" href="pivos.html">Pivôs</a>
+        <a class="btn-modo" href="pivos-props.html">Pivôs props</a>
         <a class="btn-modo" href="portas.html">Portas</a>
         <a class="btn-modo" href="colisores.html">Colisores</a>
         <a class="btn-modo" href="combate.html">Combate</a>
@@ -200,7 +201,16 @@
             <div class="mapa-mundo__moldura">
               <canvas id="mapa-mundo-tela" class="mapa-mundo__tela" aria-label="Mapa de Kanto"></canvas>
               <p class="mapa-mundo__titulo" id="mapa-mundo-titulo">Kanto</p>
-              <p class="mapa-mundo__dica">Arraste para mover · scroll para zoom · M ou Esc fecha</p>
+              <button
+                type="button"
+                class="mapa-mundo__toggle"
+                id="mapa-calor-forca"
+                aria-pressed="false"
+                title="Mapa de força dos selvagens"
+              >
+                Força
+              </button>
+              <p class="mapa-mundo__dica">Arraste · scroll · Força · M ou Esc fecha</p>
             </div>
           </div>
         </div>

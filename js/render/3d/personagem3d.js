@@ -7,16 +7,17 @@ import { colunaAgua } from "../../mundo/agua/fluxo.js";
 import { criarAsaDelta3d } from "./asaDelta3d.js";
 import { linhaFacingDoCorpo } from "./facingCamera3d.js";
 import { criarSombraContato3d } from "./sombraContato3d.js";
-import { aplicarCorSprite, aplicarProfundidadeSprite } from "./ceu/luzBillboard.js";
+import { aplicarCorSprite } from "./ceu/luzBillboard.js";
 import { fatorSombraMundo } from "./ceu/mapaNuvem.js";
 import { amostrarLuzCidade } from "./luzes/mapaChao.js";
 import { marcarReflexo } from "./ceu/reflexoPoca.js";
-import { COR_SILHUETA_JOGADOR, criarSpriteSilhueta } from "./silhuetaSprite.js";
+import { COR_SILHUETA_JOGADOR, criarMalhaSilhueta } from "./silhuetaSprite.js";
+import { aplicarPivoCartao, criarAtorCartao, poseAtorCartao } from "./billboard/atorCartao.js";
 
 const _luzCidade = new THREE.Color();
 
 /**
- * Billboard HD-2D + sombra de contato + asa-delta.
+ * Billboard HD-2D (Mesh no pe) + sombra de contato + asa-delta.
  * opts: { nome, sprite, tint }
  */
 export function criarPersonagem3d(opts = {}) {
@@ -35,52 +36,36 @@ export function criarPersonagem3d(opts = {}) {
   tex.minFilter = THREE.NearestFilter;
   tex.generateMipmaps = false;
 
-  const spriteMat = new THREE.SpriteMaterial({
-    map: tex,
+  const cartao = criarAtorCartao(tex, {
+    nome: "personagem-cartao",
     transparent: true,
     depthWrite: false,
-    depthTest: true,
     alphaTest: 0.12,
-    sizeAttenuation: true,
+    renderOrder: 3,
   });
-  aplicarProfundidadeSprite(spriteMat);
-  if (opts.tint != null) spriteMat.color.setHex(opts.tint);
-  const corBase = spriteMat.color.clone();
+  if (opts.tint != null) cartao.material.color.setHex(opts.tint);
+  const corBase = cartao.material.color.clone();
+  cartao.scale.set(ALTURA_SPRITE_JOGADOR, ALTURA_SPRITE_JOGADOR, 1);
+  marcarReflexo(cartao);
+  grupo.add(cartao);
 
-  const sprite = new THREE.Sprite(spriteMat);
-  sprite.center.set(0.5, 0);
-  sprite.scale.set(ALTURA_SPRITE_JOGADOR, ALTURA_SPRITE_JOGADOR, 1);
-  sprite.renderOrder = 3;
-  sprite.castShadow = false;
-  sprite.receiveShadow = false;
-  marcarReflexo(sprite);
-  grupo.add(sprite);
-
-  const silhueta = criarSpriteSilhueta(tex, COR_SILHUETA_JOGADOR);
-  silhueta.scale.copy(sprite.scale);
-  silhueta.visible = sprite.visible;
+  const silhueta = criarMalhaSilhueta(tex, COR_SILHUETA_JOGADOR);
+  silhueta.scale.copy(cartao.scale);
+  silhueta.visible = cartao.visible;
   grupo.add(silhueta);
 
-  // Véu só abaixo da superfície (normal para baixo descarta o que está acima).
   const planoVeu = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
-  const veuMat = new THREE.SpriteMaterial({
-    map: tex,
+  const veu = criarAtorCartao(tex, {
+    nome: "personagem-veu",
     color: 0x1a6fbf,
     transparent: true,
     opacity: 0.55,
     depthWrite: false,
-    depthTest: true,
     alphaTest: 0.12,
-    sizeAttenuation: true,
+    renderOrder: 4,
     clippingPlanes: [planoVeu],
   });
-  aplicarProfundidadeSprite(veuMat);
-  const veu = new THREE.Sprite(veuMat);
-  veu.center.set(0.5, 0);
-  veu.scale.set(ALTURA_SPRITE_JOGADOR, ALTURA_SPRITE_JOGADOR, 1);
-  veu.renderOrder = 4;
-  veu.castShadow = false;
-  veu.receiveShadow = false;
+  veu.scale.copy(cartao.scale);
   veu.visible = false;
   grupo.add(veu);
 
@@ -92,7 +77,13 @@ export function criarPersonagem3d(opts = {}) {
 
   let sheet = opts.sprite || null;
   let ultimoFrameKey = "";
+  let pivotX = 0.5;
+  let pivotY = 1;
   carregarPivoJogador();
+
+  function sincronizarPivo(mesh) {
+    aplicarPivoCartao(mesh, pivotX, pivotY);
+  }
 
   function pintarFrame(corpoEstado, yawCam) {
     if (!sheet || !frameCtx) return;
@@ -120,17 +111,17 @@ export function criarPersonagem3d(opts = {}) {
     }
     const pivo = pivoDoFrame(sheet, col, linha, JOGADOR_FRAME);
     const aj = pivoDoJogador();
-    const centroX = pivo.x - aj.dx / JOGADOR_FRAME;
-    const centroY = 1 - pivo.y + aj.dy / JOGADOR_FRAME;
-    sprite.center.set(centroX, centroY);
-    veu.center.set(centroX, centroY);
-    silhueta.center.set(centroX, centroY);
+    pivotX = pivo.x - aj.dx / JOGADOR_FRAME;
+    pivotY = pivo.y - aj.dy / JOGADOR_FRAME;
+    sincronizarPivo(cartao);
+    sincronizarPivo(veu);
+    sincronizarPivo(silhueta);
   }
 
   function definirSprite(img) {
     sheet = img || null;
     ultimoFrameKey = "";
-    sprite.visible = !!sheet;
+    cartao.visible = !!sheet;
     silhueta.visible = !!sheet;
     if (!sheet) veu.visible = false;
   }
@@ -142,19 +133,19 @@ export function criarPersonagem3d(opts = {}) {
     definirSprite,
     definirSumico(alfa) {
       const a = alfa == null ? 1 : Math.max(0, Math.min(1, alfa));
-      spriteMat.opacity = a;
+      cartao.material.opacity = a;
       silhueta.material.opacity = a;
       silhueta.material.transparent = true;
       if (a >= 0.999) {
-        sprite.visible = !!sheet;
+        cartao.visible = !!sheet;
         silhueta.visible = !!sheet;
-        veuMat.opacity = 0.55;
+        veu.material.opacity = 0.55;
         sombra.grupo.visible = true;
         return;
       }
-      veuMat.opacity = 0.55 * a;
+      veu.material.opacity = 0.55 * a;
       const mostra = a > 0.03 && !!sheet;
-      sprite.visible = mostra;
+      cartao.visible = mostra;
       silhueta.visible = mostra;
       sombra.grupo.visible = mostra;
       if (!mostra) {
@@ -166,23 +157,21 @@ export function criarPersonagem3d(opts = {}) {
      * @param {object} corpoEstado
      * @param {THREE.Camera|null} camera
      * @param {number} [yawCam]
+     * @param {number} [inclinacao]
      */
-    atualizar(corpoEstado, camera = null, yawCam = 0) {
+    atualizar(corpoEstado, camera = null, yawCam = 0, inclinacao = 0) {
       const elevFisica =
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
       const elev = elevFisica + oscilacaoNado(corpoEstado);
       grupo.position.set(corpoEstado.x, elev * ALTURA_BLOCO, corpoEstado.y);
       const folgaPe = -pivoDoJogador().offsetY;
-      sprite.position.y = folgaPe;
-      veu.position.y = folgaPe;
-      silhueta.position.y = folgaPe;
       const sombraNuvem = fatorSombraMundo(corpoEstado.x, grupo.position.y, corpoEstado.y);
       amostrarLuzCidade(grupo.position.x, grupo.position.y + ALTURA_SPRITE_JOGADOR * 0.56, grupo.position.z, _luzCidade);
-      aplicarCorSprite(spriteMat, corBase, sombraNuvem, _luzCidade);
+      aplicarCorSprite(cartao.material, corBase, sombraNuvem, _luzCidade);
 
       const agua = colunaAgua(corpoEstado.x, corpoEstado.y);
       const imerso = agua.superficie > 0 && elevFisica < agua.superficie - 0.05;
-      veu.visible = imerso && sprite.visible;
+      veu.visible = imerso && cartao.visible;
       if (imerso) planoVeu.constant = agua.superficie * ALTURA_BLOCO;
 
       const yaw =
@@ -196,6 +185,42 @@ export function criarPersonagem3d(opts = {}) {
             : 0;
 
       pintarFrame(corpoEstado, yaw);
+
+      const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
+      const lado = ALTURA_SPRITE_JOGADOR;
+      poseAtorCartao(cartao, {
+        x: 0,
+        y: folgaPe,
+        z: 0,
+        largura: lado,
+        altura: lado,
+        yaw,
+        inclinacao: tilt,
+        pivotX,
+        pivotY,
+      });
+      poseAtorCartao(silhueta, {
+        x: 0,
+        y: folgaPe,
+        z: 0,
+        largura: lado,
+        altura: lado,
+        yaw,
+        inclinacao: tilt,
+        pivotX,
+        pivotY,
+      });
+      poseAtorCartao(veu, {
+        x: 0,
+        y: folgaPe,
+        z: 0,
+        largura: lado,
+        altura: lado,
+        yaw,
+        inclinacao: tilt,
+        pivotX,
+        pivotY,
+      });
 
       const naParede = !!(corpoEstado.escalando && corpoEstado.escalada);
       if (naParede) {
@@ -218,9 +243,12 @@ export function criarPersonagem3d(opts = {}) {
     },
     liberar() {
       tex.dispose();
-      spriteMat.dispose();
+      cartao.geometry.dispose();
+      cartao.material.dispose();
+      silhueta.geometry.dispose();
       silhueta.material.dispose();
-      veuMat.dispose();
+      veu.geometry.dispose();
+      veu.material.dispose();
       sombra.liberar();
       asa.liberar();
     },

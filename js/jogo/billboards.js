@@ -1,9 +1,9 @@
 /** Billboards de berry no outdoor. Não passam pelo atlas da vegetação. */
 
-import * as THREE from "three";
-import { ALTURA_BLOCO } from "../config.js";
+import { ALTURA_BLOCO, BILLBOARD_INCLINACAO } from "../config.js";
 import { alturaEm } from "../mundo/altura.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
+import { criarAtorCartao, poseAtorCartao } from "../render/3d/billboard/atorCartao.js";
 import { BERRIES } from "../wild/catalogo.js";
 import { ESTAGIO } from "../wild/estagios.js";
 import { estado } from "./estado.js";
@@ -55,42 +55,66 @@ function garantirGrupo() {
   return grupo;
 }
 
+function yawInclinacao() {
+  const cenario = obterCenario3d();
+  const cam = cenario?.camera3d?.cam;
+  const pe = cenario?.personagem?.grupo?.position;
+  let yaw = 0;
+  if (cam && pe) {
+    yaw = Math.atan2(cam.position.x - pe.x, cam.position.z - pe.z);
+  }
+  const blend = cenario?.camera3d?.blend ?? 0;
+  const inclinacao = BILLBOARD_INCLINACAO * (1 - blend);
+  return { yaw, inclinacao };
+}
+
 export function atualizarBillboardsBerry() {
   const pai = garantirGrupo();
   if (!pai) return;
+  const { yaw, inclinacao } = yawInclinacao();
   const vistos = new Set();
   for (let i = 0; i < estado.plots.length; i++) {
     const plot = estado.plots[i];
     vistos.add(plot.id);
-    let sprite = sprites.get(plot.id);
+    let mesh = sprites.get(plot.id);
     const chaveVisual = `${plot.stage}:${plot.berryKey || ""}`;
-    if (!sprite || sprite.userData.visual !== chaveVisual) {
-      if (sprite) {
-        pai.remove(sprite);
-        sprite.material.map?.dispose();
-        sprite.material.dispose();
+    if (!mesh || mesh.userData.visual !== chaveVisual) {
+      if (mesh) {
+        pai.remove(mesh);
+        mesh.material.map?.dispose();
+        mesh.geometry?.dispose();
+        mesh.material.dispose();
       }
-      const mat = new THREE.SpriteMaterial({
-        map: textura(corDe(plot), plot.stage),
+      mesh = criarAtorCartao(textura(corDe(plot), plot.stage), {
+        nome: "berry-cartao",
         transparent: true,
         depthWrite: false,
+        alphaTest: 0.12,
       });
-      sprite = new THREE.Sprite(mat);
-      sprite.center.set(0.5, 0);
-      sprite.userData.visual = chaveVisual;
-      sprites.set(plot.id, sprite);
-      pai.add(sprite);
+      mesh.userData.visual = chaveVisual;
+      sprites.set(plot.id, mesh);
+      pai.add(mesh);
     }
     const escala = ESCALA[plot.stage] || 1;
     const base = alturaEm(plot.x, plot.y) * ALTURA_BLOCO;
-    sprite.position.set(plot.x + 0.5, base, plot.y + 0.5);
-    sprite.scale.set(escala, escala * 1.4, 1);
+    poseAtorCartao(mesh, {
+      x: plot.x + 0.5,
+      y: base,
+      z: plot.y + 0.5,
+      largura: escala,
+      altura: escala * 1.4,
+      yaw,
+      inclinacao,
+      pivotX: 0.5,
+      pivotY: 1,
+    });
   }
-  for (const [id, sprite] of sprites) {
+  for (const [id, mesh] of sprites) {
     if (vistos.has(id)) continue;
-    pai.remove(sprite);
-    sprite.material.map?.dispose();
-    sprite.material.dispose();
+    pai.remove(mesh);
+    mesh.material.map?.dispose();
+    mesh.geometry?.dispose();
+    mesh.material.dispose();
     sprites.delete(id);
   }
 }

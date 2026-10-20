@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { aplicarProfundidadeSprite } from "./ceu/luzBillboard.js";
+import { aplicarLuzBillboard, aplicarProfundidadeSprite } from "./ceu/luzBillboard.js";
+import { geometriaNoPe } from "./billboard/geometria.js";
 
 /** Mesma cor do personagem e do Pokémon da party. */
 export const COR_SILHUETA_JOGADOR = 0xc5d6ee;
@@ -76,4 +77,31 @@ export function criarSpriteSilhueta(mapa, cor = COR_SILHUETA_JOGADOR) {
   sprite.renderOrder = 5;
   sprite.raycast = () => {};
   return sprite;
+}
+
+/** Silhueta em Mesh (mesmo pivô/depth dos cartões de ator). */
+export function criarMalhaSilhueta(mapa, cor = COR_SILHUETA_JOGADOR) {
+  const material = new THREE.MeshBasicMaterial({
+    map: mapa,
+    color: cor,
+    transparent: true,
+    opacity: 0.92,
+    depthWrite: false,
+    depthTest: true,
+    depthFunc: THREE.GreaterDepth,
+    alphaTest: 0.12,
+    fog: false,
+    toneMapped: false,
+    side: THREE.FrontSide,
+  });
+  aplicarMascaraSilhueta(material);
+  aplicarLuzBillboard(material);
+  testarStencil(material, STENCIL_SOLIDO);
+  const mesh = new THREE.Mesh(geometriaNoPe(0.5, 1), material);
+  mesh.name = "silhueta";
+  mesh.rotation.order = "YXZ";
+  mesh.renderOrder = 5;
+  mesh.raycast = () => {};
+  mesh.userData.pivotKey = "0.5:1";
+  return mesh;
 }

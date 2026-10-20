@@ -10,7 +10,7 @@ import {
   VEG_MATA_ESCALA,
   VEG_YAW_EPS,
 } from "../../config.js";
-import { pivoDaImagem } from "../pivoPe.js";
+import { geometriaNoPe, poseCartao, pivoDoProp, carregarPivosProps } from "./billboard/indice.js";
 import { alturaEm } from "../../mundo/altura.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { todaVegetacao } from "../../mundo/bioma/propsBioma.js";
@@ -91,10 +91,10 @@ export function criarVegetacaoBillboard3d() {
 
   const dummy = new THREE.Object3D();
   dummy.rotation.order = "YXZ";
-  dummy.rotation.order = "YXZ";
   /** @type {Map<string, object>} */
   const lotes = new Map();
   let atlasAtual = null;
+  carregarPivosProps();
 
   let yawAplicado = null;
   let geracaoLote = 0;
@@ -190,13 +190,6 @@ export function criarVegetacaoBillboard3d() {
     return true;
   }
 
-/** Quad unitário com o pé opaco na origem. A escala não tira o pé do chão. */
-  function geometriaNoPe(pivotX, pivotY) {
-    const geo = new THREE.PlaneGeometry(1, 1);
-    geo.translate(0.5 - pivotX, pivotY - 0.5, 0);
-    return geo;
-  }
-
   function criarTextura(img) {
     const tex = new THREE.Texture(img);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -251,7 +244,7 @@ export function criarVegetacaoBillboard3d() {
       side: THREE.DoubleSide,
     });
 
-    const pivo = pivoDaImagem(img);
+    const pivo = pivoDoProp(img, def.chave);
     const geo = geometriaNoPe(pivo.x, pivo.y);
     const pivotY = pivo.y;
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
@@ -326,7 +319,7 @@ export function criarVegetacaoBillboard3d() {
       const { largura, altura } = medidasDe(img, def.escala);
       lote.largura = largura;
       lote.altura = altura;
-      lote.pivotY = pivoDaImagem(img).y;
+      lote.pivotY = pivoDoProp(img, def.chave).y;
       lote.itens = def.itens;
       lote.mesh.count = def.itens.length;
       lote.mesh.visible = def.itens.length > 0;
@@ -351,10 +344,16 @@ export function criarVegetacaoBillboard3d() {
     const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
     const roll = amostra ? amostra.roll : 0;
     const esmaga = amostra ? amostra.esmaga : 0;
-    dummy.position.set(p.x, base * ALTURA_BLOCO, p.y);
-    dummy.rotation.set(inclinacao, yaw, roll);
-    dummy.scale.set(largura * (1 + esmaga * 0.03), altura * (1 - esmaga * 0.045), 1);
-    dummy.updateMatrix();
+    poseCartao(dummy, {
+      x: p.x,
+      y: base * ALTURA_BLOCO,
+      z: p.y,
+      largura: largura * (1 + esmaga * 0.03),
+      altura: altura * (1 - esmaga * 0.045),
+      yaw,
+      inclinacao,
+      roll,
+    });
   }
 
   function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora) {

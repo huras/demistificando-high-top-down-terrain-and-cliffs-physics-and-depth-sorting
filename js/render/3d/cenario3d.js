@@ -592,10 +592,10 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.fxBola?.atualizar?.();
   estado.fxAgua?.atualizar?.(camRender);
   anotarEstadoSim(estado.personagem.grupo, corpo);
-  estado.personagem.atualizar(corpo, camRender, yaw);
+  estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
   if (agente && estado.agente3d) {
     anotarEstadoSim(estado.agente3d.grupo, agente);
-    estado.agente3d.atualizar(agente, camRender, yaw);
+    estado.agente3d.atualizar(agente, camRender, yaw, inclinacao);
   }
   const sumico = alfaSprites();
   estado.personagem.definirSumico(sumico);
@@ -619,7 +619,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     lift: Math.max(0, elev - (corpo.z ?? 0)),
   });
 
-  atualizarPokemon3d(yaw, camRender);
+  atualizarPokemon3d(yaw, camRender, inclinacao);
   atualizarDebugCorpos();
   const camPos = estado.camera3d.cam.position;
   resolverLuzes(camPos.x, camPos.y, camPos.z, estado.scene.fog?.far ?? 90);

@@ -26,9 +26,17 @@ let dpr = 1;
 let jogadorX = 0;
 let jogadorY = 0;
 let viagem = null;
+let calorForca = false;
+let botaoCalor = null;
 
 const RAIO_CIDADE = 22;
 const ZOOM_VIAGEM = 1.15;
+
+function sincronizarBotaoCalor() {
+  if (!botaoCalor) return;
+  botaoCalor.setAttribute("aria-pressed", calorForca ? "true" : "false");
+  botaoCalor.classList.toggle("is-ativo", calorForca);
+}
 
 export function mapaAberto() {
   return aberto;
@@ -180,8 +188,17 @@ export function ligarMapaMundo() {
   raiz = document.getElementById("mapa-mundo");
   tela = document.getElementById("mapa-mundo-tela");
   titulo = document.getElementById("mapa-mundo-titulo");
+  botaoCalor = document.getElementById("mapa-calor-forca");
   if (!raiz || !tela) return;
   iniciarAtlas();
+  calorForca = false;
+  sincronizarBotaoCalor();
+  botaoCalor?.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    calorForca = !calorForca;
+    sincronizarBotaoCalor();
+  });
 
   tela.addEventListener("pointerdown", (ev) => {
     if (!aberto || viagem) return;
@@ -281,6 +298,7 @@ export function tickMapaMundo(px, py, dt = 1 / 60) {
     jogadorX: px,
     jogadorY: py,
     agora: performance.now(),
+    calorForca,
   });
   if (titulo) {
     const zona = zonaNoMundo(px, py);

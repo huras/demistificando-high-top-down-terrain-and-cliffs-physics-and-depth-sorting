@@ -3,6 +3,11 @@
  */
 import { EXTENSAO_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { canvasAtlas, listarTiles } from "./atlas.js";
+import {
+  coletarLabelsCalor,
+  pintarCalorForcaMundo,
+  pintarLegendaCalor,
+} from "./calorForca.js";
 import { BLOCOS_INTIMO, LADO_INTIMO, LADO_TILE, LADO_TILE_MUNDO, ZOOM_INTIMO } from "./grade.js";
 import { listarIntimos } from "./intimo.js";
 import { cidadesDoMapa, layoutDaCidade, marcasExtras, rotasDoMapa } from "./marcas.js";
@@ -99,6 +104,7 @@ function desenharNomes(ctx, fila, w, h) {
   const ocupadas = [];
   for (let i = 0; i < fila.length; i++) {
     const item = fila[i];
+    ctx.font = `600 ${item.altura}px "Segoe UI", sans-serif`;
     const largura = ctx.measureText(item.texto).width;
     const caixa = { x: item.x, y: item.y - item.altura, w: largura + 4, h: item.altura + 2 };
     if (caixa.x < 8 || caixa.y < 8 || caixa.x + caixa.w > w - 8 || caixa.y + caixa.h > h - 28) continue;
@@ -166,13 +172,13 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       );
     }
   }
+  if (vista.calorForca && !vista.mini) pintarCalorForcaMundo(ctx);
   for (let i = 0; i < rotas.length; i++) desenharRota(ctx, rotas[i]);
   for (let i = 0; i < cidades.length; i++) desenharLayout(ctx, cidades[i], z);
   ctx.restore();
 
   const nomes = [];
   const alturaFonte = Math.max(12, Math.round(13 * dpr));
-  ctx.font = `600 ${alturaFonte}px "Segoe UI", sans-serif`;
   ctx.textBaseline = "alphabetic";
   ctx.lineJoin = "round";
   const raio = 7 * dpr;
@@ -232,7 +238,15 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     }
   }
 
+  if (vista.calorForca && !vista.mini) {
+    coletarLabelsCalor(nomes, vista, w, h, dpr, z);
+  }
+
   desenharNomes(ctx, nomes, w, h);
+
+  if (vista.calorForca && !vista.mini) {
+    pintarLegendaCalor(ctx, w, h, dpr);
+  }
 
   const px = (vista.jogadorX - vista.cx) * z + w / 2;
   const py = (vista.jogadorY - vista.cy) * z + h / 2;

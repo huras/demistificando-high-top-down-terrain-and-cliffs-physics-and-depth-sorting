@@ -1,36 +1,46 @@
 # Billboards no 3D
 
-Sprites no modo 3D não são malha com volume. São cartões com o PNG do 2D. Há dois usos, com regras diferentes.
+Sprites no modo 3D não são malha com volume. São cartões com o PNG do 2D. Props e atores compartilham o mesmo pivô de base (pé no chão).
 
-| | Props (árvore, mata, grama, pedra, cristal) | Personagem e agente |
+Núcleo: [`js/render/3d/billboard/`](../js/render/3d/billboard/)
+
+| | Props (árvore, mata, grama, pedra, cristal) | Personagem e Pokémon |
 |---|---|---|
-| Arquivo | [`js/render/3d/vegetacaoBillboard3d.js`](../js/render/3d/vegetacaoBillboard3d.js) | [`js/render/3d/personagem3d.js`](../js/render/3d/personagem3d.js) |
-| Objeto | `InstancedMesh` (um lote por sprite) | `THREE.Sprite` (um por corpo) |
-| Para quem olha | Só o yaw da câmera. O pitch não deita o cartão | Câmera inteira (o `Sprite` do Three) |
-| Sombra no chão | Outro cartão, virado para o sol | Elipse de contato, não o sprite |
-| Cor | Luz da cena, com a normal trocada para o sol | `SpriteMaterial` sem luz; a cor é pintada na CPU |
+| Arquivo | [`vegetacaoBillboard3d.js`](../js/render/3d/vegetacaoBillboard3d.js) | [`personagem3d.js`](../js/render/3d/personagem3d.js), [`pokemon/render3d.js`](../js/pokemon/render3d.js) |
+| Objeto | `InstancedMesh` (um lote por sprite) | `Mesh` cartão (um por corpo) |
+| Para quem olha | Yaw da câmera + inclinacao no X | Mesmo yaw + inclinacao |
+| Pivô | Pé opaco (`pivoPe` + `assets/props/pivos.json`) | Pé do quadro + `assets/pokemon/pivos.json` |
+| Sombra no chão | Outro cartão, virado para o sol | Elipse de contato |
+| Cor | Luz da cena, normal trocada para o sol | Mesma irradiância (`aplicarCorSprite` / `aplicarLuzBillboard`) |
 
 Placa não entra nesse caminho. Continua mesh em [`terrenoMalha.js`](../js/render/3d/terrenoMalha.js).
+
+## Técnica do pivô de base
+
+1. Posição mundo = contato com o terreno (centro da base).
+2. Geometria: `geometriaNoPe(pivotX, pivotY)` — pé na origem local; o cartão sobe no +Y.
+3. Pose: `poseCartao` com ordem `YXZ` — yaw para a câmera, depois `BILLBOARD_INCLINACAO` (topo para trás). O pe não sai do chão.
+4. Centro visual fica acima da base (metade da altura). Serve para gizmos/editor; o depth continua no pe.
+5. Depth: cartão inteiro escreve a profundidade do pe, puxada para a câmera (`FOLGA_PIVO` em [`luzBillboard.js`](../js/render/3d/ceu/luzBillboard.js)).
+
+Na mira, o blend da câmera zera a inclinacao e o cartão fica em pe.
+
+Editor de props: [`pivos-props.html`](../pivos-props.html) → `assets/props/pivos.json`.  
+Editor de atores: [`pivos.html`](../pivos.html) → `assets/pokemon/pivos.json`.
 
 ## Ordem no frame
 
 Em [`cenario3d.js`](../js/render/3d/cenario3d.js), `atualizarEDesenhar3d`:
 
 1. A câmera segue o corpo.
-2. `ceu.atualizar` posiciona sol, fill, rim, ambiente e hemisfério, e chama `atualizarLuzBillboard`.
-3. `vegetacao.atualizar(yaw)` gira o cartão visível para a câmera e o cartão de sombra para o sol.
-4. `personagem.atualizar` / `agente` aplicam a cor do sol no sprite.
+2. `ceu.atualizar` posiciona sol/fill/rim e chama `atualizarLuzBillboard`.
+3. Vegetação / prédios / FX recebem `(yaw, inclinacao)`.
+4. Personagem, agente e Pokémon recebem o mesmo `(yaw, inclinacao)`.
 5. O renderer desenha.
-
-A luz tem de ser atualizada antes dos sprites. Se inverter, a cor fica um frame atrasada.
 
 ## Props
 
-### De onde vêm
-
-`recolherGrupos` junta `PROPS` do demo e a vegetação de bioma (`todaVegetacao`). A chave do lote é `prop.sprite`, ou o `tipo` se não houver sprite. Cada chave vira um `InstancedMesh` com no máximo 4096 instâncias. Um draw call por sprite, não por planta.
-
-O quad é um `PlaneGeometry(1, 1)` com a base da imagem em y local 0 (`translate(0, 0.5, 0)`). O pé que encosta no chão é a última linha opaca do PNG (`pivoPe.js`, alpha ≥ 24). O cartão desce `(1 - pivotY) × altura` em unidades de célula, sem multiplicar por `ALTURA_BLOCO`, então só o transparente fica abaixo do terreno. A escala da instância é o tamanho em células:
+`recolherGrupos` junta `PROPS` do demo e a vegetação de bioma. Cada chave vira um `InstancedMesh` (máx. 4096). Um draw call por sprite.
 
 ```
 largura = (px de largura / TILE) × escala
@@ -43,50 +53,10 @@ altura  = (px de altura  / TILE) × escala
 | `mata`, `grama` e o resto | `VEG_MATA_ESCALA` (0.75) |
 | `pedra`, `cristal` | 1 |
 
-A posição da instância parte do chão da célula (`alturaEm` vezes `ALTURA_BLOCO`) e desce até o pé opaco. O 2D usa a mesma fração e a mesma escala de mata (`VEG_MATA_ESCALA`) em `terreno.js` e no fade de cobertura.
+Dois cartões por lote: visível (yaw câmera + inclinacao) e sombra (yaw do sol, inclinacao 0).
 
-A textura é o PNG do atlas, `NearestFilter`, sem mipmap. `alphaTest` (`VEG_ALPHA_TEST`, 0.12) recorta o transparente no passe opaco. Sem atlas, o lote não é criado.
+O preview de bioma ([`preview3d.js`](../js/bioma/preview3d.js)) usa a mesma geo no pe e a mesma inclinacao.
 
-As matrizes só são reescritas se o yaw da câmera ou o yaw do sol mudou mais que `VEG_YAW_EPS` (0.001 rad), ou se o mundo sujou (`onDirty`) e a altura do chão pode ter mudado.
+## Personagem e Pokémon
 
-### Dois cartões
-
-O mesmo lote tem duas malhas. Girar os dois juntos faria a sombra no terreno acompanhar a câmera. Não é o que se quer.
-
-```mermaid
-flowchart LR
-  cam[yaw da câmera]
-  sol[yaw do sol]
-  visivel[cartão visível]
-  sombra[cartão de sombra]
-  chao[sombra no terreno]
-  cam --> visivel
-  sol --> sombra
-  sombra --> chao
-```
-
-**Visível** (`veg-<sprite>`): yaw da câmera, `castShadow = false`. `MeshStandardMaterial` com a textura. Na terceira pessoa o cartão também gira −45° no X (`BILLBOARD_INCLINACAO`), deitando o topo para trás, no mesmo ângulo do pitch padrão da órbita. O pé continua no chão porque a origem da geometria é a base. Na mira o blend da câmera zera essa inclinação e o cartão fica em pé.
-
-`PlaneGeometry` nasce olhando para +Z. A ordem é `YXZ`: primeiro o yaw aponta a face para a câmera, depois o X deita o cartão. O X negativo leva o topo para longe da câmera, e a face olha para cima, de encontro à órbita.
-
-**Sombra** (`veg-sombra-<sprite>`): mesma posição e escala, yaw de `yawCartaoSol()`. `castShadow = true`. No passe de cor não aparece (`colorWrite` e `depthWrite` desligados). `frustumCulled = false` porque o volume das instâncias não pode ser o quad unitário na origem — isso cullava o lote inteiro e a sombra sumia.
-
-`yawCartaoSol` é `atan2(direçãoDaLuz.x, direçãoDaLuz.z)`. A direção é sol (ou lua, à noite) menos o alvo, a mesma usada para posicionar a `DirectionalLight`. O plano fica de frente para a luz, como se a câmera estivesse olhando para o sol. Orbitar o personagem não gira essa sombra.
-
-O Three, por padrão, rasteriza no shadow map a face de trás (`shadowSide` de um material `FrontSide` vira `BackSide`). Um cartão de frente para o sol mostra a face da frente para a luz, e a sombra não saía. Por isso `shadowSide = DoubleSide`. O recorte usa a mesma textura e o mesmo `alphaTest`, num `MeshDepthMaterial` em `customDepthMaterial`. O `getDepthMaterial` do Three ainda copia `map` e `alphaTest` do material de cor por cima do depth material — os dois precisam ter a textura.
-
-## Cor, sem depender da câmera
-
-Arquivo: [`js/render/3d/ceu/luzBillboard.js`](../js/render/3d/ceu/luzBillboard.js).
-
-Um cartão que gira com a câmera muda a normal geométrica. `MeshStandardMaterial` escurece e clareia conforme essa normal pega o sol. A cor tem de ser a de um cartão virado para a luz daquele instante.
-
-`aplicarLuzBillboard` troca, no fragment shader, a normal de iluminação por `uNormalSol` (direção da luz, em view space). Não mexe na geometria nem no depth da sombra. `roughness = 1` e `metalness = 0` para o brilho especular não mudar com o ângulo da câmera. `aplicarSombraNuvem` continua multiplicando o difuso pela sombra da nuvem.
-
-`atualizarLuzBillboard` roda no fim de `aplicarLuzes` em [`ceu.js`](../js/render/3d/ceu/ceu.js). Guarda a direção do sol e a irradiância (ambiente + hemisfério + sol com N·L = 1 + fill e rim), dividida por π, no mesmo peso do Lambert do Three.
-
-O personagem não usa esse shader. `SpriteMaterial` não recebe luz de cena. `aplicarCorSprite` pinta `material.color` com essa irradiância, a tinta base (o agente é azulado) e o fator de nuvem em `(x, altura, z)`. A sombra direta da nuvem pesa 1. A indireta pesa 0.42, igual ao shader do terreno.
-
-## Personagem
-
-`THREE.Sprite` com altura 1.25. O `center` é o pé opaco do quadro (`pivotX`, `1 - pivotY`), medido no sheet de 64×64 a cada frame (linha = facing relativo à câmera, coluna = passo da animação). `castShadow` fica desligado. A sombra no chão é a elipse de [`sombraContato3d.js`](../js/render/3d/sombraContato3d.js), não a silhueta do sprite. Debaixo d'água, um segundo sprite faz o véu, cortado por um plano na superfície.
+Mesh unitário com pe na origem. O quadro do sheet atualiza a textura do canvas; o pivô do quadro atualiza a geo. Silhueta e véu d’água são meshes irmãos no mesmo pe.
