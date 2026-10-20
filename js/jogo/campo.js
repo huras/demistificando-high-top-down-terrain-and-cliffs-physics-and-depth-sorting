@@ -473,7 +473,7 @@ export function dicaFerramenta() {
   const item = estado.hotbar[estado.slotAtivo];
   if (!item || contar(item.tipo, item.key) <= 0) return "";
   if (item.tipo === TIPO_ITEM.FERRAMENTA) return FERRAMENTAS[item.key]?.dica || "";
-  if (item.tipo === TIPO_ITEM.BLOCO) return "Clique esquerdo coloca o bloco.";
+  if (item.tipo === TIPO_ITEM.BLOCO) return "Clique esquerdo coloca na face mirada. Equipe pela hotbar ou roda.";
   if (item.tipo === TIPO_ITEM.BERRY) return "Clique esquerdo usa ou planta. Em solo cavado, planta.";
   if (item.tipo === TIPO_ITEM.REMEDIO) return "Clique esquerdo usa no Pokémon, ou em você se ele não precisar.";
   if (item.tipo === TIPO_ITEM.BOLA) return "A mira segue o cursor até o anel. Segure e solte para arremessar.";

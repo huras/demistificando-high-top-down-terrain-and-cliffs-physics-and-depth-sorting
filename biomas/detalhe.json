@@ -175,7 +175,10 @@
     },
     "johto-past": {
       "gen2-grass-1": 0.5
-    }
+    },
+    "kelp-forest": {},
+    "deep-trench": {},
+    "sandy-shelf": {}
   },
   "ruidoGrama": {
     "dirty-sand": {

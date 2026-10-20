@@ -4,8 +4,8 @@ import { alturaSobPes } from "../fisica/colisao.js";
 import { colocarBloco, definirBlocoNaMao, quebrarBloco } from "../mundo/voxel/editar.js";
 import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO, ehLiquido, ehSolido } from "../mundo/voxel/tiposBloco.js";
-import { BLOCOS, TIPO_ITEM } from "../wild/catalogo.js";
-import { contar, darItem, gastar, hotbarAtivo } from "./estado.js";
+import { BLOCOS, SLOTS_HOTBAR, TIPO_ITEM } from "../wild/catalogo.js";
+import { atribuirSlot, contar, darItem, estado, gastar, hotbarAtivo } from "./estado.js";
 
 const CHAVE = Object.freeze({
   [BLOCO.GRAMA]: "blocoGrama",
@@ -51,6 +51,25 @@ function soltar(x, y, z, id) {
   });
 }
 
+function jaTemNaHotbar(chave) {
+  for (let i = 0; i < SLOTS_HOTBAR; i++) {
+    const slot = estado.hotbar[i];
+    if (slot && slot.tipo === TIPO_ITEM.BLOCO && slot.key === chave) return true;
+  }
+  return false;
+}
+
+function equiparBlocoColetado(chave) {
+  if (jaTemNaHotbar(chave)) return;
+  for (let i = 0; i < SLOTS_HOTBAR; i++) {
+    if (estado.hotbar[i]) continue;
+    atribuirSlot(i, TIPO_ITEM.BLOCO, chave);
+    const nome = BLOCOS[chave]?.nome || "bloco";
+    estado.itemGet = `${nome} equipado na hotbar.`;
+    return;
+  }
+}
+
 export function tentarQuebrar(corpo, alvo) {
   if (!picaretaNaMao() || !alvo) return false;
   const id = obterBloco(alvo.x, alvo.y, alvo.z);
@@ -91,6 +110,7 @@ export function tickBlocos(corpo, dt) {
     const dy = corpo.y - item.y;
     if (dx * dx + dy * dy <= raio) {
       darItem(TIPO_ITEM.BLOCO, item.chave, 1);
+      equiparBlocoColetado(item.chave);
       drops.splice(i, 1);
     }
   }

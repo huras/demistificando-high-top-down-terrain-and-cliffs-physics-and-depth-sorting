@@ -3,6 +3,7 @@
 import {
   BOLAS,
   BERRIES,
+  BLOCOS,
   CHAVES,
   CRISTAIS,
   FERRAMENTAS,
@@ -573,6 +574,10 @@ function opcoesHotbar() {
   for (let i = 0; i < ferr.length; i++) {
     if (contarItem(ferr[i]) > 0) lista.push({ tipo: TIPO_ITEM.FERRAMENTA, key: ferr[i] });
   }
+  const blocos = Object.keys(BLOCOS);
+  for (let i = 0; i < blocos.length; i++) {
+    if (contarItem(blocos[i]) > 0) lista.push({ tipo: TIPO_ITEM.BLOCO, key: blocos[i] });
+  }
   const berries = Object.keys(BERRIES);
   for (let i = 0; i < berries.length; i++) {
     if (contarItem(berries[i]) > 0) lista.push({ tipo: TIPO_ITEM.BERRY, key: berries[i] });
@@ -741,6 +746,7 @@ function semearInicio() {
   estado.hotbar[1] = { tipo: TIPO_ITEM.FERRAMENTA, key: "wateringCan" };
   estado.hotbar[2] = { tipo: TIPO_ITEM.BERRY, key: "oran" };
   estado.hotbar[3] = { tipo: TIPO_ITEM.REMEDIO, key: "potion" };
+  estado.hotbar[4] = { tipo: TIPO_ITEM.FERRAMENTA, key: "pickaxe" };
   darChave("pokedex");
   anunciarGanho("pokedex", 1, "mudo");
   registrarParty();
