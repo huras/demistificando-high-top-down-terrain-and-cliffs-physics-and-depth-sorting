@@ -126,7 +126,11 @@ export function criarAtor(opts) {
     estagioPrecisao: 0,
     estagioEvasao: 0,
     status: null,
+    statusTurnos: 0,
     venenoAte: 0,
+    queimaAte: 0,
+    geloAte: 0,
+    paraTrava: 0,
     shiny: !!opts.shiny,
     faccao: opts.faccao,
     x: opts.x,
@@ -271,7 +275,12 @@ export function reviverAtor(ator, x, y, z) {
   ator.leadX = 0;
   ator.leadY = 0;
   ator.status = null;
+  ator.statusTurnos = 0;
   ator.venenoAte = 0;
+  ator.queimaAte = 0;
+  ator.geloAte = 0;
+  ator.paraTrava = 0;
+  ator.dormindo = 0;
   ator.estagioAtk = 0;
   ator.estagioDef = 0;
   ator.estagioSpa = 0;
@@ -552,6 +561,10 @@ export function tickPassivo(ator, dt, agora) {
     ator.velMul = 1;
     ator.velMulAte = 0;
   }
+  if (ator.status === "sleep" && (ator.dormindo || 0) > 0) {
+    ator.dormindo = Math.max(0, ator.dormindo - dt);
+  }
+  if ((ator.paraTrava || 0) > 0) ator.paraTrava = Math.max(0, ator.paraTrava - dt);
   if (ator.morto || ator.capturado) {
     ator.andando = false;
     return;
@@ -566,7 +579,8 @@ export function tickPassivo(ator, dt, agora) {
 
 export function velocidadeDe(ator, correndo) {
   const base = correndo ? POKEMON.VEL_AGRO : POKEMON.VEL_ROAM;
-  return base * escalaVelocidade(ator.stats.velocidade) * (ator.velMul || 1);
+  const para = ator?.status === "paralysis" ? 0.5 : 1;
+  return base * escalaVelocidade(ator.stats.velocidade) * (ator.velMul || 1) * para;
 }
 
 export function recargaDe(ator, segundos) {

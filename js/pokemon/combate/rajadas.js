@@ -8,6 +8,8 @@ const POR_CHAVE = {
   razorLeaf: { tipo: "leque", n: 3, graus: 8, vel: VEL, giro: 4.8 },
   bubble: { tipo: "leque", n: 2, graus: 10, vel: VEL * 0.85, amp: 22 / TILE, freq: 2.1 },
   flamethrower: { tipo: "jato", n: 8, dur: 0.55, intervalo: 0.07, graus: 8, vel: VEL, cresce: 6, distCresce: 7 },
+  waterGun: { tipo: "unico", vel: VEL * 1.05 },
+  swift: { tipo: "leque", n: 5, graus: 18, vel: VEL * 1.1 },
 };
 
 export function receitaRajada(chave) {

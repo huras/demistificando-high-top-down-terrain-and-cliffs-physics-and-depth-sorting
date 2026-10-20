@@ -4,7 +4,7 @@ import { aplicarLuzBillboard } from "../ceu/luzBillboard.js";
 
 /**
  * Material padrão de cartão (props / atores).
- * Aplica luz + depth achatado no pé.
+ * Aplica luz + profundidade em coluna (XZ pé, Y fragmento).
  */
 export function materialCartao(mapa, opts = {}) {
   const alphaTest = opts.alphaTest ?? VEG_ALPHA_TEST;

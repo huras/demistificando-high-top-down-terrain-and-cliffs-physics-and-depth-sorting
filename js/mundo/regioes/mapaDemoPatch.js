@@ -2,6 +2,7 @@
  * Heightmap autoral da demo — patch sobre o gen procedural.
  */
 import { CHUNK_XZ } from "../../config.js";
+import { FLUIDO } from "../agua/fluidos.js";
 import { aplicarAguaDemo } from "../autor/agua.js";
 import { aplicarDeckRetangular, DECK_CUMES } from "../autor/ponte.js";
 import { preencherColunaSolida } from "../voxel/chunk.js";
@@ -10,6 +11,8 @@ export const COLUNAS = 84;
 export const LINHAS = 60;
 export const PATCH_ORIGEM_X = 0;
 export const PATCH_ORIGEM_Y = 0;
+/** Sobe a demo da cota 1 pra ~16 (praça / acima do mar global 12). */
+export const OFFSET_COTA = 15;
 
 function criarGrade(cols, rows, base = 1) {
   const g = new Array(rows);
@@ -106,6 +109,9 @@ export function gerarAlturaDemo() {
   montanhaMinecraft(g, 48, 34, 51, 37, 17, 1);
   montanhaMinecraft(g, 72, 34, 75, 37, 17, 2);
 
+  for (let y = 0; y < g.length; y++) {
+    for (let x = 0; x < g[0].length; x++) g[y][x] += OFFSET_COTA;
+  }
   return g;
 }
 
@@ -118,7 +124,7 @@ export function obterAlturasDemo() {
 /** Compat: array estático (mesma referência). */
 export const ALTURAS = obterAlturasDemo();
 
-export const SPAWN = { x: 17.5, y: 11.2, z: 1 };
+export const SPAWN = { x: 17.5, y: 11.2, z: 1 + OFFSET_COTA };
 
 export const PROPS = [
   { id: "arv-atras", x: 17.5, y: 11.4, tipo: "arvore" },
@@ -169,6 +175,7 @@ export function aplicarPatchDemo(chunk, alturas = ALTURAS) {
       const wy = baseY + ly - PATCH_ORIGEM_Y;
       if (wx < 0 || wy < 0 || wx >= COLUNAS || wy >= LINHAS) continue;
       preencherColunaSolida(chunk, lx, ly, alturas[wy][wx] | 0);
+      chunk.fluido[ly * CHUNK_XZ + lx] = FLUIDO.NENHUM;
       tocado = true;
     }
   }

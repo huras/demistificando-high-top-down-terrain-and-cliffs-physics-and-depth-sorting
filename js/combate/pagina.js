@@ -3,6 +3,7 @@ import { carregarDados, especie, golpe, listarEspecies } from "../pokemon/dados.
 import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
+import { corStatus, rotuloStatus } from "../pokemon/combate/status.js";
 import { definirOmbro, desenharArena, ligarArena, projetarArena } from "./arena3d.js";
 import { cenarioAleatorio, definirMetade, definirSemente, sementeCobertura, tipoMetade } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
@@ -253,7 +254,10 @@ function montarColuna(lado) {
       </div>
     </header>
     <div class="vida">
-      <div class="vida__trilho"><span data-campo="barra"></span></div>
+      <div class="vida__linha">
+        <div class="vida__trilho"><span data-campo="barra"></span></div>
+        <span class="vida__status" data-campo="status" hidden></span>
+      </div>
       <p class="vida__num" data-campo="hp">—</p>
       <p class="pp" data-campo="pp">PP —</p>
       <div class="tubos" data-campo="tubos" hidden>
@@ -495,6 +499,20 @@ function pintarTubos(el, ator) {
   for (let i = 0; i < tubos.length; i++) tubos[i].classList.toggle("cheio", i < n);
 }
 
+function pintarBadgeStatus(el, ator) {
+  if (!el) return;
+  const id = ator?.status || "";
+  if (!id) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  el.hidden = false;
+  el.textContent = rotuloStatus(id);
+  el.style.color = corStatus(id);
+  el.dataset.status = id;
+}
+
 function pintarVida(lado) {
   const ator = estadoLuta()[lado];
   const raiz = raizDe(lado);
@@ -511,6 +529,7 @@ function pintarVida(lado) {
   trilha.style.background = carga >= 1 ? "#7dce6a" : "#67e8f9";
   campo(raiz, "esquiva-num").textContent = carga >= 1 ? "Esquiva pronta" : `Esquiva ${Math.round(carga * 100)}%`;
   campo(raiz, "estado").textContent = textoEstado(lado, ator);
+  pintarBadgeStatus(campo(raiz, "status"), ator);
   pintarTubos(campo(raiz, "tubos"), ator);
 
   const marca = hud.querySelector(`[data-marca="${lado}"]`);
@@ -526,6 +545,7 @@ function pintarVida(lado) {
   const miolo = marca.querySelector(".marca__barra span");
   miolo.style.width = `${pct * 100}%`;
   miolo.style.background = corVida(pct);
+  pintarBadgeStatus(marca.querySelector("[data-status]"), ator);
   const esquiva = marca.querySelector(".marca__esquiva span");
   if (esquiva) {
     esquiva.style.width = `${carga * 100}%`;
@@ -668,6 +688,20 @@ function pintarLog() {
     } else if (linha.tipo === "veneno") {
       if (linha.aplicado) li.append(pedaco("log__ataque", " envenenado"));
       else li.append(pedaco("log__dano", ` −${linha.dano} veneno`));
+    } else if (linha.tipo === "status") {
+      if (linha.status === "wake") li.append(pedaco("log__ataque", " acordou"));
+      else if (linha.status === "thaw") li.append(pedaco("log__ataque", " descongelou"));
+      else if (linha.skip) li.append(pedaco("log__ataque", ` ${linha.rotulo || linha.status}`));
+      else if (linha.residual && linha.dano) {
+        li.append(pedaco("log__dano", ` −${linha.dano} ${linha.rotulo || linha.status}`));
+      } else if (linha.aplicado) {
+        const el = pedaco("log__ataque", ` ${linha.rotulo || linha.status}`);
+        const cor = corStatus(linha.status);
+        if (cor) el.style.color = cor;
+        li.append(el);
+      } else {
+        li.append(pedaco("log__ataque", ` ${linha.rotulo || linha.status}`));
+      }
     } else if (linha.tipo === "queda") {
       li.append(pedaco("log__queda", " caiu"));
     } else if (linha.tipo === "carregar") {

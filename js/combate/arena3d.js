@@ -4,6 +4,7 @@ import { particulasVivas } from "../pokemon/combate/particulas.js";
 import { impactosVivos, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "../pokemon/combate/folhasGolpe.js";
 import { aurasVivas, ORBES_KI } from "../pokemon/combate/ki.js";
+import { ligarFxCena, sincronizarFx } from "../pokemon/combate/fx/index.js";
 import {
   CHAO,
   pecaCobertura,
@@ -924,6 +925,7 @@ export function ligarArena(elemento) {
   for (let i = 0; i < CAP_COBERTURA; i++) coberturas.push(criarCobertura());
   for (let i = 0; i < CAP_GRAMA; i++) gramas.push(criarGrama());
 
+  ligarFxCena(cena);
   ligarPonteiro();
   ajustarTamanho();
 }
@@ -1075,6 +1077,7 @@ export function desenharArena(atores, dt = 0.016) {
   pintarTiros();
   pintarFaiscas();
   pintarKi();
+  sincronizarFx(0, null);
   renderer.render(cena, camera);
 }
 

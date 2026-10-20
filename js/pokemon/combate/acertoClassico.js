@@ -1,7 +1,7 @@
 /** Precisão da segunda à quarta geração. Sem comando de esquiva. */
 
-import { imuneAVeneno } from "../ator.js";
 import { calcularDano, efetividade } from "../tipos.js";
+import { imuneAStatus } from "./status.js";
 
 /** Estágio −6..+6. Positivo (3+n)/3, negativo 3/(3−n). */
 export function multiplicadorPrecisao(estagio) {
@@ -62,8 +62,11 @@ function notaStatus(def, alvo) {
       nota = Math.max(nota, 22 * delta);
     }
   }
-  if (def?.ailment?.id === "poison") {
-    if (alvo && !alvo.status && !imuneAVeneno(alvo)) nota = Math.max(nota, 35);
+  const ail = def?.ailment?.id;
+  if (ail && alvo && !alvo.status && !imuneAStatus(alvo, ail, def)) {
+    const peso =
+      ail === "sleep" ? 48 : ail === "freeze" ? 42 : ail === "paralysis" ? 38 : ail === "burn" ? 36 : 35;
+    nota = Math.max(nota, peso);
   }
   return nota;
 }

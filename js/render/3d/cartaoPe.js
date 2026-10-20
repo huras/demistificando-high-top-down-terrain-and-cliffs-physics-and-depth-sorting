@@ -7,7 +7,7 @@ import { ALTURA_BLOCO } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
-import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
+import { aplicarLuzBillboard, FOLGA_CHAO_DECAL } from "./ceu/luzBillboard.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 import { fotoCuraMaquina, SLOTS_CURA } from "../../jogo/maquinaCura.js";
 
@@ -76,7 +76,7 @@ export function moldeChao(tela) {
   const largura = tela.width / PX;
   const altura = tela.height / PX;
   const geo = new THREE.PlaneGeometry(largura, altura);
-  return { geo, material: materialSprite(tela, 1.5) };
+  return { geo, material: materialSprite(tela, FOLGA_CHAO_DECAL) };
 }
 
 export function emPe(grupo) {

@@ -150,7 +150,8 @@ function danoGen(atacante, alvo, poder, categoria) {
   const especial = categoria === "special";
   const brutoAtk = Math.max(1, especial ? atacante.stats.ataqueEsp : atacante.stats.ataque);
   const estagioAtk = especial ? atacante.estagioSpa || 0 : atacante.estagioAtk || 0;
-  const atk = Math.max(1, Math.floor(brutoAtk * multiplicadorEstagio(estagioAtk)));
+  let atk = Math.max(1, Math.floor(brutoAtk * multiplicadorEstagio(estagioAtk)));
+  if (!especial && atacante.status === "burn") atk = Math.max(1, Math.floor(atk * 0.5));
   const brutoDef = Math.max(1, especial ? alvo.stats.defesaEsp : alvo.stats.defesa);
   const estagioDef = especial ? alvo.estagioSpd || 0 : alvo.estagioDef || 0;
   const def = Math.max(1, Math.floor(brutoDef * multiplicadorEstagio(estagioDef)));

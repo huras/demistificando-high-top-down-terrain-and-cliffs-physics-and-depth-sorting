@@ -3,7 +3,8 @@
 import { bloqueioNoTrecho } from "./arenas.js";
 import { dispararGolpeTurno } from "../pokemon/combate/executor.js";
 import { projeteisVivos } from "../pokemon/combate/projeteis.js";
-import { danoVeneno, emAvanco, velocidadeDe } from "../pokemon/ator.js";
+import { emAvanco, velocidadeDe } from "../pokemon/ator.js";
+import { processarInicioTurno, residualTurno } from "../pokemon/combate/status.js";
 import { RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
 import { limitarArena, paradaDe } from "../pokemon/ia/espaco.js";
 import { notaGolpeTurno, resolverTurno } from "../pokemon/combate/acertoClassico.js";
@@ -41,6 +42,7 @@ let esperaTeatro = 0;
 let avisouCarregar = false;
 let disparou = false;
 let veioDoTeatro = false;
+let efeitosRef = null;
 
 export function definirModoLuta(proximo) {
   modo = proximo === "turnos" ? "turnos" : "real";
@@ -156,6 +158,7 @@ export function avisoTurno() {
 }
 
 export function tickTurnos(dt, agora, efeitos) {
+  efeitosRef = efeitos || null;
   if (modo !== "turnos" || fase === "ocioso" || fase === "escolha" || fase === "foco") return;
   if (!vivo(esquerda) || !vivo(direita)) return;
   if (fase === "carregar") {
@@ -185,7 +188,7 @@ export function tickTurnos(dt, agora, efeitos) {
   if (fase === "teatro") {
     esperaTeatro -= dt;
     if (esperaTeatro > 0) return;
-    if (ator) danoVeneno(ator, efeitos);
+    if (ator) residualTurno(ator, efeitos);
     indice += 1;
     veioDoTeatro = true;
     abrirTurno();
@@ -264,6 +267,13 @@ function abrirTurno() {
     ator = atual;
     alvo = outro;
     atual.alvo = outro;
+    const inicio = processarInicioTurno(atual, efeitosRef);
+    if (inicio.pulou) {
+      residualTurno(atual, efeitosRef);
+      veioDoTeatro = false;
+      indice += 1;
+      continue;
+    }
     if (atual.carregarDepois) {
       veioDoTeatro = false;
       atual.carregarDepois = false;

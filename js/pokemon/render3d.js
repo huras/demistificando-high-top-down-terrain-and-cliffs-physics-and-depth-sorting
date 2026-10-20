@@ -7,6 +7,7 @@ import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraC
 import { bolasAtivas, particulasCaptura } from "./captura.js";
 import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "./combate/folhasGolpe.js";
+import { ligarFxCena, sincronizarFx } from "./combate/fx/index.js";
 import { aurasVivas, ORBES_KI } from "./combate/ki.js";
 import { dropsNoChao } from "./drops.js";
 import { imagemIcone } from "../jogo/icones.js";
@@ -289,6 +290,7 @@ export function ligarPokemon3d(scene) {
   carregarFolhasGolpe();
   cena = scene;
   carregarCatalogoLuzes();
+  ligarFxCena(cena);
   for (let i = 0; i < CAP_ATOR; i++) atores.push(criarAtorSlot());
   for (let i = 0; i < CAP_TIRO; i++) tiros.push(criarPonto("#ffffff"));
   for (let i = 0; i < CAP_DROP; i++) drops.push(criarPonto("#fbbf24"));
@@ -604,21 +606,30 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     mesh.position.set(p.x, p.z * ALTURA_BLOCO, p.y);
   }
 
-  if (!bolaMeshes.length) return;
-  const emVoo = bolasAtivas();
-  let slotBola = 0;
-  for (let i = 0; i < emVoo.length && slotBola < bolaMeshes.length; i++) {
-    const bola = emVoo[i];
-    if (bola.morta) continue;
-    const mesh = bolaMeshes[slotBola++];
-    mesh.visible = true;
-    const treme = bola.fase === "tremendo" ? Math.sin(bola.faseT * 28) * 0.12 : 0;
-    const pulo = bola.fase === "tremendo" ? Math.abs(Math.sin(bola.faseT * 18)) * 0.1 : 0;
-    const escala = bola.fase === "brilho" ? 0.42 + Math.sin(bola.faseT * 16) * 0.08 : 0.42;
-    mesh.scale.set(escala, escala, 1);
-    mesh.material.rotation = bola.giro || 0;
-    mesh.material.color.set("#ffffff");
-    mesh.position.set(bola.x + treme, bola.z * ALTURA_BLOCO + pulo, bola.y);
+  if (bolaMeshes.length) {
+    const emVoo = bolasAtivas();
+    let slotBola = 0;
+    for (let i = 0; i < emVoo.length && slotBola < bolaMeshes.length; i++) {
+      const bola = emVoo[i];
+      if (bola.morta) continue;
+      const mesh = bolaMeshes[slotBola++];
+      mesh.visible = true;
+      const treme = bola.fase === "tremendo" ? Math.sin(bola.faseT * 28) * 0.12 : 0;
+      const pulo = bola.fase === "tremendo" ? Math.abs(Math.sin(bola.faseT * 18)) * 0.1 : 0;
+      const escala = bola.fase === "brilho" ? 0.42 + Math.sin(bola.faseT * 16) * 0.08 : 0.42;
+      mesh.scale.set(escala, escala, 1);
+      mesh.material.rotation = bola.giro || 0;
+      mesh.material.color.set("#ffffff");
+      mesh.position.set(bola.x + treme, bola.z * ALTURA_BLOCO + pulo, bola.y);
+    }
+    for (; slotBola < bolaMeshes.length; slotBola++) bolaMeshes[slotBola].visible = false;
   }
-  for (; slotBola < bolaMeshes.length; slotBola++) bolaMeshes[slotBola].visible = false;
+
+  let foco = null;
+  if (camera) {
+    foco = { x: camera.position.x, y: camera.position.z };
+  } else if (lista[0]) {
+    foco = { x: lista[0].x, y: lista[0].y };
+  }
+  sincronizarFx(28, foco);
 }

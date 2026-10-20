@@ -1,7 +1,8 @@
 import { ALTURA_BLOCO, USAR_PATCH_DEMO } from "../config.js";
 import { SPAWN as SPAWN_DEMO } from "../mundo/mapaDemo.js";
 import { SPAWN_PALLET } from "../mundo/regiao/spawnKanto.js";
-import { tickPassivo, tickVeneno, aplicarNivel } from "./ator.js";
+import { tickPassivo, aplicarNivel } from "./ator.js";
+import { tickStatus } from "./combate/status.js";
 import { atualizarCaptura } from "./captura.js";
 import {
   aplicarDanoLivre,
@@ -10,6 +11,8 @@ import {
   tickConjuracao,
   tickDesmaio,
 } from "./combate/executor.js";
+import { impactoFx, tickFx } from "./combate/fx/index.js";
+import { tickParticulas } from "./combate/particulas.js";
 import { atualizarProjeteis } from "./combate/projeteis.js";
 import { dadosProntos } from "./dados.js";
 import { atualizarDrops, soltarDrop } from "./drops.js";
@@ -55,6 +58,10 @@ const treinador = {
 
 const efeitos = {
   flutuar,
+  aoGolpe() {},
+  aoImpacto(alvo, tipo, efet) {
+    impactoFx(alvo, tipo, efet);
+  },
   aoDerrotar(alvo) {
     if (alvo.faccao === "party") {
       alvo.mortoAte = agora + 15;
@@ -156,7 +163,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
 
   const atores = mon ? selvagens.concat(mon) : selvagens;
   for (let i = 0; i < atores.length; i++) tickPassivo(atores[i], passo, agora);
-  for (let i = 0; i < atores.length; i++) tickVeneno(atores[i], agora, efeitos);
+  for (let i = 0; i < atores.length; i++) tickStatus(atores[i], agora, efeitos, "real");
   for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
   montarGrade(atores.concat(treinador));
   for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
@@ -171,6 +178,8 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   tickEmocoes(visiveis, passo);
   for (let i = 0; i < visiveis.length; i++) tickVisual(visiveis[i], passo, agora);
   tickFlutuantes(passo);
+  tickParticulas(passo);
+  tickFx(passo);
 
   if (treinador.hp <= 0 && !treinador.invulneravel) {
     corpo.x = RESPAWN.x;

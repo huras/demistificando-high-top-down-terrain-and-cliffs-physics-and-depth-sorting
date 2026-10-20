@@ -30,6 +30,7 @@ export function soltarProjetil(opts) {
     poder: opts.poder,
     tipo: opts.tipo,
     categoria: opts.categoria,
+    defGolpe: opts.defGolpe || null,
     acerto: opts.acerto,
     forma: opts.forma || (opts.arco ? "arc" : "projectile"),
     cor: COR_TIPO[opts.tipo] || "#f8fafc",

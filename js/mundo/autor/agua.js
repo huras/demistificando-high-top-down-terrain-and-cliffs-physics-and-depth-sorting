@@ -1,10 +1,13 @@
 /**
  * Lago, rio raso e cachoeira — depois do preenchimento sólido do patch.
- * O chão da demo é altura 1, então a lâmina funda sobe a margem em vez de cavar.
+ * Cotas relativas à base antiga (1); OFFSET_COTA alinha com a praça (~16).
  */
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import { definirLocal, obterLocal } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
+
+/** Sync com mapaDemoPatch.OFFSET_COTA */
+const OFFSET_COTA = 15;
 
 /**
  * @returns {{ piso: number, a0?: number, a1?: number } | null}
@@ -13,40 +16,40 @@ import { BLOCO } from "../voxel/tiposBloco.js";
 export function celulaAguaDemo(wx, wy) {
   const x = wx | 0;
   const y = wy | 0;
+  const o = OFFSET_COTA;
 
   if (y >= 25 && y <= 29 && x >= 6 && x <= 16) {
-    return { piso: 2 + (y - 25) };
+    return { piso: 2 + (y - 25) + o };
   }
-  if (y >= 30 && y <= 31 && x >= 6 && x <= 16) return { piso: 7 };
+  if (y >= 30 && y <= 31 && x >= 6 && x <= 16) return { piso: 7 + o };
   if (y >= 32 && y <= 40 && x >= 6 && x <= 16) {
-    if (x >= 8 && x <= 14) return { piso: 6, a0: 6, a1: 7 };
-    return { piso: 7 };
+    if (x >= 8 && x <= 14) return { piso: 6 + o, a0: 6 + o, a1: 7 + o };
+    return { piso: 7 + o };
   }
-  // Queda sem piso: um sólido em z=1 desenhava grama na frente do lago
-  // e abria um vão entre a cortina de cima e a água de baixo.
+  // Queda sem piso: sólido baixo na frente do lago abria vão na cortina.
   if (y === 41 && x >= 6 && x <= 16) {
-    if (x >= 8 && x <= 14) return { piso: 0, a0: 4, a1: 7 };
-    return { piso: 7 };
+    if (x >= 8 && x <= 14) return { piso: 0, a0: 4 + o, a1: 7 + o };
+    return { piso: 7 + o };
   }
 
   if (x >= 6 && x <= 18 && y >= 42 && y <= 52) {
     const inlet = y === 42 && x >= 8 && x <= 14;
     const rim = x === 6 || x === 18 || y === 52 || (y === 42 && !inlet);
-    if (rim) return { piso: 4 };
+    if (rim) return { piso: 4 + o };
     const canal = x >= 8 && x <= 14 && y <= 43;
     const shore =
       !canal &&
       (x === 7 || x === 17 || y === 51 || (y === 43 && (x < 8 || x > 14)));
-    if (shore) return { piso: 3, a0: 3, a1: 4 };
-    return { piso: 1, a0: 1, a1: 4 };
+    if (shore) return { piso: 3 + o, a0: 3 + o, a1: 4 + o };
+    return { piso: 1 + o, a0: 1 + o, a1: 4 + o };
   }
 
-  if (y === 53 && x >= 6 && x <= 18) return { piso: 3 };
-  if (y === 54 && x >= 6 && x <= 18) return { piso: 2 };
-  if (y >= 42 && y <= 52 && x === 5) return { piso: 3 };
-  if (y >= 42 && y <= 52 && x === 4) return { piso: 2 };
-  if (y >= 42 && y <= 52 && x === 19) return { piso: 3 };
-  if (y >= 42 && y <= 52 && x === 20) return { piso: 2 };
+  if (y === 53 && x >= 6 && x <= 18) return { piso: 3 + o };
+  if (y === 54 && x >= 6 && x <= 18) return { piso: 2 + o };
+  if (y >= 42 && y <= 52 && x === 5) return { piso: 3 + o };
+  if (y >= 42 && y <= 52 && x === 4) return { piso: 2 + o };
+  if (y >= 42 && y <= 52 && x === 19) return { piso: 3 + o };
+  if (y >= 42 && y <= 52 && x === 20) return { piso: 2 + o };
   return null;
 }
 

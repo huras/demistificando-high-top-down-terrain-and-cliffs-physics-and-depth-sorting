@@ -1,6 +1,13 @@
 import * as THREE from "three";
-import { aplicarLuzBillboard, aplicarProfundidadeSprite } from "./ceu/luzBillboard.js";
+import {
+  aplicarLuzBillboard,
+  aplicarProfundidadeSprite,
+  FOLGA_ATOR,
+  FOLGA_CHAO,
+} from "./ceu/luzBillboard.js";
 import { geometriaNoPe } from "./billboard/geometria.js";
+
+const FOLGA_SILHUETA = FOLGA_CHAO + FOLGA_ATOR;
 
 /** Mesma cor do personagem e do Pokémon da party. */
 export const COR_SILHUETA_JOGADOR = 0xc5d6ee;
@@ -30,9 +37,9 @@ function testarStencil(material, ref) {
 }
 
 /**
- * O cartão visível some quando o pivô perde o depth.
- * Este passe usa o mesmo pivô com teste invertido, então só entra
- * o que o sólido já cobriu.
+ * O cartão visível some onde a profundidade em coluna perde pro sólido.
+ * Este passe usa a mesma coluna com teste invertido (GreaterDepth),
+ * então só entra o que o sólido já cobriu.
  */
 function aplicarMascaraSilhueta(material) {
   const anterior = material.onBeforeCompile;
@@ -79,7 +86,7 @@ export function criarSpriteSilhueta(mapa, cor = COR_SILHUETA_JOGADOR) {
   return sprite;
 }
 
-/** Silhueta em Mesh (mesmo pivô/depth dos cartões de ator). */
+/** Silhueta em Mesh (mesma profundidade em coluna dos cartões de ator). */
 export function criarMalhaSilhueta(mapa, cor = COR_SILHUETA_JOGADOR) {
   const material = new THREE.MeshBasicMaterial({
     map: mapa,
@@ -95,7 +102,7 @@ export function criarMalhaSilhueta(mapa, cor = COR_SILHUETA_JOGADOR) {
     side: THREE.FrontSide,
   });
   aplicarMascaraSilhueta(material);
-  aplicarLuzBillboard(material);
+  aplicarLuzBillboard(material, FOLGA_SILHUETA);
   testarStencil(material, STENCIL_SOLIDO);
   const mesh = new THREE.Mesh(geometriaNoPe(0.5, 1), material);
   mesh.name = "silhueta";

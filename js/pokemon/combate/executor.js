@@ -7,7 +7,6 @@ import {
   emEsquiva,
   emRecuo,
   emRolamentoAtivo,
-  imuneAVeneno,
 } from "../ator.js";
 import { acertoCorpo, alcanceCorpo } from "../ia/espaco.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
@@ -17,6 +16,14 @@ import { puloNoGolpe } from "./pulo.js";
 import { soltarProjetil } from "./projeteis.js";
 import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
 import { folhaGolpe } from "./folhasGolpe.js";
+import { dispararGolpeFx } from "./fx/index.js";
+import {
+  aplicarAilmentGolpe,
+  imuneAStatus,
+  limparStatus,
+  podeAgir,
+  tentarDerreter,
+} from "./status.js";
 import { agendarDesmaio, marcarPose, tempoClipGolpe } from "../sprites.js";
 import { bloqueioNoTrecho, cortaVisada } from "../../combate/arenas.js";
 import { RAIO_PROJETIL } from "../ia/constantes.js";
@@ -122,12 +129,17 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
     notar(efeitos, { tipo: "erro", ator: atacante, alvo });
     return;
   }
+  const defGolpe = atacante.golpeSlot?.def || travado.def || null;
+  if (defGolpe?.tipo) tentarDerreter(alvo, defGolpe.tipo, efeitos);
   const dano = travado.dano | 0;
   const efet = travado.efet || 1;
   alvo.hp -= dano;
   alvo.iframe = 0.15;
   alvo.iframeRajada = 0;
   if (alvo.hp > 0) subirFuria(alvo, efeitos);
+  if (alvo.hp > 0 && defGolpe?.ailment && dano > 0) {
+    aplicarAilmentGolpe(defGolpe, alvo, efeitos, { secundario: true, modoTurnos: true });
+  }
   marcarPose(alvo, "Hurt", agora);
   const recuo = iniciarRecuo(alvo, atacante, dano, agora);
   efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
@@ -167,7 +179,7 @@ export function aplicarDanoLivre(atacante, alvo, poder, tipo, categoria, agora, 
   return alvo.hp < hpAntes || alvo.hp <= 0 || !!alvo.morto;
 }
 
-function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma, rajada) {
+function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma, rajada, defGolpe) {
   const travado = resultadoTravado(atacante, alvo);
   if (travado) {
     if (!travado.gasto) aplicarTravado(atacante, alvo, agora, efeitos, travado);
@@ -191,6 +203,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     notar(efeitos, { tipo: "erro", ator: atacante, alvo });
     return;
   }
+  tentarDerreter(alvo, tipo, efeitos);
   const { dano, efet } = calcularDano(atacante, alvo, poder, tipo, categoria);
   if (efet === 0 || dano <= 0) {
     efeitos.flutuar(alvo, "imune", "#94a3b8");
@@ -219,6 +232,13 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     recuo: recuo.tempo,
     dist: recuo.dist,
   });
+  const def = defGolpe || atacante?.golpeSlot?.def;
+  if (alvo.hp > 0 && def?.ailment) {
+    aplicarAilmentGolpe(def, alvo, efeitos, {
+      secundario: true,
+      modoTurnos: !!atacante?.resultadoTurno,
+    });
+  }
   if (alvo.faccao === "selvagem") {
     alvo.pendenteAtacante = atacante;
     if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
@@ -258,8 +278,7 @@ function atorMorreu(alvo, agora) {
   alvo.desmaioEm = 0;
   alvo.andando = false;
   alvo.furia = false;
-  alvo.status = null;
-  alvo.venenoAte = 0;
+  limparStatus(alvo);
   alvo.alvo = null;
   alvo.pose = "Idle";
   alvo.poseSeguinte = "";
@@ -292,29 +311,8 @@ function aplicarDebuff(def, ator, alvo, efeitos) {
   return true;
 }
 
-function aplicarAilment(def, alvo, efeitos, rng = Math.random) {
-  const a = def?.ailment;
-  if (!a?.id || !alvo) return false;
-  if (a.id !== "poison") return false;
-  if (imuneAVeneno(alvo)) {
-    if (efeitos?.flutuar) efeitos.flutuar(alvo, "imune", "#94a3b8");
-    notar(efeitos, { tipo: "imune", alvo });
-    return true;
-  }
-  if (alvo.status === "poison") {
-    if (efeitos?.flutuar) efeitos.flutuar(alvo, "já envenenado", "#a855f7");
-    return true;
-  }
-  const chance = Number.isFinite(a.chance) ? a.chance : 100;
-  if (rng() * 100 >= chance) {
-    if (efeitos?.flutuar) efeitos.flutuar(alvo, "falhou", "#94a3b8");
-    return true;
-  }
-  alvo.status = "poison";
-  alvo.venenoAte = 0;
-  if (efeitos?.flutuar) efeitos.flutuar(alvo, "envenenado", "#a855f7");
-  notar(efeitos, { tipo: "veneno", alvo, aplicado: true });
-  return true;
+function aplicarAilment(def, alvo, efeitos, opts = {}) {
+  return aplicarAilmentGolpe(def, alvo, efeitos, opts);
 }
 
 function statusEmAlcance(ator, def, d) {
@@ -345,7 +343,7 @@ function escolhaStatusUtil(prontos, ator, alvo, d) {
       if (delta > 0 && atual >= 4) continue;
       return g;
     }
-    if (def.ailment?.id === "poison" && !alvo?.status && !imuneAVeneno(alvo)) return g;
+    if (def.ailment?.id && !alvo?.status && !imuneAStatus(alvo, def.ailment.id, def)) return g;
   }
   return null;
 }
@@ -538,6 +536,7 @@ function soltarTiro(ator, slot, ang, extra) {
     poder: extra.poder ?? def.poder,
     tipo: def.tipo,
     categoria: def.categoria,
+    defGolpe: def,
     acerto: extra.acerto != null ? extra.acerto : def.acerto,
     forma: def.forma,
     raio: extra.raio || def.raio,
@@ -554,7 +553,14 @@ function soltarTiro(ator, slot, ang, extra) {
     distCresce: extra.distCresce || 7,
     escala: extra.escala || 0,
     folha: extra.folha || "",
-    rastroEspaco: def.key === "ember" || def.key === "waterGun" ? 0.14 : 0,
+    rastroEspaco:
+      extra.rastroEspaco != null
+        ? extra.rastroEspaco
+        : def.key === "ember" || def.key === "waterGun" || def.key === "swift" || def.key === "flamethrower"
+          ? 0.12
+          : folhaGolpe(def.key)
+            ? 0.16
+            : 0,
   });
 }
 
@@ -687,16 +693,23 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
     } else {
       let feito = false;
       if (def.debuff) feito = aplicarDebuff(def, ator, alvo, efeitos) || feito;
-      if (def.ailment) feito = aplicarAilment(def, alvo, efeitos) || feito;
+      if (def.ailment) {
+        aplicarAilment(def, alvo, efeitos, { modoTurnos: !!ator.resultadoTurno });
+        feito = true;
+      }
       if (!feito) {
         ator.velMul = 1.25;
         ator.velMulAte = agora + 4;
         efeitos.flutuar(ator, def.nome, "#93c5fd");
+      } else {
+        dispararGolpeFx(ator, alvo, def);
       }
     }
     abrirRecuperacao(ator, slot);
     return;
   }
+
+  dispararGolpeFx(ator, alvo, def);
 
   if (def.forma === "projectile" || def.forma === "arc") {
     const receita = def.forma === "projectile" ? receitaRajada(def.key) : null;
@@ -706,9 +719,13 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
     }
     if (receita?.tipo === "leque") soltarLeque(ator, slot, receita);
     else {
+      const vel = receita?.vel || def.vel || 14;
+      const folha = folhaGolpe(def.key);
       soltarTiro(ator, slot, Math.atan2(ator.dirY, ator.dirX), {
-        vel: def.vel || 14,
+        vel,
         arco: def.forma === "arc",
+        folha: folha ? def.key : "",
+        escala: folha?.escalaVoo || 0,
       });
     }
     abrirRecuperacao(ator, slot);
@@ -720,10 +737,10 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
     const raio = Math.max(2.2, def.alcance || 2.2);
     const perto = atoresPerto(ator.x, ator.y, raio);
     for (let i = 0; i < perto.length; i++) {
-      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
+      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma, 0, def);
     }
     if (ator.resultadoTurno && !ator.resultadoTurno.gasto && alvo) {
-      aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma);
+      aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, def.acerto, def.forma, 0, def);
     }
     abrirRecuperacao(ator, slot);
     return;
@@ -735,7 +752,19 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
   if (alvo && (d <= alcance || travado)) {
     avancarNoGolpe(ator, alvo);
     ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
-    aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, acertoCorpo(def.acerto, d, alcance), def.forma);
+    aplicarDano(
+      ator,
+      alvo,
+      def.poder,
+      def.tipo,
+      def.categoria,
+      agora,
+      efeitos,
+      acertoCorpo(def.acerto, d, alcance),
+      def.forma,
+      0,
+      def,
+    );
   } else if (efeitos?.flutuar) {
     efeitos.flutuar(ator, "errou", "#cbd5e1");
     notar(efeitos, { tipo: "erro", ator, alvo });
@@ -897,14 +926,14 @@ export function ensaiarGolpe(ator, agora, efeitos) {
     const raio = Math.max(2.2, def.alcance || 2.2);
     const perto = atoresPerto(ator.x, ator.y, raio);
     for (let i = 0; i < perto.length; i++) {
-      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, 0, def.forma);
+      aplicarDano(ator, perto[i], def.poder, def.tipo, def.categoria, agora, efeitos, 0, def.forma, 0, def);
     }
     abrirRecuperacao(ator, slot);
     return;
   }
   avancarNoGolpe(ator, alvo);
   ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
-  aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, 0, def.forma);
+  aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, 0, def.forma, 0, def);
   abrirRecuperacao(ator, slot);
 }
 
@@ -921,6 +950,14 @@ export function tentarGolpe(ator, agora, efeitos) {
   if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0) return;
   const recuoHerdado = ator.recuoNoTick == null ? emRecuo(ator) : ator.recuoNoTick > 0;
   if (ator.morto || ator.capturado || ator.dormindo > 0 || recuoHerdado || emAvanco(ator) || emEsquiva(ator)) return;
+  if (ator.status === "freeze") return;
+  const acao = podeAgir(ator);
+  if (!acao.ok) {
+    if (acao.aviso && acao.motivo === "paralysis" && efeitos?.flutuar) {
+      efeitos.flutuar(ator, "paralisado", "#facc15");
+    }
+    return;
+  }
   const alvo = ator.alvo;
   if (!alvo || alvo.morto || alvo.capturado) return;
   if (alvo.hp <= 0 && alvo.faccao === "treinador") return;
@@ -942,6 +979,7 @@ export function impactoProjetil(projetil, alvo, agora, efeitos) {
     projetil.acerto,
     projetil.forma,
     projetil.rajada,
+    projetil.defGolpe || projetil.dono?.golpeSlot?.def,
   );
 }
 

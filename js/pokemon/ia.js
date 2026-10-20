@@ -214,7 +214,7 @@ function atualizarUm(ator, party, jogador, dt) {
     return;
   }
   if (ator.dormindo > 0) {
-    ator.dormindo -= dt;
+    if (ator.status !== "sleep") ator.dormindo = Math.max(0, ator.dormindo - dt);
     ator.andando = false;
     return;
   }

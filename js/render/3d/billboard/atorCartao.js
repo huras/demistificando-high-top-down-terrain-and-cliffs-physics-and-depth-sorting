@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { aplicarLuzBillboard } from "../ceu/luzBillboard.js";
+import { aplicarLuzBillboard, FOLGA_ATOR, FOLGA_CHAO } from "../ceu/luzBillboard.js";
 import { geometriaNoPe } from "./geometria.js";
 import { poseCartao } from "./pose.js";
 
@@ -10,7 +10,7 @@ import { poseCartao } from "./pose.js";
 export function criarAtorCartao(mapa, opts = {}) {
   const alphaTest = opts.alphaTest ?? 0.12;
   // Basic: a cor vem da CPU (aplicarCorSprite), igual ao Sprite antigo.
-  // LuzBillboard só achata o depth no pe.
+  // LuzBillboard: profundidade em coluna (XZ pé, Y fragmento).
   const mat = new THREE.MeshBasicMaterial({
     map: mapa || null,
     transparent: !!opts.transparent,
@@ -27,7 +27,9 @@ export function criarAtorCartao(mapa, opts = {}) {
     mat.clippingPlanes = opts.clippingPlanes;
     mat.clipShadows = true;
   }
-  aplicarLuzBillboard(mat, opts.folgaPivo);
+  const folga =
+    opts.folgaPivo != null ? opts.folgaPivo : FOLGA_CHAO + FOLGA_ATOR;
+  aplicarLuzBillboard(mat, folga);
   const geo = geometriaNoPe(0.5, 1);
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = opts.nome || "ator-cartao";

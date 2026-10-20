@@ -6,12 +6,19 @@ import {
   emRecuo,
   equiparGolpes,
   tickPassivo,
-  tickVeneno,
   velocidadeDe,
 } from "../pokemon/ator.js";
 import { cancelarConjuracao, ensaiarGolpe, impactoProjetil, tentarGolpe, tickConjuracao, tickDesmaio } from "../pokemon/combate/executor.js";
+import { rotuloStatus, tickStatus } from "../pokemon/combate/status.js";
 import { limparKi } from "../pokemon/combate/ki.js";
-import { limparParticulas, poeiraDash, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
+import { limparParticulas, poeiraDash, rajada, tickParticulas } from "../pokemon/combate/particulas.js";
+import {
+  elementoDe,
+  impactoFx,
+  limparFx,
+  emitirRastro,
+  tickFx,
+} from "../pokemon/combate/fx/index.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { tickEmocoes } from "../pokemon/emocoes.js";
 import { flutuar, limparFlutuantes, tickFlutuantes } from "../pokemon/flutuantes.js";
@@ -139,6 +146,19 @@ function anotar(item) {
     });
     return;
   }
+  if (item.tipo === "status") {
+    registrar({
+      tipo: "status",
+      ...sujeito(item.alvo),
+      status: item.status || "",
+      rotulo: rotuloStatus(item.status) || item.status || "",
+      dano: item.dano | 0,
+      residual: !!item.residual,
+      aplicado: !!item.aplicado,
+      skip: !!item.skip,
+    });
+    return;
+  }
   if (item.tipo === "queda") registrar({ tipo: "queda", ...sujeito(item.alvo) });
   if (item.tipo === "carregar") registrar({ tipo: "carregar", ...sujeito(item.ator) });
 }
@@ -148,13 +168,17 @@ const efeitos = {
   anotar,
   aoDerrotar() {},
   aoGolpe(ator, def) {
-    const z = (ator.z || 0) + (ator.hopLift || 0) + 2.2;
-    rajada(ator.x, ator.y, z, def.tipo, 8, 0.85);
+    // Padrão dedicado sai no executor; aqui só backup tipado.
+    if (!def?.key) {
+      const z = (ator.z || 0) + (ator.hopLift || 0) + 2.2;
+      rajada(ator.x, ator.y, z, def?.tipo, 8, 0.85);
+    }
   },
   aoImpacto(alvo, tipo, efet) {
+    impactoFx(alvo, tipo, efet);
     const z = (alvo.z || 0) + (alvo.hopLift || 0) + 2.2;
-    const n = efet > 1 ? 16 : efet < 1 ? 6 : 10;
-    const f = efet > 1 ? 1.35 : 1;
+    const n = efet > 1 ? 10 : efet < 1 ? 4 : 6;
+    const f = efet > 1 ? 1.2 : 0.85;
     rajada(alvo.x, alvo.y, z, tipo, n, f);
   },
 };
@@ -342,6 +366,7 @@ function montar(lado, entrada) {
 function limparCampo() {
   limparProjeteis();
   limparParticulas();
+  limparFx();
   limparFlutuantes();
   limparKi();
 }
@@ -381,7 +406,17 @@ function soltarRastros() {
       if (trecho > 1e-6) u = (marca - comeco) / trecho;
       if (u < 0) u = 0;
       else if (u > 1) u = 1;
-      rastro(ax + (t.x - ax) * u, ay + (t.y - ay) * u, az + (t.z - az) * u, t.cor);
+      const el = elementoDe(t.tipo);
+      emitirRastro(
+        el,
+        ax + (t.x - ax) * u,
+        ay + (t.y - ay) * u,
+        az + (t.z - az) * u,
+        t.vx || 0,
+        t.vy || 0,
+        0.02,
+        t.cresce ? 1.15 : 0.9,
+      );
     }
     t.rastroEm = marca;
   }
@@ -505,8 +540,8 @@ export function tickLuta(dt) {
   tickPassivo(esquerda, passo, agora);
   tickPassivo(direita, passo, agora);
   if (lutando && !modoTurnos()) {
-    tickVeneno(esquerda, agora, efeitos);
-    tickVeneno(direita, agora, efeitos);
+    tickStatus(esquerda, agora, efeitos, "real");
+    tickStatus(direita, agora, efeitos, "real");
   }
   tickDesmaio(esquerda, agora);
   tickDesmaio(direita, agora);
@@ -563,6 +598,7 @@ export function tickLuta(dt) {
   tickVisual(direita, passo, agora);
   tickFlutuantes(passo);
   tickParticulas(passo);
+  tickFx(passo);
 }
 
 export function estadoLuta() {

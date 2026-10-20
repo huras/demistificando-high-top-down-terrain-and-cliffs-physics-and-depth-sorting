@@ -212,6 +212,35 @@ button, input, select {
   margin-bottom: 8px;
 }
 
+.vida__linha,
+.marca__vida {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vida__linha .vida__trilho,
+.marca__vida .marca__barra {
+  flex: 1;
+  min-width: 0;
+}
+
+.vida__status,
+.marca__status {
+  flex: 0 0 auto;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.vida__status[hidden],
+.marca__status[hidden] {
+  display: none;
+}
+
 .vida__num,
 .pp {
   margin: 4px 0 0;

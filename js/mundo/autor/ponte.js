@@ -43,12 +43,12 @@ export function aplicarDeckRetangular(chunk, opts) {
   return tocado;
 }
 
-/** Deck CUME×1 (leste 51) → CUME×2 (oeste 72), walk z=17. */
+/** Deck CUME×1 (leste 51) → CUME×2 (oeste 72), walk z=32 (cota demo +15). */
 export const DECK_CUMES = {
   x0: 52,
   x1: 71,
   y0: 35,
   y1: 36,
-  zBloco: 16,
+  zBloco: 31,
   id: BLOCO.PEDRA,
 };
