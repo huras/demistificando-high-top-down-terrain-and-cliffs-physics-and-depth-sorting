@@ -17,13 +17,25 @@ import { obterMaterialLagoLonge } from "./texturasAgua3d.js";
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
 let raioAtivo = RAIO_SUAVE;
+let revisaoSuave = 0;
 
 export function obterRaioSuave() {
   return raioAtivo;
 }
 
+/** 0 desliga malha e anel; qualquer valor > 0 liga o disco suave. */
+export function discoSuaveAtivo() {
+  return raioAtivo > 0;
+}
+
+export function revisaoDiscoSuave() {
+  return revisaoSuave;
+}
+
 export function definirRaioSuave(raio) {
+  const anterior = raioAtivo;
   raioAtivo = Math.max(RAIO_SUAVE_MIN, Math.min(RAIO_SUAVE_MAX, raio | 0));
+  if ((anterior > 0) !== (raioAtivo > 0)) revisaoSuave += 1;
   return raioAtivo;
 }
 
@@ -350,6 +362,15 @@ export function criarTerrenoSuave() {
   }
 
   function tick(px, py, exibidos) {
+    if (!discoSuaveAtivo()) {
+      if (trabalho || dados || raioSuave !== 0) {
+        trabalho = null;
+        raioSuave = 0;
+        if (dados) instalar(null);
+      }
+      return;
+    }
+
     const ax = Math.round(px / PASSO_MALHA_SUAVE) * PASSO_MALHA_SUAVE;
     const ay = Math.round(py / PASSO_MALHA_SUAVE) * PASSO_MALHA_SUAVE;
     const cx = Math.floor(px / CHUNK_XZ);
@@ -361,8 +382,7 @@ export function criarTerrenoSuave() {
       ancoraCx = cx;
       ancoraCy = cy;
       raioSuave = suave;
-      trabalho = suave > 0 ? gerarMalha(px, py, suave) : null;
-      if (suave <= 0) instalar(null);
+      trabalho = gerarMalha(px, py, suave);
     }
     if (trabalho) {
       const t0 = performance.now();

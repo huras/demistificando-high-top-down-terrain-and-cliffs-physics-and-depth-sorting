@@ -17,8 +17,10 @@ import {
   botaoEsquerdoSegurado,
   consumirMovimentoMouse,
   consumirSolturaEsquerda,
+  definirPredicadoTravaMira,
   desligarPonteiro3d,
   ligarPonteiro3d,
+  soltarTravaMira,
 } from "./entrada/ponteiro3d.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
 import { alternarClima, avancarHora } from "./render/3d/ceu/controleCeu.js";
@@ -365,7 +367,11 @@ function aoTrocarModo(modo) {
     resetarCamera3d();
     ativarInputRelativoCamera(() => cen.yaw());
     ligarPonteiro3d(canvas3d);
+    definirPredicadoTravaMira(
+      () => obterModo() === "3d" && !estaEmCena() && !jogoTravaMundo() && arcoNaMao(),
+    );
   } else {
+    definirPredicadoTravaMira(null);
     desligarPonteiro3d();
     desativarInputRelativoCamera();
     definirMira3d(false);
@@ -421,18 +427,23 @@ function loop(agora) {
     if (!estaEmCena() && !trava) {
       const mouse = consumirMovimentoMouse();
       const comArco = arcoNaMao();
-      definirMira3d(comArco && botaoDireitoSegurado());
+      const mirando = comArco && botaoDireitoSegurado();
+      definirMira3d(mirando);
+      if (!mirando) soltarTravaMira();
       olharCamera3d(mouse.dx, mouse.dy);
-      definirPuxadaFlecha(comArco && botaoEsquerdoSegurado(), comArco && consumirSolturaEsquerda());
+      definirPuxadaFlecha(mirando && botaoEsquerdoSegurado(), mirando && consumirSolturaEsquerda());
       if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
       if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
         ajustarZoom3d(1 / ZOOM_PASSO);
       }
     } else {
+      definirMira3d(false);
+      soltarTravaMira();
       consumirSolturaEsquerda();
       definirPuxadaFlecha(false, false);
     }
   } else {
+    soltarTravaMira();
     consumirSolturaEsquerda();
     definirPuxadaFlecha(false, false);
     if (!trava && (teclaAgora("Equal") || teclaAgora("NumpadAdd"))) ajustarZoom(camera, ZOOM_PASSO);

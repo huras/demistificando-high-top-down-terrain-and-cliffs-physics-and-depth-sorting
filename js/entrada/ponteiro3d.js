@@ -1,5 +1,6 @@
 /**
- * Botões do mouse no viewport. O cursor fica livre: não trava e não gira a câmera.
+ * Botões no viewport com cursor livre.
+ * A mira do arco pede pointer lock só no gesto do RMB (mouse-look).
  */
 
 let ligado = false;
@@ -9,6 +10,14 @@ let direito = false;
 let esquerdo = false;
 let soltouEsquerdo = false;
 let elementoAlvo = null;
+/** @type {(() => boolean) | null} */
+let predicadoTravaMira = null;
+
+function noViewport(ev) {
+  if (!elementoAlvo) return false;
+  const t = ev.target;
+  return t === elementoAlvo || (typeof elementoAlvo.contains === "function" && elementoAlvo.contains(t));
+}
 
 function aoMover(ev) {
   if (document.pointerLockElement !== elementoAlvo) return;
@@ -17,13 +26,26 @@ function aoMover(ev) {
 }
 
 function aoBotaoBaixo(ev) {
-  if (document.pointerLockElement !== elementoAlvo) return;
-  if (ev.button === 2) direito = true;
+  if (!ligado || !elementoAlvo) return;
+  const travado = document.pointerLockElement === elementoAlvo;
+  if (!travado && !noViewport(ev)) return;
+
+  if (ev.button === 2) {
+    direito = true;
+    // Pointer lock precisa do gesto do usuário — não dá pra pedir no rAF.
+    if (!travado && predicadoTravaMira?.()) {
+      ev.preventDefault();
+      elementoAlvo.requestPointerLock?.();
+    }
+  }
   if (ev.button === 0) esquerdo = true;
 }
 
 function aoBotaoCima(ev) {
-  if (ev.button === 2) direito = false;
+  if (ev.button === 2) {
+    direito = false;
+    soltarTravaMira();
+  }
   if (ev.button === 0) {
     if (esquerdo) soltouEsquerdo = true;
     esquerdo = false;
@@ -31,13 +53,13 @@ function aoBotaoCima(ev) {
 }
 
 function aoTravaMudou() {
-  if (document.pointerLockElement !== elementoAlvo) {
-    direito = false;
-    esquerdo = false;
-    soltouEsquerdo = false;
-    acumuladoX = 0;
-    acumuladoY = 0;
-  }
+  if (document.pointerLockElement === elementoAlvo) return;
+  // Escape / perda da trava: encerra mira e zera botões.
+  direito = false;
+  esquerdo = false;
+  soltouEsquerdo = false;
+  acumuladoX = 0;
+  acumuladoY = 0;
 }
 
 /**
@@ -60,9 +82,7 @@ export function desligarPonteiro3d() {
   document.removeEventListener("mousedown", aoBotaoBaixo);
   document.removeEventListener("mouseup", aoBotaoCima);
   document.removeEventListener("pointerlockchange", aoTravaMudou);
-  if (document.pointerLockElement) {
-    document.exitPointerLock?.();
-  }
+  soltarTravaMira();
   elementoAlvo = null;
   acumuladoX = 0;
   acumuladoY = 0;
@@ -71,7 +91,22 @@ export function desligarPonteiro3d() {
   soltouEsquerdo = false;
 }
 
-/** Consome deltas do frame (pixels). */
+/**
+ * Quando true no RMB, pede pointer lock no mesmo gesto (mira do arco).
+ * @param {(() => boolean) | null} fn
+ */
+export function definirPredicadoTravaMira(fn) {
+  predicadoTravaMira = typeof fn === "function" ? fn : null;
+}
+
+/** Solta a trava pedida pela mira (troca de slot, UI, etc.). */
+export function soltarTravaMira() {
+  if (elementoAlvo && document.pointerLockElement === elementoAlvo) {
+    document.exitPointerLock?.();
+  }
+}
+
+/** Consome deltas do frame (pixels). Só acumula com pointer lock (mira). */
 export function consumirMovimentoMouse() {
   const dx = acumuladoX;
   const dy = acumuladoY;
@@ -84,19 +119,19 @@ export function ponteiroTravado() {
   return !!elementoAlvo && document.pointerLockElement === elementoAlvo;
 }
 
-/** Botão direito segurado, só com o mouse travado no viewport. */
+/** Botão direito segurado a partir do viewport (não exige lock). */
 export function botaoDireitoSegurado() {
-  return direito && ponteiroTravado();
+  return direito;
 }
 
-/** Botão esquerdo segurado, só com o mouse travado no viewport. */
+/** Botão esquerdo segurado a partir do viewport (não exige lock). */
 export function botaoEsquerdoSegurado() {
-  return esquerdo && ponteiroTravado();
+  return esquerdo;
 }
 
-/** True uma vez ao soltar o esquerdo com o ponteiro travado. */
+/** True uma vez ao soltar o esquerdo. */
 export function consumirSolturaEsquerda() {
-  const soltou = soltouEsquerdo && ponteiroTravado();
+  const soltou = soltouEsquerdo;
   soltouEsquerdo = false;
   return soltou;
 }

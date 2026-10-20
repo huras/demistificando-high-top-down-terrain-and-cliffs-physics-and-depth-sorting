@@ -270,7 +270,9 @@ function aplicarProjecao(camera3d, dt) {
   orto.updateProjectionMatrix();
   camera3d._projPersp.copy(persp.projectionMatrix);
 
-  const alvo = camera3d.projecao === "orto" ? 1 : 0;
+  // Mira sempre em perspectiva; o blend do ombro puxa a projeção junto.
+  const prefOrto = camera3d.projecao === "orto" ? 1 : 0;
+  const alvo = prefOrto * (1 - (camera3d.blend || 0));
   const t = 1 - Math.exp(-CAMERA3D_PROJECAO_SUAVIDADE * dt);
   camera3d.projBlend += (alvo - camera3d.projBlend) * t;
   if (camera3d.projBlend < 0.001) camera3d.projBlend = 0;

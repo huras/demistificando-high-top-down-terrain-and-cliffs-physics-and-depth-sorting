@@ -285,7 +285,27 @@ export function criarVegetacaoDistante() {
     }
   }
 
+  /** Anel suave off: solta GPU e zera estado pra não deixar impostor fantasma. */
+  function desligar() {
+    trabalho = null;
+    cache.clear();
+    for (const lote of lotes.values()) soltarLote(lote);
+    lotes.clear();
+    grupo.visible = false;
+    sigBanda = "";
+    sigProps = "";
+    geracao = 0;
+    geracaoPublicada = -1;
+    yawAplicado = null;
+    inclinacaoAplicada = 0;
+  }
+
   function tick(px, py, yawCam, inclinacao = 0) {
+    if (!(obterRaioSuave() > obterRaioStream())) {
+      if (grupo.visible || lotes.size || cache.size || trabalho) desligar();
+      return;
+    }
+
     const banda = montarBanda(px, py);
     if (banda.sig !== sigBanda) {
       sigBanda = banda.sig;
@@ -331,10 +351,7 @@ export function criarVegetacaoDistante() {
     tick,
     aplicarAtlas,
     liberar() {
-      trabalho = null;
-      cache.clear();
-      for (const lote of lotes.values()) soltarLote(lote);
-      lotes.clear();
+      desligar();
     },
   };
 }
