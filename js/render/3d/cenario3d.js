@@ -39,6 +39,7 @@ import { desenharReflexo, marcarLuzReflexo } from "./ceu/reflexoPoca.js";
 import { atualizarLuzBillboard } from "./ceu/luzBillboard.js";
 import { comecarQuadroLuzes, criarPoolLuzes, definirPesoNoite, resolverLuzes } from "./luzes/pool.js";
 import { comecarMapaChao, resolverMapaChao } from "./luzes/mapaChao.js";
+import { resolverMascaraAguaPoca } from "./ceu/mascaraAguaPoca.js";
 import { uniformsNuvem } from "./ceu/parametros.js";
 import { estaEmCena } from "../../cena/modoCena.js";
 import {
@@ -626,6 +627,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   const camPos = estado.camera3d.cam.position;
   resolverLuzes(camPos.x, camPos.y, camPos.z, estado.scene.fog?.far ?? 90);
   resolverMapaChao(camPos.x, camPos.z);
+  resolverMascaraAguaPoca(camPos.x, camPos.z);
   atualizarRealceCena();
   aplicarVazioSala(!!estadoJogo.interior?.sala3d);
   desenharReflexo(estado.renderer, estado.scene, camRender, elevVis, !!estadoJogo.interior?.sala3d);

@@ -8,6 +8,7 @@ import { RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
 import { limitarArena, paradaDe } from "../pokemon/ia/espaco.js";
 import { notaGolpeTurno, resolverTurno } from "../pokemon/combate/acertoClassico.js";
 import { emImpacto } from "./impacto.js";
+import { CAM_TURNO } from "./cameraTurno.js";
 
 const ESPERA_LINHA = 1.6;
 const ESPERA_CARGA = 0.85;
@@ -66,7 +67,13 @@ export function concluirFoco() {
   abrirTurno();
 }
 
-const poseVolta = { tipo: "volta", alvo: null, raio: 5.2, altura: 3, giro: 0.5 };
+const poseVolta = {
+  tipo: "volta",
+  alvo: null,
+  raio: CAM_TURNO.volta.raio,
+  altura: CAM_TURNO.volta.altura,
+  giro: CAM_TURNO.volta.giro,
+};
 
 export function enquadramentoTurno() {
   if (modo !== "turnos" || fase === "ocioso") return null;

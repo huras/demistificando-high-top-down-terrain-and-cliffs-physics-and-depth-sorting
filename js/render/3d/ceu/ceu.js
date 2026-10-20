@@ -133,7 +133,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     if (trovao) tocarTrovao(trovao === "eco" ? "longe" : "perto");
     atmosfera.atualizar(visual, camera, flash * 0.55, pesoCirrus, seguro);
     precipitacao.atualizar(clima, dirVento, seguro, camera, renderer);
-    atualizarPoca(seguro, clima.chuva, visual);
+    atualizarPoca(seguro, clima.chuva);
     renderer.toneMappingExposure = visual.exposicao * (1 + flash * 1.35);
   }
 

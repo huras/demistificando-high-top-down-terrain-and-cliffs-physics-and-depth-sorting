@@ -7,7 +7,7 @@ import { definirOmbro, desenharArena, ligarArena, projetarArena } from "./arena3
 import { cenarioAleatorio, definirMetade, definirSemente, sementeCobertura, tipoMetade } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
 import { atoresArena, definirUso, estadoLuta, iniciarLuta, limparInterludio, logArena, montarLados, tickLuta } from "./luta.js";
-import { poseImpacto, ritmoImpacto } from "./impacto.js";
+import { observarTiro, poseDisparo, poseImpacto, ritmoImpacto } from "./impacto.js";
 import { primeiroTiro } from "../pokemon/combate/projeteis.js";
 import { avisoTurno, concluirFoco, definirModoLuta, emFoco, escolherGolpeTurno, enquadramentoTurno, modoTurnos, pedidoEscolha } from "./turnos.js";
 
@@ -681,6 +681,8 @@ const poseTiro = { tipo: "tiro", alvo: null };
 function poseDoQuadro() {
   const impacto = poseImpacto();
   if (impacto) return impacto;
+  const disparo = poseDisparo();
+  if (disparo) return disparo;
   const tiro = primeiroTiro();
   if (tiro) {
     poseTiro.alvo = tiro;
@@ -695,13 +697,14 @@ function poseDoQuadro() {
 
 function andarRitmo(bruto) {
   const pedidoRitmo = ritmoImpacto();
-  if (pedidoRitmo < 1) {
+  if (pedidoRitmo !== 1) {
     const passo = bruto / 0.12;
     ritmo = ritmo > pedidoRitmo ? Math.max(pedidoRitmo, ritmo - passo) : Math.min(pedidoRitmo, ritmo + passo);
     return;
   }
   if (!modoTurnos() || !estadoLuta().lutando) {
-    ritmo = ritmo < 1 ? Math.min(1, ritmo + bruto / 0.35) : 1;
+    if (ritmo > 1) ritmo = Math.max(1, ritmo - bruto / 0.2);
+    else ritmo = ritmo < 1 ? Math.min(1, ritmo + bruto / 0.35) : 1;
     return;
   }
   if (emFoco()) {
@@ -717,12 +720,15 @@ function andarRitmo(bruto) {
     ritmo = 0;
     return;
   }
-  if (ritmo < 1) ritmo = Math.min(1, ritmo + bruto / 0.4);
+  if (ritmo > 1) ritmo = Math.max(1, ritmo - bruto / 0.2);
+  else if (ritmo < 1) ritmo = Math.min(1, ritmo + bruto / 0.4);
 }
 
 function quadro(t) {
   const bruto = ultimo ? (t - ultimo) / 1000 : 0;
   ultimo = t;
+  if (modoTurnos()) observarTiro(primeiroTiro());
+  else observarTiro(null);
   andarRitmo(bruto);
   const pedido = pedidoEscolha();
   let resto = pedido ? 0 : Math.min(0.1, bruto * tempo * ritmo);

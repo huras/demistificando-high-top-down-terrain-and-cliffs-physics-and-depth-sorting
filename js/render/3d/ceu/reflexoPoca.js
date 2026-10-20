@@ -37,10 +37,6 @@ const plano = new THREE.Plane();
 const clip = new THREE.Vector4();
 const q = new THREE.Vector4();
 const corLimpa = new THREE.Color();
-const domoGuardado = new THREE.Vector3();
-
-let domoEscala = 1;
-let domoMovido = false;
 
 uniformsPoca.uReflexoPoca.value = alvo.texture;
 
@@ -48,6 +44,7 @@ uniformsPoca.uReflexoPoca.value = alvo.texture;
  * Entra no passe. A câmera espelhada inverte a ordem dos vértices, então todo
  * material FrontSide vira DoubleSide só enquanto o passe roda. Sprite já olha
  * para a câmera. Piso deitado (rotação X de ±90°) continua de fora: é chão.
+ * O céu não entra — limpa transparente e o shader usa o alfa do alvo.
  */
 export function marcarReflexo(objeto) {
   if (!objeto) return;
@@ -143,7 +140,7 @@ function espelhar(camera, planoY) {
 /**
  * Terceira linha da projeção vira o plano da água (Lengyel).
  * Na ortográfica, e na mistura com ela, essa troca manda o z para fora do NDC
- * e o passe fica só com o céu. Aí o chão já está fora pela camada.
+ * e o passe fica vazio. Aí o chão já está fora pela camada.
  */
 function corteObliquo() {
   const e = virtual.projectionMatrix.elements;
@@ -163,30 +160,8 @@ function corteObliquo() {
   virtual.projectionMatrixInverse.copy(virtual.projectionMatrix).invert();
 }
 
-function posicionarDomo(scene) {
-  const domo = scene.getObjectByName("ceu-domo");
-  if (!domo) return null;
-  domoGuardado.copy(domo.position);
-  domoMovido = true;
-  domoEscala = domo.scale.x || 1;
-  const dist = Math.max(0.5, Math.abs(virtual.position.y - ponto.y));
-  const raio = Math.min(virtual.far * 0.85, Math.max(dist + 6, dist * 1.8));
-  domo.position.copy(virtual.position);
-  domo.scale.setScalar(raio);
-  domo.updateMatrixWorld(true);
-  return domo;
-}
-
-function restaurarDomo(domo) {
-  if (!domo || !domoMovido) return;
-  domo.position.copy(domoGuardado);
-  domo.scale.setScalar(domoEscala);
-  domo.updateMatrixWorld(true);
-  domoMovido = false;
-}
-
 /**
- * Desenha céu, árvore e estrutura no plano dos pés.
+ * Desenha árvore e estrutura no plano dos pés. Sem céu.
  * Sem poça, dentro da sala ou com a câmera abaixo do plano, não roda.
  */
 export function desenharReflexo(renderer, scene, camera, planoY, sala) {
@@ -204,26 +179,23 @@ export function desenharReflexo(renderer, scene, camera, planoY, sala) {
   const alvoAnt = renderer.getRenderTarget();
   renderer.getClearColor(corLimpa);
   const alfaLimpa = renderer.getClearAlpha();
-  let domo = null;
 
   try {
     ajustarAlvo(renderer);
     uniformsPoca.uMatReflexo.value.multiplyMatrices(virtual.projectionMatrix, virtual.matrixWorldInverse);
     corteObliquo();
     aplicarLadoDuplo(true);
-    domo = posicionarDomo(scene);
 
     renderer.xr.enabled = false;
     renderer.shadowMap.autoUpdate = false;
     renderer.shadowMap.needsUpdate = false;
     renderer.setRenderTarget(alvo);
-    if (scene.background?.isColor) renderer.setClearColor(scene.background, 1);
+    renderer.setClearColor(0x000000, 0);
     renderer.clear(true, true, true);
     renderer.render(scene, virtual);
     uniformsPoca.uTemReflexo.value = 1;
   } finally {
     aplicarLadoDuplo(false);
-    restaurarDomo(domo);
     renderer.xr.enabled = xr;
     renderer.shadowMap.autoUpdate = autoSombra;
     renderer.shadowMap.needsUpdate = precisaSombra;

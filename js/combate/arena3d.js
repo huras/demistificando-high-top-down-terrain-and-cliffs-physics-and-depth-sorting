@@ -13,6 +13,7 @@ import {
   tipoMetade,
   versaoCobertura,
 } from "./arenas.js";
+import { CAM_TURNO } from "./cameraTurno.js";
 import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
 import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 
@@ -859,10 +860,10 @@ export function definirOmbro(pose, dt) {
 function destinoOmbro() {
   if (ombro.tipo === "impacto") {
     const quem = ombro.alvo;
-    const giro = Number.isFinite(ombro.giro) ? ombro.giro : 0.45;
+    const giro = Number.isFinite(ombro.giro) ? ombro.giro : CAM_TURNO.impactoErro.giro;
     teatroAng += ombroDt * giro;
-    const raio = ombro.raio || 4.6;
-    const altura = ombro.altura || 2.4;
+    const raio = ombro.raio || CAM_TURNO.impactoErro.raio;
+    const altura = ombro.altura || CAM_TURNO.impactoErro.altura;
     const avance = Math.min(1.2, (quem.recuoDist || 0) * 0.28);
     const ox = (quem.recuoDirX || 0) * avance;
     const oz = (quem.recuoDirY || 0) * avance;
@@ -872,10 +873,10 @@ function destinoOmbro() {
   }
   if (ombro.tipo === "volta") {
     const quem = ombro.alvo;
-    const giro = Number.isFinite(ombro.giro) ? ombro.giro : 0.5;
+    const giro = Number.isFinite(ombro.giro) ? ombro.giro : CAM_TURNO.volta.giro;
     teatroAng += ombroDt * giro;
-    const raio = ombro.raio || 5.2;
-    const altura = ombro.altura || 3;
+    const raio = ombro.raio || CAM_TURNO.volta.raio;
+    const altura = ombro.altura || CAM_TURNO.volta.altura;
     ombroFim.set(quem.x + Math.sin(teatroAng) * raio, altura, quem.y + Math.cos(teatroAng) * raio);
     ombroOlharFim.set(quem.x, 1.05, quem.y);
     return;
@@ -885,7 +886,9 @@ function destinoOmbro() {
     const destino = p.garantirAlvo;
     const dx = p.dirX || 0;
     const dz = p.dirY || 0;
-    ombroFim.set(p.x - dx * 2.6, (p.z || 1) + 1.6, p.y - dz * 2.6);
+    const atras = CAM_TURNO.tiro.atras;
+    const altTiro = CAM_TURNO.tiro.altura;
+    ombroFim.set(p.x - dx * atras, (p.z || 1) + altTiro, p.y - dz * atras);
     const lx = destino ? destino.x : p.x + dx * 4;
     const lz = destino ? destino.y : p.y + dz * 4;
     ombroOlharFim.set(lx, 1.1, lz);
@@ -896,9 +899,11 @@ function destinoOmbro() {
     const b = ombro.b;
     const cx = (a.x + b.x) * 0.5;
     const cz = (a.y + b.y) * 0.5;
-    const giro = Number.isFinite(ombro.giro) ? ombro.giro : Math.PI * 0.5;
+    const giro = Number.isFinite(ombro.giro) ? ombro.giro : CAM_TURNO.teatro.giro;
     teatroAng += ombroDt * giro;
-    ombroFim.set(cx + Math.sin(teatroAng) * 12, 6.2, cz + Math.cos(teatroAng) * 12);
+    const raio = CAM_TURNO.teatro.raio;
+    const altura = CAM_TURNO.teatro.altura;
+    ombroFim.set(cx + Math.sin(teatroAng) * raio, altura, cz + Math.cos(teatroAng) * raio);
     ombroOlharFim.set(cx, 1.05, cz);
     return;
   }
@@ -909,10 +914,8 @@ function destinoOmbro() {
   const d = Math.hypot(dx, dz) || 1;
   const ux = dx / d;
   const uz = dz / d;
-  const distCam = ombro.perto ? 4.8 : 6.6;
-  const altura = ombro.perto ? 2.9 : 3.6;
-  const lado = ombro.perto ? 1.2 : 1.6;
-  ombroFim.set(de.x + ux * distCam - uz * lado, altura, de.y + uz * distCam + ux * lado);
+  const cfg = ombro.perto ? CAM_TURNO.ombroPerto : CAM_TURNO.ombro;
+  ombroFim.set(de.x + ux * cfg.dist - uz * cfg.lado, cfg.altura, de.y + uz * cfg.dist + ux * cfg.lado);
   ombroOlharFim.set(para.x, 1.1, para.y);
 }
 
