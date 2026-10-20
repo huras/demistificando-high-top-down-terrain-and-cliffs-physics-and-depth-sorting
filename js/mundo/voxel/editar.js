@@ -14,12 +14,16 @@ export function definirBlocoNaMao(id) {
   blocoNaMao = id | 0;
 }
 
+/** Alcance horizontal (tiles XY) a partir do player. Hot path: sem alloc. */
+export function emAlcanceEdicao(corpo, x, y, _z) {
+  if (!corpo) return false;
+  const dx = (x | 0) + 0.5 - corpo.x;
+  const dy = (y | 0) + 0.5 - corpo.y;
+  return dx * dx + dy * dy <= ALCANCE_EDICAO * ALCANCE_EDICAO;
+}
+
 function alcanceOk(corpo, x, y, z) {
-  const dx = x + 0.5 - corpo.x;
-  const dy = y + 0.5 - corpo.y;
-  const elev = corpo.elevacao ?? corpo.z ?? 0;
-  const dz = z + 0.5 - elev;
-  return dx * dx + dy * dy + dz * dz <= ALCANCE_EDICAO * ALCANCE_EDICAO;
+  return emAlcanceEdicao(corpo, x, y, z);
 }
 
 /**

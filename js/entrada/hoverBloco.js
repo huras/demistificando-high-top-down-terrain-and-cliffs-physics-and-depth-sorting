@@ -5,6 +5,7 @@ import { ALCANCE_MIRA, ESCALA, FACE_H, TILE } from "../config.js";
 import { obterModo } from "../modoJogo.js";
 import { estaEmCena } from "../cena/modoCena.js";
 import { alvoBloco2d, alvoBloco3dCursor } from "../mundo/voxel/alvoBloco.js";
+import { emAlcanceEdicao } from "../mundo/voxel/editar.js";
 import { nomeBloco } from "../mundo/voxel/tiposBloco.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 
@@ -141,6 +142,12 @@ export function invalidarHoverBloco() {
 
 export function obterHoverBloco() {
   return hover;
+}
+
+/** Hover atual está no alcance de ação do player (5 tiles XY). */
+export function hoverEmAlcanceEdicao() {
+  if (!hover) return false;
+  return emAlcanceEdicao(obterCorpo(), hover.x, hover.y, hover.z);
 }
 
 export function textoHoverBloco() {

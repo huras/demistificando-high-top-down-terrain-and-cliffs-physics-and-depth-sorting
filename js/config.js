@@ -323,7 +323,7 @@ export const PASSO_MALHA_SUAVE = 8;
 /** Árvores billboard em todo o disco suave, fora dos chunks de bloco. */
 export const IMPOSTOR_CAP = 256;
 export const SEED_MUNDO = 1337;
-export const ALCANCE_EDICAO = 6;
+export const ALCANCE_EDICAO = 5;
 /** Cursor enxerga o chão com a câmera longe; editar continua no alcance curto. */
 export const ALCANCE_MIRA = 320;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */

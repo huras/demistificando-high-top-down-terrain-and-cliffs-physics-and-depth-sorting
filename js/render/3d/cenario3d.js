@@ -233,15 +233,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   marcarLuzReflexo(sol);
   sol.position.set(28, 42, 18);
   sol.castShadow = true;
-  sol.shadow.mapSize.set(1024, 1024);
-  sol.shadow.camera.near = 2;
-  sol.shadow.camera.far = 90;
-  sol.shadow.camera.left = -18;
-  sol.shadow.camera.right = 18;
-  sol.shadow.camera.top = 18;
-  sol.shadow.camera.bottom = -18;
-  sol.shadow.bias = -0.0003;
-  sol.shadow.normalBias = 0.04;
+  // mapSize / frustum / bias: dono é criarCeu → sombraEstavel
   scene.add(sol);
   scene.add(sol.target);
 

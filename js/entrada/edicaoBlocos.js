@@ -4,7 +4,7 @@
 import { obterModo } from "../modoJogo.js";
 import { estaEmCena } from "../cena/modoCena.js";
 import { alvoBloco2d, alvoBloco3dCursor } from "../mundo/voxel/alvoBloco.js";
-import { ESCALA, FACE_H, TILE } from "../config.js";
+import { ALCANCE_MIRA, ESCALA, FACE_H, TILE } from "../config.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 import { invalidarHoverBloco } from "./hoverBloco.js";
 import { raioDoPonteiro } from "../render/3d/camera3d.js";
@@ -115,7 +115,8 @@ function aoMouseDown3d(ev) {
     return;
   }
   const { ndcX, ndcY } = ndcDoEvento(ev, canvas3d);
-  const alvo = alvoBloco3dCursor(cen.camera3d, ndcX, ndcY);
+  // Mira longa como o hover; o alcance de ação é do player (emAlcanceEdicao).
+  const alvo = alvoBloco3dCursor(cen.camera3d, ndcX, ndcY, ALCANCE_MIRA);
   const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
   const chao = pontoNoChao(raio, corpo.z ?? 0);
   const celula = alvo ? { x: alvo.x, y: alvo.y } : { x: Math.floor(chao.x), y: Math.floor(chao.y) };

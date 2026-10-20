@@ -26,6 +26,7 @@ import { BERRIES, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
 import { ESTAGIO } from "../wild/estagios.js";
 import { colher, criarSolo, plantar, regar, simularPlot } from "../wild/plots.js";
 import { sfx } from "./audio.js";
+import { emAlcanceEdicao } from "../mundo/voxel/editar.js";
 import { tentarColocar, tentarQuebrar } from "./blocos.js";
 import {
   contar,
@@ -428,35 +429,52 @@ function usarConsumivel(item) {
   return mon ? "Não teve efeito." : "Ninguém para usar.";
 }
 
+function celulaEmAlcance(corpo, celula, alvoBloco) {
+  if (alvoBloco) return emAlcanceEdicao(corpo, alvoBloco.x, alvoBloco.y, alvoBloco.z);
+  if (celula) return emAlcanceEdicao(corpo, celula.x, celula.y);
+  return false;
+}
+
 /** Clique esquerdo usa o que está selecionado na hotbar. */
 export function usarNoClique(corpo, celula, alvoBloco) {
   const item = hotbarAtivo();
   const ocupaClique = item && (item.tipo === TIPO_ITEM.BLOCO || item.tipo === TIPO_ITEM.FERRAMENTA);
   if (!ocupaClique && celula && !plotEm(celula.x, celula.y)) {
     const arbusto = arbustoMaduroPerto(celula.x + 0.5, celula.y + 0.5, corpo?.z || 0);
-    if (arbusto) return colherSilvestre(arbusto);
+    if (arbusto) {
+      if (!celulaEmAlcance(corpo, celula, null)) return "Longe demais.";
+      return colherSilvestre(arbusto);
+    }
   }
   if (!item || !celula) return "";
   if (contar(item.tipo, item.key) <= 0) return "Você não tem esse item.";
   if (item.tipo === TIPO_ITEM.BLOCO) {
+    if (!celulaEmAlcance(corpo, celula, alvoBloco)) return "Longe demais.";
     if (alvoBloco && tentarColocar(corpo, alvoBloco)) return "Colocou o bloco.";
     return "Não deu para colocar o bloco.";
   }
   if (item.tipo === TIPO_ITEM.FERRAMENTA) {
+    if (item.key === "hammer" && estado.interior?.papel === "casa" && !estado.interior.sala3d) {
+      estado.construir = true;
+      return "";
+    }
+    if (!celulaEmAlcance(corpo, celula, alvoBloco)) return "Longe demais.";
     if (item.key === "pickaxe") {
-      if (alvoBloco && tentarQuebrar(corpo, alvoBloco)) return "Quebrou o bloco.";
+      if (alvoBloco) {
+        if (tentarQuebrar(corpo, alvoBloco)) return "Quebrou o bloco.";
+        const prop = usarPicaretaNo(celula.x + 0.5, celula.y + 0.5);
+        if (prop && prop !== "Nenhuma pedra no clique.") return prop;
+        return "Nada para quebrar.";
+      }
       return usarPicaretaNo(celula.x + 0.5, celula.y + 0.5);
     }
     if (item.key === "axe") return usarMachadoNo(celula.x + 0.5, celula.y + 0.5);
     if (item.key === "hoe") return usarEnxada(celula);
     if (item.key === "wateringCan") return usarRegador(celula);
-    if (item.key === "hammer" && estado.interior?.papel === "casa" && !estado.interior.sala3d) {
-      estado.construir = true;
-      return "";
-    }
     return FERRAMENTAS[item.key]?.dica || "";
   }
   if (item.tipo === TIPO_ITEM.BERRY) {
+    if (!celulaEmAlcance(corpo, celula, null)) return "Longe demais.";
     const plantou = plantarOuColher(celula, item);
     if (plantou) return plantou;
   }
