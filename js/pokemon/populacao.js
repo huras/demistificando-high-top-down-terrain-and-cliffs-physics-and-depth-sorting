@@ -2,6 +2,7 @@ import { CHUNK_XZ, POKEMON, SEED_MUNDO } from "../config.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
+import { biomaDominante } from "../mundo/bioma/catalogo.js";
 import { SPAWN } from "../mundo/mapaDemo.js";
 import {
   MIOL_X,
@@ -19,62 +20,13 @@ import {
 } from "../mundo/cidade/laboratorio.js";
 import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
+import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
+import { nivelEm } from "./distribuicao/forca.js";
+import { sortearEspecie } from "./distribuicao/sorteio.js";
 import { aquecerGrito, tocarGrito } from "../jogo/som/gritos.js";
-
-const POOL = [
-  "pidgey",
-  "rattata",
-  "caterpie",
-  "weedle",
-  "spearow",
-  "oddish",
-  "bellsprout",
-  "paras",
-  "geodude",
-  "sandshrew",
-  "mankey",
-  "meowth",
-  "growlithe",
-  "poliwag",
-  "zubat",
-  "diglett",
-  "pikachu",
-  "abra",
-  "machop",
-  "ekans",
-  "nidoranF",
-  "nidoranM",
-  "venonat",
-];
-
-const EVOLUCAO = {
-  pidgey: [[18, "pidgeotto"], [36, "pidgeot"]],
-  rattata: [[20, "raticate"]],
-  caterpie: [[7, "metapod"], [10, "butterfree"]],
-  weedle: [[7, "kakuna"], [10, "beedrill"]],
-  spearow: [[20, "fearow"]],
-  oddish: [[21, "gloom"]],
-  bellsprout: [[21, "weepinbell"]],
-  paras: [[24, "parasect"]],
-  geodude: [[25, "graveler"]],
-  sandshrew: [[22, "sandslash"]],
-  mankey: [[28, "primeape"]],
-  meowth: [[28, "persian"]],
-  growlithe: [[0, "growlithe"]],
-  poliwag: [[25, "poliwhirl"]],
-  zubat: [[22, "golbat"]],
-  diglett: [[26, "dugtrio"]],
-  pikachu: [[0, "pikachu"]],
-  abra: [[16, "kadabra"]],
-  machop: [[28, "machoke"]],
-  ekans: [[22, "arbok"]],
-  nidoranF: [[16, "nidorina"]],
-  nidoranM: [[16, "nidorino"]],
-  venonat: [[31, "venomoth"]],
-};
 
 const lares = new Map();
 const ativos = [];
@@ -93,24 +45,6 @@ function hash(a, b, c = 0) {
 
 function unidade(h) {
   return (h >>> 0) / 4294967296;
-}
-
-function estagio(chave, nivel) {
-  const linha = EVOLUCAO[chave];
-  if (!linha) return chave;
-  let atual = chave;
-  for (let i = 0; i < linha.length; i++) {
-    const [lv, prox] = linha[i];
-    if (nivel >= lv && especie(prox)) atual = prox;
-  }
-  return atual;
-}
-
-function nivelNoPonto(x, y) {
-  const dx = x - SPAWN.x;
-  const dy = y - SPAWN.y;
-  const dist = Math.hypot(dx, dy);
-  return Math.max(2, Math.min(28, 3 + Math.floor(dist / 26)));
 }
 
 /** A câmera do interior vê além da sala. Selvagem nessa faixa aparece no preto. */
@@ -142,22 +76,92 @@ function pisoSeco(x, y) {
   return z;
 }
 
+function biomaIdEm(x, y, hSorteio) {
+  if (dentroDoKanto(x, y)) {
+    const a = amostraKanto(x, y);
+    if (!a?.bioma) return "light-grass";
+    const idA = a.bioma.id || "light-grass";
+    const idB = a.biomaB?.id;
+    if (idB && idB !== idA && (a.dominio ?? 1) < 1) {
+      return unidade(hSorteio) < 0.7 ? idA : idB;
+    }
+    return idA;
+  }
+  return biomaDominante(x, y)?.id || "light-grass";
+}
+
+function posicaoCandidata(cx, cy, indice) {
+  if (hash(cx, cy, 10 + indice) % 3 === 0) return null;
+  const ox = 1 + (hash(cx, cy, 20 + indice) % (CHUNK_XZ - 2));
+  const oy = 1 + (hash(cx, cy, 30 + indice) % (CHUNK_XZ - 2));
+  return {
+    x: cx * CHUNK_XZ + ox + 0.5,
+    y: cy * CHUNK_XZ + oy + 0.5,
+  };
+}
+
+function slotAnterior(nx, ny, ni, cx, cy, indice) {
+  if (ny < cy) return true;
+  if (ny > cy) return false;
+  if (nx < cx) return true;
+  if (nx > cx) return false;
+  return ni < indice;
+}
+
+function longeDeVizinhos(cx, cy, indice, x, y) {
+  const min2 = POKEMON.MIN_ESPACO_LARES * POKEMON.MIN_ESPACO_LARES;
+  for (let ny = cy - 1; ny <= cy + 1; ny++) {
+    for (let nx = cx - 1; nx <= cx + 1; nx++) {
+      for (let i = 0; i < 2; i++) {
+        if (!slotAnterior(nx, ny, i, cx, cy, indice)) continue;
+        const p = posicaoCandidata(nx, ny, i);
+        if (!p) continue;
+        const dx = p.x - x;
+        const dy = p.y - y;
+        if (dx * dx + dy * dy < min2) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function longeDeAtivos(x, y, minDist) {
+  const min2 = minDist * minDist;
+  for (let i = 0; i < ativos.length; i++) {
+    const a = ativos[i];
+    if (a.morto || a.capturado) continue;
+    const dx = a.x - x;
+    const dy = a.y - y;
+    if (dx * dx + dy * dy < min2) return false;
+  }
+  for (let i = 0; i < grama.length; i++) {
+    const a = grama[i];
+    if (a.morto || a.capturado) continue;
+    const dx = a.x - x;
+    const dy = a.y - y;
+    if (dx * dx + dy * dy < min2) return false;
+  }
+  return true;
+}
+
 function garantirLar(cx, cy, indice) {
   const id = `${cx},${cy},${indice}`;
   if (lares.has(id)) return lares.get(id);
-  if (hash(cx, cy, 10 + indice) % 3 === 0) {
+  const pos = posicaoCandidata(cx, cy, indice);
+  if (!pos) {
     lares.set(id, null);
     return null;
   }
-  const ox = 1 + (hash(cx, cy, 20 + indice) % (CHUNK_XZ - 2));
-  const oy = 1 + (hash(cx, cy, 30 + indice) % (CHUNK_XZ - 2));
-  const x = cx * CHUNK_XZ + ox + 0.5;
-  const y = cy * CHUNK_XZ + oy + 0.5;
+  const { x, y } = pos;
   if (
     zonaSemSelvagem(x, y) ||
     ehCidade(x, y) ||
     Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN
   ) {
+    lares.set(id, null);
+    return null;
+  }
+  if (!longeDeVizinhos(cx, cy, indice, x, y)) {
     lares.set(id, null);
     return null;
   }
@@ -167,10 +171,11 @@ function garantirLar(cx, cy, indice) {
     lares.set(id, null);
     return null;
   }
-  const base = POOL[hash(cx, cy, 40 + indice) % POOL.length];
-  const nivel = nivelNoPonto(x, y);
-  const chave = estagio(base, nivel);
-  const esp = especie(chave) || especie(base) || especie("pidgey");
+  const hBioma = hash(cx, cy, 35 + indice);
+  const biomaId = biomaIdEm(x, y, hBioma);
+  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice));
+  const nivel = nivelEm(x, y);
+  const esp = especie(chave) || especie("pidgey");
   if (!esp) {
     lares.set(id, null);
     return null;
@@ -249,36 +254,68 @@ function guardar(lar) {
   lar.ator = null;
 }
 
+function d2De(lar, px, py) {
+  const x = lar.ator ? lar.ator.x : lar.x;
+  const y = lar.ator ? lar.ator.y : lar.y;
+  const dx = x - px;
+  const dy = y - py;
+  return dx * dx + dy * dy;
+}
+
+function emAgro(lar) {
+  return lar.ator?.modo === "agro";
+}
+
+function limiteCull(lar) {
+  if (emAgro(lar)) return POKEMON.RAIO_MANTER_AGRO;
+  if (lar.ator) return POKEMON.RAIO_MANTER;
+  return POKEMON.RAIO_SIM;
+}
+
 function sincronizarLares(px, py) {
   const alcance = POKEMON.RAIO_LARES;
+  const alcance2 = alcance * alcance;
+  const manter = new Set();
+  let vagas = POKEMON.MAX_MORADORES;
+  const perto = [];
+
+  for (const lar of lares.values()) {
+    if (!lar?.ator || !emAgro(lar) || lar.sumidoAte > agora) continue;
+    const d2 = d2De(lar, px, py);
+    if (d2 > POKEMON.RAIO_MANTER_AGRO * POKEMON.RAIO_MANTER_AGRO) continue;
+    perto.push({ lar, d2, agro: true });
+  }
+
   const c0x = Math.floor((px - alcance) / CHUNK_XZ);
   const c1x = Math.floor((px + alcance) / CHUNK_XZ);
   const c0y = Math.floor((py - alcance) / CHUNK_XZ);
   const c1y = Math.floor((py + alcance) / CHUNK_XZ);
-  const perto = [];
   for (let cy = c0y; cy <= c1y; cy++) {
     for (let cx = c0x; cx <= c1x; cx++) {
-    for (let indice = 0; indice < 2; indice++) {
-      const lar = garantirLar(cx, cy, indice);
-      if (!lar || lar.sumidoAte > agora) continue;
-      if (zonaSemSelvagem(lar.x, lar.y)) {
-        if (lar.ator) guardar(lar);
-        continue;
-      }
-      const dx = lar.x - px;
-      const dy = lar.y - py;
-      const d2 = dx * dx + dy * dy;
-      if (d2 > alcance * alcance) continue;
-      perto.push({ lar, d2 });
+      for (let indice = 0; indice < 2; indice++) {
+        const lar = garantirLar(cx, cy, indice);
+        if (!lar || lar.sumidoAte > agora) continue;
+        if (zonaSemSelvagem(lar.x, lar.y)) {
+          if (lar.ator) guardar(lar);
+          continue;
+        }
+        if (emAgro(lar)) continue;
+        const d2 = d2De(lar, px, py);
+        if (d2 > alcance2) continue;
+        perto.push({ lar, d2, agro: false });
       }
     }
   }
-  perto.sort((a, b) => a.d2 - b.d2);
-  const manter = new Set();
-  let vagas = POKEMON.MAX_MORADORES;
+
+  perto.sort((a, b) => {
+    if (a.agro !== b.agro) return a.agro ? -1 : 1;
+    return a.d2 - b.d2;
+  });
+
   for (let i = 0; i < perto.length && vagas > 0; i++) {
     const { lar, d2 } = perto[i];
-    const limite = lar.ator ? POKEMON.RAIO_MANTER : POKEMON.RAIO_SIM;
+    if (manter.has(lar.id)) continue;
+    const limite = limiteCull(lar);
     if (d2 > limite * limite) continue;
     acordar(lar);
     if (lar.ator) {
@@ -286,6 +323,7 @@ function sincronizarLares(px, py) {
       vagas--;
     }
   }
+
   for (const lar of lares.values()) {
     if (!lar?.ator) continue;
     if (manter.has(lar.id)) continue;
@@ -377,10 +415,12 @@ function tentarGrama(corpo) {
   const x = cel ? cel.x : corpo.x + (Math.random() < 0.5 ? -2.5 : 2.5);
   const y = cel ? cel.y : corpo.y + (Math.random() < 0.5 ? -1.5 : 1.5);
   if (zonaSemSelvagem(x, y) || ehCidade(x, y)) return;
+  if (!longeDeAtivos(x, y, POKEMON.MIN_ESPACO_GRAMA)) return;
   const z = pisoSeco(Math.floor(x), Math.floor(y)) || (corpo.elevacao ?? corpo.z ?? 0);
-  const base = POOL[Math.floor(Math.random() * POOL.length)];
-  const nivel = nivelNoPonto(x, y);
-  const esp = especie(estagio(base, nivel)) || especie("pidgey");
+  const biomaId = biomaIdEm(x, y, (Math.random() * 4294967296) >>> 0);
+  const chaveEsp = sortearEspecie(biomaId, (Math.random() * 4294967296) >>> 0);
+  const nivel = nivelEm(x, y);
+  const esp = especie(chaveEsp) || especie("pidgey");
   if (!esp) return;
   const ator = criarAtor({
     id: `grama-${chave}-${Math.floor(agora * 1000)}`,

@@ -1,5 +1,7 @@
 /** Catálogo carregado uma vez: espécies, golpes e tabelas de drop. */
 
+import { carregarDistribuicao } from "./distribuicao/indice.js";
+
 let especies = null;
 let golpes = null;
 let drops = { berries: {}, materials: {}, typeFallback: {} };
@@ -65,10 +67,17 @@ function aplicarPivos(arquivo) {
 }
 
 export async function carregarDados() {
-  const [catRes, dropRes, pivoRes] = await Promise.all([
+  const [catRes, dropRes, pivoRes, distRes] = await Promise.all([
     fetch("/ref/catalogo.json"),
     fetch("/ref/src/data/pokemon/speciesDrops.json"),
     fetch("/assets/pokemon/pivos.json"),
+    carregarDistribuicao().catch((erro) => {
+      console.error(
+        "Distribuição de bioma falhou — selvagens caem no fallback (pidgey). Reinicie o servidor (porta 4177).",
+        erro?.message || erro,
+      );
+      return 0;
+    }),
   ]);
   if (!catRes.ok) throw new Error("catálogo de pokémon indisponível");
   const cat = await catRes.json();
@@ -85,5 +94,13 @@ export async function carregarDados() {
   }
   if (pivoRes.ok) aplicarPivos(await pivoRes.json());
   pronto = true;
-  return { especies: Object.keys(especies).length, golpes: Object.keys(golpes).length };
+  const biomas = distRes | 0;
+  if (!biomas) {
+    console.error("Nenhum bioma de encontro carregado. GET /ref/distribuicao-bioma.json precisa responder 200.");
+  }
+  return {
+    especies: Object.keys(especies).length,
+    golpes: Object.keys(golpes).length,
+    biomas,
+  };
 }

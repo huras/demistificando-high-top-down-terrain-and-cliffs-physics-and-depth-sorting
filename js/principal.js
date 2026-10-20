@@ -178,7 +178,9 @@ async function iniciar() {
   try {
     const cat = await carregarDados();
     ligarPokemon();
-    console.info(`Pokémon: ${cat.especies} espécies, ${cat.golpes} golpes`);
+    console.info(
+      `Pokémon: ${cat.especies} espécies, ${cat.golpes} golpes, ${cat.biomas | 0} biomas de encontro`,
+    );
   } catch (erro) {
     console.error("Pokémon não carregou", erro);
   }

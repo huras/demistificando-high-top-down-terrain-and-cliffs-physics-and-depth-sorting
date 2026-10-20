@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extrairCatalogo } from "./js/pokemon/extrairCatalogo.mjs";
+import { extrairDistribuicao } from "./js/pokemon/extrairDistribuicao.mjs";
 import { garantirAtlasPmd, interpretarPedidoAtlas } from "./js/pokemon/assarAtlas.mjs";
 
 const raiz = path.dirname(fileURLToPath(import.meta.url));
@@ -316,6 +317,26 @@ const servidor = http.createServer((req, res) => {
     extrairCatalogo(raizRef)
       .then((cat) => {
         const corpo = JSON.stringify(cat);
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+        });
+        res.end(req.method === "HEAD" ? undefined : corpo);
+      })
+      .catch((erro) => {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro?.message || erro) }));
+      });
+    return;
+  }
+
+  if (
+    (req.method === "GET" || req.method === "HEAD") &&
+    url.pathname === "/ref/distribuicao-bioma.json"
+  ) {
+    extrairDistribuicao(raizRef)
+      .then((dados) => {
+        const corpo = JSON.stringify(dados);
         res.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "no-store",
