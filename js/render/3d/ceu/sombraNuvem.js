@@ -55,12 +55,7 @@ const FRAG_SOMA = `
 float sombraN = sombraNuvem();
 reflectedLight.directDiffuse *= sombraN;
 reflectedLight.indirectDiffuse *= mix(1.0, sombraN, 0.42);
-vec3 lampada = luzCidade(vMundoCeu);
-float picoLampada = max(lampada.r, max(lampada.g, lampada.b));
-float ganhoLampada = min(2.2, picoLampada * 12.0);
-vec3 tintaLampada = lampada / max(picoLampada, 1e-4);
-vec3 clarearLampada = ganhoLampada * (vec3(0.82) + tintaLampada * 0.18);
-vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + clarearLampada * diffuseColor.rgb;
+vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + clarearLampadaCidade(vMundoCeu) * diffuseColor.rgb;
 `;
 
 function ligarUniforms(shader) {

@@ -52,6 +52,15 @@ vec3 luzCidade(vec3 mundo) {
   float queda = 1.0 - smoothstep(6.0, 18.0, abs(mundo.y - luz.a));
   return luz.rgb * queda * uPesoLuzCidade;
 }
+
+/** Mesmo ganho do chão (sombraNuvem): o mapa cru é fraco demais nas casas. */
+vec3 clarearLampadaCidade(vec3 mundo) {
+  vec3 lampada = luzCidade(mundo);
+  float pico = max(lampada.r, max(lampada.g, lampada.b));
+  float ganho = min(2.2, pico * 12.0);
+  vec3 tinta = lampada / max(pico, 1e-4);
+  return ganho * (vec3(0.82) + tinta * 0.18);
+}
 `;
 
 const VERT_VAR = "varying vec3 vMundoLuz;";
@@ -66,9 +75,9 @@ vec4 mundoLuzV = vec4(transformed, 1.0);
 #endif
 vMundoLuz = (modelMatrix * mundoLuzV).xyz;
 `;
-const FRAG_SOMA_LOCAL = "vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz);";
-const FRAG_LAMBERT = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) * diffuseColor.rgb * 4.0 + totalEmissiveRadiance;";
-const FRAG_PHONG = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + luzCidade(vMundoLuz) * diffuseColor.rgb * 4.0 + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;";
+const FRAG_SOMA_LOCAL = "vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + clarearLampadaCidade(vMundoLuz) * diffuseColor.rgb;";
+const FRAG_LAMBERT = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + clarearLampadaCidade(vMundoLuz) * diffuseColor.rgb + totalEmissiveRadiance;";
+const FRAG_PHONG = "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + clarearLampadaCidade(vMundoLuz) * diffuseColor.rgb + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;";
 let avisouSoma = false;
 
 function somarLuzNoFragmento(frag) {
@@ -113,7 +122,7 @@ export function aplicarLuzCidade(material) {
   };
   material.customProgramCacheKey = function chaveLuzCidade() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-cidade|clareia`;
+    return `${base}|luz-cidade|clareia-branco`;
   };
   return material;
 }
