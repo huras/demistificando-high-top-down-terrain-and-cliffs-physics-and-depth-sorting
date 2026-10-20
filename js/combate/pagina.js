@@ -46,9 +46,10 @@ const CATEGORIA = {
 };
 
 const LADOS = ["esquerda", "direita"];
+const SLOTS_GOLPE = 4;
 const ui = {
-  esquerda: { busca: "", chave: "", nivel: 50, corpo: "", distancia: "", usaCorpo: true, usaDistancia: true },
-  direita: { busca: "", chave: "", nivel: 50, corpo: "", distancia: "", usaCorpo: true, usaDistancia: true },
+  esquerda: { busca: "", chave: "", nivel: 50, golpes: ["", "", "", ""], usaCorpo: true, usaDistancia: true },
+  direita: { busca: "", chave: "", nivel: 50, golpes: ["", "", "", ""], usaCorpo: true, usaDistancia: true },
 };
 
 let especies = [];
@@ -101,53 +102,25 @@ function golpesNoNivel(esp, nivel) {
   return saida;
 }
 
-function eCorpo(def) {
-  return def.forma === "contact" || def.forma === "radius";
-}
-
-function eDistancia(def) {
-  return def.forma === "projectile" || def.forma === "arc";
-}
-
-function golpesDoTipo(esp, nivel, tipo) {
+function golpesIniciais(esp, nivel) {
   const lista = golpesNoNivel(esp, nivel);
-  const serve = tipo === "distancia" ? eDistancia : eCorpo;
-  const saida = [];
-  for (let i = 0; i < lista.length; i++) {
-    if (lista[i].poder > 0 && serve(lista[i])) saida.push(lista[i]);
-  }
-  if (tipo !== "distancia") return saida;
-  const extras = ["swift", "hyperBeam"];
-  for (let i = 0; i < extras.length; i++) {
-    const def = golpe(extras[i]);
-    if (!def || def.poder <= 0 || !eDistancia(def)) continue;
-    let tem = false;
-    for (let j = 0; j < saida.length; j++) {
-      if (saida[j].key === def.key) tem = true;
-    }
-    if (!tem) saida.push(def);
-  }
-  return saida;
+  const ultimos = lista.slice(-SLOTS_GOLPE);
+  const chaves = ["", "", "", ""];
+  for (let i = 0; i < ultimos.length; i++) chaves[i] = ultimos[i].key;
+  return chaves;
 }
 
-function golpeInicial(esp, nivel, tipo) {
-  const lista = golpesDoTipo(esp, nivel, tipo);
-  let moderado = "";
-  for (let i = 0; i < lista.length; i++) {
-    if (lista[i].poder <= 50) moderado = lista[i].key;
+function garantirGolpes(lado) {
+  const esp = especie(ui[lado].chave);
+  const lista = golpesNoNivel(esp, ui[lado].nivel);
+  const validos = new Set();
+  for (let i = 0; i < lista.length; i++) validos.add(lista[i].key);
+  const atuais = ui[lado].golpes || ["", "", "", ""];
+  let ok = true;
+  for (let i = 0; i < SLOTS_GOLPE; i++) {
+    if (atuais[i] && !validos.has(atuais[i])) ok = false;
   }
-  if (moderado) return moderado;
-  return lista.length ? lista[lista.length - 1].key : "";
-}
-
-function garantirSlot(lado, campoNome, tipo) {
-  const chave = ui[lado][campoNome];
-  if (!chave) return;
-  const lista = golpesDoTipo(especie(ui[lado].chave), ui[lado].nivel, tipo);
-  for (let i = 0; i < lista.length; i++) {
-    if (lista[i].key === chave) return;
-  }
-  ui[lado][campoNome] = golpeInicial(especie(ui[lado].chave), ui[lado].nivel, tipo);
+  if (!ok || !atuais.some(Boolean)) ui[lado].golpes = golpesIniciais(esp, ui[lado].nivel);
 }
 
 function textoFicha(def, vazio) {
@@ -156,6 +129,11 @@ function textoFicha(def, vazio) {
   const categoria = CATEGORIA[def.categoria] || def.categoria;
   const acerto = def.acerto === null ? "não erra" : def.acerto ?? 100;
   const base = `${forma} · ${categoria} · poder ${def.poder | 0} · acerto ${acerto} · alcance ${Number(def.alcance) || 0} · custo ${def.pp || 0} PP`;
+  if (def.debuff) {
+    const alvo = def.debuff.target === "self" ? "próprio" : "alvo";
+    return `${base} · ${def.debuff.stat} ${def.debuff.delta | 0} (${alvo})`;
+  }
+  if (def.ailment) return `${base} · ${def.ailment.id} ${def.ailment.chance ?? 100}%`;
   if (def.key === "rage") return `${base} · cada golpe recebido enche 1 tubo de ataque, até 6`;
   return base;
 }
@@ -221,8 +199,10 @@ function pintarRecarga(lado) {
   const ator = estadoLuta()[lado];
   const raiz = raizDe(lado);
   if (!ator) return;
-  pintarRecargaUm(raiz, ator, "corpo", ui[lado].corpo);
-  pintarRecargaUm(raiz, ator, "distancia", ui[lado].distancia);
+  const chaves = ui[lado].golpes || [];
+  for (let i = 0; i < SLOTS_GOLPE; i++) {
+    pintarRecargaUm(raiz, ator, `golpe-${i}`, chaves[i] || "");
+  }
 }
 
 function corVida(pct) {
@@ -299,34 +279,53 @@ function montarColuna(lado) {
         Nível <strong data-campo="nivel-valor">50</strong>
         <input data-campo="nivel" type="range" min="1" max="${NIVEL_MAX}" value="50" />
       </label>
-      <div class="campo" data-campo="bloco-corpo">
+      <div class="campo">
         <div class="campo__topo">
-          <span>Corpo a corpo</span>
-          <label class="uso">
-            <input data-campo="usa-corpo" type="checkbox" checked />
-            Usar
-          </label>
+          <span>Uso na IA</span>
         </div>
-        <select data-campo="corpo"></select>
-        <p class="ficha" data-campo="ficha-corpo"></p>
+        <label class="uso">
+          <input data-campo="usa-corpo" type="checkbox" checked />
+          Corpo a corpo
+        </label>
+        <label class="uso">
+          <input data-campo="usa-distancia" type="checkbox" checked />
+          À distância / status
+        </label>
+      </div>
+      <div class="campo" data-campo="bloco-golpe-0">
+        <div class="campo__topo"><span>Golpe 1</span></div>
+        <select data-campo="golpe-0"></select>
+        <p class="ficha" data-campo="ficha-golpe-0"></p>
         <div class="recarga">
-          <div class="recarga__trilho"><span data-campo="cd-corpo"></span></div>
-          <p class="pp" data-campo="cd-corpo-num">Pronto</p>
+          <div class="recarga__trilho"><span data-campo="cd-golpe-0"></span></div>
+          <p class="pp" data-campo="cd-golpe-0-num">Pronto</p>
         </div>
       </div>
-      <div class="campo" data-campo="bloco-distancia">
-        <div class="campo__topo">
-          <span>À distância</span>
-          <label class="uso">
-            <input data-campo="usa-distancia" type="checkbox" checked />
-            Usar
-          </label>
-        </div>
-        <select data-campo="distancia"></select>
-        <p class="ficha" data-campo="ficha-distancia"></p>
+      <div class="campo" data-campo="bloco-golpe-1">
+        <div class="campo__topo"><span>Golpe 2</span></div>
+        <select data-campo="golpe-1"></select>
+        <p class="ficha" data-campo="ficha-golpe-1"></p>
         <div class="recarga">
-          <div class="recarga__trilho"><span data-campo="cd-distancia"></span></div>
-          <p class="pp" data-campo="cd-distancia-num">Pronto</p>
+          <div class="recarga__trilho"><span data-campo="cd-golpe-1"></span></div>
+          <p class="pp" data-campo="cd-golpe-1-num">Pronto</p>
+        </div>
+      </div>
+      <div class="campo" data-campo="bloco-golpe-2">
+        <div class="campo__topo"><span>Golpe 3</span></div>
+        <select data-campo="golpe-2"></select>
+        <p class="ficha" data-campo="ficha-golpe-2"></p>
+        <div class="recarga">
+          <div class="recarga__trilho"><span data-campo="cd-golpe-2"></span></div>
+          <p class="pp" data-campo="cd-golpe-2-num">Pronto</p>
+        </div>
+      </div>
+      <div class="campo" data-campo="bloco-golpe-3">
+        <div class="campo__topo"><span>Golpe 4</span></div>
+        <select data-campo="golpe-3"></select>
+        <p class="ficha" data-campo="ficha-golpe-3"></p>
+        <div class="recarga">
+          <div class="recarga__trilho"><span data-campo="cd-golpe-3"></span></div>
+          <p class="pp" data-campo="cd-golpe-3-num">Pronto</p>
         </div>
       </div>
     </fieldset>
@@ -342,8 +341,7 @@ function montarColuna(lado) {
     if (!esp) return;
     ui[lado].chave = esp.key;
     ui[lado].busca = "";
-    ui[lado].corpo = golpeInicial(esp, ui[lado].nivel, "corpo");
-    ui[lado].distancia = golpeInicial(esp, ui[lado].nivel, "distancia");
+    ui[lado].golpes = golpesIniciais(esp, ui[lado].nivel);
     pintarEscolha(lado);
     aplicar();
   });
@@ -351,8 +349,7 @@ function montarColuna(lado) {
     const botaoEsp = ev.target.closest("button[data-chave]");
     if (!botaoEsp || estadoLuta().lutando) return;
     ui[lado].chave = botaoEsp.dataset.chave;
-    ui[lado].corpo = golpeInicial(especie(ui[lado].chave), ui[lado].nivel, "corpo");
-    ui[lado].distancia = golpeInicial(especie(ui[lado].chave), ui[lado].nivel, "distancia");
+    ui[lado].golpes = golpesIniciais(especie(ui[lado].chave), ui[lado].nivel);
     pintarEscolha(lado);
     aplicar();
   });
@@ -360,26 +357,22 @@ function montarColuna(lado) {
     if (estadoLuta().lutando) return;
     ui[lado].nivel = ev.target.value | 0;
     campo(raiz, "nivel-valor").textContent = String(ui[lado].nivel);
-    garantirSlot(lado, "corpo", "corpo");
-    garantirSlot(lado, "distancia", "distancia");
+    ui[lado].golpes = golpesIniciais(especie(ui[lado].chave), ui[lado].nivel);
     pintarGolpes(lado);
   });
   campo(raiz, "nivel").addEventListener("change", () => {
     if (estadoLuta().lutando) return;
     aplicar();
   });
-  campo(raiz, "corpo").addEventListener("change", (ev) => {
-    if (estadoLuta().lutando) return;
-    ui[lado].corpo = ev.target.value;
-    pintarFichaGolpe(lado);
-    aplicar();
-  });
-  campo(raiz, "distancia").addEventListener("change", (ev) => {
-    if (estadoLuta().lutando) return;
-    ui[lado].distancia = ev.target.value;
-    pintarFichaGolpe(lado);
-    aplicar();
-  });
+  for (let i = 0; i < SLOTS_GOLPE; i++) {
+    const indice = i;
+    campo(raiz, `golpe-${indice}`).addEventListener("change", (ev) => {
+      if (estadoLuta().lutando) return;
+      ui[lado].golpes[indice] = ev.target.value;
+      pintarFichaGolpe(lado);
+      aplicar();
+    });
+  }
   campo(raiz, "usa-corpo").addEventListener("change", (ev) => {
     ui[lado].usaCorpo = ev.target.checked;
     pintarFichaGolpe(lado);
@@ -430,7 +423,10 @@ function pintarSelect(select, lista, escolhido) {
     const def = lista[i];
     const sel = def.key === escolhido ? " selected" : "";
     const forma = FORMA[def.forma] || def.forma;
-    html += `<option value="${escapar(def.key)}"${sel}>${escapar(def.nome)} · ${nomeTipo(def.tipo)} · ${escapar(forma)}</option>`;
+    const categoria = CATEGORIA[def.categoria] || def.categoria;
+    const poder = def.poder | 0;
+    const extra = poder <= 0 ? ` · ${escapar(categoria)}` : ` · pod ${poder}`;
+    html += `<option value="${escapar(def.key)}"${sel}>${escapar(def.nome)} · ${nomeTipo(def.tipo)} · ${escapar(forma)}${extra}</option>`;
   }
   select.innerHTML = html;
   select.value = escolhido || "";
@@ -439,23 +435,26 @@ function pintarSelect(select, lista, escolhido) {
 function pintarGolpes(lado) {
   const raiz = raizDe(lado);
   const esp = especie(ui[lado].chave);
-  pintarSelect(campo(raiz, "corpo"), golpesDoTipo(esp, ui[lado].nivel, "corpo"), ui[lado].corpo);
-  pintarSelect(campo(raiz, "distancia"), golpesDoTipo(esp, ui[lado].nivel, "distancia"), ui[lado].distancia);
+  garantirGolpes(lado);
+  const lista = golpesNoNivel(esp, ui[lado].nivel);
+  const chaves = ui[lado].golpes || ["", "", "", ""];
+  for (let i = 0; i < SLOTS_GOLPE; i++) {
+    pintarSelect(campo(raiz, `golpe-${i}`), lista, chaves[i] || "");
+  }
   pintarFichaGolpe(lado);
 }
 
 function pintarFichaGolpe(lado) {
   const raiz = raizDe(lado);
-  const corpo = ui[lado].corpo ? golpe(ui[lado].corpo) : null;
-  const distancia = ui[lado].distancia ? golpe(ui[lado].distancia) : null;
   const usaCorpo = ui[lado].usaCorpo !== false;
   const usaDistancia = ui[lado].usaDistancia !== false;
   campo(raiz, "usa-corpo").checked = usaCorpo;
   campo(raiz, "usa-distancia").checked = usaDistancia;
-  campo(raiz, "bloco-corpo").classList.toggle("campo--off", !usaCorpo);
-  campo(raiz, "bloco-distancia").classList.toggle("campo--off", !usaDistancia);
-  campo(raiz, "ficha-corpo").textContent = textoFicha(corpo, usaCorpo ? "Sem golpe de corpo a corpo." : "Desligado.");
-  campo(raiz, "ficha-distancia").textContent = textoFicha(distancia, usaDistancia ? "Sem golpe à distância." : "Desligado.");
+  const chaves = ui[lado].golpes || ["", "", "", ""];
+  for (let i = 0; i < SLOTS_GOLPE; i++) {
+    const def = chaves[i] ? golpe(chaves[i]) : null;
+    campo(raiz, `ficha-golpe-${i}`).textContent = textoFicha(def, "Sem golpe.");
+  }
 }
 
 function pintarEscolha(lado) {
@@ -583,8 +582,7 @@ function entradaDe(lado, especieLado) {
   return {
     especie: especieLado,
     nivel: ui[lado].nivel,
-    corpo: ui[lado].corpo,
-    distancia: ui[lado].distancia,
+    golpes: (ui[lado].golpes || []).slice(0, SLOTS_GOLPE),
     usaCorpo: ui[lado].usaCorpo !== false,
     usaDistancia: ui[lado].usaDistancia !== false,
   };
@@ -620,10 +618,8 @@ function cfgInicial() {
   ui.direita.chave = dir?.key || "";
   ui.esquerda.nivel = 50;
   ui.direita.nivel = 50;
-  ui.esquerda.corpo = golpeInicial(esq, 50, "corpo");
-  ui.direita.corpo = golpeInicial(dir, 50, "corpo");
-  ui.esquerda.distancia = golpeInicial(esq, 50, "distancia");
-  ui.direita.distancia = golpeInicial(dir, 50, "distancia");
+  ui.esquerda.golpes = golpesIniciais(esq, 50);
+  ui.direita.golpes = golpesIniciais(dir, 50);
 }
 
 function pedaco(cls, texto) {
@@ -666,6 +662,12 @@ function pintarLog() {
       li.append(pedaco("log__cura", ` +${linha.ganho}`));
     } else if (linha.tipo === "ataque") {
       li.append(pedaco("log__ataque", ` ataque +${linha.estagio}`));
+    } else if (linha.tipo === "estagio") {
+      const sinal = (linha.delta | 0) >= 0 ? "+" : "−";
+      li.append(pedaco("log__ataque", ` ${linha.stat} ${sinal}${Math.abs(linha.delta | 0)} (${linha.estagio})`));
+    } else if (linha.tipo === "veneno") {
+      if (linha.aplicado) li.append(pedaco("log__ataque", " envenenado"));
+      else li.append(pedaco("log__dano", ` −${linha.dano} veneno`));
     } else if (linha.tipo === "queda") {
       li.append(pedaco("log__queda", " caiu"));
     } else if (linha.tipo === "carregar") {
@@ -848,7 +850,11 @@ function pintarTurno(pedido, aviso) {
     meta.className = "turno__meta";
     const forma = FORMA[golpeAtual.forma] || golpeAtual.forma;
     const tipo = TIPO[golpeAtual.tipo] || golpeAtual.tipo;
-    meta.textContent = `${tipo} · ${forma} · poder ${golpeAtual.poder} · ${textoAcerto(golpeAtual.acerto)} · PP ${golpeAtual.custo}`;
+    const poderTxt =
+      (golpeAtual.poder | 0) <= 0
+        ? CATEGORIA[golpeAtual.categoria] || "status"
+        : `poder ${golpeAtual.poder}`;
+    meta.textContent = `${tipo} · ${forma} · ${poderTxt} · ${textoAcerto(golpeAtual.acerto)} · PP ${golpeAtual.custo}`;
     botaoGolpe.append(nome, meta);
     caixa.appendChild(botaoGolpe);
   }

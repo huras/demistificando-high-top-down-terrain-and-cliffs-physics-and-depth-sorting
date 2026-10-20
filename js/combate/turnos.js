@@ -3,7 +3,7 @@
 import { bloqueioNoTrecho } from "./arenas.js";
 import { dispararGolpeTurno } from "../pokemon/combate/executor.js";
 import { projeteisVivos } from "../pokemon/combate/projeteis.js";
-import { emAvanco, velocidadeDe } from "../pokemon/ator.js";
+import { danoVeneno, emAvanco, velocidadeDe } from "../pokemon/ator.js";
 import { RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
 import { limitarArena, paradaDe } from "../pokemon/ia/espaco.js";
 import { notaGolpeTurno, resolverTurno } from "../pokemon/combate/acertoClassico.js";
@@ -99,6 +99,7 @@ export function pedidoEscolha() {
       nome: def.nome,
       forma: def.forma,
       tipo: def.tipo,
+      categoria: def.categoria || "physical",
       poder: def.poder || 0,
       acerto: def.acerto,
       custo: def.pp || 1,
@@ -184,6 +185,7 @@ export function tickTurnos(dt, agora, efeitos) {
   if (fase === "teatro") {
     esperaTeatro -= dt;
     if (esperaTeatro > 0) return;
+    if (ator) danoVeneno(ator, efeitos);
     indice += 1;
     veioDoTeatro = true;
     abrirTurno();

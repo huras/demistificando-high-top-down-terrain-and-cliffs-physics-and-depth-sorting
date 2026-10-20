@@ -1,5 +1,14 @@
 import { atoresPerto } from "../grade.js";
-import { alturaPe, comecarAvanco, cruzaAltura, emAvanco, emEsquiva, emRecuo, emRolamentoAtivo } from "../ator.js";
+import {
+  alturaPe,
+  comecarAvanco,
+  cruzaAltura,
+  emAvanco,
+  emEsquiva,
+  emRecuo,
+  emRolamentoAtivo,
+  imuneAVeneno,
+} from "../ator.js";
 import { acertoCorpo, alcanceCorpo } from "../ia/espaco.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
@@ -12,8 +21,29 @@ import { agendarDesmaio, marcarPose, tempoClipGolpe } from "../sprites.js";
 import { bloqueioNoTrecho, cortaVisada } from "../../combate/arenas.js";
 import { RAIO_PROJETIL } from "../ia/constantes.js";
 import { tocarGrito } from "../../jogo/som/gritos.js";
+import { acertaClassico } from "./acertoClassico.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
+
+const CAMPO_ESTAGIO = {
+  atk: "estagioAtk",
+  def: "estagioDef",
+  spa: "estagioSpa",
+  spd: "estagioSpd",
+  spe: "estagioSpe",
+  accuracy: "estagioPrecisao",
+  evasion: "estagioEvasao",
+};
+
+const ROTULO_ESTAGIO = {
+  atk: "Ataque",
+  def: "Defesa",
+  spa: "Atq. Esp.",
+  spd: "Def. Esp.",
+  spe: "Velocidade",
+  accuracy: "Precisão",
+  evasion: "Evasão",
+};
 
 function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -228,10 +258,96 @@ function atorMorreu(alvo, agora) {
   alvo.desmaioEm = 0;
   alvo.andando = false;
   alvo.furia = false;
+  alvo.status = null;
+  alvo.venenoAte = 0;
   alvo.alvo = null;
   alvo.pose = "Idle";
   alvo.poseSeguinte = "";
   definirEmocao(alvo, EMOCAO.SUOR, { presa: true });
+}
+
+function campoEstagio(stat) {
+  return CAMPO_ESTAGIO[stat] || "";
+}
+
+function aplicarDebuff(def, ator, alvo, efeitos) {
+  const d = def?.debuff;
+  if (!d?.stat) return false;
+  const campo = campoEstagio(d.stat);
+  if (!campo) return false;
+  const quem = d.target === "self" ? ator : alvo;
+  if (!quem || quem.morto || quem.capturado || quem.hp <= 0) return false;
+  const atual = quem[campo] || 0;
+  const novo = Math.max(-6, Math.min(6, atual + (d.delta | 0)));
+  if (novo === atual) {
+    if (efeitos?.flutuar) efeitos.flutuar(quem, "já no limite", "#94a3b8");
+    return true;
+  }
+  quem[campo] = novo;
+  const delta = novo - atual;
+  const sinal = delta > 0 ? "+" : "−";
+  const rotulo = ROTULO_ESTAGIO[d.stat] || d.stat;
+  if (efeitos?.flutuar) efeitos.flutuar(quem, `${rotulo} ${sinal}${Math.abs(delta)}`, "#fbbf24");
+  notar(efeitos, { tipo: "estagio", alvo: quem, stat: d.stat, estagio: novo, delta });
+  return true;
+}
+
+function aplicarAilment(def, alvo, efeitos, rng = Math.random) {
+  const a = def?.ailment;
+  if (!a?.id || !alvo) return false;
+  if (a.id !== "poison") return false;
+  if (imuneAVeneno(alvo)) {
+    if (efeitos?.flutuar) efeitos.flutuar(alvo, "imune", "#94a3b8");
+    notar(efeitos, { tipo: "imune", alvo });
+    return true;
+  }
+  if (alvo.status === "poison") {
+    if (efeitos?.flutuar) efeitos.flutuar(alvo, "já envenenado", "#a855f7");
+    return true;
+  }
+  const chance = Number.isFinite(a.chance) ? a.chance : 100;
+  if (rng() * 100 >= chance) {
+    if (efeitos?.flutuar) efeitos.flutuar(alvo, "falhou", "#94a3b8");
+    return true;
+  }
+  alvo.status = "poison";
+  alvo.venenoAte = 0;
+  if (efeitos?.flutuar) efeitos.flutuar(alvo, "envenenado", "#a855f7");
+  notar(efeitos, { tipo: "veneno", alvo, aplicado: true });
+  return true;
+}
+
+function statusEmAlcance(ator, def, d) {
+  if (!def) return false;
+  if (def.debuff?.target === "self" && !def.ailment) return true;
+  const forma = def.forma;
+  if (forma === "contact") return usaCorpo(ator) && d <= alcanceCorpo(def);
+  if (forma === "radius") return usaCorpo(ator) && d <= Math.max(2.2, def.alcance || 2.2);
+  if (forma === "projectile" || forma === "arc") {
+    return usaDistancia(ator) && d <= (def.alcance || 10);
+  }
+  return d <= (def.alcance || 10);
+}
+
+function escolhaStatusUtil(prontos, ator, alvo, d) {
+  for (let i = 0; i < prontos.length; i++) {
+    const g = prontos[i];
+    const def = g.def;
+    if ((def.poder || 0) > 0) continue;
+    if (!statusEmAlcance(ator, def, d)) continue;
+    if (def.debuff) {
+      const campo = campoEstagio(def.debuff.stat);
+      if (!campo) continue;
+      const quem = def.debuff.target === "self" ? ator : alvo;
+      const atual = quem?.[campo] || 0;
+      const delta = def.debuff.delta | 0;
+      if (delta < 0 && atual <= -4) continue;
+      if (delta > 0 && atual >= 4) continue;
+      return g;
+    }
+    if (def.ailment?.id === "poison" && !alvo?.status && !imuneAVeneno(alvo)) return g;
+  }
+  return null;
 }
 
 /** Fecha o desmaio quando o Hurt acabou. Chamado do tick passivo. */
@@ -271,22 +387,21 @@ function escolher(ator, alvo, d) {
   const linhaLivre = tiroLimpo(ator, alvo);
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
+    if ((g.def.poder || 0) <= 0) continue;
     if (corpo && noPlano && g.def.forma === "contact" && d <= alcanceCorpo(g.def)) return g;
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
-    if (distancia && linhaLivre && (g.def.forma === "projectile" || g.def.forma === "arc") && d <= g.def.alcance) return g;
+    if ((g.def.poder || 0) <= 0) continue;
+    if (distancia && linhaLivre && (g.def.forma === "projectile" || g.def.forma === "arc") && d <= g.def.alcance) {
+      return g;
+    }
   }
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
     if (corpo && noPlano && g.def.forma === "radius" && g.def.poder > 0 && d <= Math.max(2.2, g.def.alcance)) return g;
   }
-  if (d > 2.4) {
-    for (let i = 0; i < prontos.length; i++) {
-      if (prontos[i].def.poder <= 0) return prontos[i];
-    }
-  }
-  return null;
+  return escolhaStatusUtil(prontos, ator, alvo, d);
 }
 
 /** Preparação. Corpo a corpo sai mais cedo que o tiro. O poder alonga os dois. */
@@ -553,15 +668,31 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
       return;
     }
     if (travado) travado.gasto = true;
+    else if (
+      !CURA.test(def.key || "") &&
+      alvo &&
+      (def.ailment || (def.debuff && def.debuff.target !== "self")) &&
+      !acertaClassico(ator, alvo, def)
+    ) {
+      if (efeitos?.flutuar) efeitos.flutuar(alvo, "errou", "#cbd5e1");
+      notar(efeitos, { tipo: "erro", ator, alvo });
+      abrirRecuperacao(ator, slot);
+      return;
+    }
     if (CURA.test(def.key || "")) {
       const antes = ator.hp;
       ator.hp = Math.min(ator.hpMax, ator.hp + Math.ceil(ator.hpMax * 0.22));
       efeitos.flutuar(ator, "cura", "#4ade80");
       notar(efeitos, { tipo: "cura", ator, ganho: ator.hp - antes });
     } else {
-      ator.velMul = 1.25;
-      ator.velMulAte = agora + 4;
-      efeitos.flutuar(ator, def.nome, "#93c5fd");
+      let feito = false;
+      if (def.debuff) feito = aplicarDebuff(def, ator, alvo, efeitos) || feito;
+      if (def.ailment) feito = aplicarAilment(def, alvo, efeitos) || feito;
+      if (!feito) {
+        ator.velMul = 1.25;
+        ator.velMulAte = agora + 4;
+        efeitos.flutuar(ator, def.nome, "#93c5fd");
+      }
     }
     abrirRecuperacao(ator, slot);
     return;

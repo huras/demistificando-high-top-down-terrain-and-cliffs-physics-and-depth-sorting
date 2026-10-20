@@ -75,7 +75,7 @@ async function montar(raizRef) {
   for (let i = 0; i < nomes.length; i++) {
     const g = brutos[nomes[i]];
     if (!g?.key) continue;
-    golpes[g.key] = {
+    const item = {
       key: g.key,
       nome: g.name || g.key,
       forma: g.shape || "contact",
@@ -89,6 +89,20 @@ async function montar(raizRef) {
       vel: Number(g.projectileSpeed) || 14,
       raio: Number(g.projectileRadius) || 0.45,
     };
+    if (g.debuff?.stat) {
+      item.debuff = {
+        stat: g.debuff.stat,
+        delta: g.debuff.delta | 0,
+        target: g.debuff.target || "foe",
+      };
+    }
+    if (g.ailment?.id) {
+      item.ailment = {
+        id: g.ailment.id,
+        chance: Number.isFinite(g.ailment.chance) ? g.ailment.chance : 100,
+      };
+    }
+    golpes[g.key] = item;
   }
 
   return { especies, golpes };

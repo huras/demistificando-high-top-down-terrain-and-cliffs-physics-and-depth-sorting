@@ -33,10 +33,12 @@ export function mascaraLocal(grade, lx, ly) {
   const i = (ly + 1) * N + (lx + 1);
   const z = grade[i];
   let m = 0;
-  if (grade[i + N] < z) m |= SUL;
-  if (grade[i - N] < z) m |= NORTE;
-  if (grade[i + 1] < z) m |= LESTE;
-  if (grade[i - 1] < z) m |= OESTE;
+  // Desnível nos dois sentidos: cliff (vizinho mais baixo) e poço (mais alto).
+  // Sem o poço, a célula fundia como plano e a depressão sumia na malha real.
+  if (grade[i + N] !== z) m |= SUL;
+  if (grade[i - N] !== z) m |= NORTE;
+  if (grade[i + 1] !== z) m |= LESTE;
+  if (grade[i - 1] !== z) m |= OESTE;
   return m;
 }
 

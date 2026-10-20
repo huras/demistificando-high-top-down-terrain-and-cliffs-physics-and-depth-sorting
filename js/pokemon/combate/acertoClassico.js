@@ -1,5 +1,6 @@
 /** Precisão da segunda à quarta geração. Sem comando de esquiva. */
 
+import { imuneAVeneno } from "../ator.js";
 import { calcularDano, efetividade } from "../tipos.js";
 
 /** Estágio −6..+6. Positivo (3+n)/3, negativo 3/(3−n). */
@@ -38,9 +39,39 @@ export function resolverTurno(atacante, alvo, def, rng = Math.random) {
   return { ...comum, acertou: true, imune: false, dano, efet };
 }
 
+const CAMPO_ESTAGIO = {
+  atk: "estagioAtk",
+  def: "estagioDef",
+  spa: "estagioSpa",
+  spd: "estagioSpd",
+  spe: "estagioSpe",
+  accuracy: "estagioPrecisao",
+  evasion: "estagioEvasao",
+};
+
+function notaStatus(def, alvo) {
+  let nota = 0;
+  if (def?.debuff?.stat) {
+    const campo = CAMPO_ESTAGIO[def.debuff.stat];
+    const quem = def.debuff.target === "self" ? null : alvo;
+    const atual = quem ? quem[campo] || 0 : 0;
+    const delta = def.debuff.delta | 0;
+    if (delta < 0) {
+      if (atual > -6) nota = Math.max(nota, 28 * Math.abs(delta) * (1 + Math.max(0, atual) / 6));
+    } else if (delta > 0) {
+      nota = Math.max(nota, 22 * delta);
+    }
+  }
+  if (def?.ailment?.id === "poison") {
+    if (alvo && !alvo.status && !imuneAVeneno(alvo)) nota = Math.max(nota, 35);
+  }
+  return nota;
+}
+
 export function notaGolpeTurno(def, alvo) {
   const base = Number(def?.acerto);
   const prec = !Number.isFinite(base) || base > 100 ? 100 : Math.max(0, base);
+  if ((def?.poder || 0) <= 0) return notaStatus(def, alvo) * (prec / 100);
   const efet = efetividade(def?.tipo, alvo?.tipos || []);
   return (def?.poder || 0) * efet * (prec / 100);
 }

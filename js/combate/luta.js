@@ -1,4 +1,14 @@
-import { comecarEsquiva, criarAtor, emAvanco, emEsquiva, emRecuo, equiparGolpes, tickPassivo, velocidadeDe } from "../pokemon/ator.js";
+import {
+  comecarEsquiva,
+  criarAtor,
+  emAvanco,
+  emEsquiva,
+  emRecuo,
+  equiparGolpes,
+  tickPassivo,
+  tickVeneno,
+  velocidadeDe,
+} from "../pokemon/ator.js";
 import { cancelarConjuracao, ensaiarGolpe, impactoProjetil, tentarGolpe, tickConjuracao, tickDesmaio } from "../pokemon/combate/executor.js";
 import { limparKi } from "../pokemon/combate/ki.js";
 import { limparParticulas, poeiraDash, rajada, rastro, tickParticulas } from "../pokemon/combate/particulas.js";
@@ -108,6 +118,25 @@ function anotar(item) {
   }
   if (item.tipo === "ataque") {
     registrar({ tipo: "ataque", ...sujeito(item.alvo), estagio: item.estagio });
+    return;
+  }
+  if (item.tipo === "estagio") {
+    registrar({
+      tipo: "estagio",
+      ...sujeito(item.alvo),
+      stat: item.stat,
+      estagio: item.estagio,
+      delta: item.delta,
+    });
+    return;
+  }
+  if (item.tipo === "veneno") {
+    registrar({
+      tipo: "veneno",
+      ...sujeito(item.alvo),
+      dano: item.dano | 0,
+      aplicado: !!item.aplicado,
+    });
     return;
   }
   if (item.tipo === "queda") registrar({ tipo: "queda", ...sujeito(item.alvo) });
@@ -302,7 +331,10 @@ function montar(lado, entrada) {
   ator.dirY = 0;
   ator.usaCorpo = entrada.usaCorpo !== false;
   ator.usaDistancia = entrada.usaDistancia !== false;
-  equiparGolpes(ator, [entrada.corpo, entrada.distancia]);
+  const chaves = Array.isArray(entrada.golpes)
+    ? entrada.golpes
+    : [entrada.corpo, entrada.distancia];
+  equiparGolpes(ator, chaves);
   apresentar(ator);
   return ator;
 }
@@ -472,6 +504,10 @@ export function tickLuta(dt) {
 
   tickPassivo(esquerda, passo, agora);
   tickPassivo(direita, passo, agora);
+  if (lutando && !modoTurnos()) {
+    tickVeneno(esquerda, agora, efeitos);
+    tickVeneno(direita, agora, efeitos);
+  }
   tickDesmaio(esquerda, agora);
   tickDesmaio(direita, agora);
   soltarPoeiraDash(esquerda, passo);

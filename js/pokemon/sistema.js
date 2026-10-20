@@ -1,7 +1,7 @@
 import { ALTURA_BLOCO, USAR_PATCH_DEMO } from "../config.js";
 import { SPAWN as SPAWN_DEMO } from "../mundo/mapaDemo.js";
 import { SPAWN_PALLET } from "../mundo/regiao/spawnKanto.js";
-import { tickPassivo, aplicarNivel } from "./ator.js";
+import { tickPassivo, tickVeneno, aplicarNivel } from "./ator.js";
 import { atualizarCaptura } from "./captura.js";
 import {
   aplicarDanoLivre,
@@ -156,6 +156,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
 
   const atores = mon ? selvagens.concat(mon) : selvagens;
   for (let i = 0; i < atores.length; i++) tickPassivo(atores[i], passo, agora);
+  for (let i = 0; i < atores.length; i++) tickVeneno(atores[i], agora, efeitos);
   for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
   montarGrade(atores.concat(treinador));
   for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);

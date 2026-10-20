@@ -59,6 +59,10 @@ export function alturasGrade(viz) {
 
 export function celulaPlana(viz) {
   const h = viz[4];
+  // Ortogonais em outra cota = penhasco ou poço. alturasGrade só baixa lábio
+  // quando o vizinho é mais baixo — poço (vizinho mais alto) ficava "plano" e
+  // a malha fundia o fundo sem marcar a depressão (buraco invisível).
+  if (viz[1] !== h || viz[3] !== h || viz[5] !== h || viz[7] !== h) return false;
   const ys = alturasGrade(viz);
   for (let i = 0; i < ys.length; i++) {
     if (ys[i] !== h) return false;

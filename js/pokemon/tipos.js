@@ -148,10 +148,12 @@ export function multiplicadorEstagio(estagio) {
 function danoGen(atacante, alvo, poder, categoria) {
   const nivel = Math.max(1, atacante.nivel | 0);
   const especial = categoria === "special";
-  const bruto = Math.max(1, especial ? atacante.stats.ataqueEsp : atacante.stats.ataque);
-  const estagio = especial ? atacante.estagioSpa || 0 : atacante.estagioAtk || 0;
-  const atk = Math.max(1, Math.floor(bruto * multiplicadorEstagio(estagio)));
-  const def = Math.max(1, especial ? alvo.stats.defesaEsp : alvo.stats.defesa);
+  const brutoAtk = Math.max(1, especial ? atacante.stats.ataqueEsp : atacante.stats.ataque);
+  const estagioAtk = especial ? atacante.estagioSpa || 0 : atacante.estagioAtk || 0;
+  const atk = Math.max(1, Math.floor(brutoAtk * multiplicadorEstagio(estagioAtk)));
+  const brutoDef = Math.max(1, especial ? alvo.stats.defesaEsp : alvo.stats.defesa);
+  const estagioDef = especial ? alvo.estagioSpd || 0 : alvo.estagioDef || 0;
+  const def = Math.max(1, Math.floor(brutoDef * multiplicadorEstagio(estagioDef)));
   return (
     Math.floor(Math.floor((Math.floor((2 * nivel) / 5 + 2) * poder * atk) / def) / 50) + 2
   );

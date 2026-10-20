@@ -119,8 +119,14 @@ export function criarAtor(opts) {
     cdBasico: 0,
     furia: false,
     estagioAtk: 0,
+    estagioDef: 0,
+    estagioSpa: 0,
+    estagioSpd: 0,
+    estagioSpe: 0,
     estagioPrecisao: 0,
     estagioEvasao: 0,
+    status: null,
+    venenoAte: 0,
     shiny: !!opts.shiny,
     faccao: opts.faccao,
     x: opts.x,
@@ -264,6 +270,48 @@ export function reviverAtor(ator, x, y, z) {
   ator.jatoId = 0;
   ator.leadX = 0;
   ator.leadY = 0;
+  ator.status = null;
+  ator.venenoAte = 0;
+  ator.estagioAtk = 0;
+  ator.estagioDef = 0;
+  ator.estagioSpa = 0;
+  ator.estagioSpd = 0;
+  ator.estagioSpe = 0;
+  ator.estagioPrecisao = 0;
+  ator.estagioEvasao = 0;
+}
+
+/** Aço e Venenoso não ficam envenenados. */
+export function imuneAVeneno(ator) {
+  const tipos = ator?.tipos || [];
+  for (let i = 0; i < tipos.length; i++) {
+    if (tipos[i] === "poison" || tipos[i] === "steel") return true;
+  }
+  return false;
+}
+
+/** Dano residual de veneno (1/8 do HP máx.). */
+export function danoVeneno(ator, efeitos) {
+  if (!ator || ator.status !== "poison" || ator.morto || ator.capturado || ator.hp <= 0) return 0;
+  if (imuneAVeneno(ator)) {
+    ator.status = null;
+    ator.venenoAte = 0;
+    return 0;
+  }
+  const dano = Math.max(1, Math.floor((ator.hpMax || 1) / 8));
+  ator.hp = Math.max(0, ator.hp - dano);
+  if (efeitos?.flutuar) efeitos.flutuar(ator, String(dano), "#a855f7");
+  if (efeitos?.anotar) efeitos.anotar({ tipo: "veneno", alvo: ator, dano });
+  return dano;
+}
+
+/** Veneno em tempo real: um tick a cada ~4 s. */
+export function tickVeneno(ator, agora, efeitos) {
+  if (!ator || ator.status !== "poison" || ator.morto || ator.capturado || ator.hp <= 0) return;
+  if (!(ator.venenoAte > 0)) ator.venenoAte = agora + 4;
+  if (agora < ator.venenoAte) return;
+  ator.venenoAte = agora + 4;
+  danoVeneno(ator, efeitos);
 }
 
 export function aplicarNivel(ator, nivelNovo) {
