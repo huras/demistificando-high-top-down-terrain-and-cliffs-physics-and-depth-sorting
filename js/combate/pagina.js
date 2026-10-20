@@ -4,7 +4,7 @@ import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
 import { definirOmbro, desenharArena, ligarArena, projetarArena } from "./arena3d.js";
-import { definirMetade, definirSemente } from "./arenas.js";
+import { cenarioAleatorio, definirMetade, definirSemente, sementeCobertura, tipoMetade } from "./arenas.js";
 import { definirNivelIa } from "../pokemon/ia/seletor.js";
 import { atoresArena, definirUso, estadoLuta, iniciarLuta, limparInterludio, logArena, montarLados, tickLuta } from "./luta.js";
 import { poseImpacto, ritmoImpacto } from "./impacto.js";
@@ -287,10 +287,13 @@ function montarColuna(lado) {
     </div>
     <div class="stats" data-campo="stats"></div>
     <fieldset class="lado__controles" data-campo="controles">
-      <label class="campo">
-        Espécie
+      <div class="campo">
+        <div class="campo__topo">
+          <span>Espécie</span>
+          <button type="button" data-campo="aleatorio">Aleatório</button>
+        </div>
         <input data-campo="busca" type="search" placeholder="Nome ou número" autocomplete="off" />
-      </label>
+      </div>
       <ul class="lista" data-campo="lista"></ul>
       <label class="campo">
         Nível <strong data-campo="nivel-valor">50</strong>
@@ -332,6 +335,17 @@ function montarColuna(lado) {
   campo(raiz, "busca").addEventListener("input", (ev) => {
     ui[lado].busca = ev.target.value;
     pintarLista(lado);
+  });
+  campo(raiz, "aleatorio").addEventListener("click", () => {
+    if (estadoLuta().lutando || !especies.length) return;
+    const esp = especies[Math.floor(Math.random() * especies.length)];
+    if (!esp) return;
+    ui[lado].chave = esp.key;
+    ui[lado].busca = "";
+    ui[lado].corpo = golpeInicial(esp, ui[lado].nivel, "corpo");
+    ui[lado].distancia = golpeInicial(esp, ui[lado].nivel, "distancia");
+    pintarEscolha(lado);
+    aplicar();
   });
   campo(raiz, "lista").addEventListener("click", (ev) => {
     const botaoEsp = ev.target.closest("button[data-chave]");
@@ -738,6 +752,12 @@ function quadro(t) {
   requestAnimationFrame(quadro);
 }
 
+function sincronizarArena() {
+  document.getElementById("metade-esquerda").value = tipoMetade("esquerda");
+  document.getElementById("metade-direita").value = tipoMetade("direita");
+  document.getElementById("semente-cobertura").value = String(sementeCobertura());
+}
+
 function ligarMetades() {
   const lados = ["esquerda", "direita"];
   for (let i = 0; i < lados.length; i++) {
@@ -750,6 +770,10 @@ function ligarMetades() {
     const n = Math.max(0, Math.floor(Number(semente.value) || 0));
     semente.value = String(n);
     definirSemente(n);
+  });
+  document.getElementById("arena-aleatoria").addEventListener("click", () => {
+    cenarioAleatorio(() => Math.random());
+    sincronizarArena();
   });
 }
 

@@ -84,12 +84,23 @@ button, input, select {
 .nivel-ia button,
 .modo-luta button,
 .coluna button,
+#arena-aleatoria,
 .lado__controles select {
   border: 1px solid var(--borda);
   background: #243028;
   border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
+}
+
+#arena-aleatoria {
+  flex-shrink: 0;
+}
+
+.lado__controles [data-campo="aleatorio"] {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--suave);
 }
 
 .tempo button.ativo,
