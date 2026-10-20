@@ -61,14 +61,23 @@ export function pecasContagem() {
   return pecasN;
 }
 
-export function comecarSubida(cidade) {
-  if (fase !== "ocioso" || !cidade) return;
-  const p = deLocalKanto(cidade.ax * AREA_KANTO + CENTRO_AREA + 0.5, cidade.ay * AREA_KANTO + CENTRO_AREA + 0.5);
-  destino = {
-    x: p.x,
-    y: p.y,
-    z: ALTURA_PRACA,
-  };
+export function comecarSubida(alvo) {
+  if (fase !== "ocioso" || !alvo) return;
+  if (Number.isFinite(alvo.x) && Number.isFinite(alvo.y)) {
+    destino = {
+      x: alvo.x,
+      y: alvo.y,
+      z: Number.isFinite(alvo.z) ? alvo.z : ALTURA_PRACA,
+    };
+  } else if (Number.isFinite(alvo.ax) && Number.isFinite(alvo.ay)) {
+    const p = deLocalKanto(
+      alvo.ax * AREA_KANTO + CENTRO_AREA + 0.5,
+      alvo.ay * AREA_KANTO + CENTRO_AREA + 0.5,
+    );
+    destino = { x: p.x, y: p.y, z: ALTURA_PRACA };
+  } else {
+    return;
+  }
   ancoras = null;
   fase = "subida";
   faseT = 0;

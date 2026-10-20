@@ -8,6 +8,7 @@ import { processarInicioTurno, residualTurno } from "../pokemon/combate/status.j
 import { RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
 import { limitarArena, paradaDe } from "../pokemon/ia/espaco.js";
 import { notaGolpeTurno, resolverTurno } from "../pokemon/combate/acertoClassico.js";
+import { mapaPp, podeGastarPp } from "../pokemon/pp.js";
 import { emImpacto } from "./impacto.js";
 import { CAM_TURNO } from "./cameraTurno.js";
 
@@ -107,7 +108,13 @@ export function pedidoEscolha() {
       custo: def.pp || 1,
     });
   }
-  return { versao: versaoEscolha, pp: ator.pp, golpes: lista };
+  return {
+    versao: versaoEscolha,
+    ppPorTipo: mapaPp(ator),
+    ppTipos: ator.ppTipos ? ator.ppTipos.slice() : [],
+    ppMax: ator.ppMax || 1,
+    golpes: lista,
+  };
 }
 
 export function escolherGolpeTurno(chave) {
@@ -212,7 +219,7 @@ function soltarEnsaio(quem) {
 
 function golpeLegal(quem, def) {
   if (!def) return false;
-  if ((def.pp || 1) > (quem.pp || 0)) return false;
+  if (!podeGastarPp(quem, def)) return false;
   const forma = def.forma;
   if (forma === "contact" || forma === "radius") return quem.usaCorpo !== false;
   if (forma === "projectile" || forma === "arc") return quem.usaDistancia !== false;

@@ -22,6 +22,7 @@ import { ESTAGIO } from "../wild/estagios.js";
 import { hidratarPlot, serializarPlot } from "../wild/plots.js";
 import { criarAtor } from "../pokemon/ator.js";
 import { especie } from "../pokemon/dados.js";
+import { restaurarPp } from "../pokemon/pp.js";
 import { obterTreinador } from "../pokemon/sistema.js";
 import { hidratarCampo, idsRemovidos, reaplicarCarregados, serializarCampo } from "../campo/estadoProps.js";
 import { anunciarGanho, semearVistosDaBolsa } from "./ganhoItem.js";
@@ -152,7 +153,7 @@ export function aplicarEfeito(ator, efeito) {
   if (ator.morto || ator.hp <= 0) return false;
   if (efeito.curaHp) ator.hp = Math.min(ator.hpMax, ator.hp + efeito.curaHp);
   if (efeito.curaFrac) ator.hp = Math.min(ator.hpMax, ator.hp + Math.round(ator.hpMax * efeito.curaFrac));
-  if (efeito.pp) ator.pp = Math.min(ator.ppMax, (ator.pp || 0) + efeito.pp);
+  if (efeito.pp) restaurarPp(ator, efeito.pp);
   return true;
 }
 

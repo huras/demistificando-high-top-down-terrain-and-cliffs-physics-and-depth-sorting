@@ -3,6 +3,7 @@ import { carregarDados, especie, golpe, listarEspecies } from "../pokemon/dados.
 import { NIVEL_MAX } from "../pokemon/experiencia.js";
 import { flutuantes } from "../pokemon/flutuantes.js";
 import { COR_TIPO } from "../pokemon/tipos.js";
+import { ppDe } from "../pokemon/pp.js";
 import { corStatus, rotuloStatus } from "../pokemon/combate/status.js";
 import { definirOmbro, desenharArena, ligarArena, projetarArena } from "./arena3d.js";
 import { cenarioAleatorio, definirMetade, definirSemente, sementeCobertura, tipoMetade } from "./arenas.js";
@@ -185,11 +186,14 @@ function pintarRecargaUm(raiz, ator, nome, chave) {
     return;
   }
   const custo = slot?.def?.pp || 1;
-  const u = Math.max(0, Math.min(1, (ator.pp || 0) / custo));
+  const tipo = slot?.def?.tipo || "normal";
+  const atual = ppDe(ator, tipo);
+  const u = Math.max(0, Math.min(1, atual / custo));
+  const cor = COR_TIPO[tipo] || "#38bdf8";
   barra.style.width = `${u * 100}%`;
   if (u < 1) {
-    barra.style.background = "#38bdf8";
-    rotulo.textContent = `PP ${Math.floor(ator.pp || 0)}/${custo}`;
+    barra.style.background = cor;
+    rotulo.textContent = `PP ${Math.floor(atual)}/${custo}`;
   } else {
     barra.style.background = "#7dce6a";
     rotulo.textContent = "Pronto";
@@ -259,7 +263,7 @@ function montarColuna(lado) {
         <span class="vida__status" data-campo="status" hidden></span>
       </div>
       <p class="vida__num" data-campo="hp">—</p>
-      <p class="pp" data-campo="pp">PP —</p>
+      <div class="pp-barras" data-campo="pp-barras"></div>
       <div class="tubos" data-campo="tubos" hidden>
         <span class="tubos__nome">Ataque</span>
         <span class="tubos__trilho"><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -513,6 +517,59 @@ function pintarBadgeStatus(el, ator) {
   el.dataset.status = id;
 }
 
+function garantirLinhaPp(host, tipo) {
+  let linha = host.querySelector(`[data-pp-tipo="${tipo}"]`);
+  if (linha) return linha;
+  linha = document.createElement("div");
+  linha.className = "pp-barra";
+  linha.dataset.ppTipo = tipo;
+  const nome = document.createElement("span");
+  nome.className = "pp-barra__nome";
+  nome.textContent = TIPO[tipo] || tipo;
+  const trilho = document.createElement("div");
+  trilho.className = "pp-barra__trilho";
+  const fill = document.createElement("span");
+  trilho.appendChild(fill);
+  const num = document.createElement("span");
+  num.className = "pp-barra__num";
+  linha.append(nome, trilho, num);
+  host.appendChild(linha);
+  return linha;
+}
+
+function pintarBarrasPp(host, ator) {
+  if (!host) return;
+  if (!ator) {
+    host.replaceChildren();
+    return;
+  }
+  const tipos = ator.ppTipos || [];
+  const max = Math.max(1, ator.ppMax || 1);
+  const vistos = Object.create(null);
+  for (let i = 0; i < tipos.length; i++) {
+    const tipo = tipos[i];
+    vistos[tipo] = true;
+    const linha = garantirLinhaPp(host, tipo);
+    const atual = ppDe(ator, tipo);
+    const pct = Math.max(0, Math.min(1, atual / max));
+    const cor = COR_TIPO[tipo] || "#9ca3af";
+    const fill = linha.querySelector(".pp-barra__trilho span");
+    const num = linha.querySelector(".pp-barra__num");
+    const nome = linha.querySelector(".pp-barra__nome");
+    if (nome) nome.textContent = TIPO[tipo] || tipo;
+    if (fill) {
+      fill.style.width = `${pct * 100}%`;
+      fill.style.background = cor;
+    }
+    if (num) num.textContent = `${Math.ceil(atual)}/${max}`;
+    linha.style.setProperty("--pp-cor", cor);
+  }
+  const velhos = host.querySelectorAll("[data-pp-tipo]");
+  for (let i = 0; i < velhos.length; i++) {
+    if (!vistos[velhos[i].dataset.ppTipo]) velhos[i].remove();
+  }
+}
+
 function pintarVida(lado) {
   const ator = estadoLuta()[lado];
   const raiz = raizDe(lado);
@@ -522,7 +579,7 @@ function pintarVida(lado) {
   barra.style.width = `${pct * 100}%`;
   barra.style.background = corVida(pct);
   campo(raiz, "hp").textContent = `${Math.max(0, Math.ceil(ator.hp))} / ${ator.hpMax}`;
-  campo(raiz, "pp").textContent = `PP ${Math.ceil(ator.pp)} / ${ator.ppMax}`;
+  pintarBarrasPp(campo(raiz, "pp-barras"), ator);
   const carga = Math.max(0, Math.min(1, ator.esquiva || 0));
   const trilha = campo(raiz, "esquiva");
   trilha.style.width = `${carga * 100}%`;
@@ -869,9 +926,25 @@ function pintarTurno(pedido, aviso) {
   if (pedido.versao === versaoMenu && painel.dataset.modo === "escolha") return;
   versaoMenu = pedido.versao;
   painel.dataset.modo = "escolha";
-  document.getElementById("turno-titulo").textContent = `Seu turno · PP ${Math.ceil(pedido.pp)}`;
+  const titulo = document.getElementById("turno-titulo");
+  titulo.textContent = "Seu turno";
   const caixa = document.getElementById("turno-golpes");
   caixa.replaceChildren();
+  const stack = document.createElement("div");
+  stack.className = "turno__pp";
+  const tiposPed = pedido.ppTipos || [];
+  const mapaPed = pedido.ppPorTipo || {};
+  const maxPed = Math.max(1, pedido.ppMax || 1);
+  for (let i = 0; i < tiposPed.length; i++) {
+    const t = tiposPed[i];
+    const chip = document.createElement("span");
+    chip.className = "turno__pp-chip";
+    const cor = COR_TIPO[t] || "#9ca3af";
+    chip.style.setProperty("--pp-cor", cor);
+    chip.textContent = `${TIPO[t] || t} ${Math.ceil(mapaPed[t] || 0)}/${maxPed}`;
+    stack.appendChild(chip);
+  }
+  if (tiposPed.length) caixa.appendChild(stack);
   for (let i = 0; i < pedido.golpes.length; i++) {
     const golpeAtual = pedido.golpes[i];
     const botaoGolpe = document.createElement("button");
@@ -888,7 +961,14 @@ function pintarTurno(pedido, aviso) {
       (golpeAtual.poder | 0) <= 0
         ? CATEGORIA[golpeAtual.categoria] || "status"
         : `poder ${golpeAtual.poder}`;
-    meta.textContent = `${tipo} · ${forma} · ${poderTxt} · ${textoAcerto(golpeAtual.acerto)} · PP ${golpeAtual.custo}`;
+    meta.append(
+      document.createTextNode(`${tipo} · ${forma} · ${poderTxt} · ${textoAcerto(golpeAtual.acerto)} · `),
+    );
+    const custoEl = document.createElement("span");
+    custoEl.className = "turno__custo";
+    custoEl.style.color = COR_TIPO[golpeAtual.tipo] || "#e2e8f0";
+    custoEl.textContent = `PP ${golpeAtual.custo}`;
+    meta.appendChild(custoEl);
     botaoGolpe.append(nome, meta);
     caixa.appendChild(botaoGolpe);
   }

@@ -1,5 +1,6 @@
 import { POKEMON, RAIO_POKEMON } from "../../config.js";
 import { sondarCobertura } from "../../combate/arenas.js";
+import { ppDe } from "../pp.js";
 import {
   CORREDOR_REDE,
   ENTRADAS,
@@ -88,7 +89,8 @@ function recargaTiro(ator) {
     if (f !== "projectile" && f !== "arc") continue;
     achou = true;
     const custo = g.def.pp || 1;
-    const u = ator.pp >= custo ? 0 : 1 - Math.max(0, ator.pp) / custo;
+    const atual = ppDe(ator, g.def.tipo || "normal");
+    const u = atual >= custo ? 0 : 1 - Math.max(0, atual) / custo;
     if (u < melhor) melhor = u;
   }
   return achou ? melhor : 1;

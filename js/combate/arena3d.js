@@ -981,6 +981,62 @@ export function definirOmbro(pose, dt) {
   ombroDt = Number.isFinite(dt) && dt > 0 ? Math.min(0.05, dt) : 0.016;
 }
 
+/** Eixo lateral estável do tracking (não flipa no meio do voo). */
+function lateralDoTiro(p, dx, dz) {
+  if (p.camLx != null && p.camLz != null) return;
+  let sx = -dz;
+  let sz = dx;
+  // Prefere o lado “sul” da arena (espectador), senão esquerda do vôo.
+  if (sz > 0.02 || (Math.abs(sz) <= 0.02 && sx > 0)) {
+    sx = -sx;
+    sz = -sz;
+  }
+  const len = Math.hypot(sx, sz);
+  if (len < 1e-4) {
+    p.camLx = 0;
+    p.camLz = -1;
+    return;
+  }
+  p.camLx = sx / len;
+  p.camLz = sz / len;
+}
+
+/** Câmera em perfil: projétil atravessa o quadro, sem ficar atrás do billboard. */
+function destinoTiro(p) {
+  const cfg = CAM_TURNO.tiro;
+  let dx = p.dirX || 0;
+  let dz = p.dirY || 0;
+  const destino = p.garantirAlvo;
+  if (dx * dx + dz * dz < 1e-6 && destino) {
+    dx = destino.x - p.x;
+    dz = destino.y - p.y;
+  }
+  let len = Math.hypot(dx, dz);
+  if (len < 1e-4) {
+    dx = 1;
+    dz = 0;
+    len = 1;
+  } else {
+    dx /= len;
+    dz /= len;
+  }
+  lateralDoTiro(p, dx, dz);
+  const px = p.x - dx * cfg.atras + p.camLx * cfg.lado;
+  const pz = p.y - dz * cfg.atras + p.camLz * cfg.lado;
+  const py = (Number.isFinite(p.z) ? p.z : 1) + cfg.altura;
+  ombroFim.set(px, py, pz);
+
+  let lx = p.x + dx * cfg.olhar;
+  let lz = p.y + dz * cfg.olhar;
+  const mix = cfg.misturaAlvo;
+  if (destino && mix > 0) {
+    lx = lx * (1 - mix) + destino.x * mix;
+    lz = lz * (1 - mix) + destino.y * mix;
+  }
+  const olhoY = Math.max(1.05, (Number.isFinite(p.z) ? p.z : 1) * 0.35 + 0.95);
+  ombroOlharFim.set(lx, olhoY, lz);
+}
+
 function destinoOmbro() {
   if (ombro.tipo === "impacto") {
     const quem = ombro.alvo;
@@ -1006,16 +1062,7 @@ function destinoOmbro() {
     return;
   }
   if (ombro.tipo === "tiro") {
-    const p = ombro.alvo;
-    const destino = p.garantirAlvo;
-    const dx = p.dirX || 0;
-    const dz = p.dirY || 0;
-    const atras = CAM_TURNO.tiro.atras;
-    const altTiro = CAM_TURNO.tiro.altura;
-    ombroFim.set(p.x - dx * atras, (p.z || 1) + altTiro, p.y - dz * atras);
-    const lx = destino ? destino.x : p.x + dx * 4;
-    const lz = destino ? destino.y : p.y + dz * 4;
-    ombroOlharFim.set(lx, 1.1, lz);
+    destinoTiro(ombro.alvo);
     return;
   }
   if (ombro.tipo === "teatro") {

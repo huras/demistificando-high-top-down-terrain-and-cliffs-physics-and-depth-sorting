@@ -2,6 +2,7 @@ import { POKEMON, RAIO_POKEMON } from "../config.js";
 import { ESQUIVA_ATIVA, ESQUIVA_DIST, ESQUIVA_DUR, ESQUIVA_PREP, ESQUIVA_REC } from "./ia/constantes.js";
 import { golpe } from "./dados.js";
 import { totalParaNivel } from "./experiencia.js";
+import { encherPp, sincronizarPpTipos, tickPp } from "./pp.js";
 import { calcularStats, escalaRecarga, escalaVelocidade } from "./tipos.js";
 
 let seq = 1;
@@ -82,6 +83,7 @@ export function equiparGolpes(ator, chaves) {
     slots.push({ chave: def.key, cd: 0, def });
   }
   ator.golpes = slots;
+  sincronizarPpTipos(ator);
 }
 
 export function equiparGolpe(ator, chave) {
@@ -103,7 +105,7 @@ export function criarAtor(opts) {
   const stats = calcularStats(esp, nivel);
   const pp = ppMaximo(nivel, stats.velocidade);
   const id = opts.id || `pk-${seq++}`;
-  return {
+  const ator = {
     id,
     especie: esp,
     tipos: esp.tipos.slice(),
@@ -114,8 +116,9 @@ export function criarAtor(opts) {
     exp: opts.exp ?? totalParaNivel(nivel, esp.crescimento),
     crescimento: esp.crescimento,
     golpes: montarGolpes(esp, nivel),
-    pp,
     ppMax: pp,
+    ppPorTipo: Object.create(null),
+    ppTipos: [],
     cdBasico: 0,
     furia: false,
     estagioAtk: 0,
@@ -222,6 +225,8 @@ export function criarAtor(opts) {
     velMul: 1,
     velMulAte: 0,
   };
+  sincronizarPpTipos(ator);
+  return ator;
 }
 
 export function reviverAtor(ator, x, y, z) {
@@ -331,7 +336,8 @@ export function aplicarNivel(ator, nivelNovo) {
   ator.hp = Math.min(ator.hpMax, ator.hp + Math.max(0, ator.hpMax - antes));
   ator.golpes = montarGolpes(ator.especie, nivelNovo);
   ator.ppMax = ppMaximo(nivelNovo, ator.stats.velocidade);
-  ator.pp = ator.ppMax;
+  sincronizarPpTipos(ator);
+  encherPp(ator);
 }
 
 export function emRecuo(ator) {
@@ -569,9 +575,7 @@ export function tickPassivo(ator, dt, agora) {
     ator.andando = false;
     return;
   }
-  let regen = (1 / 10) * (1 / escalaRecarga(ator.stats.velocidade));
-  if (emMovimento(ator)) regen += 1;
-  ator.pp = Math.min(ator.ppMax, ator.pp + regen * dt);
+  tickPp(ator, dt, emMovimento(ator));
   recarregarBarraEsquiva(ator, dt);
   if (ator.cdBasico > 0) ator.cdBasico = Math.max(0, ator.cdBasico - dt);
   ator.animT += dt;

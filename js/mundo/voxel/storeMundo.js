@@ -5,7 +5,6 @@ import {
   RAIO_STREAM_MAX,
   RAIO_STREAM_MIN,
   SEED_MUNDO,
-  USAR_PATCH_DEMO,
 } from "../../config.js";
 import { chunkDentroDoMundo } from "../bounds.js";
 import { aplicarPatchDemo, ALTURAS } from "../regioes/mapaDemoPatch.js";
@@ -72,7 +71,7 @@ function aplicarEditsNoChunk(chunk) {
 }
 
 function publicarChunkCarregado(chunk) {
-  if (USAR_PATCH_DEMO) aplicarPatchDemo(chunk, ALTURAS);
+  aplicarPatchDemo(chunk, ALTURAS);
   aplicarEditsNoChunk(chunk);
   chunk.gerado = true;
   chunk.sujo = true;

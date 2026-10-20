@@ -8,7 +8,14 @@ export const CAM_TURNO = Object.freeze({
   ombro: Object.freeze({ dist: 8.4, altura: 4.4, lado: 2 }),
   volta: Object.freeze({ raio: 6.8, altura: 3.7, giro: 0.5 }),
   teatro: Object.freeze({ raio: 14.5, altura: 7.4, giro: Math.PI * 0.5 }),
-  tiro: Object.freeze({ atras: 3.5, altura: 2.1 }),
+  /** Perfil lateral do projétil — nunca atrás (billboard tapa o tiro). */
+  tiro: Object.freeze({
+    lado: 5.4,
+    atras: 0.55,
+    altura: 2.55,
+    olhar: 3.4,
+    misturaAlvo: 0.42,
+  }),
   impactoAcerto: Object.freeze({
     raio0: 5.5,
     raioExtra: 3.8,

@@ -2,6 +2,7 @@
  * Marcas do mapa. Cidade e rota hoje; um ícone novo entra na lista.
  */
 import { deLocalKanto } from "../../mundo/bounds.js";
+import { SPAWN as SPAWN_DEMO } from "../../mundo/mapaDemo.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO, zonaEm } from "../../mundo/regiao/grafoKanto.js";
 import { ROTAS_KANTO } from "../../mundo/regiao/kantoRotas.js";
@@ -32,6 +33,14 @@ export function cidadesDoMapa() {
       ay: cidade.ay,
     });
   }
+  lista.push({
+    tipo: "teste",
+    id: "demo-teste",
+    nome: "Teste",
+    x: SPAWN_DEMO.x,
+    y: SPAWN_DEMO.y,
+    z: SPAWN_DEMO.z,
+  });
   return lista;
 }
 

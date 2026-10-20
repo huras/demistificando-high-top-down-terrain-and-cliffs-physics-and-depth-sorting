@@ -5,6 +5,7 @@ import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
+import { encherPp } from "./pp.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
 import { anunciarGanho } from "../jogo/ganhoItem.js";
 import { soltarFxEnvio, soltarFxRecolher } from "../fx/fxBola.js";
@@ -153,7 +154,7 @@ export function curarParty() {
   for (let i = 0; i < party.length; i++) {
     const p = party[i];
     p.hp = p.hpMax;
-    p.pp = p.ppMax;
+    encherPp(p);
     p.morto = false;
     p.mortoAte = 0;
   }

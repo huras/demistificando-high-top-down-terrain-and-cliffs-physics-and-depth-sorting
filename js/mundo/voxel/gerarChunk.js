@@ -1,4 +1,4 @@
-import { CHUNK_XZ, CHUNK_Y, USAR_PATCH_DEMO } from "../../config.js";
+import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import {
   alturaDoRelevo,
   nivelMarBlocos,
@@ -145,7 +145,7 @@ export function* passosChunk(chunk, seed) {
       const wx = baseX + lx;
       const wy = baseY + ly;
       if (chunk.corpo[ly * CHUNK_XZ + lx]) continue;
-      if (USAR_PATCH_DEMO && wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
+      if (wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
       const h = alturas[ly * CHUNK_XZ + lx];
       let cliff = false;
       for (const [dx, dy] of [

@@ -249,6 +249,56 @@ button, input, select {
   font-variant-numeric: tabular-nums;
 }
 
+.pp-barras {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.pp-barra {
+  display: grid;
+  grid-template-columns: 52px 1fr 40px;
+  align-items: center;
+  gap: 6px;
+  --pp-cor: #9ca3af;
+}
+
+.pp-barra__nome {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: var(--pp-cor);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pp-barra__trilho {
+  height: 6px;
+  border-radius: 99px;
+  background: #101612;
+  border: 1px solid color-mix(in srgb, var(--pp-cor) 45%, var(--borda));
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.pp-barra__trilho span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--pp-cor) 55%, transparent);
+}
+
+.pp-barra__num {
+  font-size: 0.68rem;
+  color: var(--suave);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .vida__trilho,
 .marca__barra {
   height: 8px;
@@ -569,8 +619,31 @@ button, input, select {
   font-size: 0.82rem;
 }
 
+.turno__pp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 100%;
+}
+
+.turno__pp-chip {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--pp-cor, #e2e8f0);
+  border: 1px solid color-mix(in srgb, var(--pp-cor, #e2e8f0) 50%, transparent);
+  background: color-mix(in srgb, var(--pp-cor, #e2e8f0) 16%, #101612);
+}
+
+.turno__custo {
+  font-weight: 750;
+}
+
 .turno__golpes {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

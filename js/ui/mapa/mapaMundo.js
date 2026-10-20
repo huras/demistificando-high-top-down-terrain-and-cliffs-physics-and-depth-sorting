@@ -87,6 +87,9 @@ function definirZoom(alvo, sx, sy) {
 }
 
 function mesmaCidade(cidade) {
+  if (!Number.isFinite(cidade.ax) || !Number.isFinite(cidade.ay)) {
+    return Math.hypot(jogadorX - cidade.x, jogadorY - cidade.y) < 48;
+  }
   if (estado.interior) {
     return estado.interior.ax === cidade.ax && estado.interior.ay === cidade.ay;
   }

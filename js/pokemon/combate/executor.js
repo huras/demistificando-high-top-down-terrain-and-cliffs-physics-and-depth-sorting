@@ -29,6 +29,7 @@ import { bloqueioNoTrecho, cortaVisada } from "../../combate/arenas.js";
 import { RAIO_PROJETIL } from "../ia/constantes.js";
 import { tocarGrito } from "../../jogo/som/gritos.js";
 import { acertaClassico } from "./acertoClassico.js";
+import { gastarPp, podeGastarPp } from "../pp.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
 
@@ -357,7 +358,7 @@ export function tickDesmaio(ator, agora) {
 }
 
 function gastar(ator, slot, agora) {
-  ator.pp = Math.max(0, ator.pp - (slot.def.pp || 1));
+  gastarPp(ator, slot.def);
   slot.usadoEm = agora;
 }
 
@@ -376,7 +377,7 @@ function escolher(ator, alvo, d) {
   const prontos = [];
   for (let i = 0; i < ator.golpes.length; i++) {
     const g = ator.golpes[i];
-    if ((g.def.pp || 1) > ator.pp) continue;
+    if (!podeGastarPp(ator, g.def)) continue;
     prontos.push(g);
   }
   const corpo = usaCorpo(ator);

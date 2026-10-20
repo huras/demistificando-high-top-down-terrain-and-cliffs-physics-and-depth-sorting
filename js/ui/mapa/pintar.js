@@ -23,11 +23,17 @@ function garantir() {
   rotas = rotasDoMapa();
 }
 
-function orbe(ctx, x, y, raio) {
+function orbe(ctx, x, y, raio, tema = "cidade") {
   const g = ctx.createRadialGradient(x - raio * 0.35, y - raio * 0.4, raio * 0.1, x, y, raio);
-  g.addColorStop(0, "#fff7f4");
-  g.addColorStop(0.42, "#ff5c4c");
-  g.addColorStop(1, "#8a1a16");
+  if (tema === "teste") {
+    g.addColorStop(0, "#f4fff8");
+    g.addColorStop(0.42, "#3dd68c");
+    g.addColorStop(1, "#0f5c3a");
+  } else {
+    g.addColorStop(0, "#fff7f4");
+    g.addColorStop(0.42, "#ff5c4c");
+    g.addColorStop(1, "#8a1a16");
+  }
   ctx.beginPath();
   ctx.arc(x, y, raio, 0, Math.PI * 2);
   ctx.fillStyle = g;
@@ -186,14 +192,14 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     const sx = (cidade.x - vista.cx) * z + w / 2;
     const sy = (cidade.y - vista.cy) * z + h / 2;
     if (sx < -20 || sy < -20 || sx > w + 20 || sy > h + 20) continue;
-    orbe(ctx, sx, sy, vista.mini ? raio * 0.72 : raio);
+    orbe(ctx, sx, sy, vista.mini ? raio * 0.72 : raio, cidade.tipo === "teste" ? "teste" : "cidade");
     if (vista.mini) continue;
     nomes.push({
       texto: cidade.nome,
       x: sx + raio + 4 * dpr,
       y: sy + alturaFonte * 0.3,
       altura: alturaFonte,
-      prio: 2,
+      prio: cidade.tipo === "teste" ? 3 : 2,
       dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
     });
   }

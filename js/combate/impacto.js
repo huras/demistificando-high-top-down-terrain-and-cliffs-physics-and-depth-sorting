@@ -29,10 +29,9 @@ const pose = {
   giro: CAM_TURNO.impactoErro.giro,
 };
 
-const poseOmbro = {
-  de: null,
-  para: null,
-  perto: true,
+const poseTiroDisparo = {
+  tipo: "tiro",
+  alvo: null,
 };
 
 function limparFaseTiro() {
@@ -187,16 +186,13 @@ export function poseImpacto() {
   return pose;
 }
 
-/** Ombro perto no atirador durante o filminho do disparo. */
+/** Perfil lateral já no wind-up do projétil (mesmo eixo do tracking de voo). */
 export function poseDisparo() {
   if (cena.tipo !== "disparo" || cena.restante <= 0) return null;
-  const de = cena.atirador;
-  const para = cena.alvoOlhar;
-  if (!de || !para) return null;
-  poseOmbro.de = de;
-  poseOmbro.para = para;
-  poseOmbro.perto = true;
-  return poseOmbro;
+  const p = cena.projetil;
+  if (!p) return null;
+  poseTiroDisparo.alvo = p;
+  return poseTiroDisparo;
 }
 
 export function limparImpacto() {

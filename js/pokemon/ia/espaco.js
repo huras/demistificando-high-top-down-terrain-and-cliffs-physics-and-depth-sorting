@@ -1,3 +1,4 @@
+import { podeGastarPp } from "../pp.js";
 import { FOLGA_PARADA, RAIO_ARENA } from "./constantes.js";
 
 /** Corpo a corpo nunca fica mais curto que isto. */
@@ -50,7 +51,7 @@ export function golpeProntoForma(ator, formaA, formaB) {
     const g = ator.golpes[i];
     const f = g.def.forma;
     if (f !== formaA && f !== formaB) continue;
-    if ((g.def.pp || 1) > ator.pp) continue;
+    if (!podeGastarPp(ator, g.def)) continue;
     return g.def;
   }
   return null;
