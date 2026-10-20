@@ -4,7 +4,7 @@ import { oscilacaoNado } from "../fx/fxAgua.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaPe } from "./ator.js";
 import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
-import { obterBola, particulasCaptura } from "./captura.js";
+import { bolasAtivas, particulasCaptura } from "./captura.js";
 import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "./combate/folhasGolpe.js";
 import { aurasVivas, ORBES_KI } from "./combate/ki.js";
@@ -54,7 +54,8 @@ let atores = [];
 const porId = new Map();
 let tiros = [];
 let drops = [];
-let bolaMesh = null;
+const CAP_BOLA = 12;
+let bolaMeshes = [];
 let bolaTex = null;
 let faiscas = [];
 let kiHalos = [];
@@ -297,15 +298,19 @@ export function ligarPokemon3d(scene) {
     kiNucleos.push(criarKi(7));
     for (let k = 0; k < ORBES_KI; k++) kiOrbes.push(criarKi(6));
   }
-  bolaMesh = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: texturaBola(),
-    transparent: true,
-    depthWrite: false,
-  }));
-  bolaMesh.renderOrder = 5;
-  bolaMesh.visible = false;
-  bolaMesh.scale.set(0.42, 0.42, 1);
-  cena.add(bolaMesh);
+  bolaMeshes = [];
+  for (let i = 0; i < CAP_BOLA; i++) {
+    const mesh = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: texturaBola(),
+      transparent: true,
+      depthWrite: false,
+    }));
+    mesh.renderOrder = 5;
+    mesh.visible = false;
+    mesh.scale.set(0.42, 0.42, 1);
+    cena.add(mesh);
+    bolaMeshes.push(mesh);
+  }
 }
 
 function ancorar(slot) {
@@ -599,17 +604,21 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     mesh.position.set(p.x, p.z * ALTURA_BLOCO, p.y);
   }
 
-  const bola = obterBola();
-  if (!bolaMesh) return;
-  if (!bola) {
-    bolaMesh.visible = false;
-    return;
+  if (!bolaMeshes.length) return;
+  const emVoo = bolasAtivas();
+  let slotBola = 0;
+  for (let i = 0; i < emVoo.length && slotBola < bolaMeshes.length; i++) {
+    const bola = emVoo[i];
+    if (bola.morta) continue;
+    const mesh = bolaMeshes[slotBola++];
+    mesh.visible = true;
+    const treme = bola.fase === "tremendo" ? Math.sin(bola.faseT * 28) * 0.12 : 0;
+    const pulo = bola.fase === "tremendo" ? Math.abs(Math.sin(bola.faseT * 18)) * 0.1 : 0;
+    const escala = bola.fase === "brilho" ? 0.42 + Math.sin(bola.faseT * 16) * 0.08 : 0.42;
+    mesh.scale.set(escala, escala, 1);
+    mesh.material.rotation = bola.giro || 0;
+    mesh.material.color.set("#ffffff");
+    mesh.position.set(bola.x + treme, bola.z * ALTURA_BLOCO + pulo, bola.y);
   }
-  bolaMesh.visible = true;
-  const treme = bola.fase === "tremendo" ? Math.sin(bola.faseT * 28) * 0.12 : 0;
-  const pulo = bola.fase === "tremendo" ? Math.abs(Math.sin(bola.faseT * 18)) * 0.1 : 0;
-  const escala = bola.fase === "brilho" ? 0.42 + Math.sin(bola.faseT * 16) * 0.08 : 0.42;
-  bolaMesh.scale.set(escala, escala, 1);
-  bolaMesh.material.rotation = bola.giro || 0;
-  bolaMesh.position.set(bola.x + treme, bola.z * ALTURA_BLOCO + pulo, bola.y);
+  for (; slotBola < bolaMeshes.length; slotBola++) bolaMeshes[slotBola].visible = false;
 }

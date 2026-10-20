@@ -1661,7 +1661,9 @@ function* construirGeosChunk(chunk) {
           );
           empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
         }
-        if (fam !== FLUIDO.PANTANO) {
+        // Cortina em qualquer fluido (água, pântano, lava) com vizinho
+        // molhado/nível mais baixo — dois níveis diferentes adjacentes.
+        {
           const listaQueda = fam === FLUIDO.LAVA ? quedasLava : quedas;
           if (caindo) {
             let yBase = chunk.aguaFundo[ia] | 0;
@@ -1682,8 +1684,6 @@ function* construirGeosChunk(chunk) {
               listaQueda.push(planoQueda(wx, wy, yBase, supAgua, dir));
             }
           } else {
-            // Degrau de lâmina: a superfície fica acima do leito/vizinho e
-            // não há face de cliff nesse vão — cortina de queda cobre.
             const lados = [
               [0, 1, "s"],
               [0, -1, "n"],
@@ -1694,10 +1694,10 @@ function* construirGeosChunk(chunk) {
               const nx = wx + lados[d][0];
               const ny = wy + lados[d][1];
               const dest = colunaAgua(nx, ny);
-              const nivel =
-                dest.superficie > 0 ? dest.superficie : alturaEm(nx, ny) | 0;
-              if (supAgua - nivel < 1) continue;
-              listaQueda.push(planoQueda(wx, wy, nivel, supAgua, lados[d][2]));
+              // Só entre colunas molhadas em níveis diferentes.
+              if (!(dest.superficie > 0)) continue;
+              if (supAgua - dest.superficie < 1) continue;
+              listaQueda.push(planoQueda(wx, wy, dest.superficie, supAgua, lados[d][2]));
             }
           }
         }

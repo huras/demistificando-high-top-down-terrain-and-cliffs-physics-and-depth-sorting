@@ -32,7 +32,7 @@ const LISTA = [
     nada: false,
     raso: true,
     queima: false,
-    queda: false,
+    queda: true,
     lento: 0.55,
     bloco: BLOCO.AGUA,
     lamina: [58, 104, 62],

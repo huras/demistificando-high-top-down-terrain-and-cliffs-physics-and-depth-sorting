@@ -4,7 +4,7 @@ import { oscilacaoNado } from "../fx/fxAgua.js";
 import { cobrirPernasAgua } from "../render/agua2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
-import { obterBola } from "./captura.js";
+import { bolasAtivas } from "./captura.js";
 import { dropsNoChao } from "./drops.js";
 import { imagemIcone } from "../jogo/icones.js";
 import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
@@ -240,8 +240,10 @@ export function empilharPokemon(lista) {
     const p = impactos[i];
     empilhar(lista, chaveEntidade(p.y, p.z), 0, (ctx) => desenharProjetil(ctx, p), 8, p.z);
   }
-  const bola = obterBola();
-  if (bola) {
+  const listaBolas = bolasAtivas();
+  for (let i = 0; i < listaBolas.length; i++) {
+    const bola = listaBolas[i];
+    if (bola.morta) continue;
     empilhar(lista, chaveEntidade(bola.y, bola.z), 0, (ctx) => desenharBola(ctx, bola), 9, bola.z);
   }
 }

@@ -210,11 +210,11 @@ export const CAMERA3D_COSTAS_SUAVIDADE = 3.2;
 export const CAMERA3D_PROJECAO_SUAVIDADE = 4;
 
 /** Flecha da mira (unidades Three / s). Toque curto sai fraco; a carga chega em FLECHA_VEL. */
-export const FLECHA_VEL = 18;
-export const FLECHA_VEL_MIN = 6;
-export const FLECHA_CARGA_TEMPO = 0.85;
-export const FLECHA_GRAVIDADE = 12;
-export const FLECHA_VIDA = 5;
+export const FLECHA_VEL = 36;
+export const FLECHA_VEL_MIN = 16;
+export const FLECHA_CARGA_TEMPO = 0.7;
+export const FLECHA_GRAVIDADE = 8;
+export const FLECHA_VIDA = 8;
 export const FLECHA_MAX = 16;
 
 export const CAMINHOS = {

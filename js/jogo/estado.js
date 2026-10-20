@@ -113,7 +113,6 @@ export function darChave(key) {
 }
 
 export function contar(tipo, key) {
-  if (tipo === TIPO_ITEM.BOLA && key === "pokeball") return obterBolas();
   if (tipo === TIPO_ITEM.CHAVE) return temChave(key) ? 1 : 0;
   if (tipo === TIPO_ITEM.FERRAMENTA) return contarItem(key);
   return contarItem(key);
@@ -122,10 +121,7 @@ export function contar(tipo, key) {
 export function darItem(tipo, key, n = 1) {
   const qtd = n | 0;
   if (qtd === 0) return;
-  if (tipo === TIPO_ITEM.BOLA && key === "pokeball") {
-    if (qtd > 0) ganharBolas(qtd);
-    anunciarGanho(key, qtd);
-  } else if (tipo === TIPO_ITEM.CHAVE) {
+  if (tipo === TIPO_ITEM.CHAVE) {
     if (qtd > 0) {
       darChave(key);
       anunciarGanho(key, 1);
@@ -138,12 +134,8 @@ export function darItem(tipo, key, n = 1) {
 
 export function gastar(tipo, key, n = 1) {
   if (contar(tipo, key) < n) return false;
-  if (tipo === TIPO_ITEM.BOLA && key === "pokeball") {
-    ganharBolas(-n);
-    return true;
-  }
   if (tipo === TIPO_ITEM.CHAVE) return false;
-  ajustarItem(key, -n);
+  ajustarItem(key, -n, "mudo");
   return true;
 }
 
@@ -197,13 +189,17 @@ export function comprar(tipo, key, qtd) {
   const n = Math.max(1, qtd | 0);
   const preco = precoCompra(tipo, key);
   if (!(preco >= 0) || (preco === 0 && key !== "masterball")) return "Esse item não está à venda.";
+  if (tipo === TIPO_ITEM.CHAVE && temChave(key)) return "Você já tem esse item.";
   const total = preco * n;
   if (estado.dinheiro < total) return "Dinheiro insuficiente.";
   estado.dinheiro -= total;
   darItem(tipo, key, n);
   if (tipo === TIPO_ITEM.BOLA && key === "pokeball") {
     const brinde = Math.floor(n / PREMIER_A_CADA);
-    if (brinde > 0) estado.itemGet = `Pokébola ×${n}`;
+    if (brinde > 0) {
+      darItem(TIPO_ITEM.BOLA, "premierball", brinde);
+      estado.itemGet = `Pokébola ×${n} + Premier ×${brinde}`;
+    }
   }
   marcarQuest("loja");
   avisar();
@@ -263,11 +259,7 @@ export function craftarBola(key) {
   const receita = RECEITAS_BOLA[key];
   if (!receita) return "Receita desconhecida.";
   if (!pagarCusto(receita.custo)) return "Faltam cristais.";
-  if (key === "pokeball") {
-    ganharBolas(1);
-    anunciarGanho("pokeball", 1);
-  } else ajustarItem(key, 1);
-  avisar();
+  darItem(TIPO_ITEM.BOLA, key, 1);
   return "";
 }
 
@@ -586,9 +578,8 @@ function opcoesHotbar() {
   for (let i = 0; i < med.length; i++) {
     if (contarItem(med[i]) > 0) lista.push({ tipo: TIPO_ITEM.REMEDIO, key: med[i] });
   }
-  if (obterBolas() > 0) lista.push({ tipo: TIPO_ITEM.BOLA, key: "pokeball" });
   for (const key of Object.keys(BOLAS)) {
-    if (key !== "pokeball" && contarItem(key) > 0) lista.push({ tipo: TIPO_ITEM.BOLA, key });
+    if (contarItem(key) > 0) lista.push({ tipo: TIPO_ITEM.BOLA, key });
   }
   return lista;
 }
@@ -691,13 +682,15 @@ export function carregar() {
     return false;
   }
   estado.dinheiro = bruto.dinheiro | 0;
-  definirBolas(Math.max(bruto.bolas | 0, POKEMON.BOLAS));
   const mapa = itensBolsa();
   mapa.clear();
   const pares = bruto.bolsa || [];
   for (let i = 0; i < pares.length; i++) {
     const par = pares[i];
     if (par && par[1] > 0) mapa.set(par[0], par[1] | 0);
+  }
+  if (!mapa.has("pokeball") || (mapa.get("pokeball") | 0) <= 0) {
+    definirBolas(Math.max(bruto.bolas | 0, POKEMON.BOLAS));
   }
   estado.hotbar = new Array(SLOTS_HOTBAR).fill(null);
   const hot = bruto.hotbar || [];
@@ -746,13 +739,14 @@ function semearInicio() {
   estado.vistosItens = {};
   if (contarItem("oran") <= 0) ajustarItem("oran", 5, "mudo");
   if (contarItem("potion") <= 0) ajustarItem("potion", 2, "mudo");
+  if (contarItem("pokeball") <= 0) definirBolas(POKEMON.BOLAS);
   const ferr = Object.keys(FERRAMENTAS);
   for (let i = 0; i < ferr.length; i++) {
     if (contarItem(ferr[i]) <= 0) ajustarItem(ferr[i], 1, "mudo");
   }
   estado.hotbar[0] = { tipo: TIPO_ITEM.FERRAMENTA, key: "hoe" };
   estado.hotbar[1] = { tipo: TIPO_ITEM.FERRAMENTA, key: "wateringCan" };
-  estado.hotbar[2] = { tipo: TIPO_ITEM.BERRY, key: "oran" };
+  estado.hotbar[2] = { tipo: TIPO_ITEM.BOLA, key: "pokeball" };
   estado.hotbar[3] = { tipo: TIPO_ITEM.REMEDIO, key: "potion" };
   estado.hotbar[4] = { tipo: TIPO_ITEM.FERRAMENTA, key: "pickaxe" };
   estado.hotbar[5] = { tipo: TIPO_ITEM.FERRAMENTA, key: "bow" };

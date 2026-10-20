@@ -11,7 +11,6 @@ import { soltarFxEnvio, soltarFxRecolher } from "../fx/fxBola.js";
 
 const party = [];
 let deployado = 0;
-let bolas = POKEMON.BOLAS;
 const bolsa = new Map();
 
 export function iniciarParty() {
@@ -88,12 +87,12 @@ export function alvoDeOrdem() {
 }
 
 export function obterBolas() {
-  return bolas;
+  return contarItem("pokeball");
 }
 
 export function gastarBola() {
-  if (bolas <= 0) return false;
-  bolas -= 1;
+  if (contarItem("pokeball") <= 0) return false;
+  ajustarItem("pokeball", -1, "mudo");
   return true;
 }
 
@@ -120,11 +119,17 @@ export function receberCaptura(selvagem) {
 }
 
 export function ganharBolas(n) {
-  bolas = Math.max(0, bolas + (n | 0));
+  const d = n | 0;
+  if (!d) return;
+  ajustarItem("pokeball", d, "mudo");
 }
 
 export function definirBolas(n) {
-  bolas = Math.max(0, n | 0);
+  const alvo = Math.max(0, n | 0);
+  const atual = contarItem("pokeball");
+  if (alvo === atual) return;
+  if (atual > 0) ajustarItem("pokeball", -atual, "mudo");
+  if (alvo > 0) ajustarItem("pokeball", alvo, "mudo");
 }
 
 export function guardarItem(chave) {

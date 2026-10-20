@@ -9,7 +9,7 @@ import { indiceLocal, superficieLocal } from "../voxel/chunk.js";
 import { amostraBaseKanto } from "../regiao/amostraKanto.js";
 import { BLOCO, ehLiquido } from "../voxel/tiposBloco.js";
 import { amostraCorpo } from "./corpos.js";
-import { FLUIDO, fluidoDe } from "./fluidos.js";
+import { fluidoDe } from "./fluidos.js";
 
 const HIT = {
   tem: 0,
@@ -96,16 +96,16 @@ function nivelLiquidoVizinho(chunk, lx, ly, dx, dy, baseX, baseY) {
 }
 
 /**
- * Degrau >= 2 para líquido mais baixo: lip no topo, ar até o nível de baixo.
- * Ignora desnível só para terra seca (margem do lago/rio).
+ * Degrau >= 2 para líquido mais baixo (qualquer família): lip no topo,
+ * ar até o nível de baixo. Ignora desnível só para terra seca.
  */
 function abrirQuedas(chunk, baseX, baseY) {
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const famId = chunk.fluido[ly * CHUNK_XZ + lx] | 0;
-      if (!famId || famId === FLUIDO.PANTANO) continue;
+      if (!famId) continue;
       const fam = fluidoDe(famId);
-      if (!fam) continue;
+      if (!fam || !fam.queda) continue;
       const topo = topoLiquido(chunk, lx, ly);
       if (topo <= 0) continue;
       let melhor = 0;

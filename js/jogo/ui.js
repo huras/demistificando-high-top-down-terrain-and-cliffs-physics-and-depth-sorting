@@ -56,7 +56,8 @@ import { htmlIcone } from "./icones.js";
 import { aoMudarIdioma, definirIdioma, idiomaAtual, t } from "./i18n.js";
 import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarCliqueCapsula, tratarInputCapsula } from "./capsula.js";
 import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
-import { htmlLoja, quantidadeLoja, tratarLoja } from "./loja.js";
+import { ligarJanelaLoja, sincronizarJanelaLoja } from "./loja/janela.js";
+import { quantidadeLoja, tratarLoja } from "./loja.js";
 import { obterClima, obterHora } from "../render/3d/ceu/controleCeu.js";
 import { deLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
@@ -72,6 +73,7 @@ export function ligarUi(overlay) {
   raiz.addEventListener("input", tratarInputCapsula);
   ligarCapsula(raiz);
   ligarJanelaPc(raiz);
+  ligarJanelaLoja(raiz);
   raiz.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape" || !estado.painel) return;
     ev.preventDefault();
@@ -129,8 +131,8 @@ function noClique(ev) {
     const ator = tirarDaParty(i);
     toast(ator ? `Soltou ${nomeEspecie(ator)}.` : "O time precisa de um Pokémon.");
     avisar();
-  }   else if (act === "comprar") toast(comprar(tipo, key, quantidadeLoja(btn)));
-  else if (act === "vender") toast(vender(tipo, key, quantidadeLoja(btn)));
+  } else if (act === "comprar") toast(comprar(tipo, key, quantidadeLoja({ tipo, key, qtd: Number(btn.dataset.max) || 99, preco: 1 })));
+  else if (act === "vender") toast(vender(tipo, key, quantidadeLoja({ tipo, key, qtd: Number(btn.dataset.max) || 1, preco: 1 })));
   else if (act === "craft") toast(craftarBola(key));
   else if (act === "movel") colocarSelecionado(key);
   else if (act === "salvar") salvar();
@@ -429,17 +431,25 @@ function pintarPainel() {
     host.hidden = true;
     host.innerHTML = "";
     sincronizarJanelaPc(true);
+    sincronizarJanelaLoja(false);
+    return;
+  }
+  if (nome === "loja") {
+    host.hidden = true;
+    host.innerHTML = "";
+    sincronizarJanelaPc(false);
+    sincronizarJanelaLoja(true);
     return;
   }
   sincronizarJanelaPc(false);
+  sincronizarJanelaLoja(false);
   host.hidden = !nome;
   host.classList.toggle("jogo-painel--capsula", nome === "capsula");
   if (!nome) {
     host.innerHTML = "";
     return;
   }
-  if (nome === "loja") host.innerHTML = htmlLoja();
-  else if (nome === "capsula") {
+  if (nome === "capsula") {
     host.innerHTML = htmlCapsula();
     montarJanelaCapsula();
   } else host.innerHTML = htmlMenu(nome);

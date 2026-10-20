@@ -17,8 +17,27 @@ export const ORIGEM_KANTO_Y = 2048;
 /** Faixa de costura Kanto ↔ procedural (blocos). */
 export const FAIXA_COSTURA = 64;
 
+/**
+ * Bolso das salas 3D (casa, centro, loja, lab) — longe do overworld 8192².
+ * O streaming precisa carregar chunks aqui; senão a física cai no z=0
+ * enquanto o chão decorativo continua flutuando na altura da praça.
+ */
+export const BOLSO_SALA_X0 = 99936;
+export const BOLSO_SALA_Y0 = 99936;
+export const BOLSO_SALA_X1 = 100640;
+export const BOLSO_SALA_Y1 = 100640;
+
 export function dentroDoMundo(wx, wy) {
   return wx >= 0 && wy >= 0 && wx < LADO_MUNDO && wy < LADO_MUNDO;
+}
+
+export function dentroDoBolsoSala(wx, wy) {
+  return (
+    wx >= BOLSO_SALA_X0 &&
+    wy >= BOLSO_SALA_Y0 &&
+    wx < BOLSO_SALA_X1 &&
+    wy < BOLSO_SALA_Y1
+  );
 }
 
 export function dentroDoKanto(wx, wy) {
@@ -70,11 +89,17 @@ export function pesoCostura(wx, wy, faixa = FAIXA_COSTURA) {
   return t * t * (3 - 2 * t);
 }
 
-/** Chunk (cx,cy) intersecta o retângulo do mundo. */
+/** Chunk (cx,cy) intersecta o overworld ou o bolso das salas 3D. */
 export function chunkDentroDoMundo(cx, cy, chunkXz) {
   const x0 = cx * chunkXz;
   const y0 = cy * chunkXz;
   const x1 = x0 + chunkXz;
   const y1 = y0 + chunkXz;
-  return x1 > 0 && y1 > 0 && x0 < LADO_MUNDO && y0 < LADO_MUNDO;
+  if (x1 > 0 && y1 > 0 && x0 < LADO_MUNDO && y0 < LADO_MUNDO) return true;
+  return (
+    x1 > BOLSO_SALA_X0 &&
+    y1 > BOLSO_SALA_Y0 &&
+    x0 < BOLSO_SALA_X1 &&
+    y0 < BOLSO_SALA_Y1
+  );
 }

@@ -1,8 +1,8 @@
 import { progressoExp } from "./experiencia.js";
 import { colunaEmocao, folhaEmocoes } from "./emocoes.js";
 import { flutuantes } from "./flutuantes.js";
-import { cargaAtual, obterBola, obterMiraBola } from "./captura.js";
-import { alvoDeOrdem, obterBolas, pokemonNoCampo } from "./party.js";
+import { cargaAtual, obterMiraBola } from "./captura.js";
+import { alvoDeOrdem, pokemonNoCampo } from "./party.js";
 import { pedirRetrato } from "./retrato.js";
 import { atoresVisiveis, obterTreinador, pokemonLigado, relogioPokemon } from "./sistema.js";
 import { ALTURA_BLOCO } from "../config.js";
@@ -44,7 +44,7 @@ export function projetarChao3d(cam, largura, altura) {
 }
 
 function bolaNaMao() {
-  if (uiAberta() || obterBola()) return false;
+  if (uiAberta()) return false;
   const item = hotbarAtivo();
   if (!item || item.tipo !== TIPO_ITEM.BOLA) return false;
   return contar(item.tipo, item.key) > 0;
@@ -192,7 +192,10 @@ function painel(ctx) {
   const hpT = treino.hp / treino.hpMax;
   ctx.fillText(`você  ${Math.ceil(treino.hp)}/${treino.hpMax}`, 20, 16);
   barra(ctx, 20, 34, 120, 6, hpT, hpT < 0.35 ? "#f87171" : "#86efac", "#1c1917");
-  ctx.fillText(`bolas ${obterBolas()}`, 150, 28);
+  const bolaMao = hotbarAtivo();
+  const qtdBola =
+    bolaMao?.tipo === TIPO_ITEM.BOLA ? contar(bolaMao.tipo, bolaMao.key) : 0;
+  ctx.fillText(`bolas ${qtdBola}`, 150, 28);
   if (mon) {
     const nome = `${mon.shiny ? "★ " : ""}${mon.especie.nome}  Nv${mon.nivel}`;
     ctx.fillStyle = mon.morto ? "#a8a29e" : "#f8fafc";
