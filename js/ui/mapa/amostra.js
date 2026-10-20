@@ -403,11 +403,12 @@ function aplicarCorpoLocal(ponto, rgb) {
     return { h: CORPO.altura | 0, u: ponto.u, rgb };
   }
   const cava = Math.max(1, Math.min(2, CORPO.cava | 0));
-  const h = Math.max(1, baseH - cava);
+  const superficie = Math.max(1, (CORPO.superficie | 0) || baseH - 1);
+  const h = Math.max(1, superficie - cava);
   if (CORPO.fluido) {
     const fam = fluidoDe(CORPO.fluido);
     return {
-      h: baseH,
+      h: superficie,
       u: cava >= 2 ? 0.18 : 0.22,
       rgb: fam.lamina,
     };

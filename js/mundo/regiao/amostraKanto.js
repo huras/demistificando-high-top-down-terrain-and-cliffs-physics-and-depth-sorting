@@ -340,7 +340,9 @@ function aplicarAguaNoRelevo(x, y, base) {
   if (CAMPO.sobe) return Math.max(1, Math.min(60, CAMPO.altura | 0));
   const cava = CAMPO.cava || 0;
   if (cava <= 0) return base.h;
-  return Math.max(1, Math.min(60, Math.round(base.h - cava)));
+  // Leito = superfície da água (baseH - 1) menos a profundidade cavada.
+  const superficie = Math.max(1, (CAMPO.superficie | 0) || (base.h | 0) - 1);
+  return Math.max(1, Math.min(60, Math.round(superficie - cava)));
 }
 
 function calcular(x, y) {

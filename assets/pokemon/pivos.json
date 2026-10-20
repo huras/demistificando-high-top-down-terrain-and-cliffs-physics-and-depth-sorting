@@ -93,5 +93,25 @@
     "offsetY": 0,
     "dx": 0,
     "dy": 0
+  },
+  "celebi": {
+    "offsetY": -0.01,
+    "dx": 0,
+    "dy": 0
+  },
+  "regice": {
+    "offsetY": -0.06,
+    "dx": 0,
+    "dy": 0
+  },
+  "glaceon": {
+    "offsetY": -0.04,
+    "dx": 0,
+    "dy": 0
+  },
+  "arceus": {
+    "offsetY": -0.01,
+    "dx": 0,
+    "dy": 0
   }
 }

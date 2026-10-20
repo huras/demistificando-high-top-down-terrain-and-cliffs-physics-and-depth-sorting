@@ -1643,23 +1643,24 @@ function* construirGeosChunk(chunk) {
       const supAgua = chunk.aguaSuperficie[ia] | 0;
       if (supAgua > 0) {
         const caindo = chunk.aguaCaindo[ia] === 1;
-        const prof = caindo
-          ? Math.max(1, supAgua - (chunk.aguaPiso[ia] | 0))
-          : chunk.aguaProf[ia] | 0;
         const fam = chunk.fluido[ia] | 0;
-        const listaAgua = fam === FLUIDO.LAVA ? aguasLava : fam === FLUIDO.PANTANO ? aguasPantano : aguas;
-        const corAgua = fam === FLUIDO.LAVA || fam === FLUIDO.PANTANO ? "#ffffff" : tintaLago(prof || 1);
-        listaAgua.push(
-          geoSuperficieAgua(
-            wx,
-            wy,
-            supAgua - 0.04,
-            chunk.fluxoX[ia] | 0,
-            chunk.fluxoY[ia] | 0,
-            corAgua,
-          ),
-        );
-        empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
+        // Coluna caindo: só cortina — lâmina/espuma no ar vira água voando.
+        if (!caindo) {
+          const prof = chunk.aguaProf[ia] | 0;
+          const listaAgua = fam === FLUIDO.LAVA ? aguasLava : fam === FLUIDO.PANTANO ? aguasPantano : aguas;
+          const corAgua = fam === FLUIDO.LAVA || fam === FLUIDO.PANTANO ? "#ffffff" : tintaLago(prof || 1);
+          listaAgua.push(
+            geoSuperficieAgua(
+              wx,
+              wy,
+              supAgua - 0.04,
+              chunk.fluxoX[ia] | 0,
+              chunk.fluxoY[ia] | 0,
+              corAgua,
+            ),
+          );
+          empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
+        }
         if (fam !== FLUIDO.PANTANO) {
           const listaQueda = fam === FLUIDO.LAVA ? quedasLava : quedas;
           if (caindo) {

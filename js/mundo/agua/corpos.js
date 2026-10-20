@@ -1,7 +1,8 @@
 /**
  * Campo de água no relevo. Cada corpo devolve cava e superfície;
- * o heightmap desce e a lâmina só enche o leito. Ruído (fbm) molda
- * borda de lago e meandro de rio. Cidade, rua, prédio e mar ficam fora.
+ * o heightmap desce e a lâmina fica 1 nível abaixo do chão local.
+ * Ruído (fbm) molda borda de lago e meandro de rio.
+ * Cidade, rua, prédio e mar ficam fora.
  */
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { fbm2 } from "../voxel/ruido.js";
@@ -163,10 +164,14 @@ function avaliar(corpo, x, y, baseH, saida) {
   return avaliarVulcao(corpo, x, y, baseH, saida);
 }
 
-/** Cava 1 ou 2 blocos no chão local; a lâmina fica rente à borda. */
+/** Cava 1 ou 2 blocos abaixo da superfície da água (já 1 abaixo do chão). */
 function cavaRasa(prof, forca) {
   const alvo = Math.round((prof || 1) * forca);
   return Math.max(1, Math.min(2, alvo || 1));
+}
+
+function superficieAbaixoDoChao(baseH) {
+  return Math.max(1, (baseH | 0) - 1);
 }
 
 function avaliarLago(corpo, x, y, baseH, saida) {
@@ -179,12 +184,12 @@ function avaliarLago(corpo, x, y, baseH, saida) {
   const forca = borda * ruido;
   if (forca < 0.14) return false;
   const cava = cavaRasa(corpo.prof, forca);
-  // Superfície = chão local: a água enche o buraco, sem subir acima do terreno.
+  const superficie = superficieAbaixoDoChao(baseH);
   saida.fluido = corpo.fluido;
   saida.cava = cava;
-  saida.superficie = baseH;
+  saida.superficie = superficie;
   saida.sobe = 0;
-  saida.altura = baseH;
+  saida.altura = superficie;
   saida.solido = corpo.solido;
   return true;
 }
@@ -234,11 +239,12 @@ function avaliarRio(corpo, x, y, baseH, saida) {
   const perfil = u * u * ruido;
   if (perfil < 0.18) return false;
   const cava = cavaRasa(corpo.prof, Math.max(0.5, perfil));
+  const superficie = superficieAbaixoDoChao(baseH);
   saida.fluido = corpo.fluido;
   saida.cava = cava;
-  saida.superficie = baseH;
+  saida.superficie = superficie;
   saida.sobe = 0;
-  saida.altura = baseH;
+  saida.altura = superficie;
   saida.solido = corpo.solido;
   return true;
 }
@@ -248,11 +254,12 @@ function avaliarVulcao(corpo, x, y, baseH, saida) {
   if (d > corpo.raio) return false;
   if (d <= corpo.cratera) {
     const cava = cavaRasa(2, 1);
+    const superficie = superficieAbaixoDoChao(baseH);
     saida.fluido = corpo.fluido;
     saida.cava = cava;
-    saida.superficie = baseH;
+    saida.superficie = superficie;
     saida.sobe = 0;
-    saida.altura = baseH;
+    saida.altura = superficie;
     saida.solido = corpo.solido;
     return true;
   }
@@ -268,7 +275,8 @@ function avaliarVulcao(corpo, x, y, baseH, saida) {
 }
 
 /**
- * Preenche `saida` com cava/superficie/fluido. `baseH` é a altura sem água.
+ * Preenche `saida` com cava/superficie/fluido.
+ * `baseH` é a altura sem água; a lâmina fica em baseH - 1.
  */
 export function amostraCorpo(x, y, baseH, saida) {
   // Compat: chamada antiga amostraCorpo(x, y, saida)

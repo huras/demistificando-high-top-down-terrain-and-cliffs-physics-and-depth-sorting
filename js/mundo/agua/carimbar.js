@@ -1,7 +1,7 @@
 /**
- * Enche só o buraco já cavado (1–2 blocos). Depois, onde o nível
- * despenca para o vizinho, deixa ar sob a lâmina — a face de
- * cachoeira (fluxo + malha) cobre o buraco.
+ * Enche só o buraco já cavado até a superfície do corpo (1 abaixo
+ * do chão). Depois, onde há queda real para líquido mais baixo,
+ * deixa ar sob um lip — a face de cachoeira (fluxo + malha) cobre.
  */
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import { paraLocalKanto } from "../bounds.js";
@@ -49,8 +49,12 @@ export function carimbarCorpos(chunk) {
       }
       const cava = Math.max(1, Math.min(2, HIT.cava | 0));
       const hSolido = superficieLocal(chunk, lx, ly);
+      const superficie = Math.max(
+        1,
+        Math.min(CHUNK_Y, (HIT.superficie | 0) || Math.max(1, (base.h | 0) - 1)),
+      );
       const a0 = hSolido;
-      const a1 = Math.min(CHUNK_Y, Math.min(base.h | 0, a0 + cava));
+      const a1 = Math.min(CHUNK_Y, Math.min(superficie, a0 + cava));
       if (a1 > a0) {
         for (let z = a0; z < a1; z++) {
           chunk.blocos[indiceLocal(lx, ly, z)] = fam.bloco;
@@ -74,27 +78,26 @@ function topoLiquido(chunk, lx, ly) {
   return 0;
 }
 
-function nivelVizinho(chunk, lx, ly, dx, dy, baseX, baseY) {
+/** Nível do vizinho só se for coluna com líquido (queda real). 0 = seco. */
+function nivelLiquidoVizinho(chunk, lx, ly, dx, dy, baseX, baseY) {
   const nx = lx + dx;
   const ny = ly + dy;
   if (nx >= 0 && ny >= 0 && nx < CHUNK_XZ && ny < CHUNK_XZ) {
-    const t = topoLiquido(chunk, nx, ny);
-    if (t > 0) return t;
-    return superficieLocal(chunk, nx, ny);
+    return topoLiquido(chunk, nx, ny);
   }
   const wx = baseX + nx;
   const wy = baseY + ny;
   const b = amostraBaseKanto(wx, wy);
-  if (!b) return 0;
+  if (!b || b.reservado) return 0;
   const local = paraLocalKanto(wx, wy);
   amostraCorpo(local.x, local.y, b.h, HIT);
-  if (HIT.tem) return (HIT.superficie | 0) || (b.h | 0);
-  return b.h | 0;
+  if (!HIT.tem || !HIT.fluido) return 0;
+  return (HIT.superficie | 0) || 0;
 }
 
 /**
- * Degrau >= 2: lip de líquido no topo, ar (cava o sólido) até o nível de baixo.
- * Fluxo marca caindo; malha puxa a face da cachoeira no buraco.
+ * Degrau >= 2 para líquido mais baixo: lip no topo, ar até o nível de baixo.
+ * Ignora desnível só para terra seca (margem do lago/rio).
  */
 function abrirQuedas(chunk, baseX, baseY) {
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
@@ -108,7 +111,8 @@ function abrirQuedas(chunk, baseX, baseY) {
       let melhor = 0;
       let alvo = topo;
       for (let d = 0; d < DIRS.length; d++) {
-        const n = nivelVizinho(chunk, lx, ly, DIRS[d][0], DIRS[d][1], baseX, baseY);
+        const n = nivelLiquidoVizinho(chunk, lx, ly, DIRS[d][0], DIRS[d][1], baseX, baseY);
+        if (n <= 0) continue;
         const drop = topo - n;
         if (drop > melhor) {
           melhor = drop;
