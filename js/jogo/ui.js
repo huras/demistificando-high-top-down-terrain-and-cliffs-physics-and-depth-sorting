@@ -58,6 +58,7 @@ import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarClique
 import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
 import { htmlLoja, quantidadeLoja, tratarLoja } from "./loja.js";
 import { obterClima, obterHora } from "../render/3d/ceu/controleCeu.js";
+import { deLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
 import { pintarMapa } from "../ui/mapa/pintar.js";
 
@@ -628,10 +629,10 @@ const ZOOM_MINI = 0.42;
 
 function pontoMini() {
   if (estado.interior && Number.isFinite(estado.interior.ax)) {
-    return {
-      x: estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5,
-      y: estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5,
-    };
+    return deLocalKanto(
+      estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5,
+      estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5,
+    );
   }
   return { x: corpoRef?.x || 0, y: corpoRef?.y || 0 };
 }

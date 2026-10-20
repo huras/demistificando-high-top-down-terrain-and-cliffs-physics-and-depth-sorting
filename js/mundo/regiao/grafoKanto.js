@@ -1,7 +1,9 @@
 /**
  * Grade 32×32 de Kanto. Cidade, rota ou mato, com saídas só entre
  * cidade e rota. A consulta é um índice, sem varrer o pacote.
+ * zonaNoMundo recebe coords mundiais (ilha centrada no overworld).
  */
+import { EXTENSAO_KANTO as EXTENSAO_BOUNDS, ORIGEM_KANTO_X, ORIGEM_KANTO_Y } from "../bounds.js";
 import { CIDADES_KANTO } from "./kantoCidades.js";
 import { ROTAS_KANTO } from "./kantoRotas.js";
 import { montarLayout } from "./volumesCidade.js";
@@ -9,6 +11,9 @@ import { montarLayout } from "./volumesCidade.js";
 export const LADO_KANTO = 32;
 export const AREA_KANTO = 128;
 export const EXTENSAO_KANTO = LADO_KANTO * AREA_KANTO;
+if (EXTENSAO_KANTO !== EXTENSAO_BOUNDS) {
+  throw new Error("EXTENSAO_KANTO desalinhada de bounds.js");
+}
 export const CENTRO_AREA = 64;
 
 export const SAIDA_NORTE = 1;
@@ -215,8 +220,10 @@ export function zonaEm(ax, ay) {
 }
 
 export function zonaNoMundo(wx, wy) {
-  if (wx < 0 || wy < 0 || wx >= EXTENSAO_KANTO || wy >= EXTENSAO_KANTO) return null;
-  return zonaEm((wx / AREA_KANTO) | 0, (wy / AREA_KANTO) | 0);
+  const lx = wx - ORIGEM_KANTO_X;
+  const ly = wy - ORIGEM_KANTO_Y;
+  if (lx < 0 || ly < 0 || lx >= EXTENSAO_KANTO || ly >= EXTENSAO_KANTO) return null;
+  return zonaEm((lx / AREA_KANTO) | 0, (ly / AREA_KANTO) | 0);
 }
 
 export function ehCidade(wx, wy) {

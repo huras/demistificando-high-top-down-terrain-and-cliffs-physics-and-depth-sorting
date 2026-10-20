@@ -90,8 +90,13 @@ function biomaIdEm(x, y, hSorteio) {
   return biomaDominante(x, y)?.id || "light-grass";
 }
 
+function slotsPorChunk() {
+  return Math.max(1, POKEMON.LARES_POR_CHUNK | 0);
+}
+
 function posicaoCandidata(cx, cy, indice) {
-  if (hash(cx, cy, 10 + indice) % 3 === 0) return null;
+  // ~40% dos chunks têm lar (antes ~67% com 2 slots).
+  if (hash(cx, cy, 10 + indice) % 5 < 3) return null;
   const ox = 1 + (hash(cx, cy, 20 + indice) % (CHUNK_XZ - 2));
   const oy = 1 + (hash(cx, cy, 30 + indice) % (CHUNK_XZ - 2));
   return {
@@ -110,9 +115,11 @@ function slotAnterior(nx, ny, ni, cx, cy, indice) {
 
 function longeDeVizinhos(cx, cy, indice, x, y) {
   const min2 = POKEMON.MIN_ESPACO_LARES * POKEMON.MIN_ESPACO_LARES;
-  for (let ny = cy - 1; ny <= cy + 1; ny++) {
-    for (let nx = cx - 1; nx <= cx + 1; nx++) {
-      for (let i = 0; i < 2; i++) {
+  const alcance = Math.max(1, Math.ceil(POKEMON.MIN_ESPACO_LARES / CHUNK_XZ));
+  const maxSlot = slotsPorChunk();
+  for (let ny = cy - alcance; ny <= cy + alcance; ny++) {
+    for (let nx = cx - alcance; nx <= cx + alcance; nx++) {
+      for (let i = 0; i < maxSlot; i++) {
         if (!slotAnterior(nx, ny, i, cx, cy, indice)) continue;
         const p = posicaoCandidata(nx, ny, i);
         if (!p) continue;
@@ -292,7 +299,7 @@ function sincronizarLares(px, py) {
   const c1y = Math.floor((py + alcance) / CHUNK_XZ);
   for (let cy = c0y; cy <= c1y; cy++) {
     for (let cx = c0x; cx <= c1x; cx++) {
-      for (let indice = 0; indice < 2; indice++) {
+      for (let indice = 0; indice < slotsPorChunk(); indice++) {
         const lar = garantirLar(cx, cy, indice);
         if (!lar || lar.sumidoAte > agora) continue;
         if (zonaSemSelvagem(lar.x, lar.y)) {

@@ -2,6 +2,7 @@
  * Placas de cidade, postes de rota, quadro da praça e caixas de correio.
  * A conta é local à área; a malha fica no render.
  */
+import { deLocalKanto } from "../bounds.js";
 import { amostraKanto } from "./amostraKanto.js";
 import {
   AREA_KANTO,
@@ -47,10 +48,7 @@ function chao(wx, wy) {
 }
 
 function mundo(ax, ay, lx, ly) {
-  return {
-    x: ax * AREA_KANTO + lx,
-    y: ay * AREA_KANTO + ly,
-  };
+  return deLocalKanto(ax * AREA_KANTO + lx, ay * AREA_KANTO + ly);
 }
 
 function longe(lista, x, y, raio) {
@@ -319,11 +317,12 @@ function decoracaoDaRota(ax, ay, zona) {
   }
 
   if (!placas.length && !postes.length) return null;
+  const centro = deLocalKanto(ax * AREA_KANTO + CENTRO_AREA, ay * AREA_KANTO + CENTRO_AREA);
   return {
     ax,
     ay,
-    cx: ax * AREA_KANTO + CENTRO_AREA,
-    cy: ay * AREA_KANTO + CENTRO_AREA,
+    cx: centro.x,
+    cy: centro.y,
     placas,
     postes,
   };

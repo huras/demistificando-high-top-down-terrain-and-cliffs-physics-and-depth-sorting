@@ -39,7 +39,10 @@ export function criarVegetacaoDistante() {
   /** @type {Map<string, object>} */
   const lotes = new Map();
   let atlasAtual = null;
-  carregarPivosProps();
+  carregarPivosProps().then(() => {
+    geracaoPublicada = -1;
+    yawAplicado = null;
+  });
   let trabalho = null;
   let sigBanda = "";
   let sigProps = "";
@@ -83,6 +86,23 @@ export function criarVegetacaoDistante() {
     };
   }
 
+  /** Pivot e geo precisam bater — senão o lift sobe o card e o pé fica no ar. */
+  function casarPivoLote(lote, img, chave) {
+    const pivo = pivoDoProp(img, chave);
+    const px = pivo.x;
+    const py = pivo.y;
+    lote.opacoY = Number.isFinite(pivo.opacoY) ? pivo.opacoY : 1;
+    lote.dz = pivo.dz || 0;
+    if (lote.pivotX === px && lote.pivotY === py) return;
+    lote.pivotX = px;
+    lote.pivotY = py;
+    const geo = geometriaNoPe(px, py);
+    const velha = lote.geo;
+    lote.geo = geo;
+    lote.mesh.geometry = geo;
+    if (velha && velha !== geo) velha.dispose();
+  }
+
   function montarLote(sprite, _amostra, img) {
     const anterior = lotes.get(sprite);
     if (anterior) soltarLote(anterior);
@@ -105,7 +125,10 @@ export function criarVegetacaoDistante() {
     marcarStencilSolido(material);
     const pivo = pivoDoProp(img, sprite);
     const geo = geometriaNoPe(pivo.x, pivo.y);
+    const pivotX = pivo.x;
     const pivotY = pivo.y;
+    const opacoY = Number.isFinite(pivo.opacoY) ? pivo.opacoY : 1;
+    const dz = pivo.dz || 0;
     const mesh = new THREE.InstancedMesh(geo, material, IMPOSTOR_CAP);
     mesh.name = `impostor-${sprite}`;
     mesh.castShadow = false;
@@ -124,7 +147,10 @@ export function criarVegetacaoDistante() {
       itens: [],
       largura: 1,
       altura: 1,
+      pivotX,
       pivotY,
+      opacoY,
+      dz,
     };
     lotes.set(sprite, lote);
     usarRaycastBillboard(mesh, () => lote);
@@ -160,6 +186,10 @@ export function criarVegetacaoDistante() {
           altura,
           yaw,
           inclinacao,
+          pivotY: lote.pivotY,
+          opacoY: lote.opacoY,
+          dz: lote.dz || 0,
+          elevado: true,
         });
         lote.mesh.setMatrixAt(i, dummy.matrix);
       }
@@ -211,6 +241,7 @@ export function criarVegetacaoDistante() {
         continue;
       }
       if (!lote || lote.img !== img) lote = montarLote(sprite, itens[0], img);
+      casarPivoLote(lote, img, sprite);
       lote.itens = itens;
     }
     for (const [sprite, lote] of lotes) {

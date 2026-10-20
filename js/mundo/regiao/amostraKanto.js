@@ -1,8 +1,10 @@
 /**
  * Altura, chão e rua de um bloco de Kanto.
- * Uma consulta por célula; o grafo já está montado.
+ * Entrada em coords mundiais; o cálculo interno usa local da ilha.
  */
+import { dentroDoKanto, paraLocalKanto } from "../bounds.js";
 import { fbm2 } from "../voxel/ruido.js";
+import { amostraCorpo, ligarConsultasCorpo } from "../agua/corpos.js";
 import { parBiomaKanto } from "./biomasKanto.js";
 import {
   AREA_KANTO,
@@ -13,7 +15,6 @@ import {
   SAIDA_OESTE,
   SAIDA_SUL,
   zonaEm,
-  zonaNoMundo,
 } from "./grafoKanto.js";
 import {
   RELEVO_FUNDO,
@@ -23,7 +24,9 @@ import {
   relevoEm,
 } from "./kantoRelevo.js";
 import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "./volumesCidade.js";
-import { amostraCorpo, ligarConsultasCorpo } from "../agua/corpos.js";
+
+export { dentroDoKanto } from "../bounds.js";
+import { aplicarDetalheBioma } from "./detalheRelevo.js";
 
 const COTA_CIDADE = 16;
 const SPRITE_PREDIO = new Set(["ginasio", "museu", "torre", "coliseu", "porto", "safari", "mansao", "esconderijo"]);
@@ -57,11 +60,7 @@ const CAMPO = {
   queda: 0,
 };
 
-export function dentroDoKanto(wx, wy) {
-  return wx >= 0 && wy >= 0 && wx < EXTENSAO_KANTO && wy < EXTENSAO_KANTO;
-}
-
-/** Altura sem cavar água — usada pelo campo de corpos. */
+/** Altura sem cavar água — coords mundiais. */
 export function alturaBaseKanto(wx, wy) {
   const b = amostraBaseKanto(wx, wy);
   return b ? b.h : 16;
@@ -73,15 +72,31 @@ export function reservaAguaKanto(wx, wy) {
   return !b || b.reservado;
 }
 
-export function amostraBaseKanto(wx, wy) {
-  const x = wx | 0;
-  const y = wy | 0;
-  if (!dentroDoKanto(x, y)) return null;
+/** Consultas locais para o campo de corpos (coords da ilha). */
+function alturaBaseLocal(lx, ly) {
+  const b = amostraBaseLocal(lx | 0, ly | 0);
+  return b ? b.h : 16;
+}
+
+function reservaAguaLocal(lx, ly) {
+  const b = amostraBaseLocal(lx | 0, ly | 0);
+  return !b || b.reservado;
+}
+
+function amostraBaseLocal(x, y) {
+  if (x < 0 || y < 0 || x >= EXTENSAO_KANTO || y >= EXTENSAO_KANTO) return null;
   if (x === cacheBaseX && y === cacheBaseY) return cacheBase;
   cacheBaseX = x;
   cacheBaseY = y;
   cacheBase = calcularBase(x, y);
   return cacheBase;
+}
+
+/** Entrada mundial. */
+export function amostraBaseKanto(wx, wy) {
+  if (!dentroDoKanto(wx, wy)) return null;
+  const local = paraLocalKanto(wx, wy);
+  return amostraBaseLocal(local.x | 0, local.y | 0);
 }
 
 function distTrecho(px, py, ax, ay, bx, by) {
@@ -239,10 +254,9 @@ function alturaDoTerreno(x, y, zona, perfil) {
   return Math.round(plano + (pico - plano) * t);
 }
 
-function alturaNatural(x, y, zona) {
+function alturaNatural(x, y, zona, perfil) {
   const byte = relevoEm(zona.ax, zona.ay);
   if (zona.agua) return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
-  const perfil = perfilCosta(x, y);
   const terra = alturaDoTerreno(x, y, zona, perfil);
   return Math.round(COTA_FUNDO + (terra - COTA_FUNDO) * perfil.u);
 }
@@ -256,9 +270,9 @@ function distanciaFora(lx, ly, fp) {
   return dist;
 }
 
-function alturaCidade(x, y, lx, ly, zona, rua) {
-  if (rua || noFootprint(lx, ly, zona.layout)) return COTA_CIDADE;
-  const natural = alturaNatural(x, y, zona);
+function alturaCidade(x, y, lx, ly, zona, perfil) {
+  if (noFootprint(lx, ly, zona.layout)) return COTA_CIDADE;
+  const natural = alturaNatural(x, y, zona, perfil);
   const dist = distanciaFora(lx, ly, zona.layout.fp);
   if (dist >= AVENTAL) return natural;
   return Math.round(COTA_CIDADE + (natural - COTA_CIDADE) * (dist / AVENTAL));
@@ -274,26 +288,34 @@ function florestaEm(lx, ly, zona) {
   return false;
 }
 
+/** x,y em coords locais da ilha. */
 function calcularBase(x, y) {
-  const zona = zonaNoMundo(x, y);
   const ax = (x / AREA_KANTO) | 0;
   const ay = (y / AREA_KANTO) | 0;
+  const zona = zonaEm(ax, ay);
+  if (!zona) return null;
   const lx = x - ax * AREA_KANTO;
   const ly = y - ay * AREA_KANTO;
   const rua = ehRua(lx, ly, zona);
   const predio =
     !rua && zona.tipo === "cidade" && zona.layout ? predioNoLayout(lx, ly, zona.layout) : null;
+  const noFp =
+    zona.tipo === "cidade" && zona.layout ? noFootprint(lx, ly, zona.layout) : false;
+  const perfil = perfilCosta(x, y);
+
   let h;
   if (rua && zona.tipo === "cidade") h = COTA_CIDADE;
   else if (rua) h = alturaRua(lx, ly, zona);
-  else if (zona.tipo === "cidade") h = alturaCidade(x, y, lx, ly, zona, false);
-  else h = alturaNatural(x, y, zona);
+  else if (zona.tipo === "cidade") h = alturaCidade(x, y, lx, ly, zona, perfil);
+  else h = alturaNatural(x, y, zona, perfil);
+
+  const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
+  const par = parBiomaKanto(x, y, perfil.u, perfil.dentroMontanha, floresta, predio, rua);
+  const travado = !!(rua || predio || zona?.agua || noFp);
+  h = aplicarDetalheBioma(h, x, y, par, perfil.u, travado);
   if (h < 1) h = 1;
   if (h > 60) h = 60;
 
-  const perfil = perfilCosta(x, y);
-  const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
-  const par = parBiomaKanto(x, y, perfil.u, perfil.dentroMontanha, floresta, predio, rua);
   const reservado = !!(rua || predio || zona?.agua || zona?.tipo === "cidade");
 
   return {
@@ -323,6 +345,7 @@ function aplicarAguaNoRelevo(x, y, base) {
 
 function calcular(x, y) {
   const base = calcularBase(x, y);
+  if (!base) return null;
   const h = aplicarAguaNoRelevo(x, y, base);
   return {
     h,
@@ -338,12 +361,13 @@ function calcular(x, y) {
   };
 }
 
-ligarConsultasCorpo(reservaAguaKanto, alturaBaseKanto);
+ligarConsultasCorpo(reservaAguaLocal, alturaBaseLocal);
 
 export function amostraKanto(wx, wy) {
-  const x = wx | 0;
-  const y = wy | 0;
-  if (!dentroDoKanto(x, y)) return null;
+  if (!dentroDoKanto(wx, wy)) return null;
+  const local = paraLocalKanto(wx, wy);
+  const x = local.x | 0;
+  const y = local.y | 0;
   if (x === cacheX && y === cacheY) return cacheAmostra;
   cacheX = x;
   cacheY = y;

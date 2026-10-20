@@ -39,13 +39,18 @@ import { promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
 import { acaoContexto, acaoConsomeE } from "./acaoContexto.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
-import { alternarCampo } from "../pokemon/party.js";
-import { abrirMapa, fecharMapa, mapaAberto, mapaViajando, zoomMapa } from "../ui/mapa/mapaMundo.js";
+import {
+  abrirMapa,
+  cancelarConfirmacaoMapa,
+  fecharMapa,
+  mapaAberto,
+  mapaViajando,
+  zoomMapa,
+} from "../ui/mapa/mapaMundo.js";
 import { teleporteOcupado } from "./teleporte.js";
 
 let viewport = null;
 let toastAte = 0;
-const TECLAS_PARTY = ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6"];
 
 function campoFocado() {
   const el = document.activeElement;
@@ -209,7 +214,9 @@ function lerTeclas(corpo) {
       teclaAgora("NumpadSubtract");
       return;
     }
-    if (teclaAgora("Escape") || teclaAgora("KeyM")) fecharMapa();
+    if (teclaAgora("Escape")) {
+      if (!cancelarConfirmacaoMapa()) fecharMapa();
+    } else if (teclaAgora("KeyM")) fecharMapa();
     if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) zoomMapa(1.18);
     if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) zoomMapa(1 / 1.18);
     return;
@@ -234,14 +241,6 @@ function lerTeclas(corpo) {
   if (estado.painel || estado.dialogo || estado.roda || estado.construir || estado.craft) return;
   if (teleporteOcupado()) teclaAgora("KeyM");
   else if (teclaAgora("KeyM")) abrirMapa(corpo.x, corpo.y);
-  if (teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight")) {
-    for (let i = 0; i < TECLAS_PARTY.length; i++) {
-      if (teclaAgora(TECLAS_PARTY[i])) {
-        alternarCampo(i);
-        break;
-      }
-    }
-  }
 }
 
 function interagir(corpo) {

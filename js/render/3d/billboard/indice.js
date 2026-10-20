@@ -1,5 +1,5 @@
 export { geometriaNoPe, ajustarEsferaNoPe, centroVisualY } from "./geometria.js";
-export { poseCartao } from "./pose.js";
+export { poseCartao, alturaPivoAcimaChao } from "./pose.js";
 export {
   carregarPivosProps,
   definirPivosProps,

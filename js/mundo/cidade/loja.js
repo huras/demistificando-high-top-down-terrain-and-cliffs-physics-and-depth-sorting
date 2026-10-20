@@ -3,8 +3,8 @@
  */
 import { gradeDe, criarPlantaHub, aplicarPlantaNoChunk, naSaidaPlanta, alvoDaPlanta, ESCALA_HUB } from "./plantaHub.js";
 
-export const ORIGEM_LOJA_X = 8448;
-export const ORIGEM_LOJA_Y = 8704;
+export const ORIGEM_LOJA_X = 100256;
+export const ORIGEM_LOJA_Y = 100512;
 
 const S = ESCALA_HUB;
 

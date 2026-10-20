@@ -1,6 +1,7 @@
 /**
  * Marcas do mapa. Cidade e rota hoje; um ícone novo entra na lista.
  */
+import { deLocalKanto } from "../../mundo/bounds.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO, zonaEm } from "../../mundo/regiao/grafoKanto.js";
 import { ROTAS_KANTO } from "../../mundo/regiao/kantoRotas.js";
@@ -8,7 +9,8 @@ import { ROTAS_KANTO } from "../../mundo/regiao/kantoRotas.js";
 const extras = [];
 
 function mundo(ax, ay) {
-  return [(ax + 0.5) * AREA_KANTO, (ay + 0.5) * AREA_KANTO];
+  const p = deLocalKanto((ax + 0.5) * AREA_KANTO, (ay + 0.5) * AREA_KANTO);
+  return [p.x, p.y];
 }
 
 export function registrarMarca(marca) {
@@ -59,9 +61,10 @@ export function marcasExtras() {
 export function layoutDaCidade(cidade) {
   const zona = zonaEm(cidade.ax, cidade.ay);
   if (!zona?.layout) return null;
+  const o = deLocalKanto(cidade.ax * AREA_KANTO, cidade.ay * AREA_KANTO);
   return {
-    ox: cidade.ax * AREA_KANTO,
-    oy: cidade.ay * AREA_KANTO,
+    ox: o.x,
+    oy: o.y,
     fp: zona.layout.fp,
     volumes: zona.layout.volumes,
   };

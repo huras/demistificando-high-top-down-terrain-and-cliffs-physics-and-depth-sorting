@@ -1,5 +1,6 @@
 /** Campo: porta, enxada, regador, plantar, colher, machado e picareta. */
 
+import { deLocalKanto, paraLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
@@ -52,10 +53,11 @@ let portaSegura = "";
 export function loteSob(x, y) {
   const zona = zonaNoMundo(x, y);
   if (!zona?.layout || zona.tipo !== "cidade") return null;
-  const ax = (x / AREA_KANTO) | 0;
-  const ay = (y / AREA_KANTO) | 0;
-  const lx = x - ax * AREA_KANTO;
-  const ly = y - ay * AREA_KANTO;
+  const local = paraLocalKanto(x, y);
+  const ax = (local.x / AREA_KANTO) | 0;
+  const ay = (local.y / AREA_KANTO) | 0;
+  const lx = local.x - ax * AREA_KANTO;
+  const ly = local.y - ay * AREA_KANTO;
   const predio = predioNoLayout(lx, ly, zona.layout);
   if (!predio || !PAPEIS.has(predio.papel)) return null;
   return { zona, predio, ax, ay };
@@ -147,8 +149,9 @@ export function entradaPerto(x, y) {
     portaSegura = "";
     return null;
   }
-  const ax = (x / AREA_KANTO) | 0;
-  const ay = (y / AREA_KANTO) | 0;
+  const local = paraLocalKanto(x, y);
+  const ax = (local.x / AREA_KANTO) | 0;
+  const ay = (local.y / AREA_KANTO) | 0;
   const estadoBusca = { toque: null, toqueD: Infinity, solta: null };
   const vaos = vaosPortaPerto(x, y, RAIO_SOLTA);
   if (vaos) {
@@ -158,8 +161,9 @@ export function entradaPerto(x, y) {
     }
     return fecharBusca(estadoBusca);
   }
-  const ox = ax * AREA_KANTO;
-  const oy = ay * AREA_KANTO;
+  const origem = deLocalKanto(ax * AREA_KANTO, ay * AREA_KANTO);
+  const ox = origem.x;
+  const oy = origem.y;
   const volumes = zona.layout.volumes;
   for (let i = 0; i < volumes.length; i++) {
     const predio = volumes[i];
@@ -274,9 +278,8 @@ export function checarSaidaSala(corpo) {
 
 function saidaDoPredio(interior) {
   const v = interior.predio;
-  const ox = interior.ax * AREA_KANTO;
-  const oy = interior.ay * AREA_KANTO;
-  return saidaDaPorta(v, ox, oy, portaDoModelo(v.modelo));
+  const origem = deLocalKanto(interior.ax * AREA_KANTO, interior.ay * AREA_KANTO);
+  return saidaDaPorta(v, origem.x, origem.y, portaDoModelo(v.modelo));
 }
 
 export function sairInterior(corpo) {

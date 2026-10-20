@@ -94,7 +94,9 @@ export function criarVegetacaoBillboard3d() {
   /** @type {Map<string, object>} */
   const lotes = new Map();
   let atlasAtual = null;
-  carregarPivosProps();
+  carregarPivosProps().then(() => {
+    alturasSujas = true;
+  });
 
   let yawAplicado = null;
   let geracaoLote = 0;
@@ -246,7 +248,10 @@ export function criarVegetacaoBillboard3d() {
 
     const pivo = pivoDoProp(img, def.chave);
     const geo = geometriaNoPe(pivo.x, pivo.y);
+    const pivotX = pivo.x;
     const pivotY = pivo.y;
+    const opacoY = Number.isFinite(pivo.opacoY) ? pivo.opacoY : 1;
+    const dz = pivo.dz || 0;
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
     mesh.name = `veg-${def.chave}`;
     mesh.castShadow = false;
@@ -288,7 +293,10 @@ export function criarVegetacaoBillboard3d() {
       largura,
       altura,
       geo,
+      pivotX,
       pivotY,
+      opacoY,
+      dz,
       grama,
     };
     lotes.set(def.chave, lote);
@@ -302,6 +310,24 @@ export function criarVegetacaoBillboard3d() {
     });
     marcarAuxiliar(sombra);
     return lote;
+  }
+
+  /** Pivot e geo precisam bater — senão o lift sobe o card e o pé fica no ar. */
+  function casarPivoLote(lote, img, chave) {
+    const pivo = pivoDoProp(img, chave);
+    const px = pivo.x;
+    const py = pivo.y;
+    lote.opacoY = Number.isFinite(pivo.opacoY) ? pivo.opacoY : 1;
+    lote.dz = pivo.dz || 0;
+    if (lote.pivotX === px && lote.pivotY === py) return;
+    lote.pivotX = px;
+    lote.pivotY = py;
+    const geo = geometriaNoPe(px, py);
+    const velha = lote.geo;
+    lote.geo = geo;
+    lote.mesh.geometry = geo;
+    if (lote.sombra) lote.sombra.geometry = geo;
+    if (velha && velha !== geo) velha.dispose();
   }
 
   function sincronizarLotes(grupos) {
@@ -319,7 +345,7 @@ export function criarVegetacaoBillboard3d() {
       const { largura, altura } = medidasDe(img, def.escala);
       lote.largura = largura;
       lote.altura = altura;
-      lote.pivotY = pivoDoProp(img, def.chave).y;
+      casarPivoLote(lote, img, def.chave);
       lote.itens = def.itens;
       lote.mesh.count = def.itens.length;
       lote.mesh.visible = def.itens.length > 0;
@@ -340,7 +366,7 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function pose(p, largura, altura, yaw, inclinacao, amostra) {
+  function pose(p, largura, altura, yaw, inclinacao, amostra, pivotY, dz, opacoY) {
     const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
     const roll = amostra ? amostra.roll : 0;
     const esmaga = amostra ? amostra.esmaga : 0;
@@ -353,14 +379,18 @@ export function criarVegetacaoBillboard3d() {
       yaw,
       inclinacao,
       roll,
+      pivotY,
+      opacoY,
+      dz,
+      elevado: true,
     });
   }
 
-  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora) {
+  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora, pivotY, dz, opacoY) {
     if (!mesh) return;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
-      pose(p, largura, altura, yaw, inclinacao, amostraSacudida(p, agora));
+      pose(p, largura, altura, yaw, inclinacao, amostraSacudida(p, agora), pivotY, dz, opacoY);
       mesh.setMatrixAt(i, dummy.matrix);
       mesh.setColorAt(i, corDe(p));
     }
@@ -374,7 +404,7 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function lembrar(p, itens, mesh, sombra, i, largura, altura) {
+  function lembrar(p, itens, mesh, sombra, i, largura, altura, pivotY, dz, opacoY) {
     let v = p._veg;
     if (!v) v = p._veg = { itens: null, mesh: null, sombra: null, i: -1, largura: 0, altura: 0, geracao: -1 };
     v.itens = itens;
@@ -383,6 +413,9 @@ export function criarVegetacaoBillboard3d() {
     v.i = i;
     v.largura = largura;
     v.altura = altura;
+    v.pivotY = pivotY;
+    v.opacoY = opacoY;
+    v.dz = dz;
     v.geracao = geracaoLote;
   }
 
@@ -394,13 +427,14 @@ export function criarVegetacaoBillboard3d() {
     }
     const sacode = temSacudida();
     for (const lote of lotes.values()) {
-      const { mesh, sombra, itens, largura, altura } = lote;
-      escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora);
-      escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora);
+      const { mesh, sombra, itens, largura, altura, pivotY, dz, opacoY } = lote;
+      const pe = Number.isFinite(opacoY) ? opacoY : 1;
+      escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora, pivotY, dz, pe);
+      escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora, pivotY, dz, pe);
       if (!sacode) continue;
       for (let i = 0; i < itens.length; i++) {
         const p = itens[i];
-        if (p._sacode) lembrar(p, itens, mesh, sombra, i, largura, altura);
+        if (p._sacode) lembrar(p, itens, mesh, sombra, i, largura, altura, pivotY, dz, pe);
       }
     }
   }
@@ -415,11 +449,12 @@ export function criarVegetacaoBillboard3d() {
   function aplicarVinculo(v, p, yaw, yawSol, inclinacao, amostra) {
     if (!v || v.geracao !== geracaoLote || v.i < 0 || !v.mesh || v.itens?.[v.i] !== p) return;
     if (p.fase === FASE.CAINDO || p.fase === FASE.REMOVIDO || p.oculto) return;
-    pose(p, v.largura, v.altura, yaw, inclinacao, amostra);
+    const pe = Number.isFinite(v.opacoY) ? v.opacoY : 1;
+    pose(p, v.largura, v.altura, yaw, inclinacao, amostra, v.pivotY, v.dz, pe);
     v.mesh.setMatrixAt(v.i, dummy.matrix);
     marcarSuja(v.mesh);
     if (!v.sombra) return;
-    pose(p, v.largura, v.altura, yawSol, 0, amostra);
+    pose(p, v.largura, v.altura, yawSol, 0, amostra, v.pivotY, v.dz, pe);
     v.sombra.setMatrixAt(v.i, dummy.matrix);
     marcarSuja(v.sombra);
   }

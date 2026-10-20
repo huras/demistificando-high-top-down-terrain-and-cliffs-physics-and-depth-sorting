@@ -1,9 +1,10 @@
 import * as THREE from "three";
 
 /**
- * Quad com o pé (pivô de base) na origem local.
- * pivotX/pivotY: fração a partir do canto superior esquerdo (igual a pivoPe).
- * Com largura/altura = 1, a escala da instância define o tamanho em células.
+ * Quad com o centro da base da arte na origem local.
+ * Em high top-down isso NÃO é o pixel de baixo — é o ponto da textura
+ * que representa o centro do contato com o chão (perspectiva da arte).
+ * pivotX/pivotY: fração a partir do canto superior esquerdo.
  */
 export function geometriaNoPe(pivotX, pivotY, largura = 1, altura = 1) {
   const px = Number.isFinite(pivotX) ? pivotX : 0.5;
@@ -16,7 +17,7 @@ export function geometriaNoPe(pivotX, pivotY, largura = 1, altura = 1) {
   return geo;
 }
 
-/** Bounding sphere centrada no pé, cobrindo o cartão inteiro (culling/instâncias). */
+/** Bounding sphere centrada no pivô, cobrindo o cartão inteiro. */
 export function ajustarEsferaNoPe(geo) {
   if (!geo) return geo;
   geo.computeBoundingSphere();
@@ -28,7 +29,7 @@ export function ajustarEsferaNoPe(geo) {
   return geo;
 }
 
-/** Altura local do centro visual (metade do cartão acima do pé), para gizmos/editor. */
+/** Altura local do centro visual (metade do cartão acima do pivô), gizmos. */
 export function centroVisualY(alturaCartao) {
   const h = Number(alturaCartao);
   return h > 0 ? h * 0.5 : 0;

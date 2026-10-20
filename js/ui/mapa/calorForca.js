@@ -1,6 +1,7 @@
 /**
- * Overlay de força selvagem no mapa M: bake 32×32, labels Lv, legenda.
+ * Overlay de força selvagem no mapa M: bake 32×32 só na ilha Kanto.
  */
+import { deLocalKanto, ORIGEM_KANTO_X, ORIGEM_KANTO_Y } from "../../mundo/bounds.js";
 import {
   AREA_KANTO,
   EXTENSAO_KANTO,
@@ -37,14 +38,14 @@ function garantirBake() {
   return bake;
 }
 
-/** Heat fill no espaço mundo (chamar dentro do transform de pintarMapa). */
+/** Heat fill no espaço mundo — só sobre a AABB de Kanto. */
 export function pintarCalorForcaMundo(ctx) {
   const img = garantirBake();
   if (!img) return;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha = 0.58;
-  ctx.drawImage(img, 0, 0, EXTENSAO_KANTO, EXTENSAO_KANTO);
+  ctx.drawImage(img, ORIGEM_KANTO_X, ORIGEM_KANTO_Y, EXTENSAO_KANTO, EXTENSAO_KANTO);
   ctx.restore();
 }
 
@@ -59,10 +60,10 @@ export function coletarLabelsCalor(nomes, vista, w, h, dpr, z) {
 
   const meioW = w / (2 * z);
   const meioH = h / (2 * z);
-  const x0 = vista.cx - meioW;
-  const y0 = vista.cy - meioH;
-  const x1 = vista.cx + meioW;
-  const y1 = vista.cy + meioH;
+  const x0 = vista.cx - meioW - ORIGEM_KANTO_X;
+  const y0 = vista.cy - meioH - ORIGEM_KANTO_Y;
+  const x1 = vista.cx + meioW - ORIGEM_KANTO_X;
+  const y1 = vista.cy + meioH - ORIGEM_KANTO_Y;
   const ax0 = Math.max(0, (x0 / AREA_KANTO) | 0);
   const ay0 = Math.max(0, (y0 / AREA_KANTO) | 0);
   const ax1 = Math.min(LADO_KANTO - 1, (x1 / AREA_KANTO) | 0);
@@ -77,10 +78,9 @@ export function coletarLabelsCalor(nomes, vista, w, h, dpr, z) {
       if (zona?.tipo === "cidade") continue;
       const faixa = faixaNivelArea(ax, ay);
       if (faixa.max <= 0) continue;
-      const wx = ax * AREA_KANTO + half;
-      const wy = ay * AREA_KANTO + half;
-      const sx = (wx - vista.cx) * z + w / 2;
-      const sy = (wy - vista.cy) * z + h / 2;
+      const p = deLocalKanto(ax * AREA_KANTO + half, ay * AREA_KANTO + half);
+      const sx = (p.x - vista.cx) * z + w / 2;
+      const sy = (p.y - vista.cy) * z + h / 2;
       if (sx < -40 || sy < -40 || sx > w + 40 || sy > h + 40) continue;
       const texto =
         faixa.min === faixa.max ? `Lv ${faixa.min}` : `Lv ${faixa.min}–${faixa.max}`;
@@ -103,7 +103,6 @@ export function pintarLegendaCalor(ctx, w, h, dpr) {
   const barW = 140 * dpr;
   const barH = 10 * dpr;
   const x = pad;
-  // Acima da dica CSS do mapa.
   const y = h - pad - barH - 52 * dpr;
 
   ctx.save();

@@ -2,10 +2,12 @@
  * Mapa de Kanto em tela cheia. M abre e fecha. Arraste, scroll e o zoom
  * trocam o quanto do ruído do terreno cabe na tela.
  */
-import { AREA_KANTO, CENTRO_AREA, EXTENSAO_KANTO, zonaNoMundo } from "../../mundo/regiao/grafoKanto.js";
+import { deLocalKanto } from "../../mundo/bounds.js";
+import { AREA_KANTO, CENTRO_AREA, zonaNoMundo } from "../../mundo/regiao/grafoKanto.js";
 import { estado } from "../../jogo/estado.js";
 import { comecarSubida, teleporteOcupado } from "../../jogo/teleporte.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
+import { LADO_MUNDO } from "./grade.js";
 import { tickIntimo } from "./intimo.js";
 import { cidadesDoMapa } from "./marcas.js";
 import { pintarMapa } from "./pintar.js";
@@ -15,6 +17,8 @@ const ZOOM_MAX = 8;
 let raiz = null;
 let tela = null;
 let titulo = null;
+let confirmEl = null;
+let confirmTxt = null;
 let aberto = false;
 let cx = 0;
 let cy = 0;
@@ -26,6 +30,7 @@ let dpr = 1;
 let jogadorX = 0;
 let jogadorY = 0;
 let viagem = null;
+let pendente = null;
 let calorForca = false;
 let botaoCalor = null;
 
@@ -50,15 +55,15 @@ function zoomMinimo() {
   if (!tela) return 0.12;
   const cssW = tela.width / dpr;
   const cssH = tela.height / dpr;
-  return (Math.min(cssW, cssH) / EXTENSAO_KANTO) * 0.92;
+  return (Math.min(cssW, cssH) / LADO_MUNDO) * 0.92;
 }
 
 function travar() {
   const m = 280;
   if (cx < -m) cx = -m;
-  else if (cx > EXTENSAO_KANTO + m) cx = EXTENSAO_KANTO + m;
+  else if (cx > LADO_MUNDO + m) cx = LADO_MUNDO + m;
   if (cy < -m) cy = -m;
-  else if (cy > EXTENSAO_KANTO + m) cy = EXTENSAO_KANTO + m;
+  else if (cy > LADO_MUNDO + m) cy = LADO_MUNDO + m;
 }
 
 function ajustarTela() {
@@ -112,16 +117,33 @@ function cidadeNoPonto(clientX, clientY) {
 }
 
 function apontarCidade(ev) {
-  if (!tela || viagem) return;
+  if (!tela || viagem || pendente) return;
   const cidade = cidadeNoPonto(ev.clientX, ev.clientY);
   const viaja = cidade && !mesmaCidade(cidade);
   tela.classList.toggle("mapa-mundo__tela--cidade", !!viaja);
 }
 
-function escolherCidade(ev) {
-  if (!aberto || viagem || teleporteOcupado()) return;
-  const cidade = cidadeNoPonto(ev.clientX, ev.clientY);
-  if (!cidade || mesmaCidade(cidade)) return;
+function mostrarConfirmacao(cidade) {
+  pendente = cidade;
+  if (confirmTxt) confirmTxt.textContent = `Teleportar para ${cidade.nome}?`;
+  if (confirmEl) confirmEl.hidden = false;
+  tela?.classList.remove("mapa-mundo__tela--cidade");
+}
+
+function ocultarConfirmacao() {
+  pendente = null;
+  if (confirmEl) confirmEl.hidden = true;
+  if (confirmTxt) confirmTxt.textContent = "";
+}
+
+export function cancelarConfirmacaoMapa() {
+  if (!pendente) return false;
+  ocultarConfirmacao();
+  return true;
+}
+
+function iniciarViagem(cidade) {
+  if (!cidade || viagem || teleporteOcupado()) return;
   ajustarTela();
   const cssW = tela.width / dpr;
   const cssH = tela.height / dpr;
@@ -130,7 +152,17 @@ function escolherCidade(ev) {
   arraste = null;
   tela.classList.remove("mapa-mundo__tela--arraste");
   tela.classList.remove("mapa-mundo__tela--cidade");
+  ocultarConfirmacao();
   viagem = { cidade, t: 0 };
+}
+
+function escolherCidade(ev) {
+  if (!aberto || viagem || pendente || teleporteOcupado()) return;
+  const cidade = cidadeNoPonto(ev.clientX, ev.clientY);
+  if (!cidade || mesmaCidade(cidade)) return;
+  arraste = null;
+  tela.classList.remove("mapa-mundo__tela--arraste");
+  mostrarConfirmacao(cidade);
 }
 
 export function zoomMapa(fator) {
@@ -144,8 +176,12 @@ export function zoomMapa(fator) {
 export function abrirMapa(x, y) {
   if (!raiz) return;
   if (estado.interior && Number.isFinite(estado.interior.ax)) {
-    x = estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5;
-    y = estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5;
+    const p = deLocalKanto(
+      estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5,
+      estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5,
+    );
+    x = p.x;
+    y = p.y;
   }
   cx = x;
   cy = y;
@@ -178,6 +214,7 @@ export function fecharMapa() {
   aberto = false;
   ancora = null;
   arraste = null;
+  ocultarConfirmacao();
   tela?.classList.remove("mapa-mundo__tela--arraste");
   tela?.classList.remove("mapa-mundo__tela--cidade");
   raiz.hidden = true;
@@ -188,6 +225,8 @@ export function ligarMapaMundo() {
   raiz = document.getElementById("mapa-mundo");
   tela = document.getElementById("mapa-mundo-tela");
   titulo = document.getElementById("mapa-mundo-titulo");
+  confirmEl = document.getElementById("mapa-mundo-confirm");
+  confirmTxt = document.getElementById("mapa-mundo-confirm-txt");
   botaoCalor = document.getElementById("mapa-calor-forca");
   if (!raiz || !tela) return;
   iniciarAtlas();
@@ -199,6 +238,16 @@ export function ligarMapaMundo() {
     calorForca = !calorForca;
     sincronizarBotaoCalor();
   });
+  document.getElementById("mapa-confirm-ir")?.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (pendente) iniciarViagem(pendente);
+  });
+  document.getElementById("mapa-confirm-nao")?.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    ocultarConfirmacao();
+  });
 
   tela.addEventListener("pointerdown", (ev) => {
     if (!aberto || viagem) return;
@@ -207,7 +256,7 @@ export function ligarMapaMundo() {
       escolherCidade(ev);
       return;
     }
-    if (ev.button !== 0) return;
+    if (ev.button !== 0 || pendente) return;
     tela.setPointerCapture(ev.pointerId);
     arraste = { x: ev.clientX, y: ev.clientY, cx, cy };
     ancora = null;
@@ -235,7 +284,7 @@ export function ligarMapaMundo() {
       if (!aberto) return;
       ev.preventDefault();
       ev.stopPropagation();
-      if (viagem) return;
+      if (viagem || pendente) return;
       const rect = tela.getBoundingClientRect();
       const fator = ev.deltaY < 0 ? 1.12 : 1 / 1.12;
       definirZoom(zoomAlvo * fator, ev.clientX - rect.left, ev.clientY - rect.top);
@@ -251,8 +300,12 @@ export function tickMapaMundo(px, py, dt = 1 / 60) {
   try {
   tickAtlas();
   if (estado.interior && Number.isFinite(estado.interior.ax)) {
-    px = estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5;
-    py = estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5;
+    const p = deLocalKanto(
+      estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5,
+      estado.interior.ay * AREA_KANTO + CENTRO_AREA + 0.5,
+    );
+    px = p.x;
+    py = p.y;
   }
   jogadorX = px;
   jogadorY = py;
@@ -302,12 +355,13 @@ export function tickMapaMundo(px, py, dt = 1 / 60) {
   });
   if (titulo) {
     const zona = zonaNoMundo(px, py);
-    const nome = zona?.nome || "Kanto";
+    const nome = zona?.nome || "Mundo";
     if (titulo.textContent !== nome) titulo.textContent = nome;
   }
   } catch (err) {
     console.error(err);
     viagem = null;
+    ocultarConfirmacao();
     aberto = false;
     if (raiz) raiz.hidden = true;
   }

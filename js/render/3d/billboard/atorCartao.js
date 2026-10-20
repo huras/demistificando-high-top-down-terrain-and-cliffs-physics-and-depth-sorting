@@ -70,5 +70,7 @@ export function poseAtorCartao(mesh, opts) {
     yaw: opts.yaw,
     inclinacao: opts.inclinacao,
     roll: opts.roll,
+    pivotY: opts.pivotY,
+    dz: opts.dz,
   });
 }

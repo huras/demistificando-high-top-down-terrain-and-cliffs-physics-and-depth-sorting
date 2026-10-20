@@ -12,8 +12,9 @@ export const BASE_CASA_X = 6;
 export const BASE_CASA_Y = 5;
 export const MIOL_X = BASE_CASA_X * ESCALA_SALA;
 export const MIOL_Y = BASE_CASA_Y * ESCALA_SALA;
-export const ORIGEM_SALA_X = 8192;
-export const ORIGEM_SALA_Y = 8192;
+/** Longe do overworld 8192² — nunca colide com o mapa. */
+export const ORIGEM_SALA_X = 100000;
+export const ORIGEM_SALA_Y = 100000;
 
 const MARGEM = 28;
 const ALTURA_PAREDE = 4;

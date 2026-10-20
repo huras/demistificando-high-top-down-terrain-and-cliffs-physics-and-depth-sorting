@@ -4,8 +4,8 @@
  */
 import { criarPlantaHub, aplicarPlantaNoChunk, naSaidaPlanta, alvoDaPlanta } from "./plantaHub.js";
 
-export const ORIGEM_CENTRO_X = 8192;
-export const ORIGEM_CENTRO_Y = 8704;
+export const ORIGEM_CENTRO_X = 100000;
+export const ORIGEM_CENTRO_Y = 100512;
 
 const CAMADA = Object.freeze([
   Object.freeze([7, 8, 66, 67, 9, 9, 9, 56, 57, 9, 10, 11, 12, 13]),

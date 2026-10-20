@@ -1,6 +1,7 @@
 import { AGENTE_DIST_PARAR, VELOCIDADE_SPRINT } from "../config.js";
 import { atualizarAgente, garantirCorpoLocomocao, resetarNav } from "../fisica/agente.js";
 import { alturaEm } from "../mundo/altura.js";
+import { deLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../mundo/regiao/kantoCidades.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
@@ -23,10 +24,7 @@ let cidadeDoAlvo = -1;
 let botao = null;
 
 function centro(cidade) {
-  return {
-    x: cidade.ax * AREA_KANTO + CENTRO_AREA,
-    y: cidade.ay * AREA_KANTO + CENTRO_AREA,
-  };
+  return deLocalKanto(cidade.ax * AREA_KANTO + CENTRO_AREA, cidade.ay * AREA_KANTO + CENTRO_AREA);
 }
 
 function escreverBotao() {

@@ -4,6 +4,7 @@
  * cachoeira (fluxo + malha) cobre o buraco.
  */
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
+import { paraLocalKanto } from "../bounds.js";
 import { indiceLocal, superficieLocal } from "../voxel/chunk.js";
 import { amostraBaseKanto } from "../regiao/amostraKanto.js";
 import { BLOCO, ehLiquido } from "../voxel/tiposBloco.js";
@@ -36,7 +37,8 @@ export function carimbarCorpos(chunk) {
       const wy = baseY + ly;
       const base = amostraBaseKanto(wx, wy);
       if (!base || base.reservado) continue;
-      amostraCorpo(wx, wy, base.h, HIT);
+      const local = paraLocalKanto(wx, wy);
+      amostraCorpo(local.x, local.y, base.h, HIT);
       if (!HIT.tem) continue;
       const fam = fluidoDe(HIT.fluido);
       if (!fam) {
@@ -84,7 +86,8 @@ function nivelVizinho(chunk, lx, ly, dx, dy, baseX, baseY) {
   const wy = baseY + ny;
   const b = amostraBaseKanto(wx, wy);
   if (!b) return 0;
-  amostraCorpo(wx, wy, b.h, HIT);
+  const local = paraLocalKanto(wx, wy);
+  amostraCorpo(local.x, local.y, b.h, HIT);
   if (HIT.tem) return (HIT.superficie | 0) || (b.h | 0);
   return b.h | 0;
 }

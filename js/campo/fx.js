@@ -210,6 +210,10 @@ export function criarFxCampo() {
         yaw,
         inclinacao,
         roll: curva * 1.15 * (prop.lado || 1),
+        pivotY: pivo.y,
+        opacoY: pivo.opacoY,
+        dz: pivo.dz || 0,
+        elevado: true,
       });
       const opaco = fade > 0.995;
       if (mat.userData.opaco !== opaco) {

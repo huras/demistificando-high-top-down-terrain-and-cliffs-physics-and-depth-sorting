@@ -3,6 +3,7 @@ import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { CHUNK_XZ, TILE } from "../../config.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
+import { deLocalKanto } from "../../mundo/bounds.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
@@ -409,8 +410,9 @@ function montarCidade(moldes, folhas, def, sprites, predios) {
   const layout = montarLayout(def);
   const grupo = new THREE.Group();
   grupo.name = `cidade-${def.key}`;
-  const ox = def.ax * AREA_KANTO;
-  const oy = def.ay * AREA_KANTO;
+  const origem = deLocalKanto(def.ax * AREA_KANTO, def.ay * AREA_KANTO);
+  const ox = origem.x;
+  const oy = origem.y;
   const volumes = layout.volumes;
   for (let i = 0; i < volumes.length; i++) {
     const v = volumes[i];

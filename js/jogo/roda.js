@@ -1,6 +1,7 @@
 /** Roda de itens: segurar 1–6 abre; soltar equipa o ícone sob o mouse. */
 
 import { teclaAgora, teclaBaixa } from "../entrada/teclado.js";
+import { alternarCampo } from "../pokemon/party.js";
 import { BOLAS, BERRIES, BLOCOS, FERRAMENTAS, REMEDIOS, TIPO_ITEM, slotDaTecla } from "../wild/catalogo.js";
 import { htmlIcone } from "./icones.js";
 import { atribuirSlot, alternarSlot, contar, estado, nomeDe } from "./estado.js";
@@ -26,6 +27,7 @@ let mira = 0;
 let ponteiro = null;
 let acumScroll = 0;
 let slotAlvo = 0;
+let comShift = false;
 
 function campoFocado() {
   const tag = document.activeElement?.tagName;
@@ -198,6 +200,7 @@ export function tickRoda() {
   if (campoFocado() || estado.painel || estado.dialogo || estado.construir || estado.craft) {
     if (aberta) fechar(false);
     tecla = "";
+    comShift = false;
     return;
   }
   if (aberta) {
@@ -206,29 +209,34 @@ export function tickRoda() {
     else if (teclaAgora("Escape")) {
       fechar(false);
       tecla = "";
+      comShift = false;
       return;
     }
   }
+  // Shift = sprint; não pode engolir o Digit. Toque com Shift troca a party;
+  // segurar (com ou sem Shift) abre a roda.
   let baixa = "";
-  const shift = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
-  if (!shift) {
-    for (let i = 0; i < TECLAS.length; i++) {
-      if (teclaBaixa(TECLAS[i])) {
-        baixa = TECLAS[i];
-        break;
-      }
+  for (let i = 0; i < TECLAS.length; i++) {
+    if (teclaBaixa(TECLAS[i])) {
+      baixa = TECLAS[i];
+      break;
     }
   }
+  const shift = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
   if (baixa && !tecla) {
     tecla = baixa;
     desde = performance.now();
     slotAlvo = slotDaTecla(baixa);
+    comShift = shift;
   } else if (!baixa && tecla) {
     const slot = slotAlvo;
+    const foiShift = comShift;
     tecla = "";
+    comShift = false;
     if (aberta) fechar(true);
+    else if (foiShift) alternarCampo(slot);
     else alternarSlot(slot);
-  } else if (baixa && !aberta && performance.now() - desde >= SEGURAR_MS) {
+  } else if (baixa && tecla && !aberta && performance.now() - desde >= SEGURAR_MS) {
     abrir(slotAlvo);
   }
 }

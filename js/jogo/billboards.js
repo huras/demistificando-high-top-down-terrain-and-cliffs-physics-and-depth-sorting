@@ -1,5 +1,6 @@
 /** Billboards de berry no outdoor. Não passam pelo atlas da vegetação. */
 
+import * as THREE from "three";
 import { ALTURA_BLOCO, BILLBOARD_INCLINACAO } from "../config.js";
 import { alturaEm } from "../mundo/altura.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";

@@ -307,6 +307,8 @@ function loteSprite(id, classe) {
     altura: (ph / TILE) * escala,
     pivotX: pivo.x,
     pivotY: pivo.y,
+    opacoY: Number.isFinite(pivo.opacoY) ? pivo.opacoY : 1,
+    dz: pivo.dz || 0,
   };
   materiaisSprite.set(id, lote);
   return lote;
@@ -358,6 +360,9 @@ function montarProps(bioma, alturas, seed) {
     mesh.userData.itens = grupo.itens;
     mesh.userData.largura = grupo.lote.largura;
     mesh.userData.altura = grupo.lote.altura;
+    mesh.userData.pivotY = grupo.lote.pivotY;
+    mesh.userData.opacoY = grupo.lote.opacoY;
+    mesh.userData.dz = grupo.lote.dz || 0;
     grupoProps.add(mesh);
   }
   propsSujos = true;
@@ -382,6 +387,10 @@ function escreverCartazes(yaw) {
         altura: altura * p.s,
         yaw,
         inclinacao: BILLBOARD_INCLINACAO,
+        pivotY: mesh.userData.pivotY,
+        opacoY: mesh.userData.opacoY,
+        dz: mesh.userData.dz || 0,
+        elevado: true,
       });
       mesh.setMatrixAt(i, dummy.matrix);
     }

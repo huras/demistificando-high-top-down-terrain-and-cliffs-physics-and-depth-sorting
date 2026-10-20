@@ -3,6 +3,7 @@
  * A busca fica na área atual e nas vizinhas. A histerese evita piscar na borda.
  */
 import { alturaEm } from "./altura.js";
+import { deLocalKanto, paraLocalKanto } from "./bounds.js";
 import { PROPS } from "./mapaDemo.js";
 import { ALTURA_PRACA } from "./regiao/amostraKanto.js";
 import { decoracaoDaCidade, decoracaoDasRotas } from "./regiao/decoracaoKanto.js";
@@ -54,10 +55,11 @@ function quadroDa(zona) {
   let quadro = quadros.get(zona.id);
   if (quadro) return quadro;
   const decor = decoracaoDaCidade(zona.layout);
+  const pos = deLocalKanto(zona.ax * AREA_KANTO + decor.quadro.x, zona.ay * AREA_KANTO + decor.quadro.y);
   quadro = {
     id: `quadro:${zona.id}`,
-    x: zona.ax * AREA_KANTO + decor.quadro.x,
-    y: zona.ay * AREA_KANTO + decor.quadro.y,
+    x: pos.x,
+    y: pos.y,
     z: ALTURA_PRACA,
     nome: zona.nome,
     linhas: [`Quadro de avisos de ${zona.nome}.`],
@@ -120,8 +122,9 @@ export function placaPerto(x, y, zFallback = 0) {
   busca.manteve = null;
   busca.manteveD = Infinity;
 
-  const ax = (x / AREA_KANTO) | 0;
-  const ay = (y / AREA_KANTO) | 0;
+  const local = paraLocalKanto(x, y);
+  const ax = (local.x / AREA_KANTO) | 0;
+  const ay = (local.y / AREA_KANTO) | 0;
   const mapa = indiceRotas();
   for (let dy = -1; dy <= 1; dy++) {
     const cy = ay + dy;

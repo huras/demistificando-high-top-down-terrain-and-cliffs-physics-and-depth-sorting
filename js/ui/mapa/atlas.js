@@ -1,12 +1,15 @@
 /**
  * Carrega o terreno assado. A visão cobre o minimapa e o zoom aberto;
  * os tiles de perto entram só quando o mapa grande aproxima.
+ * O manifesto valida semente/lado no boot.
  */
 import {
   GRADE_TILE,
+  LADO_MUNDO,
   LADO_TILE,
   LADO_TILE_MUNDO,
   PASTA_MAPA,
+  SEMENTE_MAPA,
   ZOOM_TILE,
 } from "./grade.js";
 
@@ -15,6 +18,7 @@ const VOOS = 2;
 
 let visao = null;
 let visaoPedida = false;
+let manifestoOk = false;
 
 /** @type {Map<string, object>} */
 const tiles = new Map();
@@ -35,15 +39,41 @@ function carregar(url) {
   }).then((blob) => createImageBitmap(blob));
 }
 
+function validarManifesto(meta) {
+  if (!meta || typeof meta !== "object") throw new Error("manifesto inválido");
+  if ((meta.ladoMundo | 0) !== LADO_MUNDO) {
+    throw new Error(`manifesto ladoMundo=${meta.ladoMundo} ≠ ${LADO_MUNDO}`);
+  }
+  if ((meta.semente | 0) !== SEMENTE_MAPA) {
+    console.warn(`Mapa semente ${meta.semente} ≠ runtime ${SEMENTE_MAPA}`);
+  }
+  if ((meta.grade | 0) !== GRADE_TILE) {
+    throw new Error(`manifesto grade=${meta.grade} ≠ ${GRADE_TILE}`);
+  }
+  manifestoOk = true;
+}
+
 export function iniciarAtlas() {
   if (visaoPedida) return;
   visaoPedida = true;
-  const url = `${PASTA_MAPA}/visao.png`;
-  carregar(url)
-    .then((bmp) => {
-      visao = bmp;
+  const metaUrl = `${PASTA_MAPA}/manifesto.json`;
+  fetch(metaUrl, { cache: "no-store" })
+    .then((res) => {
+      if (!res.ok) throw new Error(metaUrl);
+      return res.json();
     })
-    .catch((err) => avisar(url, err));
+    .then((meta) => {
+      validarManifesto(meta);
+      const url = `${PASTA_MAPA}/visao.png`;
+      return carregar(url).then((bmp) => {
+        visao = bmp;
+      });
+    })
+    .catch((err) => avisar(metaUrl, err));
+}
+
+export function manifestoPronto() {
+  return manifestoOk;
 }
 
 export function tickAtlas() {}

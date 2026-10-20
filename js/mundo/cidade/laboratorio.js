@@ -10,8 +10,8 @@ import { BLOCO } from "../voxel/tiposBloco.js";
 
 export const COLS_LAB = 54;
 export const ROWS_LAB = 36;
-export const ORIGEM_LAB_X = 8704;
-export const ORIGEM_LAB_Y = 8192;
+export const ORIGEM_LAB_X = 100512;
+export const ORIGEM_LAB_Y = 100000;
 export const ALTURA_PAREDE_LAB = 4;
 
 const MARGEM = 12;

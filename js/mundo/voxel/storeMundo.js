@@ -7,6 +7,7 @@ import {
   SEED_MUNDO,
   USAR_PATCH_DEMO,
 } from "../../config.js";
+import { chunkDentroDoMundo } from "../bounds.js";
 import { aplicarPatchDemo, ALTURAS } from "../regioes/mapaDemoPatch.js";
 import {
   baseTopoLocal,
@@ -90,6 +91,7 @@ function publicarChunkCarregado(chunk) {
 }
 
 export function carregarChunk(cx, cy) {
+  if (!chunkDentroDoMundo(cx, cy, CHUNK_XZ)) return null;
   const k = chaveChunk(cx, cy);
   let chunk = chunks.get(k);
   if (chunk) return chunk;
@@ -283,7 +285,10 @@ function discoStream(pcx, pcy, raio) {
   for (let dy = -raio; dy <= raio; dy++) {
     for (let dx = -raio; dx <= raio; dx++) {
       if (dx * dx + dy * dy > raio * raio + 1) continue;
-      lista.push({ cx: pcx + dx, cy: pcy + dy, d: dx * dx + dy * dy });
+      const cx = pcx + dx;
+      const cy = pcy + dy;
+      if (!chunkDentroDoMundo(cx, cy, CHUNK_XZ)) continue;
+      lista.push({ cx, cy, d: dx * dx + dy * dy });
     }
   }
   lista.sort((a, b) => a.d - b.d);

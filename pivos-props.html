@@ -18,7 +18,7 @@
 <body>
   <header class="topo">
     <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
-    <h1>Pivô de base — props</h1>
+    <h1>Pivô de base — props (high top-down)</h1>
     <p class="topo__nota" id="status">Carregando…</p>
     <button type="button" id="salvar">Salvar</button>
   </header>
@@ -30,16 +30,39 @@
         <input id="busca" type="search" placeholder="Nome ou classe" />
         <ul class="lista lista--alta" id="lista"></ul>
       </section>
-      <section>
-        <h2>Pivô</h2>
-        <p class="coords" id="coords">dx 0    dy 0</p>
-        <p class="nota">Arraste o desenho para pôr o pé na cruz. A cruz é a base do billboard no chão. O preview 3D mostra o tilt sem enterrar.</p>
+      <section class="painel-pivo">
+        <h2>Centro da base na arte</h2>
+        <p class="nota">A cruz marca o centro do chão <em>na pintura</em> (high top-down ≠ pixel de baixo).</p>
+        <label class="campo">
+          <span class="campo__topo">dx (px) <strong id="dx-valor">0</strong></span>
+          <input id="dx-range" type="range" min="-128" max="128" step="1" value="0" />
+          <input id="dx-num" type="number" min="-256" max="256" step="1" value="0" />
+        </label>
+        <label class="campo">
+          <span class="campo__topo">dy (px) <strong id="dy-valor">0</strong></span>
+          <input id="dy-range" type="range" min="-128" max="128" step="1" value="0" />
+          <input id="dy-num" type="number" min="-256" max="256" step="1" value="0" />
+        </label>
+        <h2>DZ — offset da rotação</h2>
+        <p class="nota">Empurra o cartão pra frente no eixo do billboard. O pivô elevado (linha azul) fica projetado acima do centro mundo.</p>
+        <label class="campo">
+          <span class="campo__topo">dz (células) <strong id="dz-valor">0.00</strong></span>
+          <input id="dz-range" type="range" min="0" max="2" step="0.01" value="0" />
+          <input id="dz-num" type="number" min="-4" max="4" step="0.01" value="0" />
+        </label>
+        <p class="coords" id="coords">dx 0 · dy 0 · dz 0</p>
         <button type="button" id="resetar">Resetar (scan)</button>
       </section>
     </aside>
     <div class="palco palco--duplo">
-      <canvas id="vista"></canvas>
-      <canvas id="vista3d"></canvas>
+      <div class="palco__painel">
+        <span class="palco__tag">2D — centro na arte</span>
+        <canvas id="vista"></canvas>
+      </div>
+      <div class="palco__painel">
+        <span class="palco__tag">3D — billboard fixo · órbita livre</span>
+        <canvas id="vista3d"></canvas>
+      </div>
     </div>
   </div>
   <script type="module" src="js/pivos/editorProps.js"></script>

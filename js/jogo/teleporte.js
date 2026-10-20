@@ -1,8 +1,9 @@
 /**
- * Relógio da viagem entre cidades. A câmera afasta, o grupo some,
- * pousa na praça e a câmera volta.
+ * Relógio da viagem entre cidades. A câmera aproxima, o grupo some,
+ * pousa na praça e a câmera afasta de volta.
  */
-import { ZOOM_MIN } from "../config.js";
+import { ZOOM_MAX, ZOOM_MIN } from "../config.js";
+import { deLocalKanto } from "../mundo/bounds.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
 import { atualizarStreaming } from "../mundo/voxel/storeMundo.js";
@@ -62,9 +63,10 @@ export function pecasContagem() {
 
 export function comecarSubida(cidade) {
   if (fase !== "ocioso" || !cidade) return;
+  const p = deLocalKanto(cidade.ax * AREA_KANTO + CENTRO_AREA + 0.5, cidade.ay * AREA_KANTO + CENTRO_AREA + 0.5);
   destino = {
-    x: cidade.ax * AREA_KANTO + CENTRO_AREA + 0.5,
-    y: cidade.ay * AREA_KANTO + CENTRO_AREA + 0.5,
+    x: p.x,
+    y: p.y,
     z: ALTURA_PRACA,
   };
   ancoras = null;
@@ -202,13 +204,14 @@ function montarPecas(origens, u, subindo) {
 
 function aplicarCamera(ctx, extra) {
   if (ctx.camera3d) {
-    ctx.camera3d.folgaTeleporte = extra;
-    ctx.camera3d.folgaDist = extra * FOLGA_DIST;
-    ctx.camera3d.folgaPitch = extra * 0.38;
+    // Negativo aproxima na saída e afasta na chegada (extra 0→1→0).
+    ctx.camera3d.folgaTeleporte = -extra;
+    ctx.camera3d.folgaDist = -extra * FOLGA_DIST;
+    ctx.camera3d.folgaPitch = -extra * 0.38;
   }
   if (ctx.modo === "2d" && ctx.camera) {
     if (zoomBase == null) zoomBase = ctx.camera.zoom;
-    const alvo = Math.max(ZOOM_MIN, zoomBase * 0.62);
+    const alvo = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomBase * 1.55));
     ctx.camera.zoom = zoomBase + (alvo - zoomBase) * extra;
   }
 }

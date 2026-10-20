@@ -3,7 +3,44 @@
  * que o mundo usa o frame inteiro. A costa sai de um campo de distância
  * da grade de relevo, perturbado pelo mesmo fbm.
  */
-import { vegetacaoNoPonto } from "../../mundo/bioma/detalhe.js";
+import {
+  alturaDoRelevo,
+  biomaDominante,
+  nivelMarBlocos,
+  pesoCosturaRelevo,
+} from "../../mundo/bioma/catalogo.js";
+import { plantaNoBioma, vegetacaoNoPonto } from "../../mundo/bioma/detalhe.js";
+import { obterKit } from "../../mundo/bioma/kits.js";
+import {
+  deLocalKanto,
+  dentroDoMundo,
+  paraLocalKanto,
+} from "../../mundo/bounds.js";
+import { amostraCorpo } from "../../mundo/agua/corpos.js";
+import { fluidoDe } from "../../mundo/agua/fluidos.js";
+import { BIOMA_KANTO, alturaBaseKanto, amostraKanto } from "../../mundo/regiao/amostraKanto.js";
+import { parBiomaKanto } from "../../mundo/regiao/biomasKanto.js";
+import { aplicarDetalheBioma } from "../../mundo/regiao/detalheRelevo.js";
+import {
+  AREA_KANTO,
+  CENTRO_AREA,
+  EXTENSAO_KANTO,
+  LADO_KANTO,
+  SAIDA_LESTE,
+  SAIDA_NORTE,
+  SAIDA_OESTE,
+  SAIDA_SUL,
+  zonaEm,
+} from "../../mundo/regiao/grafoKanto.js";
+import {
+  RELEVO_FUNDO,
+  RELEVO_MONTANHA,
+  RELEVO_RASO,
+  RELEVO_TERRA,
+  relevoEm,
+} from "../../mundo/regiao/kantoRelevo.js";
+import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "../../mundo/regiao/volumesCidade.js";
+import { fbm2 } from "../../mundo/voxel/ruido.js";
 import {
   COPA,
   FORCA_COPA,
@@ -15,32 +52,6 @@ import {
   MOTE_GRAMA,
   empacotarVeg,
 } from "./coresVeg.js";
-import { obterKit } from "../../mundo/bioma/kits.js";
-import { BIOMA_KANTO } from "../../mundo/regiao/amostraKanto.js";
-import { parBiomaKanto } from "../../mundo/regiao/biomasKanto.js";
-import {
-  AREA_KANTO,
-  CENTRO_AREA,
-  EXTENSAO_KANTO,
-  LADO_KANTO,
-  SAIDA_LESTE,
-  SAIDA_NORTE,
-  SAIDA_OESTE,
-  SAIDA_SUL,
-  zonaNoMundo,
-} from "../../mundo/regiao/grafoKanto.js";
-import {
-  RELEVO_FUNDO,
-  RELEVO_MONTANHA,
-  RELEVO_RASO,
-  RELEVO_TERRA,
-  relevoEm,
-} from "../../mundo/regiao/kantoRelevo.js";
-import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "../../mundo/regiao/volumesCidade.js";
-import { amostraCorpo } from "../../mundo/agua/corpos.js";
-import { fluidoDe } from "../../mundo/agua/fluidos.js";
-import { alturaBaseKanto } from "../../mundo/regiao/amostraKanto.js";
-import { fbm2 } from "../../mundo/voxel/ruido.js";
 
 const COTA_CIDADE = 16;
 const COTA_MONTANHA = 34;
@@ -352,22 +363,26 @@ function aplicarVeg(rgb, bioma, limpo, x, y, comMote) {
   return cor;
 }
 
-function lerPonto(wx, wy) {
+/** x,y em coords locais da ilha. */
+function lerPontoLocal(wx, wy) {
   prepararMapa();
   const x = Math.max(0, Math.min(EXTENSAO_KANTO - 0.01, wx));
   const y = Math.max(0, Math.min(EXTENSAO_KANTO - 0.01, wy));
-  const zona = zonaNoMundo(x, y);
   const ax = (x / AREA_KANTO) | 0;
   const ay = (y / AREA_KANTO) | 0;
+  const zona = zonaEm(ax, ay);
   const lx = x - ax * AREA_KANTO;
   const ly = y - ay * AREA_KANTO;
   const perfil = perfilEm(x, y);
   const rua = ehRua(lx, ly, zona);
   const predio = !!(zona?.tipo === "cidade" && zona.layout && !rua && predioNoLayout(lx, ly, zona.layout));
   const entrada = !!(zona?.tipo === "cidade" && zona.layout && naEntradaDoLab(lx, ly, zona.layout));
-  const h = alturaEm(x, y, lx, ly, zona, perfil, rua || predio);
+  const noFp = !!(zona?.tipo === "cidade" && zona.layout && noFootprint(lx, ly, zona.layout));
+  let h = alturaEm(x, y, lx, ly, zona, perfil, rua || predio);
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
   const par = parBiomaKanto(x, y, perfil.u, perfil.dentro, floresta, predio, rua);
+  const travado = !!(rua || predio || zona?.agua || noFp);
+  h = aplicarDetalheBioma(h, x, y, par, perfil.u, travado);
   const bioma = par.bioma;
   const limpo =
     rua ||
@@ -378,9 +393,10 @@ function lerPonto(wx, wy) {
   return { x, y, h, u: perfil.u, par, bioma, limpo, rua, predio };
 }
 
-function aplicarCorpo(ponto, rgb) {
+function aplicarCorpoLocal(ponto, rgb) {
   if (ponto.rua || ponto.predio) return { h: ponto.h, u: ponto.u, rgb };
-  const baseH = alturaBaseKanto(ponto.x, ponto.y);
+  const mundo = deLocalKanto(ponto.x, ponto.y);
+  const baseH = alturaBaseKanto(mundo.x, mundo.y);
   amostraCorpo(ponto.x, ponto.y, baseH, CORPO);
   if (!CORPO.tem) return { h: ponto.h, u: ponto.u, rgb };
   if (CORPO.sobe) {
@@ -399,11 +415,19 @@ function aplicarCorpo(ponto, rgb) {
   return { h, u: ponto.u, rgb };
 }
 
-/** Preenche `saida` com altura, costa e cor. `comMote` liga o pontilhado do zoom perto. */
-export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
-  const ponto = lerPonto(wx, wy);
+function pintarKanto(wx, wy, comMote, saida) {
+  const nivel = nivelMarBlocos();
+  // Altura do mundo (amostraKanto) manda no mar — lerPontoLocal às vezes
+  // sobe a cota com detalhe/costa e pinta terra fantasma no zoom longe.
+  const mundo = amostraKanto(wx, wy);
+  if (mundo && mundo.h < nivel) return pintarAgua(mundo.h, nivel, saida);
+
+  const local = paraLocalKanto(wx, wy);
+  const ponto = lerPontoLocal(local.x, local.y);
+  if (ponto.h < nivel) return pintarAgua(ponto.h, nivel, saida);
   const base = aplicarVeg(corDoPar(ponto.par, ponto.u), ponto.bioma, ponto.limpo, ponto.x, ponto.y, comMote);
-  const corpo = aplicarCorpo(ponto, base);
+  const corpo = aplicarCorpoLocal(ponto, base);
+  if (corpo.h < nivel) return pintarAgua(corpo.h, nivel, saida);
   saida.h = corpo.h;
   saida.u = corpo.u;
   saida.r = corpo.rgb[0];
@@ -412,14 +436,112 @@ export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
   return saida;
 }
 
+function pintarProcedural(wx, wy, comMote, saida) {
+  const h = alturaDoRelevo(wx, wy);
+  const bioma = biomaDominante(wx, wy);
+  const nivel = nivelMarBlocos();
+  const u = h < nivel ? Math.max(0.05, (h / nivel) * 0.45) : 1;
+  let rgb = rgbDe(bioma?.cor || "#3a7a4a");
+  if (h < nivel) {
+    const t = Math.max(0, Math.min(1, h / nivel));
+    rgb = misturar(AGUA_FUNDO, AGUA_RASO, t);
+  } else {
+    const limpo = bioma?.superficie === "pedra" || bioma?.camada === "mar";
+    const planta = limpo ? null : plantaNoBioma(bioma, wx, wy);
+    rgb = aplicarVeg(rgb, bioma, limpo || !planta, wx, wy, comMote);
+  }
+  saida.h = h;
+  saida.u = u;
+  saida.r = rgb[0] | 0;
+  saida.g = rgb[1] | 0;
+  saida.b = rgb[2] | 0;
+  return saida;
+}
+
+const TMP_A = { h: 0, u: 0, r: 0, g: 0, b: 0 };
+const TMP_B = { h: 0, u: 0, r: 0, g: 0, b: 0 };
+
+function pintarAgua(h, nivel, saida) {
+  const th = Math.max(0, Math.min(1, h / nivel));
+  const rgb = misturar(AGUA_FUNDO, AGUA_RASO, th);
+  saida.h = Math.min(h, nivel - 1);
+  saida.u = Math.max(0.05, th * 0.45);
+  saida.r = rgb[0] | 0;
+  saida.g = rgb[1] | 0;
+  saida.b = rgb[2] | 0;
+  return saida;
+}
+
+/** Preenche `saida` com altura, costa e cor. `comMote` liga o pontilhado do zoom perto. */
+export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
+  if (!dentroDoMundo(wx, wy)) {
+    saida.h = 4;
+    saida.u = 0.1;
+    saida.r = AGUA_FUNDO[0];
+    saida.g = AGUA_FUNDO[1];
+    saida.b = AGUA_FUNDO[2];
+    return saida;
+  }
+  const nivel = nivelMarBlocos();
+  const t = pesoCosturaRelevo(wx, wy);
+  if (t <= 0) return pintarKanto(wx, wy, comMote, saida);
+  if (t >= 1) {
+    pintarProcedural(wx, wy, comMote, saida);
+    // Dentro do oceano authored: sem ilha fantasma no zoom longe.
+    const hK = amostraKanto(wx, wy)?.h;
+    if (Number.isFinite(hK) && hK < nivel) return pintarAgua(Math.min(saida.h, nivel - 1), nivel, saida);
+    return saida;
+  }
+  pintarKanto(wx, wy, comMote, TMP_A);
+  pintarProcedural(wx, wy, comMote, TMP_B);
+  const u = 1 - t;
+  saida.h = Math.round(TMP_A.h * u + TMP_B.h * t);
+  saida.u = TMP_A.u * u + TMP_B.u * t;
+  if (TMP_A.h < nivel) {
+    // Oceano de Kanto: só mistura profundidade/cor de água (nunca terra procedural).
+    const hAgua = Math.min(saida.h, nivel - 1);
+    if (TMP_B.h < nivel) {
+      saida.h = hAgua;
+      saida.r = (TMP_A.r * u + TMP_B.r * t) | 0;
+      saida.g = (TMP_A.g * u + TMP_B.g * t) | 0;
+      saida.b = (TMP_A.b * u + TMP_B.b * t) | 0;
+      saida.u = Math.max(0.05, (hAgua / nivel) * 0.45);
+      return saida;
+    }
+    return pintarAgua(hAgua, nivel, saida);
+  }
+  saida.r = (TMP_A.r * u + TMP_B.r * t) | 0;
+  saida.g = (TMP_A.g * u + TMP_B.g * t) | 0;
+  saida.b = (TMP_A.b * u + TMP_B.b * t) | 0;
+  return saida;
+}
+
 /** Um byte por bloco para o zoom íntimo. Rua, prédio e água ficam zerados. */
 export function byteNoPonto(wx, wy) {
-  const ponto = lerPonto(wx, wy);
-  amostraCorpo(ponto.x, ponto.y, alturaBaseKanto(ponto.x, ponto.y), CORPO);
-  if (CORPO.tem && CORPO.fluido && !ponto.rua && !ponto.predio) return 0;
-  if (ponto.limpo) return 0;
-  const kit = obterKit(ponto.bioma?.kit);
-  const veg = vegetacaoNoPonto(ponto.x, ponto.y, true);
+  if (!dentroDoMundo(wx, wy)) return 0;
+  const t = pesoCosturaRelevo(wx, wy);
+  if (t < 0.55) {
+    const local = paraLocalKanto(wx, wy);
+    const ponto = lerPontoLocal(local.x, local.y);
+    const mundo = deLocalKanto(ponto.x, ponto.y);
+    amostraCorpo(ponto.x, ponto.y, alturaBaseKanto(mundo.x, mundo.y), CORPO);
+    if (CORPO.tem && CORPO.fluido && !ponto.rua && !ponto.predio) return 0;
+    if (ponto.limpo) return 0;
+    const kit = obterKit(ponto.bioma?.kit);
+    const veg = vegetacaoNoPonto(ponto.x, ponto.y, true);
+    const podeArvore = !!kit?.arvore?.length;
+    const podeGrama = !!kit?.grama?.length;
+    let mote = 0;
+    if (podeArvore && veg.mote === 2) mote = 2;
+    else if (podeGrama && veg.mote === 1) mote = 1;
+    return empacotarVeg(podeGrama ? veg.grama : 0, podeArvore ? veg.arvore : 0, mote);
+  }
+  const bioma = biomaDominante(wx, wy);
+  const h = alturaDoRelevo(wx, wy);
+  if (h < nivelMarBlocos()) return 0;
+  if (bioma?.superficie === "pedra" || bioma?.camada === "mar") return 0;
+  const kit = obterKit(bioma?.kit);
+  const veg = vegetacaoNoPonto(wx, wy, true);
   const podeArvore = !!kit?.arvore?.length;
   const podeGrama = !!kit?.grama?.length;
   let mote = 0;

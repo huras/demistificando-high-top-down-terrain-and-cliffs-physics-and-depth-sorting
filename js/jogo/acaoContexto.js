@@ -6,6 +6,7 @@
 import { encontrarFacePerto } from "../mundo/facesCliff.js";
 import { ORIGEM_LAB_X, ORIGEM_LAB_Y } from "../mundo/cidade/laboratorio.js";
 import { placaPerto } from "../mundo/placas.js";
+import { paraLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { predioNoLayout } from "../mundo/regiao/volumesCidade.js";
 import { ancoraDoHub } from "./hub.js";
@@ -19,7 +20,8 @@ function faceDePredio(face) {
   const y = face.cy + 0.5;
   const zona = zonaNoMundo(x, y);
   if (!zona || zona.tipo !== "cidade" || !zona.layout) return false;
-  return !!predioNoLayout(x - zona.ax * AREA_KANTO, y - zona.ay * AREA_KANTO, zona.layout);
+  const local = paraLocalKanto(x, y);
+  return !!predioNoLayout(local.x - zona.ax * AREA_KANTO, local.y - zona.ay * AREA_KANTO, zona.layout);
 }
 
 function faceAgora(corpo) {

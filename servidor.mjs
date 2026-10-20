@@ -558,19 +558,26 @@ function validarPivosProps(obj) {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
       throw new Error(`${id} sem ajuste`);
     }
+    let dz = Number(item.dz);
+    if (!Number.isFinite(dz)) dz = 0;
+    if (Math.abs(dz) > 4) throw new Error(`${id} dz fora`);
+    dz = Math.round(dz * 100) / 100;
+
     if (Number.isFinite(Number(item.pivotX)) || Number.isFinite(Number(item.pivotY))) {
       const px = Number(item.pivotX);
       const py = Number(item.pivotY);
       if (!Number.isFinite(px) || !Number.isFinite(py)) throw new Error(`${id} pivot incompleto`);
       if (px < 0 || px > 1 || py < 0 || py > 1) throw new Error(`${id} pivot fora`);
-      obj[id] = { pivotX: px, pivotY: py };
+      obj[id] = dz ? { pivotX: px, pivotY: py, dz } : { pivotX: px, pivotY: py };
       continue;
     }
     const dx = Number(item.dx);
     const dy = Number(item.dy);
     if (!Number.isFinite(dx) || !Number.isFinite(dy)) throw new Error(`${id} sem dx/dy`);
     if (Math.abs(dx) > 256 || Math.abs(dy) > 256) throw new Error(`${id} pivô fora`);
-    obj[id] = { dx, dy };
+    const out = { dx, dy };
+    if (dz) out.dz = dz;
+    obj[id] = out;
   }
 }
 

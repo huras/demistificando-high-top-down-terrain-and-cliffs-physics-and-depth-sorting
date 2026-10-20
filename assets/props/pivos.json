@@ -1,1 +1,794 @@
-{}
+{
+  "tree-c": {
+    "dx": 0,
+    "dy": -4
+  },
+  "broadleaf": {
+    "dx": 0,
+    "dy": -4
+  },
+  "broadleaf-alt": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-broadleaf": {
+    "dx": 0,
+    "dy": -4
+  },
+  "japanese": {
+    "dx": 0,
+    "dy": -4
+  },
+  "pine": {
+    "dx": 0,
+    "dy": -4
+  },
+  "palm": {
+    "dx": 0,
+    "dy": -4
+  },
+  "fat-palm": {
+    "dx": 0,
+    "dy": -4
+  },
+  "palm-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "palm-tree-with-coconuts": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-palm-with-coconuts": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-palm-with-bananas": {
+    "dx": 0,
+    "dy": -4
+  },
+  "cactus": {
+    "dx": 0,
+    "dy": -4
+  },
+  "savannah": {
+    "dx": 0,
+    "dy": -4
+  },
+  "autumn-orange": {
+    "dx": 0,
+    "dy": -4
+  },
+  "autumn-yellow": {
+    "dx": 0,
+    "dy": -4
+  },
+  "autumn-red": {
+    "dx": 0,
+    "dy": -4
+  },
+  "pine-snow": {
+    "dx": 0,
+    "dy": -4
+  },
+  "broadleaf-snow": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-dark-green": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-water-green": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-water-green-w-snow": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-light-green": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-light-green-w-snow": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-autum-yellow": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-autumn-red": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-pink-cherry": {
+    "dx": 0,
+    "dy": -4
+  },
+  "honey-pine-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "honey-round-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "honey-bushy-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "bush-a-with-fruits": {
+    "dx": 0,
+    "dy": -4
+  },
+  "bush-a-without-fruits": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-full-snow": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-tree-leafless": {
+    "dx": 0,
+    "dy": -4
+  },
+  "wide-tree-dark-green": {
+    "dx": 0,
+    "dy": -4
+  },
+  "wide-tree-dark-green-a": {
+    "dx": 0,
+    "dy": -4
+  },
+  "coconut-tree-left": {
+    "dx": 0,
+    "dy": -4
+  },
+  "coconut-tree-right": {
+    "dx": 0,
+    "dy": -4
+  },
+  "desert-palm-to-left": {
+    "dx": 0,
+    "dy": -4
+  },
+  "desert-palm-to-right": {
+    "dx": 0,
+    "dy": -4
+  },
+  "round-small-cactus": {
+    "dx": 0,
+    "dy": -4
+  },
+  "round-small-cactus-2": {
+    "dx": 0,
+    "dy": -4
+  },
+  "round-small-cactus-3": {
+    "dx": 0,
+    "dy": -4
+  },
+  "round-small-cactus-4": {
+    "dx": 0,
+    "dy": -4
+  },
+  "dried-volcanic-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "gen2-broadleaf-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "gen2-pine-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "gen2-small-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "gen2-sapling-tree": {
+    "dx": 0,
+    "dy": -4
+  },
+  "stone-rock-a": {
+    "dx": 0,
+    "dy": -4
+  },
+  "stone-rock-b": {
+    "dx": 0,
+    "dy": -4
+  },
+  "stone-rock-c": {
+    "dx": 0,
+    "dy": -4
+  },
+  "stone-rock-d": {
+    "dx": 0,
+    "dy": -4
+  },
+  "stone-rock-e": {
+    "dx": 0,
+    "dy": -4
+  },
+  "brown-rock-a": {
+    "dx": 0,
+    "dy": -4
+  },
+  "brown-rock-b": {
+    "dx": 0,
+    "dy": -4
+  },
+  "brown-rock-c": {
+    "dx": 0,
+    "dy": -4
+  },
+  "brown-rock-d": {
+    "dx": 0,
+    "dy": -4
+  },
+  "brown-rock-e": {
+    "dx": 0,
+    "dy": -4
+  },
+  "mushroom-1": {
+    "dx": 0,
+    "dy": -4
+  },
+  "dirt-rock-a": {
+    "dx": 0,
+    "dy": -4
+  },
+  "dirt-rock-b": {
+    "dx": 0,
+    "dy": -4
+  },
+  "dirt-rock-c": {
+    "dx": 0,
+    "dy": -4
+  },
+  "dirt-rock-d": {
+    "dx": 0,
+    "dy": -4
+  },
+  "dirt-rock-k": {
+    "dx": 0,
+    "dy": -4
+  },
+  "dirt-rock-m": {
+    "dx": 0,
+    "dy": -4
+  },
+  "big-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "big-mossy-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "ice-small-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-black-meteorite": {
+    "dx": 0,
+    "dy": -4
+  },
+  "red-mushroom-b": {
+    "dx": 0,
+    "dy": -4
+  },
+  "yellow-mushroom-a": {
+    "dx": 0,
+    "dy": -4
+  },
+  "earth-small-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "earth-long-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "earth-big-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-volcanic-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "volcanic-tall-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "volcanic-rock-with-fume-holes": {
+    "dx": 0,
+    "dy": -4
+  },
+  "gen2-dirt-rock": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-blue-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-red-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-yellow-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-purple-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-light-blue-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "light-blue-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-light-blue-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-blue-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-red-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-red-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-yellow-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-yellow-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-purple-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-purple-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-green-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-green-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-green-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "small-pink-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "tall-pink-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "large-pink-crystal": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:aguav:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:aguav:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:aguav:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:aspear:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:aspear:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:aspear:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:belue:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:belue:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:belue:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:bluk:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:bluk:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:bluk:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:cheri:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:cheri:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:cheri:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:chesto:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:chesto:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:chesto:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:cornn:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:cornn:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:cornn:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:durin:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:durin:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:durin:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:figy:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:figy:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:figy:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:grepa:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:grepa:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:grepa:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:hondew:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:hondew:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:hondew:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:iapapa:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:iapapa:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:iapapa:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:kelpsy:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:kelpsy:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:kelpsy:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:leppa:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:leppa:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:leppa:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:lum:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:lum:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:lum:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:mago:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:mago:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:mago:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:magost:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:magost:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:magost:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:nomel:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:nomel:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:nomel:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:oran:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:oran:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:oran:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pamtre:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pamtre:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pamtre:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pecha:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pecha:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pecha:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:persim:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:persim:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:persim:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pinap:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pinap:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pinap:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pomeg:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pomeg:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:pomeg:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:qualot:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:qualot:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:qualot:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:rabuta:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:rabuta:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:rabuta:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:rawst:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:rawst:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:rawst:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:razz:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:razz:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:razz:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:sitrus:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:sitrus:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:sitrus:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:spelon:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:spelon:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:spelon:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:tamato:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:tamato:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:tamato:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:watmel:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:watmel:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:watmel:maduro": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:wiki:arbusto": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:wiki:flor": {
+    "dx": 0,
+    "dy": -4
+  },
+  "berry:wiki:maduro": {
+    "dx": 0,
+    "dy": -4
+  }
+}

@@ -3,6 +3,7 @@
  * Ficam num chunk sentinela: não somem quando o stream descarrega a cidade.
  */
 import { indexarBases } from "../../fisica/obstaculos.js";
+import { deLocalKanto } from "../bounds.js";
 import { ALTURA_PRACA } from "../regiao/amostraKanto.js";
 import { AREA_KANTO } from "../regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../regiao/kantoCidades.js";
@@ -29,8 +30,9 @@ export function indexarColisaoCidade() {
   for (let c = 0; c < CIDADES_KANTO.length; c++) {
     const def = CIDADES_KANTO[c];
     const layout = montarLayout(def);
-    const ox = def.ax * AREA_KANTO;
-    const oy = def.ay * AREA_KANTO;
+    const origem = deLocalKanto(def.ax * AREA_KANTO, def.ay * AREA_KANTO);
+    const ox = origem.x;
+    const oy = origem.y;
     const decor = decoracaoDaCidade(layout);
     lista.push({ x: ox + decor.quadro.x, y: oy + decor.quadro.y, z, r: RAIO_QUADRO });
     lista.push({ x: ox + decor.correio.x, y: oy + decor.correio.y, z, r: RAIO_CORREIO });

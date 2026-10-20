@@ -1,14 +1,13 @@
 /**
  * Pintura do mapa: terreno, rotas, layout da cidade, orbes e o jogador.
  */
-import { EXTENSAO_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { canvasAtlas, listarTiles } from "./atlas.js";
 import {
   coletarLabelsCalor,
   pintarCalorForcaMundo,
   pintarLegendaCalor,
 } from "./calorForca.js";
-import { BLOCOS_INTIMO, LADO_INTIMO, LADO_TILE, LADO_TILE_MUNDO, ZOOM_INTIMO } from "./grade.js";
+import { BLOCOS_INTIMO, LADO_INTIMO, LADO_MUNDO, LADO_TILE, LADO_TILE_MUNDO, ZOOM_INTIMO } from "./grade.js";
 import { listarIntimos } from "./intimo.js";
 import { cidadesDoMapa, layoutDaCidade, marcasExtras, rotasDoMapa } from "./marcas.js";
 
@@ -135,7 +134,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   const atlas = canvasAtlas();
-  if (atlas) ctx.drawImage(atlas, 0, 0, EXTENSAO_KANTO, EXTENSAO_KANTO);
+  if (atlas) ctx.drawImage(atlas, 0, 0, LADO_MUNDO, LADO_MUNDO);
   if (!vista.mini && vista.zoom >= 0.42) {
     const visiveis = listarTiles();
     for (let i = 0; i < visiveis.length; i++) {

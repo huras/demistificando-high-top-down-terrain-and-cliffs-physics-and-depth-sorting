@@ -5,6 +5,7 @@
  * h_kage é a sombra no chão: também não.
  */
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
+import { deLocalKanto } from "../bounds.js";
 import { ALTURA_PRACA, amostraKanto } from "../regiao/amostraKanto.js";
 import { AREA_KANTO } from "../regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../regiao/kantoCidades.js";
@@ -762,8 +763,9 @@ function montarColocacoes() {
   for (let c = 0; c < CIDADES_KANTO.length; c++) {
     const def = CIDADES_KANTO[c];
     const layout = montarLayout(def);
-    const ox = def.ax * AREA_KANTO;
-    const oy = def.ay * AREA_KANTO;
+    const origem = deLocalKanto(def.ax * AREA_KANTO, def.ay * AREA_KANTO);
+    const ox = origem.x;
+    const oy = origem.y;
     const volumes = layout.volumes;
     for (let i = 0; i < volumes.length; i++) {
       const v = volumes[i];
