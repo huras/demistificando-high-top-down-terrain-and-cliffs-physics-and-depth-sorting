@@ -1,113 +1,51 @@
+/**
+ * Fade de cobertura só na arena de combate.
+ * Mantido separado da vegetação do overworld.
+ */
 import * as THREE from "three";
-import {
-  ALTURA_BLOCO,
-  FADE_COBERTURA_ALPHA,
-  FADE_COBERTURA_RAIO,
-  FADE_COBERTURA_RAIO_X,
-  FADE_COBERTURA_RAIO_Y,
-  FADE_COBERTURA_VEL,
-} from "../../config.js";
-import { PROPS } from "../../mundo/mapaDemo.js";
-import { visitarVegetacaoNaArea } from "../../mundo/bioma/propsBioma.js";
-import { alturaEm } from "../../mundo/altura.js";
+import { FADE_COBERTURA_ALPHA, FADE_COBERTURA_VEL } from "../../config.js";
+
+const EPS_OPACO = 0.004;
+const _dir = new THREE.Vector3();
 
 /** @type {Map<string, { alpha: number, alvo: number }>} */
 const fades = new Map();
-const cobrindoAgora = new Set();
-
-const EPS_OPACO = 0.004;
-const _dirCam = new THREE.Vector3();
-const _tmp = new THREE.Vector3();
-
-const SEM_FADE = new Set(["grama", "mata", "placa"]);
-
-function podeFade(prop) {
-  if (!prop || prop.oculto) return false;
-  if (SEM_FADE.has(prop.tipo)) return false;
-  return (
-    prop.tipo === "arvore" ||
-    prop.tipo === "pedra" ||
-    prop.tipo === "cristal" ||
-    prop.tipo === "berry" ||
-    !!prop.sprite
-  );
-}
-
-function chaveDe(prop) {
-  if (prop.id) return prop.id;
-  return `xy:${prop.x},${prop.y}`;
-}
-
-function elevFoco(foco) {
-  const base = Number.isFinite(foco.elevacao) ? foco.elevacao : foco.z || 0;
-  return (base + (foco.hopLift || 0)) * ALTURA_BLOCO + 0.85;
-}
-
-function elevProp(prop) {
-  const z = alturaEm(Math.floor(prop.x), Math.floor(prop.y));
-  const extra = prop.tipo === "arvore" ? 1.6 : 0.7;
-  return z * ALTURA_BLOCO + extra;
-}
 
 /**
- * Prop cobre o foco se está perto no chão e mais perto da câmera
- * ao longo do olhar.
+ * Atualiza alphas: peças que cobrem algum foco em relação à câmera ficam translúcidas.
+ * @param {{ chave: string, x: number, y: number, r?: number, elev?: number }[]} pecas
+ * @param {{ x: number, y: number, elevacao?: number, z?: number, hopLift?: number }[]} focos
+ * @param {THREE.Camera} camera
+ * @param {number} dt
+ * @param {(chave: string, alpha: number) => void} aplicar
  */
-function cobreFoco(prop, foco, camera) {
-  const dx = prop.x - foco.x;
-  const dy = prop.y - foco.y;
-  const r = FADE_COBERTURA_RAIO;
-  if (dx * dx + dy * dy > r * r) return false;
-
-  camera.getWorldDirection(_dirCam);
-  const cam = camera.position;
-  const yFoco = elevFoco(foco);
-  const yProp = elevProp(prop);
-
-  _tmp.set(foco.x - cam.x, yFoco - cam.y, foco.y - cam.z);
-  const distFoco = _tmp.dot(_dirCam);
-  _tmp.set(prop.x - cam.x, yProp - cam.y, prop.y - cam.z);
-  const distProp = _tmp.dot(_dirCam);
-  return distProp < distFoco - 0.08;
-}
-
-function marcar(foco, camera) {
-  cobrindoAgora.clear();
-  if (!foco || !camera) return;
-
-  const peX = Math.floor(foco.x);
-  const peY = Math.floor(foco.y);
-  const x0 = peX - FADE_COBERTURA_RAIO_X;
-  const x1 = peX + FADE_COBERTURA_RAIO_X;
-  const y0 = peY - FADE_COBERTURA_RAIO_Y;
-  const y1 = peY + FADE_COBERTURA_RAIO_Y;
-
-  for (let i = 0; i < PROPS.length; i++) {
-    const prop = PROPS[i];
-    if (!podeFade(prop)) continue;
-    const px = Math.floor(prop.x);
-    const py = Math.floor(prop.y);
-    if (px < x0 || px > x1 || py < y0 - 2 || py > y1 + 2) continue;
-    if (cobreFoco(prop, foco, camera)) cobrindoAgora.add(chaveDe(prop));
+export function tickFadeArena(pecas, focos, camera, dt, aplicar) {
+  if (!camera || !pecas?.length) {
+    for (const [chave] of fades) aplicar?.(chave, 1);
+    fades.clear();
+    return;
   }
 
-  visitarVegetacaoNaArea(x0, y0, x1, y1, (prop) => {
-    if (!podeFade(prop)) return;
-    if (cobreFoco(prop, foco, camera)) cobrindoAgora.add(chaveDe(prop));
-  });
-}
+  const cobrindo = new Set();
+  camera.getWorldDirection(_dir);
+  const cam = camera.position;
+  const vivos = (focos || []).filter((f) => f && Number.isFinite(f.x) && Number.isFinite(f.y));
 
-/**
- * Atualiza alvos de fade a partir do foco (pokémon ou treinador).
- * Chamar uma vez por frame 3D.
- */
-export function tickFadeObstaculo(foco, dt, camera) {
-  marcar(foco, camera);
+  for (let i = 0; i < pecas.length; i++) {
+    const peca = pecas[i];
+    if (!peca?.chave) continue;
+    for (let f = 0; f < vivos.length; f++) {
+      if (cobreFoco(peca, vivos[f], cam, _dir)) {
+        cobrindo.add(peca.chave);
+        break;
+      }
+    }
+  }
 
   const t = 1 - Math.exp(-FADE_COBERTURA_VEL * Math.max(0, dt));
   const alphaAlvo = FADE_COBERTURA_ALPHA;
 
-  for (const chave of cobrindoAgora) {
+  for (const chave of cobrindo) {
     let e = fades.get(chave);
     if (!e) {
       e = { alpha: 1, alvo: alphaAlvo };
@@ -117,20 +55,39 @@ export function tickFadeObstaculo(foco, dt, camera) {
   }
 
   for (const [chave, e] of fades) {
-    if (!cobrindoAgora.has(chave)) e.alvo = 1;
+    if (!cobrindo.has(chave)) e.alvo = 1;
     e.alpha += (e.alvo - e.alpha) * t;
-    if (e.alvo === 1 && e.alpha > 1 - EPS_OPACO) fades.delete(chave);
+    if (e.alvo === 1 && e.alpha > 1 - EPS_OPACO) {
+      e.alpha = 1;
+      aplicar?.(chave, 1);
+      fades.delete(chave);
+      continue;
+    }
+    aplicar?.(chave, e.alpha);
   }
 }
 
-/** Alpha atual do prop (1 = opaco). */
-export function alphaDoProp(prop) {
-  if (!prop) return 1;
-  const e = fades.get(chaveDe(prop));
-  return e ? e.alpha : 1;
+function elevFoco(foco) {
+  const base = Number.isFinite(foco.elevacao) ? foco.elevacao : foco.z || 0;
+  return base + (foco.hopLift || 0) + 0.55;
 }
 
-export function limparFadeObstaculo() {
+function cobreFoco(peca, foco, cam, dir) {
+  const dx = peca.x - foco.x;
+  const dy = peca.y - foco.y;
+  const r = (peca.r || 0.6) + 1.15;
+  if (dx * dx + dy * dy > r * r) return false;
+
+  const yFoco = elevFoco(foco);
+  const yPeca = peca.elev ?? 0.9;
+
+  const distFoco =
+    (foco.x - cam.x) * dir.x + (yFoco - cam.y) * dir.y + (foco.y - cam.z) * dir.z;
+  const distPeca =
+    (peca.x - cam.x) * dir.x + (yPeca - cam.y) * dir.y + (peca.y - cam.z) * dir.z;
+  return distPeca < distFoco - 0.05;
+}
+
+export function limparFadeArena() {
   fades.clear();
-  cobrindoAgora.clear();
 }

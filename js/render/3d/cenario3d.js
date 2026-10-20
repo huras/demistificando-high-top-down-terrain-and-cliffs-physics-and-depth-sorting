@@ -54,7 +54,6 @@ import {
 import { registrarObjetoCena, verCamadaAuxiliar } from "../../cena/registroCena.js";
 import { atualizarRealceCena, ligarSelecaoCena } from "../../cena/selecaoCena.js";
 import { atualizarPokemon3d, ligarPokemon3d } from "../../pokemon/render3d.js";
-import { pokemonDeployado } from "../../pokemon/party.js";
 import { atoresVisiveis } from "../../pokemon/sistema.js";
 import { marcarCorposCrista } from "./texturasAgua3d.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
@@ -587,8 +586,6 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
   estado.edificios?.atualizar?.(corpo.x, corpo.y, yaw, inclinacao);
   estado.vegetacao?.atualizar?.(yaw, inclinacao);
-  const focoFade = pokemonDeployado() || corpo;
-  estado.vegetacao?.tickFade?.(focoFade, dt, camRender);
   estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw, inclinacao);
   estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   estado.poeiraPasso?.atualizar?.();

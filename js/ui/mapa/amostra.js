@@ -39,6 +39,7 @@ import {
 import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "../../mundo/regiao/volumesCidade.js";
 import { amostraCorpo } from "../../mundo/agua/corpos.js";
 import { fluidoDe } from "../../mundo/agua/fluidos.js";
+import { alturaBaseKanto } from "../../mundo/regiao/amostraKanto.js";
 import { fbm2 } from "../../mundo/voxel/ruido.js";
 
 const COTA_CIDADE = 16;
@@ -378,20 +379,24 @@ function lerPonto(wx, wy) {
 }
 
 function aplicarCorpo(ponto, rgb) {
-  amostraCorpo(ponto.x, ponto.y, CORPO);
-  if (!CORPO.tem || ponto.rua || ponto.predio) {
-    return { h: ponto.h, u: ponto.u, rgb };
+  if (ponto.rua || ponto.predio) return { h: ponto.h, u: ponto.u, rgb };
+  const baseH = alturaBaseKanto(ponto.x, ponto.y);
+  amostraCorpo(ponto.x, ponto.y, baseH, CORPO);
+  if (!CORPO.tem) return { h: ponto.h, u: ponto.u, rgb };
+  if (CORPO.sobe) {
+    return { h: CORPO.altura | 0, u: ponto.u, rgb };
   }
+  const cava = Math.max(1, Math.min(2, CORPO.cava | 0));
+  const h = Math.max(1, baseH - cava);
   if (CORPO.fluido) {
     const fam = fluidoDe(CORPO.fluido);
     return {
-      h: CORPO.altura,
-      u: CORPO.queda ? 0.28 : 0.16,
-      rgb: CORPO.queda ? fam.clara : fam.lamina,
+      h: baseH,
+      u: cava >= 2 ? 0.18 : 0.22,
+      rgb: fam.lamina,
     };
   }
-  if (CORPO.altura > ponto.h) return { h: CORPO.altura, u: ponto.u, rgb };
-  return { h: ponto.h, u: ponto.u, rgb };
+  return { h, u: ponto.u, rgb };
 }
 
 /** Preenche `saida` com altura, costa e cor. `comMote` liga o pontilhado do zoom perto. */
@@ -410,7 +415,7 @@ export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
 /** Um byte por bloco para o zoom íntimo. Rua, prédio e água ficam zerados. */
 export function byteNoPonto(wx, wy) {
   const ponto = lerPonto(wx, wy);
-  amostraCorpo(ponto.x, ponto.y, CORPO);
+  amostraCorpo(ponto.x, ponto.y, alturaBaseKanto(ponto.x, ponto.y), CORPO);
   if (CORPO.tem && CORPO.fluido && !ponto.rua && !ponto.predio) return 0;
   if (ponto.limpo) return 0;
   const kit = obterKit(ponto.bioma?.kit);

@@ -23,6 +23,7 @@ import {
   relevoEm,
 } from "./kantoRelevo.js";
 import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "./volumesCidade.js";
+import { amostraCorpo, ligarConsultasCorpo } from "../agua/corpos.js";
 
 const COTA_CIDADE = 16;
 const SPRITE_PREDIO = new Set(["ginasio", "museu", "torre", "coliseu", "porto", "safari", "mansao", "esconderijo"]);
@@ -43,9 +44,44 @@ export { BIOMA_KANTO } from "./biomasKanto.js";
 let cacheX = 1e9;
 let cacheY = 1e9;
 let cacheAmostra = null;
+let cacheBaseX = 1e9;
+let cacheBaseY = 1e9;
+let cacheBase = null;
+const CAMPO = {
+  tem: 0,
+  fluido: 0,
+  cava: 0,
+  sobe: 0,
+  superficie: 0,
+  altura: 0,
+  queda: 0,
+};
 
 export function dentroDoKanto(wx, wy) {
   return wx >= 0 && wy >= 0 && wx < EXTENSAO_KANTO && wy < EXTENSAO_KANTO;
+}
+
+/** Altura sem cavar água — usada pelo campo de corpos. */
+export function alturaBaseKanto(wx, wy) {
+  const b = amostraBaseKanto(wx, wy);
+  return b ? b.h : 16;
+}
+
+/** Cidade, rua, prédio ou rota marítima: o campo de água não toca. */
+export function reservaAguaKanto(wx, wy) {
+  const b = amostraBaseKanto(wx, wy);
+  return !b || b.reservado;
+}
+
+export function amostraBaseKanto(wx, wy) {
+  const x = wx | 0;
+  const y = wy | 0;
+  if (!dentroDoKanto(x, y)) return null;
+  if (x === cacheBaseX && y === cacheBaseY) return cacheBase;
+  cacheBaseX = x;
+  cacheBaseY = y;
+  cacheBase = calcularBase(x, y);
+  return cacheBase;
 }
 
 function distTrecho(px, py, ax, ay, bx, by) {
@@ -238,7 +274,7 @@ function florestaEm(lx, ly, zona) {
   return false;
 }
 
-function calcular(x, y) {
+function calcularBase(x, y) {
   const zona = zonaNoMundo(x, y);
   const ax = (x / AREA_KANTO) | 0;
   const ay = (y / AREA_KANTO) | 0;
@@ -258,6 +294,7 @@ function calcular(x, y) {
   const perfil = perfilCosta(x, y);
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
   const par = parBiomaKanto(x, y, perfil.u, perfil.dentroMontanha, floresta, predio, rua);
+  const reservado = !!(rua || predio || zona?.agua || zona?.tipo === "cidade");
 
   return {
     h,
@@ -270,8 +307,38 @@ function calcular(x, y) {
     entradaLab: !!(zona.tipo === "cidade" && zona.layout && naEntradaDoLab(lx, ly, zona.layout)),
     modelo: !!(predio && (predio.papel === "casa" || predio.papel === "centro" || predio.papel === "loja" || predio.papel === "lab" || predioSprite(predio.papel))),
     nome: zona.nome,
+    reservado,
   };
 }
+
+function aplicarAguaNoRelevo(x, y, base) {
+  if (base.reservado) return base.h;
+  amostraCorpo(x, y, base.h, CAMPO);
+  if (!CAMPO.tem) return base.h;
+  if (CAMPO.sobe) return Math.max(1, Math.min(60, CAMPO.altura | 0));
+  const cava = CAMPO.cava || 0;
+  if (cava <= 0) return base.h;
+  return Math.max(1, Math.min(60, Math.round(base.h - cava)));
+}
+
+function calcular(x, y) {
+  const base = calcularBase(x, y);
+  const h = aplicarAguaNoRelevo(x, y, base);
+  return {
+    h,
+    bioma: base.bioma,
+    biomaB: base.biomaB,
+    dominio: base.dominio,
+    rua: base.rua,
+    floresta: base.floresta,
+    predio: base.predio,
+    entradaLab: base.entradaLab,
+    modelo: base.modelo,
+    nome: base.nome,
+  };
+}
+
+ligarConsultasCorpo(reservaAguaKanto, alturaBaseKanto);
 
 export function amostraKanto(wx, wy) {
   const x = wx | 0;

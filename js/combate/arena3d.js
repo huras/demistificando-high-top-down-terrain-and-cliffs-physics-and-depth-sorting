@@ -16,6 +16,7 @@ import {
 import { CAM_TURNO } from "./cameraTurno.js";
 import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
 import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
+import { tickFadeArena } from "../render/3d/fadeObstaculo3d.js";
 
 const PX_MUNDO = 1 / TILE;
 const LADO = 256;
@@ -66,6 +67,8 @@ const spriteTex = new Map();
 const metadesChao = [];
 const coberturas = [];
 const gramas = [];
+/** @type {{ chave: string, x: number, y: number, r: number, elev: number }[]} */
+const pecasFade = [];
 let chaoNormal = null;
 let coberturaVista = -1;
 let spritesVista = -1;
@@ -314,6 +317,7 @@ function criarCobertura() {
     depthWrite: false,
     depthTest: true,
     alphaTest: 0.15,
+    opacity: 1,
   });
   const sprite = new THREE.Sprite(mat);
   sprite.center.set(0.5, 0);
@@ -321,7 +325,45 @@ function criarCobertura() {
   sprite.renderOrder = 3;
   cena.add(sprite);
   const sombra = criarSombra();
-  return { sprite, mat, sombra, url: "" };
+  return { sprite, mat, sombra, url: "", alpha: 1 };
+}
+
+function aplicarAlphaCobertura(chave, alpha) {
+  const i = Number(chave);
+  if (!Number.isFinite(i) || i < 0 || i >= coberturas.length) return;
+  const slot = coberturas[i];
+  if (!slot || Math.abs(slot.alpha - alpha) < 0.002) return;
+  slot.alpha = alpha;
+  slot.mat.opacity = alpha;
+  slot.mat.alphaTest = alpha < 0.98 ? 0.02 : 0.15;
+  if (slot.sombra?.material) {
+    slot.sombra.material.opacity = 0.38 * Math.max(0.15, alpha);
+  }
+}
+
+function atualizarFadeCobertura(atores, dt) {
+  if (!camera) return;
+  pecasFade.length = 0;
+  const n = quantidadeCobertura();
+  for (let i = 0; i < n; i++) {
+    const peca = pecaCobertura(i);
+    const slot = coberturas[i];
+    if (!peca || !slot?.sprite.visible) continue;
+    pecasFade.push({
+      chave: String(i),
+      x: peca.x,
+      y: peca.y,
+      r: peca.r || 0.6,
+      elev: Math.max(0.7, (slot.sprite.scale.y || 1.4) * 0.55),
+    });
+  }
+  const focos = [];
+  for (let i = 0; i < (atores?.length || 0); i++) {
+    const a = atores[i];
+    if (!a || a.morto) continue;
+    focos.push(a);
+  }
+  tickFadeArena(pecasFade, focos, camera, dt, aplicarAlphaCobertura);
 }
 
 function criarGrama() {
@@ -359,6 +401,7 @@ function sincronizarCobertura() {
       slot.sombra.visible = false;
       slot.visiblePendencia = false;
       slot.url = "";
+      if (slot.alpha !== 1) aplicarAlphaCobertura(String(i), 1);
       continue;
     }
     const tex = texturaSprite(peca.url);
@@ -942,11 +985,12 @@ function aplicarOmbro() {
   camera.lookAt(ombroOlhar);
 }
 
-export function desenharArena(atores) {
+export function desenharArena(atores, dt = 0.016) {
   if (!renderer) return;
   sincronizarCobertura();
   ajustarTamanho();
   aplicarOmbro();
+  atualizarFadeCobertura(atores, dt);
   for (let i = 0; i < slots.length; i++) pintarAtor(slots[i], atores?.[i] || null);
   pintarTiros();
   pintarFaiscas();

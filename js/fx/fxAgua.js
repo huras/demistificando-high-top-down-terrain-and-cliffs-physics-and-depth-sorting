@@ -19,6 +19,7 @@ import {
   AGUA_ONDA_PASSO,
   AGUA_ONDA_RX,
   AGUA_ONDA_RY,
+  AGUA_OFFSET_LAMINA,
   AGUA_ONDA_VIDA,
   AGUA_PEGADA_CARGA,
   AGUA_PEGADA_CHEIO,
@@ -301,7 +302,7 @@ function emitirOndaSe(trilha, e, dx, dy, dist, col, elev, dt) {
     x -= (dx / dist) * AGUA_ONDA_ATRAS;
     y -= (dy / dist) * AGUA_ONDA_ATRAS;
   }
-  const z = col.caindo ? elev : col.superficie - 0.04;
+  const z = col.caindo ? elev : col.superficie - AGUA_OFFSET_LAMINA;
   emitirOnda(trilha, x, y, z > 0 ? z : elev);
 }
 

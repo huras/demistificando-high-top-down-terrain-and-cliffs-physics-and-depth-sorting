@@ -1660,24 +1660,44 @@ function* construirGeosChunk(chunk) {
           ),
         );
         empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
-        if (caindo && fam !== FLUIDO.PANTANO) {
-          let yBase = chunk.aguaFundo[ia] | 0;
-          let dir = "s";
-          const fx = chunk.fluxoX[ia] | 0;
-          const fy = chunk.fluxoY[ia] | 0;
-          if (fx || fy) {
-            const dest = colunaAgua(wx + fx, wy + fy);
-            if (dest.superficie > 0 && !dest.caindo && dest.superficie < supAgua - 0.05) {
-              yBase = dest.superficie;
+        if (fam !== FLUIDO.PANTANO) {
+          const listaQueda = fam === FLUIDO.LAVA ? quedasLava : quedas;
+          if (caindo) {
+            let yBase = chunk.aguaFundo[ia] | 0;
+            let dir = "s";
+            const fx = chunk.fluxoX[ia] | 0;
+            const fy = chunk.fluxoY[ia] | 0;
+            if (fx || fy) {
+              const dest = colunaAgua(wx + fx, wy + fy);
+              if (dest.superficie > 0 && !dest.caindo && dest.superficie < supAgua - 0.05) {
+                yBase = dest.superficie;
+              }
+              if (fy > 0) dir = "s";
+              else if (fy < 0) dir = "n";
+              else if (fx > 0) dir = "e";
+              else dir = "w";
             }
-            if (fy > 0) dir = "s";
-            else if (fy < 0) dir = "n";
-            else if (fx > 0) dir = "e";
-            else dir = "w";
-          }
-          if (supAgua - yBase > 0.15) {
-            const listaQueda = fam === FLUIDO.LAVA ? quedasLava : quedas;
-            listaQueda.push(planoQueda(wx, wy, yBase, supAgua, dir));
+            if (supAgua - yBase > 0.15) {
+              listaQueda.push(planoQueda(wx, wy, yBase, supAgua, dir));
+            }
+          } else {
+            // Degrau de lâmina: a superfície fica acima do leito/vizinho e
+            // não há face de cliff nesse vão — cortina de queda cobre.
+            const lados = [
+              [0, 1, "s"],
+              [0, -1, "n"],
+              [1, 0, "e"],
+              [-1, 0, "w"],
+            ];
+            for (let d = 0; d < lados.length; d++) {
+              const nx = wx + lados[d][0];
+              const ny = wy + lados[d][1];
+              const dest = colunaAgua(nx, ny);
+              const nivel =
+                dest.superficie > 0 ? dest.superficie : alturaEm(nx, ny) | 0;
+              if (supAgua - nivel < 1) continue;
+              listaQueda.push(planoQueda(wx, wy, nivel, supAgua, lados[d][2]));
+            }
           }
         }
       }

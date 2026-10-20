@@ -18,7 +18,6 @@ import { registrarObjetoCena, removerObjetoCena, marcarAuxiliar } from "../../ce
 import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
 import { onDirty } from "../../mundo/voxel/storeMundo.js";
 import { STENCIL_GRAMA, marcarStencilSolido } from "./silhuetaSprite.js";
-import { alphaDoProp, tickFadeObstaculo } from "./fadeObstaculo3d.js";
 import { FASE } from "../../campo/estadoProps.js";
 import { imagemToco } from "../../campo/visualToco.js";
 import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "../../campo/sacudida.js";
@@ -198,36 +197,6 @@ export function criarVegetacaoBillboard3d() {
     return geo;
   }
 
-  function aplicarAlfaInstancia(material) {
-    const anterior = material.onBeforeCompile;
-    const chaveAnterior = material.customProgramCacheKey;
-    material.transparent = true;
-    material.onBeforeCompile = (shader, renderer) => {
-      if (anterior) anterior.call(material, shader, renderer);
-      if (shader.vertexShader.includes("alfaPeca")) return;
-      shader.vertexShader = shader.vertexShader
-        .replace(
-          "#include <common>",
-          "#include <common>\nattribute float alfaPeca;\nvarying float vAlfaPeca;",
-        )
-        .replace(
-          "#include <begin_vertex>",
-          "#include <begin_vertex>\nvAlfaPeca = alfaPeca;",
-        );
-      shader.fragmentShader = shader.fragmentShader
-        .replace("#include <common>", "#include <common>\nvarying float vAlfaPeca;")
-        .replace(
-          "#include <opaque_fragment>",
-          "#include <opaque_fragment>\ngl_FragColor.a *= vAlfaPeca;",
-        );
-    };
-    material.customProgramCacheKey = function chaveAlfaPeca() {
-      const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-      return `${base}|alfa-peca`;
-    };
-    return material;
-  }
-
   function criarTextura(img) {
     const tex = new THREE.Texture(img);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -259,7 +228,7 @@ export function criarVegetacaoBillboard3d() {
       map: tex,
       roughness: 1,
       metalness: 0,
-      transparent: !grama,
+      transparent: false,
       alphaTest: VEG_ALPHA_TEST,
       depthWrite: true,
       depthTest: true,
@@ -272,9 +241,8 @@ export function criarVegetacaoBillboard3d() {
       material.stencilFail = THREE.KeepStencilOp;
       material.stencilZFail = THREE.KeepStencilOp;
       material.stencilZPass = THREE.ReplaceStencilOp;
-    } else {
-      aplicarAlfaInstancia(material);
-      if (def.amostra?.tipo === "arvore") marcarStencilSolido(material);
+    } else if (def.amostra?.tipo === "arvore") {
+      marcarStencilSolido(material);
     }
     const depth = new THREE.MeshDepthMaterial({
       depthPacking: THREE.RGBADepthPacking,
@@ -286,14 +254,6 @@ export function criarVegetacaoBillboard3d() {
     const pivo = pivoDaImagem(img);
     const geo = geometriaNoPe(pivo.x, pivo.y);
     const pivotY = pivo.y;
-    let alfas = null;
-    let attrAlfa = null;
-    if (!grama) {
-      alfas = new Float32Array(CAP_INSTANCIAS);
-      alfas.fill(1);
-      attrAlfa = new THREE.InstancedBufferAttribute(alfas, 1);
-      geo.setAttribute("alfaPeca", attrAlfa);
-    }
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
     mesh.name = `veg-${def.chave}`;
     mesh.castShadow = false;
@@ -337,8 +297,6 @@ export function criarVegetacaoBillboard3d() {
       geo,
       pivotY,
       grama,
-      alfas,
-      attrAlfa,
     };
     lotes.set(def.chave, lote);
     usarRaycastBillboard(mesh, () => lote);
@@ -397,20 +355,6 @@ export function criarVegetacaoBillboard3d() {
     dummy.rotation.set(inclinacao, yaw, roll);
     dummy.scale.set(largura * (1 + esmaga * 0.03), altura * (1 - esmaga * 0.045), 1);
     dummy.updateMatrix();
-  }
-
-  function escreverAlfas(lote) {
-    if (!lote || lote.grama || !lote.alfas || !lote.attrAlfa) return;
-    const { itens, alfas, attrAlfa } = lote;
-    let mudou = false;
-    for (let i = 0; i < itens.length; i++) {
-      const a = alphaDoProp(itens[i]);
-      if (alfas[i] !== a) {
-        alfas[i] = a;
-        mudou = true;
-      }
-    }
-    if (mudou) attrAlfa.needsUpdate = true;
   }
 
   function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora) {
@@ -548,12 +492,6 @@ export function criarVegetacaoBillboard3d() {
     if (sacode) pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
   }
 
-  /** Fade de obstáculo: roda todo frame, independente do yaw. */
-  function tickFade(foco, dt, camera) {
-    tickFadeObstaculo(foco, dt, camera);
-    for (const lote of lotes.values()) escreverAlfas(lote);
-  }
-
   const cancelarDirty = onDirty(() => {
     alturasSujas = true;
   });
@@ -566,7 +504,6 @@ export function criarVegetacaoBillboard3d() {
     aplicarAtlas,
     reconstruir,
     atualizar,
-    tickFade,
     liberar() {
       cancelarDirty();
       for (const lote of lotes.values()) soltarLote(lote);

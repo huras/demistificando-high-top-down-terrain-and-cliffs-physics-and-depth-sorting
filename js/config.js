@@ -122,6 +122,8 @@ export const STAMINA_REGEN = 28;
 export const AGUA_LIMIAR_VADO = 1.05;
 /** Pés no nado: a mesma linha do vau no limite. */
 export const AGUA_FLUTUA = AGUA_LIMIAR_VADO;
+/** Lâmina visual abaixo do chanfro da margem (bate com QUEDA_LABIO + folga). */
+export const AGUA_OFFSET_LAMINA = 0.18;
 /** Além de AGUA_FLUTUA, o quanto o corpo desce ao afogar. */
 export const AGUA_AFOGA_EXTRA = 0.8;
 export const AGUA_VEL_NADO = 2.4;

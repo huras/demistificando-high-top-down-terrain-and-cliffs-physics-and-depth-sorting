@@ -740,7 +740,7 @@ function quadro(t) {
     resto -= passo;
   }
   definirOmbro(poseDoQuadro(), bruto);
-  desenharArena(atoresArena());
+  desenharArena(atoresArena(), bruto);
   pintarTurno(pedidoEscolha(), avisoTurno());
   pintarLog();
   pintarVida("esquerda");
