@@ -8,10 +8,11 @@ import { ALCANCE_MIRA, ESCALA, FACE_H, TILE } from "../config.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 import { invalidarHoverBloco } from "./hoverBloco.js";
 import { raioDoPonteiro } from "../render/3d/camera3d.js";
-import { ponteiroTravado } from "./ponteiro3d.js";
+import { botaoDireitoSegurado, ponteiroTravado } from "./ponteiro3d.js";
 import { abrirMenuCampo } from "../campo/menu.js";
 import { tentarAtaqueNoClique } from "../pokemon/clique.js";
 import { definirSegurarBola, definirMiraCursor } from "../pokemon/captura.js";
+import { arcoNaMao } from "../jogo/blocos.js";
 import { usarNoClique } from "../jogo/campo.js";
 import { estado, hotbarAtivo, uiAberta } from "../jogo/estado.js";
 import { atualizarLeve, pintar } from "../jogo/ui.js";
@@ -110,6 +111,11 @@ function aoMouseDown3d(ev) {
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d || !canvas3d || uiAberta()) return;
+  // Com arco na mira, LMB é puxar/soltar flecha — não usa item do mundo.
+  if (arcoNaMao() && (botaoDireitoSegurado() || cen.camera3d.modo === "mira")) {
+    ev.preventDefault();
+    return;
+  }
   if (tentarAtaqueNoClique(ev, null, cen)) {
     ev.preventDefault();
     return;
@@ -142,6 +148,8 @@ function mundoDoClique(ev) {
 function aoContextMenu(ev) {
   ev.preventDefault();
   if (ponteiroTravado() || uiAberta() || estaEmCena()) return;
+  // RMB com arco = mira; não abre menu de campo.
+  if (ev.currentTarget === canvas3d && arcoNaMao()) return;
   const corpo = obterCorpo();
   const mundo = mundoDoClique(ev);
   if (!corpo || !mundo) return;

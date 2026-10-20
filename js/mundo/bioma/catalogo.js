@@ -88,7 +88,29 @@ function suave01(t) {
 }
 
 /**
- * Duas regiões mais próximas (Voronoi com centro jitterado).
+ * Domain warp da query Voronoi — curvas de média escala nas fronteiras.
+ * Amp em blocos; fbm centrado em 0.
+ */
+function deslocarDominio(wx, wy, catalogo, seed) {
+  const escala = Math.max(8, Number(catalogo?.escalaWarpRegiao) || 72);
+  const amp = Math.max(0, Number(catalogo?.ampWarpRegiao) || 42);
+  if (!(amp > 0)) return { x: wx, y: wy };
+  const oitavas = Math.max(1, Math.min(6, (Number(catalogo?.oitavasWarpRegiao) || 3) | 0));
+  const nx = fbm2(wx / escala, wy / escala, seed + 5107, oitavas) * 2 - 1;
+  const ny = fbm2(wx / escala, wy / escala, seed + 6203, oitavas) * 2 - 1;
+  return { x: wx + nx * amp, y: wy + ny * amp };
+}
+
+/** Ruído fino na linha db−da (litoral da célula). */
+function ruidoFronteira(wx, wy, catalogo, seed) {
+  const amp = Number(catalogo?.ampRuidoFronteira);
+  if (!(amp > 0)) return 0;
+  const escala = Math.max(4, Number(catalogo?.escalaRuidoFronteira) || 28);
+  return (fbm2(wx / escala, wy / escala, seed + 7331, 2) * 2 - 1) * amp;
+}
+
+/**
+ * Duas regiões mais próximas (Voronoi com centro jitterado + domain warp).
  * dominio = peso de A: 1 no miolo, 0.5 na borda.
  * Na borda os dois lados valem metade, senão a faixa vira A, B, A, B.
  */
@@ -97,21 +119,24 @@ export function amostrarRegiao(wx, wy, catalogo = dados, seed = semente) {
   const n = biomas.length;
   if (!n) return null;
   const escala = Math.max(32, Number(catalogo.escalaRegiao) || 200);
-  const gx = Math.floor(wx / escala);
-  const gy = Math.floor(wy / escala);
+  const ampWarp = Math.max(0, Number(catalogo?.ampWarpRegiao) || 42);
+  const q = deslocarDominio(wx, wy, catalogo, seed);
+  const gx = Math.floor(q.x / escala);
+  const gy = Math.floor(q.y / escala);
+  const raio = Math.max(1, 1 + Math.ceil(ampWarp / escala));
   let melhor = null;
   let segundo = null;
 
-  for (let oy = -1; oy <= 1; oy++) {
-    for (let ox = -1; ox <= 1; ox++) {
+  for (let oy = -raio; oy <= raio; oy++) {
+    for (let ox = -raio; ox <= raio; ox++) {
       const cx = gx + ox;
       const cy = gy + oy;
       const jx = (hash2(cx, cy, seed) - 0.5) * escala * 0.85;
       const jy = (hash2(cx, cy, seed + 17) - 0.5) * escala * 0.85;
       const px = (cx + 0.5) * escala + jx;
       const py = (cy + 0.5) * escala + jy;
-      const dx = wx - px;
-      const dy = wy - py;
+      const dx = q.x - px;
+      const dy = q.y - py;
       const d2 = dx * dx + dy * dy;
       const indice = Math.floor(hash2(cx, cy, seed + 3) * n) % n;
       const item = { bioma: biomas[indice], d2, px, py };
@@ -131,7 +156,8 @@ export function amostrarRegiao(wx, wy, catalogo = dados, seed = semente) {
     (Math.max(1, Number(melhor.bioma.transicao) || 8) +
       Math.max(1, Number(segundo.bioma.transicao) || 8)) *
     0.5;
-  const perto = suave01((db - da) / largura);
+  const fronteira = db - da + ruidoFronteira(wx, wy, catalogo, seed);
+  const perto = suave01(fronteira / largura);
   const dominio = 0.5 + 0.5 * perto;
   return { a: melhor.bioma, b: segundo.bioma, dominio };
 }

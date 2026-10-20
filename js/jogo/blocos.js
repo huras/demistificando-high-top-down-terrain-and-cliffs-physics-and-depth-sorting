@@ -21,6 +21,11 @@ export function picaretaNaMao() {
   return !!(item && item.tipo === TIPO_ITEM.FERRAMENTA && item.key === "pickaxe" && contar(item.tipo, item.key) > 0);
 }
 
+export function arcoNaMao() {
+  const item = hotbarAtivo();
+  return !!(item && item.tipo === TIPO_ITEM.FERRAMENTA && item.key === "bow" && contar(item.tipo, item.key) > 0);
+}
+
 export function idBlocoNaMao() {
   const item = hotbarAtivo();
   if (!item || item.tipo !== TIPO_ITEM.BLOCO) return 0;

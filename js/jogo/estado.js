@@ -702,6 +702,14 @@ export function carregar() {
   estado.hotbar = new Array(SLOTS_HOTBAR).fill(null);
   const hot = bruto.hotbar || [];
   for (let i = 0; i < SLOTS_HOTBAR; i++) estado.hotbar[i] = hot[i] || null;
+  // Ferramentas novas (ex.: arco) entram na bolsa de saves antigos.
+  const ferr = Object.keys(FERRAMENTAS);
+  for (let i = 0; i < ferr.length; i++) {
+    if (contarItem(ferr[i]) <= 0) ajustarItem(ferr[i], 1, "mudo");
+  }
+  if (!estado.hotbar[5] && contarItem("bow") > 0) {
+    estado.hotbar[5] = { tipo: TIPO_ITEM.FERRAMENTA, key: "bow" };
+  }
   estado.slotAtivo = bruto.slotAtivo | 0;
   estado.caixas = bruto.caixas?.length === CAIXAS ? bruto.caixas : caixasVazias();
   estado.plots = [];
@@ -747,6 +755,7 @@ function semearInicio() {
   estado.hotbar[2] = { tipo: TIPO_ITEM.BERRY, key: "oran" };
   estado.hotbar[3] = { tipo: TIPO_ITEM.REMEDIO, key: "potion" };
   estado.hotbar[4] = { tipo: TIPO_ITEM.FERRAMENTA, key: "pickaxe" };
+  estado.hotbar[5] = { tipo: TIPO_ITEM.FERRAMENTA, key: "bow" };
   darChave("pokedex");
   anunciarGanho("pokedex", 1, "mudo");
   registrarParty();

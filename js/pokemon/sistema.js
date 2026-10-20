@@ -1,16 +1,22 @@
-import { USAR_PATCH_DEMO } from "../config.js";
+import { ALTURA_BLOCO, USAR_PATCH_DEMO } from "../config.js";
 import { SPAWN as SPAWN_DEMO } from "../mundo/mapaDemo.js";
 import { SPAWN_PALLET } from "../mundo/regiao/spawnKanto.js";
 import { tickPassivo, aplicarNivel } from "./ator.js";
 import { atualizarCaptura } from "./captura.js";
-import { impactoProjetil, tentarGolpe, tickConjuracao, tickDesmaio } from "./combate/executor.js";
+import {
+  aplicarDanoLivre,
+  impactoProjetil,
+  tentarGolpe,
+  tickConjuracao,
+  tickDesmaio,
+} from "./combate/executor.js";
 import { atualizarProjeteis } from "./combate/projeteis.js";
 import { dadosProntos } from "./dados.js";
 import { atualizarDrops, soltarDrop } from "./drops.js";
 import { carregarEmocoes, tickEmocoes } from "./emocoes.js";
 import { ganhoAoDerrotar, NIVEL_MAX, totalParaNivel } from "./experiencia.js";
 import { flutuar, tickFlutuantes } from "./flutuantes.js";
-import { montarGrade } from "./grade.js";
+import { atoresPerto, montarGrade } from "./grade.js";
 import { atualizarIa } from "./ia.js";
 import {
   atualizarParty,
@@ -89,6 +95,34 @@ export function relogioPokemon() {
 
 export function obterTreinador() {
   return treinador;
+}
+
+/**
+ * Flecha do arco no ponto mundo (x,y horizontal; zAltura em unidades Three).
+ * Só selvagens. Retorna true se aplicou dano.
+ */
+export function tentarAcertoFlecha(x, y, zAltura, forca = 1) {
+  if (!ligado) return false;
+  const perto = atoresPerto(x, y, 0.65);
+  let melhor = null;
+  let melhorD = 0.65 * 0.65;
+  for (let i = 0; i < perto.length; i++) {
+    const a = perto[i];
+    if (!a || a.faccao !== "selvagem" || a.morto || a.capturado || a.hp <= 0) continue;
+    const elev = (a.elevacao ?? a.z ?? 0) * ALTURA_BLOCO + (a.hopLift || 0);
+    const centro = elev + 0.55;
+    if (Math.abs(zAltura - centro) > 0.85 && Math.abs(zAltura - elev) > 0.85) continue;
+    const dx = a.x - x;
+    const dy = a.y - y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > melhorD) continue;
+    melhorD = d2;
+    melhor = a;
+  }
+  if (!melhor) return false;
+  const t = Math.min(1, Math.max(0, forca));
+  const poder = 28 + Math.round(36 * t);
+  return aplicarDanoLivre(treinador, melhor, poder, "normal", "physical", agora, efeitos);
 }
 
 export function ligarPokemon() {

@@ -137,6 +137,7 @@ export default {
     "wateringCan": "じょうろ",
     "axe": "おの",
     "pickaxe": "つるはし",
+    "bow": "ゆみ",
     "hammer": "ハンマー",
     "flag": "はた"
   },

@@ -126,6 +126,17 @@ function errouGolpe(acerto) {
   return Math.floor(Math.random() * 100) + 1 > p;
 }
 
+/** Dano fora de golpe (ex.: flecha do treinador). Forma projectile, acerto garantido. */
+export function aplicarDanoLivre(atacante, alvo, poder, tipo, categoria, agora, efeitos) {
+  if (!alvo || alvo.morto || alvo.capturado || alvo.hp <= 0 || alvo.iframe > 0 || alvo.invulneravel) {
+    return false;
+  }
+  if (!inimigo(atacante, alvo)) return false;
+  const hpAntes = alvo.hp;
+  aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, 100, "projectile");
+  return alvo.hp < hpAntes || alvo.hp <= 0 || !!alvo.morto;
+}
+
 function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, acerto, forma, rajada) {
   const travado = resultadoTravado(atacante, alvo);
   if (travado) {

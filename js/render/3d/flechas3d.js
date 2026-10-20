@@ -9,6 +9,7 @@ import {
   FLECHA_VIDA,
 } from "../../config.js";
 import { raycastVoxel } from "../../mundo/voxel/alvoBloco.js";
+import { tentarAcertoFlecha } from "../../pokemon/sistema.js";
 
 const _dir = new THREE.Vector3();
 const _look = new THREE.Vector3();
@@ -32,7 +33,7 @@ export function criarFlechas3d() {
   const arco = criarArco(mat);
   grupo.add(arco.grupo);
 
-  /** @type {{mesh: THREE.Mesh, vel: THREE.Vector3, vida: number, presa: boolean}[]} */
+  /** @type {{mesh: THREE.Mesh, vel: THREE.Vector3, vida: number, presa: boolean, forca: number}[]} */
   const ativas = [];
   let carga = 0;
 
@@ -56,7 +57,7 @@ export function criarFlechas3d() {
     );
 
     mesh.lookAt(mesh.position.x + vel.x, mesh.position.y + vel.y, mesh.position.z + vel.z);
-    ativas.push({ mesh, vel, vida: FLECHA_VIDA, presa: false });
+    ativas.push({ mesh, vel, vida: FLECHA_VIDA, presa: false, forca: t });
   }
 
   function atualizar(dt, corpo, camera3d, entrada = {}) {
@@ -109,6 +110,12 @@ export function criarFlechas3d() {
       if (flecha.vel.lengthSq() > 0.01) {
         _look.copy(flecha.mesh.position).add(flecha.vel);
         flecha.mesh.lookAt(_look);
+      }
+
+      const p = flecha.mesh.position;
+      if (tentarAcertoFlecha(p.x, p.z, p.y, flecha.forca)) {
+        flecha.presa = true;
+        flecha.vel.set(0, 0, 0);
       }
     }
   }

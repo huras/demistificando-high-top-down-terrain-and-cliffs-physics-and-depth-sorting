@@ -137,6 +137,7 @@ export default {
     "wateringCan": "Watering Can",
     "axe": "Axe",
     "pickaxe": "Pickaxe",
+    "bow": "Bow",
     "hammer": "Hammer",
     "flag": "Flag"
   },

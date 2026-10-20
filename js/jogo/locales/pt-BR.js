@@ -137,6 +137,7 @@ export default {
     "wateringCan": "Regador",
     "axe": "Machado",
     "pickaxe": "Picareta",
+    "bow": "Arco",
     "hammer": "Martelo",
     "flag": "Bandeira"
   },

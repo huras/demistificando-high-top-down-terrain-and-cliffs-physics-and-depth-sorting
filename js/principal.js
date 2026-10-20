@@ -10,6 +10,7 @@ import {
   USAR_PATCH_DEMO,
 } from "./config.js";
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
+import { arcoNaMao } from "./jogo/blocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
   botaoDireitoSegurado,
@@ -419,9 +420,10 @@ function loop(agora) {
     }
     if (!estaEmCena() && !trava) {
       const mouse = consumirMovimentoMouse();
-      definirMira3d(botaoDireitoSegurado());
+      const comArco = arcoNaMao();
+      definirMira3d(comArco && botaoDireitoSegurado());
       olharCamera3d(mouse.dx, mouse.dy);
-      definirPuxadaFlecha(botaoEsquerdoSegurado(), consumirSolturaEsquerda());
+      definirPuxadaFlecha(comArco && botaoEsquerdoSegurado(), comArco && consumirSolturaEsquerda());
       if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
       if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
         ajustarZoom3d(1 / ZOOM_PASSO);
