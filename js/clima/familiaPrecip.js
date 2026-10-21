@@ -1,8 +1,9 @@
 import { FAMILIA_PRECIP } from "./kinds.js";
 import { biomaDominante, biomaPorId } from "../mundo/bioma/catalogo.js";
+import { areaNoMundo } from "../mundo/regiao/areasKanto.js";
 
 function familiaPadrao(biomeId) {
-  if (!biomeId) return FAMILIA_PRECIP.CHUVA;
+  if (!biomeId || typeof biomeId !== "string") return FAMILIA_PRECIP.CHUVA;
   if (biomeId === "snow" || biomeId === "tundra") return FAMILIA_PRECIP.NEVE;
   if (
     biomeId === "dirty-sand" ||
@@ -45,13 +46,16 @@ function normalizarTag(tag) {
 
 /** Família de precip do bioma (tag `precip` opcional no JSON). */
 export function familiaPrecipitacao(biomeId) {
-  const def = biomaPorId(biomeId);
+  const id = typeof biomeId === "string" ? biomeId : biomeId?.id;
+  const def = biomaPorId(id);
   const tag = def?.precip;
   if (tag && TAG_OK.has(tag)) return normalizarTag(tag);
-  return familiaPadrao(biomeId);
+  return familiaPadrao(id);
 }
 
 export function familiaNoMundo(wx, wy) {
-  const id = biomaDominante(wx, wy);
-  return familiaPrecipitacao(id);
+  const area = areaNoMundo(wx, wy);
+  if (area?.precip && TAG_OK.has(area.precip)) return normalizarTag(area.precip);
+  const bioma = biomaDominante(wx, wy);
+  return familiaPrecipitacao(bioma?.id);
 }

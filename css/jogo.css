@@ -374,7 +374,7 @@
   cursor: pointer;
 }
 
-.jogo-hud button.is-on,
+.jogo-hud button.is-on:not(.hotbar-hud__slot):not(.party-slot):not(.hud-utility-btn),
 .jogo-slot.is-on {
   background: #1c1917;
   color: #fff;

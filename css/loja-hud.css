@@ -493,6 +493,9 @@
 }
 
 body.is-loja-open .jogo-hotbar,
+body.is-loja-open .hud-item-dock,
+body.is-loja-open .hud-map-dock,
+body.is-loja-open .hud-party,
 body.is-loja-open .jogo-canto,
 body.is-loja-open #jogo-equipe,
 body.is-loja-open #jogo-prompt,

@@ -15,6 +15,12 @@ export const CLIMA_CFG = Object.freeze({
   galeSteerPerSec: 1.6,
   galeTailLag: 0.42,
   galeWander: 0.055,
+  /** Meia-extensão da faixa em blocos (comprimento total ≈ 2×). */
+  galeHalfLenMin: 7.2,
+  galeHalfLenMax: 16,
+  /** Meia-largura no centro (fina, estilo Wind Waker). */
+  galeHalfWidth: 0.11,
+  galeHalfWidthMax: 0.2,
   clearDurationSec: Object.freeze([90, 200]),
   cloudyDurationSec: Object.freeze([55, 140]),
   precipDurationSec: Object.freeze([35, 100]),

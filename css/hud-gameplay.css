@@ -1,0 +1,743 @@
+/**
+ * HUD de gameplay — parity visual com Pokémon AI
+ * (docks, hotbar pill, party strip, minimap 220, chips).
+ */
+
+:root {
+  --area-minimap-size: 220px;
+  --hud-safe-left: 16px;
+  --hud-safe-right: 12px;
+  --hud-safe-top: 12px;
+  --hud-safe-bottom: 12px;
+  --hud-pill-ink: #3a3328;
+  --hud-pill-hover: rgba(40, 32, 24, 0.07);
+  --hud-pill-active: rgba(40, 32, 24, 0.08);
+  --hud-pill-ring: rgba(40, 32, 24, 0.28);
+  --hud-pill-ready: #65a30d;
+  --hud-pill-badge: #e8c547;
+  --hud-pill-badge-ink: #1a1408;
+  --party-slot: clamp(48px, 7.2vmin, 58px);
+  --world-map-void: #143a68;
+}
+
+/* ---- Docks ----------------------------------------------------------- */
+
+.hud-item-dock {
+  position: absolute;
+  z-index: 8;
+  left: var(--hud-safe-left);
+  top: var(--hud-safe-top);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.hud-item-dock--right {
+  left: auto;
+  right: var(--hud-safe-right);
+  align-items: flex-end;
+}
+
+.hud-item-dock__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.readied-item-home {
+  display: contents;
+}
+
+.poke-radar-host {
+  display: flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  max-width: min(46vw, 280px);
+}
+
+.poke-radar-host[hidden] {
+  display: none !important;
+}
+
+/* ---- Pill rails / hotbar --------------------------------------------- */
+
+.hud-pill-rail,
+.hud-utility-rail,
+.hotbar-hud.hud-pill-rail {
+  --hud-pill-ink: #3a3328;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.22);
+  pointer-events: auto;
+}
+
+.hotbar-hud.hud-pill-rail {
+  gap: 12px;
+  padding: 8px 18px;
+  max-width: calc(100% - 32px);
+}
+
+.hotbar-hud__slot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: none !important;
+  border-radius: 50%;
+  background: transparent !important;
+  box-shadow: none;
+  color: var(--hud-pill-ink);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.12s ease;
+}
+
+.hotbar-hud__slot:hover {
+  background: var(--hud-pill-hover) !important;
+  transform: translateY(-1px);
+}
+
+.hotbar-hud__slot.is-empty {
+  opacity: 0.42;
+}
+
+.hotbar-hud__slot.is-active,
+.hotbar-hud__slot.is-on {
+  background: var(--hud-pill-active) !important;
+  color: var(--hud-pill-ink) !important;
+  box-shadow: inset 0 0 0 2px var(--hud-pill-ring);
+}
+
+.hotbar-hud__key,
+.hotbar-hud__count {
+  position: absolute;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font: 700 10px/16px "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--hud-pill-badge-ink);
+  background: var(--hud-pill-badge);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.hotbar-hud__key {
+  top: -5px;
+  left: -5px;
+}
+
+.hotbar-hud__count {
+  top: auto;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+}
+
+.hotbar-hud__count:empty {
+  display: none;
+}
+
+.hotbar-hud__icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
+}
+
+.hotbar-hud__icon img,
+.hotbar-hud__icon canvas,
+.hotbar-hud__icon.jogo-icone--tileset {
+  width: 42px !important;
+  height: 42px !important;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* ---- Utility rails --------------------------------------------------- */
+
+.hud-utility-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.22));
+  pointer-events: auto;
+}
+
+.hud-utility-rail--key {
+  position: relative;
+  z-index: 1;
+  gap: 10px;
+  padding: 7px 28px 7px 16px;
+}
+
+.hud-utility-rail--sys {
+  position: relative;
+  z-index: 2;
+  margin-left: -22px;
+  padding-left: 18px;
+}
+
+.hud-utility-rail--key .hud-utility-btn {
+  width: 54px;
+  height: 54px;
+}
+
+.hud-utility-rail--key .hud-utility-btn__icon,
+.hud-utility-rail--key .hud-utility-btn__icon img,
+.hud-utility-rail--key .hud-utility-btn__icon.jogo-icone--tileset {
+  width: 42px !important;
+  height: 42px !important;
+}
+
+.hud-utility-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0 !important;
+  color: #3a3328;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 50%;
+  box-shadow: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
+}
+
+.hud-utility-btn:hover:not(:disabled) {
+  background: rgba(40, 32, 24, 0.07) !important;
+  transform: translateY(-1px);
+}
+
+.hud-utility-btn.is-active {
+  background: rgba(40, 32, 24, 0.08) !important;
+  box-shadow: inset 0 0 0 2px rgba(40, 32, 24, 0.28);
+}
+
+.hud-utility-btn__icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
+  image-rendering: pixelated;
+}
+
+.hud-utility-btn__icon img,
+.hud-utility-btn__icon.jogo-icone--tileset {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.hud-utility-idioma {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  pointer-events: auto;
+}
+
+.hud-utility-idioma select {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid rgba(40, 32, 24, 0.22);
+  font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
+  color: #3a3328;
+  cursor: pointer;
+}
+
+/* ---- Money / clock chips --------------------------------------------- */
+
+.hud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 12px;
+  color: #e6eefc;
+  background: rgba(13, 21, 38, 0.72);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 10px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.hud-chip b {
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.hud-chip--money {
+  min-height: 0;
+  padding: 6px 12px 6px 8px;
+  gap: 6px;
+  color: #8a6914;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  border: none;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.18);
+  backdrop-filter: none;
+  pointer-events: auto;
+}
+
+.hud-chip--money__icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.hud-chip--money b {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-chip--clock {
+  gap: 6px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.hud-chip--clock > b {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.hud-clock__icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: radial-gradient(circle at 35% 35%, #fde68a 0%, #f59e0b 55%, #b45309 100%);
+}
+
+.hud-chip--clock[data-periodo="tarde"] .hud-clock__icon,
+.hud-chip--clock[data-periodo="afternoon"] .hud-clock__icon {
+  background: radial-gradient(circle at 30% 30%, #fdba74 0%, #ea580c 50%, #9a3412 100%);
+}
+
+.hud-chip--clock[data-periodo="noite"] .hud-clock__icon,
+.hud-chip--clock[data-periodo="night"] .hud-clock__icon {
+  background:
+    radial-gradient(circle at 62% 38%, rgba(15, 23, 42, 0.92) 0 38%, transparent 40%),
+    radial-gradient(circle at 40% 40%, #e2e8f0 0%, #94a3b8 45%, #334155 100%);
+}
+
+.hud-chip--clock[data-periodo="aurora"] .hud-clock__icon {
+  background: radial-gradient(circle at 35% 35%, #fdba74 0%, #f97316 55%, #9a3412 100%);
+}
+
+.hud-clock__period {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(230, 238, 252, 0.65);
+}
+
+.hud-chip--weather {
+  gap: 4px;
+  min-height: 34px;
+  padding: 6px 10px 8px;
+  width: auto;
+}
+
+.hud-chip--wind {
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px 8px;
+}
+
+/* Weather track compact (override jogo.css) */
+.hud-chip--weather.hud-wx,
+#jogo-clima-previsao.hud-wx {
+  width: auto;
+  max-width: var(--area-minimap-size);
+  padding: 4px 8px 6px;
+  background: rgba(13, 21, 38, 0.72);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.hud-chip--weather .hud-wx__viewport {
+  width: 84px;
+  height: 26px;
+}
+
+.hud-chip--weather .hud-wx__slot {
+  width: 20px;
+  height: 20px;
+}
+
+.hud-chip--weather .hud-wx__icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hud-chip--weather .hud-wx__agora {
+  width: 22px;
+  height: 22px;
+}
+
+/* ---- Map dock (bottom-right) ----------------------------------------- */
+
+.hud-map-dock {
+  position: absolute;
+  z-index: 7;
+  right: var(--hud-safe-right);
+  bottom: var(--hud-safe-bottom);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.hud-map-dock__dials {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: var(--area-minimap-size);
+  max-width: 100%;
+}
+
+.hud-map-dock__wx-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  align-self: stretch;
+  gap: 6px;
+}
+
+.area-minimap {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--area-minimap-size);
+  height: var(--area-minimap-size);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.area-minimap--circular .area-minimap__canvas,
+#jogo-mini.area-minimap__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50%;
+  display: block;
+  background: var(--world-map-void);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 14px 36px rgba(0, 0, 0, 0.5);
+}
+
+.area-minimap__ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    145deg,
+    rgba(226, 232, 240, 0.55),
+    rgba(71, 85, 105, 0.35) 42%,
+    rgba(148, 163, 184, 0.5) 70%,
+    rgba(30, 41, 59, 0.65)
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.55),
+    inset 0 1px 0 rgba(248, 250, 252, 0.35);
+}
+
+.area-minimap__north {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  z-index: 3;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 700 0.68rem/1 "Segoe UI", system-ui, sans-serif;
+  color: #f8fafc;
+  background: linear-gradient(180deg, #64748b, #334155);
+  border: 1px solid rgba(226, 232, 240, 0.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.area-minimap__header {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  max-width: calc(var(--area-minimap-size) + 48px);
+  pointer-events: none;
+  text-align: center;
+}
+
+.area-minimap__place {
+  font: 700 0.78rem/1.15 "Segoe UI", system-ui, sans-serif;
+  color: #e6eefc;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ---- Party strip (left) ---------------------------------------------- */
+
+.hud-party {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  z-index: 7;
+}
+
+.party-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.party-hud__rail {
+  position: absolute;
+  left: var(--hud-safe-left);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1vmin, 10px);
+  max-height: calc(100% - 24px);
+  pointer-events: auto;
+  z-index: 3;
+}
+
+.party-hud__strip.party-roster,
+#jogo-equipe.party-roster {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--party-slot);
+  grid-auto-rows: var(--party-slot);
+  grid-auto-flow: row;
+  justify-content: center;
+  align-content: center;
+  gap: clamp(4px, 0.8vmin, 8px);
+  width: auto;
+  max-height: calc(100% - 72px);
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  pointer-events: auto;
+}
+
+.party-slot {
+  position: relative;
+  width: var(--party-slot);
+  height: var(--party-slot);
+  flex: 0 0 auto;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 10px;
+  background: rgba(9, 15, 28, 0.45) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.party-slot:hover {
+  transform: translateX(3px) scale(1.04);
+  z-index: 2;
+}
+
+.party-slot.is-on,
+.party-slot.is-out {
+  box-shadow:
+    inset 0 0 0 1px rgba(234, 248, 176, 0.35),
+    0 0 0 2px rgba(234, 248, 176, 0.28);
+  background: rgba(9, 15, 28, 0.55) !important;
+  color: inherit !important;
+}
+
+.party-slot.is-fainted {
+  filter: grayscale(0.85) brightness(0.72);
+  opacity: 0.55;
+}
+
+.party-slot__portrait {
+  position: absolute;
+  inset: 11%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(2, 6, 16, 0.55);
+}
+
+.party-slot__face {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.party-slot__lv {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  z-index: 3;
+  min-width: 16px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  pointer-events: none;
+}
+
+.party-slot__hp {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 4%;
+  z-index: 3;
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(15, 23, 42, 0.85);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.party-slot__hp > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #4ade80;
+}
+
+.party-slot__hp > i[data-baixa="1"] {
+  background: #f87171;
+}
+
+/* ---- Legacy overrides (hide old canto stack) ------------------------- */
+
+.jogo-canto {
+  display: none !important;
+}
+
+.jogo-hotbar:not(.hotbar-hud) {
+  display: none;
+}
+
+.jogo-dinheiro-hud:not(.hud-chip--money) {
+  display: none;
+}
+
+/* Minimapa de debug não compete com os docks da HUD */
+.mapa-kanto {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0.88;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* PC / loja hide docks */
+body.is-pc-open .hud-item-dock,
+body.is-pc-open .hud-map-dock,
+body.is-pc-open .hud-party,
+body.is-loja-open .hud-item-dock,
+body.is-loja-open .hud-map-dock,
+body.is-loja-open .hud-party {
+  visibility: hidden;
+}
+
+@media (max-width: 900px) {
+  .hotbar-hud.hud-pill-rail {
+    gap: 6px;
+    padding: 5px 10px;
+  }
+
+  .hotbar-hud__slot {
+    width: 40px;
+    height: 40px;
+  }
+
+  .hotbar-hud__icon,
+  .hotbar-hud__icon img,
+  .hotbar-hud__icon.jogo-icone--tileset {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  :root {
+    --area-minimap-size: 160px;
+    --party-slot: clamp(40px, 6vmin, 50px);
+  }
+}

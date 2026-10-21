@@ -128,9 +128,11 @@ export function atualizarCampoGale(estado, dt, vento, centro, raio, cfg = CLIMA_
   const perpX = -dirY;
   const perpY = dirX;
 
-  const halfLenBase = 2.2 + wind01 * 3.5;
-  const pad = halfLenBase * 2.2 + (raio || 18) * 0.35;
-  const speedBase = 8 + wind01 * 22;
+  const halfMin = cfg.galeHalfLenMin ?? 7.2;
+  const halfMax = cfg.galeHalfLenMax ?? 16;
+  const halfLenBase = halfMin + wind01 * (halfMax - halfMin);
+  const pad = halfLenBase * 2.05 + (raio || 18) * 0.4;
+  const speedBase = 11 + wind01 * 28;
   const steerBase = cfg.galeSteerPerSec ?? 1.6;
   const tailLag = cfg.galeTailLag ?? 0.42;
   const wander = cfg.galeWander ?? 0.055;
@@ -175,7 +177,7 @@ export function atualizarCampoGale(estado, dt, vento, centro, raio, cfg = CLIMA_
     const hx = centro.x - dirX * pad + perpX * lat;
     const hy = centro.y - dirY * pad + perpY * lat;
     const r = obter(estado);
-    const half = halfLenBase * (0.75 + Math.random() * 0.55);
+    const half = halfLenBase * (0.88 + Math.random() * 0.35);
     alinharTrilho(r, hx, hy, dirX, dirY, half);
     r.speed = speedBase * (0.75 + Math.random() * 0.5);
     r.varIdx = estado.seq % VARIANTES_GALE.length;

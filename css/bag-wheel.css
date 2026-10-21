@@ -1,0 +1,209 @@
+/**
+ * Bag wheel — visual parity com Pokémon AI (tamanhos/chrome).
+ * Markup gerado por js/jogo/roda.js.
+ */
+
+.bag-wheel {
+  position: fixed;
+  inset: 0;
+  z-index: 7600;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.bag-wheel[hidden] {
+  display: none;
+}
+
+.bag-wheel__dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(40, 32, 24, 0.28);
+  backdrop-filter: blur(6px);
+}
+
+.bag-wheel__frame {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: min(92vw, 640px);
+  transform: none;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+.bag-wheel__tabs {
+  display: flex;
+  gap: 8px;
+  z-index: 1;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.bag-wheel__tab {
+  appearance: none;
+  border: none;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  color: #5c5346;
+  font: 600 12px/1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
+    0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+.bag-wheel__tab.is-active {
+  color: #1a1408;
+  background: linear-gradient(180deg, #fffef8 0%, #e8c547 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(40, 32, 24, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.bag-wheel__ring {
+  position: relative;
+  width: min(520px, 78vh);
+  height: min(520px, 78vh);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #fffef8 0 27%, transparent 28% 38%, rgba(40, 32, 24, 0.22) 39% 100%);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  --bag-wheel-chip: 22%;
+  --bag-wheel-icon: 56px;
+}
+
+.bag-wheel__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54%;
+  height: 54%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.16);
+  text-align: center;
+  padding: 18px 22px 16px;
+  pointer-events: none;
+  z-index: 1;
+  color: #3a3328;
+}
+
+.bag-wheel__center-icon,
+.bag-wheel__center-icon img,
+.bag-wheel__center-icon canvas,
+.bag-wheel__center-icon.jogo-icone--tileset {
+  width: 120px !important;
+  height: 120px !important;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18));
+}
+
+.bag-wheel__center-name {
+  font: 800 15px/1.15 "Segoe UI", system-ui, sans-serif;
+  color: #3a3328;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  max-width: 88%;
+}
+
+.bag-wheel__center-desc {
+  max-width: 88%;
+  font: 500 12px/1.35 "Segoe UI", system-ui, sans-serif;
+  color: #5c5346;
+  opacity: 1;
+}
+
+.bag-wheel__item {
+  position: absolute;
+  width: var(--bag-wheel-chip, 22%);
+  min-height: var(--bag-wheel-icon, 56px);
+  height: auto;
+  transform: translate(-50%, -50%);
+  appearance: none;
+  border: none;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  color: #3a3328;
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 6px 8px 7px;
+  cursor: default;
+  z-index: 3;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.16);
+  outline: none;
+  font: 700 11px/1.15 "Segoe UI", system-ui, sans-serif;
+}
+
+.bag-wheel__item.is-on {
+  transform: translate(-50%, -50%) scale(1.1);
+  background: linear-gradient(180deg, #fffef8 0%, #efe8da 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(40, 32, 24, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 8px 18px rgba(0, 0, 0, 0.2);
+  outline: none;
+}
+
+.bag-wheel__icon,
+.bag-wheel__icon img,
+.bag-wheel__icon canvas,
+.bag-wheel__icon.jogo-icone--tileset {
+  width: var(--bag-wheel-icon, 56px) !important;
+  height: var(--bag-wheel-icon, 56px) !important;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.bag-wheel__cmds {
+  margin: 0;
+  color: #5c5346;
+  font: 600 12px/1.35 "Segoe UI", system-ui, sans-serif;
+  text-align: center;
+  text-shadow: none;
+  order: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+@media (max-width: 520px) {
+  .bag-wheel__center-icon,
+  .bag-wheel__center-icon img,
+  .bag-wheel__center-icon canvas,
+  .bag-wheel__center-icon.jogo-icone--tileset {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  .bag-wheel__ring {
+    --bag-wheel-icon: 40px;
+  }
+}

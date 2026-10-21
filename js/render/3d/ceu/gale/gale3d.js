@@ -71,7 +71,9 @@ export function criarGale3d(cena) {
       slot.mesh.visible = false;
       return;
     }
-    const halfBase = r.halfLen * 0.14;
+    const wMin = CLIMA_CFG.galeHalfWidth ?? 0.11;
+    const wMax = CLIMA_CFG.galeHalfWidthMax ?? 0.2;
+    const halfBase = Math.min(wMax, wMin + (r.halfLen || 8) * 0.0045);
     const baseZ = ALTURA_PRACA + (r.z || 1.2);
     const arr = slot.pos;
     for (let i = 0; i <= PASSOS_FAIXA; i++) {
@@ -92,7 +94,7 @@ export function criarGale3d(cena) {
     }
     slot.geo.attributes.position.needsUpdate = true;
     slot.mesh.visible = true;
-    const alpha = 0.12 + Math.min(0.28, (r.speed / 40) * 0.25);
+    const alpha = 0.1 + Math.min(0.22, (r.speed / 48) * 0.2);
     slot.mesh.material.opacity = alpha;
   }
 

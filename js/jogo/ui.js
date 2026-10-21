@@ -59,18 +59,20 @@ import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
 import { ligarJanelaLoja, sincronizarJanelaLoja } from "./loja/janela.js";
 import { quantidadeLoja, tratarLoja } from "./loja.js";
 import { obterHora } from "../render/3d/ceu/controleCeu.js";
-import { obterClimaJogo } from "../clima/amostra.js";
 import { ligarHudClima, tickHudPrevisao } from "./hudClima.js";
 import { ligarHudVento, tickHudVento } from "./hudVento.js";
 import { deLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
+import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { pintarMapa } from "../ui/mapa/pintar.js";
+import { abrirMapa } from "../ui/mapa/mapaMundo.js";
 
 let raiz = null;
 
 export function ligarUi(overlay) {
   raiz = overlay;
   ligarIdioma();
+  pintarUtilityIcons();
   raiz.addEventListener("click", noClique);
   raiz.addEventListener("change", noChange);
   raiz.addEventListener("input", tratarInputCapsula);
@@ -121,7 +123,11 @@ function noClique(ev) {
   const i = Number(btn.dataset.i);
   if (act === "fechar") fecharTopo();
   else if (act === "aba") abrirPainel(btn.dataset.painel);
-  else if (act === "cat") {
+  else if (act === "utility") {
+    tratarUtility(btn.dataset.utility);
+    pintar();
+    return;
+  } else if (act === "cat") {
     estado.categoria = btn.dataset.cat;
     avisar();
   } else if (act === "usar" || act === "usar-mon") usarSelecionado(tipo, key, "pokemon");
@@ -240,6 +246,64 @@ function escHtml(valor) {
   });
 }
 
+const UTILITY_ICONES = Object.freeze({
+  pokedex: "pokedex",
+  map: "townMap",
+  pokeRadar: "pokeRadar",
+  bag: "bag",
+  quests: "quest",
+  party: "pokedex",
+  save: "saveDisk",
+});
+
+function pintarUtilityIcons() {
+  if (!raiz) return;
+  const botoes = raiz.querySelectorAll(".hud-utility-btn[data-utility]");
+  for (let i = 0; i < botoes.length; i++) {
+    const btn = botoes[i];
+    if (btn.dataset.iconePronto) continue;
+    const chave = UTILITY_ICONES[btn.dataset.utility];
+    if (!chave) continue;
+    btn.innerHTML = htmlIcone(chave, "hud-utility-btn__icon", btn.dataset.utility === "pokedex" || btn.dataset.utility === "map" || btn.dataset.utility === "pokeRadar" ? 42 : 28);
+    btn.dataset.iconePronto = "1";
+  }
+}
+
+function tratarUtility(id) {
+  if (id === "bag") {
+    if (estado.painel === "mochila") fecharTopo();
+    else abrirPainel("mochila");
+    return;
+  }
+  if (id === "pokedex") {
+    if (estado.painel === "pokedex") fecharTopo();
+    else abrirPainel("pokedex");
+    return;
+  }
+  if (id === "quests") {
+    if (estado.painel === "quests") fecharTopo();
+    else abrirPainel("quests");
+    return;
+  }
+  if (id === "party") {
+    if (estado.painel === "party") fecharTopo();
+    else abrirPainel("party");
+    return;
+  }
+  if (id === "save") {
+    salvar();
+    return;
+  }
+  if (id === "map") {
+    const p = pontoMini();
+    abrirMapa(p.x, p.y);
+    return;
+  }
+  if (id === "pokeRadar") {
+    estado.itemGet = "Poké Radar — em breve.";
+  }
+}
+
 function pintarHotbar() {
   const host = el("#jogo-hotbar");
   if (!host) return;
@@ -249,12 +313,15 @@ function pintarHotbar() {
     const nome = slot ? nomeDe(slot.tipo, slot.key) : "";
     const qtd = slot ? contar(slot.tipo, slot.key) : "";
     const tecla = (teclaDoSlot(i) || "").replace("Digit", "");
-    const icone = slot ? htmlIcone(slot.key, "jogo-slot__icone") : `<span class="jogo-slot__icone jogo-icone--vazio"></span>`;
+    const vazio = !slot;
+    const icone = slot
+      ? htmlIcone(slot.key, "hotbar-hud__icon", 42)
+      : `<span class="hotbar-hud__icon jogo-icone--vazio"></span>`;
     partes.push(
-      `<button type="button" class="jogo-slot${i === estado.slotAtivo ? " is-on" : ""}" data-act="slot" data-i="${i}" title="${nome}">
-        <span class="jogo-slot__tecla">${tecla}</span>
+      `<button type="button" class="hotbar-hud__slot${i === estado.slotAtivo ? " is-active is-on" : ""}${vazio ? " is-empty" : ""}" data-act="slot" data-i="${i}" title="${escHtml(nome)}">
+        <span class="hotbar-hud__key">${tecla}</span>
         ${icone}
-        <span class="jogo-slot__qtd">${qtd}</span>
+        <span class="hotbar-hud__count">${qtd || ""}</span>
       </button>`,
     );
   }
@@ -329,7 +396,10 @@ function colocarEntrar(entrar, corpo) {
 function pintarDinheiro() {
   const host = el("#jogo-dinheiro");
   if (!host) return;
-  host.textContent = `¥ ${estado.dinheiro}`;
+  const b = host.querySelector("[data-dinheiro]") || host.querySelector("b");
+  const texto = `₽ ${estado.dinheiro}`;
+  if (b) b.textContent = texto;
+  else host.textContent = texto;
 }
 
 function pintarToast() {
@@ -405,13 +475,13 @@ function pintarEquipe() {
           .map((ator, i) => {
             const url = urlRetrato(ator);
             const face = url
-              ? `<img class="jogo-mon__face" src="${url}" alt="" draggable="false" />`
-              : `<span class="jogo-mon__face">${nomeEspecie(ator).slice(0, 1)}</span>`;
-            return `<button type="button" class="jogo-mon${fora && campo === ator ? " is-on" : ""}" data-act="deploy" data-i="${i}">
-              ${face}
-              <span class="jogo-mon__nome">${nomeEspecie(ator)} <small>Nv${ator.nivel}</small></span>
-              <span class="jogo-mon__barra"><i data-hp="${i}"></i></span>
-              <span class="jogo-mon__txt" data-hp-txt="${i}"></span>
+              ? `<img class="party-slot__face" src="${url}" alt="" draggable="false" />`
+              : `<span class="party-slot__face">${escHtml(nomeEspecie(ator).slice(0, 1))}</span>`;
+            const faint = ator.hpMax > 0 && ator.hp <= 0;
+            return `<button type="button" class="party-slot${fora && campo === ator ? " is-on is-out" : ""}${faint ? " is-fainted" : ""}" data-act="deploy" data-i="${i}" title="${escHtml(nomeEspecie(ator))} Nv${ator.nivel}">
+              <span class="party-slot__portrait">${face}</span>
+              <span class="party-slot__lv">Nv${ator.nivel}</span>
+              <span class="party-slot__hp"><i data-hp="${i}"></i></span>
             </button>`;
           })
           .join("")
@@ -421,12 +491,10 @@ function pintarEquipe() {
     const ator = party[i];
     const t = ator.hpMax > 0 ? Math.max(0, ator.hp) / ator.hpMax : 0;
     const bar = host.querySelector(`[data-hp="${i}"]`);
-    const txt = host.querySelector(`[data-hp-txt="${i}"]`);
     if (bar) {
       bar.style.width = `${Math.round(t * 100)}%`;
       bar.dataset.baixa = t < 0.35 ? "1" : "0";
     }
-    if (txt) txt.textContent = `${Math.max(0, Math.round(ator.hp))}/${ator.hpMax}`;
   }
 }
 
@@ -629,21 +697,18 @@ function pintarRelogio() {
   const m = Math.floor((hora - h) * 60);
   const texto = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   const periodo = periodoDe(hora);
-  const clima = obterClimaJogo();
-  const nomeClima = clima.nome || clima.display || "Limpo";
-  const chave = `${texto}|${periodo.chave}|${nomeClima}`;
+  const chave = `${texto}|${periodo.chave}`;
   if (host.dataset.chave === chave) return;
   host.dataset.chave = chave;
   host.dataset.periodo = periodo.chave;
   const horaEl = host.querySelector("[data-hora]");
   const perEl = host.querySelector("[data-periodo]");
-  const cliEl = host.querySelector("[data-clima]");
   if (horaEl) horaEl.textContent = texto;
   if (perEl) perEl.textContent = periodo.nome;
-  if (cliEl) cliEl.textContent = nomeClima;
 }
 
 const ZOOM_MINI = 0.42;
+const MINI_PX = 220;
 
 function pontoMini() {
   if (estado.interior && Number.isFinite(estado.interior.ax)) {
@@ -659,7 +724,7 @@ function pintarMini() {
   const tela = el("#jogo-mini");
   if (!tela) return;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const px = Math.round(144 * dpr);
+  const px = Math.round(MINI_PX * dpr);
   if (tela.width !== px || tela.height !== px) {
     tela.width = px;
     tela.height = px;
@@ -674,6 +739,15 @@ function pintarMini() {
     agora: performance.now(),
     mini: true,
   });
+  const place = raiz?.querySelector("[data-minimap-place]");
+  if (place) {
+    let nome = "Kanto";
+    if (dentroDoKanto(ponto.x, ponto.y)) {
+      const a = amostraKanto(ponto.x, ponto.y);
+      if (a?.nome) nome = a.nome;
+    }
+    if (place.textContent !== nome) place.textContent = nome;
+  }
 }
 
 let corpoRef = null;

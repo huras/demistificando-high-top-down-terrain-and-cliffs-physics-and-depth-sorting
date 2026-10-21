@@ -408,6 +408,9 @@
 }
 
 body.is-pc-open #jogo-hotbar,
+body.is-pc-open .hud-item-dock,
+body.is-pc-open .hud-map-dock,
+body.is-pc-open .hud-party,
 body.is-pc-open .jogo-canto,
 body.is-pc-open #jogo-entrar,
 body.is-pc-open #jogo-prompt,

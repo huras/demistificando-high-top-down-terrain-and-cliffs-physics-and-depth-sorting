@@ -19,6 +19,7 @@ import {
   dentroDoTerrenoLaboratorio,
 } from "../mundo/cidade/laboratorio.js";
 import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
+import { areaPorId } from "../mundo/regiao/areasKanto.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
@@ -80,6 +81,16 @@ function biomaIdEm(x, y, hSorteio) {
   if (dentroDoKanto(x, y)) {
     const a = amostraKanto(x, y);
     if (!a?.bioma) return "light-grass";
+    const area = a.areaId ? areaPorId(a.areaId) : null;
+    // Área lógica manda no pool; borda visual só decide desempate A/B.
+    if (area?.encontro) {
+      const idA = a.bioma.id || area.encontro;
+      const idB = a.biomaB?.id;
+      if (idB && idB !== idA && (a.dominio ?? 1) < 1 && unidade(hSorteio) >= 0.7) {
+        return idB;
+      }
+      return area.encontro;
+    }
     const idA = a.bioma.id || "light-grass";
     const idB = a.biomaB?.id;
     if (idB && idB !== idA && (a.dominio ?? 1) < 1) {

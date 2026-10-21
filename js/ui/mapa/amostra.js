@@ -390,7 +390,7 @@ function lerPontoLocal(wx, wy) {
     entrada ||
     perfil.u < 0.72 ||
     bioma.superficie === "pedra";
-  return { x, y, h, u: perfil.u, par, bioma, limpo, rua, predio };
+  return { x, y, h, u: perfil.u, par, bioma, areaId: zona?.areaId || null, limpo, rua, predio };
 }
 
 function aplicarCorpoLocal(ponto, rgb) {

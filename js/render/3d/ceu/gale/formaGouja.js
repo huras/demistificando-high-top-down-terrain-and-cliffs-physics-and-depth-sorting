@@ -7,7 +7,7 @@ export const VARIANTES_GALE = Object.freeze([
   { bend: -0.022, hook: 0.05 },
 ]);
 
-export const PASSOS_FAIXA = 10;
+export const PASSOS_FAIXA = 14;
 
 const _pt = { x: 0, y: 0 };
 const _tg = { x: 0, y: 0 };
@@ -17,7 +17,7 @@ export function controleCurva(x0, y0, x1, y1, v, cxEx, cyEx) {
   const dx = x1 - x0;
   const dy = y1 - y0;
   const len = Math.hypot(dx, dy);
-  if (!(len > 0.4)) return null;
+  if (!(len > 2.5)) return null;
   const px = -dy / len;
   const py = dx / len;
   if (Number.isFinite(cxEx) && Number.isFinite(cyEx)) {
@@ -49,8 +49,8 @@ export function tangenteBezier(x0, y0, cx, cy, x1, y1, t, out = _tg) {
   return out;
 }
 
-/** Largura da faixa: grossa no meio, ponta fina. */
+/** Largura da faixa: pico suave no meio, pontas bem afiadas. */
 export function perfilLargura(t, halfBase) {
   const s = Math.sin(Math.PI * Math.max(0, Math.min(1, t)));
-  return halfBase * Math.pow(s, 1.22);
+  return halfBase * Math.pow(s, 1.55);
 }
