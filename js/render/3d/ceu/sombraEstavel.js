@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 /** Resolução do shadow map do sol. Um único dono desta constante. */
-export const MAPA_SOMBRA_SOL = 2048;
+export const MAPA_SOMBRA_SOL = 4096;
 
 const _eixoZ = new THREE.Vector3();
 const _right = new THREE.Vector3();

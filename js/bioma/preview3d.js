@@ -583,7 +583,7 @@ export async function iniciarPreviewBioma(elemento) {
 
   sol = new THREE.DirectionalLight(0xfff0d8, 1.75);
   sol.castShadow = true;
-  sol.shadow.mapSize.set(2048, 2048);
+  sol.shadow.mapSize.set(4096, 4096);
   sol.shadow.camera.near = 2;
   sol.shadow.camera.far = 140;
   sol.shadow.camera.left = -70;
