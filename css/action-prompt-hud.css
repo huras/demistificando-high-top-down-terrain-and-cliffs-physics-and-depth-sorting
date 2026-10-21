@@ -1,0 +1,292 @@
+/* Action prompt — world-anchored HUD + key cluster; ! lives on the player sprite */
+
+.action-prompt-hud {
+  --font-ui: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --action-prompt-x: 50%;
+  --action-prompt-y: 50%;
+  --action-prompt-anchor-x: 52px;
+  --action-prompt-anchor-y: 28px;
+  --kbd-unit: 17px;
+  --kbd-gap: 3px;
+  position: fixed;
+  left: var(--action-prompt-x);
+  top: var(--action-prompt-y);
+  bottom: auto;
+  z-index: 280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transform: translate(
+    calc(-1 * var(--action-prompt-anchor-x)),
+    calc(-1 * var(--action-prompt-anchor-y))
+  );
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+  will-change: left, top;
+}
+
+.action-prompt-hud[hidden] {
+  display: none !important;
+}
+
+.action-prompt-hud__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.action-prompt-hud__portrait {
+  margin: 0;
+  pointer-events: none;
+}
+
+.action-prompt-hud__portrait[hidden] {
+  display: none !important;
+}
+
+.action-prompt-hud__portrait .pokemon-portrait {
+  --portrait-size: 52px;
+  border-radius: 10px;
+  border: 2px solid rgba(244, 240, 228, 0.82);
+  background: rgba(8, 12, 10, 0.72);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.action-prompt-hud--fresh .action-prompt-hud__keyboard {
+  animation: action-prompt-kbd-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.action-prompt-hud--fresh .action-prompt-hud__gamepad {
+  animation: action-prompt-kbd-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes action-prompt-kbd-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.action-prompt-hud__keyboard,
+.action-prompt-hud__gamepad {
+  flex-shrink: 0;
+  padding: 4px;
+  border-radius: 10px;
+  background: linear-gradient(
+    165deg,
+    rgba(8, 12, 10, 0.72) 0%,
+    rgba(8, 12, 10, 0.42) 100%
+  );
+  backdrop-filter: blur(5px);
+  -webkit-mask-image: radial-gradient(ellipse 120% 120% at 50% 50%, #000 68%, transparent 100%);
+  mask-image: radial-gradient(ellipse 120% 120% at 50% 50%, #000 68%, transparent 100%);
+}
+
+.action-prompt-hud__gamepad[hidden],
+.action-prompt-hud__keyboard[hidden] {
+  display: none !important;
+}
+
+.action-prompt-pad {
+  display: block;
+  padding: 2px;
+}
+
+.action-prompt-pad__viewport {
+  position: relative;
+  overflow: visible;
+}
+
+.action-prompt-pad__btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(232, 224, 208, 0.38);
+  border: 1.5px solid rgba(232, 224, 208, 0.16);
+  background: rgba(8, 12, 10, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease,
+    color 0.14s ease,
+    background 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.action-prompt-pad__btn--masked {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.82);
+}
+
+.action-prompt-pad__btn--near {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(0.92);
+  font-size: 11px;
+}
+
+.action-prompt-pad__btn--active {
+  z-index: 2;
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1.08);
+  font-size: 16px;
+  color: #1a1408;
+  border: 2px solid rgba(12, 18, 14, 0.92);
+  background: linear-gradient(165deg, #f4f0e4 0%, #ddd4bc 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 2px 0 rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.action-prompt-hud--gamepad .action-prompt-hud__label-wrap {
+  margin-left: -2px;
+}
+
+.action-prompt-kbd {
+  display: block;
+}
+
+.action-prompt-kbd__viewport {
+  position: relative;
+  overflow: visible;
+}
+
+.action-prompt-kbd__key {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 2px;
+  border-radius: 5px;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: rgba(232, 224, 208, 0.34);
+  border: 1px solid rgba(232, 224, 208, 0.14);
+  background: rgba(8, 12, 10, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease,
+    color 0.14s ease,
+    background 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.action-prompt-kbd__key--wide {
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.action-prompt-kbd__key--masked {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.82);
+}
+
+.action-prompt-kbd__key--near {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+
+.action-prompt-kbd__key--active {
+  z-index: 2;
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1.06);
+  font-size: 11px;
+  font-weight: 800;
+  color: #1a1408;
+  border: 2px solid rgba(12, 18, 14, 0.92);
+  background: linear-gradient(165deg, #f4f0e4 0%, #ddd4bc 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 2px 0 rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.action-prompt-kbd__key--active.action-prompt-kbd__key--wide {
+  font-size: 8px;
+}
+
+.action-prompt-hud__label-wrap {
+  position: relative;
+  margin-left: -4px;
+  padding: 8px 18px 8px 14px;
+  min-width: 72px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.action-prompt-hud__label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: clamp(15px, 2.2vw, 19px);
+  font-style: italic;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: #3a3328;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .action-prompt-hud {
+    --kbd-unit: 14px;
+    --kbd-gap: 2px;
+  }
+
+  .action-prompt-kbd__key {
+    font-size: 8px;
+    border-radius: 4px;
+  }
+
+  .action-prompt-kbd__key--wide {
+    font-size: 6px;
+  }
+
+  .action-prompt-kbd__key--active {
+    font-size: 10px;
+  }
+
+  .action-prompt-kbd__key--active.action-prompt-kbd__key--wide {
+    font-size: 7px;
+  }
+
+  .action-prompt-pad__btn--near {
+    font-size: 10px;
+  }
+
+  .action-prompt-pad__btn--active {
+    font-size: 13px;
+  }
+}

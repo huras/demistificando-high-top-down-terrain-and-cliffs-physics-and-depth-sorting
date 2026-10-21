@@ -24,16 +24,35 @@ export function extrairCatalogo(raizRef) {
   return pendente;
 }
 
+/**
+ * Import opcional — não quebra o catálogo se o módulo faltar.
+ * @param {string} arquivo
+ */
+async function importOpcional(arquivo) {
+  try {
+    return await import(pathToFileURL(arquivo).href);
+  } catch {
+    return null;
+  }
+}
+
 async function montar(raizRef) {
   const base = path.join(raizRef, "src", "data", "pokemon");
   const escalaMod = path.join(raizRef, "src", "sprites", "pmd", "pmdScale.js");
-  const [especiesMod, golpesMod, pmdEscala] = await Promise.all([
-    import(pathToFileURL(path.join(base, "index.js")).href),
-    import(pathToFileURL(path.join(base, "moves.js")).href),
-    import(pathToFileURL(escalaMod).href),
-  ]);
+  const [especiesMod, golpesMod, pmdEscala, bodyMod, metaMod, flavorMod] =
+    await Promise.all([
+      import(pathToFileURL(path.join(base, "index.js")).href),
+      import(pathToFileURL(path.join(base, "moves.js")).href),
+      import(pathToFileURL(escalaMod).href),
+      importOpcional(path.join(base, "bodyMetrics.js")),
+      importOpcional(path.join(base, "speciesDexMeta.js")),
+      importOpcional(path.join(base, "speciesFlavor.js")),
+    ]);
   const escalaDe = pmdEscala.getPmdVisualScale;
   const offsetDe = pmdEscala.getPmdYOffset;
+  const corpoDe = bodyMod?.getSpeciesBody || null;
+  const metaDe = metaMod?.getSpeciesDexMeta || null;
+  const flavorDe = flavorMod?.getSpeciesFlavor || null;
 
   const especies = {};
   const chaves = Object.keys(especiesMod.SPECIES);
@@ -48,7 +67,8 @@ async function montar(raizRef) {
       if (!passo?.move) continue;
       learn.push([passo.level | 0, passo.move]);
     }
-    especies[sp.key] = {
+
+    const item = {
       key: sp.key,
       dex: sp.dex | 0,
       nome: sp.name || sp.key,
@@ -67,6 +87,56 @@ async function montar(raizRef) {
       offsetY: numeroOu(offsetDe(sp.dex), 0),
       learnset: learn,
     };
+
+    // Campos opcionais (body / dex meta / flavor) — try/catch já no import
+    try {
+      const corpo = corpoDe?.(sp.key);
+      if (corpo) {
+        if (Number.isFinite(corpo.heightM)) item.altura = Number(corpo.heightM);
+        if (Number.isFinite(corpo.weightKg)) item.peso = Number(corpo.weightKg);
+      }
+    } catch {
+      /* bodyMetrics ausente ou inválido */
+    }
+
+    try {
+      const meta = metaDe?.(sp.key);
+      if (meta) {
+        if (Array.isArray(meta.abilities)) {
+          item.habilidades = meta.abilities.map((a) =>
+            typeof a === "string"
+              ? a
+              : { key: a.key, hidden: !!a.hidden },
+          );
+        }
+        if (Array.isArray(meta.eggGroups)) {
+          item.gruposOvo = meta.eggGroups.slice();
+        }
+        if (Number.isFinite(meta.genderRate)) item.genero = Number(meta.genderRate);
+        if (Number.isFinite(meta.hatchCounter)) item.ciclosOvo = Number(meta.hatchCounter);
+        if (Number.isFinite(meta.catchRate)) item.captura = Number(meta.catchRate);
+        if (meta.growthRate) item.crescimento = meta.growthRate;
+        if (Number.isFinite(meta.baseExp)) item.baseExp = Number(meta.baseExp);
+      }
+    } catch {
+      /* speciesDexMeta ausente ou inválido */
+    }
+
+    try {
+      // pt não existe no PokeAPI — tenta en (e ja se o locale do flavor pedir)
+      const fl =
+        flavorDe?.(sp.key, "en") ||
+        flavorDe?.(sp.key, "ja") ||
+        flavorDe?.(sp.key);
+      if (fl) {
+        if (fl.flavor) item.flavor = fl.flavor;
+        if (fl.genus) item.categoria = fl.genus;
+      }
+    } catch {
+      /* speciesFlavor ausente ou inválido */
+    }
+
+    especies[sp.key] = item;
   }
 
   const golpes = {};

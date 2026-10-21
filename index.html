@@ -12,6 +12,11 @@
   <link rel="stylesheet" href="css/interiores.css" />
   <link rel="stylesheet" href="css/pc-hud.css" />
   <link rel="stylesheet" href="css/loja-hud.css" />
+  <link rel="stylesheet" href="css/pokedex-hud.css" />
+  <link rel="stylesheet" href="css/game-menu.css" />
+  <link rel="stylesheet" href="css/hud-chrome.css" />
+  <link rel="stylesheet" href="css/action-prompt-hud.css" />
+  <link rel="stylesheet" href="css/item-get-hud.css" />
   <script type="importmap">
   {
     "imports": {
@@ -150,11 +155,155 @@
             <section id="jogo-craft" class="jogo-painel jogo-painel--lado" hidden></section>
             <section id="jogo-roda" class="jogo-roda" hidden></section>
 
-            <!-- Top-left: hotbar + dinheiro (parity Pokémon AI) -->
+            <div
+              id="pokedex-hud"
+              class="pokedex-hud"
+              hidden
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <div class="pokedex-hud__backdrop"></div>
+              <div
+                class="pokedex-hud__device"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="pokedex-hud-title"
+              >
+                <header class="pokedex-hud__header">
+                  <h2 id="pokedex-hud-title" class="pokedex-hud__title">Pokédex</h2>
+                  <button type="button" class="pokedex-hud__close" aria-label="Fechar Pokédex">×</button>
+                </header>
+                <div class="pokedex-hud__screen">
+                  <div class="pokedex-hud__type-field" data-pokedex-type-field aria-hidden="true"></div>
+                  <div class="pokedex-hud__screen-body">
+                    <div class="pokedex-hud__list" data-pokedex-list>
+                      <div class="pokedex-hud__toolbar" data-pokedex-toolbar>
+                        <input
+                          type="search"
+                          class="pokedex-hud__search"
+                          data-pokedex-search
+                          placeholder="Buscar nome ou #"
+                        />
+                        <div class="pokedex-hud__filters">
+                          <button type="button" class="pokedex-hud__filter is-active" data-pokedex-filter="all">Todos</button>
+                          <button type="button" class="pokedex-hud__filter" data-pokedex-filter="caught">Capturados</button>
+                          <button type="button" class="pokedex-hud__filter" data-pokedex-filter="seen">Só vistos</button>
+                          <button type="button" class="pokedex-hud__filter" data-pokedex-filter="unseen">Não vistos</button>
+                        </div>
+                        <div class="pokedex-hud__type-filters" data-pokedex-type-filters role="group"></div>
+                      </div>
+                      <div class="pokedex-hud__grid-wrap" data-pokedex-dex-view>
+                        <div class="pokedex-hud__grid" data-pokedex-grid></div>
+                      </div>
+                    </div>
+                    <div
+                      id="pokedex-detail"
+                      class="pokedex-detail"
+                      data-pokedex-detail-panel
+                      hidden
+                      aria-hidden="true"
+                    >
+                      <header class="pokedex-detail__header">
+                        <button type="button" class="pokedex-detail__back" data-pokedex-detail-close aria-label="Voltar">
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M15 6 L9 12 L15 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                          </svg>
+                        </button>
+                        <div class="pokedex-detail__identity">
+                          <img class="pokedex-detail__portrait" data-pokedex-detail-portrait alt="" draggable="false" />
+                          <div class="pokedex-detail__titles">
+                            <p class="pokedex-detail__num" data-pokedex-detail-num>#001</p>
+                            <h2 id="pokedex-detail-title" class="pokedex-detail__name" data-pokedex-detail-name></h2>
+                            <p class="pokedex-detail__genus" data-pokedex-detail-genus></p>
+                            <div class="pokedex-detail__types" data-pokedex-detail-types></div>
+                            <p class="pokedex-detail__body" data-pokedex-detail-body></p>
+                          </div>
+                        </div>
+                      </header>
+                      <div class="pokedex-detail__tabs" role="tablist">
+                        <button type="button" class="pokedex-detail__tab is-active" data-pokedex-detail-tab="overview" role="tab" aria-selected="true">Visão geral</button>
+                        <button type="button" class="pokedex-detail__tab" data-pokedex-detail-tab="moves" role="tab" aria-selected="false">Golpes</button>
+                        <button type="button" class="pokedex-detail__tab" data-pokedex-detail-tab="breeding" role="tab" aria-selected="false">Breeding</button>
+                        <button type="button" class="pokedex-detail__tab" data-pokedex-detail-tab="training" role="tab" aria-selected="false">Treino</button>
+                      </div>
+                      <div class="pokedex-detail__body-scroll">
+                        <div class="pokedex-detail__pane" data-pokedex-detail-pane="overview">
+                          <p class="pokedex-detail__flavor" data-pokedex-detail-flavor></p>
+                          <section class="pokedex-detail__section">
+                            <h3 class="pokedex-detail__section-title">Habilidades</h3>
+                            <div class="pokedex-detail__abilities" data-pokedex-detail-abilities></div>
+                          </section>
+                          <section class="pokedex-detail__section">
+                            <h3 class="pokedex-detail__section-title">Status base</h3>
+                            <div class="pokedex-detail__stats" data-pokedex-detail-stats></div>
+                          </section>
+                          <section class="pokedex-detail__section pokedex-detail__section--habitat">
+                            <h3 class="pokedex-detail__section-title">Habitat</h3>
+                            <p class="pokedex-detail__habitat-summary" data-pokedex-detail-locations hidden></p>
+                            <p class="pokedex-detail__habitat-empty" data-pokedex-detail-habitat-empty>Sem habitats conhecidos.</p>
+                          </section>
+                        </div>
+                        <div class="pokedex-detail__pane" data-pokedex-detail-pane="moves" hidden>
+                          <section class="pokedex-detail__section">
+                            <h3 class="pokedex-detail__section-title" data-pokedex-detail-learnset-title>Golpes por nível</h3>
+                            <div class="pokedex-detail__learnset" data-pokedex-detail-learnset></div>
+                          </section>
+                        </div>
+                        <div class="pokedex-detail__pane" data-pokedex-detail-pane="breeding" hidden>
+                          <section class="pokedex-detail__section">
+                            <h3 class="pokedex-detail__section-title">Grupos de ovo</h3>
+                            <div class="pokedex-detail__egg-groups" data-pokedex-detail-egg-groups></div>
+                          </section>
+                          <section class="pokedex-detail__section">
+                            <h3 class="pokedex-detail__section-title">Gênero</h3>
+                            <p class="pokedex-detail__fact" data-pokedex-detail-gender></p>
+                          </section>
+                          <section class="pokedex-detail__section">
+                            <h3 class="pokedex-detail__section-title">Eclosão</h3>
+                            <p class="pokedex-detail__fact" data-pokedex-detail-hatch></p>
+                          </section>
+                        </div>
+                        <div class="pokedex-detail__pane" data-pokedex-detail-pane="training" hidden>
+                          <section class="pokedex-detail__section">
+                            <dl class="pokedex-detail__facts">
+                              <div class="pokedex-detail__fact-row">
+                                <dt>Taxa de captura</dt>
+                                <dd data-pokedex-detail-catch></dd>
+                              </div>
+                              <div class="pokedex-detail__fact-row">
+                                <dt>Crescimento</dt>
+                                <dd data-pokedex-detail-growth></dd>
+                              </div>
+                              <div class="pokedex-detail__fact-row">
+                                <dt>EXP base</dt>
+                                <dd data-pokedex-detail-basexp></dd>
+                              </div>
+                            </dl>
+                          </section>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pokedex-hud__flood" aria-hidden="true"></div>
+                  <div class="pokedex-hud__shine" aria-hidden="true"></div>
+                </div>
+                <footer class="pokedex-hud__footer">
+                  <div class="pokedex-hud__eval-panel">
+                    <p class="pokedex-hud__eval" data-pokedex-eval></p>
+                    <p class="pokedex-hud__summary" data-pokedex-summary></p>
+                    <div class="pokedex-hud__regions" data-pokedex-regions role="group"></div>
+                    <div class="pokedex-hud__legend" data-pokedex-legend></div>
+                  </div>
+                </footer>
+              </div>
+            </div>
+
+            <!-- Top-left: hotbar → hearts → dinheiro (parity Pokémon AI) -->
             <div id="hud-item-dock" class="hud-item-dock">
               <div id="readied-item-home" class="readied-item-home">
                 <div id="jogo-hotbar" class="hotbar-hud hud-pill-rail" aria-label="Itens preparados"></div>
               </div>
+              <div id="player-hearts-hud" class="player-hearts-hud" aria-label="Vida"></div>
               <span id="jogo-dinheiro" class="hud-chip hud-chip--money" data-tip="Dinheiro">
                 <img
                   class="hud-chip--money__icon"
@@ -181,6 +330,8 @@
                     <button type="button" class="hud-utility-btn" data-act="utility" data-utility="bag" title="Mochila" aria-label="Mochila"></button>
                     <button type="button" class="hud-utility-btn" data-act="utility" data-utility="quests" title="Missões" aria-label="Missões"></button>
                     <button type="button" class="hud-utility-btn" data-act="utility" data-utility="party" title="Time" aria-label="Time"></button>
+                    <button type="button" class="hud-utility-btn" data-act="utility" data-utility="status" title="Status" aria-label="Status"></button>
+                    <button type="button" class="hud-utility-btn" data-act="utility" data-utility="menu" title="Menu (Tab)" aria-label="Menu"></button>
                     <button type="button" class="hud-utility-btn" data-act="utility" data-utility="save" title="Salvar" aria-label="Salvar"></button>
                     <label class="jogo-idioma hud-utility-idioma">
                       <select id="jogo-idioma" aria-label="Idioma"></select>
@@ -190,7 +341,7 @@
               </div>
             </div>
 
-            <!-- Left: party portraits -->
+            <!-- Left: party portraits + ride -->
             <section class="hud-party" id="win-party-roster" aria-label="Time">
               <div class="party-hud">
                 <div class="party-hud__rail">
@@ -198,6 +349,99 @@
                 </div>
               </div>
             </section>
+
+            <!-- Bottom-left: status do Pokémon em campo (HP/EXP/ride — sem moves) -->
+            <div id="party-combat-detail" aria-live="polite"></div>
+
+            <!-- Bottom-center: golpes Z/X/C/V + PP -->
+            <div id="party-moves-combat" class="party-moves-combat" hidden aria-label="Golpes"></div>
+
+            <!-- Status do treinador (overlay) -->
+            <div id="player-status-hud" class="player-status-hud" hidden></div>
+
+            <!-- Menu Tab BOTW -->
+            <div id="game-menu" class="game-menu" hidden>
+              <div class="game-menu__backdrop" data-menu-close tabindex="-1"></div>
+              <div class="game-menu__panel" role="dialog" aria-label="Menu do jogo">
+                <header class="game-menu__top">
+                  <div class="game-menu__money" data-tip="Dinheiro">
+                    <img
+                      class="game-menu__money-icon"
+                      src="/ref/sprites/items/pokedollars.png"
+                      alt=""
+                      draggable="false"
+                      aria-hidden="true"
+                    />
+                    <b data-menu-money>₽ 0</b>
+                  </div>
+                  <nav class="game-menu__tabs" role="tablist" aria-label="Abas">
+                    <button type="button" class="game-menu__tab" data-menu-primary="party" role="tab">Time</button>
+                    <button type="button" class="game-menu__tab" data-menu-primary="bag" role="tab">Mochila</button>
+                    <button type="button" class="game-menu__tab" data-menu-primary="quests" role="tab">
+                      Missões
+                      <span class="game-menu__tab-badge" data-quests-tab-badge hidden></span>
+                    </button>
+                    <button type="button" class="game-menu__tab" data-menu-primary="map" role="tab">Mapa</button>
+                    <button type="button" class="game-menu__tab" data-menu-primary="system" role="tab">Sistema</button>
+                  </nav>
+                  <div class="game-menu__tabs-end">
+                    <button type="button" class="game-menu__close" data-menu-close aria-label="Fechar">×</button>
+                  </div>
+                </header>
+                <nav class="game-menu__system-rail" data-menu-system-rail hidden role="tablist" aria-label="Sistema">
+                  <button type="button" class="game-menu__system-tab" data-menu-system="settings" role="tab">Ajustes</button>
+                  <button type="button" class="game-menu__system-tab" data-menu-system="save" role="tab">Salvar</button>
+                  <button type="button" class="game-menu__system-tab" data-menu-system="help" role="tab">Controles</button>
+                  <button type="button" class="game-menu__system-tab" data-menu-system="about" role="tab">Sobre</button>
+                </nav>
+                <div class="game-menu__pages">
+                  <section class="game-menu__page" data-menu-page="party" role="tabpanel" hidden>
+                    <div class="menu-page-host" data-menu-host="party"></div>
+                  </section>
+                  <section class="game-menu__page" data-menu-page="bag" role="tabpanel" hidden>
+                    <div class="menu-page-host" data-menu-host="bag"></div>
+                  </section>
+                  <section class="game-menu__page" data-menu-page="quests" role="tabpanel" hidden>
+                    <div class="menu-page-host" data-menu-host="quests"></div>
+                  </section>
+                  <section class="game-menu__page game-menu__page--map" data-menu-page="map" role="tabpanel" hidden>
+                    <div class="menu-page-host" data-menu-host="map">
+                      <p>Abra o mapa mundial com <kbd>M</kbd> ou o atalho do HUD.</p>
+                      <button type="button" data-act="utility" data-utility="map">Abrir mapa mundial</button>
+                    </div>
+                  </section>
+                  <section class="game-menu__page" data-menu-page="settings" role="tabpanel" hidden>
+                    <div class="menu-page-host" data-menu-host="settings">
+                      <p>Idioma e áudio ficam na barra de utilitários e no botão de som.</p>
+                      <label>Idioma
+                        <select id="jogo-idioma-menu" aria-label="Idioma do menu"></select>
+                      </label>
+                    </div>
+                  </section>
+                  <section class="game-menu__page" data-menu-page="save" role="tabpanel" hidden>
+                    <div class="menu-page-host" data-menu-host="save"></div>
+                  </section>
+                  <section class="game-menu__page" data-menu-page="help" role="tabpanel" hidden>
+                    <div class="menu-page-host">
+                      <ul>
+                        <li><kbd>Tab</kbd> — menu</li>
+                        <li><kbd>P</kbd> / <kbd>B</kbd> / <kbd>I</kbd> — time / mochila</li>
+                        <li><kbd>M</kbd> — mapa mundial</li>
+                        <li><kbd>1–6</kbd> — itens preparados (segura = roda)</li>
+                        <li><kbd>Shift+1–6</kbd> — enviar Pokémon</li>
+                        <li><kbd>Esc</kbd> — fechar painéis</li>
+                      </ul>
+                    </div>
+                  </section>
+                  <section class="game-menu__page" data-menu-page="about" role="tabpanel" hidden>
+                    <div class="menu-page-host">
+                      <p>High Top-Down — física, cliffs e depth sorting.</p>
+                      <p>HUD e Pokédex adaptados do Pokemon AI para o mundo 3D.</p>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
 
             <!-- Bottom-right: dials + minimap 220 -->
             <div class="hud-map-dock" id="hud-map-dock">
@@ -230,6 +474,7 @@
                 <canvas id="jogo-mini" class="area-minimap__canvas" width="220" height="220" aria-hidden="true"></canvas>
                 <div class="area-minimap__north" aria-hidden="true">N</div>
               </aside>
+              <div id="quest-objective-hud" class="quest-objective-hud" hidden></div>
             </div>
           </div>
           <div class="cena-ui" id="cena-ui">

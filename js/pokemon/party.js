@@ -9,6 +9,7 @@ import { encherPp } from "./pp.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
 import { anunciarGanho } from "../jogo/ganhoItem.js";
 import { soltarFxEnvio, soltarFxRecolher } from "../fx/fxBola.js";
+import { markSpeciesCaught } from "../jogo/pokedex/progresso.js";
 
 const party = [];
 let deployado = 0;
@@ -116,6 +117,8 @@ export function receberCaptura(selvagem) {
   });
   copia.exp = selvagem.exp;
   party.push(copia);
+  const key = selvagem?.especie?.key || copia?.especie?.key;
+  if (key) markSpeciesCaught(key);
   return copia;
 }
 

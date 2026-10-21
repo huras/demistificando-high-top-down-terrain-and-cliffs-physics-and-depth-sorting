@@ -53,6 +53,9 @@ import { celulaConstrucao, pertoDe, propsDaSala } from "./sala.js";
 import { celulaLivre } from "../wild/salas.js";
 import { sfx } from "./audio.js";
 import { htmlIcone } from "./icones.js";
+import { abrirDex, dexAberta, fecharDex, toggleRideSlot } from "./apiHud.js";
+import { tratarUtilityHud } from "./hud/bootHud.js";
+import { htmlMochilaMenu } from "./uiMenuPaginas.js";
 import { aoMudarIdioma, definirIdioma, idiomaAtual, t } from "./i18n.js";
 import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarCliqueCapsula, tratarInputCapsula } from "./capsula.js";
 import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
@@ -82,7 +85,8 @@ export function ligarUi(overlay) {
   ligarHudClima();
   ligarHudVento();
   raiz.addEventListener("keydown", (ev) => {
-    if (ev.key !== "Escape" || !estado.painel) return;
+    if (ev.key !== "Escape") return;
+    if (!estado.painel && !estado.menuAberto && !estado.dexAberta && !estado.statusAberto) return;
     ev.preventDefault();
     fecharTopo();
     pintar();
@@ -103,6 +107,7 @@ function ligarIdioma() {
   });
   aoMudarIdioma(() => {
     sel.value = idiomaAtual();
+    dexHud()?.atualizarRotulos?.() ?? dexHud()?.refreshLabels?.();
     avisar();
   });
 }
@@ -123,12 +128,18 @@ function noClique(ev) {
   const i = Number(btn.dataset.i);
   if (act === "fechar") fecharTopo();
   else if (act === "aba") abrirPainel(btn.dataset.painel);
-  else if (act === "utility") {
+  else if (act === "ride") {
+    toggleRideSlot(Number(btn.dataset.i));
+    pintar();
+    return;
+  } else if (act === "utility") {
     tratarUtility(btn.dataset.utility);
     pintar();
     return;
   } else if (act === "cat") {
     estado.categoria = btn.dataset.cat;
+    const hostBag = document.querySelector('[data-menu-host="bag"]');
+    if (estado.menuAberto && hostBag) hostBag.innerHTML = htmlMochilaMenu();
     avisar();
   } else if (act === "usar" || act === "usar-mon") usarSelecionado(tipo, key, "pokemon");
   else if (act === "usar-jogador") usarSelecionado(tipo, key, "jogador");
@@ -225,7 +236,7 @@ export function pintar() {
   pintarPrompt();
   pintarDialogo();
   pintarToast();
-  pintarEquipe();
+  // equipe via partyCampo (bootHud)
   pintarPainel();
   pintarConstruir();
   pintarCraft();
@@ -253,6 +264,8 @@ const UTILITY_ICONES = Object.freeze({
   bag: "bag",
   quests: "quest",
   party: "pokedex",
+  status: "saveDisk",
+  menu: "quest",
   save: "saveDisk",
 });
 
@@ -270,26 +283,12 @@ function pintarUtilityIcons() {
 }
 
 function tratarUtility(id) {
-  if (id === "bag") {
-    if (estado.painel === "mochila") fecharTopo();
-    else abrirPainel("mochila");
-    return;
-  }
   if (id === "pokedex") {
-    if (estado.painel === "pokedex") fecharTopo();
-    else abrirPainel("pokedex");
+    if (dexAberta()) fecharDex();
+    else abrirDex();
     return;
   }
-  if (id === "quests") {
-    if (estado.painel === "quests") fecharTopo();
-    else abrirPainel("quests");
-    return;
-  }
-  if (id === "party") {
-    if (estado.painel === "party") fecharTopo();
-    else abrirPainel("party");
-    return;
-  }
+  if (tratarUtilityHud(id)) return;
   if (id === "save") {
     salvar();
     return;
@@ -297,10 +296,6 @@ function tratarUtility(id) {
   if (id === "map") {
     const p = pontoMini();
     abrirMapa(p.x, p.y);
-    return;
-  }
-  if (id === "pokeRadar") {
-    estado.itemGet = "Poké Radar — em breve.";
   }
 }
 
@@ -336,7 +331,7 @@ export function atualizarLeve(dt = 0.016) {
   pintarRelogio();
   tickHudPrevisao();
   tickHudVento(dt);
-  pintarEquipe();
+  // party strip / combat card: tickHudCampo em index.js
 }
 
 const _ancora = new THREE.Vector3();
@@ -345,7 +340,15 @@ function pintarPrompt() {
   const entrar = el("#jogo-entrar");
   const host = el("#jogo-prompt");
   const bloqueia =
-    estado.dialogo || estado.painel || estado.roda || estado.construir || estado.craft || estado.ganhoAberto;
+    estado.dialogo ||
+    estado.painel ||
+    estado.menuAberto ||
+    estado.dexAberta ||
+    estado.statusAberto ||
+    estado.roda ||
+    estado.construir ||
+    estado.craft ||
+    estado.ganhoAberto;
   const mostraEntrar = !!estado.promptEntrar && !bloqueia;
   if (entrar) {
     const estava = !entrar.hidden;

@@ -48,6 +48,9 @@ import {
   zoomMapa,
 } from "../ui/mapa/mapaMundo.js";
 import { teleporteOcupado } from "./teleporte.js";
+import { toggleMenu, semearDexParty } from "./apiHud.js";
+import { bootHudCompleto, tickHudCampo } from "./hud/bootHud.js";
+import { tickRide } from "./ride.js";
 
 let viewport = null;
 let toastAte = 0;
@@ -61,7 +64,7 @@ function campoFocado() {
 }
 
 export function jogoTravaMundo() {
-  return uiAberta() || mapaAberto() || teleporteOcupado();
+  return uiAberta() || mapaAberto() || teleporteOcupado() || dexAberta();
 }
 
 function pintarBotaoSom(botao) {
@@ -91,7 +94,9 @@ export function montarJogo(opts) {
   ligarUi(overlay);
   ligarRoda();
   ligarSala(document.getElementById("jogo-sala"));
+  bootHudCompleto();
   carregar();
+  semearDexParty();
   aoMudar(pintar);
   pintar();
   ligarBotaoSom();
@@ -106,6 +111,8 @@ export function tickJogo(dt, corpo) {
   atualizarCuraMaquina(dt);
   tickGanho(dt);
   definirCorpo(corpo);
+  tickRide(dt);
+  tickHudCampo(dt, corpo);
   registrarParty();
   soltarSlotVazio();
   tickCampo(dt);
@@ -227,19 +234,46 @@ function lerTeclas(corpo) {
     return;
   }
   if (
-    (estado.painel || estado.dialogo || estado.roda || estado.construir || estado.craft) &&
+    (estado.painel ||
+      estado.menuAberto ||
+      estado.dexAberta ||
+      estado.statusAberto ||
+      estado.dialogo ||
+      estado.roda ||
+      estado.construir ||
+      estado.craft) &&
     teclaAgora("Escape")
   ) {
     fecharTopo();
   }
   if (estado.ganhoAberto) return;
+
+  if (teclaAgora("Tab")) {
+    toggleMenu();
+    return;
+  }
+  if (teclaAgora("KeyP")) {
+    toggleMenu("party");
+    return;
+  }
   if (teclaAgora("KeyI") || teclaAgora("KeyB")) {
     if (estado.dialogo || estado.roda) return;
-    if (estado.painel === "mochila") fecharTopo();
-    else abrirPainel("mochila");
+    toggleMenu("bag");
+    return;
   }
   if (teclaAgora("KeyR") && !estado.roda) interagir(corpo);
-  if (estado.painel || estado.dialogo || estado.roda || estado.construir || estado.craft) return;
+  if (
+    estado.painel ||
+    estado.menuAberto ||
+    estado.dexAberta ||
+    estado.statusAberto ||
+    estado.dialogo ||
+    estado.roda ||
+    estado.construir ||
+    estado.craft
+  ) {
+    return;
+  }
   if (teleporteOcupado()) teclaAgora("KeyM");
   else if (teclaAgora("KeyM")) abrirMapa(corpo.x, corpo.y);
 }

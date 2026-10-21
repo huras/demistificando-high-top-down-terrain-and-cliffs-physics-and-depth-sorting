@@ -34,6 +34,7 @@ import { tickVisual } from "./sprites.js";
 import { tickFxBola } from "../fx/fxBola.js";
 import { aoLiberarSom } from "../jogo/audio.js";
 import { aquecerGrito, tickGritosAmbiente } from "../jogo/som/gritos.js";
+import { markSpeciesSeen } from "../jogo/pokedex/progresso.js";
 
 aoLiberarSom(() => {
   aquecerGrito(pokemonNoCampo());
@@ -175,6 +176,12 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   tickFxBola(passo);
   atualizarDrops(corpo, passo, flutuar);
   const visiveis = atoresVisiveis();
+  for (let i = 0; i < visiveis.length; i++) {
+    const a = visiveis[i];
+    if (a?.faccao === "selvagem" && a.especie?.key && !a.morto && !a.capturado) {
+      markSpeciesSeen(a.especie.key);
+    }
+  }
   tickEmocoes(visiveis, passo);
   for (let i = 0; i < visiveis.length; i++) tickVisual(visiveis[i], passo, agora);
   tickFlutuantes(passo);

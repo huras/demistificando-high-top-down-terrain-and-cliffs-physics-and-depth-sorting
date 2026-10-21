@@ -12,7 +12,7 @@ export function iniciarTeclado() {
     const k = normalizar(ev.code || ev.key);
     if (
       [
-        "Tab",
+        "",
         "ArrowUp",
         "ArrowDown",
         "ArrowLeft",
@@ -26,6 +26,7 @@ export function iniciarTeclado() {
         "ShiftLeft",
         "ShiftRight",
         "ControlLeft",
+        "Tab",
       ].includes(k)
     ) {
       ev.preventDefault();

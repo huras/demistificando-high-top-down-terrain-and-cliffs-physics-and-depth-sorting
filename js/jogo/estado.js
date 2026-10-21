@@ -81,6 +81,11 @@ export const estado = {
   promptRotulo: "Entrar",
   promptAncora: null,
   painel: null,
+  menuAberto: false,
+  dexAberta: false,
+  statusAberto: false,
+  capturadosMap: null,
+  vistosMap: null,
   categoria: "balls",
   roda: false,
   itemGet: "",
@@ -589,6 +594,9 @@ export function uiAberta() {
   const interior2d = estado.interior && !estado.interior.sala3d;
   return !!(
     estado.painel ||
+    estado.menuAberto ||
+    estado.dexAberta ||
+    estado.statusAberto ||
     estado.dialogo ||
     estado.roda ||
     interior2d ||
@@ -616,6 +624,18 @@ export function fecharTopo() {
   }
   if (estado.roda) {
     estado.roda = false;
+    avisar();
+    return true;
+  }
+  if (estado.dexAberta || estado.statusAberto || estado.menuAberto) {
+    if (typeof estado._fecharHudExtra === "function") {
+      estado._fecharHudExtra();
+      avisar();
+      return true;
+    }
+    estado.dexAberta = false;
+    estado.statusAberto = false;
+    estado.menuAberto = false;
     avisar();
     return true;
   }
@@ -656,6 +676,7 @@ export function salvar() {
     campo: serializarCampo(),
     cortados: idsRemovidos(),
     vistos: estado.vistos,
+    capturados: estado.capturadosMap ? { ...estado.capturadosMap } : {},
     vistosItens: estado.vistosItens || {},
     quests: estado.quests,
     chaves: estado.chaves,
@@ -717,6 +738,14 @@ export function carregar() {
   estado.cortados = idsRemovidos();
   reaplicarCarregados();
   estado.vistos = bruto.vistos || [];
+  estado.vistosMap = Object.create(null);
+  for (const key of estado.vistos) estado.vistosMap[key] = true;
+  estado.capturadosMap = Object.create(null);
+  if (bruto.capturados && typeof bruto.capturados === "object") {
+    for (const [k, v] of Object.entries(bruto.capturados)) {
+      if (v) estado.capturadosMap[k] = v | 0 || 1;
+    }
+  }
   estado.quests = bruto.quests || questsIniciais();
   estado.chaves = bruto.chaves || ["pokedex"];
   if (bruto.vistosItens && typeof bruto.vistosItens === "object" && !Array.isArray(bruto.vistosItens)) {

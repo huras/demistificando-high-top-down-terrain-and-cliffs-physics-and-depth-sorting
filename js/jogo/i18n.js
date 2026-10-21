@@ -39,9 +39,19 @@ export function idiomaAtual() {
   return atual;
 }
 
-export function t(chave) {
+/**
+ * @param {string} chave
+ * @param {Record<string, string | number> | null} [vars]
+ */
+export function t(chave, vars) {
   if (!chave) return "";
-  return ler(TABELAS[atual], chave) || ler(TABELAS["pt-BR"], chave) || chave;
+  let texto = ler(TABELAS[atual], chave) || ler(TABELAS["pt-BR"], chave) || chave;
+  if (vars && typeof vars === "object") {
+    texto = texto.replace(/\{(\w+)\}/g, (_, k) =>
+      vars[k] != null ? String(vars[k]) : "",
+    );
+  }
+  return texto;
 }
 
 export function definirIdioma(codigo) {
