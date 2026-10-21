@@ -320,6 +320,19 @@ export const RAIO_SUAVE_MIN = 0;
 export const RAIO_SUAVE_MAX = 20;
 /** Distância entre vértices da malha suave, em blocos. */
 export const PASSO_MALHA_SUAVE = 8;
+/**
+ * LOD horizonte terraced (estilo BOTW), em unidades de CHUNK_XZ.
+ * 80 ≈ 1280 blocos de alcance. 0 desliga.
+ */
+export const RAIO_HORIZONTE = 80;
+export const RAIO_HORIZONTE_MIN = 0;
+export const RAIO_HORIZONTE_MAX = 160;
+/** Célula da malha horizonte, em blocos. */
+export const PASSO_HORIZONTE = 24;
+/** Quantização de altura (blocos) para degraus. */
+export const QUANT_ALTURA_HORIZONTE = 2;
+/** Lado de um chunk de horizonte, em blocos. */
+export const CHUNK_HORIZONTE = 128;
 /** Árvores billboard em todo o disco suave, fora dos chunks de bloco. */
 export const IMPOSTOR_CAP = 256;
 export const SEED_MUNDO = 1337;
@@ -328,6 +341,14 @@ export const ALCANCE_EDICAO = 5;
 export const ALCANCE_MIRA = 320;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */
 export const MESH_CHUNKS_POR_FRAME = 1;
+/** Score: quanto menos, mais urgente. Boost grande = chunks na tela quase sempre primeiro. */
+export const PRIORIDADE_BOOST_TELA = 40;
+/** Peso do alinhamento com a direção prevista (0.5s/2s/8s). */
+export const PRIORIDADE_PESO_DIR = 12;
+/** Score acima disso + fora da tela + atrás → pode adiar se houver urgentes. */
+export const PRIORIDADE_LIMIAR_ADIAR = 18;
+/** Diferença de score pra preemptar fatia/malha em andamento. */
+export const PRIORIDADE_LIMIAR_PREEMPT = 8;
 /**
  * Inset do bevel só em voxels de borda de cliff (suaviza a aresta).
  * 0 = desliga; lados colados a sólido ficam flush.

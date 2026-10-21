@@ -16,6 +16,11 @@ import { OFFSET_MON, OFFSET_NPC } from "../navegacao/espacoSeguir.js";
 import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { pokemonDeployado } from "../pokemon/party.js";
 import { estado } from "./estado.js";
+import {
+  gapJornada,
+  pausarJornada,
+  registrarTeleporte,
+} from "./jornada.js";
 
 const SUBIDA = 1.7;
 const DESCIDA = 1.3;
@@ -51,6 +56,8 @@ let alfa = 1;
 let zoomBase = null;
 let monMarcado = null;
 let pecasN = 0;
+/** @type {null | { x: number, y: number }} */
+let origemViagem = null;
 /** @type {null | ((x: number, y: number) => boolean)} */
 let checarMalhaDestino = null;
 
@@ -134,6 +141,9 @@ export function comecarSubida(alvo) {
   faseT = 0;
   alfa = 1;
   pecasN = 0;
+  origemViagem = null;
+  pausarJornada(true);
+  gapJornada();
 }
 
 function saida(t) {
@@ -195,6 +205,10 @@ function cortar(ctx) {
     estado.interior = null;
     estado.saidaGrace = 0.6;
   }
+  const ox = origemViagem?.x ?? ctx.corpo.x;
+  const oy = origemViagem?.y ?? ctx.corpo.y;
+  registrarTeleporte(ox, oy, destino.x, destino.y);
+  origemViagem = null;
   pousarCorpo(ctx.corpo, destino.x, destino.y, destino.z);
   const mon = pokemonDeployado();
   ancoras = [
@@ -316,6 +330,8 @@ function encerrar(ctx) {
   pecasN = 0;
   ancoras = null;
   destino = null;
+  origemViagem = null;
+  pausarJornada(false);
   soltarCamera(ctx);
   marcarMon(null);
 }
@@ -323,6 +339,9 @@ function encerrar(ctx) {
 export function tickTeleporte(dt, ctx) {
   if (fase === "ocioso") return;
   try {
+  if (fase === "subida" && !origemViagem && ctx?.corpo) {
+    origemViagem = { x: ctx.corpo.x, y: ctx.corpo.y };
+  }
   faseT += Math.min(0.05, dt || 0);
   if (fase === "subida" && faseT >= SUBIDA) {
     if (destinoProntoParaCortar() || faseT >= SUBIDA + ESPERA_MAX) {

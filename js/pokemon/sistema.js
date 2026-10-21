@@ -1,4 +1,5 @@
 import { ALTURA_BLOCO, USAR_PATCH_DEMO } from "../config.js";
+import { registrarMorte } from "../jogo/jornada.js";
 import { SPAWN as SPAWN_DEMO } from "../mundo/mapaDemo.js";
 import { SPAWN_PALLET } from "../mundo/regiao/spawnKanto.js";
 import { tickPassivo, aplicarNivel } from "./ator.js";
@@ -212,6 +213,11 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   tickFx(passo);
 
   if (treinador.hp <= 0 && !treinador.invulneravel) {
+    registrarMorte(
+      corpo.x,
+      corpo.y,
+      corpo.elevacao ?? corpo.z ?? 0,
+    );
     corpo.x = RESPAWN.x;
     corpo.y = RESPAWN.y;
     corpo.z = RESPAWN.z;

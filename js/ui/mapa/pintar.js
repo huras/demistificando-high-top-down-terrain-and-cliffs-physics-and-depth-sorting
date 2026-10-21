@@ -1,6 +1,7 @@
 /**
  * Pintura do mapa: terreno, rotas, layout da cidade, orbes e o jogador.
  */
+import { obterJornada } from "../../jogo/jornada.js";
 import { canvasAtlas, listarTiles } from "./atlas.js";
 import {
   coletarLabelsCalor,
@@ -72,6 +73,79 @@ function desenharRota(ctx, rota) {
   ctx.strokeStyle = rota.agua ? "#d5e8f4" : "#e7c98a";
   ctx.lineWidth = rota.agua ? 5 : 6.5;
   ctx.stroke();
+}
+
+function xyPonto(p) {
+  return Array.isArray(p) ? [p[0], p[1]] : [p.x, p.y];
+}
+
+function desenharSegmentoJornada(ctx, pontos, alfa) {
+  if (!pontos || pontos.length < 2) return;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.strokeStyle = `rgba(246, 232, 180, ${alfa})`;
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  const p0 = xyPonto(pontos[0]);
+  ctx.moveTo(p0[0], p0[1]);
+  for (let i = 1; i < pontos.length; i++) {
+    const p = xyPonto(pontos[i]);
+    ctx.lineTo(p[0], p[1]);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(255, 248, 220, ${alfa * 0.55})`;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+}
+
+function desenharJornadaMundo(ctx) {
+  const j = obterJornada();
+  const segs = j.segmentos;
+  const n = segs.length;
+  for (let i = 0; i < n; i++) {
+    const idade = (i + 1) / n;
+    const alfa = 0.22 + idade * 0.45;
+    desenharSegmentoJornada(ctx, segs[i].pontos, alfa);
+  }
+  for (let i = 0; i < j.teleportes.length; i++) {
+    const tp = j.teleportes[i];
+    ctx.strokeStyle = "rgba(160, 210, 255, 0.55)";
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.moveTo(tp.de.x, tp.de.y);
+    const mx = (tp.de.x + tp.para.x) * 0.5;
+    const my = (tp.de.y + tp.para.y) * 0.5 - Math.hypot(tp.para.x - tp.de.x, tp.para.y - tp.de.y) * 0.12;
+    ctx.quadraticCurveTo(mx, my, tp.para.x, tp.para.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(160, 210, 255, 0.75)";
+    ctx.beginPath();
+    ctx.arc(tp.de.x, tp.de.y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(tp.para.x, tp.para.y, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function desenharMortesTela(ctx, vista, w, h, dpr, z) {
+  const mortes = obterJornada().mortes;
+  const s = 5.5 * dpr;
+  for (let i = 0; i < mortes.length; i++) {
+    const m = mortes[i];
+    const sx = (m.x - vista.cx) * z + w / 2;
+    const sy = (m.y - vista.cy) * z + h / 2;
+    if (sx < -20 || sy < -20 || sx > w + 20 || sy > h + 20) continue;
+    ctx.strokeStyle = "rgba(220, 70, 70, 0.9)";
+    ctx.lineWidth = 2 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(sx - s, sy - s);
+    ctx.lineTo(sx + s, sy + s);
+    ctx.moveTo(sx + s, sy - s);
+    ctx.lineTo(sx - s, sy + s);
+    ctx.stroke();
+  }
 }
 
 function desenharLayout(ctx, cidade, z) {
@@ -180,6 +254,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   if (vista.calorForca && !vista.mini) pintarCalorForcaMundo(ctx);
   for (let i = 0; i < rotas.length; i++) desenharRota(ctx, rotas[i]);
   for (let i = 0; i < cidades.length; i++) desenharLayout(ctx, cidades[i], z);
+  if (!vista.mini) desenharJornadaMundo(ctx);
   ctx.restore();
 
   const nomes = [];
@@ -252,6 +327,8 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   if (vista.calorForca && !vista.mini) {
     pintarLegendaCalor(ctx, w, h, dpr);
   }
+
+  if (!vista.mini) desenharMortesTela(ctx, vista, w, h, dpr, z);
 
   const px = (vista.jogadorX - vista.cx) * z + w / 2;
   const py = (vista.jogadorY - vista.cy) * z + h / 2;

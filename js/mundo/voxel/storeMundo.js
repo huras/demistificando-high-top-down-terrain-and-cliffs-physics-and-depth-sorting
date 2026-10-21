@@ -22,6 +22,13 @@ import {
 import { limparPropsChunk } from "../bioma/propsBioma.js";
 import { gerarChunkProcedural, passosChunk } from "./gerarChunk.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
+import {
+  devePreemptar,
+  indiceProximoUrgente,
+  obterContextoPrioridade,
+  ordenarPorPrioridade,
+  scoreChunk,
+} from "./prioridadeChunk.js";
 
 /** @type {Map<string, object>} */
 const chunks = new Map();
@@ -280,7 +287,7 @@ let filaStream = null;
 let fatiaStream = null;
 const ORCAMENTO_STREAM_MS = 0.8;
 
-function discoStream(pcx, pcy, raio) {
+function discoStream(pcx, pcy, raio, grupo = 0) {
   const lista = [];
   for (let dy = -raio; dy <= raio; dy++) {
     for (let dx = -raio; dx <= raio; dx++) {
@@ -288,17 +295,16 @@ function discoStream(pcx, pcy, raio) {
       const cx = pcx + dx;
       const cy = pcy + dy;
       if (!chunkDentroDoMundo(cx, cy, CHUNK_XZ)) continue;
-      lista.push({ cx, cy, d: dx * dx + dy * dy });
+      lista.push({ cx, cy, d: dx * dx + dy * dy, grupo });
     }
   }
-  lista.sort((a, b) => a.d - b.d);
   return lista;
 }
 
 /** União de dois discos; chunks do centro B entram primeiro (destino do teleporte). */
 function discoDuplo(pcxA, pcyA, pcxB, pcyB, raio) {
-  const a = discoStream(pcxA, pcyA, raio);
-  const b = discoStream(pcxB, pcyB, raio);
+  const a = discoStream(pcxA, pcyA, raio, 1);
+  const b = discoStream(pcxB, pcyB, raio, 0);
   const visto = new Set();
   const lista = [];
   for (let i = 0; i < b.length; i++) {
@@ -315,6 +321,11 @@ function discoDuplo(pcxA, pcyA, pcxB, pcyB, raio) {
     lista.push(c);
   }
   return lista;
+}
+
+function ordenarFilaEntrar(entrar) {
+  if (!entrar || !entrar.length) return;
+  ordenarPorPrioridade(entrar, obterContextoPrioridade());
 }
 
 function atualizarAabbStream(pcx, pcy, raio) {
@@ -355,6 +366,7 @@ function remontarFila(disco, meta) {
     if (fatiaStream && fatiaStream.cx === c.cx && fatiaStream.cy === c.cy) continue;
     entrar.push(c);
   }
+  ordenarFilaEntrar(entrar);
   const sair = [];
   for (const chunk of chunks.values()) {
     if (!querer.has(chaveChunk(chunk.cx, chunk.cy))) sair.push(chunk);
@@ -362,8 +374,40 @@ function remontarFila(disco, meta) {
   filaStream = { ...meta, entrar, sair, i: 0, j: 0 };
 }
 
+function tentarPreemptarFatia() {
+  if (!fatiaStream || !filaStream) return;
+  const c = obterContextoPrioridade();
+  if (!c) return;
+  const resto = filaStream.entrar;
+  const idx = indiceProximoUrgente(resto, filaStream.i, c);
+  if (idx < 0) return;
+  const melhor = resto[idx];
+  const scoreFatia = scoreChunk(fatiaStream.cx, fatiaStream.cy, c);
+  const scoreMelhor = melhor.score ?? scoreChunk(melhor.cx, melhor.cy, c);
+  if (!devePreemptar(scoreFatia, scoreMelhor)) return;
+  // Abandona a fatia atual e recoloca no fim da fila.
+  resto.push({
+    cx: fatiaStream.cx,
+    cy: fatiaStream.cy,
+    d: 0,
+    grupo: fatiaStream.grupo | 0,
+  });
+  fatiaStream = null;
+  const pendentes = resto.slice(filaStream.i);
+  ordenarFilaEntrar(pendentes);
+  filaStream.entrar = pendentes;
+  filaStream.i = 0;
+}
+
 function drenarFilaStream(sincrono) {
   if (!filaStream) return false;
+  if (!sincrono) {
+    const pendentes = filaStream.entrar.slice(filaStream.i);
+    ordenarFilaEntrar(pendentes);
+    filaStream.entrar = pendentes;
+    filaStream.i = 0;
+    tentarPreemptarFatia();
+  }
   const limite = performance.now() + (sincrono ? 1e9 : ORCAMENTO_STREAM_MS);
   while (performance.now() < limite) {
     if (fatiaStream) {
@@ -377,12 +421,23 @@ function drenarFilaStream(sincrono) {
       continue;
     }
     if (filaStream.i < filaStream.entrar.length) {
+      const c = obterContextoPrioridade();
+      const idx = sincrono
+        ? filaStream.i
+        : indiceProximoUrgente(filaStream.entrar, filaStream.i, c);
+      if (idx < 0) break;
+      if (idx !== filaStream.i) {
+        const item = filaStream.entrar[idx];
+        filaStream.entrar.splice(idx, 1);
+        filaStream.entrar.splice(filaStream.i, 0, item);
+      }
       const item = filaStream.entrar[filaStream.i++];
       if (chunks.has(chaveChunk(item.cx, item.cy))) continue;
       const chunk = criarChunk(item.cx, item.cy);
       fatiaStream = {
         cx: item.cx,
         cy: item.cy,
+        grupo: item.grupo | 0,
         chunk,
         gen: passosChunk(chunk, seed),
       };

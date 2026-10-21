@@ -5,9 +5,13 @@ import { CLIMA_CFG } from "../../../../clima/config.js";
 import { intervaloSpawnGale, ventoHud01 } from "../../../../clima/vento.js";
 import { VARIANTES_GALE } from "./formaGouja.js";
 
-const MAX = 28;
+export function capacidadePoolGale(cfg = CLIMA_CFG) {
+  const gouges = cfg.galeGouges ?? 28;
+  const teto = Math.ceil(gouges * 1.45);
+  return Math.max(teto, cfg.galePoolMax ?? teto);
+}
 
-function criarRajada() {
+function criarRajada(zPadrao = 1.2) {
   return {
     hx: 0,
     hy: 0,
@@ -25,7 +29,7 @@ function criarRajada() {
     steer: 1,
     fase: 0,
     omega: 1,
-    z: 1.2,
+    z: zPadrao,
   };
 }
 
@@ -62,8 +66,15 @@ function puxarRumo(dx, dy, tx, ty, dt, rate) {
   return { x: x * c - y * s, y: x * s + y * c };
 }
 
-export function criarEstadoGale() {
-  return {
+function aquecerPool(estado, n, zPadrao) {
+  while (estado.livres.length < n) estado.livres.push(criarRajada(zPadrao));
+}
+
+export function criarEstadoGale(cfg = CLIMA_CFG) {
+  const zMin = cfg.galeAlturaMin ?? 0.45;
+  const zMax = cfg.galeAlturaMax ?? 2.3;
+  const zPadrao = (zMin + zMax) * 0.5;
+  const estado = {
     rajadas: [],
     livres: [],
     spawnCd: 0.4,
@@ -72,6 +83,8 @@ export function criarEstadoGale() {
     dirY: 0,
     dirPronta: false,
   };
+  aquecerPool(estado, capacidadePoolGale(cfg), zPadrao);
+  return estado;
 }
 
 function esvaziar(estado) {
@@ -79,8 +92,8 @@ function esvaziar(estado) {
   estado.rajadas.length = 0;
 }
 
-function obter(estado) {
-  return estado.livres.pop() ?? criarRajada();
+function obter(estado, zPadrao) {
+  return estado.livres.pop() ?? criarRajada(zPadrao);
 }
 
 /**
@@ -136,7 +149,12 @@ export function atualizarCampoGale(estado, dt, vento, centro, raio, cfg = CLIMA_
   const steerBase = cfg.galeSteerPerSec ?? 1.6;
   const tailLag = cfg.galeTailLag ?? 0.42;
   const wander = cfg.galeWander ?? 0.055;
-  const maxVivos = Math.min(MAX, Math.ceil((cfg.galeGouges ?? 14) * (0.45 + wind01)));
+  const poolMax = capacidadePoolGale(cfg);
+  const maxVivos = Math.min(poolMax, Math.ceil((cfg.galeGouges ?? 28) * (0.45 + wind01)));
+  const zMin = cfg.galeAlturaMin ?? 0.45;
+  const zMax = cfg.galeAlturaMax ?? 2.3;
+  const zSpan = Math.max(0, zMax - zMin);
+  const zPadrao = zMin + zSpan * 0.5;
 
   const vivos = estado.rajadas;
   let w = 0;
@@ -176,7 +194,7 @@ export function atualizarCampoGale(estado, dt, vento, centro, raio, cfg = CLIMA_
     const lat = (Math.random() - 0.5) * (raio || 18) * 1.6;
     const hx = centro.x - dirX * pad + perpX * lat;
     const hy = centro.y - dirY * pad + perpY * lat;
-    const r = obter(estado);
+    const r = obter(estado, zPadrao);
     const half = halfLenBase * (0.88 + Math.random() * 0.35);
     alinharTrilho(r, hx, hy, dirX, dirY, half);
     r.speed = speedBase * (0.75 + Math.random() * 0.5);
@@ -184,7 +202,7 @@ export function atualizarCampoGale(estado, dt, vento, centro, raio, cfg = CLIMA_
     r.steer = 0.7 + Math.random() * 0.6;
     r.fase = Math.random() * Math.PI * 2;
     r.omega = 1.2 + Math.random() * 1.8;
-    r.z = 0.9 + Math.random() * 1.4;
+    r.z = zMin + Math.random() * zSpan;
     estado.seq += 1;
     vivos.push(r);
   }

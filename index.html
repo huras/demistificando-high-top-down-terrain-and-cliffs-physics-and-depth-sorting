@@ -643,6 +643,17 @@
             <span class="controle__valor" id="raio-suave-valor">desligado</span>
             <input id="raio-suave" type="range" min="0" max="20" step="1" value="0" />
           </div>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="raio-horizonte">Horizonte</label>
+              <span class="info">
+                <button type="button" class="info__btn" aria-label="Explicação do horizonte terraced" aria-expanded="false">?</button>
+                <span class="info__balao" id="raio-horizonte-dica" role="tooltip" hidden>Malha terraced longe (LOD BOTW): relevo em degraus além dos blocos.</span>
+              </span>
+            </div>
+            <span class="controle__valor" id="raio-horizonte-valor">80</span>
+            <input id="raio-horizonte" type="range" min="0" max="160" step="4" value="80" />
+          </div>
         </section>
 
         <section class="painel__bloco">

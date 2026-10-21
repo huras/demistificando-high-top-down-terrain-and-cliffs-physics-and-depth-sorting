@@ -6,6 +6,7 @@ import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { medidasSala } from "../../mundo/cidade/sala3d.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { criarTerrenoSuave, obterRaioSuave } from "./terrenoSuave.js";
+import { criarTerrenoHorizonte, obterRaioHorizonte } from "./terrenoHorizonte.js";
 import {
   ajustarDistancia,
   aplicarFacingMira,
@@ -74,9 +75,11 @@ const NEVOA_FAR = 85;
 
 function aplicarNevoa(raio) {
   if (!estado?.scene.fog) return;
-  const escala = Math.max(raio, obterRaioSuave(), 1) / RAIO_STREAM;
-  estado.nevoaBase.near = NEVOA_NEAR * escala;
-  estado.nevoaBase.far = NEVOA_FAR * escala;
+  // Near segue o detalhe perto; far abre com o horizonte terraced.
+  const escalaNear = Math.max(raio, obterRaioSuave(), 1) / RAIO_STREAM;
+  const escalaFar = Math.max(raio, obterRaioSuave(), obterRaioHorizonte(), 1) / RAIO_STREAM;
+  estado.nevoaBase.near = NEVOA_NEAR * escalaNear;
+  estado.nevoaBase.far = NEVOA_FAR * escalaFar;
   const fog = estado.scene.fog;
   fog.near = estado.nevoaBase.near;
   fog.far = estado.nevoaBase.far;
@@ -269,6 +272,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   terreno.grupo.add(terrenoSuave.mesh);
   terrenoSuave.aplicarTexturas(terreno.obterTexturasTopo?.());
 
+  const terrenoHorizonte = criarTerrenoHorizonte();
+  terreno.grupo.add(terrenoHorizonte.mesh);
+
   const vegetacao = criarVegetacaoBillboard3d();
   scene.add(vegetacao.grupo);
 
@@ -335,6 +341,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     luzSala,
     terreno,
     terrenoSuave,
+    terrenoHorizonte,
     edificios,
     vegetacao,
     vegetacaoDistante,
@@ -595,6 +602,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   comecarQuadroLuzes();
   comecarMapaChao();
   estado.terrenoSuave?.tick(mx, my, estado.terreno.chunksExibidos?.());
+  estado.terrenoHorizonte?.tick(mx, my);
   seguirAlvo3d(estado.camera3d, corpo, dt);
   aplicarFacingMira(corpo, estado.camera3d);
   estado.rig?.atualizar(estado.camera3d);

@@ -1,12 +1,14 @@
 /**
- * Ribbons 3D das rajadas (pool de BufferGeometry).
+ * Ribbons 3D das rajadas (pool de BufferGeometry + material compartilhado).
  */
 import * as THREE from "three";
 import { ALTURA_PRACA } from "../../../../mundo/regiao/amostraKanto.js";
 import { CLIMA_CFG } from "../../../../clima/config.js";
 import { obterVentoMundo } from "../../../../clima/amostra.js";
+import { ventoHud01 } from "../../../../clima/vento.js";
 import {
   atualizarCampoGale,
+  capacidadePoolGale,
   criarEstadoGale,
   listarRajadas,
 } from "./campoGale.js";
@@ -19,30 +21,46 @@ import {
   tangenteBezier,
 } from "./formaGouja.js";
 
-const MAX = 28;
 const VERTS = (PASSOS_FAIXA + 1) * 2;
 
-function criarFaixa() {
-  const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(VERTS * 3);
-  const idx = [];
+/** Índice compartilhado — mesma topologia para todas as faixas. */
+const INDICES = (() => {
+  const idx = new Uint16Array(PASSOS_FAIXA * 6);
   for (let i = 0; i < PASSOS_FAIXA; i++) {
     const a = i * 2;
-    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    const o = i * 6;
+    idx[o] = a;
+    idx[o + 1] = a + 1;
+    idx[o + 2] = a + 2;
+    idx[o + 3] = a + 1;
+    idx[o + 4] = a + 3;
+    idx[o + 5] = a + 2;
   }
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  geo.setIndex(idx);
-  const mat = new THREE.MeshBasicMaterial({
+  return idx;
+})();
+
+const INDEX_ATTR = new THREE.BufferAttribute(INDICES, 1);
+
+function criarMaterialBase() {
+  return new THREE.MeshBasicMaterial({
     color: 0xe8f4ff,
     transparent: true,
-    opacity: 0.22,
+    opacity: 0.18,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
-  const mesh = new THREE.Mesh(geo, mat);
+}
+
+function criarFaixa(matBase) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(VERTS * 3);
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setIndex(INDEX_ATTR);
+  const mesh = new THREE.Mesh(geo, matBase);
   mesh.frustumCulled = false;
   mesh.visible = false;
   mesh.renderOrder = 4;
+  mesh.matrixAutoUpdate = false;
   return { mesh, pos, geo };
 }
 
@@ -50,19 +68,26 @@ function criarFaixa() {
  * @param {THREE.Scene|THREE.Group} cena
  */
 export function criarGale3d(cena) {
-  const estado = criarEstadoGale();
+  const estado = criarEstadoGale(CLIMA_CFG);
   const faixas = [];
   const grupo = new THREE.Group();
   grupo.name = "gale";
+  grupo.matrixAutoUpdate = false;
   cena.add(grupo);
-  for (let i = 0; i < MAX; i++) {
-    const f = criarFaixa();
+
+  const matBase = criarMaterialBase();
+  const pool = capacidadePoolGale(CLIMA_CFG);
+  for (let i = 0; i < pool; i++) {
+    const f = criarFaixa(matBase);
     grupo.add(f.mesh);
     faixas.push(f);
   }
+
   const centro = { x: 0, y: 0 };
   const _p = { x: 0, y: 0 };
   const _t = { x: 0, y: 0 };
+  const wMin = CLIMA_CFG.galeHalfWidth ?? 0.11;
+  const wMax = CLIMA_CFG.galeHalfWidthMax ?? 0.2;
 
   function escreverFaixa(slot, r) {
     const v = VARIANTES_GALE[r.varIdx % VARIANTES_GALE.length];
@@ -71,8 +96,6 @@ export function criarGale3d(cena) {
       slot.mesh.visible = false;
       return;
     }
-    const wMin = CLIMA_CFG.galeHalfWidth ?? 0.11;
-    const wMax = CLIMA_CFG.galeHalfWidthMax ?? 0.2;
     const halfBase = Math.min(wMax, wMin + (r.halfLen || 8) * 0.0045);
     const baseZ = ALTURA_PRACA + (r.z || 1.2);
     const arr = slot.pos;
@@ -80,7 +103,7 @@ export function criarGale3d(cena) {
       const t = i / PASSOS_FAIXA;
       pontoBezier(r.tx, r.ty, ctrl.cx, ctrl.cy, r.hx, r.hy, t, _p);
       tangenteBezier(r.tx, r.ty, ctrl.cx, ctrl.cy, r.hx, r.hy, t, _t);
-      let tl = Math.hypot(_t.x, _t.y) || 1;
+      const tl = Math.hypot(_t.x, _t.y) || 1;
       const nx = -_t.y / tl;
       const ny = _t.x / tl;
       const w = perfilLargura(t, halfBase);
@@ -94,8 +117,6 @@ export function criarGale3d(cena) {
     }
     slot.geo.attributes.position.needsUpdate = true;
     slot.mesh.visible = true;
-    const alpha = 0.1 + Math.min(0.22, (r.speed / 48) * 0.2);
-    slot.mesh.material.opacity = alpha;
   }
 
   /**
@@ -114,9 +135,13 @@ export function criarGale3d(cena) {
     const vento = obterVentoMundo();
     atualizarCampoGale(estado, dt, vento, centro, raio, CLIMA_CFG);
     const lista = listarRajadas(estado);
+    const n = Math.min(lista.length, faixas.length);
     let i = 0;
-    for (; i < lista.length && i < faixas.length; i++) escreverFaixa(faixas[i], lista[i]);
+    for (; i < n; i++) escreverFaixa(faixas[i], lista[i]);
     for (; i < faixas.length; i++) faixas[i].mesh.visible = false;
+
+    // Opacidade única no material compartilhado (densidade 2× sem saturar).
+    matBase.opacity = 0.1 + ventoHud01(vento, CLIMA_CFG) * 0.12;
   }
 
   return { atualizar, grupo };

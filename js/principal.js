@@ -1,7 +1,10 @@
 import {
   CAMINHOS,
   CHUNK_XZ,
+  PASSO_HORIZONTE,
   PASSO_MALHA_SUAVE,
+  RAIO_HORIZONTE_MAX,
+  RAIO_HORIZONTE_MIN,
   RAIO_STREAM_MAX,
   RAIO_STREAM_MIN,
   RAIO_SUAVE_MAX,
@@ -73,6 +76,7 @@ import {
   desativarInputRelativoCamera,
 } from "./render/3d/adaptadorInput3d.js";
 import { definirRaioSuave, obterRaioSuave } from "./render/3d/terrenoSuave.js";
+import { definirRaioHorizonte, obterRaioHorizonte } from "./render/3d/terrenoHorizonte.js";
 import {
   ajustarZoom3d,
   atualizarEDesenhar3d,
@@ -100,6 +104,10 @@ import {
   teleporteOcupado,
   tickTeleporte,
 } from "./jogo/teleporte.js";
+import { tickHistorico, vetorPredicao } from "./jogo/movimento/historicoMovimento.js";
+import { tickJornada } from "./jogo/jornada.js";
+import { aabbCamera2d, aabbVisivelChao } from "./render/3d/frustumChao.js";
+import { definirContextoPrioridade } from "./mundo/voxel/prioridadeChunk.js";
 import { rolarCategoria } from "./jogo/roda.js";
 
 const SPAWN = USAR_PATCH_DEMO ? SPAWN_DEMO : SPAWN_PALLET;
@@ -315,6 +323,11 @@ function textoRaioSuave(n) {
   return `${n} · ${n * CHUNK_XZ} blocos`;
 }
 
+function textoRaioHorizonte(n) {
+  if (n === 0) return "desligado";
+  return `${n} · ${n * CHUNK_XZ} blocos`;
+}
+
 function ligarRaioSuave() {
   const input = document.getElementById("raio-suave");
   const valor = document.getElementById("raio-suave-valor");
@@ -338,8 +351,32 @@ function ligarRaioSuave() {
   return aplicar;
 }
 
+function ligarRaioHorizonte() {
+  const input = document.getElementById("raio-horizonte");
+  const valor = document.getElementById("raio-horizonte-valor");
+  const dica = document.getElementById("raio-horizonte-dica");
+  if (dica) {
+    dica.textContent = `Relevo terraced longe (células a cada ${PASSO_HORIZONTE} blocos), além do disco de blocos.`;
+  }
+  if (!input) return () => {};
+  input.min = String(RAIO_HORIZONTE_MIN);
+  input.max = String(RAIO_HORIZONTE_MAX);
+  input.value = String(obterRaioHorizonte());
+
+  const aplicar = () => {
+    const n = definirRaioHorizonte(Number(input.value));
+    input.value = String(n);
+    if (valor) valor.textContent = textoRaioHorizonte(n);
+  };
+
+  input.addEventListener("input", aplicar);
+  aplicar();
+  return aplicar;
+}
+
 function ligarRaioStream() {
   const atualizarSuave = ligarRaioSuave();
+  ligarRaioHorizonte();
   const input = document.getElementById("raio-stream");
   const valor = document.getElementById("raio-stream-valor");
   if (!input) return;
@@ -465,7 +502,32 @@ function loop(agora) {
     }
   }
 
+  if (!passeioAtivo() && !trava) atualizarMovimento(corpo, dt);
+  tickFilaPath();
+  if (passeioAtivo() && !trava) atualizarPasseio(corpo, dt);
+  atualizarAgente(agente, corpo, dt, 0, AGENTE_DIST_SEGUIR);
+
+  tickHistorico(corpo, dt);
+  const pred = vetorPredicao();
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const cam3d = obterCenario3d()?.camera3d;
+  const aabbTela =
+    (modo === "3d" && cam3d ? aabbVisivelChao(cam3d, elev) : null) ||
+    aabbCamera2d(camera);
   const foco = focoStreaming();
+  const focoX = foco?.x ?? corpo.x;
+  const focoY = foco?.y ?? corpo.y;
+  definirContextoPrioridade({
+    px: focoX,
+    py: focoY,
+    pcx: Math.floor(focoX / CHUNK_XZ),
+    pcy: Math.floor(focoY / CHUNK_XZ),
+    predX: pred.x,
+    predY: pred.y,
+    predLen: pred.len,
+    aabbTela,
+  });
+
   if (foco && teleporteNaOrigem()) {
     atualizarStreamingDuplo(corpo.x, corpo.y, foco.x, foco.y);
   } else if (foco) {
@@ -473,19 +535,16 @@ function loop(agora) {
   } else {
     atualizarStreaming(corpo.x, corpo.y);
   }
+  tickJornada(corpo.x, corpo.y, dt);
   definirCorposAtores(listarSolidosPokemon());
   atualizarMapaKanto(corpo.x, corpo.y);
   tickMapaMundo(corpo.x, corpo.y, dt);
-  if (!passeioAtivo() && !trava) atualizarMovimento(corpo, dt);
-  tickFilaPath();
-  if (passeioAtivo() && !trava) atualizarPasseio(corpo, dt);
-  atualizarAgente(agente, corpo, dt, 0, AGENTE_DIST_SEGUIR);
   tickPokemon(corpo, dt, agente.perfil);
   tickTeleporte(dt, {
     corpo,
     agente,
     camera,
-    camera3d: obterCenario3d()?.camera3d,
+    camera3d: cam3d,
     modo,
   });
   if (!trava) tickPoeiraPasso(dt, corpo, agente);

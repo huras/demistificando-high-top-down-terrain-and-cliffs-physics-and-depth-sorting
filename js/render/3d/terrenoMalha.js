@@ -23,6 +23,11 @@ import {
   onDirty,
   paraCadaChunk,
 } from "../../mundo/voxel/storeMundo.js";
+import {
+  devePreemptar,
+  obterContextoPrioridade,
+  scoreChunk,
+} from "../../mundo/voxel/prioridadeChunk.js";
 import { BLOCO, ehSolido } from "../../mundo/voxel/tiposBloco.js";
 import { registrarObjetoCena, removerObjetoCena } from "../../cena/registroCena.js";
 import { hexBioma } from "../../mundo/bioma/tinta.js";
@@ -2214,7 +2219,7 @@ export function criarTerrenoMalha(atlas = null) {
 
   /**
    * Gasta no máximo ~1 ms por frame na malha. Um chunk leva vários frames.
-   * Junto com o streaming, a malha suave e a vegetação distante, cabe em 60 fps.
+   * Prioridade: tela + direção prevista (mesmo score do stream).
    */
   function tickMalha(px = 0, py = 0, _maxChunks = MESH_CHUNKS_POR_FRAME) {
     avancarMateriaisAgua(performance.now() / 1000);
@@ -2226,17 +2231,50 @@ export function criarTerrenoMalha(atlas = null) {
     ) {
       trabalhoMalha = null;
     }
-    if (!trabalhoMalha) {
+
+    const ctxPri =
+      obterContextoPrioridade() || {
+        px,
+        py,
+        pcx: Math.floor(px / CHUNK_XZ),
+        pcy: Math.floor(py / CHUNK_XZ),
+        predX: 0,
+        predY: 1,
+        predLen: 0,
+        aabbTela: null,
+      };
+
+    function melhorSujo() {
       const sujos = listarChunksSujos();
-      if (!sujos.length) return 0;
-      const cx = Math.floor(px / CHUNK_XZ);
-      const cy = Math.floor(py / CHUNK_XZ);
-      sujos.sort((a, b) => {
-        const da = (a.cx - cx) * (a.cx - cx) + (a.cy - cy) * (a.cy - cy);
-        const db = (b.cx - cx) * (b.cx - cx) + (b.cy - cy) * (b.cy - cy);
-        return da - db;
-      });
-      const chunk = sujos[0];
+      if (!sujos.length) return null;
+      let melhor = sujos[0];
+      let melhorScore = scoreChunk(melhor.cx, melhor.cy, ctxPri);
+      for (let i = 1; i < sujos.length; i++) {
+        const s = scoreChunk(sujos[i].cx, sujos[i].cy, ctxPri);
+        if (s < melhorScore) {
+          melhorScore = s;
+          melhor = sujos[i];
+        }
+      }
+      return { chunk: melhor, score: melhorScore };
+    }
+
+    if (trabalhoMalha) {
+      const atualScore = scoreChunk(trabalhoMalha.chunk.cx, trabalhoMalha.chunk.cy, ctxPri);
+      const cand = melhorSujo();
+      if (
+        cand &&
+        cand.chunk !== trabalhoMalha.chunk &&
+        devePreemptar(atualScore, cand.score)
+      ) {
+        trabalhoMalha = null;
+      }
+    }
+
+    if (!trabalhoMalha) {
+      const cand = melhorSujo();
+      if (!cand) return 0;
+      const chunk = cand.chunk;
       trabalhoMalha = {
         chunk,
         rev: chunk.rev | 0,
