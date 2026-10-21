@@ -10,19 +10,46 @@ import { portaPadraoSprite } from "../cidade/caixaSprite.js";
 const FOLHAS_SEM_PORTA = new Set([2, 4]);
 
 const BORDA = 2;
-const LOTE_X = 8;
 const CORPO_X = 6;
 const CORPO_Y = 5;
-const PASSO_X = 11;
-const PASSO_Y = 8;
-const QUINTAL = 1;
+/** Quintal em volta do corpo (todos os lados). */
+const QUINTAL = 2;
+/** Beco mínimo entre lotes. */
+const RUA = 3;
+const LOTE_CASA_X = CORPO_X + QUINTAL * 2;
+const LOTE_CASA_Y = CORPO_Y + QUINTAL * 2;
+const PASSO_X = LOTE_CASA_X + RUA;
+const PASSO_Y = LOTE_CASA_Y + RUA;
 const MEIO_RUA = 3.5;
 const CENTRO = 64;
+const LIMITE = 36;
+
+/** Máscara O(1): vazio na borda, rua, quintal/lote, corpo do prédio. */
+const MASK_VAZIO = 0;
+const MASK_RUA = 1;
+const MASK_LOTE = 2;
+const MASK_CORPO = 3;
 
 const GRADE = Object.freeze({
   starter: Object.freeze({ col: 5, lin: 5 }),
   town: Object.freeze({ col: 5, lin: 5 }),
   city: Object.freeze({ col: 7, lin: 7 }),
+});
+
+/** Pegada no chão por papel (não a altura do billboard). */
+const CORPO_POR_PAPEL = Object.freeze({
+  casa: Object.freeze({ x: 6, y: 5 }),
+  centro: Object.freeze({ x: 6, y: 5 }),
+  loja: Object.freeze({ x: 6, y: 5 }),
+  lab: Object.freeze({ x: 7, y: 6 }),
+  ginasio: Object.freeze({ x: 9, y: 7 }),
+  museu: Object.freeze({ x: 10, y: 7 }),
+  torre: Object.freeze({ x: 9, y: 7 }),
+  coliseu: Object.freeze({ x: 15, y: 8 }),
+  mansao: Object.freeze({ x: 18, y: 9 }),
+  porto: Object.freeze({ x: 6, y: 5 }),
+  safari: Object.freeze({ x: 6, y: 5 }),
+  esconderijo: Object.freeze({ x: 8, y: 6 }),
 });
 
 /** Quatro modelos de casa. */
@@ -61,24 +88,204 @@ function cruzaFaixa(x0, y0, x1, y1) {
   return faixaX || faixaY;
 }
 
-function papelDe(def, indice, total) {
-  if (def.tier === "starter" && indice === 0) return "lab";
-  let cursor = def.tier === "starter" ? 1 : 0;
-  if (indice === cursor) return "centro";
-  cursor += 1;
-  if (indice === cursor) return "loja";
-  cursor += 1;
-  if (def.ginasio && indice === cursor) return "ginasio";
-  if (def.ginasio) cursor += 1;
-  if (def.marco && indice === cursor) return def.marco.tipo;
-  if (indice < total) return "casa";
-  return "casa";
+function corpoDoPapel(papel) {
+  return CORPO_POR_PAPEL[papel] || CORPO_POR_PAPEL.casa;
+}
+
+function loteDoCorpo(cx, cy) {
+  return { x: cx + QUINTAL * 2, y: cy + QUINTAL * 2 };
+}
+
+function spanDoLote(lw, lh) {
+  return {
+    col: Math.max(1, Math.ceil((lw + RUA) / PASSO_X)),
+    lin: Math.max(1, Math.ceil((lh + RUA) / PASSO_Y)),
+  };
+}
+
+function papeisEspeciais(def) {
+  const lista = [];
+  if (def.tier === "starter") lista.push("lab");
+  lista.push("centro", "loja");
+  if (def.ginasio) lista.push("ginasio");
+  if (def.marco?.tipo) lista.push(def.marco.tipo);
+  return lista;
+}
+
+function celulaLivre(ocupada, grade, col, lin, spanC, spanL) {
+  if (col < 0 || lin < 0 || col + spanC > grade.col || lin + spanL > grade.lin) return false;
+  for (let dy = 0; dy < spanL; dy++) {
+    for (let dx = 0; dx < spanC; dx++) {
+      if (ocupada[(lin + dy) * grade.col + (col + dx)]) return false;
+    }
+  }
+  return true;
+}
+
+function marcarCelulas(ocupada, grade, col, lin, spanC, spanL) {
+  for (let dy = 0; dy < spanL; dy++) {
+    for (let dx = 0; dx < spanC; dx++) {
+      ocupada[(lin + dy) * grade.col + (col + dx)] = 1;
+    }
+  }
+}
+
+function candidatosDaGrade(grade, xIni, yIni) {
+  const lista = [];
+  for (let lin = 0; lin < grade.lin; lin++) {
+    for (let col = 0; col < grade.col; col++) {
+      const ox = xIni + col * PASSO_X;
+      const oy = yIni + lin * PASSO_Y;
+      const mx = ox + LOTE_CASA_X * 0.5;
+      const my = oy + LOTE_CASA_Y * 0.5;
+      lista.push({
+        col,
+        lin,
+        ox,
+        oy,
+        dist: (mx - CENTRO) * (mx - CENTRO) + (my - CENTRO) * (my - CENTRO),
+        sul: my,
+      });
+    }
+  }
+  return lista;
+}
+
+function ordenarCandidatos(lista, preferirSul) {
+  if (preferirSul) {
+    return lista.slice().sort((a, b) => b.sul - a.sul || a.dist - b.dist);
+  }
+  return lista.slice().sort((a, b) => a.dist - b.dist);
+}
+
+function encaixarLote(ocupada, grade, candidatos, lw, lh, fp) {
+  const span = spanDoLote(lw, lh);
+  const utilX = span.col * PASSO_X - RUA;
+  const utilY = span.lin * PASSO_Y - RUA;
+  for (let i = 0; i < candidatos.length; i++) {
+    const c = candidatos[i];
+    if (!celulaLivre(ocupada, grade, c.col, c.lin, span.col, span.lin)) continue;
+    const lx0 = c.ox + Math.floor((utilX - lw) * 0.5);
+    const ly0 = c.oy + Math.floor((utilY - lh) * 0.5);
+    const lx1 = lx0 + lw;
+    const ly1 = ly0 + lh;
+    if (lx0 < fp.x0 + BORDA || ly0 < fp.y0 + BORDA || lx1 > fp.x1 - BORDA || ly1 > fp.y1 - BORDA) {
+      continue;
+    }
+    if (cruzaFaixa(lx0, ly0, lx1, ly1)) continue;
+    return { col: c.col, lin: c.lin, spanC: span.col, spanL: span.lin, x0: lx0, y0: ly0, x1: lx1, y1: ly1 };
+  }
+  return null;
+}
+
+function montarVolume(def, papel, lote, casas) {
+  const corpo = corpoDoPapel(papel);
+  const cx0 = lote.x0 + Math.floor((lote.x1 - lote.x0 - corpo.x) * 0.5);
+  const cy0 = lote.y0 + Math.floor((lote.y1 - lote.y0 - corpo.y) * 0.5);
+  const variante = papel === "casa" ? varianteCasa(casas.n) : 0;
+  let modelo = null;
+  let cartao = false;
+  let folha = 0;
+  if (papel === "casa") {
+    cartao = def.key === "pallet-town" && (casas.n % 2) === 1;
+    if (cartao) folha = (casas.n % 5) + 1;
+    modelo = idDaCasa(def.key, casas.n);
+    casas.n += 1;
+  } else if (papel === "centro" || papel === "loja" || papel === "lab") {
+    modelo = papel;
+  }
+  return {
+    x0: cx0,
+    y0: cy0,
+    x1: cx0 + corpo.x,
+    y1: cy0 + corpo.y,
+    lote: { x0: lote.x0, y0: lote.y0, x1: lote.x1, y1: lote.y1 },
+    altura: ALTURA[papel] || ALTURA.casa,
+    papel,
+    variante,
+    modelo,
+    cartao,
+    folha,
+    porta: !(cartao && FOLHAS_SEM_PORTA.has(folha)),
+  };
+}
+
+function assarMascara(fp, volumes) {
+  const x0 = Math.floor(fp.x0);
+  const y0 = Math.floor(fp.y0);
+  const x1 = Math.ceil(fp.x1);
+  const y1 = Math.ceil(fp.y1);
+  const w = Math.max(1, x1 - x0);
+  const h = Math.max(1, y1 - y0);
+  const tipo = new Uint8Array(w * h);
+  const vol = new Int16Array(w * h);
+  vol.fill(-1);
+
+  const xIni = Math.ceil(fp.x0) + BORDA;
+  const yIni = Math.ceil(fp.y0) + BORDA;
+  const xFim = Math.floor(fp.x1) - BORDA;
+  const yFim = Math.floor(fp.y1) - BORDA;
+
+  for (let y = yIni; y < yFim; y++) {
+    for (let x = xIni; x < xFim; x++) {
+      tipo[(y - y0) * w + (x - x0)] = MASK_RUA;
+    }
+  }
+
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      if (Math.abs(x + 0.5 - fp.cx) <= MEIO_RUA || Math.abs(y + 0.5 - fp.cy) <= MEIO_RUA) {
+        tipo[(y - y0) * w + (x - x0)] = MASK_RUA;
+      }
+    }
+  }
+
+  for (let i = 0; i < volumes.length; i++) {
+    const v = volumes[i];
+    const L = v.lote;
+    const lx0 = Math.floor(L.x0);
+    const ly0 = Math.floor(L.y0);
+    const lx1 = Math.ceil(L.x1);
+    const ly1 = Math.ceil(L.y1);
+    for (let y = ly0; y < ly1; y++) {
+      for (let x = lx0; x < lx1; x++) {
+        if (x < x0 || y < y0 || x >= x1 || y >= y1) continue;
+        tipo[(y - y0) * w + (x - x0)] = MASK_LOTE;
+      }
+    }
+  }
+
+  for (let i = 0; i < volumes.length; i++) {
+    const v = volumes[i];
+    const cx0 = Math.floor(v.x0);
+    const cy0 = Math.floor(v.y0);
+    const cx1 = Math.ceil(v.x1);
+    const cy1 = Math.ceil(v.y1);
+    for (let y = cy0; y < cy1; y++) {
+      for (let x = cx0; x < cx1; x++) {
+        if (x < x0 || y < y0 || x >= x1 || y >= y1) continue;
+        const idx = (y - y0) * w + (x - x0);
+        tipo[idx] = MASK_CORPO;
+        vol[idx] = i;
+      }
+    }
+  }
+
+  return { x0, y0, w, h, tipo, vol };
+}
+
+function indiceMascara(mascara, lx, ly) {
+  if (!mascara) return -1;
+  const x = Math.floor(lx) - mascara.x0;
+  const y = Math.floor(ly) - mascara.y0;
+  if (x < 0 || y < 0 || x >= mascara.w || y >= mascara.h) return -1;
+  return y * mascara.w + x;
 }
 
 export function montarLayout(def) {
   const grade = gradeDe(def);
-  const cols = BORDA + LOTE_X + (grade.col - 1) * PASSO_X + BORDA;
-  const lins = BORDA + CORPO_Y + (grade.lin - 1) * PASSO_Y + BORDA;
+  const cols = BORDA + LOTE_CASA_X + (grade.col - 1) * PASSO_X + BORDA;
+  const lins = BORDA + LOTE_CASA_Y + (grade.lin - 1) * PASSO_Y + BORDA;
   const x0 = CENTRO - cols / 2;
   const y0 = CENTRO - lins / 2;
   const fp = {
@@ -91,66 +298,34 @@ export function montarLayout(def) {
   };
   const xIni = Math.ceil(fp.x0) + BORDA;
   const yIni = Math.ceil(fp.y0) + BORDA;
-  const livres = [];
-  for (let lin = 0; lin < grade.lin; lin++) {
-    for (let col = 0; col < grade.col; col++) {
-      const vx0 = xIni + col * PASSO_X + QUINTAL;
-      const vy0 = yIni + lin * PASSO_Y;
-      const vx1 = vx0 + CORPO_X;
-      const vy1 = vy0 + CORPO_Y;
-      if (cruzaFaixa(vx0, vy0, vx1, vy1)) continue;
-      const mx = (vx0 + vx1) / 2;
-      const my = (vy0 + vy1) / 2;
-      livres.push({
-        x0: vx0,
-        y0: vy0,
-        x1: vx1,
-        y1: vy1,
-        dist: (mx - CENTRO) * (mx - CENTRO) + (my - CENTRO) * (my - CENTRO),
-        sul: my,
-      });
-    }
-  }
-  let ordem = livres;
-  if (def.tier === "starter" && livres.length > 1) {
-    const porSul = livres.slice().sort((a, b) => b.sul - a.sul || a.dist - b.dist);
-    const lab = porSul[0];
-    const resto = porSul.slice(1).sort((a, b) => a.dist - b.dist);
-    ordem = [lab, ...resto];
-  } else {
-    ordem = livres.slice().sort((a, b) => a.dist - b.dist);
-  }
-  const LIMITE = 36;
+  const ocupada = new Uint8Array(grade.col * grade.lin);
+  const candidatos = candidatosDaGrade(grade, xIni, yIni);
   const volumes = [];
-  const n = Math.min(ordem.length, LIMITE);
-  let casas = 0;
-  for (let i = 0; i < n; i++) {
-    const lote = ordem[i];
-    const papel = papelDe(def, i, n);
-    const variante = papel === "casa" ? varianteCasa(casas) : 0;
-    let modelo = null;
-    let cartao = false;
-    let folha = 0;
-    if (papel === "casa") {
-      cartao = def.key === "pallet-town" && (casas % 2) === 1;
-      if (cartao) folha = (casas % 5) + 1;
-      modelo = idDaCasa(def.key, casas++);
-    } else if (papel === "centro" || papel === "loja" || papel === "lab") modelo = papel;
-    volumes.push({
-      x0: lote.x0,
-      y0: lote.y0,
-      x1: lote.x1,
-      y1: lote.y1,
-      altura: ALTURA[papel] || ALTURA.casa,
-      papel,
-      variante,
-      modelo,
-      cartao,
-      folha,
-      porta: !(cartao && FOLHAS_SEM_PORTA.has(folha)),
-    });
+  const casas = { n: 0 };
+
+  const especiais = papeisEspeciais(def);
+  for (let i = 0; i < especiais.length; i++) {
+    const papel = especiais[i];
+    const corpo = corpoDoPapel(papel);
+    const loteTam = loteDoCorpo(corpo.x, corpo.y);
+    const ordem = ordenarCandidatos(candidatos, def.tier === "starter" && papel === "lab");
+    const lugar = encaixarLote(ocupada, grade, ordem, loteTam.x, loteTam.y, fp);
+    if (!lugar) continue;
+    marcarCelulas(ocupada, grade, lugar.col, lugar.lin, lugar.spanC, lugar.spanL);
+    volumes.push(montarVolume(def, papel, lugar, casas));
   }
-  return { fp, volumes };
+
+  const ordemCasa = ordenarCandidatos(candidatos, false);
+  const loteCasa = loteDoCorpo(CORPO_X, CORPO_Y);
+  for (let i = 0; i < ordemCasa.length && volumes.length < LIMITE; i++) {
+    const lugar = encaixarLote(ocupada, grade, [ordemCasa[i]], loteCasa.x, loteCasa.y, fp);
+    if (!lugar) continue;
+    marcarCelulas(ocupada, grade, lugar.col, lugar.lin, lugar.spanC, lugar.spanL);
+    volumes.push(montarVolume(def, "casa", lugar, casas));
+  }
+
+  const mascara = assarMascara(fp, volumes);
+  return { fp, volumes, mascara };
 }
 
 function yawDaFrente(v) {
@@ -369,16 +544,16 @@ export function saidaDaPorta(v, ox, oy, porta) {
   return { x: ox + v.x0 - 1.15, y: py };
 }
 
-/** Quintal em volta do laboratório, pra o mato não entrar no lote. */
+/** Quintal de qualquer lote — mato/decor não entra. */
+export function noQuintalDoLote(lx, ly, layout) {
+  const idx = indiceMascara(layout?.mascara, lx, ly);
+  if (idx < 0) return false;
+  return layout.mascara.tipo[idx] === MASK_LOTE;
+}
+
+/** Compat: mesmo papel do quintal (antes só o lab). */
 export function naEntradaDoLab(lx, ly, layout) {
-  const lista = layout?.volumes;
-  if (!lista) return false;
-  for (let i = 0; i < lista.length; i++) {
-    const v = lista[i];
-    if (v.papel !== "lab") continue;
-    if (lx >= v.x0 - 2 && lx < v.x1 + 2 && ly >= v.y0 - 1 && ly < v.y1 + 6) return true;
-  }
-  return false;
+  return noQuintalDoLote(lx, ly, layout);
 }
 
 export function noFootprint(lx, ly, layout) {
@@ -387,6 +562,14 @@ export function noFootprint(lx, ly, layout) {
 }
 
 export function predioNoLayout(lx, ly, layout) {
+  const mascara = layout?.mascara;
+  if (mascara) {
+    const idx = indiceMascara(mascara, lx, ly);
+    if (idx < 0) return null;
+    const vi = mascara.vol[idx];
+    if (vi < 0) return null;
+    return layout.volumes[vi] || null;
+  }
   const lista = layout.volumes;
   for (let i = 0; i < lista.length; i++) {
     const v = lista[i];
@@ -396,16 +579,15 @@ export function predioNoLayout(lx, ly, layout) {
 }
 
 export function ruaNoLayout(lx, ly, layout) {
-  const fp = layout.fp;
-  if (Math.abs(lx + 0.5 - fp.cx) <= MEIO_RUA || Math.abs(ly + 0.5 - fp.cy) <= MEIO_RUA) {
-    return true;
+  const mascara = layout?.mascara;
+  if (mascara) {
+    const idx = indiceMascara(mascara, lx, ly);
+    if (idx < 0) {
+      const fp = layout.fp;
+      return Math.abs(lx + 0.5 - fp.cx) <= MEIO_RUA || Math.abs(ly + 0.5 - fp.cy) <= MEIO_RUA;
+    }
+    return mascara.tipo[idx] === MASK_RUA;
   }
-  const xIni = Math.ceil(fp.x0) + BORDA;
-  const yIni = Math.ceil(fp.y0) + BORDA;
-  const xFim = Math.floor(fp.x1) - BORDA;
-  const yFim = Math.floor(fp.y1) - BORDA;
-  if (lx < xIni || ly < yIni || lx >= xFim || ly >= yFim) return false;
-  const dx = (lx - xIni) % PASSO_X;
-  const dy = (ly - yIni) % PASSO_Y;
-  return dx >= LOTE_X || dy >= CORPO_Y;
+  const fp = layout.fp;
+  return Math.abs(lx + 0.5 - fp.cx) <= MEIO_RUA || Math.abs(ly + 0.5 - fp.cy) <= MEIO_RUA;
 }

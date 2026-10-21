@@ -40,6 +40,7 @@ import { SPAWN as SPAWN_DEMO } from "./mundo/mapaDemo.js";
 import { SPAWN_PALLET } from "./mundo/regiao/spawnKanto.js";
 import {
   atualizarStreaming,
+  atualizarStreamingDuplo,
   definirRaioStream,
   iniciarMundoAoRedor,
   marcarChunkSujo,
@@ -91,7 +92,12 @@ import { carregarDados } from "./pokemon/dados.js";
 import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
-import { tickTeleporte } from "./jogo/teleporte.js";
+import {
+  focoStreaming,
+  teleporteNaOrigem,
+  teleporteOcupado,
+  tickTeleporte,
+} from "./jogo/teleporte.js";
 import { rolarCategoria } from "./jogo/roda.js";
 
 const SPAWN = USAR_PATCH_DEMO ? SPAWN_DEMO : SPAWN_PALLET;
@@ -452,7 +458,14 @@ function loop(agora) {
     }
   }
 
-  atualizarStreaming(corpo.x, corpo.y);
+  const foco = focoStreaming();
+  if (foco && teleporteNaOrigem()) {
+    atualizarStreamingDuplo(corpo.x, corpo.y, foco.x, foco.y);
+  } else if (foco) {
+    atualizarStreaming(foco.x, foco.y);
+  } else {
+    atualizarStreaming(corpo.x, corpo.y);
+  }
   definirCorposAtores(listarSolidosPokemon());
   atualizarMapaKanto(corpo.x, corpo.y);
   tickMapaMundo(corpo.x, corpo.y, dt);
@@ -494,7 +507,10 @@ function loop(agora) {
     agente.tempoAr = 0;
     resetarNav(agente);
     camera.pronta = false;
-    atualizarStreaming(corpo.x, corpo.y, undefined, true);
+    // Teleporte já drenou o destino em pousarCorpo; evita sync duplo.
+    if (!teleporteOcupado()) {
+      atualizarStreaming(corpo.x, corpo.y, undefined, true);
+    }
   }
   if (!trava) tickPassos(dt, corpo, agente);
   if (!trava) tickAguaPulo(dt, corpo, agente);

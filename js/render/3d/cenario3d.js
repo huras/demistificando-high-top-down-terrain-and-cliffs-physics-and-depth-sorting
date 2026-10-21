@@ -18,7 +18,11 @@ import {
 } from "./camera3d.js";
 import { criarFlechas3d } from "./flechas3d.js";
 import { criarRigCamera3d } from "./rigCamera3d.js";
-import { alfaSprites } from "../../jogo/teleporte.js";
+import {
+  alfaSprites,
+  definirChecagemMalhaTeleporte,
+  focoStreaming,
+} from "../../jogo/teleporte.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { atualizarTeleporte3d, criarTeleporte3d } from "./teleporte3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
@@ -350,6 +354,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
     yaw: () => yawCamera(camera3d),
   };
 
+  definirChecagemMalhaTeleporte((x, y) => !!terreno.mioloMalhaPronto?.(x, y, 2));
+
   publicarObjetosCena(scene, {
     hemi,
     ambient,
@@ -547,10 +553,13 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   sincronizarVisualTerreno(atlas);
   aplicarNevoa(obterRaioStream());
   marcarCorposCrista(corpo, agente, atoresVisiveis());
-  estado.terreno.tickMalha?.(corpo.x, corpo.y);
+  const foco = focoStreaming();
+  const mx = foco?.x ?? corpo.x;
+  const my = foco?.y ?? corpo.y;
+  estado.terreno.tickMalha?.(mx, my);
   comecarQuadroLuzes();
   comecarMapaChao();
-  estado.terrenoSuave?.tick(corpo.x, corpo.y, estado.terreno.chunksExibidos?.());
+  estado.terrenoSuave?.tick(mx, my, estado.terreno.chunksExibidos?.());
   seguirAlvo3d(estado.camera3d, corpo, dt);
   aplicarFacingMira(corpo, estado.camera3d);
   estado.rig?.atualizar(estado.camera3d);
@@ -576,9 +585,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   ligarLuzSala(!!estadoJogo.interior?.sala3d);
 
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
-  estado.edificios?.atualizar?.(corpo.x, corpo.y, yaw, inclinacao);
+  estado.edificios?.atualizar?.(mx, my, yaw, inclinacao);
   estado.vegetacao?.atualizar?.(yaw, inclinacao);
-  estado.vegetacaoDistante?.tick?.(corpo.x, corpo.y, yaw, inclinacao);
+  estado.vegetacaoDistante?.tick?.(mx, my, yaw, inclinacao);
   estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   estado.poeiraPasso?.atualizar?.();
   estado.fxBola?.atualizar?.();

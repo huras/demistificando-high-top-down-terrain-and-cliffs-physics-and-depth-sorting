@@ -2260,6 +2260,34 @@ export function criarTerrenoMalha(atlas = null) {
     return fechou;
   }
 
+  /**
+   * Miolo ao redor de (px,py) já tem chunk e malha limpa — usado no gate do teleporte.
+   */
+  function mioloMalhaPronto(px = 0, py = 0, raioChunks = 2) {
+    const pcx = Math.floor(px / CHUNK_XZ);
+    const pcy = Math.floor(py / CHUNK_XZ);
+    const lim = raioChunks * raioChunks + 1;
+    if (
+      trabalhoMalha &&
+      (trabalhoMalha.chunk.cx - pcx) * (trabalhoMalha.chunk.cx - pcx) +
+        (trabalhoMalha.chunk.cy - pcy) * (trabalhoMalha.chunk.cy - pcy) <=
+        lim
+    ) {
+      return false;
+    }
+    for (let dy = -raioChunks; dy <= raioChunks; dy++) {
+      for (let dx = -raioChunks; dx <= raioChunks; dx++) {
+        if (dx * dx + dy * dy > lim) continue;
+        const cx = pcx + dx;
+        const cy = pcy + dy;
+        const chunk = obterChunk(cx, cy);
+        if (!chunk || chunk.sujo) return false;
+        if (!meshesPorChunk.has(`${cx},${cy}`)) return false;
+      }
+    }
+    return true;
+  }
+
   // Só libera unload sync; mesh sujo fica pro tickMalha (evita 11×mesh no stream).
   onDirty((aabb) => {
     if (aabb?.unload) {
@@ -2309,6 +2337,7 @@ export function criarTerrenoMalha(atlas = null) {
       }
     },
     tickMalha,
+    mioloMalhaPronto,
     /** Texturas de topo já usadas nos blocos. Não descartar daqui. */
     obterTexturasTopo() {
       if (!texturas?.pronto) return null;

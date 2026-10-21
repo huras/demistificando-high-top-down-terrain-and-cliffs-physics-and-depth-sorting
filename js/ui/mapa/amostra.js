@@ -39,7 +39,7 @@ import {
   RELEVO_TERRA,
   relevoEm,
 } from "../../mundo/regiao/kantoRelevo.js";
-import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "../../mundo/regiao/volumesCidade.js";
+import { noFootprint, noQuintalDoLote, predioNoLayout, ruaNoLayout } from "../../mundo/regiao/volumesCidade.js";
 import { fbm2 } from "../../mundo/voxel/ruido.js";
 import {
   COPA,
@@ -376,7 +376,7 @@ function lerPontoLocal(wx, wy) {
   const perfil = perfilEm(x, y);
   const rua = ehRua(lx, ly, zona);
   const predio = !!(zona?.tipo === "cidade" && zona.layout && !rua && predioNoLayout(lx, ly, zona.layout));
-  const entrada = !!(zona?.tipo === "cidade" && zona.layout && naEntradaDoLab(lx, ly, zona.layout));
+  const entrada = !!(zona?.tipo === "cidade" && zona.layout && noQuintalDoLote(lx, ly, zona.layout));
   const noFp = !!(zona?.tipo === "cidade" && zona.layout && noFootprint(lx, ly, zona.layout));
   let h = alturaEm(x, y, lx, ly, zona, perfil, rua || predio);
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);

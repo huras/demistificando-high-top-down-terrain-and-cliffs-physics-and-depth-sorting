@@ -1,22 +1,29 @@
 /**
  * Relógio da viagem entre cidades. A câmera aproxima, o grupo some,
  * pousa na praça e a câmera afasta de volta.
+ * Enquanto sobe, o streaming já aquece o destino (disco duplo).
  */
 import { ZOOM_MAX, ZOOM_MIN } from "../config.js";
 import { deLocalKanto } from "../mundo/bounds.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
-import { atualizarStreaming } from "../mundo/voxel/storeMundo.js";
+import {
+  atualizarStreaming,
+  obterRaioStream,
+  streamDiscoPronto,
+} from "../mundo/voxel/storeMundo.js";
 import { OFFSET_MON, OFFSET_NPC } from "../navegacao/espacoSeguir.js";
 import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { pokemonDeployado } from "../pokemon/party.js";
 import { estado } from "./estado.js";
 
-const SUBIDA = 1.1;
-const DESCIDA = 0.95;
+const SUBIDA = 1.7;
+const DESCIDA = 1.3;
+const ESPERA_MAX = 1.2;
 const FOLGA_DIST = 22;
-const SUBIDA_BLOCOS = 14;
+const SUBIDA_BLOCOS = 17;
 const POR_ATOR = 26;
+const RAIO_MIOLO = 2;
 
 const sementes = [];
 for (let i = 0; i < POR_ATOR * 3; i++) {
@@ -27,7 +34,7 @@ for (let i = 0; i < POR_ATOR * 3; i++) {
     oz: 0.2 + (i % 7) * 0.18,
     giro0: i * 0.73,
     tam: 0.28 + (i % 3) * 0.08,
-    atraso: (i % 8) * 0.035,
+    atraso: (i % 8) * 0.042,
   });
 }
 
@@ -44,6 +51,8 @@ let alfa = 1;
 let zoomBase = null;
 let monMarcado = null;
 let pecasN = 0;
+/** @type {null | ((x: number, y: number) => boolean)} */
+let checarMalhaDestino = null;
 
 export function teleporteOcupado() {
   return fase !== "ocioso";
@@ -61,21 +70,63 @@ export function pecasContagem() {
   return pecasN;
 }
 
-export function comecarSubida(alvo) {
-  if (fase !== "ocioso" || !alvo) return;
+/** Centro de stream/malha durante a viagem; null fora dela. */
+export function focoStreaming() {
+  return destino ? { x: destino.x, y: destino.y, z: destino.z } : null;
+}
+
+/** Ainda na origem (preparo ou subida) — usa disco duplo. */
+export function teleporteNaOrigem() {
+  return !!destino && fase !== "descida";
+}
+
+export function definirChecagemMalhaTeleporte(fn) {
+  checarMalhaDestino = typeof fn === "function" ? fn : null;
+}
+
+export function destinoProntoParaCortar() {
+  if (!destino) return false;
+  if (!streamDiscoPronto(destino.x, destino.y, RAIO_MIOLO)) return false;
+  if (checarMalhaDestino && !checarMalhaDestino(destino.x, destino.y)) return false;
+  return true;
+}
+
+function resolverDestino(alvo) {
+  if (!alvo) return null;
   if (Number.isFinite(alvo.x) && Number.isFinite(alvo.y)) {
-    destino = {
+    return {
       x: alvo.x,
       y: alvo.y,
       z: Number.isFinite(alvo.z) ? alvo.z : ALTURA_PRACA,
     };
-  } else if (Number.isFinite(alvo.ax) && Number.isFinite(alvo.ay)) {
+  }
+  if (Number.isFinite(alvo.ax) && Number.isFinite(alvo.ay)) {
     const p = deLocalKanto(
       alvo.ax * AREA_KANTO + CENTRO_AREA + 0.5,
       alvo.ay * AREA_KANTO + CENTRO_AREA + 0.5,
     );
-    destino = { x: p.x, y: p.y, z: ALTURA_PRACA };
-  } else {
+    return { x: p.x, y: p.y, z: ALTURA_PRACA };
+  }
+  return null;
+}
+
+/** Marca o destino e libera o preload (mapa ainda aberto). Sem VFX. */
+export function prepararViagem(alvo) {
+  if (fase !== "ocioso") return false;
+  const p = resolverDestino(alvo);
+  if (!p) return false;
+  destino = p;
+  ancoras = null;
+  return true;
+}
+
+export function comecarSubida(alvo) {
+  if (fase !== "ocioso") return;
+  if (alvo) {
+    const p = resolverDestino(alvo);
+    if (!p) return;
+    destino = p;
+  } else if (!destino) {
     return;
   }
   ancoras = null;
@@ -120,7 +171,8 @@ function pousarCorpo(corpo, x, y, z) {
   corpo.coyoteT = 0;
   corpo.puloBufferT = 0;
   corpo.tempoAr = 0;
-  atualizarStreaming(x, y, undefined, true);
+  const falta = !streamDiscoPronto(x, y, obterRaioStream());
+  atualizarStreaming(x, y, undefined, falta);
   corpo._renasceu = true;
 }
 
@@ -263,6 +315,7 @@ function encerrar(ctx) {
   alfa = 1;
   pecasN = 0;
   ancoras = null;
+  destino = null;
   soltarCamera(ctx);
   marcarMon(null);
 }
@@ -272,16 +325,19 @@ export function tickTeleporte(dt, ctx) {
   try {
   faseT += Math.min(0.05, dt || 0);
   if (fase === "subida" && faseT >= SUBIDA) {
-    cortar(ctx);
-    fase = "descida";
-    faseT = 0;
+    if (destinoProntoParaCortar() || faseT >= SUBIDA + ESPERA_MAX) {
+      cortar(ctx);
+      fase = "descida";
+      faseT = 0;
+    }
   }
   if (fase === "descida" && faseT >= DESCIDA) {
     encerrar(ctx);
     return;
   }
   const subindo = fase === "subida";
-  const u = faseT / (subindo ? SUBIDA : DESCIDA);
+  const dur = subindo ? SUBIDA : DESCIDA;
+  const u = Math.min(1, faseT / dur);
   const extra = subindo ? saida(u) : 1 - saida(u);
   alfa = subindo ? 1 - saida(u) : saida(u);
   aplicarCamera(ctx, extra);

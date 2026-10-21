@@ -5,7 +5,7 @@
 import { deLocalKanto } from "../../mundo/bounds.js";
 import { AREA_KANTO, CENTRO_AREA, zonaNoMundo } from "../../mundo/regiao/grafoKanto.js";
 import { estado } from "../../jogo/estado.js";
-import { comecarSubida, teleporteOcupado } from "../../jogo/teleporte.js";
+import { comecarSubida, prepararViagem, teleporteOcupado } from "../../jogo/teleporte.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
 import { LADO_MUNDO } from "./grade.js";
 import { tickIntimo } from "./intimo.js";
@@ -147,6 +147,7 @@ export function cancelarConfirmacaoMapa() {
 
 function iniciarViagem(cidade) {
   if (!cidade || viagem || teleporteOcupado()) return;
+  prepararViagem(cidade);
   ajustarTela();
   const cssW = tela.width / dpr;
   const cssH = tela.height / dpr;

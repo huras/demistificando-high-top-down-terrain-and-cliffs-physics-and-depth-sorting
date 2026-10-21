@@ -274,6 +274,7 @@ export function definirRaioStream(raio) {
  * Mantém disco de chunks em torno do jogador.
  * No frame, só gasta ~0,8 ms: o anel novo entra fatiado. Teleporte e o
  * primeiro preenchimento passam sincrono=true e drenam o disco inteiro.
+ * Durante a viagem, atualizarStreamingDuplo segura origem+destino.
  */
 let filaStream = null;
 let fatiaStream = null;
@@ -294,6 +295,28 @@ function discoStream(pcx, pcy, raio) {
   return lista;
 }
 
+/** União de dois discos; chunks do centro B entram primeiro (destino do teleporte). */
+function discoDuplo(pcxA, pcyA, pcxB, pcyB, raio) {
+  const a = discoStream(pcxA, pcyA, raio);
+  const b = discoStream(pcxB, pcyB, raio);
+  const visto = new Set();
+  const lista = [];
+  for (let i = 0; i < b.length; i++) {
+    const c = b[i];
+    const k = chaveChunk(c.cx, c.cy);
+    visto.add(k);
+    lista.push(c);
+  }
+  for (let i = 0; i < a.length; i++) {
+    const c = a[i];
+    const k = chaveChunk(c.cx, c.cy);
+    if (visto.has(k)) continue;
+    visto.add(k);
+    lista.push(c);
+  }
+  return lista;
+}
+
 function atualizarAabbStream(pcx, pcy, raio) {
   aabbCarregado = {
     x0: (pcx - raio) * CHUNK_XZ,
@@ -303,46 +326,44 @@ function atualizarAabbStream(pcx, pcy, raio) {
   };
 }
 
-export function atualizarStreaming(px, py, raio = raioAtivo, sincrono = false) {
-  const { cx: pcx, cy: pcy } = mundoParaChunk(px, py);
+function atualizarAabbDuplo(pcxA, pcyA, pcxB, pcyB, raio) {
+  const a0x = (pcxA - raio) * CHUNK_XZ;
+  const a0y = (pcyA - raio) * CHUNK_XZ;
+  const a1x = (pcxA + raio + 1) * CHUNK_XZ - 1;
+  const a1y = (pcyA + raio + 1) * CHUNK_XZ - 1;
+  const b0x = (pcxB - raio) * CHUNK_XZ;
+  const b0y = (pcyB - raio) * CHUNK_XZ;
+  const b1x = (pcxB + raio + 1) * CHUNK_XZ - 1;
+  const b1y = (pcyB + raio + 1) * CHUNK_XZ - 1;
+  aabbCarregado = {
+    x0: Math.min(a0x, b0x),
+    y0: Math.min(a0y, b0y),
+    x1: Math.max(a1x, b1x),
+    y1: Math.max(a1y, b1y),
+  };
+}
 
-  if (
-    !sincrono &&
-    !filaStream &&
-    !fatiaStream &&
-    atualizarStreaming._pcx === pcx &&
-    atualizarStreaming._pcy === pcy &&
-    atualizarStreaming._raio === raio &&
-    chunks.size > 0
-  ) {
-    return aabbCarregado;
+function remontarFila(disco, meta) {
+  const querer = new Set(disco.map((c) => chaveChunk(c.cx, c.cy)));
+  if (fatiaStream && !querer.has(chaveChunk(fatiaStream.cx, fatiaStream.cy))) {
+    fatiaStream = null;
   }
-
-  const mesmo =
-    filaStream &&
-    filaStream.pcx === pcx &&
-    filaStream.pcy === pcy &&
-    filaStream.raio === raio;
-  if (!mesmo) {
-    const disco = discoStream(pcx, pcy, raio);
-    const querer = new Set(disco.map((c) => chaveChunk(c.cx, c.cy)));
-    if (fatiaStream && !querer.has(chaveChunk(fatiaStream.cx, fatiaStream.cy))) {
-      fatiaStream = null;
-    }
-    const entrar = [];
-    for (let i = 0; i < disco.length; i++) {
-      const c = disco[i];
-      if (chunks.has(chaveChunk(c.cx, c.cy))) continue;
-      if (fatiaStream && fatiaStream.cx === c.cx && fatiaStream.cy === c.cy) continue;
-      entrar.push(c);
-    }
-    const sair = [];
-    for (const chunk of chunks.values()) {
-      if (!querer.has(chaveChunk(chunk.cx, chunk.cy))) sair.push(chunk);
-    }
-    filaStream = { pcx, pcy, raio, entrar, sair, i: 0, j: 0 };
+  const entrar = [];
+  for (let i = 0; i < disco.length; i++) {
+    const c = disco[i];
+    if (chunks.has(chaveChunk(c.cx, c.cy))) continue;
+    if (fatiaStream && fatiaStream.cx === c.cx && fatiaStream.cy === c.cy) continue;
+    entrar.push(c);
   }
+  const sair = [];
+  for (const chunk of chunks.values()) {
+    if (!querer.has(chaveChunk(chunk.cx, chunk.cy))) sair.push(chunk);
+  }
+  filaStream = { ...meta, entrar, sair, i: 0, j: 0 };
+}
 
+function drenarFilaStream(sincrono) {
+  if (!filaStream) return false;
   const limite = performance.now() + (sincrono ? 1e9 : ORCAMENTO_STREAM_MS);
   while (performance.now() < limite) {
     if (fatiaStream) {
@@ -376,20 +397,125 @@ export function atualizarStreaming(px, py, raio = raioAtivo, sincrono = false) {
     }
     break;
   }
-
-  if (
-    filaStream &&
+  return (
     !fatiaStream &&
     filaStream.i >= filaStream.entrar.length &&
     filaStream.j >= filaStream.sair.length
+  );
+}
+
+export function atualizarStreaming(px, py, raio = raioAtivo, sincrono = false) {
+  const { cx: pcx, cy: pcy } = mundoParaChunk(px, py);
+
+  if (
+    !sincrono &&
+    !filaStream &&
+    !fatiaStream &&
+    atualizarStreaming._pcx === pcx &&
+    atualizarStreaming._pcy === pcy &&
+    atualizarStreaming._raio === raio &&
+    !atualizarStreaming._duplo &&
+    chunks.size > 0
   ) {
+    return aabbCarregado;
+  }
+
+  const mesmo =
+    filaStream &&
+    filaStream.modo !== "duplo" &&
+    filaStream.pcx === pcx &&
+    filaStream.pcy === pcy &&
+    filaStream.raio === raio;
+  if (!mesmo) {
+    remontarFila(discoStream(pcx, pcy, raio), {
+      modo: "simples",
+      pcx,
+      pcy,
+      raio,
+    });
+  }
+
+  if (drenarFilaStream(sincrono)) {
     atualizarStreaming._pcx = pcx;
     atualizarStreaming._pcy = pcy;
     atualizarStreaming._raio = raio;
+    atualizarStreaming._duplo = null;
     atualizarAabbStream(pcx, pcy, raio);
     filaStream = null;
   }
   return aabbCarregado;
+}
+
+/**
+ * Mantém origem e destino carregados (união dos discos).
+ * Prioriza entrar os chunks do ponto B (destino da viagem).
+ */
+export function atualizarStreamingDuplo(pxA, pyA, pxB, pyB, raio = raioAtivo) {
+  const { cx: pcxA, cy: pcyA } = mundoParaChunk(pxA, pyA);
+  const { cx: pcxB, cy: pcyB } = mundoParaChunk(pxB, pyB);
+  const duplo = atualizarStreaming._duplo;
+  if (
+    !filaStream &&
+    !fatiaStream &&
+    duplo &&
+    duplo.pcxA === pcxA &&
+    duplo.pcyA === pcyA &&
+    duplo.pcxB === pcxB &&
+    duplo.pcyB === pcyB &&
+    duplo.raio === raio &&
+    chunks.size > 0
+  ) {
+    return aabbCarregado;
+  }
+
+  const mesmo =
+    filaStream &&
+    filaStream.modo === "duplo" &&
+    filaStream.pcxA === pcxA &&
+    filaStream.pcyA === pcyA &&
+    filaStream.pcxB === pcxB &&
+    filaStream.pcyB === pcyB &&
+    filaStream.raio === raio;
+  if (!mesmo) {
+    remontarFila(discoDuplo(pcxA, pcyA, pcxB, pcyB, raio), {
+      modo: "duplo",
+      pcxA,
+      pcyA,
+      pcxB,
+      pcyB,
+      raio,
+    });
+  }
+
+  if (drenarFilaStream(false)) {
+    atualizarStreaming._pcx = undefined;
+    atualizarStreaming._pcy = undefined;
+    atualizarStreaming._raio = raio;
+    atualizarStreaming._duplo = { pcxA, pcyA, pcxB, pcyB, raio };
+    atualizarAabbDuplo(pcxA, pcyA, pcxB, pcyB, raio);
+    filaStream = null;
+  }
+  return aabbCarregado;
+}
+
+/** True se o miolo ao redor de (px,py) já está todo no mapa de chunks. */
+export function streamDiscoPronto(px, py, raioMiolo = 2) {
+  const { cx: pcx, cy: pcy } = mundoParaChunk(px, py);
+  const disco = discoStream(pcx, pcy, raioMiolo);
+  for (let i = 0; i < disco.length; i++) {
+    const c = disco[i];
+    if (!chunks.has(chaveChunk(c.cx, c.cy))) return false;
+    if (fatiaStream && fatiaStream.cx === c.cx && fatiaStream.cy === c.cy) return false;
+  }
+  if (filaStream) {
+    for (let i = filaStream.i; i < filaStream.entrar.length; i++) {
+      const item = filaStream.entrar[i];
+      const dx = item.cx - pcx;
+      const dy = item.cy - pcy;
+      if (dx * dx + dy * dy <= raioMiolo * raioMiolo + 1) return false;
+    }
+  }
+  return disco.length > 0;
 }
 
 export function obterAabbCarregado() {

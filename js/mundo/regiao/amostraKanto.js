@@ -23,7 +23,7 @@ import {
   RELEVO_TERRA,
   relevoEm,
 } from "./kantoRelevo.js";
-import { naEntradaDoLab, noFootprint, predioNoLayout, ruaNoLayout } from "./volumesCidade.js";
+import { noFootprint, noQuintalDoLote, predioNoLayout, ruaNoLayout } from "./volumesCidade.js";
 
 export { dentroDoKanto } from "../bounds.js";
 import { aplicarDetalheBioma } from "./detalheRelevo.js";
@@ -326,7 +326,7 @@ function calcularBase(x, y) {
     rua,
     floresta,
     predio: predio && !predioSprite(predio.papel) ? predio.altura : 0,
-    entradaLab: !!(zona.tipo === "cidade" && zona.layout && naEntradaDoLab(lx, ly, zona.layout)),
+    entradaLab: !!(zona.tipo === "cidade" && zona.layout && noQuintalDoLote(lx, ly, zona.layout)),
     modelo: !!(predio && (predio.papel === "casa" || predio.papel === "centro" || predio.papel === "loja" || predio.papel === "lab" || predioSprite(predio.papel))),
     nome: zona.nome,
     reservado,
