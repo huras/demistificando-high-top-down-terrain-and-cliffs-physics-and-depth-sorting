@@ -1,10 +1,14 @@
 /**
  * Nível selvagem por distância de civilização (áreas do grafo Kanto).
- * Fora da ilha: continua a métrica a partir da borda (não INF imediato).
+ * Fora da ilha: continua a métrica a partir da borda — sem teto de nível.
  */
 import {
+  LADO_MUNDO,
+  ORIGEM_KANTO_X,
+  ORIGEM_KANTO_Y,
   deLocalKanto,
   distAssinadaKanto,
+  dentroDoKanto,
   paraLocalKanto,
 } from "../../mundo/bounds.js";
 import {
@@ -17,15 +21,30 @@ import {
 const INF = 65535;
 export const TILES_POR_NIVEL = 12;
 const NIVEL_MIN = 2;
-export const NIVEL_MAX = 45;
+
+/** Célula do heatmap / labels (= área Kanto, 128 blocos). */
+export const CELULA_FORCA = AREA_KANTO;
+/** Grade mundo: 8192 / 128 = 64. */
+export const GRADE_FORCA = (LADO_MUNDO / CELULA_FORCA) | 0;
+
+/** Distância finita para células de hop inalcançáveis. */
+const DIST_INF =
+  LADO_KANTO * AREA_KANTO + Math.hypot(LADO_MUNDO, LADO_MUNDO);
 
 const ALPHA_CALOR = 0.58;
+
+/** Offset da grade Kanto na grade mundo (ORIGEM 2048 / 128 = 16). */
+const OX_GRADE = (ORIGEM_KANTO_X / AREA_KANTO) | 0;
+const OY_GRADE = (ORIGEM_KANTO_Y / AREA_KANTO) | 0;
 
 /** @type {Uint16Array | null} */
 let hops = null;
 
-/** @type {string[] | null} */
-let lutCalor = null;
+/** @type {number | null} */
+let escalaMundo = null;
+
+/** @type {Map<number, string[]>} */
+const lutPorEscala = new Map();
 
 function garantirHops() {
   if (hops) return hops;
@@ -71,9 +90,10 @@ function garantirHops() {
 }
 
 function nivelDeTileDist(tileDist) {
-  if (!Number.isFinite(tileDist) || tileDist >= INF) return NIVEL_MAX;
   if (tileDist <= 0) return 0;
-  return Math.max(1, Math.min(NIVEL_MAX, 1 + Math.floor(tileDist / TILES_POR_NIVEL)));
+  const d =
+    !Number.isFinite(tileDist) || tileDist >= INF ? DIST_INF : tileDist;
+  return Math.max(1, 1 + Math.floor(d / TILES_POR_NIVEL));
 }
 
 function hopNaBorda(lx, ly) {
@@ -112,76 +132,136 @@ function tileDistEm(wx, wy) {
   return h * AREA_KANTO + noCentro;
 }
 
-/** Nível de encontro em (wx, wy). Cidade → 0 no mapa; spawn usa mínimo 2. */
+/** Nível de encontro em (wx, wy). Cidade → mínimo 2 no spawn. */
 export function nivelEm(wx, wy) {
   const dist = tileDistEm(wx, wy);
   if (dist === 0) return NIVEL_MIN;
-  const n = nivelDeTileDist(dist);
-  return Math.max(NIVEL_MIN, n);
+  return Math.max(NIVEL_MIN, nivelDeTileDist(dist));
 }
 
-/** Nível no centro da área (ax/ay da grade Kanto). Cidade → 0. */
-export function nivelNaArea(ax, ay) {
-  const a = ax | 0;
-  const b = ay | 0;
-  if (a < 0 || b < 0 || a >= LADO_KANTO || b >= LADO_KANTO) return NIVEL_MAX;
+function celulaEhCidade(cx, cy) {
+  const wx = cx * CELULA_FORCA + CELULA_FORCA * 0.5;
+  const wy = cy * CELULA_FORCA + CELULA_FORCA * 0.5;
+  if (!dentroDoKanto(wx, wy)) return false;
+  const local = paraLocalKanto(wx, wy);
+  const ax = (local.x / AREA_KANTO) | 0;
+  const ay = (local.y / AREA_KANTO) | 0;
   const tabela = garantirHops();
-  if (tabela[b * LADO_KANTO + a] === 0) return 0;
-  const p = deLocalKanto(a * AREA_KANTO + AREA_KANTO * 0.5, b * AREA_KANTO + AREA_KANTO * 0.5);
-  return nivelDeTileDist(tileDistEm(p.x, p.y));
+  return tabela[ay * LADO_KANTO + ax] === 0;
 }
 
-/** Faixa min–max amostrando centro + 4 cantos. Cidade → {0,0}. */
-export function faixaNivelArea(ax, ay) {
-  const a = ax | 0;
-  const b = ay | 0;
-  if (a < 0 || b < 0 || a >= LADO_KANTO || b >= LADO_KANTO) {
-    return { min: NIVEL_MAX, max: NIVEL_MAX };
+/** Nível no centro da célula mundo (cx/cy na grade GRADE_FORCA). Cidade → 0. */
+export function nivelNaCelulaMundo(cx, cy) {
+  const a = cx | 0;
+  const b = cy | 0;
+  if (a < 0 || b < 0 || a >= GRADE_FORCA || b >= GRADE_FORCA) {
+    return nivelDeTileDist(DIST_INF);
   }
-  const tabela = garantirHops();
-  if (tabela[b * LADO_KANTO + a] === 0) return { min: 0, max: 0 };
+  if (celulaEhCidade(a, b)) return 0;
+  const wx = a * CELULA_FORCA + CELULA_FORCA * 0.5;
+  const wy = b * CELULA_FORCA + CELULA_FORCA * 0.5;
+  return nivelDeTileDist(tileDistEm(wx, wy));
+}
 
-  const ptsLocais = [
-    [a * AREA_KANTO + AREA_KANTO * 0.5, b * AREA_KANTO + AREA_KANTO * 0.5],
-    [a * AREA_KANTO + 0.5, b * AREA_KANTO + 0.5],
-    [(a + 1) * AREA_KANTO - 0.5, b * AREA_KANTO + 0.5],
-    [a * AREA_KANTO + 0.5, (b + 1) * AREA_KANTO - 0.5],
-    [(a + 1) * AREA_KANTO - 0.5, (b + 1) * AREA_KANTO - 0.5],
+/** Faixa min–max amostrando centro + 4 cantos da célula mundo. Cidade → {0,0}. */
+export function faixaNivelCelulaMundo(cx, cy) {
+  const a = cx | 0;
+  const b = cy | 0;
+  if (a < 0 || b < 0 || a >= GRADE_FORCA || b >= GRADE_FORCA) {
+    const n = nivelDeTileDist(DIST_INF);
+    return { min: n, max: n };
+  }
+  if (celulaEhCidade(a, b)) return { min: 0, max: 0 };
+
+  const x0 = a * CELULA_FORCA;
+  const y0 = b * CELULA_FORCA;
+  const pts = [
+    [x0 + CELULA_FORCA * 0.5, y0 + CELULA_FORCA * 0.5],
+    [x0 + 0.5, y0 + 0.5],
+    [x0 + CELULA_FORCA - 0.5, y0 + 0.5],
+    [x0 + 0.5, y0 + CELULA_FORCA - 0.5],
+    [x0 + CELULA_FORCA - 0.5, y0 + CELULA_FORCA - 0.5],
   ];
-  let min = NIVEL_MAX;
+  let min = Infinity;
   let max = 0;
-  for (let i = 0; i < ptsLocais.length; i++) {
-    const p = deLocalKanto(ptsLocais[i][0], ptsLocais[i][1]);
-    const n = nivelDeTileDist(tileDistEm(p.x, p.y));
+  for (let i = 0; i < pts.length; i++) {
+    const n = nivelDeTileDist(tileDistEm(pts[i][0], pts[i][1]));
     if (n < min) min = n;
     if (n > max) max = n;
   }
   return { min, max };
 }
 
-function hslaDeNivel(nivel, alpha) {
+/** Wrappers da grade Kanto → célula mundo. */
+export function nivelNaArea(ax, ay) {
+  return nivelNaCelulaMundo(OX_GRADE + (ax | 0), OY_GRADE + (ay | 0));
+}
+
+export function faixaNivelArea(ax, ay) {
+  return faixaNivelCelulaMundo(OX_GRADE + (ax | 0), OY_GRADE + (ay | 0));
+}
+
+/**
+ * Referência de cor: maior nível nos cantos/bordas do overworld.
+ * Usado no bake e na legenda para contraste estável.
+ */
+export function nivelEscalaCalor() {
+  if (escalaMundo != null) return escalaMundo;
+  const pts = [
+    [0.5, 0.5],
+    [LADO_MUNDO - 0.5, 0.5],
+    [0.5, LADO_MUNDO - 0.5],
+    [LADO_MUNDO - 0.5, LADO_MUNDO - 0.5],
+    [LADO_MUNDO * 0.5, 0.5],
+    [LADO_MUNDO * 0.5, LADO_MUNDO - 0.5],
+    [0.5, LADO_MUNDO * 0.5],
+    [LADO_MUNDO - 0.5, LADO_MUNDO * 0.5],
+  ];
+  let max = 1;
+  for (let i = 0; i < pts.length; i++) {
+    const n = nivelDeTileDist(tileDistEm(pts[i][0], pts[i][1]));
+    if (n > max) max = n;
+  }
+  escalaMundo = max;
+  return max;
+}
+
+function hslaDeNivel(nivel, alpha, nivelEscala) {
   if (nivel <= 0) {
     return `hsla(210, 18%, 42%, ${alpha * 0.35})`;
   }
-  const t = Math.max(0, Math.min(1, (nivel - 1) / Math.max(1, NIVEL_MAX - 1)));
+  const esc = Math.max(1, nivelEscala);
+  const t = Math.max(0, Math.min(1, Math.log1p(nivel) / Math.log1p(esc)));
   const hue = 128 * (1 - t);
   const sat = 62 + t * 18;
   const light = 48 - t * 10;
   return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
 }
 
-function garantirLut() {
-  if (lutCalor) return lutCalor;
-  lutCalor = new Array(NIVEL_MAX + 1);
-  for (let n = 0; n <= NIVEL_MAX; n++) {
-    lutCalor[n] = hslaDeNivel(n, ALPHA_CALOR);
+function garantirLut(escBucket) {
+  let lut = lutPorEscala.get(escBucket);
+  if (lut) return lut;
+  lut = new Array(escBucket + 1);
+  for (let n = 0; n <= escBucket; n++) {
+    lut[n] = hslaDeNivel(n, ALPHA_CALOR, escBucket);
   }
-  return lutCalor;
+  lutPorEscala.set(escBucket, lut);
+  return lut;
 }
 
-/** Cor HSLA do heat map. Alpha padrão 0.58; fora do padrão recalcula. */
-export function corCalor(nivel, alpha = ALPHA_CALOR) {
-  const n = Math.max(0, Math.min(NIVEL_MAX, nivel | 0));
-  if (alpha === ALPHA_CALOR) return garantirLut()[n];
-  return hslaDeNivel(n, alpha);
+/**
+ * Cor HSLA do heat map.
+ * @param {number} nivel
+ * @param {number} [alpha]
+ * @param {number} [nivelEscala] teto visual (log); default = cantos do mundo
+ */
+export function corCalor(nivel, alpha = ALPHA_CALOR, nivelEscala = nivelEscalaCalor()) {
+  const n = Math.max(0, nivel | 0);
+  const escBucket = Math.max(1, Math.round(nivelEscala));
+  if (alpha === ALPHA_CALOR) {
+    const lut = garantirLut(escBucket);
+    if (n <= escBucket) return lut[n];
+    return hslaDeNivel(n, alpha, escBucket);
+  }
+  return hslaDeNivel(n, alpha, escBucket);
 }

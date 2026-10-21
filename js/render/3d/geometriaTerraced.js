@@ -43,35 +43,55 @@ export function criarGeometriaTerraced(alturas, coresRgb, opts) {
     colors.push(rgb[0], rgb[1], rgb[2]);
   }
 
+  /** Ordem CCW vista de +Y (igual ao terreno suave: i0,i2,i1 / i1,i2,i3). */
   function addQuadTopo(x0, z0, x1, z1, h, rgb, u0, v0, u1, v1) {
     addVert(x0, h, z0, 0, 1, 0, u0, v0, rgb);
-    addVert(x1, h, z0, 0, 1, 0, u1, v0, rgb);
     addVert(x0, h, z1, 0, 1, 0, u0, v1, rgb);
     addVert(x1, h, z0, 0, 1, 0, u1, v0, rgb);
+    addVert(x1, h, z0, 0, 1, 0, u1, v0, rgb);
+    addVert(x0, h, z1, 0, 1, 0, u0, v1, rgb);
     addVert(x1, h, z1, 0, 1, 0, u1, v1, rgb);
-    addVert(x0, h, z1, 0, 1, 0, u0, v1, rgb);
   }
 
+  /** Parede olhando pro lado mais baixo (CCW vista de fora). */
   function addParedeX(x, z0, z1, hA, hB, rgb) {
     if (Math.abs(hA - hB) < 1e-4) return;
     const nxn = hA > hB ? 1 : -1;
-    addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
-    addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
-    addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
-    addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
-    addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
-    addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
+    if (nxn > 0) {
+      addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
+    } else {
+      addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
+      addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
+    }
   }
 
   function addParedeZ(z, x0, x1, hA, hB, rgb) {
     if (Math.abs(hA - hB) < 1e-4) return;
     const nzn = hA > hB ? 1 : -1;
-    addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
-    addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
-    addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
-    addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
-    addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
-    addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
+    if (nzn > 0) {
+      addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
+    } else {
+      addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
+      addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
+    }
   }
 
   for (let cy = 0; cy < ny; cy++) {
