@@ -64,7 +64,8 @@ function campoFocado() {
 }
 
 export function jogoTravaMundo() {
-  return uiAberta() || mapaAberto() || teleporteOcupado() || dexAberta();
+  // uiAberta() já inclui menu/dex/status
+  return uiAberta() || mapaAberto() || teleporteOcupado();
 }
 
 function pintarBotaoSom(botao) {

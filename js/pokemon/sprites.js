@@ -241,7 +241,7 @@ function velocidadePlana(ator) {
 }
 
 /** Ciclo real mínimo. O atlas de voo cabe em ~60 ms e o de andar dispara no sprint. */
-const CICLO_ANDAR = 0.68;
+const CICLO_ANDAR = 0.453;
 const CICLO_VOO = 0.42;
 
 function cicloDaFaixa(spec) {

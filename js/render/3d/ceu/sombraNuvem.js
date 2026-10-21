@@ -75,8 +75,11 @@ function ligarUniforms(shader) {
  * A cisalha é a direção do sol vezes a altura da nuvem — a sombra não fica
  * embaixo da nuvem quando o sol está baixo (o truque do BOTW).
  */
+const MARCA_HOOK = Symbol(MARCA);
+
 export function aplicarSombraNuvem(material) {
-  if (!material || material.userData?.[MARCA]) return material;
+  if (!material || material[MARCA_HOOK]) return material;
+  material[MARCA_HOOK] = true;
   if (!material.userData) material.userData = {};
   material.userData[MARCA] = true;
 

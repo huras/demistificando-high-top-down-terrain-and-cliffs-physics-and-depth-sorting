@@ -75,6 +75,17 @@ export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo 
   const fpsEl = document.getElementById("fps-status");
   if (fpsEl) fpsEl.textContent = fps > 0 ? String(fps) : "—";
 
+  const fpsHud = document.querySelector("#jogo-relogio [data-fps]");
+  if (fpsHud) {
+    const texto = fps > 0 ? String(fps) : "—";
+    if (fpsHud.textContent !== texto) fpsHud.textContent = texto;
+    const wrap = fpsHud.closest(".hud-clock__fps");
+    if (wrap) {
+      wrap.dataset.band =
+        fps >= 55 ? "ok" : fps >= 40 ? "mid" : fps > 0 ? "low" : "";
+    }
+  }
+
   const hoverEl = document.getElementById("hover-status");
   if (hoverEl) {
     const t = textoHoverBloco();
@@ -105,9 +116,8 @@ export function desenharOverlayAjuda(
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const boxX = 10;
   const boxY = 10;
-  const boxW = 280;
+  const boxW = 220;
   const h = debug && modoJogo === "2d" ? 62 : 48;
-  const padR = boxX + boxW - 12;
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(boxX, boxY, boxW, h);
 
@@ -115,11 +125,7 @@ export function desenharOverlayAjuda(
   ctx.textAlign = "left";
   ctx.fillStyle = "#d8f0d0";
   ctx.fillText(modoJogo === "3d" ? "3D" : "2D", 18, 26);
-
-  const fps = obterFps();
-  ctx.textAlign = "right";
-  ctx.fillStyle = fps >= 55 ? "#7dce6a" : fps >= 40 ? "#e0c36a" : "#ff8a7a";
-  ctx.fillText(`${fps || "—"} fps`, padR, 26);
+  /* FPS fica no chip do relógio (ao lado do período), não neste overlay */
 
   const zoom = camera?.zoom ?? 1;
   let statusEsq = `zoom ${zoom.toFixed(2)}× · ${modoVisual}`;

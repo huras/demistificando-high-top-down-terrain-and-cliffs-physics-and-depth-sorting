@@ -213,8 +213,17 @@ function soltarFoco() {
   requestAnimationFrame(limpar);
 }
 
+/** @type {(() => void) | null} */
+let aoFecharMapaCb = null;
+
+/** Callback após fechar (ex.: sair da aba Map do menu). */
+export function aoFecharMapa(fn) {
+  aoFecharMapaCb = typeof fn === "function" ? fn : null;
+}
+
 export function fecharMapa() {
   if (!raiz) return;
+  const estavaAberto = aberto;
   aberto = false;
   ancora = null;
   arraste = null;
@@ -223,6 +232,7 @@ export function fecharMapa() {
   tela?.classList.remove("mapa-mundo__tela--cidade");
   raiz.hidden = true;
   soltarFoco();
+  if (estavaAberto) aoFecharMapaCb?.();
 }
 
 export function ligarMapaMundo() {

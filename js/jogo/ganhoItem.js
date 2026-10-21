@@ -125,10 +125,12 @@ export function fecharCartaGanho() {
 function garantirDock() {
   if (dock && !dock.isConnected) dock = null;
   if (dock) return dock;
+  const host = document.getElementById("hud-toast-stack");
   dock = document.createElement("div");
   dock.className = "item-obtain-dock";
   dock.innerHTML = `<div class="item-obtain-toast is-visible"><ul class="item-obtain-toast__list"></ul></div>`;
-  document.body.appendChild(dock);
+  if (host) host.appendChild(dock);
+  else document.body.appendChild(dock);
   return dock;
 }
 

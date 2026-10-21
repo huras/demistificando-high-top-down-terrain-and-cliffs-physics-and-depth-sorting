@@ -20,10 +20,13 @@ import {
   salvarJogo,
   toggleMenu,
   toggleStatus,
+  posicaoCorpoHud,
 } from "../apiHud.js";
 import { estado, avisar } from "../estado.js";
 import { definirIdioma, idiomaAtual } from "../i18n.js";
 import { htmlMochilaMenu, htmlPartyMenu, htmlQuestsMenu, htmlSaveMenu } from "../uiMenuPaginas.js";
+import { aoFecharMapa } from "../../ui/mapa/mapaMundo.js";
+import { ligarFecharMapaMenu, notificarMapaFechou, sincronizarMapaMenu } from "./mapaNoMenu.js";
 import { montarSkillLoadout } from "./skillLoadout.js";
 import { montarMovesCampo } from "./movesCampo.js";
 
@@ -49,6 +52,7 @@ export function bootHudCompleto() {
     onPageChange(page, open) {
       estado.menuAberto = !!open;
       if (open) pintarPaginasMenu(page);
+      sincronizarMapaMenu(page, open, posicaoCorpoHud());
       const badge = document.querySelector("[data-quests-tab-badge]");
       if (badge) {
         const n = questsAtivas();
@@ -59,6 +63,10 @@ export function bootHudCompleto() {
     },
   });
   definirMenuApi(menu);
+  ligarFecharMapaMenu(() => {
+    if (menu?.isOpen?.() && menu.page?.() === "map") menu.close();
+  });
+  aoFecharMapa(() => notificarMapaFechou());
 
   // backdrop fecha
   document.querySelectorAll("#game-menu [data-menu-close]").forEach((el) => {

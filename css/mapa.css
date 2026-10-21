@@ -9,6 +9,31 @@
   animation: mapa-entra 0.2s ease;
 }
 
+/* Dentro da aba Map do menu — tela cheia no painel (sem stub) */
+.mapa-mundo.mapa-mundo--menu {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  background: var(--world-map-void, #143a68);
+  animation: none;
+}
+
+.mapa-mundo.mapa-mundo--menu .mapa-mundo__moldura {
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+}
+
+.game-menu.is-map-focus .map__viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 .mapa-mundo[hidden] {
   display: none;
 }

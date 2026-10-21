@@ -14,32 +14,60 @@
   --hud-pill-active: rgba(40, 32, 24, 0.08);
   --hud-pill-ring: rgba(40, 32, 24, 0.28);
   --hud-pill-ready: #65a30d;
+  --hud-pill-stowed: #d97706;
   --hud-pill-badge: #e8c547;
   --hud-pill-badge-ink: #1a1408;
+  --hud-sheikah-bg: rgba(0, 0, 0, 0.48);
+  --hud-sheikah-border: rgba(56, 189, 248, 0.18);
   --party-slot: clamp(48px, 7.2vmin, 58px);
   --world-map-void: #143a68;
 }
 
 /* ---- Docks ----------------------------------------------------------- */
 
-.hud-item-dock {
+.hud-item-dock,
+#hud-item-dock {
   position: absolute;
-  z-index: 8;
+  z-index: 12;
   left: var(--hud-safe-left);
   top: var(--hud-safe-top);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
   pointer-events: none;
+  isolation: isolate;
 }
 
 .hud-item-dock > * {
   pointer-events: auto;
 }
 
-.hud-item-dock #player-hearts-hud {
+.hud-item-dock #player-hearts-hud,
+#hud-item-dock #player-hearts-hud {
+  position: relative;
+  z-index: 0;
   pointer-events: none;
+  margin-top: 2px;
+}
+
+#hud-item-dock .readied-item-home,
+#hud-item-dock .hotbar-hud {
+  position: relative;
+  z-index: 2;
+}
+
+#hud-item-dock .hud-chip--money {
+  position: relative;
+  z-index: 0;
+}
+
+/* Sem tip/label fantasma atrás da pill */
+#hud-item-dock [data-tip]::after,
+#hud-item-dock .hotbar-hud::before,
+#hud-item-dock .hotbar-hud::after {
+  content: none !important;
+  display: none !important;
 }
 
 .hud-item-dock--right {
@@ -96,8 +124,13 @@
   gap: 12px;
   padding: 8px 18px;
   max-width: calc(100% - 32px);
+  overflow: visible;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  isolation: isolate;
 }
 
+/* Ganha de .jogo-hud button { border-radius: 8px } */
+.jogo-hud .hotbar-hud__slot,
 .hotbar-hud__slot {
   position: relative;
   display: inline-flex;
@@ -105,9 +138,9 @@
   justify-content: center;
   width: 54px;
   height: 54px;
-  padding: 0;
+  padding: 0 !important;
   border: none !important;
-  border-radius: 50%;
+  border-radius: 50% !important;
   background: transparent !important;
   box-shadow: none;
   color: var(--hud-pill-ink);
@@ -129,11 +162,24 @@
   opacity: 0.42;
 }
 
-.hotbar-hud__slot.is-active,
-.hotbar-hud__slot.is-on {
+.hotbar-hud__slot.is-active {
   background: var(--hud-pill-active) !important;
   color: var(--hud-pill-ink) !important;
   box-shadow: inset 0 0 0 2px var(--hud-pill-ring);
+}
+
+.hotbar-hud__slot.is-ready {
+  background: color-mix(in srgb, var(--hud-pill-ready) 16%, transparent) !important;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--hud-pill-ready) 55%, transparent);
+}
+
+.hotbar-hud__slot.is-stowed {
+  background: color-mix(in srgb, var(--hud-pill-stowed) 12%, transparent) !important;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--hud-pill-stowed) 48%, transparent);
+}
+
+.hotbar-hud__slot.is-stowed .hotbar-hud__icon {
+  opacity: 0.72;
 }
 
 .hotbar-hud__key,
@@ -156,6 +202,15 @@
 .hotbar-hud__key {
   top: -5px;
   left: -5px;
+  letter-spacing: 0.02em;
+}
+
+.hotbar-hud__slot.is-ready .hotbar-hud__key {
+  background: #bbf7d0;
+}
+
+.hotbar-hud__slot.is-stowed .hotbar-hud__key {
+  background: #fdba74;
 }
 
 .hotbar-hud__count {
@@ -295,8 +350,8 @@
   min-height: 36px;
   padding: 6px 12px;
   color: #e6eefc;
-  background: rgba(13, 21, 38, 0.72);
-  border: 1px solid rgba(56, 189, 248, 0.18);
+  background: var(--hud-sheikah-bg);
+  border: 1px solid var(--hud-sheikah-border);
   border-radius: 999px;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.2),
@@ -384,6 +439,40 @@
   color: rgba(230, 238, 252, 0.65);
 }
 
+.hud-clock__fps {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  margin-left: 2px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(124, 138, 165, 0.45);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(230, 238, 252, 0.55);
+}
+
+.hud-clock__fps b {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(244, 241, 232, 0.85);
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-clock__fps[data-band="ok"] b {
+  color: #86efac;
+}
+
+.hud-clock__fps[data-band="mid"] b {
+  color: #fde68a;
+}
+
+.hud-clock__fps[data-band="low"] b {
+  color: #fca5a5;
+}
+
 .hud-chip--weather {
   gap: 4px;
   min-height: 34px;
@@ -397,38 +486,276 @@
   padding: 6px 10px 8px;
 }
 
-/* Weather track compact (override jogo.css) */
-.hud-chip--weather.hud-wx,
-#jogo-clima-previsao.hud-wx {
+/* Clima / vento Sheikah no map-dock (anula cream de jogo.css) */
+.hud-map-dock .hud-chip--clock,
+.hud-map-dock .hud-chip--weather.hud-wx,
+.hud-map-dock #jogo-clima-previsao.hud-wx,
+.hud-map-dock .hud-chip--wind.hud-vento,
+.hud-map-dock #jogo-vento.hud-vento {
   width: auto;
   max-width: var(--area-minimap-size);
-  padding: 4px 8px 6px;
-  background: rgba(13, 21, 38, 0.72);
-  border: 1px solid rgba(56, 189, 248, 0.18);
+  min-height: 34px;
+  padding: 6px 10px 8px;
+  color: #e6eefc;
+  background: var(--hud-sheikah-bg);
+  border: 1px solid var(--hud-sheikah-border);
   border-radius: 999px;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.2),
     0 10px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
 }
 
 .hud-chip--weather .hud-wx__viewport {
+  position: relative;
   width: 84px;
   height: 26px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 16%,
+    #000 84%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 16%,
+    #000 84%,
+    transparent 100%
+  );
+}
+
+.hud-chip--weather .hud-wx__track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
 }
 
 .hud-chip--weather .hud-wx__slot {
+  position: relative;
+  flex: 0 0 20px;
   width: 20px;
   height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 0;
+  color: #94a3b8;
+  opacity: 0.72;
+  background: transparent;
+}
+
+.hud-chip--weather .hud-wx__slot:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(124, 138, 165, 0.7);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.hud-chip--weather .hud-wx__slot[data-kind="limpo"] { color: #d97706; }
+.hud-chip--weather .hud-wx__slot[data-kind="nublado"] { color: #94a3b8; }
+.hud-chip--weather .hud-wx__slot[data-kind="chuva"] { color: #38bdf8; }
+.hud-chip--weather .hud-wx__slot[data-kind="nevasca"] { color: #7dd3fc; }
+.hud-chip--weather .hud-wx__slot[data-kind="areia"] { color: #d97706; }
+.hud-chip--weather .hud-wx__slot[data-kind="nevoa"] { color: #a78bfa; }
+.hud-chip--weather .hud-wx__slot[data-kind="vendaval"] { color: #94a3b8; }
+
+.hud-chip--weather .hud-wx__slot[data-role="past"] {
+  opacity: 0.45;
+}
+
+.hud-chip--weather .hud-wx__slot[data-role="now"] {
+  opacity: 1;
+}
+
+.hud-chip--weather .hud-wx__slot[data-role="future"] {
+  opacity: 0.85;
+}
+
+.hud-chip--weather .hud-wx__slot[data-force="forte"] {
+  transform: none;
+}
+
+.hud-chip--weather .hud-wx__slot[data-force="forte"] .hud-wx__icon {
+  stroke-width: 2.35;
+  filter: drop-shadow(0 0 2px currentColor);
+}
+
+.hud-chip--weather .hud-wx__slot[data-force="forte"]::before {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .hud-chip--weather .hud-wx__icon {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: inherit;
+  overflow: visible;
+}
+
+.hud-chip--weather .hud-wx__slot[data-kind="limpo"] .hud-wx__icon {
+  fill: rgba(251, 191, 36, 0.35);
+}
+
+.hud-chip--weather .hud-wx__slot[data-kind="nublado"] .hud-wx__icon {
+  fill: rgba(148, 163, 184, 0.35);
+}
+
+.hud-chip--weather .hud-wx__slot[data-kind="chuva"] .hud-wx__icon {
+  fill: rgba(125, 211, 252, 0.28);
+}
+
+.hud-chip--weather .hud-wx__slot[data-kind="nevasca"] .hud-wx__icon {
+  fill: rgba(186, 230, 253, 0.35);
+}
+
+.hud-chip--weather .hud-wx__slot[data-kind="areia"] .hud-wx__icon {
+  fill: rgba(251, 191, 36, 0.28);
+}
+
+.hud-chip--weather .hud-wx__slot[data-kind="nevoa"] .hud-wx__icon {
+  fill: rgba(167, 139, 250, 0.28);
+}
+
+.hud-chip--weather .hud-wx__slot[data-kind="vendaval"] .hud-wx__icon {
+  fill: rgba(148, 163, 184, 0.28);
 }
 
 .hud-chip--weather .hud-wx__agora {
-  width: 22px;
-  height: 22px;
+  position: absolute;
+  left: 50%;
+  top: -1px;
+  bottom: auto;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  margin-left: 0;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #d97706;
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.2));
+  pointer-events: none;
+  background: transparent;
+}
+
+/* Vento Sheikah — posição das setas vem do JS (como AI) */
+.hud-map-dock .hud-vento,
+.hud-chip--wind.hud-vento {
+  --hud-wind-size: 32px;
+  --hud-wind-arrow: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  font: 650 11px/1 "Segoe UI", system-ui, sans-serif;
+  color: rgba(230, 238, 252, 0.78);
+}
+
+.hud-map-dock .hud-vento__view,
+.hud-chip--wind .hud-vento__view {
+  position: relative;
+  flex: 0 0 var(--hud-wind-size);
+  width: var(--hud-wind-size);
+  height: var(--hud-wind-size);
+  overflow: hidden;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(closest-side, #000 99.5%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 99.5%, transparent 100%);
+}
+
+.hud-map-dock .hud-vento__rotor,
+.hud-chip--wind .hud-vento__rotor {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  transform-origin: 50% 50%;
+  -webkit-mask-image: radial-gradient(closest-side, #000 99.4%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 99.4%, transparent 100%);
+}
+
+.hud-map-dock .hud-vento__dart,
+.hud-chip--wind .hud-vento__dart {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: var(--hud-wind-arrow);
+  height: var(--hud-wind-arrow);
+  margin: 0;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: #7dd3fc;
+  filter: none;
+  pointer-events: none;
+  shape-rendering: geometricPrecision;
+  /* transform X vem do JS */
+}
+
+.hud-map-dock .hud-vento__dart--echo,
+.hud-chip--wind .hud-vento__dart--echo {
+  opacity: 0.28;
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.hud-map-dock .hud-vento[data-force="medio"] .hud-vento__dart,
+.hud-chip--wind[data-force="medio"] .hud-vento__dart {
+  stroke-width: 2.15;
+}
+
+.hud-map-dock .hud-vento[data-force="forte"] .hud-vento__dart,
+.hud-chip--wind[data-force="forte"] .hud-vento__dart {
+  stroke-width: 2.3;
+  color: #38bdf8;
+}
+
+.hud-map-dock .hud-vento__kmh,
+.hud-chip--wind .hud-vento__kmh {
+  min-width: 4.6em;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
+  color: #f8fafc;
 }
 
 /* ---- Map dock (bottom-right) ----------------------------------------- */
@@ -443,6 +770,7 @@
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
+  /* toasts → dials → mapa → quest */
 }
 
 .hud-map-dock__dials {
@@ -706,14 +1034,9 @@
   display: none;
 }
 
-/* Minimapa de debug não compete com os docks da HUD */
+/* Minimapa retangular legado — escondido; o circular do dock substitui */
 .mapa-kanto {
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0.88;
-  z-index: 3;
-  pointer-events: none;
+  display: none !important;
 }
 
 /* PC / loja hide docks */

@@ -140,8 +140,11 @@ function profundidadeColuna(shader, folgaTxt) {
  * Sprite THREE.Sprite: sem `transformed` de mesh — depth no pivô com folga baixa.
  * Preferir malha + aplicarLuzBillboard (coluna) quando possível.
  */
+const MARCA_PROFUNDIDADE_SPRITE = Symbol("profundidadeSprite");
+
 export function aplicarProfundidadeSprite(material) {
-  if (!material || material.userData?.profundidadeSprite) return material;
+  if (!material || material[MARCA_PROFUNDIDADE_SPRITE]) return material;
+  material[MARCA_PROFUNDIDADE_SPRITE] = true;
   if (!material.userData) material.userData = {};
   material.userData.profundidadeSprite = true;
 
@@ -184,21 +187,33 @@ export function aplicarProfundidadeSprite(material) {
  * Volume 3D: cada fragmento usa o XZ dele no plano do chão do modelo.
  * Folga baixa pra não furar o personagem / paredes vizinhas.
  */
+const MARCA_PROFUNDIDADE_VOLUME = Symbol("profundidadeVolume");
+
 export function aplicarProfundidadeVolume(material, baseLocalY, folgaPivo = FOLGA_CHAO) {
-  if (!material || material.userData?.profundidadeVolume) return material;
+  if (!material || material[MARCA_PROFUNDIDADE_VOLUME]) return material;
+  material[MARCA_PROFUNDIDADE_VOLUME] = true;
   if (!material.userData) material.userData = {};
+  const yNum = Number(baseLocalY);
+  const folgaNum = Number(folgaPivo);
   material.userData.profundidadeVolume = true;
+  material.userData.profundidadeVolumeY = yNum;
+  material.userData.profundidadeVolumeFolga = folgaNum;
 
   const anterior = material.onBeforeCompile;
   const chaveAnterior = material.customProgramCacheKey;
-  const y = Number(baseLocalY).toFixed(4);
-  const folga = Number(folgaPivo).toFixed(2);
+  const y = yNum.toFixed(4);
+  const folga = folgaNum.toFixed(2);
   const decl = "varying float vProfundidadeVolume;";
   const calc = `
 {
-  vec3 ancoraVolume = transformed;
-  ancoraVolume.y = ${y};
-  vec4 ancoraVista = modelViewMatrix * vec4(ancoraVolume, 1.0);
+  vec4 ancoraLocal = vec4(transformed.x, ${y}, transformed.z, 1.0);
+  #ifdef USE_BATCHING
+    ancoraLocal = batchingMatrix * ancoraLocal;
+  #endif
+  #ifdef USE_INSTANCING
+    ancoraLocal = instanceMatrix * ancoraLocal;
+  #endif
+  vec4 ancoraVista = modelViewMatrix * ancoraLocal;
   ancoraVista.z += ${folga};
   vec4 ancoraClip = projectionMatrix * ancoraVista;
   vProfundidadeVolume = ancoraClip.z / ancoraClip.w * 0.5 + 0.5;
@@ -220,7 +235,7 @@ export function aplicarProfundidadeVolume(material, baseLocalY, folgaPivo = FOLG
   };
   material.customProgramCacheKey = function chaveVolume() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|volume-chao|${y}|${folga}`;
+    return `${base}|volume-chao|inst|${y}|${folga}`;
   };
   return material;
 }
@@ -229,8 +244,11 @@ export function aplicarProfundidadeVolume(material, baseLocalY, folgaPivo = FOLG
  * Luz billboard + profundidade em coluna (XZ do pé, Y do fragmento).
  * Cliffs/prédios com depth real voltam a ocluir cabeça/torso.
  */
+const MARCA_LUZ_BILLBOARD = Symbol("luzBillboard");
+
 export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
-  if (!material || material.userData?.luzBillboard) return material;
+  if (!material || material[MARCA_LUZ_BILLBOARD]) return material;
+  material[MARCA_LUZ_BILLBOARD] = true;
   if (!material.userData) material.userData = {};
   material.userData.luzBillboard = true;
 

@@ -24,6 +24,7 @@
 
 import { listarEspecies } from "../../pokemon/dados.js";
 import { COR_TIPO, nomeTipo } from "../../pokemon/tipos.js";
+import { definirEscudoTipo, garantirAtlasTipo } from "../tipoEscudo.js";
 import { temChave } from "../estado.js";
 import { t } from "../i18n.js";
 import {
@@ -313,6 +314,7 @@ export function montarHudPokedex(root, opts = {}) {
     hint.textContent = t("pokedex.filtroTipoDica");
     typeFiltersEl.append(hint);
 
+    garantirAtlasTipo();
     for (const tipo of ORDEM_TIPOS) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -325,8 +327,9 @@ export function montarHudPokedex(root, opts = {}) {
       btn.setAttribute("aria-label", label);
       const icon = document.createElement("span");
       icon.className = "type-icon";
-      icon.style.background = COR_TIPO[tipo] ?? "#64748b";
+      icon.style.setProperty("--type", COR_TIPO[tipo] ?? "#64748b");
       icon.setAttribute("aria-hidden", "true");
+      definirEscudoTipo(icon, tipo, 22);
       btn.append(icon);
       btn.addEventListener("click", () => toggleTipo(tipo));
       typeFiltersEl.append(btn);

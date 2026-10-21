@@ -1,10 +1,9 @@
-import { progressoExp } from "./experiencia.js";
 import { colunaEmocao, folhaEmocoes } from "./emocoes.js";
 import { flutuantes } from "./flutuantes.js";
 import { cargaAtual, obterMiraBola } from "./captura.js";
-import { alvoDeOrdem, pokemonNoCampo } from "./party.js";
+import { alvoDeOrdem } from "./party.js";
 import { pedirRetrato } from "./retrato.js";
-import { atoresVisiveis, obterTreinador, pokemonLigado, relogioPokemon } from "./sistema.js";
+import { atoresVisiveis, pokemonLigado, relogioPokemon } from "./sistema.js";
 import { ALTURA_BLOCO } from "../config.js";
 import { COR_TIPO, nomeTipo } from "./tipos.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
@@ -178,36 +177,9 @@ function barra(ctx, x, y, w, h, t, cor, fundo) {
   ctx.fillRect(x, y, Math.max(0, Math.min(w, w * t)), h);
 }
 
-function painel(ctx) {
-  if (!pokemonLigado()) return;
-  const slot = pokemonNoCampo();
-  const mon = slot && !slot.capturado ? slot : null;
-  const treino = obterTreinador();
-  ctx.save();
-  ctx.font = "600 13px Segoe UI, sans-serif";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = "rgba(8, 12, 10, 0.72)";
-  ctx.fillRect(12, 12, 220, mon ? 112 : 70);
-  ctx.fillStyle = "#e7e5e4";
-  const hpT = treino.hp / treino.hpMax;
-  ctx.fillText(`você  ${Math.ceil(treino.hp)}/${treino.hpMax}`, 20, 16);
-  barra(ctx, 20, 34, 120, 6, hpT, hpT < 0.35 ? "#f87171" : "#86efac", "#1c1917");
-  const bolaMao = hotbarAtivo();
-  const qtdBola =
-    bolaMao?.tipo === TIPO_ITEM.BOLA ? contar(bolaMao.tipo, bolaMao.key) : 0;
-  ctx.fillText(`bolas ${qtdBola}`, 150, 28);
-  if (mon) {
-    const nome = `${mon.shiny ? "★ " : ""}${mon.especie.nome}  Nv${mon.nivel}`;
-    ctx.fillStyle = mon.morto ? "#a8a29e" : "#f8fafc";
-    ctx.fillText(nome, 20, 46);
-    const hp = mon.morto ? 0 : mon.hp / mon.hpMax;
-    barra(ctx, 20, 64, 140, 6, hp, "#4ade80", "#1c1917");
-    barra(ctx, 20, 74, 140, 3, progressoExp(mon.nivel, mon.exp, mon.crescimento), "#60a5fa", "#1c1917");
-  }
-  ctx.font = "12px Segoe UI, sans-serif";
-  ctx.fillStyle = "rgba(231, 229, 228, 0.8)";
-  ctx.fillText("B · mochila", 20, mon ? 86 : 52);
-  ctx.restore();
+/** Painel canvas legado (HP/bolas/"B · mochila") — substituído pelo HUD HTML. */
+function painel(_ctx) {
+  /* no-op: hotbar + corações + dinheiro são DOM */
 }
 
 function marcador(ctx, ator, p) {

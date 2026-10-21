@@ -263,9 +263,9 @@ const UTILITY_ICONES = Object.freeze({
   pokeRadar: "pokeRadar",
   bag: "bag",
   quests: "quest",
-  party: "pokedex",
-  status: "saveDisk",
-  menu: "quest",
+  party: "party",
+  status: "statusCard",
+  menu: "menu",
   save: "saveDisk",
 });
 
@@ -274,11 +274,15 @@ function pintarUtilityIcons() {
   const botoes = raiz.querySelectorAll(".hud-utility-btn[data-utility]");
   for (let i = 0; i < botoes.length; i++) {
     const btn = botoes[i];
-    if (btn.dataset.iconePronto) continue;
     const chave = UTILITY_ICONES[btn.dataset.utility];
     if (!chave) continue;
-    btn.innerHTML = htmlIcone(chave, "hud-utility-btn__icon", btn.dataset.utility === "pokedex" || btn.dataset.utility === "map" || btn.dataset.utility === "pokeRadar" ? 42 : 28);
-    btn.dataset.iconePronto = "1";
+    if (btn.dataset.iconePronto === chave) continue;
+    const grande =
+      btn.dataset.utility === "pokedex" ||
+      btn.dataset.utility === "map" ||
+      btn.dataset.utility === "pokeRadar";
+    btn.innerHTML = htmlIcone(chave, "hud-utility-btn__icon", grande ? 42 : 28);
+    btn.dataset.iconePronto = chave;
   }
 }
 
@@ -309,11 +313,23 @@ function pintarHotbar() {
     const qtd = slot ? contar(slot.tipo, slot.key) : "";
     const tecla = (teclaDoSlot(i) || "").replace("Digit", "");
     const vazio = !slot;
+    const ativo = i === estado.slotAtivo;
+    const pronto = ativo && !vazio;
+    const guardado = !vazio && !pronto;
+    const classes = [
+      "hotbar-hud__slot",
+      vazio ? "is-empty" : "",
+      ativo ? "is-active" : "",
+      pronto ? "is-ready" : "",
+      guardado ? "is-stowed" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     const icone = slot
       ? htmlIcone(slot.key, "hotbar-hud__icon", 42)
       : `<span class="hotbar-hud__icon jogo-icone--vazio"></span>`;
     partes.push(
-      `<button type="button" class="hotbar-hud__slot${i === estado.slotAtivo ? " is-active is-on" : ""}${vazio ? " is-empty" : ""}" data-act="slot" data-i="${i}" title="${escHtml(nome)}">
+      `<button type="button" class="${classes}" data-act="slot" data-i="${i}" title="${escHtml(nome)}">
         <span class="hotbar-hud__key">${tecla}</span>
         ${icone}
         <span class="hotbar-hud__count">${qtd || ""}</span>

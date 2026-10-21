@@ -102,8 +102,12 @@ export function ligarUniformsLuzCidade(shader) {
   shader.uniforms.uPesoLuzCidade = uniformsLuzCidade.uPesoLuzCidade;
 }
 
+/** Symbol não sobrevive ao clone() (só userData via JSON) — reaplicamos o hook. */
+const MARCA_LUZ_CIDADE = Symbol("luzCidade");
+
 export function aplicarLuzCidade(material) {
-  if (!material || material.userData?.luzCidade) return material;
+  if (!material || material[MARCA_LUZ_CIDADE]) return material;
+  material[MARCA_LUZ_CIDADE] = true;
   if (!material.userData) material.userData = {};
   material.userData.luzCidade = true;
   const anterior = material.onBeforeCompile;

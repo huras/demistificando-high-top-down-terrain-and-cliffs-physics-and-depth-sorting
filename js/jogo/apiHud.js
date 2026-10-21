@@ -82,6 +82,10 @@ export function corpoHud() {
   return corpoRef;
 }
 
+export function posicaoCorpoHud() {
+  return { x: corpoRef?.x || 0, y: corpoRef?.y || 0 };
+}
+
 export function menuJogo() {
   return menuApi;
 }

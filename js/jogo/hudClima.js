@@ -1,5 +1,5 @@
 /**
- * Faixa de previsão (7 slots) — estilo Sheikah / Pokémon AI.
+ * Faixa de previsão (7 slots) — ícones SVG do Pokémon AI + skin Sheikah.
  */
 import {
   iconeClimaDisplay,
@@ -9,16 +9,18 @@ import {
 import { INTENSIDADE, nomeClimaDisplay } from "../clima/kinds.js";
 
 const SLOTS = 7;
+const SLOT_STEP = 28; /* 20px + 8px gap */
 const SVG = "http://www.w3.org/2000/svg";
 
-const PATHS = Object.freeze({
-  limpo: "M12 4l1.2 3.2L16.5 8l-2.6 2.1.9 3.4L12 11.5 9.2 13.5l.9-3.4L7.5 8l3.3-.8L12 4z",
-  nublado: "M7 14a4 4 0 118-1.2A3.5 3.5 0 1116 16H7.5A3.5 3.5 0 017 14z",
-  chuva: "M8 4h8v2H8zm1 4h2v8H9zm4 0h2v8h-2zM8 14h8v2H8z",
-  nevasca: "M12 3v18M5 7l14 10M19 7L5 17M4 12h16",
-  areia: "M4 16c2-3 4-3 6 0s4 3 6 0 4-3 6 0M4 10c2-3 4-3 6 0s4 3 6 0 4-3 6 0",
-  nevoa: "M5 8h14M4 12h16M6 16h12",
-  vendaval: "M4 8c4 0 4-3 8-3s4 3 8 3M4 12c4 0 4-3 8-3s4 3 8 3M4 16c4 0 4-3 8-3s4 3 8 3",
+/** Markup interno por kind (paths do AI). */
+const ICONES = Object.freeze({
+  limpo: `<circle cx="12" cy="12" r="4.2"/><path d="M12 2.8v2.2M12 19v2.2M2.8 12h2.2M19 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/>`,
+  nublado: `<path d="M7.8 17.5h9.2a3.6 3.6 0 0 0 .4-7.2 5 5 0 0 0-9.6 1.4A3.2 3.2 0 0 0 7.8 17.5z"/>`,
+  chuva: `<path d="M7.8 14.2h9.2a3.6 3.6 0 0 0 .4-7.2 5 5 0 0 0-9.6 1.4A3.2 3.2 0 0 0 7.8 14.2z"/><path d="M9 16.2l-1.2 3.2M12.2 16.6l-1.2 3.2M15.4 16.2l-1.2 3.2"/>`,
+  nevasca: `<path d="M7.8 14.2h9.2a3.6 3.6 0 0 0 .4-7.2 5 5 0 0 0-9.6 1.4A3.2 3.2 0 0 0 7.8 14.2z"/><circle cx="9.2" cy="17.6" r="1.05"/><circle cx="12.2" cy="19" r="1.05"/><circle cx="15.4" cy="17.4" r="1.05"/><path d="M9.2 16.2v2.8M12.2 17.5v2.8M15.4 16v2.8"/>`,
+  areia: `<path d="M7.8 13.6h9.2a3.6 3.6 0 0 0 .4-7.2 5 5 0 0 0-9.6 1.4A3.2 3.2 0 0 0 7.8 13.6z"/><path d="M7.6 16.2c1.4.7 2.8.7 4.2 0s2.8-.7 4.2 0M7.6 18.4c1.4.7 2.8.7 4.2 0s2.8-.7 4.2 0M7.6 20.5c1.4.7 2.8.7 4.2 0s2.8-.7 4.2 0"/>`,
+  nevoa: `<path d="M7.8 12.2h9.2a3.6 3.6 0 0 0 .4-7.2 5 5 0 0 0-9.6 1.4A3.2 3.2 0 0 0 7.8 12.2z"/><path d="M6 16.2h12M7.5 18.8h9"/>`,
+  vendaval: `<path d="M4 8.5h11.5c2 0 3.2-1.6 3.2-3s-1-2.6-2.4-2.6"/><path d="M4 12.5h14.2c1.8 0 3 1.3 3 2.7s-1.2 2.6-2.8 2.6"/><path d="M4 16.8h8.5"/>`,
 });
 
 let montado = false;
@@ -31,14 +33,7 @@ function svgIcone(kind) {
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
   svg.classList.add("hud-wx__icon");
-  const path = document.createElementNS(SVG, "path");
-  path.setAttribute("d", PATHS[kind] || PATHS.limpo);
-  path.setAttribute("fill", "none");
-  path.setAttribute("stroke", "currentColor");
-  path.setAttribute("stroke-width", "1.8");
-  path.setAttribute("stroke-linecap", "round");
-  path.setAttribute("stroke-linejoin", "round");
-  svg.appendChild(path);
+  svg.innerHTML = ICONES[kind] || ICONES.limpo;
   return svg;
 }
 
@@ -53,6 +48,7 @@ export function ligarHudClima(host) {
     const btn = document.createElement("span");
     btn.className = "hud-wx__slot";
     btn.dataset.i = String(i);
+    btn.dataset.kind = "limpo";
     btn.appendChild(svgIcone("limpo"));
     track.appendChild(btn);
     slots.push(btn);
@@ -78,11 +74,14 @@ export function tickHudPrevisao(host) {
       slot.dataset.kind = display;
       slot.replaceChildren(svgIcone(display));
     }
-    slot.dataset.role = entry.role || (i < past ? "past" : i === past ? "now" : "future");
-    slot.dataset.force = entry.intensity === INTENSIDADE.FORTE ? "forte" : "fraco";
-    slot.title = `${nomeClimaDisplay(display)}${entry.intensity === INTENSIDADE.FORTE ? " (forte)" : ""}`;
+    slot.dataset.role =
+      entry.role || (i < past ? "past" : i === past ? "now" : "future");
+    slot.dataset.force =
+      entry.intensity === INTENSIDADE.FORTE ? "forte" : "fraco";
+    slot.title = `${nomeClimaDisplay(display)}${
+      entry.intensity === INTENSIDADE.FORTE ? " (forte)" : ""
+    }`;
   }
-  const slotW = 28;
-  const offset = -(scroll.progress || 0) * slotW * 0.35;
+  const offset = -(scroll.progress || 0) * SLOT_STEP * 0.35;
   track.style.transform = `translateX(${offset.toFixed(2)}px)`;
 }

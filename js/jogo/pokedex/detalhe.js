@@ -4,6 +4,7 @@
 
 import { especie, golpe } from "../../pokemon/dados.js";
 import { COR_TIPO, nomeTipo } from "../../pokemon/tipos.js";
+import { criarIconeTipo, garantirAtlasTipo } from "../tipoEscudo.js";
 import { getSpeciesDexStatus } from "./progresso.js";
 import { listarHabitats } from "./habitat.js";
 import { padDex } from "./hudGrade.js";
@@ -121,14 +122,21 @@ export function montarDetalhePokedex(root, opts = {}) {
   function pintarTipos(tipos) {
     if (!tiposEl) return;
     tiposEl.replaceChildren();
+    garantirAtlasTipo();
     const lista = Array.isArray(tipos) ? tipos : [];
     for (let i = 0; i < lista.length; i++) {
       const tipo = lista[i];
       const chip = document.createElement("span");
-      chip.className = "pokedex-detail__type type-icon";
+      chip.className = "pokedex-detail__type";
       chip.style.setProperty("--type", COR_TIPO[tipo] || "#64748b");
-      chip.textContent = nomeTipo(tipo);
       chip.title = nomeTipo(tipo);
+      chip.setAttribute("aria-label", nomeTipo(tipo));
+      const icon = criarIconeTipo(tipo, 28);
+      icon.style.setProperty("--type", COR_TIPO[tipo] || "#64748b");
+      const rotulo = document.createElement("span");
+      rotulo.className = "pokedex-detail__type-label";
+      rotulo.textContent = nomeTipo(tipo);
+      chip.append(icon, rotulo);
       tiposEl.append(chip);
     }
   }
@@ -246,10 +254,10 @@ export function montarDetalhePokedex(root, opts = {}) {
       const meta = document.createElement("span");
       meta.className = "pokedex-detail__learn-meta";
       if (def?.tipo) {
-        const tipo = document.createElement("span");
-        tipo.className = "type-icon";
+        const tipo = criarIconeTipo(def.tipo, 18);
         tipo.style.setProperty("--type", COR_TIPO[def.tipo] || "#64748b");
-        tipo.textContent = nomeTipo(def.tipo);
+        tipo.title = nomeTipo(def.tipo);
+        tipo.setAttribute("aria-label", nomeTipo(def.tipo));
         meta.append(tipo);
       }
       if (def?.poder > 0) {

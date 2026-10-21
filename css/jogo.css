@@ -18,8 +18,7 @@
   display: none;
 }
 
-.jogo-prompt,
-.jogo-toast {
+.jogo-prompt {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -30,10 +29,27 @@
   color: #f5f0e6;
   font: 600 14px/1.3 "Segoe UI", sans-serif;
   pointer-events: none;
+  z-index: 7;
+  /* Acima da barra Z/X/C/V (~90px) + folga */
+  bottom: max(132px, calc(var(--hud-safe-bottom, 12px) + 118px));
+  max-width: min(520px, 70vw);
+  text-align: center;
 }
 
-.jogo-prompt {
-  bottom: 92px;
+.jogo-toast {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  margin: 0;
+  padding: 7px 12px;
+  border-radius: 12px;
+  background: rgba(255, 248, 232, 0.94);
+  color: #3a3328;
+  font: 650 13px/1.3 "Segoe UI", sans-serif;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  max-width: 100%;
 }
 
 .acao-prompt {
@@ -144,9 +160,7 @@
   white-space: nowrap;
 }
 
-.jogo-toast {
-  top: 16px;
-}
+/* toast: posicionado via .hud-toast-stack */
 
 .jogo-dialogo,
 .jogo-painel,
@@ -363,7 +377,7 @@
   border: 1px solid #1c1917;
 }
 
-.jogo-hud button,
+.jogo-hud button:not(.hotbar-hud__slot):not(.hud-utility-btn):not(.party-slot),
 .jogo-painel select {
   pointer-events: auto;
   border: 1px solid #1c1917;
@@ -434,6 +448,14 @@
     0 6px 16px rgba(40, 32, 24, 0.22);
   color: #3a3328;
   pointer-events: none;
+}
+
+/* No map-dock a skin Sheikah (hud-gameplay) manda — evita cream vazando */
+.hud-map-dock .hud-wx,
+.hud-map-dock .hud-vento {
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
 }
 
 .hud-wx__viewport {
@@ -532,10 +554,9 @@
   top: 50%;
   width: 18px;
   height: 18px;
-  margin: -9px 0 0 -9px;
+  margin: 0;
   color: #0e7490;
-  opacity: calc(0.35 + var(--i, 0) * 0.2);
-  transform: translate3d(calc((var(--i, 0) - 1) * 5px + var(--vento-fase, 0) * -10px), 0, 0);
+  /* posição X vem do JS (hudVento) — não animar via CSS */
 }
 
 .hud-vento__dart--echo {
@@ -1030,11 +1051,12 @@
 }
 
 .item-obtain-dock {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 7300;
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: 1;
   pointer-events: none;
+  width: 100%;
 }
 
 .item-obtain-toast {

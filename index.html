@@ -147,7 +147,6 @@
               </div>
             </div>
             <div id="jogo-dialogo" class="jogo-dialogo" hidden></div>
-            <p id="jogo-toast" class="jogo-toast" hidden></p>
             <section id="jogo-painel" class="jogo-painel" hidden></section>
             <section id="jogo-pc" class="pc-hud" hidden></section>
             <section id="jogo-loja" class="loja-hud" hidden></section>
@@ -405,9 +404,10 @@
                     <div class="menu-page-host" data-menu-host="quests"></div>
                   </section>
                   <section class="game-menu__page game-menu__page--map" data-menu-page="map" role="tabpanel" hidden>
-                    <div class="menu-page-host" data-menu-host="map">
-                      <p>Abra o mapa mundial com <kbd>M</kbd> ou o atalho do HUD.</p>
-                      <button type="button" data-act="utility" data-utility="map">Abrir mapa mundial</button>
+                    <div class="window window--map">
+                      <div class="window__body map__body">
+                        <div class="map__viewport" data-menu-map-host data-menu-host="map"></div>
+                      </div>
                     </div>
                   </section>
                   <section class="game-menu__page" data-menu-page="settings" role="tabpanel" hidden>
@@ -443,16 +443,23 @@
               </div>
             </div>
 
-            <!-- Bottom-right: dials + minimap 220 -->
+            <!-- Bottom-right: toasts → dials → minimap → quest -->
             <div class="hud-map-dock" id="hud-map-dock">
+              <div id="hud-toast-stack" class="hud-toast-stack" aria-live="polite">
+                <p id="jogo-toast" class="jogo-toast" hidden></p>
+              </div>
               <div class="hud-map-dock__dials">
                 <div class="hud-map-dock__wx-row">
                   <div id="jogo-relogio" class="hud-chip hud-chip--clock" data-periodo="dia">
                     <span class="hud-clock__icon" aria-hidden="true"></span>
                     <b data-hora>09:21</b>
                     <span class="hud-clock__period" data-periodo>Dia</span>
+                    <span class="hud-clock__fps" data-tip="FPS" title="FPS">
+                      <b data-fps>0</b>
+                      <span>FPS</span>
+                    </span>
                   </div>
-                  <div id="jogo-vento" class="hud-chip hud-chip--wind hud-vento" hidden aria-label="Vento">
+                  <div id="jogo-vento" class="hud-chip hud-chip--wind hud-vento" aria-label="Vento">
                     <div class="hud-vento__view">
                       <div class="hud-vento__rotor" data-vento-rotor></div>
                     </div>

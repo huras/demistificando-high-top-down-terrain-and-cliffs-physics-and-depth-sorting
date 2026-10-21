@@ -162,6 +162,18 @@ function carregarObj(pasta) {
   });
 }
 
+/** clone() perde onBeforeCompile; reidrata luz de cidade + profundidade de volume. */
+function clonarMaterialProp(mat) {
+  const clone = mat ? mat.clone() : new THREE.MeshLambertMaterial({ color: 0xffffff });
+  aplicarLuzCidade(clone);
+  const y = mat?.userData?.profundidadeVolumeY;
+  if (y != null && Number.isFinite(y)) {
+    const folga = mat.userData.profundidadeVolumeFolga;
+    aplicarProfundidadeVolume(clone, y, folga != null ? folga : undefined);
+  }
+  return clone;
+}
+
 /** Funde malhas visíveis do molde num único geo (já na escala do grupo). */
 function geometriaFundida(molde) {
   if (molde.geoInstancia) return molde.geoInstancia;
@@ -186,11 +198,8 @@ function geometriaFundida(molde) {
   fundido.computeBoundingSphere();
   fundido.computeBoundingBox();
   molde.geoInstancia = fundido;
-  molde.matInstancia = matBase
-    ? matBase.clone()
-    : new THREE.MeshLambertMaterial({ color: 0xffffff });
+  molde.matInstancia = clonarMaterialProp(matBase);
   molde.matInstancia.side = THREE.DoubleSide;
-  aplicarLuzCidade(molde.matInstancia);
   return fundido;
 }
 
@@ -263,9 +272,8 @@ export function instanciarProp(id, x, z, opts = {}) {
       const mats = Array.isArray(filho.material) ? filho.material : [filho.material];
       for (let i = 0; i < mats.length; i++) {
         if (!mats[i] || mats[i].visible === false) continue;
-        mats[i] = mats[i].clone();
+        mats[i] = clonarMaterialProp(mats[i]);
         mats[i].color.copy(_cor);
-        aplicarLuzCidade(mats[i]);
       }
       filho.material = Array.isArray(filho.material) ? mats : mats[0];
     });
@@ -285,9 +293,9 @@ export function anexarCorreiosInstanced(grupo, pontos) {
   const molde = cache.get("correio");
   if (!molde || !pontos?.length) return null;
   const geo = geometriaFundida(molde);
-  const mat = molde.matInstancia.clone();
+  const mat = clonarMaterialProp(molde.matInstancia);
   mat.vertexColors = false;
-  aplicarLuzCidade(mat);
+  mat.side = THREE.DoubleSide;
   const mesh = new THREE.InstancedMesh(geo, mat, pontos.length);
   mesh.name = "correios-instanced";
   mesh.castShadow = true;
