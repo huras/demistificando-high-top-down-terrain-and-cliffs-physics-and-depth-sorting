@@ -47,6 +47,11 @@ const CHAVE_SAVE = "demo-jogo-v1";
 const CAIXAS = 8;
 const SLOTS_CAIXA = 30;
 
+/** Id do slot de save atual (localStorage + namespace IndexedDB). */
+export function idSaveAtual() {
+  return CHAVE_SAVE;
+}
+
 function caixasVazias() {
   const lista = [];
   for (let i = 0; i < CAIXAS; i++) {

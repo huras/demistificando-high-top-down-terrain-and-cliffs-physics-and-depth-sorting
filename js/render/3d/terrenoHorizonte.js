@@ -2,8 +2,8 @@
  * LOD2: anel terraced longe (silhueta BOTW) + mar.
  * Terra: center sprites do bioma (igual suave). Mar: material lago longe.
  *
- * Tiles 128² estáveis (sem furo do player) + cache RAM. O anel só escolhe
- * quais tiles entram na cena; stencil (blocos/suave) tapa o miolo.
+ * Tiles 128² estáveis (sem furo do player) + cache RAM + IndexedDB por save.
+ * O anel só escolhe quais tiles entram; stencil (blocos/suave) tapa o miolo.
  */
 import * as THREE from "three";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
@@ -31,6 +31,13 @@ import { imagemPele } from "./peleSplat.js";
 import { atrasDoLodMedio } from "./stencilLod.js";
 import { criarEstradasLod } from "./estradasLod.js";
 import { ajustarAlturaCorredorEstrada } from "../../mundo/regiao/linhasEstrada.js";
+import {
+  chaveSchemaHorizonte,
+  gravarTileHorizonteIdb,
+  hidratarGeometria,
+  lerTileHorizonteIdb,
+} from "./cacheHorizonteIdb.js";
+import { idSaveAtual } from "../../jogo/estado.js";
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
 /** Depois do suave (2/3): terra e mar do horizonte. */
@@ -344,10 +351,18 @@ export function criarTerrenoHorizonte() {
   /** Geometrias estáveis por tile — reuso ao revisitar. */
   /** @type {Map<string, { terra: THREE.BufferGeometry | null, agua: THREE.BufferGeometry | null }>} */
   const cache = new Map();
+  /** Tile resolvido sem geometria (evita refila infinita). */
+  const vazios = new Set();
+  /** IDB em voo / miss confirmado (não bloquear o tick). */
+  const aguardandoIdb = new Set();
+  const missIdb = new Set();
   /** @type {string[]} */
   let fila = [];
   /** @type {Set<string>} */
   let desejados = new Set();
+
+  const saveId = idSaveAtual();
+  const schemaIdb = chaveSchemaHorizonte();
 
   let ancoraHx = 1e9;
   let ancoraHy = 1e9;
@@ -417,6 +432,9 @@ export function criarTerrenoHorizonte() {
     for (const k of [...vivos.keys()]) ocultar(k);
     fila = [];
     desejados = new Set();
+    vazios.clear();
+    aguardandoIdb.clear();
+    missIdb.clear();
     ancoraHx = 1e9;
     ancoraHy = 1e9;
     ancoraRaio = -1;
@@ -426,6 +444,9 @@ export function criarTerrenoHorizonte() {
   function limparCache() {
     for (const entry of cache.values()) liberarGeosCache(entry);
     cache.clear();
+    vazios.clear();
+    aguardandoIdb.clear();
+    missIdb.clear();
   }
 
   /** Tile completo 128² — independente do player (cacheável). */
@@ -503,24 +524,57 @@ export function criarTerrenoHorizonte() {
     return { terra, agua };
   }
 
-  function obterDoCache(chave, hx, hy) {
-    let entry = cache.get(chave);
-    if (entry) {
-      cache.delete(chave);
-      cache.set(chave, entry);
-      return entry;
-    }
-    entry = montarTile(hx, hy);
+  function tocarCache(chave, entry) {
+    cache.delete(chave);
     cache.set(chave, entry);
     podarCache();
+  }
+
+  function gravarIdbFundo(hx, hy, entry) {
+    void gravarTileHorizonteIdb(saveId, schemaIdb, hx, hy, entry);
+  }
+
+  function pedirIdb(chave, hx, hy) {
+    if (aguardandoIdb.has(chave) || missIdb.has(chave) || cache.has(chave)) return;
+    aguardandoIdb.add(chave);
+    lerTileHorizonteIdb(saveId, schemaIdb, hx, hy)
+      .then((blob) => {
+        aguardandoIdb.delete(chave);
+        if (!blob) {
+          missIdb.add(chave);
+          return;
+        }
+        const entry = {
+          terra: hidratarGeometria(blob.terra),
+          agua: hidratarGeometria(blob.agua),
+        };
+        tocarCache(chave, entry);
+        if (desejados.has(chave) && !vivos.has(chave) && !vazios.has(chave)) {
+          instalar(chave, entry);
+        }
+      })
+      .catch(() => {
+        aguardandoIdb.delete(chave);
+        missIdb.add(chave);
+      });
+  }
+
+  /** Gera tile na CPU, RAM + IDB. */
+  function construirECachear(chave, hx, hy) {
+    const entry = montarTile(hx, hy);
+    tocarCache(chave, entry);
+    missIdb.add(chave);
+    gravarIdbFundo(hx, hy, entry);
     return entry;
   }
 
   function instalar(chave, geos) {
     if (!geos?.terra && !geos?.agua) {
       ocultar(chave);
+      vazios.add(chave);
       return;
     }
+    vazios.delete(chave);
 
     const matT = materialTerraAtual();
     let par = vivos.get(chave);
@@ -594,12 +648,15 @@ export function criarTerrenoHorizonte() {
         if (d - half > externo) continue;
         const k = chaveChunk(hx, hy);
         novoDesejado.add(k);
-        if (!vivos.has(k)) novaFila.push(k);
+        if (!vivos.has(k) && !vazios.has(k)) novaFila.push(k);
       }
     }
 
     for (const k of vivos.keys()) {
       if (!novoDesejado.has(k)) ocultar(k);
+    }
+    for (const k of [...vazios]) {
+      if (!novoDesejado.has(k)) vazios.delete(k);
     }
 
     desejados = novoDesejado;
@@ -636,19 +693,50 @@ export function criarTerrenoHorizonte() {
       planejar(px, py);
     }
 
+    // Prefetch IDB dos próximos da fila (não bloqueia).
+    for (let i = 0; i < Math.min(8, fila.length); i++) {
+      const k = fila[i];
+      if (!k || vivos.has(k) || cache.has(k)) continue;
+      const [chx, chy] = k.split(",").map(Number);
+      pedirIdb(k, chx, chy);
+    }
+
     const t0 = performance.now();
     let builds = 0;
-    while (fila.length && performance.now() - t0 < ORCAMENTO_MS) {
+    let adiados = 0;
+    const maxAdiados = fila.length;
+    while (fila.length && performance.now() - t0 < ORCAMENTO_MS && adiados < maxAdiados) {
       const k = fila.shift();
-      if (!desejados.has(k) || vivos.has(k)) continue;
-      const hit = cache.has(k);
-      if (!hit && builds >= BUILDS_POR_TICK) {
+      if (!desejados.has(k) || vivos.has(k) || vazios.has(k)) continue;
+
+      if (cache.has(k)) {
+        const entry = cache.get(k);
+        tocarCache(k, entry);
+        instalar(k, entry);
+        continue;
+      }
+
+      const [chx, chy] = k.split(",").map(Number);
+
+      if (aguardandoIdb.has(k)) {
+        fila.push(k);
+        adiados += 1;
+        continue;
+      }
+
+      if (!missIdb.has(k)) {
+        pedirIdb(k, chx, chy);
+        fila.push(k);
+        adiados += 1;
+        continue;
+      }
+
+      if (builds >= BUILDS_POR_TICK) {
         fila.unshift(k);
         break;
       }
-      const [chx, chy] = k.split(",").map(Number);
-      instalar(k, obterDoCache(k, chx, chy));
-      if (!hit) builds += 1;
+      instalar(k, construirECachear(k, chx, chy));
+      builds += 1;
     }
     estradas.tick(px, py);
   }
