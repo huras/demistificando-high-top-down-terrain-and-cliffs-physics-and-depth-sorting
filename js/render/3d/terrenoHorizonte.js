@@ -2,9 +2,8 @@
  * LOD2: anel terraced longe (silhueta BOTW) + mar.
  * Terra: center sprites do bioma (igual suave). Mar: material lago longe.
  *
- * Handoff: desenha depois do suave, só onde o stencil ainda está limpo
- * (blocos + suave marcam ref=1). Anel interno entra um passo no disco suave
- * para a junta ser por stencil, sem fresta nem z-fight.
+ * Tiles 128² estáveis (sem furo do player) + cache RAM. O anel só escolhe
+ * quais tiles entram na cena; stencil (blocos/suave) tapa o miolo.
  */
 import * as THREE from "three";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
@@ -41,6 +40,8 @@ const ORDEM_MAR = 3.5;
 
 const ORCAMENTO_MS = 0.7;
 const BUILDS_POR_TICK = 2;
+/** Tiles prontos em RAM (LRU). ~anel raio 80 ≈ 200–300 tiles. */
+const CACHE_MAX = 512;
 const TILE_BIOMA = 16;
 
 let raioAtivo = RAIO_HORIZONTE;
@@ -337,8 +338,12 @@ export function criarTerrenoHorizonte() {
   });
   grupo.add(estradas.mesh);
 
+  /** Meshes na cena. Geometria vem do cache (não dispose ao sair do anel). */
   /** @type {Map<string, { terra: THREE.Mesh, agua: THREE.Mesh | null }>} */
   const vivos = new Map();
+  /** Geometrias estáveis por tile — reuso ao revisitar. */
+  /** @type {Map<string, { terra: THREE.BufferGeometry | null, agua: THREE.BufferGeometry | null }>} */
+  const cache = new Map();
   /** @type {string[]} */
   let fila = [];
   /** @type {Set<string>} */
@@ -348,8 +353,6 @@ export function criarTerrenoHorizonte() {
   let ancoraHy = 1e9;
   let ancoraRaio = -1;
   let ancoraInterno = -1;
-  let pxRef = 0;
-  let pyRef = 0;
 
   registrarObjetoCena(grupo, {
     id: "terreno-horizonte",
@@ -367,10 +370,7 @@ export function criarTerrenoHorizonte() {
     return matReal;
   }
 
-  /**
-   * Furo do anel: cobre stream e suave. Com suave ligado, entra um PASSO
-   * no disco médio — overlap geométrico; o corte fino é o stencil do suave.
-   */
+  /** Disco interno onde blocos/suave já cobrem — tiles inteiros ficam de fora. */
   function raioInternoBlocos() {
     const stream = obterRaioStream() * CHUNK_XZ;
     const rSuave = obterRaioSuave();
@@ -379,51 +379,69 @@ export function criarTerrenoHorizonte() {
     return Math.max(stream, suave, PASSO_HORIZONTE);
   }
 
-  function liberarPar(par) {
-    if (!par) return;
-    par.terra.geometry?.dispose();
-    grupo.remove(par.terra);
-    if (par.agua) {
-      par.agua.geometry?.dispose();
-      grupo.remove(par.agua);
+  function liberarGeosCache(entry) {
+    if (!entry) return;
+    entry.terra?.dispose();
+    entry.agua?.dispose();
+  }
+
+  function podarCache() {
+    while (cache.size > CACHE_MAX) {
+      let vitima = null;
+      for (const k of cache.keys()) {
+        if (!vivos.has(k) && !desejados.has(k)) {
+          vitima = k;
+          break;
+        }
+      }
+      if (!vitima) {
+        vitima = cache.keys().next().value;
+      }
+      if (vitima == null) break;
+      if (vivos.has(vitima)) break;
+      liberarGeosCache(cache.get(vitima));
+      cache.delete(vitima);
     }
   }
 
-  function limparTudo() {
-    for (const par of vivos.values()) liberarPar(par);
-    vivos.clear();
+  /** Remove mesh da cena; geometria permanece no cache. */
+  function ocultar(chave) {
+    const par = vivos.get(chave);
+    if (!par) return;
+    grupo.remove(par.terra);
+    if (par.agua) grupo.remove(par.agua);
+    vivos.delete(chave);
+  }
+
+  function limparCena() {
+    for (const k of [...vivos.keys()]) ocultar(k);
     fila = [];
     desejados = new Set();
     ancoraHx = 1e9;
     ancoraHy = 1e9;
     ancoraRaio = -1;
+    ancoraInterno = -1;
   }
 
-  function descartar(chave) {
-    const par = vivos.get(chave);
-    if (!par) return;
-    liberarPar(par);
-    vivos.delete(chave);
+  function limparCache() {
+    for (const entry of cache.values()) liberarGeosCache(entry);
+    cache.clear();
   }
 
-  function montarChunk(hx, hy) {
+  /** Tile completo 128² — independente do player (cacheável). */
+  function montarTile(hx, hy) {
     const passo = PASSO_HORIZONTE;
     const lado = CHUNK_HORIZONTE;
     const ox = hx * lado;
     const oy = hy * lado;
     const nx = Math.max(1, Math.round(lado / passo));
     const ny = nx;
-    const interno = raioInternoBlocos();
-    const interno2 = interno * interno;
-    const externo = alcanceHorizonteBlocos();
-    const externo2 = externo * externo;
     const nivel = nivelMarBlocos();
 
     const alturas = new Float32Array((nx + 1) * (ny + 1));
     const cores = new Float32Array(nx * ny * 3);
     const bioma = new Float32Array(nx * ny * 3);
     const splat = new Float32Array(nx * ny);
-    const viva = new Uint8Array(nx * ny);
     const mar = new Uint8Array(nx * ny);
     let celulas = 0;
     let celulasMar = 0;
@@ -438,12 +456,10 @@ export function criarTerrenoHorizonte() {
       for (let cx = 0; cx < nx; cx++) {
         const wx = ox + cx * passo + passo * 0.5;
         const wy = oy + cy * passo + passo * 0.5;
-        const d2 = (wx - pxRef) * (wx - pxRef) + (wy - pyRef) * (wy - pyRef);
         const iCor = (cy * nx + cx) * 3;
-        if (d2 < interno2 || d2 > externo2) continue;
         const h = alturas[cy * (nx + 1) + cx];
         if (!Number.isFinite(h)) continue;
-        viva[cy * nx + cx] = 1;
+        celulas += 1;
         const rgb = rgbBioma(wx, wy, false);
         cores[iCor] = rgb[0];
         cores[iCor + 1] = rgb[1];
@@ -453,7 +469,6 @@ export function criarTerrenoHorizonte() {
         bioma[iCor + 1] = celulaDe(par.b);
         bioma[iCor + 2] = par.peso;
         splat[cy * nx + cx] = cruSplat(wx, wy, par.a) ? 1 : 0;
-        celulas += 1;
         if (h < nivel) {
           mar[cy * nx + cx] = 1;
           celulasMar += 1;
@@ -461,23 +476,15 @@ export function criarTerrenoHorizonte() {
       }
     }
 
-    if (!celulas) return null;
+    if (!celulas) return { terra: null, agua: null };
 
-    const alturasGeo = alturas.slice();
-    for (let cy = 0; cy < ny; cy++) {
-      for (let cx = 0; cx < nx; cx++) {
-        if (!viva[cy * nx + cx]) alturasGeo[cy * (nx + 1) + cx] = NaN;
-      }
-    }
-
-    const uvEscala = UV_ESCALA_HORIZONTE;
-    const terra = criarGeometriaTerraced(alturasGeo, cores, {
+    const terra = criarGeometriaTerraced(alturas, cores, {
       ox,
       oy,
       passo,
       nx,
       ny,
-      uvEscala,
+      uvEscala: UV_ESCALA_HORIZONTE,
       bioma,
       splat,
     });
@@ -493,13 +500,25 @@ export function criarTerrenoHorizonte() {
             uvEscala: UV_ESCALA_MAR_HORIZONTE,
           })
         : null;
-    if (!terra && !agua) return null;
     return { terra, agua };
+  }
+
+  function obterDoCache(chave, hx, hy) {
+    let entry = cache.get(chave);
+    if (entry) {
+      cache.delete(chave);
+      cache.set(chave, entry);
+      return entry;
+    }
+    entry = montarTile(hx, hy);
+    cache.set(chave, entry);
+    podarCache();
+    return entry;
   }
 
   function instalar(chave, geos) {
     if (!geos?.terra && !geos?.agua) {
-      descartar(chave);
+      ocultar(chave);
       return;
     }
 
@@ -530,15 +549,9 @@ export function criarTerrenoHorizonte() {
     }
 
     par.terra.material = matT;
-    const antigaTerra = par.terra.geometry;
-    if (geos.terra) {
-      par.terra.geometry = geos.terra;
-      par.terra.visible = true;
-    } else {
-      par.terra.geometry = new THREE.BufferGeometry();
-      par.terra.visible = false;
-    }
-    if (antigaTerra && antigaTerra !== par.terra.geometry) antigaTerra.dispose();
+    par.terra.geometry = geos.terra || par.terra.geometry;
+    par.terra.visible = !!geos.terra;
+    if (!grupo.children.includes(par.terra)) grupo.add(par.terra);
 
     if (geos.agua) {
       if (!par.agua) {
@@ -550,18 +563,17 @@ export function criarTerrenoHorizonte() {
         par.agua.renderOrder = ORDEM_MAR;
         grupo.add(par.agua);
       } else {
-        const antiga = par.agua.geometry;
         par.agua.geometry = geos.agua;
-        if (antiga && antiga !== geos.agua) antiga.dispose();
         par.agua.visible = true;
+        if (!grupo.children.includes(par.agua)) grupo.add(par.agua);
       }
     } else if (par.agua) {
-      par.agua.geometry?.dispose();
       grupo.remove(par.agua);
       par.agua = null;
     }
   }
 
+  /** Só decide quais tiles do anel; nunca reconstrói geometria. */
   function planejar(px, py) {
     const lado = CHUNK_HORIZONTE;
     const hx0 = Math.floor(px / lado);
@@ -569,6 +581,7 @@ export function criarTerrenoHorizonte() {
     const externo = alcanceHorizonteBlocos();
     const margem = Math.ceil(externo / lado) + 1;
     const interno = raioInternoBlocos();
+    const half = lado * 0.71;
     const novoDesejado = new Set();
     const novaFila = [];
 
@@ -577,8 +590,8 @@ export function criarTerrenoHorizonte() {
         const cx = (hx + 0.5) * lado;
         const cy = (hy + 0.5) * lado;
         const d = Math.hypot(cx - px, cy - py);
-        if (d + lado * 0.71 < interno) continue;
-        if (d - lado * 0.71 > externo) continue;
+        if (d + half < interno) continue;
+        if (d - half > externo) continue;
         const k = chaveChunk(hx, hy);
         novoDesejado.add(k);
         if (!vivos.has(k)) novaFila.push(k);
@@ -586,13 +599,7 @@ export function criarTerrenoHorizonte() {
     }
 
     for (const k of vivos.keys()) {
-      if (!novoDesejado.has(k)) descartar(k);
-    }
-
-    if (ancoraRaio >= 0) {
-      for (const k of novoDesejado) {
-        if (vivos.has(k) && !novaFila.includes(k)) novaFila.push(k);
-      }
+      if (!novoDesejado.has(k)) ocultar(k);
     }
 
     desejados = novoDesejado;
@@ -610,13 +617,11 @@ export function criarTerrenoHorizonte() {
 
   function tick(px, py) {
     if (!discoHorizonteAtivo()) {
-      if (vivos.size || fila.length) limparTudo();
+      if (vivos.size || fila.length) limparCena();
       estradas.tick(px, py);
       return;
     }
 
-    pxRef = px;
-    pyRef = py;
     const lado = CHUNK_HORIZONTE;
     const hx = Math.floor(px / lado);
     const hy = Math.floor(py / lado);
@@ -632,13 +637,18 @@ export function criarTerrenoHorizonte() {
     }
 
     const t0 = performance.now();
-    let feitos = 0;
-    while (fila.length && feitos < BUILDS_POR_TICK && performance.now() - t0 < ORCAMENTO_MS) {
+    let builds = 0;
+    while (fila.length && performance.now() - t0 < ORCAMENTO_MS) {
       const k = fila.shift();
-      if (!desejados.has(k)) continue;
+      if (!desejados.has(k) || vivos.has(k)) continue;
+      const hit = cache.has(k);
+      if (!hit && builds >= BUILDS_POR_TICK) {
+        fila.unshift(k);
+        break;
+      }
       const [chx, chy] = k.split(",").map(Number);
-      instalar(k, montarChunk(chx, chy));
-      feitos += 1;
+      instalar(k, obterDoCache(k, chx, chy));
+      if (!hit) builds += 1;
     }
     estradas.tick(px, py);
   }
@@ -687,7 +697,8 @@ export function criarTerrenoHorizonte() {
     aplicarTexturas,
     aplicarVisual,
     liberar() {
-      limparTudo();
+      limparCena();
+      limparCache();
       estradas.liberar();
       matSolido.dispose();
       matReal?.dispose();

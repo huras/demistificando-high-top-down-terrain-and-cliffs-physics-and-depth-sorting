@@ -18,6 +18,17 @@ const ORCAMENTO_MS = 0.45;
 const BUILDS_POR_TICK = 3;
 const EPS_Y = 0.06;
 
+/** Índice estático id→seg (catálogo imutável). */
+let cachePorId = null;
+function porIdEstrada() {
+  if (cachePorId) return cachePorId;
+  const segs = segmentosEstradaMundo();
+  const mapa = new Map();
+  for (let i = 0; i < segs.length; i++) mapa.set(segs[i].id, segs[i]);
+  cachePorId = mapa;
+  return cachePorId;
+}
+
 /**
  * @param {{
  *   id: string,
@@ -124,6 +135,7 @@ export function criarEstradasLod(opts) {
 
   function planejar(px, py, interno, externo) {
     const segs = segmentosEstradaMundo();
+    const porId = porIdEstrada();
     const novo = new Set();
     const novaFila = [];
 
@@ -145,7 +157,6 @@ export function criarEstradasLod(opts) {
     }
 
     desejados = novo;
-    const porId = new Map(segs.map((s) => [s.id, s]));
     novaFila.sort((a, b) => {
       const sa = porId.get(a);
       const sb = porId.get(b);
@@ -180,8 +191,7 @@ export function criarEstradasLod(opts) {
       planejar(px, py, interno, externo);
     }
 
-    const segs = segmentosEstradaMundo();
-    const porId = new Map(segs.map((s) => [s.id, s]));
+    const porId = porIdEstrada();
     const t0 = performance.now();
     let feitos = 0;
     while (fila.length && feitos < BUILDS_POR_TICK && performance.now() - t0 < ORCAMENTO_MS) {
