@@ -458,6 +458,10 @@ export function criarEdificiosCidade() {
   grupo.name = "edificios-cidade";
   const ids = MODELOS_CIDADE;
   const cargas = ids.map((id) => carregarObj(id).then((raiz) => [id, { grupo: raiz }]));
+  let resolverPronto;
+  const quandoPronto = new Promise((resolve) => {
+    resolverPronto = resolve;
+  });
   Promise.all([Promise.all(cargas), carregarCatalogoLuzes(), carregarFolhas(), carregarSpritesPraca().catch((erro) => {
       console.error("sprites da praça", erro);
       return null;
@@ -500,9 +504,11 @@ export function criarEdificiosCidade() {
         grupo.userData.cidades.push(rotas[i]);
       }
       marcarReflexo(grupo);
+      resolverPronto?.();
     })
     .catch((erro) => {
       console.error("modelos da cidade", erro);
+      resolverPronto?.();
     });
 
   montarLaboratorio3d(grupo);
@@ -512,6 +518,7 @@ export function criarEdificiosCidade() {
 
   return {
     grupo,
+    quandoPronto,
     atualizar(px, py, yaw = 0, inclinacao = 0) {
       atualizarLaboratorio(yaw, inclinacao, px, py);
       atualizarCentro(px, py);

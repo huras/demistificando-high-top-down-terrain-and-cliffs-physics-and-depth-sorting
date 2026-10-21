@@ -378,7 +378,39 @@ export function iniciarCenario3d(canvas, atlas = null) {
 
   if (atlas) aplicarAtlasNaCena(atlas);
 
+  // Quando a cidade termina de montar (async), recompila na última posição aquecida.
+  edificios.quandoPronto?.then?.(() => {
+    aquecerProgramas3d(estado?._warmPx ?? 0, estado?._warmPy ?? 0);
+  });
+
   return estado;
+}
+
+/**
+ * Compila programas WebGL fora do loop. O 1º renderer.render sem isso
+ * chega a ~700–1000 ms (shader compile) e derruba o FPS no começo.
+ */
+export function aquecerProgramas3d(px = 0, py = 0) {
+  if (!estado?.renderer || !estado?.scene || !estado?.camera3d?.cam) return;
+  try {
+    estado._warmPx = px;
+    estado._warmPy = py;
+    estado.terreno?.tickMalha?.(px, py);
+    estado.terrenoSuave?.tick?.(px, py, estado.terreno?.chunksExibidos?.());
+    estado.edificios?.atualizar?.(px, py, 0, 0);
+    estado.vegetacao?.atualizar?.(0, 0);
+    estado.vegetacaoDistante?.tick?.(px, py, 0, 0);
+    estado.ceu?.atualizar?.(0, {
+      camera: estado.camera3d.cam,
+      alvo: estado._alvoCeu?.set(px, 0, py) || undefined,
+      nevoa: estado.nevoaBase,
+      raioBlocos: obterRaioStream() * CHUNK_XZ,
+      galeLigado: true,
+    });
+    estado.renderer.compile(estado.scene, estado.camera3d.cam);
+  } catch (err) {
+    console.warn("aquecerProgramas3d", err);
+  }
 }
 
 function publicarObjetosCena(scene, refs) {

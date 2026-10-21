@@ -76,6 +76,7 @@ import { definirRaioSuave, obterRaioSuave } from "./render/3d/terrenoSuave.js";
 import {
   ajustarZoom3d,
   atualizarEDesenhar3d,
+  aquecerProgramas3d,
   definirMira3d,
   definirPuxadaFlecha,
   entrarVistaCena,
@@ -208,6 +209,8 @@ async function iniciar() {
   });
   sincronizarCamadas(obterModo());
   if (obterModo() === "3d") aoTrocarModo("3d");
+  // Tira o hitch de compile do 1º frame jogável (era ~700–1000 ms em render).
+  if (obterModo() === "3d" && corpo) aquecerProgramas3d(corpo.x, corpo.y);
 
   const optsPonteiro = {
     canvas2d: canvas,
