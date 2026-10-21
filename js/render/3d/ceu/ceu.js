@@ -31,6 +31,7 @@ import {
   MAPA_SOMBRA_SOL,
   ancorarSombraSol,
   aplicarAlcanceSombra,
+  sincronizarSombraSuja,
 } from "./sombraEstavel.js";
 
 export {
@@ -132,6 +133,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
 
     aplicarNuvemPasso(visual, clima, seguro);
     aplicarLuzes(visual, alvo);
+    sincronizarSombraSuja(sol, alcanceSombra, camera, alvo, hora);
     aplicarNevoa(visual, clima, nevoa);
 
     const flash = relampago.atualizar(seguro, clima.raio, alvo);

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
+import { marcarSombraSuja } from "./ceu/sombraEstavel.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
   ALTURA_BLOCO,
@@ -2152,6 +2153,7 @@ export function criarTerrenoMalha(atlas = null) {
     publicarMalha(entry.espuma, "Água");
     publicarMalha(entry.queda, "Água");
     limparSujo(chunk);
+    marcarSombraSuja();
   }
 
   function reconstruirProps() {
@@ -2185,6 +2187,7 @@ export function criarTerrenoMalha(atlas = null) {
     grupoCubos.add(meshPropsCubos);
     publicarMalha(meshProps, "Terreno");
     publicarMalha(meshPropsCubos, "Terreno");
+    marcarSombraSuja();
   }
 
   function reconstruirTudo() {

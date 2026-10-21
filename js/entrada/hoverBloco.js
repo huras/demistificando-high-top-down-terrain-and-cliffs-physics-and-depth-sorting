@@ -13,6 +13,7 @@ import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 let hover = null;
 let hoverKey = "";
 let hoverTexto = "";
+let assinatura3d = "";
 
 let clientX = 0;
 let clientY = 0;
@@ -105,6 +106,23 @@ export function atualizarHoverBloco() {
       return hover;
     }
     const { ndcX, ndcY } = ndcDoCanvas(canvas3d);
+    const cam = cen.camera3d.cam || cen.camera3d;
+    const assinatura =
+      Math.round((cam.position?.x || 0) * 4) +
+      "," +
+      Math.round((cam.position?.y || 0) * 4) +
+      "," +
+      Math.round((cam.position?.z || 0) * 4) +
+      "," +
+      Math.round(ndcX * 48) +
+      "," +
+      Math.round(ndcY * 48) +
+      "," +
+      Math.floor(corpo.x) +
+      "," +
+      Math.floor(corpo.y);
+    if (!sujo && assinatura === assinatura3d) return hover;
+    assinatura3d = assinatura;
     aplicarHover(alvoBloco3dCursor(cen.camera3d, ndcX, ndcY, ALCANCE_MIRA));
     sujo = false;
     return hover;

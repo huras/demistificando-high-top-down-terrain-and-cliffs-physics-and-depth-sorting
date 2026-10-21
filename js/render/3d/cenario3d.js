@@ -39,6 +39,7 @@ import { criarFxAgua3d } from "./fxAgua3d.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
+import { ligarRendererSombra } from "./ceu/sombraEstavel.js";
 import { desenharReflexo, marcarLuzReflexo } from "./ceu/reflexoPoca.js";
 import { atualizarLuzBillboard } from "./ceu/luzBillboard.js";
 import { comecarQuadroLuzes, criarPoolLuzes, definirPesoNoite, resolverLuzes } from "./luzes/pool.js";
@@ -208,6 +209,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   renderer.setSize(largura, altura, false);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  ligarRendererSombra(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.12;

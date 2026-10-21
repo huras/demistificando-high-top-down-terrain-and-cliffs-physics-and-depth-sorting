@@ -3,6 +3,71 @@ import * as THREE from "three";
 /** Resolução do shadow map do sol. Um único dono desta constante. */
 export const MAPA_SOMBRA_SOL = 4096;
 
+/** @type {import("three").WebGLRenderer | null} */
+let rendererSombra = null;
+let chaveSombra = "";
+let forcarSombra = true;
+/** Sol / ciclo: no máximo ~8 Hz quando o resto está parado. */
+let ultimaSombraSolMs = 0;
+let chaveSol = "";
+const SOL_MIN_MS = 120;
+
+/**
+ * Shadow map sob demanda: autoUpdate off; needsUpdate só quando luz/foco/yaw mudam.
+ * Evita re-rasterizar 4096² todo frame parado (custo idle dominante).
+ */
+export function ligarRendererSombra(renderer) {
+  rendererSombra = renderer || null;
+  chaveSombra = "";
+  chaveSol = "";
+  forcarSombra = true;
+  ultimaSombraSolMs = 0;
+  if (!rendererSombra) return;
+  rendererSombra.shadowMap.autoUpdate = false;
+  rendererSombra.shadowMap.needsUpdate = true;
+}
+
+/** Terreno/props novos ou mudados — força um pass de sombra no próximo frame. */
+export function marcarSombraSuja() {
+  forcarSombra = true;
+  if (rendererSombra) rendererSombra.shadowMap.needsUpdate = true;
+}
+
+/**
+ * Chave estável: célula do foco + yaw em fatias (~11°) + hora do dia grossa + alcance.
+ * Pose float do sol NÃO entra — ela muda todo frame com o ciclo e invalidava a sombra.
+ * @returns {boolean} true se o shadow map vai ser regenerado neste frame
+ */
+export function sincronizarSombraSuja(sol, alcance, camera, alvo, hora = 0) {
+  if (!rendererSombra || !sol) return false;
+  const yaw = camera
+    ? Math.atan2(-(camera.matrixWorld?.elements?.[8] ?? 0), -(camera.matrixWorld?.elements?.[10] ?? 1))
+    : 0;
+  const chaveGeo = [
+    sol.castShadow ? 1 : 0,
+    alcance | 0,
+    Math.round(yaw / 0.2),
+    alvo ? (alvo.x * 2) | 0 : 0,
+    alvo ? (alvo.z * 2) | 0 : 0,
+  ].join(",");
+  // ~6 minutos de jogo por degrau (hora 0–24 → 240 degraus)
+  const solAgora = ((hora * 10) | 0) + "";
+  const agora = performance.now();
+  let suja = forcarSombra || chaveGeo !== chaveSombra;
+  if (!suja && solAgora !== chaveSol && agora - ultimaSombraSolMs >= SOL_MIN_MS) suja = true;
+
+  if (suja) {
+    chaveSombra = chaveGeo;
+    chaveSol = solAgora;
+    forcarSombra = false;
+    ultimaSombraSolMs = agora;
+    rendererSombra.shadowMap.needsUpdate = true;
+    return true;
+  }
+  rendererSombra.shadowMap.needsUpdate = false;
+  return false;
+}
+
 const _eixoZ = new THREE.Vector3();
 const _right = new THREE.Vector3();
 const _up = new THREE.Vector3();
