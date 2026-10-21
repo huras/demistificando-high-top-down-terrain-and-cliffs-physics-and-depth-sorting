@@ -6,7 +6,7 @@ import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { ALTURA_PAREDE_HUB } from "../../mundo/cidade/plantaHub.js";
 import { ALTURA_BLOCO } from "../../config.js";
 import { plantaCentro } from "../../mundo/cidade/centro.js";
-import { aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
+import { MESA_CENTRO } from "../../mundo/cidade/catalogoProps.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 import {
   atualizarBolasCura,
@@ -27,7 +27,6 @@ const RECORTE_PC = Object.freeze({ col: 5, row: 42, cols: 1, rows: 2, tile: 16 }
 const DECOR = Object.freeze({
   vaso: Object.freeze({ url: FOLHA_MOVEIS, col: 5, row: 40, cols: 1, rows: 2, tile: 16 }),
   estante: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 45, cols: 2, rows: 2, tile: 16 }),
-  mesa: Object.freeze({ url: FOLHA_FRENTE, composta: true }),
   cadeira30: Object.freeze({ url: FOLHA_FRENTE, col: 30, row: 0, cols: 1, rows: 1, tile: 16 }),
   cadeira39: Object.freeze({ url: FOLHA_FRENTE, col: 7, row: 1, cols: 1, rows: 1, tile: 16 }),
 });
@@ -146,22 +145,6 @@ function anexarEnfermeira(sala, planta, gente) {
   }
 }
 
-function telaMesa(img) {
-  const tela = document.createElement("canvas");
-  tela.width = TILE * 2;
-  tela.height = TILE * 2;
-  const ctx = tela.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  const pecas = [46, 47, 52, 53];
-  for (let i = 0; i < pecas.length; i++) {
-    const id = pecas[i];
-    const sx = (id % COLUNAS) * TILE;
-    const sy = Math.floor(id / COLUNAS) * TILE;
-    ctx.drawImage(img, sx, sy, TILE, TILE, (i % 2) * TILE, Math.floor(i / 2) * TILE, TILE, TILE);
-  }
-  return tela;
-}
-
 function telaMapa(img) {
   const tela = document.createElement("canvas");
   tela.width = 26;
@@ -217,6 +200,15 @@ function anexarCura3d(sala, planta) {
   }
 }
 
+function anexarMesa3d(sala, planta) {
+  for (let i = 0; i < planta.props.length; i++) {
+    const prop = planta.props[i];
+    if (prop.id !== "mesa") continue;
+    const inst = instanciarProp(MESA_CENTRO, planta.origemX + prop.x, planta.origemY + prop.y);
+    if (inst) sala.add(inst);
+  }
+}
+
 function anexarDecor(sala, planta, imagens) {
   const moldes = new Map();
   for (let i = 0; i < planta.props.length; i++) {
@@ -227,7 +219,7 @@ function anexarDecor(sala, planta, imagens) {
     if (!img) continue;
     let molde = moldes.get(prop.id);
     if (!molde) {
-      molde = moldePe(recorte.composta ? telaMesa(img) : recortar(img, recorte), recorte.escala || 1);
+      molde = moldePe(recortar(img, recorte), recorte.escala || 1);
       moldes.set(prop.id, molde);
     }
     const inst = porBillboard(molde, planta.origemX + prop.x, planta.origemY + prop.y);
@@ -282,10 +274,6 @@ function materiaisDaCasca(texLado, texTopo, aoLongoX, repetir) {
   const matLongo = material(longo, true);
   const matCurto = material(texLado.clone(), true);
   const matCima = material(texTopo.clone(), true);
-  const base = -ALTURA_PAREDE_HUB * 0.5;
-  aplicarProfundidadeVolume(matLongo, base, 0);
-  aplicarProfundidadeVolume(matCurto, base, 0);
-  aplicarProfundidadeVolume(matCima, base, 0);
   if (aoLongoX) return [matCurto, matCurto, matCima, matLongo, matLongo, matLongo];
   return [matLongo, matLongo, matCima, matCurto, matCurto, matCurto];
 }
@@ -300,7 +288,7 @@ export function montarCentro3d(grupo) {
     imagemPronta(FOLHA_MOVEIS).catch(() => null),
     imagemPronta(FOLHA_FRENTE).catch(() => null),
     imagemPronta(FOLHA_GENTE).catch(() => null),
-    carregarMoldesProps(["cura"]),
+    carregarMoldesProps(["cura", MESA_CENTRO]),
   ])
     .then(([img, moveis, frente, gente]) => {
       const imagens = new Map();
@@ -309,6 +297,7 @@ export function montarCentro3d(grupo) {
       anexarSala(sala, planta, img);
       anexarBalcao(sala, planta, frente);
       anexarCura3d(sala, planta);
+      anexarMesa3d(sala, planta);
       anexarPeca(sala, planta, moveis, "pc", RECORTE_PC);
       anexarDecor(sala, planta, imagens);
       anexarMapa(sala, planta, frente);

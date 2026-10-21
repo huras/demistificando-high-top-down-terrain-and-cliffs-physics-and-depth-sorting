@@ -178,7 +178,9 @@ function fundir(grupo) {
 
 export function resolverLuzes(camX, camY, camZ, alcance = 90) {
   for (let i = 0; i < cartoes.length; i++) {
-    cartoes[i].material.opacity = pesoNoite;
+    const cartao = cartoes[i];
+    const fator = cartao.userData.fatorLuz;
+    cartao.material.opacity = pesoNoite * (fator == null ? 1 : fator);
   }
   const noite = pesoNoite;
   if (noite <= 0.02) {

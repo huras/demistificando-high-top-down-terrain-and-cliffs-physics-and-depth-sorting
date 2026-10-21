@@ -14,7 +14,13 @@ import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { facesParedeInterior } from "./cartaoPe.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
-import { carregarMoldesProps, instanciarProp } from "./propsObj3d.js";
+import { propDoSprite } from "../../mundo/cidade/catalogoProps.js";
+import {
+  anexarCorreiosInstanced,
+  carregarMoldesProps,
+  instanciarCama,
+  instanciarProp,
+} from "./propsObj3d.js";
 
 const FOLHA_CORREIO = "/ref/sprites/buildings/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png";
 const FOLHA_AVISO = "/ref/sprites/buildings/the_public_pokemon_tileset_by_thatssowitty_d4ni56y.png";
@@ -242,24 +248,37 @@ function porPoste(molde, x, h, z, acender, dono) {
 
 export function anexarDecoracaoCidade(grupo, moldePoste, layout, ox, oy, acender, sprites) {
   const decor = decoracaoDaCidade(layout);
-  const correios = sprites?.correios;
   const aviso = porSprite(sprites?.aviso, ox + decor.quadro.x, ALTURA_PRACA, oy + decor.quadro.y);
   if (aviso) {
     aviso.name = "quadro-cidade";
     grupo.add(aviso);
   }
-  const central = porSprite(correios?.get(decor.correio.cor), ox + decor.correio.x, ALTURA_PRACA, oy + decor.correio.y);
-  if (central) grupo.add(central);
   for (let i = 0; i < decor.postes.length; i++) {
     const p = decor.postes[i];
     const inst = porPoste(moldePoste, ox + p.x, ALTURA_PRACA, oy + p.y, acender, `${grupo.name}:praca:${i}`);
     if (inst) grupo.add(inst);
   }
+  const pontosCorreio = [
+    { x: ox + decor.correio.x, y: oy + decor.correio.y, cor: decor.correio.cor },
+  ];
   for (let i = 0; i < decor.casas.length; i++) {
     const casa = decor.casas[i];
-    const inst = porSprite(correios?.get(casa.cor), ox + casa.x, ALTURA_PRACA, oy + casa.y);
-    if (inst) grupo.add(inst);
+    pontosCorreio.push({ x: ox + casa.x, y: oy + casa.y, cor: casa.cor });
   }
+  carregarMoldesProps(["correio"])
+    .then(() => {
+      anexarCorreiosInstanced(grupo, pontosCorreio);
+    })
+    .catch((erro) => {
+      console.error("correios 3d", erro);
+      const folha = sprites?.correios;
+      if (!folha?.size) return;
+      for (let i = 0; i < pontosCorreio.length; i++) {
+        const p = pontosCorreio[i];
+        const inst = porSprite(folha.get(p.cor), p.x, ALTURA_PRACA, p.y);
+        if (inst) grupo.add(inst);
+      }
+    });
   return decor;
 }
 
@@ -320,12 +339,21 @@ export function anexarCascaSala(grupo, piso) {
 
 const VASOS_CASA = Object.freeze(["flores-1", "vaso-1", "flores-3", "vaso-2"]);
 
+function ehCama(id) {
+  return id === "cama-azul" || id === "cama-vermelha" || id === "cama-verde";
+}
+
 export function anexarInteriores(grupo, moveis) {
   const lista = moveisDaSala();
   let vasoI = 0;
+  const idsProps = ["cama", "mesa-1"];
   const idsVaso = [];
   for (let i = 0; i < lista.length; i++) {
-    if (lista[i].id === "vaso") idsVaso.push(VASOS_CASA[vasoI++ % VASOS_CASA.length]);
+    if (lista[i].id === "vaso") {
+      const id = VASOS_CASA[vasoI++ % VASOS_CASA.length];
+      idsVaso.push(id);
+      idsProps.push(id);
+    }
   }
   const colocar = () => {
     vasoI = 0;
@@ -340,6 +368,22 @@ export function anexarInteriores(grupo, moveis) {
           continue;
         }
       }
+      if (ehCama(item.id)) {
+        const prop = instanciarCama(item.id, item.x, item.y);
+        if (prop) {
+          prop.name = `movel-${item.id}`;
+          grupo.add(prop);
+          continue;
+        }
+      }
+      if (item.id === "mesa") {
+        const prop = instanciarProp(propDoSprite("mesa") || "mesa-1", item.x, item.y);
+        if (prop) {
+          prop.name = `movel-${item.id}`;
+          grupo.add(prop);
+          continue;
+        }
+      }
       if (!moveis?.size) continue;
       const inst = porSprite(moveis.get(item.id), item.x, ALTURA_PRACA, item.y);
       if (!inst) continue;
@@ -347,12 +391,8 @@ export function anexarInteriores(grupo, moveis) {
       grupo.add(inst);
     }
   };
-  if (!idsVaso.length) {
-    colocar();
-    return;
-  }
-  carregarMoldesProps(idsVaso).then(colocar).catch((erro) => {
-    console.error("vasos da casa", erro);
+  carregarMoldesProps(idsProps).then(colocar).catch((erro) => {
+    console.error("moveis 3d da casa", erro);
     colocar();
   });
 }

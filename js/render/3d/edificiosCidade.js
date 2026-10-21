@@ -12,6 +12,14 @@ import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "./luzes/catalogo.js";
 import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
 import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
+import {
+  atualizarRoletaJanela,
+  brilhoDaInstancia,
+  comecarQuadroJanelas,
+  ehMaterialJanela,
+  materialDaJanela,
+  prepararRoletaJanela,
+} from "./luzes/janelasCasa.js";
 import { aplicarLuzBillboard, aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
 import { marcarReflexo } from "./ceu/reflexoPoca.js";
 import { geometriaNoPe } from "./billboard/indice.js";
@@ -31,31 +39,8 @@ const FOLHAS_CASA = 5;
 const PX_MUNDO = 1 / TILE;
 const ALTURA_POSTE = 3.6;
 const _ponto = new THREE.Vector3();
-const COR_JANELA = 0xb9d7ff;
-const materiaisJanela = [];
 let materialFlare = null;
 let materialGlobo = null;
-
-function materialDaJanela(mapa) {
-  if (mapa) {
-    mapa.colorSpace = THREE.SRGBColorSpace;
-    mapa.magFilter = THREE.NearestFilter;
-    mapa.minFilter = THREE.NearestFilter;
-    mapa.generateMipmaps = false;
-    mapa.needsUpdate = true;
-  }
-  const mat = new THREE.MeshLambertMaterial({
-    name: "h_mado",
-    map: mapa || null,
-    color: 0xffffff,
-    emissive: COR_JANELA,
-    emissiveMap: mapa || null,
-    emissiveIntensity: 1,
-  });
-  aplicarLuzCidade(mat);
-  materiaisJanela.push(mat);
-  return mat;
-}
 
 function materialDoFlare(mapa) {
   if (materialFlare) {
@@ -251,7 +236,7 @@ function preparar(raiz, volume) {
       filho.renderOrder = 2;
       return;
     }
-    if (nome === "h_mado") {
+    if (ehMaterialJanela(nome)) {
       const mapa = filho.material?.map || null;
       filho.material?.dispose?.();
       filho.material = materialDaJanela(mapa);
@@ -325,12 +310,16 @@ function pendurarLuzes(inst, id, dono) {
   inst.userData.modeloLuz = id;
   inst.userData.donoLuz = dono;
   inst.userData.pontosLuz = pontos;
+  const cartoes = [];
   for (let i = 0; i < pontos.length; i++) {
     const p = pontos[i];
     const cartao = criarCartaoLuz(p.cor, p.raio);
     cartao.position.set(p.x, p.y, p.z);
+    cartao.userData.fatorLuz = 1;
+    cartoes.push(cartao);
     inst.add(cartao);
   }
+  inst.userData.cartoesLuz = cartoes;
 }
 
 export function carregarMoldeCidade(id) {
@@ -440,7 +429,9 @@ function montarCidade(moldes, folhas, def, sprites, predios) {
     const inst = molde.grupo.clone(true);
     inst.rotation.y = v.papel === "casa" || v.papel === "lab" ? 0 : yawDaRua(mx, my);
     inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
-    pendurarLuzes(inst, id, `${def.key}:${i}`);
+    const dono = `${def.key}:${i}`;
+    pendurarLuzes(inst, id, dono);
+    if (v.papel === "casa" && inst.userData.pontosLuz) prepararRoletaJanela(inst, dono);
     grupo.add(inst);
   }
   const poste = moldes.get("poste");
@@ -525,9 +516,9 @@ export function criarEdificiosCidade() {
       atualizarLaboratorio(yaw, inclinacao, px, py);
       atualizarCentro(px, py);
       const pesoNoite = obterPesoNoite();
+      const dtJanela = comecarQuadroJanelas();
       if (materialFlare) materialFlare.opacity = pesoNoite;
       if (materialGlobo) materialGlobo.emissiveIntensity = pesoNoite;
-      for (let j = 0; j < materiaisJanela.length; j++) materiaisJanela[j].emissiveIntensity = pesoNoite;
       const cidades = grupo.userData.cidades;
       if (!cidades) return;
       const alcance = (obterRaioStream() + 2) * CHUNK_XZ + 96;
@@ -549,6 +540,9 @@ export function criarEdificiosCidade() {
           }
           const pontos = inst.userData.pontosLuz;
           if (!pontos) continue;
+          if (inst.userData.roletaJanela) atualizarRoletaJanela(inst, pesoNoite, dtJanela);
+          const brilho = brilhoDaInstancia(inst);
+          if (brilho <= 0.05 || pesoNoite <= 0.02) continue;
           inst.updateWorldMatrix(true, false);
           for (let p = 0; p < pontos.length; p++) {
             const ponto = pontos[p];
@@ -559,7 +553,7 @@ export function criarEdificiosCidade() {
               _ponto.y,
               _ponto.z,
               ponto.cor,
-              ponto.intensidade,
+              ponto.intensidade * brilho,
             );
           }
         }

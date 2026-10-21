@@ -13,7 +13,7 @@ import {
   ROWS_LAB,
   plantaLaboratorio,
 } from "../../mundo/cidade/laboratorio.js";
-import { propDoSprite } from "../../mundo/cidade/catalogoProps.js";
+import { MESAS_LAB, propDoSprite } from "../../mundo/cidade/catalogoProps.js";
 import {
   atualizarBolasCura,
   emPe,
@@ -40,7 +40,6 @@ const RECORTE = Object.freeze({
   tankBolas: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-incubator-tank-pokeballs-feet.png" }),
   pc: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-computer-blank.png" }),
   pcGrafico: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-computer-graph.png" }),
-  mesa: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-table-empty.png" }),
   estante: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 45, cols: 2, rows: 2, tile: 16 }),
   escrivaninha: Object.freeze({ url: FOLHA_MOVEIS, col: 4, row: 44, cols: 2, rows: 2, tile: 16 }),
   tapete: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 54, cols: 2, rows: 1, tile: 16 }),
@@ -50,7 +49,7 @@ const RECORTE = Object.freeze({
   vasoC: Object.freeze({ url: FOLHA_VASO, col: 21, row: 40, cols: 3, rows: 7, tile: 16, escala: 0.5 }),
 });
 
-const IDS_PROPS_LAB = Object.freeze(["cura", "maquina-2", "maquina-3", "maquina-4"]);
+const IDS_PROPS_LAB = Object.freeze(["cura", "maquina-2", "maquina-3", "maquina-4", ...MESAS_LAB]);
 
 const bolasCura = [];
 
@@ -233,6 +232,7 @@ export function montarLaboratorio3d(grupo) {
       piso.needsUpdate = true;
     }
     anexarCasca(sala, piso);
+    let mesaI = 0;
     for (let i = 0; i < planta.moveis.length; i++) {
       const item = planta.moveis[i];
       const x = ORIGEM_LAB_X + item.x;
@@ -244,6 +244,15 @@ export function montarLaboratorio3d(grupo) {
         const novas = criarBolasCuraNaMalha(inst);
         for (let b = 0; b < novas.length; b++) bolasCura.push(novas[b]);
         continue;
+      }
+      if (item.id === "mesa") {
+        const idMesa = MESAS_LAB[mesaI % MESAS_LAB.length];
+        mesaI += 1;
+        const inst = instanciarProp(idMesa, x, peZ);
+        if (inst) {
+          sala.add(inst);
+          continue;
+        }
       }
       const z = ORIGEM_LAB_Y + (item.chao ? item.y : item.footY);
       const inst = item.chao

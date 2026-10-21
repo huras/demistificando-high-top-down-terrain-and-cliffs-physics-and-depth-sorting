@@ -1,17 +1,23 @@
 /**
- * Carrega e instancia props OBJ de interior (cura, PC, vasos, máquinas).
+ * Props OBJ: carga, cache, clone e InstancedMesh (correios).
  */
 import * as THREE from "three";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
-import { BASE_PROPS, defDoProp } from "../../mundo/cidade/catalogoProps.js";
+import { BASE_PROPS, defDoProp, tintDaCama } from "../../mundo/cidade/catalogoProps.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 import { aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
 import { SLOTS_CURA } from "../../jogo/maquinaCura.js";
 
 const cache = new Map();
 const pedidos = new Map();
+const _mat4 = new THREE.Matrix4();
+const _pos = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _esc = new THREE.Vector3(1, 1, 1);
+const _cor = new THREE.Color();
 
 function consertarNormais(geo) {
   const normal = geo.getAttribute("normal");
@@ -33,7 +39,6 @@ function ajustarMaterial(mat) {
     const m = lista[i];
     if (!m) continue;
     const nome = (m.name || "").toLowerCase();
-    // MTL do rip DP manda Tr=1 (Three vira opacity 0). Igual aos prédios: só mapa + opaco.
     const novo = new THREE.MeshLambertMaterial({
       name: m.name || "",
       map: m.map || null,
@@ -116,6 +121,8 @@ function preparar(raiz) {
     }
     filho.castShadow = true;
     filho.receiveShadow = true;
+    filho.frustumCulled = true;
+    filho.geometry.computeBoundingSphere();
   });
   raiz.updateMatrixWorld(true);
   const caixa = new THREE.Box3().setFromObject(raiz);
@@ -155,6 +162,38 @@ function carregarObj(pasta) {
   });
 }
 
+/** Funde malhas visíveis do molde num único geo (já na escala do grupo). */
+function geometriaFundida(molde) {
+  if (molde.geoInstancia) return molde.geoInstancia;
+  molde.grupo.updateMatrixWorld(true);
+  const geos = [];
+  let matBase = null;
+  molde.grupo.traverse((filho) => {
+    if (!filho.isMesh || !filho.visible || !filho.geometry) return;
+    const geo = filho.geometry.clone();
+    filho.updateWorldMatrix(true, false);
+    geo.applyMatrix4(filho.matrixWorld);
+    geos.push(geo);
+    if (!matBase && filho.material?.visible !== false) matBase = filho.material;
+  });
+  if (!geos.length) throw new Error(`prop ${molde.id} sem malha`);
+  const fundido = mergeGeometries(geos, false);
+  for (let i = 0; i < geos.length; i++) geos[i].dispose();
+  if (!fundido) throw new Error(`merge falhou ${molde.id}`);
+  // Volta ao espaço local do molde (mundo relativo ao grupo na origem).
+  const inv = new THREE.Matrix4().copy(molde.grupo.matrixWorld).invert();
+  fundido.applyMatrix4(inv);
+  fundido.computeBoundingSphere();
+  fundido.computeBoundingBox();
+  molde.geoInstancia = fundido;
+  molde.matInstancia = matBase
+    ? matBase.clone()
+    : new THREE.MeshLambertMaterial({ color: 0xffffff });
+  molde.matInstancia.side = THREE.DoubleSide;
+  aplicarLuzCidade(molde.matInstancia);
+  return fundido;
+}
+
 export function carregarMoldeProp(id) {
   if (cache.has(id)) return Promise.resolve(cache.get(id));
   if (pedidos.has(id)) return pedidos.get(id);
@@ -165,13 +204,14 @@ export function carregarMoldeProp(id) {
       const medido = preparar(raiz);
       const escala = (def.alturaAlvo || 1.5) / medido.sy;
       if (!Number.isFinite(escala) || escala <= 0) throw new Error(`escala invalida ${escala}`);
-      medido.grupo.scale.setScalar(escala);
+      const multY = Number.isFinite(def.escalaY) && def.escalaY > 0 ? def.escalaY : 1;
+      medido.grupo.scale.set(escala, escala * multY, escala);
       medido.grupo.name = `molde-${id}`;
       const molde = {
         id,
         def,
         grupo: medido.grupo,
-        sy: def.alturaAlvo,
+        sy: def.alturaAlvo * multY,
         sx: medido.sx * escala,
         sz: medido.sz * escala,
       };
@@ -204,6 +244,7 @@ export function carregarMoldesProps(ids) {
 
 /**
  * Instancia um prop no chão. Frente pro sul (yaw 0), igual às casas 3D.
+ * opts.tint: cor hex pra tingir materiais (camas).
  */
 export function instanciarProp(id, x, z, opts = {}) {
   const molde = cache.get(id);
@@ -215,7 +256,61 @@ export function instanciarProp(id, x, z, opts = {}) {
   if (molde.def.parede && opts.yExtra == null) {
     inst.position.y = ALTURA_PRACA + (opts.alturaParede != null ? opts.alturaParede : 1.1);
   }
+  if (opts.tint) {
+    _cor.set(opts.tint);
+    inst.traverse((filho) => {
+      if (!filho.isMesh || !filho.material || filho.material.visible === false) return;
+      const mats = Array.isArray(filho.material) ? filho.material : [filho.material];
+      for (let i = 0; i < mats.length; i++) {
+        if (!mats[i] || mats[i].visible === false) continue;
+        mats[i] = mats[i].clone();
+        mats[i].color.copy(_cor);
+        aplicarLuzCidade(mats[i]);
+      }
+      filho.material = Array.isArray(filho.material) ? mats : mats[0];
+    });
+  }
   return inst;
+}
+
+export function instanciarCama(idSprite, x, z) {
+  return instanciarProp("cama", x, z, { tint: tintDaCama(idSprite) || undefined });
+}
+
+/**
+ * Um InstancedMesh por lote de correios. pontos: [{ x, y, cor }].
+ * Coordenadas já mundiais (com ox/oy aplicados).
+ */
+export function anexarCorreiosInstanced(grupo, pontos) {
+  const molde = cache.get("correio");
+  if (!molde || !pontos?.length) return null;
+  const geo = geometriaFundida(molde);
+  const mat = molde.matInstancia.clone();
+  mat.vertexColors = false;
+  aplicarLuzCidade(mat);
+  const mesh = new THREE.InstancedMesh(geo, mat, pontos.length);
+  mesh.name = "correios-instanced";
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = true;
+  mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  _quat.identity();
+  // Geo fundida está no espaço local sem o scale do molde; aplica na instância.
+  _esc.copy(molde.grupo.scale);
+  for (let i = 0; i < pontos.length; i++) {
+    const p = pontos[i];
+    _pos.set(p.x, ALTURA_PRACA, p.y);
+    _mat4.compose(_pos, _quat, _esc);
+    mesh.setMatrixAt(i, _mat4);
+    _cor.set(p.cor || "#c23b3b");
+    mesh.setColorAt(i, _cor);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  mesh.matrixAutoUpdate = false;
+  mesh.updateMatrix();
+  grupo.add(mesh);
+  return mesh;
 }
 
 /** Bolas da máquina de cura grudadas no topo da malha 3D. */
