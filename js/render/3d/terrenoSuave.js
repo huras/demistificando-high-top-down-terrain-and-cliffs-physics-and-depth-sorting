@@ -14,6 +14,7 @@ import { obterKits } from "../../mundo/bioma/kits.js";
 import { imagemPele } from "./peleSplat.js";
 import { rgbBioma } from "../../mundo/bioma/tinta.js";
 import { obterMaterialLagoLonge } from "./texturasAgua3d.js";
+import { atrasDoLodFinoMarcando } from "./stencilLod.js";
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
 let raioAtivo = RAIO_SUAVE;
@@ -39,21 +40,8 @@ export function definirRaioSuave(raio) {
   return raioAtivo;
 }
 
-/** Desenha só onde o bloco não marcou o stencil. O mesh vem depois dos chunks. */
-function atrasDoBloco(material) {
-  material.depthTest = true;
-  material.depthWrite = true;
-  material.stencilWrite = true;
-  material.stencilRef = 1;
-  material.stencilFunc = THREE.NotEqualStencilFunc;
-  material.stencilFail = THREE.KeepStencilOp;
-  material.stencilZFail = THREE.KeepStencilOp;
-  material.stencilZPass = THREE.KeepStencilOp;
-  return material;
-}
-
 function materialSolido() {
-  return atrasDoBloco(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
+  return atrasDoLodFinoMarcando(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.82,
     metalness: 0.04,
@@ -238,7 +226,7 @@ diffuseColor *= sampledDiffuseColor;
       );
   };
   mat.customProgramCacheKey = () => "bioma-mistura-pele";
-  return atrasDoBloco(aplicarSombraNuvem(mat));
+  return atrasDoLodFinoMarcando(aplicarSombraNuvem(mat));
 }
 
 function criarPilhaPeles() {
@@ -266,9 +254,9 @@ function criarPilhaPeles() {
 }
 
 /**
- * Relevo espaçado até o raio suave.
- * Some só no miolo dos chunks já desenhados. O anel de fora deles fica por baixo,
- * para o encontro com os blocos não precisar fechar.
+ * LOD1: relevo espaçado até o raio suave.
+ * Some só no miolo dos chunks já desenhados. Stencil: NotEqual+Replace
+ * (atrasDoLodFinoMarcando) — esconde sob blocos e marca cobertura pro horizonte.
  */
 export function criarTerrenoSuave() {
   const matCubos = materialSolido();
@@ -283,7 +271,8 @@ export function criarTerrenoSuave() {
   const grupo = new THREE.Group();
   grupo.name = "terreno-suave";
   const meshChao = criarMesh("terreno-suave-chao", matCubos);
-  const matAgua = atrasDoBloco(obterMaterialLagoLonge());
+  // Marca stencil (Replace) para o horizonte não z-fightar na junta.
+  const matAgua = atrasDoLodFinoMarcando(obterMaterialLagoLonge());
   const meshAgua = criarMesh("terreno-suave-agua", matAgua);
   meshAgua.renderOrder = 3;
   grupo.add(meshChao, meshAgua);

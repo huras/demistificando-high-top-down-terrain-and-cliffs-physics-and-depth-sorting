@@ -274,6 +274,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
 
   const terrenoHorizonte = criarTerrenoHorizonte();
   terreno.grupo.add(terrenoHorizonte.mesh);
+  terrenoHorizonte.aplicarTexturas?.(terreno.obterTexturasTopo?.());
 
   const vegetacao = criarVegetacaoBillboard3d();
   scene.add(vegetacao.grupo);
@@ -495,6 +496,7 @@ function aplicarAtlasNaCena(atlas) {
   if (!estado) return;
   estado.terreno.aplicarAtlas?.(atlas);
   estado.terrenoSuave?.aplicarTexturas?.(estado.terreno.obterTexturasTopo?.());
+  estado.terrenoHorizonte?.aplicarTexturas?.(estado.terreno.obterTexturasTopo?.());
   estado.vegetacao?.aplicarAtlas?.(atlas);
   estado.vegetacaoDistante?.aplicarAtlas?.(atlas);
   estado.fxCampo?.aplicarAtlas?.(atlas);
@@ -503,6 +505,7 @@ function aplicarAtlasNaCena(atlas) {
   const tiles = usarTiles(atlas);
   estado.terreno.aplicarVisual(tiles);
   estado.terrenoSuave?.aplicarVisual?.(tiles);
+  estado.terrenoHorizonte?.aplicarVisual?.(tiles);
 }
 
 function criarMarcadorAlvoEscalada() {
@@ -558,6 +561,7 @@ export function sincronizarVisualTerreno(atlas) {
   const tiles = usarTiles(atlas);
   estado.terreno.aplicarVisual(tiles);
   estado.terrenoSuave?.aplicarVisual?.(tiles);
+  estado.terrenoHorizonte?.aplicarVisual?.(tiles);
 }
 
 export function ajustarZoom3d(fator) {

@@ -333,6 +333,10 @@ export const PASSO_HORIZONTE = 16;
 export const QUANT_ALTURA_HORIZONTE = 2;
 /** Lado de um chunk de horizonte, em blocos. */
 export const CHUNK_HORIZONTE = 128;
+/** Blocos por repetição de tile no LOD horizonte (1 = mesmo tiling dos chunks detalhados). */
+export const UV_ESCALA_HORIZONTE = 1;
+/** Oceano do horizonte: 1 = mesmo tiling da água dos chunks detalhados. */
+export const UV_ESCALA_MAR_HORIZONTE = 1;
 /** Árvores billboard em todo o disco suave, fora dos chunks de bloco. */
 export const IMPOSTOR_CAP = 256;
 export const SEED_MUNDO = 1337;

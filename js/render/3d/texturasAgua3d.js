@@ -189,6 +189,7 @@ const texLago = texturaPixel(canvasChato("#7ec8e3"));
 const texQueda = texturaPixel(canvasChato("#9fd4ea"));
 const matLago = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-centro", corposLago));
 const matLagoLonge = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-longe", corposLonge));
+const matLagoHorizonte = aplicarSombraNuvem(materialFolha(texLago, 1, 0.78, 0, "agua-lago-horizonte", corposLonge));
 const matPantano = aplicarSombraNuvem(materialFolha(texLago, 1, 0.86, 0, "agua-pantano", corposLago, "#3a6840", 1));
 const matLava = aplicarSombraNuvem(materialFolha(texLago, 1, 0.92, 0, "agua-lava", corposLago, "#ff6418", 1));
 const matQueda = aplicarSombraNuvem(materialFolha(texQueda, 1, 0.92, 1, "agua-queda-centro", corposQueda));
@@ -213,6 +214,7 @@ carregar(LAGO_URL).then((img) => {
   const folha = fita(img, amostras);
   aplicarFita(texLago, matLago, folha);
   aplicarFita(texLago, matLagoLonge, folha);
+  aplicarFita(texLago, matLagoHorizonte, folha);
   aplicarFita(texLago, matPantano, folha);
   aplicarFita(texLago, matLava, folha);
 });
@@ -239,6 +241,11 @@ export function obterMaterialLago() {
 /** Mesma lâmina do lago, programa próprio para o anel distante. */
 export function obterMaterialLagoLonge() {
   return matLagoLonge;
+}
+
+/** Lâmina do LOD horizonte (instância própria — stencil/depth sem sujar o suave). */
+export function obterMaterialLagoHorizonte() {
+  return matLagoHorizonte;
 }
 
 export function obterMaterialQueda() {
@@ -428,7 +435,7 @@ export function avancarMateriaisAgua(segundos) {
   const scroll = rolagem - Math.floor(rolagem / CRISTA_ESPACO) * CRISTA_ESPACO;
   const f1 = faseDe(segundos, 1.35 / (Math.PI * 2));
   const f2 = faseDe(segundos, 0.62 / (Math.PI * 2));
-  for (const mat of [matLago, matLagoLonge, matPantano, matLava]) {
+  for (const mat of [matLago, matLagoLonge, matLagoHorizonte, matPantano, matLava]) {
     const lago = mat.userData.shader;
     if (!lago) continue;
     lago.uniforms.uQuadro.value = quadro(segundos, LAGO_FRAME_S, mat.userData.quadros);
@@ -452,6 +459,7 @@ export function avancarMateriaisAgua(segundos) {
 export function liberarMateriaisAgua() {
   matLago.dispose();
   matLagoLonge.dispose();
+  matLagoHorizonte.dispose();
   matPantano.dispose();
   matLava.dispose();
   matQueda.dispose();

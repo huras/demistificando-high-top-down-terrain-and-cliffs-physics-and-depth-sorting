@@ -38,6 +38,7 @@ import { pecasNoMundo, pesoSplat } from "./peleAutotile.js";
 import { LABIO, PASSOS } from "./pecas/catalogo.js";
 import { carimbarBorda, carimbarPlano, planaNo } from "./pecas/carimbar.js";
 import { fundirChao } from "./pecas/fundir.js";
+import { marcarLodFino } from "./stencilLod.js";
 import { alturaLocal, gradeDoChunk, mascaraLocal } from "./pecas/mascara.js";
 import { amostraKanto } from "../../mundo/regiao/amostraKanto.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
@@ -108,22 +109,14 @@ function pintarPlano(geo, rgb) {
 
 /**
  * O bloco marca o stencil e testa profundidade de verdade.
- * O terreno suave vem depois e recusa esse pixel, então o bloco fica na frente
- * mesmo quando o suave está mais perto da câmera. Personagem, água e árvore
- * continuam no teste de profundidade normal.
+ * Suave / horizonte recusam esse pixel (ver stencilLod.js).
  */
 function naFrenteDoSuave(material) {
   if (!material || material.transparent) return material;
   material.depthTest = true;
   material.depthWrite = true;
   material.depthFunc = THREE.LessEqualDepth;
-  material.stencilWrite = true;
-  material.stencilRef = 1;
-  material.stencilFunc = THREE.AlwaysStencilFunc;
-  material.stencilFail = THREE.KeepStencilOp;
-  material.stencilZFail = THREE.KeepStencilOp;
-  material.stencilZPass = THREE.ReplaceStencilOp;
-  return material;
+  return marcarLodFino(material);
 }
 
 /** O topo horizontal não entra no mapa do sol. A face de cima em grade virava quadrado escuro. */
