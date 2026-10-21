@@ -4,7 +4,6 @@
  * zonaNoMundo recebe coords mundiais (ilha centrada no overworld).
  */
 import { EXTENSAO_KANTO as EXTENSAO_BOUNDS, ORIGEM_KANTO_X, ORIGEM_KANTO_Y } from "../bounds.js";
-import { areaIdEm } from "./areasKanto.js";
 import { CIDADES_KANTO } from "./kantoCidades.js";
 import { ROTAS_KANTO } from "./kantoRotas.js";
 import { montarLayout } from "./volumesCidade.js";
@@ -75,7 +74,6 @@ function zonaVazia(ax, ay) {
     ay,
     nome: "Mato",
     id: `mato-${ax}-${ay}`,
-    areaId: areaIdEm(ax, ay),
     saidas: 0,
     floresta: false,
     densa: false,
@@ -208,7 +206,6 @@ function montarZonas() {
       if (sul && (sul.tipo === "cidade" || sul.tipo === "rota")) saidas |= SAIDA_SUL;
       if (oeste && (oeste.tipo === "cidade" || oeste.tipo === "rota")) saidas |= SAIDA_OESTE;
       zona.saidas = saidas;
-      zona.areaId = areaIdEm(ax, ay);
     }
   }
 
