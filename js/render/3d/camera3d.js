@@ -34,15 +34,15 @@ export function criarCamera3d(aspect) {
   cam.userData.vista = {
     meiaLargura: aspect,
     meiaAltura: 1,
-    projBlend: 1,
+    projBlend: 0,
     distOlhar: CAMERA3D_DIST_PADRAO,
   };
   return {
     cam,
     _orto: orto,
     _projPersp: new THREE.Matrix4(),
-    projecao: "orto",
-    projBlend: 1,
+    projecao: "perspectiva",
+    projBlend: 0,
     meiaLargura: aspect,
     meiaAltura: 1,
     distOlhar: CAMERA3D_DIST_PADRAO,

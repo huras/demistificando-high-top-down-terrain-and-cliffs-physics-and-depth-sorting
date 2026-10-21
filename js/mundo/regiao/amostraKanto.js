@@ -66,7 +66,7 @@ export function alturaBaseKanto(wx, wy) {
   return b ? b.h : 16;
 }
 
-/** Cidade, rua, prédio ou rota marítima: o campo de água não toca. */
+/** Cidade, rua/canal ou prédio: o campo de água não toca. */
 export function reservaAguaKanto(wx, wy) {
   const b = amostraBaseKanto(wx, wy);
   return !b || b.reservado;
@@ -158,8 +158,15 @@ function ehRua(lx, ly, zona) {
   return corredor(lx, ly, zona.saidas);
 }
 
+function cotaAgua(zona) {
+  const byte = relevoEm(zona.ax, zona.ay);
+  return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
+}
+
 function cotaRua(zona) {
-  if (!zona || zona.tipo === "cidade" || zona.agua) return COTA_CIDADE;
+  if (!zona || zona.tipo === "cidade") return COTA_CIDADE;
+  // Rota de surf: o corredor é o canal (abaixo do mar), não um píer seco.
+  if (zona.agua) return cotaAgua(zona);
   if (zona.montanha || relevoEm(zona.ax, zona.ay) === RELEVO_MONTANHA) return COTA_MONTANHA;
   return COTA_CIDADE;
 }
@@ -255,8 +262,7 @@ function alturaDoTerreno(x, y, zona, perfil) {
 }
 
 function alturaNatural(x, y, zona, perfil) {
-  const byte = relevoEm(zona.ax, zona.ay);
-  if (zona.agua) return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
+  // Fora do canal, rota de água usa a mesma costa do relevo (não afunda a célula inteira).
   const terra = alturaDoTerreno(x, y, zona, perfil);
   return Math.round(COTA_FUNDO + (terra - COTA_FUNDO) * perfil.u);
 }
@@ -311,12 +317,13 @@ function calcularBase(x, y) {
 
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
   const par = parBiomaKanto(x, y, perfil.u, perfil.dentroMontanha, floresta, predio, rua);
-  const travado = !!(rua || predio || zona?.agua || noFp);
+  const travado = !!(rua || predio || noFp);
   h = aplicarDetalheBioma(h, x, y, par, perfil.u, travado);
   if (h < 1) h = 1;
   if (h > 60) h = 60;
 
-  const reservado = !!(rua || predio || zona?.agua || zona?.tipo === "cidade");
+  // Canal de surf, cidade e prédio: corpos não cavam. Terra da rota de água fica livre.
+  const reservado = !!(rua || predio || zona?.tipo === "cidade");
 
   return {
     h,

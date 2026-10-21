@@ -278,7 +278,6 @@ function distanciaFora(lx, ly, fp) {
 
 function alturaNatural(x, y, zona, perfil) {
   const byte = relevoEm(zona.ax, zona.ay);
-  if (zona.agua) return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
   const n = fbm2(x * 0.02, y * 0.02, SEMENTE, 2);
   const plano = COTA_CIDADE + Math.round((n - 0.5) * 3);
   const montanha = zona.montanha || byte === RELEVO_MONTANHA;
@@ -291,8 +290,14 @@ function alturaNatural(x, y, zona, perfil) {
   return Math.round(COTA_FUNDO + (terra - COTA_FUNDO) * perfil.u);
 }
 
+function cotaAgua(zona) {
+  const byte = relevoEm(zona.ax, zona.ay);
+  return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
+}
+
 function cotaDaRua(zona) {
-  if (!zona || zona.tipo === "cidade" || zona.agua) return COTA_CIDADE;
+  if (!zona || zona.tipo === "cidade") return COTA_CIDADE;
+  if (zona.agua) return cotaAgua(zona);
   const byte = relevoEm(zona.ax, zona.ay);
   if (zona.montanha || byte === RELEVO_MONTANHA) return COTA_MONTANHA;
   return COTA_CIDADE;
@@ -300,7 +305,7 @@ function cotaDaRua(zona) {
 
 function alturaEm(x, y, lx, ly, zona, perfil, rua) {
   if (!zona) return COTA_FUNDO;
-  if (zona.agua) return alturaNatural(x, y, zona, perfil);
+  // Canal de surf no corredor; fora dele, costa do relevo (não mar na célula toda).
   if (rua) return cotaDaRua(zona);
   if (zona.tipo === "cidade" && zona.layout) {
     if (noFootprint(lx, ly, zona.layout)) return COTA_CIDADE;
@@ -381,13 +386,15 @@ function lerPontoLocal(wx, wy) {
   let h = alturaEm(x, y, lx, ly, zona, perfil, rua || predio);
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
   const par = parBiomaKanto(x, y, perfil.u, perfil.dentro, floresta, predio, rua);
-  const travado = !!(rua || predio || zona?.agua || noFp);
+  const travado = !!(rua || predio || noFp);
   h = aplicarDetalheBioma(h, x, y, par, perfil.u, travado);
   const bioma = par.bioma;
+  const sobAgua = h < nivelMarBlocos();
   const limpo =
     rua ||
     predio ||
     entrada ||
+    sobAgua ||
     perfil.u < 0.72 ||
     bioma.superficie === "pedra";
   return { x, y, h, u: perfil.u, par, bioma, limpo, rua, predio };
@@ -520,10 +527,14 @@ export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
 /** Um byte por bloco para o zoom íntimo. Rua, prédio e água ficam zerados. */
 export function byteNoPonto(wx, wy) {
   if (!dentroDoMundo(wx, wy)) return 0;
+  const nivel = nivelMarBlocos();
   const t = pesoCosturaRelevo(wx, wy);
   if (t < 0.55) {
     const local = paraLocalKanto(wx, wy);
     const ponto = lerPontoLocal(local.x, local.y);
+    const mundoAmostra = amostraKanto(wx, wy);
+    if (mundoAmostra && mundoAmostra.h < nivel) return 0;
+    if (ponto.h < nivel) return 0;
     const mundo = deLocalKanto(ponto.x, ponto.y);
     amostraCorpo(ponto.x, ponto.y, alturaBaseKanto(mundo.x, mundo.y), CORPO);
     if (CORPO.tem && CORPO.fluido && !ponto.rua && !ponto.predio) return 0;
