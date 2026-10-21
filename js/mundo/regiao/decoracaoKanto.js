@@ -14,8 +14,9 @@ import {
   SAIDA_SUL,
   zonaEm,
 } from "./grafoKanto.js";
+import { linhasDaRota, MEIA_LARGURA_ESTRADA } from "./linhasEstrada.js";
 
-const MEIO_RUA = 3.5;
+const MEIO_RUA = MEIA_LARGURA_ESTRADA;
 const OMBRO = MEIO_RUA + 1.15;
 const PASSO_POSTE = 12;
 const PASSO_POSTE_RUA = 10;
@@ -235,24 +236,6 @@ function escolherOmbro(ax, ay, x, y, tx, ty, preferirEsq) {
     }
   }
   return null;
-}
-
-function linhasDaRota(zona) {
-  if (zona.caminho?.length > 1) {
-    const linhas = [];
-    for (let i = 1; i < zona.caminho.length; i++) {
-      linhas.push([zona.caminho[i - 1], zona.caminho[i]]);
-    }
-    return linhas;
-  }
-  const c = CENTRO_AREA;
-  const fim = AREA_KANTO - 1;
-  const linhas = [];
-  if (zona.saidas & SAIDA_NORTE) linhas.push([[c, 0], [c, c]]);
-  if (zona.saidas & SAIDA_SUL) linhas.push([[c, c], [c, fim]]);
-  if (zona.saidas & SAIDA_OESTE) linhas.push([[0, c], [c, c]]);
-  if (zona.saidas & SAIDA_LESTE) linhas.push([[c, c], [fim, c]]);
-  return linhas;
 }
 
 function pontosDaLinha(a, b) {

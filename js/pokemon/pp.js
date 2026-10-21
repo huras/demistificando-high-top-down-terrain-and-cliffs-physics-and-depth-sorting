@@ -7,6 +7,7 @@ function tipoDoGolpe(def) {
 }
 
 function custoDoGolpe(def) {
+  if (def?.pp === 0) return 0;
   return def?.pp || 1;
 }
 
@@ -41,13 +42,16 @@ export function ppDe(ator, tipo) {
 
 export function podeGastarPp(ator, def) {
   if (!ator || !def) return false;
-  return ppDe(ator, tipoDoGolpe(def)) >= custoDoGolpe(def);
+  const custo = custoDoGolpe(def);
+  if (custo <= 0) return true;
+  return ppDe(ator, tipoDoGolpe(def)) >= custo;
 }
 
 export function gastarPp(ator, def) {
   if (!ator || !def) return false;
-  const tipo = tipoDoGolpe(def);
   const custo = custoDoGolpe(def);
+  if (custo <= 0) return true;
+  const tipo = tipoDoGolpe(def);
   const mapa = ator.ppPorTipo;
   if (!mapa || mapa[tipo] == null) return false;
   if (mapa[tipo] < custo) return false;

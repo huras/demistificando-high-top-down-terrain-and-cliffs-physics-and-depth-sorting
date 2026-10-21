@@ -7,6 +7,8 @@ import {
   emEsquiva,
   emRecuo,
   emRolamentoAtivo,
+  golpeBasico,
+  recargaDoGolpe,
 } from "../ator.js";
 import { acertoCorpo, alcanceCorpo } from "../ia/espaco.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
@@ -358,8 +360,28 @@ export function tickDesmaio(ator, agora) {
 }
 
 function gastar(ator, slot, agora) {
+  if (slot?.basico || slot?.def?.key === "basico") {
+    ator.cdBasico = recargaDoGolpe(ator, slot.def || golpeBasico());
+    slot.usadoEm = agora;
+    return;
+  }
   gastarPp(ator, slot.def);
   slot.usadoEm = agora;
+}
+
+/** Filler corpo a corpo enquanto golpes estão sem PP / fora de alcance. */
+function escolherBasico(ator, alvo, d) {
+  if (!usaCorpo(ator) || !alvo) return null;
+  if ((ator.cdBasico || 0) > 0) return null;
+  if (!cruzaAltura(ator, alvo)) return null;
+  const base = golpeBasico();
+  if (d > alcanceCorpo(base)) return null;
+  const tipo = ator.tipos?.[0] || base.tipo;
+  return {
+    chave: "basico",
+    basico: true,
+    def: tipo === base.tipo ? base : { ...base, tipo },
+  };
 }
 
 function miraDoTiro(ator, alvo) {
@@ -400,7 +422,10 @@ function escolher(ator, alvo, d) {
     const g = prontos[i];
     if (corpo && noPlano && g.def.forma === "radius" && g.def.poder > 0 && d <= Math.max(2.2, g.def.alcance)) return g;
   }
-  return escolhaStatusUtil(prontos, ator, alvo, d);
+  const status = escolhaStatusUtil(prontos, ator, alvo, d);
+  if (status) return status;
+  // Pokemon AI: basic melee enquanto moves estão em CD / sem PP / fora de alcance.
+  return escolherBasico(ator, alvo, d);
 }
 
 /** Preparação. Corpo a corpo sai mais cedo que o tiro. O poder alonga os dois. */

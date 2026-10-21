@@ -60,7 +60,8 @@ export function escolherHabilidade(ator, alvo) {
   const tiroPronto = ator.usaDistancia !== false && golpeProntoForma(ator, "projectile", "arc");
   if (tiroPronto && d > alcanceSoco(alvo)) return "atirar";
   const corpo = golpeDeCorpo(ator);
-  if (!corpo) return "fugir";
+  // Sem contact equipado ainda há basic attack — fecha corpo a corpo em vez de fugir.
+  if (!corpo) return ator.usaCorpo === false ? "fugir" : "perseguir";
   const hp = ator.hpMax > 0 ? ator.hp / ator.hpMax : 1;
   // Sem tiro, a vida baixa não pode abrir distância: o soco é o único dano.
   if (hp < VIDA_FUGA && tiroPronto) return "fugir";

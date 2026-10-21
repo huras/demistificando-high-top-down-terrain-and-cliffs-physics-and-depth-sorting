@@ -30,10 +30,13 @@ import { criarGeometriaMarPlano, criarGeometriaTerraced } from "./geometriaTerra
 import { obterMaterialLagoHorizonte } from "./texturasAgua3d.js";
 import { imagemPele } from "./peleSplat.js";
 import { atrasDoLodMedio } from "./stencilLod.js";
+import { criarEstradasLod } from "./estradasLod.js";
+import { ajustarAlturaCorredorEstrada } from "../../mundo/regiao/linhasEstrada.js";
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
 /** Depois do suave (2/3): terra e mar do horizonte. */
 const ORDEM_TERRA = 2.5;
+const ORDEM_ESTRADA = 2.6;
 const ORDEM_MAR = 3.5;
 
 const ORCAMENTO_MS = 0.7;
@@ -280,11 +283,14 @@ function quantizar(h) {
 }
 
 function amostraAltura(wx, wy) {
+  let h;
   if (dentroDoKanto(wx, wy)) {
     const a = amostraKanto(wx, wy);
-    if (a && Number.isFinite(a.h)) return quantizar(a.h);
+    h = a && Number.isFinite(a.h) ? a.h : alturaDoRelevo(wx, wy);
+  } else {
+    h = alturaDoRelevo(wx, wy);
   }
-  return quantizar(alturaDoRelevo(wx, wy));
+  return quantizar(ajustarAlturaCorredorEstrada(wx, wy, h));
 }
 
 function chaveChunk(hx, hy) {
@@ -311,6 +317,25 @@ export function criarTerrenoHorizonte() {
   // Mesma folha do lago, instância própria (clone quebrava o shader → mar preto).
   const matAgua = atrasDoLodMedio(obterMaterialLagoHorizonte());
   matAgua.depthWrite = false;
+
+  const estradas = criarEstradasLod({
+    id: "estradas-horizonte",
+    rotulo: "estradas LOD horizonte",
+    renderOrder: ORDEM_ESTRADA,
+    passoAmostra: Math.max(8, PASSO_HORIZONTE / 2),
+    prepararMaterial: atrasDoLodMedio,
+    obterAnel: () => {
+      const stream = obterRaioStream() * CHUNK_XZ;
+      const rSuave = obterRaioSuave();
+      const suave =
+        rSuave > 0 ? Math.max(0, rSuave * CHUNK_XZ - PASSO_HORIZONTE) : 0;
+      return {
+        interno: Math.max(stream, suave, PASSO_HORIZONTE),
+        externo: alcanceHorizonteBlocos(),
+      };
+    },
+  });
+  grupo.add(estradas.mesh);
 
   /** @type {Map<string, { terra: THREE.Mesh, agua: THREE.Mesh | null }>} */
   const vivos = new Map();
@@ -586,6 +611,7 @@ export function criarTerrenoHorizonte() {
   function tick(px, py) {
     if (!discoHorizonteAtivo()) {
       if (vivos.size || fila.length) limparTudo();
+      estradas.tick(px, py);
       return;
     }
 
@@ -614,6 +640,7 @@ export function criarTerrenoHorizonte() {
       instalar(k, montarChunk(chx, chy));
       feitos += 1;
     }
+    estradas.tick(px, py);
   }
 
   function renovarPeles() {
@@ -635,6 +662,7 @@ export function criarTerrenoHorizonte() {
     uMapas.value = pilha;
     anterior?.dispose();
     renovarPeles();
+    estradas.aplicarTexturas(tex);
     if (modoReal) aplicarVisual(true);
   }
 
@@ -660,6 +688,7 @@ export function criarTerrenoHorizonte() {
     aplicarVisual,
     liberar() {
       limparTudo();
+      estradas.liberar();
       matSolido.dispose();
       matReal?.dispose();
       pilha?.dispose();

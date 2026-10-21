@@ -9,12 +9,15 @@ import {
 } from "../../config.js";
 import { alturaDoRelevo, amostrarRegiao, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
 import { amostraKanto, dentroDoKanto } from "../../mundo/regiao/amostraKanto.js";
+import { ajustarAlturaCorredorEstrada } from "../../mundo/regiao/linhasEstrada.js";
 import { cruSplat, urlPele } from "../../mundo/bioma/detalhe.js";
 import { obterKits } from "../../mundo/bioma/kits.js";
 import { imagemPele } from "./peleSplat.js";
 import { rgbBioma } from "../../mundo/bioma/tinta.js";
 import { obterMaterialLagoLonge } from "./texturasAgua3d.js";
-import { atrasDoLodFinoMarcando } from "./stencilLod.js";
+import { atrasDoLodFinoMarcando, cobrirLodComAgua, cobrirLodComEstrada } from "./stencilLod.js";
+import { criarEstradasLod } from "./estradasLod.js";
+import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
 let raioAtivo = RAIO_SUAVE;
@@ -271,11 +274,24 @@ export function criarTerrenoSuave() {
   const grupo = new THREE.Group();
   grupo.name = "terreno-suave";
   const meshChao = criarMesh("terreno-suave-chao", matCubos);
-  // Marca stencil (Replace) para o horizonte não z-fightar na junta.
-  const matAgua = atrasDoLodFinoMarcando(obterMaterialLagoLonge());
+  // Always+Replace: tapa o fundo do mar sem ser barrada pelo stencil do chão.
+  const matAgua = cobrirLodComAgua(obterMaterialLagoLonge());
   const meshAgua = criarMesh("terreno-suave-agua", matAgua);
   meshAgua.renderOrder = 3;
-  grupo.add(meshChao, meshAgua);
+  const estradas = criarEstradasLod({
+    id: "estradas-suave",
+    rotulo: "estradas LOD suave",
+    // Depois do chão (2), antes da água (3) — pontes ficam acima do mar.
+    renderOrder: 2.25,
+    passoAmostra: Math.max(4, (PASSO_MALHA_SUAVE / 2) | 0),
+    // Always: chão suave já marcou stencil; NotEqual furava/desalinhava a faixa.
+    prepararMaterial: cobrirLodComEstrada,
+    obterAnel: () => ({
+      interno: obterRaioStream() * CHUNK_XZ,
+      externo: obterRaioSuave() * CHUNK_XZ,
+    }),
+  });
+  grupo.add(meshChao, meshAgua, estradas.mesh);
   registrarObjetoCena(meshChao, {
     id: meshChao.name,
     pasta: "Terreno",
@@ -357,6 +373,7 @@ export function criarTerrenoSuave() {
         raioSuave = 0;
         if (dados) instalar(null);
       }
+      estradas.tick(px, py);
       return;
     }
 
@@ -395,6 +412,7 @@ export function criarTerrenoSuave() {
     }
     aplicarExibidos(estaveis);
     if (pelesPendentes()) renovarPeles();
+    estradas.tick(px, py);
   }
 
   function pelesPendentes() {
@@ -413,6 +431,7 @@ export function criarTerrenoSuave() {
     uMapas.value = pilha;
     anterior?.dispose();
     renovarPeles();
+    estradas.aplicarTexturas(tex);
     if (modoReal) aplicarVisual(true);
   }
 
@@ -431,6 +450,7 @@ export function criarTerrenoSuave() {
     liberar() {
       trabalho = null;
       dados = null;
+      estradas.liberar();
       meshChao.geometry?.dispose();
       meshAgua.geometry?.dispose();
       matCubos.dispose();
@@ -542,7 +562,8 @@ function* gerarMalha(px, py, raioSuave) {
     let a = cache.get(k);
     if (a) return a;
     const par = parNoPonto(wx, wy);
-    a = { h: alturaDoRelevo(wx, wy), cor: rgbBioma(wx, wy, false), par };
+    const h = ajustarAlturaCorredorEstrada(wx, wy, alturaDoRelevo(wx, wy));
+    a = { h, cor: rgbBioma(wx, wy, false), par };
     cache.set(k, a);
     return a;
   }
@@ -595,7 +616,10 @@ function* gerarMalha(px, py, raioSuave) {
       const i2 = por(chao, x, y + passo);
       const i3 = por(chao, x + passo, y + passo);
       chao.quads.push({ i0, i1, i2, i3, chunks: chunksDoQuad(x, y, passo) });
-      if (Math.min(hs[0], hs[1], hs[2], hs[3]) < nivel) {
+      // Qualquer canto abaixo do mar → lâmina (costa + oceano). Centro evita
+      // fresta quando o passo salta um corredor estreito de surf.
+      const hCentro = amostra(x + passo * 0.5, y + passo * 0.5).h;
+      if (Math.min(hs[0], hs[1], hs[2], hs[3], hCentro) < nivel) {
         const a0 = porAgua(x, y);
         const a1 = porAgua(x + passo, y);
         const a2 = porAgua(x, y + passo);

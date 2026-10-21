@@ -1,3 +1,4 @@
+import { golpeBasico } from "../ator.js";
 import { podeGastarPp } from "../pp.js";
 import { FOLGA_PARADA, RAIO_ARENA } from "./constantes.js";
 
@@ -95,7 +96,14 @@ export function golpeDeCorpo(ator) {
 export function regua(ator, hab) {
   if (hab === "perseguir") {
     const corpo = golpeDeCorpo(ator);
-    if (!corpo) return { parada: paradaDe({ forma: "projectile", alcance: 8, poder: 40 }), forma: "projectile", vel: 14 };
+    if (!corpo) {
+      // Sem contact equipado: fecha no alcance do basic attack (Investida).
+      const basico = golpeBasico();
+      return {
+        parada: paradaDe({ forma: "contact", alcance: basico.alcance, poder: basico.poder }),
+        forma: "contact",
+      };
+    }
     const forma = corpo.forma === "radius" ? "radius" : "contact";
     return { parada: paradaDe({ forma, alcance: corpo.alcance, poder: corpo.poder ?? 18 }), forma };
   }
