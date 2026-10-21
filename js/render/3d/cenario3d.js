@@ -39,6 +39,7 @@ import { criarFxAgua3d } from "./fxAgua3d.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarCeu } from "./ceu/ceu.js";
+import { tickClima } from "../../clima/amostra.js";
 import { ligarRendererSombra } from "./ceu/sombraEstavel.js";
 import { desenharReflexo, marcarLuzReflexo } from "./ceu/reflexoPoca.js";
 import { atualizarLuzBillboard } from "./ceu/luzBillboard.js";
@@ -578,13 +579,16 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   if (emCena) atualizarCameraCena(dt);
   const yaw = emCena ? yawDaCamera(camRender) : yawCamera(estado.camera3d);
 
+  const interior = !!estadoJogo.interior?.sala3d;
+  tickClima(dt, { x: corpo.x, y: corpo.y, interior });
   estado.ceu.atualizar(dt, {
     camera: camRender,
     alvo: estado._alvoCeu,
     nevoa: estado.nevoaBase,
     raioBlocos: obterRaioStream() * CHUNK_XZ,
+    galeLigado: !interior && !emCena,
   });
-  ligarLuzSala(!!estadoJogo.interior?.sala3d);
+  ligarLuzSala(interior);
 
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
   estado.edificios?.atualizar?.(mx, my, yaw, inclinacao);

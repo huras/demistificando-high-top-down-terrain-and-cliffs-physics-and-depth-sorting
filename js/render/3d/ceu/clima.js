@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { obterClimaJogo } from "../../../clima/amostra.js";
 import { obterClima } from "./controleCeu.js";
 
 /**
@@ -102,12 +103,24 @@ export function lerMixClima() {
 /** Integra o preset escolhido. Chamar uma vez por frame. */
 export function avaliarClima(dt) {
   const preset = PRESETS[obterClima()] || PRESETS.limpo;
+  const jogo = obterClimaJogo();
+  const nevoaFamilia =
+    jogo?.familia === "nevoa" &&
+    (jogo.display === "nevoa" || jogo.logicalKind === "precip" || jogo.display === "nublado");
   const k = dt > 0 ? 1 - Math.exp(-dt / 3.4) : 1;
   for (let i = 0; i < CAMPOS.length; i++) {
     const campo = CAMPOS[i];
-    atual[campo] += (preset[campo] - atual[campo]) * k;
+    let alvo = preset[campo];
+    if (nevoaFamilia) {
+      if (campo === "pesoNeblina") alvo = Math.max(alvo, 0.62);
+      else if (campo === "neblinaPerto") alvo = Math.min(alvo, 0.72);
+      else if (campo === "neblinaLonge") alvo = Math.min(alvo, 0.68);
+      else if (campo === "pesoZenite") alvo = Math.max(alvo, 0.22);
+      else if (campo === "sol") alvo = Math.min(alvo, 0.72);
+    }
+    atual[campo] += (alvo - atual[campo]) * k;
   }
-  corAlvo.setHex(preset.neblina).convertSRGBToLinear();
+  corAlvo.setHex(nevoaFamilia ? 0xa8b4bc : preset.neblina).convertSRGBToLinear();
   atual.neblina.lerp(corAlvo, k);
   return atual;
 }

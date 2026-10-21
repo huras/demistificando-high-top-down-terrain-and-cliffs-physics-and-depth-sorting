@@ -11,6 +11,7 @@ import {
   ROTACAO_SOL_MIN,
   textoHora,
 } from "../render/3d/ceu/controleCeu.js";
+import { forcarClimaPreset } from "../clima/amostra.js";
 
 let arrastandoHora = false;
 let arrastandoInclinacao = false;
@@ -53,6 +54,7 @@ export function ligarPainelCeu() {
   });
   clima.addEventListener("change", () => {
     definirClima(clima.value);
+    forcarClimaPreset(clima.value);
   });
   ciclo.addEventListener("change", () => {
     definirCiclo(ciclo.checked);

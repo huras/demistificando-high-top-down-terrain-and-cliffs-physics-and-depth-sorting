@@ -1,0 +1,31 @@
+/** Knobs do clima / vento / rajadas. */
+
+export const CLIMA_CFG = Object.freeze({
+  enabled: true,
+  seed: 0x57454154,
+  wind: 0.42,
+  windDayTurns: 1.15,
+  windAngle0: 2.6,
+  windHudKmhAtRef: 72,
+  galeWindHudRef: 0.9,
+  galeWindSparse: 0.12,
+  galeGouges: 14,
+  galeIntervalMax: 22,
+  galeIntervalMin: 0.28,
+  galeSteerPerSec: 1.6,
+  galeTailLag: 0.42,
+  galeWander: 0.055,
+  clearDurationSec: Object.freeze([90, 200]),
+  cloudyDurationSec: Object.freeze([55, 140]),
+  precipDurationSec: Object.freeze([35, 100]),
+  galeDurationSec: Object.freeze([28, 80]),
+  transitionSec: 8,
+  strongChance: 0.3,
+  forecastPast: 3,
+  /** Override manual (G / painel) dura estes segundos antes do ciclo retomar. */
+  forcarSeg: 45,
+  asaEmpuxo: 2.8,
+  asaGaleExtra: 1.4,
+  asaRajada: 0.35,
+  asaSinkAlinhar: 0.22,
+});

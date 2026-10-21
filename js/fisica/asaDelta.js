@@ -9,6 +9,9 @@ import {
   ASA_DELTA_VEL_MUL,
   VELOCIDADE_MAX,
 } from "../config.js";
+import { CLIMA_CFG } from "../clima/config.js";
+import { obterClimaJogo, obterVentoMundo } from "../clima/amostra.js";
+import { CLIMA_LOGICO } from "../clima/kinds.js";
 import { resolverAguaAereo } from "./agua.js";
 import { alturaSobPes, aplicarTetoOverhang } from "./colisao.js";
 import { pousarNoChao } from "./pulo.js";
@@ -79,6 +82,21 @@ export function atualizarAsaDelta(corpo, dt, descer = false) {
   let descida = ASA_DELTA_DESCIDA;
   if (descer) descida *= ASA_DELTA_DESCIDA_CTRL_MUL;
   else if (correndo) descida = 0;
+  const vento = obterVentoMundo();
+  const clima = obterClimaJogo();
+  const empuxo = CLIMA_CFG.asaEmpuxo ?? 2.8;
+  const galeExtra =
+    clima.logicalKind === CLIMA_LOGICO.VENDAVAL ? CLIMA_CFG.asaGaleExtra ?? 1.4 : 0;
+  const rajada = CLIMA_CFG.asaRajada ?? 0.35;
+  const pulso = 1 + Math.sin((corpo._glideTempo || 0) * 3.1) * rajada;
+  corpo.vx += vento.vx * (empuxo + galeExtra) * pulso * dt;
+  corpo.vy += vento.vy * (empuxo + galeExtra) * pulso * dt;
+  const sp = Math.hypot(corpo.vx, corpo.vy) || 1;
+  const alin =
+    (corpo.vx * vento.vx + corpo.vy * vento.vy) /
+    (sp * (Math.hypot(vento.vx, vento.vy) || 1));
+  const sinkMul = 1 - Math.max(-0.35, Math.min(0.45, alin)) * (CLIMA_CFG.asaSinkAlinhar ?? 0.22);
+  descida *= sinkMul;
   corpo._glideQueda = descida;
   corpo._glideDesce = !!descer;
   corpo.vz = -descida;

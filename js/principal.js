@@ -23,7 +23,8 @@ import {
   soltarTravaMira,
 } from "./entrada/ponteiro3d.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
-import { alternarClima, avancarHora } from "./render/3d/ceu/controleCeu.js";
+import { avancarHora, obterClima, alternarClima } from "./render/3d/ceu/controleCeu.js";
+import { forcarClimaPreset } from "./clima/amostra.js";
 import { atualizarAgente, criarAgente, resetarNav } from "./fisica/agente.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
 import { definirCorposAtores, definirCorposFixos } from "./fisica/obstaculos.js";
@@ -425,7 +426,10 @@ function loop(agora) {
     if (!campoFocado()) {
       if (horaMenos) avancarHora(-0.5);
       if (horaMais) avancarHora(0.5);
-      if (climaTecla) alternarClima();
+      if (climaTecla) {
+        alternarClima();
+        forcarClimaPreset(obterClima());
+      }
       if (teclaAgora("KeyC")) alternarModoCena();
       if (estaEmCena() && teclaAgora("Escape")) definirModoCena(false);
       if (estaEmCena() && teclaAgora("KeyF")) enquadrarSelecaoCena();

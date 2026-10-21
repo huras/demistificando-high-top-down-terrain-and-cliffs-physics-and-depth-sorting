@@ -424,6 +424,135 @@
 .jogo-relogio[data-periodo="tarde"] b { color: #fb923c; }
 .jogo-relogio[data-periodo="dia"] b { color: #fde68a; }
 
+.hud-wx {
+  width: 196px;
+  padding: 4px 8px 6px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 254, 248, 0.92), rgba(243, 239, 230, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 16px rgba(40, 32, 24, 0.22);
+  color: #3a3328;
+  pointer-events: none;
+}
+
+.hud-wx__viewport {
+  position: relative;
+  overflow: hidden;
+  height: 28px;
+}
+
+.hud-wx__track {
+  display: flex;
+  gap: 4px;
+  will-change: transform;
+  transition: transform 0.12s linear;
+}
+
+.hud-wx__agora {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  margin-left: -14px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, #65a30d 55%, transparent);
+  pointer-events: none;
+}
+
+.hud-wx__slot {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #5c5346;
+  opacity: 0.55;
+}
+
+.hud-wx__slot[data-role="now"] {
+  opacity: 1;
+  color: #3f6212;
+}
+
+.hud-wx__slot[data-role="future"] {
+  opacity: 0.8;
+}
+
+.hud-wx__slot[data-force="forte"] {
+  transform: scale(1.08);
+  color: #0e7490;
+}
+
+.hud-wx__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.hud-vento {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 7.5ch;
+  padding: 5px 12px 5px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 12px rgba(40, 32, 24, 0.18);
+  color: #3a3328;
+  font: 750 12px/1 "Segoe UI", sans-serif;
+  pointer-events: none;
+}
+
+.hud-vento[hidden] {
+  display: none !important;
+}
+
+.hud-vento__view {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f7f3ea, #e8e0d2);
+}
+
+.hud-vento__rotor {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-origin: 50% 50%;
+}
+
+.hud-vento__dart {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  color: #0e7490;
+  opacity: calc(0.35 + var(--i, 0) * 0.2);
+  transform: translate3d(calc((var(--i, 0) - 1) * 5px + var(--vento-fase, 0) * -10px), 0, 0);
+}
+
+.hud-vento__dart--echo {
+  opacity: 0.18;
+  color: #5c5346;
+}
+
+.hud-vento[data-force="forte"] .hud-vento__dart {
+  color: #0369a1;
+}
+
+.hud-vento__kmh {
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: #8a6914;
+}
+
 .jogo-mini-anel {
   position: relative;
   width: 144px;

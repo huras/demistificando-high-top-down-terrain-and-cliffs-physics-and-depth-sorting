@@ -31,6 +31,7 @@
       "transicao": 22,
       "degrau": 1,
       "camada": "terra",
+      "precip": "areia",
       "nos": [
         {
           "id": "dirty-sand-largo",
@@ -466,6 +467,7 @@
       "transicao": 14,
       "degrau": 3,
       "camada": "terra",
+      "precip": "neve",
       "nos": [
         {
           "id": "snow-largo",
@@ -640,6 +642,7 @@
       "transicao": 16,
       "degrau": 1,
       "camada": "terra",
+      "precip": "neve",
       "nos": [
         {
           "id": "tundra-largo",
@@ -901,6 +904,7 @@
       "transicao": 16,
       "degrau": 1,
       "camada": "terra",
+      "precip": "nevoa",
       "nos": [
         {
           "id": "ghost-forest-largo",
@@ -1249,6 +1253,7 @@
       "transicao": 18,
       "degrau": 1,
       "camada": "terra",
+      "precip": "areia",
       "nos": [
         {
           "id": "faroeste-desert-largo",
@@ -1445,6 +1450,7 @@
       "transicao": 12,
       "degrau": 2,
       "camada": "terra",
+      "precip": "nevoa",
       "nos": [
         {
           "id": "rift-ground-largo",

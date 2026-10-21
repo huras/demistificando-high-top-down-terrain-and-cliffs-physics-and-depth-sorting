@@ -160,6 +160,18 @@
                 <span data-periodo>Dia</span>
                 <span data-clima>Limpo</span>
               </div>
+              <div id="jogo-clima-previsao" class="hud-wx" aria-label="Previsão do clima">
+                <div class="hud-wx__viewport">
+                  <div class="hud-wx__track" data-wx-track></div>
+                  <span class="hud-wx__agora" aria-hidden="true"></span>
+                </div>
+              </div>
+              <div id="jogo-vento" class="hud-vento" hidden aria-label="Vento">
+                <div class="hud-vento__view">
+                  <div class="hud-vento__rotor" data-vento-rotor></div>
+                </div>
+                <b class="hud-vento__kmh" data-vento-kmh>0 km/h</b>
+              </div>
               <div class="jogo-mini-anel">
                 <canvas id="jogo-mini" class="jogo-mini" width="144" height="144" aria-label="Minimapa"></canvas>
                 <span class="jogo-mini-anel__norte">N</span>

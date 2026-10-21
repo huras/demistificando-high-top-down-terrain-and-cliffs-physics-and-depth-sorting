@@ -58,7 +58,10 @@ import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarClique
 import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
 import { ligarJanelaLoja, sincronizarJanelaLoja } from "./loja/janela.js";
 import { quantidadeLoja, tratarLoja } from "./loja.js";
-import { obterClima, obterHora } from "../render/3d/ceu/controleCeu.js";
+import { obterHora } from "../render/3d/ceu/controleCeu.js";
+import { obterClimaJogo } from "../clima/amostra.js";
+import { ligarHudClima, tickHudPrevisao } from "./hudClima.js";
+import { ligarHudVento, tickHudVento } from "./hudVento.js";
 import { deLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
 import { pintarMapa } from "../ui/mapa/pintar.js";
@@ -74,6 +77,8 @@ export function ligarUi(overlay) {
   ligarCapsula(raiz);
   ligarJanelaPc(raiz);
   ligarJanelaLoja(raiz);
+  ligarHudClima();
+  ligarHudVento();
   raiz.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape" || !estado.painel) return;
     ev.preventDefault();
@@ -256,12 +261,14 @@ function pintarHotbar() {
   host.innerHTML = partes.join("");
 }
 
-export function atualizarLeve() {
+export function atualizarLeve(dt = 0.016) {
   pintarPrompt();
   pintarDinheiro();
   pintarToast();
   pintarMini();
   pintarRelogio();
+  tickHudPrevisao();
+  tickHudVento(dt);
   pintarEquipe();
 }
 
@@ -622,17 +629,18 @@ function pintarRelogio() {
   const m = Math.floor((hora - h) * 60);
   const texto = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   const periodo = periodoDe(hora);
-  const clima = obterClima();
-  const nomes = { limpo: "Limpo", chuva: "Chuva", areia: "Areia", nevasca: "Neve" };
-  if (host.dataset.chave === `${texto}|${periodo.chave}|${clima}`) return;
-  host.dataset.chave = `${texto}|${periodo.chave}|${clima}`;
+  const clima = obterClimaJogo();
+  const nomeClima = clima.nome || clima.display || "Limpo";
+  const chave = `${texto}|${periodo.chave}|${nomeClima}`;
+  if (host.dataset.chave === chave) return;
+  host.dataset.chave = chave;
   host.dataset.periodo = periodo.chave;
   const horaEl = host.querySelector("[data-hora]");
   const perEl = host.querySelector("[data-periodo]");
   const cliEl = host.querySelector("[data-clima]");
   if (horaEl) horaEl.textContent = texto;
   if (perEl) perEl.textContent = periodo.nome;
-  if (cliEl) cliEl.textContent = nomes[clima] || clima;
+  if (cliEl) cliEl.textContent = nomeClima;
 }
 
 const ZOOM_MINI = 0.42;

@@ -33,6 +33,8 @@ import {
   aplicarAlcanceSombra,
   sincronizarSombraSuja,
 } from "./sombraEstavel.js";
+import { obterVentoMundo } from "../../../clima/amostra.js";
+import { criarGale3d } from "./gale/gale3d.js";
 
 export {
   alternarClima,
@@ -72,6 +74,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
   const atmosfera = criarAtmosfera();
   const precipitacao = criarPrecipitacao();
   const relampago = criarRelampago();
+  const gale = criarGale3d(scene);
   scene.add(atmosfera.mesh, precipitacao.mesh, relampago.grupo);
   scene.add(fill.target, rim.target);
 
@@ -119,7 +122,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     if (scene.background?.isColor) scene.background.copy(visual.neblina);
   }
 
-  function atualizar(dt, { camera, alvo, nevoa, raioBlocos }) {
+  function atualizar(dt, { camera, alvo, nevoa, raioBlocos, galeLigado = true }) {
     const seguro = Math.min(Math.max(dt || 0, 0), 0.05);
     const meio = Math.max(ALCANCE_SOMBRA_MIN, raioBlocos || 0);
     if (meio !== alcancePedido) {
@@ -130,6 +133,10 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     const clima = avaliarClima(seguro);
     const visual = avaliarVisual(hora, clima, obterControleCeu());
     const pesoCirrus = smooth(0.2, 0.5, clima.limiar) * (0.25 + visual.brilhoSol * 0.75);
+
+    const ventoMundo = obterVentoMundo();
+    const vl = Math.hypot(ventoMundo.vx, ventoMundo.vy) || 1;
+    dirVento.set(ventoMundo.vx / vl, ventoMundo.vy / vl);
 
     aplicarNuvemPasso(visual, clima, seguro);
     aplicarLuzes(visual, alvo);
@@ -142,6 +149,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     atmosfera.atualizar(visual, camera, flash * 0.55, pesoCirrus, seguro);
     precipitacao.atualizar(clima, dirVento, seguro, camera, renderer);
     atualizarPoca(seguro, clima.chuva);
+    gale.atualizar(seguro, { x: alvo.x, y: alvo.z }, galeLigado, Math.max(18, (raioBlocos || 24) * 0.85));
     renderer.toneMappingExposure = visual.exposicao * (1 + flash * 1.35);
   }
 

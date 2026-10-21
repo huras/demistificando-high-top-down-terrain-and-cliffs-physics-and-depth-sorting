@@ -180,7 +180,7 @@ export function tickJogo(dt, corpo) {
       toastAte = 0;
     }
   }
-  atualizarLeve();
+  atualizarLeve(dt);
   const rect = viewport?.getBoundingClientRect();
   const w = Math.floor(rect?.width || 960);
   const h = Math.floor(rect?.height || 540);
