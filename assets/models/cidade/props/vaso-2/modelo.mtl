@@ -1,0 +1,24 @@
+newmtl plant01_mat
+Ka 0.972549 0.972549 0.972549
+Kd 0 0 0
+d 1
+Tr 1
+map_Ka plant01_mat.png
+map_Kd plant01_mat.png
+map_d plant01_mat.png
+newmtl plant01_shade
+Ka 0 0 0
+Kd 0.2509804 0.3137255 0.4078431
+d 0.3870968
+Tr 0.3870968
+map_Ka plant01_shade.png
+map_Kd plant01_shade.png
+map_d plant01_shade.png
+newmtl plant02_lm
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka plant02_lm.png
+map_Kd plant02_lm.png
+map_d plant02_lm.png

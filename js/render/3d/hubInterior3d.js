@@ -108,22 +108,34 @@ function texturaChao(img, camada) {
 }
 
 function anexarChao(grupo, planta, tex) {
-  const mat = new THREE.MeshLambertMaterial({
-    map: tex,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
-  });
-  aplicarLuzCidade(mat);
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(planta.cols, planta.rows), mat);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(
-    planta.origemX + planta.cols * 0.5,
-    ALTURA_PRACA + 0.08,
-    planta.origemY + planta.rows * 0.5,
-  );
-  mesh.receiveShadow = true;
-  grupo.add(mesh);
+  const cols = planta.cols;
+  const rows = planta.rows;
+  const pecas = planta.pisos?.length
+    ? planta.pisos
+    : [{ x: 0, y: 0, w: cols, h: rows }];
+  for (let i = 0; i < pecas.length; i++) {
+    const r = pecas[i];
+    const map = tex.clone();
+    map.offset.set(r.x / cols, 1 - (r.y + r.h) / rows);
+    map.repeat.set(r.w / cols, r.h / rows);
+    map.needsUpdate = true;
+    const mat = new THREE.MeshLambertMaterial({
+      map,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
+    });
+    aplicarLuzCidade(mat);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.h), mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(
+      planta.origemX + r.x + r.w * 0.5,
+      ALTURA_PRACA + 0.08,
+      planta.origemY + r.y + r.h * 0.5,
+    );
+    mesh.receiveShadow = true;
+    grupo.add(mesh);
+  }
 }
 
 function recorteArea(img, camada, area) {

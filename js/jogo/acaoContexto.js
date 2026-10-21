@@ -68,6 +68,11 @@ export function acaoContexto(ctx) {
     return { id: "pc", rotulo: "PC", ancora: ancoraDoHub(papelHub, alvoHub) };
   }
 
+  if (alvoHub?.tipo === "loja") {
+    escaladaAte = 0;
+    return { id: "loja", rotulo: "Balcão", ancora: ancoraDoHub(papelHub, alvoHub) };
+  }
+
   if (alvoLab?.tipo === "capsula") {
     const tank = alvoLab.ref;
     return {

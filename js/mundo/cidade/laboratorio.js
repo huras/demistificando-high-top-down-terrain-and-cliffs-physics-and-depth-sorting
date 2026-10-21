@@ -416,6 +416,7 @@ function montar() {
     ],
     doorX0: layout.doorX0,
     doorX1: layout.doorX1,
+    salas: layout.salas,
     moveis,
     capsulas,
     cura,

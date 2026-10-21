@@ -1,0 +1,40 @@
+newmtl lambert1
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka lambert1.png
+map_Kd lambert1.png
+map_d lambert1.png
+newmtl lm16
+Ka 0 0 0
+Kd 0.3764706 0.3764706 0.3764706
+d 1
+Tr 1
+map_Ka lm16.png
+map_Kd lm16.png
+map_d lm16.png
+newmtl lm17
+Ka 0 0 0
+Kd 0.2509804 0.3137255 0.4078431
+d 0.3870968
+Tr 0.3870968
+map_Ka lm17.png
+map_Kd lm17.png
+map_d lm17.png
+newmtl m_fh01_06k_lm7
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka m_fh01_06k_lm7.png
+map_Kd m_fh01_06k_lm7.png
+map_d m_fh01_06k_lm7.png
+newmtl m_fh01_07f_lm5
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka m_fh01_07f_lm5.png
+map_Kd m_fh01_07f_lm5.png
+map_d m_fh01_07f_lm5.png

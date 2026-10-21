@@ -195,6 +195,7 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
     if (alvoHub?.tipo === "cura") executarAlvoHub(alvoHub);
     else executarAlvoLaboratorio(alvoLab);
   } else if (acao.id === "pc") executarAlvoHub(alvoHub);
+  else if (acao.id === "loja") executarAlvoHub(alvoHub);
   else if (acao.id === "capsula") executarAlvoLaboratorio(alvoLab);
   else if (acao.id === "placa") lerPlaca(acao.placa);
   else if (acao.id === "colher") {

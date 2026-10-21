@@ -1,0 +1,16 @@
+newmtl pc_s02_1
+Ka 0.7843137 0.7843137 0.7843137
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka pc_s02_1.png
+map_Kd pc_s02_1.png
+map_d pc_s02_1.png
+newmtl pc_s02_2
+Ka 0.7843137 0.7843137 0.7843137
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka pc_s02_2.png
+map_Kd pc_s02_2.png
+map_d pc_s02_2.png

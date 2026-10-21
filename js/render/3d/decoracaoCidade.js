@@ -14,6 +14,7 @@ import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { facesParedeInterior } from "./cartaoPe.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
+import { carregarMoldesProps, instanciarProp } from "./propsObj3d.js";
 
 const FOLHA_CORREIO = "/ref/sprites/buildings/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png";
 const FOLHA_AVISO = "/ref/sprites/buildings/the_public_pokemon_tileset_by_thatssowitty_d4ni56y.png";
@@ -317,16 +318,43 @@ export function anexarCascaSala(grupo, piso) {
   }
 }
 
+const VASOS_CASA = Object.freeze(["flores-1", "vaso-1", "flores-3", "vaso-2"]);
+
 export function anexarInteriores(grupo, moveis) {
-  if (!moveis?.size) return;
   const lista = moveisDaSala();
+  let vasoI = 0;
+  const idsVaso = [];
   for (let i = 0; i < lista.length; i++) {
-    const item = lista[i];
-    const inst = porSprite(moveis.get(item.id), item.x, ALTURA_PRACA, item.y);
-    if (!inst) continue;
-    inst.name = `movel-${item.id}`;
-    grupo.add(inst);
+    if (lista[i].id === "vaso") idsVaso.push(VASOS_CASA[vasoI++ % VASOS_CASA.length]);
   }
+  const colocar = () => {
+    vasoI = 0;
+    for (let i = 0; i < lista.length; i++) {
+      const item = lista[i];
+      if (item.id === "vaso") {
+        const id = idsVaso[vasoI++] || "vaso-1";
+        const prop = instanciarProp(id, item.x, item.y);
+        if (prop) {
+          prop.name = `movel-${item.id}`;
+          grupo.add(prop);
+          continue;
+        }
+      }
+      if (!moveis?.size) continue;
+      const inst = porSprite(moveis.get(item.id), item.x, ALTURA_PRACA, item.y);
+      if (!inst) continue;
+      inst.name = `movel-${item.id}`;
+      grupo.add(inst);
+    }
+  };
+  if (!idsVaso.length) {
+    colocar();
+    return;
+  }
+  carregarMoldesProps(idsVaso).then(colocar).catch((erro) => {
+    console.error("vasos da casa", erro);
+    colocar();
+  });
 }
 
 export function criarDecoracaoRotas(moldePoste, acender) {

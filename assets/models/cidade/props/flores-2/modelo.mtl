@@ -1,0 +1,32 @@
+newmtl lm12
+Ka 0 0 0
+Kd 0.3764706 0.3764706 0.3764706
+d 1
+Tr 1
+map_Ka lm12.png
+map_Kd lm12.png
+map_d lm12.png
+newmtl lm13
+Ka 0 0 0
+Kd 0.2509804 0.3137255 0.4078431
+d 0.3870968
+Tr 0.3870968
+map_Ka lm13.png
+map_Kd lm13.png
+map_d lm13.png
+newmtl m_fh01_011t_lm2
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka m_fh01_011t_lm2.png
+map_Kd m_fh01_011t_lm2.png
+map_d m_fh01_011t_lm2.png
+newmtl m_fh01_10f_lm3
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka m_fh01_10f_lm3.png
+map_Kd m_fh01_10f_lm3.png
+map_d m_fh01_10f_lm3.png

@@ -1,6 +1,6 @@
 /**
- * Casca, piso e sprites do laboratório. As malhas compartilham material.
- * O grupo mora no terreno, então o billboard desfaz o esmagamento vertical.
+ * Casca, piso e props do laboratório. PC/vasos/tanks em billboard;
+ * máquina de cura e máquinas extras em OBJ.
  */
 import * as THREE from "three";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
@@ -13,9 +13,9 @@ import {
   ROWS_LAB,
   plantaLaboratorio,
 } from "../../mundo/cidade/laboratorio.js";
+import { propDoSprite } from "../../mundo/cidade/catalogoProps.js";
 import {
   atualizarBolasCura,
-  criarBolasCura,
   emPe,
   girarCartoes,
   imagem,
@@ -27,6 +27,7 @@ import {
   recortar,
   facesParedeInterior,
 } from "./cartaoPe.js";
+import { carregarMoldesProps, criarBolasCuraNaMalha, instanciarProp } from "./propsObj3d.js";
 
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
 const FOLHA_VASO = "/ref/sprites/interiors/Safari-Zone-Inner-Room-Hospital-Tileset-629434880.png";
@@ -44,11 +45,12 @@ const RECORTE = Object.freeze({
   escrivaninha: Object.freeze({ url: FOLHA_MOVEIS, col: 4, row: 44, cols: 2, rows: 2, tile: 16 }),
   tapete: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 54, cols: 2, rows: 1, tile: 16 }),
   livros: Object.freeze({ url: FOLHA_MOVEIS, col: 3, row: 45, cols: 1, rows: 1, tile: 16 }),
-  cura: Object.freeze({ url: FOLHA_MOVEIS, col: 6, row: 43, cols: 2, rows: 3, tile: 16 }),
   vasoA: Object.freeze({ url: FOLHA_VASO, col: 15, row: 41, cols: 3, rows: 6, tile: 16, escala: 0.5 }),
   vasoB: Object.freeze({ url: FOLHA_VASO, col: 18, row: 41, cols: 3, rows: 6, tile: 16, escala: 0.5 }),
   vasoC: Object.freeze({ url: FOLHA_VASO, col: 21, row: 40, cols: 3, rows: 7, tile: 16, escala: 0.5 }),
 });
+
+const IDS_PROPS_LAB = Object.freeze(["cura", "maquina-2", "maquina-3", "maquina-4"]);
 
 const bolasCura = [];
 
@@ -131,9 +133,20 @@ function anexarCasca(grupo, piso) {
   }
 }
 
-function pendurarBolasCura(cartao) {
-  const novas = criarBolasCura(cartao);
-  for (let i = 0; i < novas.length; i++) bolasCura.push(novas[i]);
+function anexarMaquinasExtras(sala, planta) {
+  const salas = planta.salas;
+  if (!salas) return;
+  const pontos = [
+    { id: "maquina-2", x: salas.a.x0 + 1.2, y: salas.a.y1 - 1.4 },
+    { id: "maquina-3", x: salas.c.x1 - 1.3, y: salas.c.y0 + 2.2 },
+    { id: "maquina-4", x: salas.c.x0 + 2.0, y: salas.c.y1 - 1.6 },
+    { id: "maquina-2", x: salas.b.x1 - 1.4, y: salas.b.y0 + 1.8 },
+  ];
+  for (let i = 0; i < pontos.length; i++) {
+    const p = pontos[i];
+    const inst = instanciarProp(p.id, ORIGEM_LAB_X + p.x, ORIGEM_LAB_Y + p.y);
+    if (inst) sala.add(inst);
+  }
 }
 
 function anexarBolas(grupo) {
@@ -182,6 +195,7 @@ export function montarLaboratorio3d(grupo) {
     ...chaves.map((id) => pedir(RECORTE[id].url)),
     pedir(FOLHA_PISO),
     pedir(FOLHA_GENTE),
+    carregarMoldesProps(IDS_PROPS_LAB),
   ]).then((imagens) => {
     const porUrl = new Map();
     let cursor = 0;
@@ -222,12 +236,23 @@ export function montarLaboratorio3d(grupo) {
     for (let i = 0; i < planta.moveis.length; i++) {
       const item = planta.moveis[i];
       const x = ORIGEM_LAB_X + item.x;
+      const peZ = ORIGEM_LAB_Y + item.footY;
+      if (propDoSprite(item.id) === "cura") {
+        const inst = instanciarProp("cura", x, peZ - 0.5);
+        if (!inst) continue;
+        sala.add(inst);
+        const novas = criarBolasCuraNaMalha(inst);
+        for (let b = 0; b < novas.length; b++) bolasCura.push(novas[b]);
+        continue;
+      }
       const z = ORIGEM_LAB_Y + (item.chao ? item.y : item.footY);
-      const inst = item.chao ? porChao(moldesChao.get(item.id), x, z) : porBillboard(moldes.get(item.id), x, ORIGEM_LAB_Y + item.footY);
+      const inst = item.chao
+        ? porChao(moldesChao.get(item.id), x, z)
+        : porBillboard(moldes.get(item.id), x, peZ);
       if (!inst) continue;
       sala.add(inst);
-      if (item.id === "cura" && inst.userData.cartao) pendurarBolasCura(inst.userData.cartao);
     }
+    anexarMaquinasExtras(sala, planta);
     if (gente) {
       const moldeNpc = new Map();
       for (let i = 0; i < planta.npcs.length; i++) {

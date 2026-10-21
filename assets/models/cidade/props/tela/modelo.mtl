@@ -1,0 +1,16 @@
+newmtl pc_moni
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka pc_moni.png
+map_Kd pc_moni.png
+map_d pc_moni.png
+newmtl pc_s07_2
+Ka 0 0 0
+Kd 0.7843137 0.7843137 0.7843137
+d 1
+Tr 1
+map_Ka pc_s07_2.png
+map_Kd pc_s07_2.png
+map_d pc_s07_2.png

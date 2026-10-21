@@ -35,8 +35,16 @@ const CAMADA = Object.freeze([
 ]);
 
 const clerk = meio(1, 3);
+/** Lado do cliente — leste/sul do L do balcão (não atrás do NPC). */
 const balcaoA = meio(3, 3);
 const balcaoB = meio(3, 4);
+const balcaoC = meio(2, 5);
+
+/** Só o L do balcão vira caixa 3D. Prateleiras ficam no chão Emerald + billboard. */
+const BALCOES_VISUAIS = [
+  { x: 2, y: 2, w: 1, h: 2 },
+  { x: 1, y: 4, w: 2, h: 1 },
+];
 
 const PLANTA = criarPlantaHub({
   papel: "loja",
@@ -48,9 +56,10 @@ const PLANTA = criarPlantaHub({
   camada: CAMADA,
   corParede: "#b7d7c0",
   corBalcao: "#e7f0ff",
+  // Tapete laranja na arte: cols 3–4 da última linha.
   saidas: [
+    { tx: 3, ty: 7 },
     { tx: 4, ty: 7 },
-    { tx: 5, ty: 7 },
   ],
   props: [
     { id: "npc", coluna: 2, x: clerk.x, y: clerk.y - 0.1, nome: "Balconista" },
@@ -62,11 +71,13 @@ const PLANTA = criarPlantaHub({
     },
   ],
   alvos: [
-    { tipo: "loja", nome: "Balcão", x: balcaoA.x, y: balcaoA.y, alcance: 1.2 },
-    { tipo: "loja", nome: "Balcão", x: balcaoB.x, y: balcaoB.y, alcance: 1.2 },
-    { tipo: "loja", nome: "Balconista", x: clerk.x, y: clerk.y, alcance: 1.15 },
+    { tipo: "loja", nome: "Balcão", x: balcaoA.x, y: balcaoA.y, alcance: 1.65 },
+    { tipo: "loja", nome: "Balcão", x: balcaoB.x, y: balcaoB.y, alcance: 1.65 },
+    { tipo: "loja", nome: "Balcão", x: balcaoC.x, y: balcaoC.y, alcance: 1.55 },
   ],
 });
+
+PLANTA.balcoes = BALCOES_VISUAIS;
 
 export function plantaLoja() {
   return PLANTA;
@@ -90,6 +101,6 @@ export function alvoDaLoja(x, y) {
 
 export function promptDaLoja(alvo) {
   if (!alvo) return "";
-  if (alvo.tipo === "loja") return "Balcão — R";
+  if (alvo.tipo === "loja") return "Balcão — E";
   return "";
 }
