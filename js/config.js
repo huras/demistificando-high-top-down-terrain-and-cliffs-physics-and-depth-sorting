@@ -327,8 +327,8 @@ export const PASSO_MALHA_SUAVE = 8;
 export const RAIO_HORIZONTE = 80;
 export const RAIO_HORIZONTE_MIN = 0;
 export const RAIO_HORIZONTE_MAX = 160;
-/** Célula da malha horizonte, em blocos. */
-export const PASSO_HORIZONTE = 24;
+/** Célula da malha horizonte, em blocos (precisa dividir CHUNK_HORIZONTE). */
+export const PASSO_HORIZONTE = 16;
 /** Quantização de altura (blocos) para degraus. */
 export const QUANT_ALTURA_HORIZONTE = 2;
 /** Lado de um chunk de horizonte, em blocos. */

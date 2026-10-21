@@ -168,7 +168,8 @@ export function criarTerrenoHorizonte() {
     const lado = CHUNK_HORIZONTE;
     const ox = hx * lado;
     const oy = hy * lado;
-    const nx = Math.max(1, (lado / passo) | 0);
+    // Passo deve dividir o lado — senão sobra faixa sem malha entre chunks.
+    const nx = Math.max(1, Math.round(lado / passo));
     const ny = nx;
     const interno = raioInternoBlocos();
     const interno2 = interno * interno;
@@ -176,20 +177,17 @@ export function criarTerrenoHorizonte() {
     const externo2 = externo * externo;
     const nivel = nivelMarBlocos();
 
+    // Grade (nx+1)²: cantos das células + borda leste/sul (vizinho do próximo chunk).
     const alturas = new Float32Array((nx + 1) * (ny + 1));
     const cores = new Float32Array(nx * ny * 3);
+    /** Célula no anel (não fura canto compartilhado — evita buraco na grade). */
+    const viva = new Uint8Array(nx * ny);
     let celulas = 0;
 
     for (let cy = 0; cy <= ny; cy++) {
       for (let cx = 0; cx <= nx; cx++) {
         const wx = ox + cx * passo;
         const wy = oy + cy * passo;
-        const mx = wx - pxRef;
-        const my = wy - pyRef;
-        if (mx * mx + my * my > externo2 * 1.15) {
-          alturas[cy * (nx + 1) + cx] = NaN;
-          continue;
-        }
         alturas[cy * (nx + 1) + cx] = amostraAltura(wx, wy);
       }
     }
@@ -203,8 +201,6 @@ export function criarTerrenoHorizonte() {
         const d2 = dx * dx + dy * dy;
         const iCor = (cy * nx + cx) * 3;
         if (d2 < interno2 || d2 > externo2) {
-          // Furo interno / fora do disco: invalida o canto SW da célula.
-          alturas[cy * (nx + 1) + cx] = NaN;
           cores[iCor] = 0;
           cores[iCor + 1] = 0;
           cores[iCor + 2] = 0;
@@ -212,6 +208,7 @@ export function criarTerrenoHorizonte() {
         }
         const h = alturas[cy * (nx + 1) + cx];
         if (!Number.isFinite(h)) continue;
+        viva[cy * nx + cx] = 1;
         const rgb = amostraCor(wx, wy, h, nivel);
         cores[iCor] = rgb[0];
         cores[iCor + 1] = rgb[1];
@@ -222,7 +219,15 @@ export function criarTerrenoHorizonte() {
 
     if (!celulas) return null;
 
-    return criarGeometriaTerraced(alturas, cores, { ox, oy, passo, nx, ny });
+    // Marca mortas só na altura da própria célula (cópia), sem apagar canto do vizinho.
+    const alturasGeo = alturas.slice();
+    for (let cy = 0; cy < ny; cy++) {
+      for (let cx = 0; cx < nx; cx++) {
+        if (!viva[cy * nx + cx]) alturasGeo[cy * (nx + 1) + cx] = NaN;
+      }
+    }
+
+    return criarGeometriaTerraced(alturasGeo, cores, { ox, oy, passo, nx, ny });
   }
 
   function instalar(chave, geo) {

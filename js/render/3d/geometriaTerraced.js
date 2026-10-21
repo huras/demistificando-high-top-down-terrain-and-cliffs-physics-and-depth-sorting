@@ -53,45 +53,30 @@ export function criarGeometriaTerraced(alturas, coresRgb, opts) {
     addVert(x1, h, z1, 0, 1, 0, u1, v1, rgb);
   }
 
-  /** Parede olhando pro lado mais baixo (CCW vista de fora). */
+  /**
+   * Parede vertical: mesma ordem nos dois sentidos — a normal geométrica
+   * aponta sozinha pro lado mais baixo (+X/−X ou +Z/−Z).
+   */
   function addParedeX(x, z0, z1, hA, hB, rgb) {
     if (Math.abs(hA - hB) < 1e-4) return;
     const nxn = hA > hB ? 1 : -1;
-    if (nxn > 0) {
-      addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
-    } else {
-      addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
-      addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
-    }
+    addVert(x, hB, z0, nxn, 0, 0, 0, 0, rgb);
+    addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
+    addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
+    addVert(x, hA, z0, nxn, 0, 0, 0, 0, rgb);
+    addVert(x, hA, z1, nxn, 0, 0, 0, 0, rgb);
+    addVert(x, hB, z1, nxn, 0, 0, 0, 0, rgb);
   }
 
   function addParedeZ(z, x0, x1, hA, hB, rgb) {
     if (Math.abs(hA - hB) < 1e-4) return;
     const nzn = hA > hB ? 1 : -1;
-    if (nzn > 0) {
-      addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
-    } else {
-      addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
-      addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
-    }
+    addVert(x0, hB, z, 0, 0, nzn, 0, 0, rgb);
+    addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
+    addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
+    addVert(x1, hB, z, 0, 0, nzn, 0, 0, rgb);
+    addVert(x1, hA, z, 0, 0, nzn, 0, 0, rgb);
+    addVert(x0, hA, z, 0, 0, nzn, 0, 0, rgb);
   }
 
   for (let cy = 0; cy < ny; cy++) {
@@ -112,14 +97,11 @@ export function criarGeometriaTerraced(alturas, coresRgb, opts) {
 
       addQuadTopo(x0, z0, x1, z1, h, rgbTopo, u0, v0, u1, v1);
 
-      if (cx < nx - 1) {
-        const hR = altura(cx + 1, cy);
-        if (Number.isFinite(hR)) addParedeX(x1, z0, z1, h, hR, rgbParede);
-      }
-      if (cy < ny - 1) {
-        const hB = altura(cx, cy + 1);
-        if (Number.isFinite(hB)) addParedeZ(z1, x0, x1, h, hB, rgbParede);
-      }
+      // Inclui a última coluna/linha: canto nx/ny é a amostra do vizinho (fecha junta de chunk).
+      const hR = altura(cx + 1, cy);
+      if (Number.isFinite(hR)) addParedeX(x1, z0, z1, h, hR, rgbParede);
+      const hS = altura(cx, cy + 1);
+      if (Number.isFinite(hS)) addParedeZ(z1, x0, x1, h, hS, rgbParede);
     }
   }
 
