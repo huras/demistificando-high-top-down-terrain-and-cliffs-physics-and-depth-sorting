@@ -4,6 +4,7 @@ import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
 import { dentroDoTerrenoSala } from "../cidade/sala3d.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { fbm2, hash2 } from "../voxel/ruido.js";
+import { areaLogicaNoMundo, biomasDaPaleta } from "./areasMundo.js";
 import { avaliarGrafo } from "./grafo.js";
 import { plantaNoBioma } from "./detalhe.js";
 
@@ -111,14 +112,18 @@ function ruidoFronteira(wx, wy, catalogo, seed) {
 
 /**
  * Duas regiões mais próximas (Voronoi com centro jitterado + domain warp).
+ * Fora de Kanto a célula só sorteia dentro da paleta da área lógica.
  * dominio = peso de A: 1 no miolo, 0.5 na borda.
- * Na borda os dois lados valem metade, senão a faixa vira A, B, A, B.
  */
 export function amostrarRegiao(wx, wy, catalogo = dados, seed = semente) {
-  const biomas = catalogo?.biomas || [];
+  const terra = mascaraContinente(wx, wy, catalogo, seed);
+  const pesoT = pesoTerraContinente(terra, catalogo);
+  const area = areaLogicaNoMundo(wx, wy, { mar: pesoT < 0.45, seed });
+  const biomas = biomasDaPaleta(area, catalogo);
   const n = biomas.length;
   if (!n) return null;
-  const escala = Math.max(32, Number(catalogo.escalaRegiao) || 200);
+  const baseEscala = Math.max(32, Number(catalogo.escalaRegiao) || 200);
+  const escala = Math.max(48, baseEscala * (Number(area?.escalaMul) || 2.5));
   const ampWarp = Math.max(0, Number(catalogo?.ampWarpRegiao) || 42);
   const q = deslocarDominio(wx, wy, catalogo, seed);
   const gx = Math.floor(q.x / escala);
@@ -159,7 +164,7 @@ export function amostrarRegiao(wx, wy, catalogo = dados, seed = semente) {
   const fronteira = db - da + ruidoFronteira(wx, wy, catalogo, seed);
   const perto = suave01(fronteira / largura);
   const dominio = 0.5 + 0.5 * perto;
-  return { a: melhor.bioma, b: segundo.bioma, dominio };
+  return { a: melhor.bioma, b: segundo.bioma, dominio, area };
 }
 
 function snap(h, degrau) {

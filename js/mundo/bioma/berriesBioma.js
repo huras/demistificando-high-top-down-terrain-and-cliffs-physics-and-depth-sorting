@@ -12,6 +12,7 @@ import {
   nivelMarBlocos,
   obterSementeBioma,
 } from "./catalogo.js";
+import { areaLogicaNoMundo } from "./areasMundo.js";
 import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
 
 const PASSO = 4;
@@ -85,6 +86,8 @@ function idBiomaPlantavel(x, y) {
   const bioma = biomaDominante(x, y);
   if (!bioma || bioma.camada === "mar") return "";
   if (alturaDoRelevo(x, y) < nivelMarBlocos()) return "";
+  const area = areaLogicaNoMundo(x, y, { mar: false });
+  if (area?.berry && berriesDoBioma(area.berry).length) return area.berry;
   return bioma.id || "";
 }
 

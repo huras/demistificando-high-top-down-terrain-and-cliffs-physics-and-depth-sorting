@@ -2,6 +2,7 @@ import { CHUNK_XZ, POKEMON, SEED_MUNDO } from "../config.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
+import { areaLogicaNoMundo } from "../mundo/bioma/areasMundo.js";
 import { biomaDominante } from "../mundo/bioma/catalogo.js";
 import { SPAWN } from "../mundo/mapaDemo.js";
 import {
@@ -87,6 +88,8 @@ function biomaIdEm(x, y, hSorteio) {
     }
     return idA;
   }
+  const area = areaLogicaNoMundo(x, y);
+  if (area?.encontro) return area.encontro;
   return biomaDominante(x, y)?.id || "light-grass";
 }
 

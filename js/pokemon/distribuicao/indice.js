@@ -1,5 +1,7 @@
 /** Índice bioma → pools casa/extras brutos (catálogo filtra no sorteio). */
 
+import { AREAS_MUNDO, areaPorId } from "../../mundo/bioma/areasMundo.js";
+
 const VAZIO = Object.freeze({ casa: Object.freeze([]), extras: Object.freeze([]) });
 
 /** @type {Map<string, { casa: readonly string[], extras: readonly string[] }> | null} */
@@ -28,11 +30,22 @@ export async function carregarDistribuicao() {
       }),
     );
   }
+  // Área lógica exterior → mesmo pool do bioma de encontro.
+  for (let i = 0; i < AREAS_MUNDO.length; i++) {
+    const area = AREAS_MUNDO[i];
+    if (porBioma.has(area.id)) continue;
+    const base = porBioma.get(area.encontro);
+    if (base) porBioma.set(area.id, base);
+  }
   pronto = true;
   return porBioma.size;
 }
 
 export function poolDoBioma(id) {
   if (!porBioma) return VAZIO;
-  return porBioma.get(id) || VAZIO;
+  const direto = porBioma.get(id);
+  if (direto) return direto;
+  const area = areaPorId(id);
+  if (area?.encontro) return porBioma.get(area.encontro) || VAZIO;
+  return VAZIO;
 }
