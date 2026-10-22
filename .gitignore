@@ -3,3 +3,5 @@
 __pycache__/
 *.pyc
 /tools/vendor/
+# Junction local → Pokemon AI/sprites (servido também via /ref/)
+/ref/

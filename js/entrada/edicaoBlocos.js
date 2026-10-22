@@ -12,11 +12,10 @@ import { botaoDireitoSegurado, ponteiroTravado } from "./ponteiro3d.js";
 import { abrirMenuCampo } from "../campo/menu.js";
 import { tentarAtaqueNoClique } from "../pokemon/clique.js";
 import { definirMiraCursor } from "../pokemon/captura.js";
-import { pedirTiroRapido, rangedNaMao } from "../jogo/ranged.js";
+import { rangedNaMao } from "../jogo/ranged.js";
 import { usarNoClique } from "../jogo/campo.js";
-import { estado, hotbarAtivo, uiAberta } from "../jogo/estado.js";
+import { estado, uiAberta } from "../jogo/estado.js";
 import { atualizarLeve, pintar } from "../jogo/ui.js";
-import { TIPO_ITEM } from "../wild/catalogo.js";
 
 let canvas2d = null;
 let canvas3d = null;
@@ -55,12 +54,8 @@ function pontoNoChao(raio, z) {
 
 function dispararItem(corpo, celula, alvo, mira) {
   if (uiAberta()) return;
-  const item = hotbarAtivo();
-  if (item?.tipo === TIPO_ITEM.BOLA || rangedNaMao() === "bow") {
-    const cen = obterCenario3d();
-    pedirTiroRapido(corpo, cen?.camera3d ?? null, mira);
-    return;
-  }
+  // Arco/bola: carga e disparo ficam no tick (LMB segurar/soltar), não no mousedown.
+  if (rangedNaMao()) return;
   const msg = usarNoClique(corpo, celula, alvo);
   if (msg) estado.itemGet = msg;
   if (estado.construir) pintar();
@@ -93,6 +88,10 @@ function aoMouseDown2d(ev) {
   const corpo = obterCorpo();
   const camera = obterCamera2d();
   if (!corpo || !camera || !canvas2d || uiAberta()) return;
+  if (rangedNaMao()) {
+    ev.preventDefault();
+    return;
+  }
   if (tentarAtaqueNoClique(ev, camera, obterCenario3d())) {
     ev.preventDefault();
     return;
@@ -109,10 +108,9 @@ function aoMouseDown3d(ev) {
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d || !canvas3d || uiAberta()) return;
-  // Na mira ranged, LMB dispara com a carga atual (não edita o mundo).
-  if (rangedNaMao() && (botaoDireitoSegurado() || cen.camera3d.modo === "mira" || ponteiroTravado())) {
+  // Arco/bola: LMB só carrega (disparo ao soltar no tick). Não edita o mundo.
+  if (rangedNaMao()) {
     ev.preventDefault();
-    pedirTiroRapido(corpo, cen.camera3d, null);
     return;
   }
   if (tentarAtaqueNoClique(ev, null, cen)) {

@@ -16,6 +16,7 @@ import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
   botaoDireitoSegurado,
+  botaoEsquerdoSegurado,
   consumirMovimentoMouse,
   consumirSolturaDireita,
   consumirSolturaEsquerda,
@@ -476,17 +477,20 @@ function loop(agora) {
     }
     if (!estaEmCena() && !trava) {
       const mouse = consumirMovimentoMouse();
-      const soltouDir = consumirSolturaDireita();
-      consumirSolturaEsquerda();
+      // RMB só mira — soltura não dispara; consome a flag pra não acumular.
+      consumirSolturaDireita();
+      const soltouEsq = consumirSolturaEsquerda();
       const mirando = !!rangedNaMao() && botaoDireitoSegurado();
+      const carregando = !!rangedNaMao() && botaoEsquerdoSegurado();
       olharCamera3d(mouse.dx, mouse.dy);
-      // Disparo/carga antes de soltar o lock (evita side-effect no mesmo frame).
+      // Carga (LMB) / mira (RMB) antes de soltar o lock.
       tickRanged({
         dt,
         corpo,
         camera3d: obterCenario3d()?.camera3d ?? null,
         mirando,
-        soltouDireito: soltouDir,
+        carregando,
+        soltouEsquerdo: soltouEsq,
       });
       const aindaMirando = !!rangedNaMao() && botaoDireitoSegurado();
       definirMira3d(aindaMirando);

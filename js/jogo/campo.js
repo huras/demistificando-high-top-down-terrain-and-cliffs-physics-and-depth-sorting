@@ -497,6 +497,6 @@ export function dicaFerramenta() {
   if (item.tipo === TIPO_ITEM.BLOCO) return "Clique esquerdo coloca na face mirada. Equipe pela hotbar ou roda.";
   if (item.tipo === TIPO_ITEM.BERRY) return "Clique esquerdo usa ou planta. Em solo cavado, planta.";
   if (item.tipo === TIPO_ITEM.REMEDIO) return "Clique esquerdo usa no Pokémon, ou em você se ele não precisar.";
-  if (item.tipo === TIPO_ITEM.BOLA) return "LMB = arremesso rápido. Segure RMB para mirar/carregar; LMB arremessa sem sair da mira; soltar RMB também arremessa.";
+  if (item.tipo === TIPO_ITEM.BOLA) return "Segure LMB para carregar e solte para arremessar. RMB só mira (não carrega nem arremessa). Escape ou troque o slot cancela.";
   return "";
 }

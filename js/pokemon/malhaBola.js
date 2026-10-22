@@ -1,14 +1,13 @@
 /**
  * Modelos 3D das pokébolas (Collada LGPE).
- * São SkinnedMesh — precisa SkeletonUtils.clone. Materiais Collada vêm
- * com transparency quebrada; refazemos opacos + textura de cor.
+ * SkinnedMesh → Mesh estático na pose de bind (bola fechada), mantendo UV/mapa.
+ * Só corrige transparency do Collada e flipY (OpenGL).
  */
 import * as THREE from "three";
 import { ColladaLoader } from "three/addons/loaders/ColladaLoader.js";
 import { clone as clonarEsqueleto } from "three/addons/utils/SkeletonUtils.js";
 
 const loader = new ColladaLoader();
-const texLoader = new THREE.TextureLoader();
 
 /** @type {Map<string, Promise<THREE.Object3D | null>>} */
 const moldes = new Map();
@@ -24,52 +23,70 @@ const URL_POR_KEY = Object.freeze({
   boomerangball: "/assets/models/pokeballs/boomerangball/modelo.dae",
 });
 
-const TEX_POR_KEY = Object.freeze({
-  pokeball: "/assets/models/pokeballs/pokeball/ob0204_00_obj_col.png",
-  greatball: "/assets/models/pokeballs/greatball/ob0203_00_obj_col.png",
-  ultraball: "/assets/models/pokeballs/ultraball/ob0202_00_obj_col.png",
-  masterball: "/assets/models/pokeballs/masterball/ob0201_00_obj_col.png",
-  premierball: "/assets/models/pokeballs/premierball/ob0212_00_obj_col.png",
-  boomerangball: "/assets/models/pokeballs/boomerangball/ob0216_00_obj_col.png",
-});
-
 /** Diâmetro alvo no mundo (unidades Three). */
 const DIAMETRO = 0.5;
 
-function materialOpaco(mapa) {
-  const mat = new THREE.MeshStandardMaterial({
-    map: mapa || null,
-    color: 0xffffff,
-    metalness: 0.2,
-    roughness: 0.4,
-    transparent: false,
-    opacity: 1,
-    depthWrite: true,
-    side: THREE.FrontSide,
-  });
+/** Transparency do Collada LGPE deixa blending quebrado — não troca o map. */
+function consertarMaterial(mat) {
+  if (!mat) return;
+  mat.transparent = false;
+  mat.opacity = 1;
+  mat.depthWrite = true;
+  mat.alphaTest = 0;
+  mat.side = THREE.FrontSide;
+  if (mat.alphaMap) mat.alphaMap = null;
   if (mat.map) {
-    mat.map.colorSpace = THREE.SRGBColorSpace;
+    // Collada/OpenGL: V=0 embaixo. Sem isso o atlas fica invertido.
     mat.map.flipY = false;
+    mat.map.colorSpace = THREE.SRGBColorSpace;
     mat.map.needsUpdate = true;
   }
-  return mat;
+  mat.needsUpdate = true;
 }
 
-async function carregarMapa(chave) {
-  const url = TEX_POR_KEY[chave] || TEX_POR_KEY.pokeball;
-  try {
-    return await texLoader.loadAsync(url);
-  } catch {
-    return null;
-  }
-}
-
-function esferaFallback(mapa) {
-  const geo = new THREE.SphereGeometry(DIAMETRO * 0.5, 24, 16);
-  const mesh = new THREE.Mesh(geo, materialOpaco(mapa));
-  mesh.castShadow = true;
+/**
+ * SkinnedMesh na pose de bind → Mesh estático.
+ * Sem skeleton o clone/pool e o AABB quebram (bola some → placeholder 2D).
+ * UV e materiais do Collada ficam intactos.
+ */
+function bakePoseBind(raiz) {
   const grupo = new THREE.Group();
-  grupo.add(mesh);
+  raiz.updateMatrixWorld(true);
+
+  raiz.traverse((obj) => {
+    if (!obj.isMesh && !obj.isSkinnedMesh) return;
+
+    if (obj.isSkinnedMesh && obj.skeleton) {
+      obj.skeleton.pose();
+      obj.updateMatrixWorld(true);
+    }
+
+    const geo = obj.geometry.clone();
+    // Bind-shape já está nos verts; aplica o transform do nó.
+    geo.applyMatrix4(obj.matrixWorld);
+    if (!geo.boundingBox) geo.computeBoundingBox();
+    if (!geo.boundingSphere) geo.computeBoundingSphere();
+
+    let mats;
+    if (Array.isArray(obj.material)) {
+      mats = obj.material.map((m) => {
+        const c = m.clone();
+        consertarMaterial(c);
+        return c;
+      });
+    } else {
+      mats = obj.material.clone();
+      consertarMaterial(mats);
+    }
+
+    const mesh = new THREE.Mesh(geo, mats);
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.frustumCulled = false;
+    mesh.name = obj.name || "bola";
+    grupo.add(mesh);
+  });
+
   return grupo;
 }
 
@@ -81,49 +98,26 @@ function normalizarTamanho(grupo) {
   const centro = new THREE.Vector3();
   caixa.getSize(tam);
   caixa.getCenter(centro);
-  grupo.position.sub(centro);
+  for (let i = 0; i < grupo.children.length; i++) {
+    grupo.children[i].position.sub(centro);
+  }
   const maior = Math.max(tam.x, tam.y, tam.z, 1e-4);
-  grupo.scale.multiplyScalar(DIAMETRO / maior);
+  grupo.scale.setScalar(DIAMETRO / maior);
   grupo.updateMatrixWorld(true);
   return true;
 }
 
-function aplicarMateriais(raiz, mapa) {
-  let malhas = 0;
-  raiz.traverse((obj) => {
-    if (!obj.isMesh && !obj.isSkinnedMesh) return;
-    malhas++;
-    obj.visible = true;
-    obj.frustumCulled = false;
-    obj.castShadow = true;
-    obj.receiveShadow = false;
-    const mat = materialOpaco(mapa || obj.material?.map || null);
-    obj.material = mat;
-    if (obj.isSkinnedMesh && obj.skeleton) {
-      obj.skeleton.pose();
-      obj.normalizeSkinWeights?.();
-    }
-  });
-  return malhas;
-}
-
-async function preparar(cena, chave) {
-  const mapa = await carregarMapa(chave);
+function preparar(cena) {
   const raiz = clonarEsqueleto(cena);
-  const malhas = aplicarMateriais(raiz, mapa);
-  if (!malhas) return esferaFallback(mapa);
-
-  const grupo = new THREE.Group();
-  grupo.add(raiz);
-  if (!normalizarTamanho(grupo)) return esferaFallback(mapa);
-
-  // Garante pose de bind (bola fechada)
-  grupo.traverse((obj) => {
-    if (obj.isSkinnedMesh && obj.skeleton) {
-      obj.skeleton.pose();
-      obj.updateMatrixWorld(true);
-    }
-  });
+  const grupo = bakePoseBind(raiz);
+  if (!grupo.children.length) {
+    console.warn("Pokébola Collada sem malhas");
+    return null;
+  }
+  if (!normalizarTamanho(grupo)) {
+    console.warn("Pokébola Collada com AABB vazio");
+    return null;
+  }
   return grupo;
 }
 
@@ -134,21 +128,16 @@ function pedirMolde(key) {
   const promessa = loader
     .loadAsync(url)
     .then((col) => {
-      if (!col?.scene) return carregarMapa(chave).then(esferaFallback);
-      return preparar(col.scene, chave);
-    })
-    .then((molde) => {
+      if (!col?.scene) return null;
+      const molde = preparar(col.scene);
       if (!molde) return null;
       molde.name = `molde-bola-${chave}`;
       molde.userData.ballKey = chave;
       return molde;
     })
-    .catch(async (err) => {
-      console.warn("Falha Collada pokébola, usando esfera:", chave, err);
-      const mapa = await carregarMapa(chave);
-      const esfera = esferaFallback(mapa);
-      esfera.userData.ballKey = chave;
-      return esfera;
+    .catch((err) => {
+      console.warn("Falha ao carregar pokébola 3D:", chave, err);
+      return null;
     });
   moldes.set(chave, promessa);
   return promessa;
@@ -171,28 +160,28 @@ export async function obterInstanciaBola(key) {
     if (livre) {
       livre.visible = true;
       livre.rotation.set(0, 0, 0);
-      livre.traverse((o) => {
-        if (o.isMesh || o.isSkinnedMesh) {
-          o.visible = true;
-          if (o.isSkinnedMesh && o.skeleton) o.skeleton.pose();
-        }
-      });
       return livre;
     }
   }
   const molde = await pedirMolde(chave);
   if (!molde) return null;
-  const inst = clonarEsqueleto(molde);
+  // Já é Mesh estático — clone simples
+  const inst = molde.clone(true);
   inst.traverse((obj) => {
-    if (!obj.isMesh && !obj.isSkinnedMesh) return;
+    if (!obj.isMesh) return;
     if (Array.isArray(obj.material)) {
-      obj.material = obj.material.map((m) => (m ? m.clone() : m));
+      obj.material = obj.material.map((m) => {
+        if (!m) return m;
+        const c = m.clone();
+        consertarMaterial(c);
+        return c;
+      });
     } else if (obj.material) {
       obj.material = obj.material.clone();
+      consertarMaterial(obj.material);
     }
     obj.visible = true;
     obj.frustumCulled = false;
-    if (obj.isSkinnedMesh && obj.skeleton) obj.skeleton.pose();
   });
   inst.userData.ballKey = chave;
   inst.visible = true;

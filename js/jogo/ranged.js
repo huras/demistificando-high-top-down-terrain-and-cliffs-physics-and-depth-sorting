@@ -1,6 +1,7 @@
 /**
  * Gesto ranged unificado: arco e pokébola.
- * LMB = tiro rápido; RMB segurar = mirar + carregar; soltar RMB = disparo.
+ * RMB segurar = só mirar (sem carga).
+ * LMB segurar = carregar; soltar LMB = disparo.
  */
 import { FLECHA_FORCA_MIN, RANGED_CARGA_TEMPO } from "../config.js";
 import {
@@ -19,6 +20,7 @@ import { contar, hotbarAtivo } from "./estado.js";
 
 let carga = 0;
 let estavaMirando = false;
+let estavaCarregando = false;
 
 export function bolaNaMao() {
   const item = hotbarAtivo();
@@ -51,6 +53,7 @@ function dispararFlecha(corpo, forca) {
 export function cancelarRanged() {
   carga = 0;
   estavaMirando = false;
+  estavaCarregando = false;
   definirCargaFlecha(0);
   sincronizarGestoBola({ carga: 0, mirando: false });
   zerarBotoesMira();
@@ -87,21 +90,38 @@ function disparar(tipo, corpo, camera3d, forca, miraChao) {
   }
 }
 
+function sincronizarVisual(tipo, mirando, camera3d, corpo) {
+  const miraChao = mirando ? miraChaoDaCamera(camera3d, corpo) : null;
+  if (tipo === "bow") {
+    definirCargaFlecha(carga);
+    sincronizarGestoBola({ carga: 0, mirando: false });
+    return;
+  }
+  definirCargaFlecha(0);
+  sincronizarGestoBola({
+    carga,
+    mirando,
+    miraX: miraChao?.x,
+    miraY: miraChao?.y,
+  });
+}
+
 /**
  * @param {{
  *   dt: number,
  *   corpo: object,
  *   camera3d: object | null,
  *   mirando: boolean,
- *   soltouDireito: boolean,
+ *   carregando: boolean,
+ *   soltouEsquerdo: boolean,
  * }} opts
  */
 export function tickRanged(opts) {
   const tipo = rangedNaMao();
-  const { dt, corpo, camera3d, mirando, soltouDireito } = opts;
+  const { dt, corpo, camera3d, mirando, carregando, soltouEsquerdo } = opts;
 
   if (!tipo || !corpo) {
-    if (estavaMirando || carga > 0) cancelarRanged();
+    if (estavaMirando || estavaCarregando || carga > 0) cancelarRanged();
     else {
       definirCargaFlecha(0);
       sincronizarGestoBola({ carga: 0, mirando: false });
@@ -109,45 +129,35 @@ export function tickRanged(opts) {
     return;
   }
 
-  // Soltar RMB dispara mesmo com direito já falso neste frame.
-  if (soltouDireito && estavaMirando) {
+  // Soltar LMB dispara (com a carga acumulada). RMB nunca dispara.
+  if (soltouEsquerdo && (estavaCarregando || carga > 0)) {
     const forca = Math.max(carga, FLECHA_FORCA_MIN);
-    const mira = miraChaoDaCamera(camera3d, corpo);
+    const mira = mirando || estavaMirando || botaoDireitoSegurado()
+      ? miraChaoDaCamera(camera3d, corpo)
+      : null;
     disparar(tipo, corpo, camera3d, forca, mira);
     carga = 0;
-    estavaMirando = false;
-    definirCargaFlecha(0);
-    sincronizarGestoBola({ carga: 0, mirando: false });
+    estavaCarregando = false;
+    estavaMirando = !!(mirando || botaoDireitoSegurado());
+    sincronizarVisual(tipo, estavaMirando, camera3d, corpo);
     return;
   }
 
-  if (mirando) {
-    estavaMirando = true;
+  if (carregando) {
+    estavaCarregando = true;
     carga = Math.min(1, carga + dt / RANGED_CARGA_TEMPO);
-    const miraChao = miraChaoDaCamera(camera3d, corpo);
-    if (tipo === "bow") definirCargaFlecha(carga);
-    else {
-      definirCargaFlecha(0);
-      sincronizarGestoBola({
-        carga,
-        mirando: true,
-        miraX: miraChao?.x,
-        miraY: miraChao?.y,
-      });
-    }
-    return;
+  } else if (estavaCarregando) {
+    // Soltura já tratada acima; se chegou aqui, carga foi cancelada.
+    estavaCarregando = false;
+    carga = 0;
   }
 
-  if (estavaMirando || carga > 0) {
-    carga = 0;
-    estavaMirando = false;
-  }
-  definirCargaFlecha(0);
-  sincronizarGestoBola({ carga: 0, mirando: false });
+  estavaMirando = !!mirando;
+  sincronizarVisual(tipo, mirando, camera3d, corpo);
 }
 
 /**
- * Tiro/arremesso: fora da mira = hipfire; na mira (LMB) = dispara com a carga e **mantém** a mira.
+ * Disparo imediato (atalhos / legado). Mantém a mira se o RMB estiver segurado.
  * @param {object} corpo
  * @param {object | null} camera3d
  * @param {{ x: number, y: number } | null} [miraChao]
@@ -157,26 +167,12 @@ export function pedirTiroRapido(corpo, camera3d, miraChao = null) {
   if (!tipo || !corpo) return false;
 
   const naMira = estavaMirando || botaoDireitoSegurado();
-  if (naMira) {
-    const forca = Math.max(carga, FLECHA_FORCA_MIN);
-    const mira = miraChaoDaCamera(camera3d, corpo) || miraChao;
-    disparar(tipo, corpo, camera3d, forca, mira);
-    // Recarrega do zero, mas não solta a mira enquanto o RMB estiver segurado.
-    carga = 0;
-    estavaMirando = true;
-    if (tipo === "bow") definirCargaFlecha(0);
-    else {
-      const miraChaoAtual = miraChaoDaCamera(camera3d, corpo);
-      sincronizarGestoBola({
-        carga: 0,
-        mirando: true,
-        miraX: miraChaoAtual?.x,
-        miraY: miraChaoAtual?.y,
-      });
-    }
-    return true;
-  }
-
-  disparar(tipo, corpo, camera3d, FLECHA_FORCA_MIN, miraChao);
+  const forca = Math.max(carga, FLECHA_FORCA_MIN);
+  const mira = naMira ? miraChaoDaCamera(camera3d, corpo) || miraChao : miraChao;
+  disparar(tipo, corpo, camera3d, forca, mira);
+  carga = 0;
+  estavaCarregando = false;
+  estavaMirando = naMira;
+  sincronizarVisual(tipo, naMira, camera3d, corpo);
   return true;
 }

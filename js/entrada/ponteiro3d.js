@@ -188,7 +188,7 @@ export function consumirSolturaEsquerda() {
   return soltou;
 }
 
-/** True uma vez ao soltar o direito (disparo carregado). */
+/** True uma vez ao soltar o direito (sai da mira; não dispara). */
 export function consumirSolturaDireita() {
   const soltou = soltouDireito;
   soltouDireito = false;

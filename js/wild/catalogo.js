@@ -166,7 +166,7 @@ export const FERRAMENTAS = Object.freeze({
   wateringCan: Object.freeze({ key: "wateringCan", nome: "Regador", nameKey: "tools.wateringCan", tipo: TIPO_ITEM.FERRAMENTA, cor: "#0ea5e9", dica: "Rega a planta para ela crescer." }),
   axe: Object.freeze({ key: "axe", nome: "Machado", nameKey: "tools.axe", tipo: TIPO_ITEM.FERRAMENTA, cor: "#92400e", dica: "Corta a árvore. Ela cai e vira toco." }),
   pickaxe: Object.freeze({ key: "pickaxe", nome: "Picareta", nameKey: "tools.pickaxe", tipo: TIPO_ITEM.FERRAMENTA, cor: "#64748b", dica: "Clique esquerdo quebra o bloco a até 5 tiles; aproxime para coletar. Também quebra pedra." }),
-  bow: Object.freeze({ key: "bow", nome: "Arco", nameKey: "tools.bow", tipo: TIPO_ITEM.FERRAMENTA, cor: "#b45309", dica: "LMB = tiro rápido. Segure RMB para mirar/carregar; LMB ou soltar RMB dispara. Escape ou troque o slot cancela. Flechas infinitas." }),
+  bow: Object.freeze({ key: "bow", nome: "Arco", nameKey: "tools.bow", tipo: TIPO_ITEM.FERRAMENTA, cor: "#b45309", dica: "Segure LMB para carregar e solte para disparar. RMB só mira. Escape ou troque o slot cancela. Flechas infinitas." }),
   hammer: Object.freeze({ key: "hammer", nome: "Martelo", nameKey: "tools.hammer", tipo: TIPO_ITEM.FERRAMENTA, cor: "#78716c", dica: "Abre o catálogo dentro de casa." }),
 });
 

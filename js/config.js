@@ -217,7 +217,7 @@ export const FLECHA_FORCA_MIN = 0.18;
 export const FLECHA_GRAVIDADE = 8;
 export const FLECHA_VIDA = 8;
 export const FLECHA_MAX = 16;
-/** Carga compartilhada arco/bola na mira (RMB). */
+/** Carga compartilhada arco/bola no LMB (segure para carregar). */
 export const RANGED_CARGA_TEMPO = 0.7;
 
 export const CAMINHOS = {

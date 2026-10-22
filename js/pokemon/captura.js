@@ -56,7 +56,7 @@ export function definirMiraCursor(x, y) {
 }
 
 /**
- * Sincroniza carga/mira vindas do gesto ranged (RMB).
+ * Sincroniza carga/mira vindas do gesto ranged (LMB carga, RMB mira).
  * @param {{ carga?: number, mirando?: boolean, miraX?: number, miraY?: number }} opts
  */
 export function sincronizarGestoBola(opts = {}) {

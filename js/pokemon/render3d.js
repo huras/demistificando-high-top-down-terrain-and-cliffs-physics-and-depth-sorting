@@ -4,6 +4,7 @@ import { oscilacaoNado } from "../fx/fxAgua.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaPe } from "./ator.js";
 import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
+import { alturaSobPes } from "../fisica/colisao.js";
 import { bolasAtivas, particulasCaptura } from "./captura.js";
 import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "./combate/folhasGolpe.js";
@@ -311,6 +312,9 @@ export function ligarPokemon3d(scene) {
   for (let i = 0; i < CAP_BOLA; i++) {
     const grupo = new THREE.Group();
     grupo.visible = false;
+    const sombra = criarSombraContato3d({ redonda: true });
+    sombra.grupo.scale.setScalar(0.55);
+    grupo.add(sombra.grupo);
     const placeholder = new THREE.Sprite(
       new THREE.SpriteMaterial({
         map: texturaBola(),
@@ -325,6 +329,7 @@ export function ligarPokemon3d(scene) {
     bolaSlots.push({
       grupo,
       placeholder,
+      sombra,
       mesh3d: null,
       key: "",
       carregando: "",
@@ -371,6 +376,7 @@ function garantirMalhaBola(slot, key) {
 
 function ocultarSlotBola(slot) {
   slot.grupo.visible = false;
+  if (slot.sombra?.grupo) slot.sombra.grupo.visible = false;
   if (!slot.mesh3d && !slot.carregando && !slot.key) return;
   slot.carregando = "";
   if (slot.mesh3d) {
@@ -684,7 +690,8 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
       const treme = bola.fase === "tremendo" ? Math.sin(bola.faseT * 28) * 0.12 : 0;
       const pulo = bola.fase === "tremendo" ? Math.abs(Math.sin(bola.faseT * 18)) * 0.1 : 0;
       const pulso = bola.fase === "brilho" ? 1 + Math.sin(bola.faseT * 16) * 0.18 : 1;
-      slot.grupo.position.set(bola.x + treme, bola.z * ALTURA_BLOCO + pulo, bola.y);
+      const elevBola = bola.z + pulo / ALTURA_BLOCO;
+      slot.grupo.position.set(bola.x + treme, elevBola * ALTURA_BLOCO, bola.y);
       slot.grupo.scale.setScalar(pulso);
       if (slot.mesh3d) {
         slot.mesh3d.rotation.x = bola.giro || 0;
@@ -692,6 +699,15 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
       } else {
         slot.placeholder.material.rotation = bola.giro || 0;
       }
+      // Blob de contato a cada frame (mapa do sol atrasaria ~120ms+).
+      const solo = alturaSobPes(bola.x, bola.y, bola.z + 1) || 0;
+      const noChao = bola.fase !== "voo" && bola.fase !== "rolando";
+      slot.sombra.grupo.visible = true;
+      slot.sombra.atualizar(
+        { x: bola.x, y: bola.y, z: solo, noChao },
+        elevBola,
+        { x: 0, z: 0 },
+      );
     }
     for (; slotBola < bolaSlots.length; slotBola++) ocultarSlotBola(bolaSlots[slotBola]);
   }

@@ -18,6 +18,8 @@ const tipos = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".webp": "image/webp",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".obj": "text/plain; charset=utf-8",
@@ -29,7 +31,17 @@ const tipos = {
   ".wav": "audio/wav",
 };
 
-const EXT_REF = new Set([".png", ".json", ".webp", ".mp3", ".ogg", ".wav"]);
+// Skills do Pokemon AI usam muito .jpg (ember, vine-whip, etc.).
+const EXT_REF = new Set([
+  ".png",
+  ".json",
+  ".webp",
+  ".jpg",
+  ".jpeg",
+  ".mp3",
+  ".ogg",
+  ".wav",
+]);
 
 function caminhoNaRaiz(base, rel) {
   if (!rel || rel.includes("\0")) return null;
