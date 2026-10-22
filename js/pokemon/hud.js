@@ -1,6 +1,6 @@
 import { colunaEmocao, folhaEmocoes } from "./emocoes.js";
 import { flutuantes } from "./flutuantes.js";
-import { cargaAtual, obterMiraBola } from "./captura.js";
+import { bolaEmMira, cargaAtual, obterMiraBola } from "./captura.js";
 import { alvoDeOrdem } from "./party.js";
 import { pedirRetrato } from "./retrato.js";
 import { atoresVisiveis, pokemonLigado, relogioPokemon } from "./sistema.js";
@@ -109,7 +109,7 @@ function tracarMundo(ctx, pts, projetar, z, fechar) {
 }
 
 function desenharMira(ctx, projetar, corpo) {
-  if (!bolaNaMao() || !projetar || !corpo) return;
+  if (!bolaNaMao() || !bolaEmMira() || !projetar || !corpo) return;
   const geo = obterMiraBola(corpo);
   if (!geo) return;
   const z = geo.z;

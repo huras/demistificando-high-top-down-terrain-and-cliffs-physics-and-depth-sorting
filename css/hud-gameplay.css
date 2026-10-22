@@ -1020,6 +1020,189 @@
   background: #f87171;
 }
 
+.party-slot-wrap {
+  position: relative;
+  width: var(--party-slot);
+  height: var(--party-slot);
+}
+
+.party-slot__mode {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 6px;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.88);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.party-slot__mode:hover,
+.party-slot__mode.is-picker-open {
+  color: #f8fafc;
+  background: rgba(14, 116, 144, 0.55);
+  border-color: rgba(56, 189, 248, 0.55);
+}
+
+.party-slot__mode-glyph,
+.party-team-mode__glyph,
+.party-combat__mode-glyph {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+
+.party-slot__mode-glyph svg,
+.party-team-mode__glyph svg,
+.party-combat__mode-glyph svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.party-team-mode {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 4px;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  color: #e2e8f0;
+  background: rgba(9, 15, 28, 0.55);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.party-team-mode:hover,
+.party-team-mode.is-picker-open {
+  color: #f8fafc;
+  background: rgba(14, 116, 144, 0.45);
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.party-team-mode__glyph {
+  width: 16px;
+  height: 16px;
+}
+
+.party-team-mode__glyph svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Seletor flutuante de modo de IA */
+.mode-picker {
+  position: fixed;
+  z-index: 7300;
+  min-width: 220px;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 12px;
+  border-radius: 18px;
+  color: var(--hud-pill-ink);
+  background: #fffef8;
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.28),
+    inset 0 0 0 1px rgba(40, 32, 24, 0.12);
+}
+
+.mode-picker__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 2px 4px 8px;
+  border-bottom: 1px solid rgba(40, 32, 24, 0.1);
+}
+
+.mode-picker__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hud-pill-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mode-picker__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.mode-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  color: #4a4336;
+  background: rgba(40, 32, 24, 0.05);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: inset 0 0 0 1px rgba(40, 32, 24, 0.1);
+  transition:
+    background 0.15s,
+    color 0.15s,
+    box-shadow 0.15s,
+    transform 0.1s;
+}
+
+.mode-picker__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.mode-picker__glyph svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mode-picker__label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.mode-picker__option:hover:not(:disabled) {
+  color: var(--hud-pill-ink);
+  background: var(--hud-pill-hover);
+  transform: translateY(-1px);
+}
+
+.mode-picker__option.is-active {
+  color: var(--hud-pill-ink);
+  background: var(--hud-pill-active);
+  box-shadow: inset 0 0 0 2px var(--hud-pill-ring);
+}
+
+.mode-picker--team {
+  min-width: 208px;
+}
+
 /* ---- Legacy overrides (hide old canto stack) ------------------------- */
 
 .jogo-canto {

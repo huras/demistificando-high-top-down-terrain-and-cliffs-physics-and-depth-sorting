@@ -13,9 +13,9 @@ export const CLIMA_CFG = Object.freeze({
   galeGouges: 28,
   /** Cap do pool sim + faixas 3D (≥ galeGouges × 1.45). */
   galePoolMax: 48,
-  /** Intervalos ~metade do antigo: densidade 2× sem encher mais lento. */
-  galeIntervalMax: 11,
-  galeIntervalMin: 0.14,
+  /** Intervalos: frequência 2× vs densificação anterior. */
+  galeIntervalMax: 5.5,
+  galeIntervalMin: 0.07,
   galeSteerPerSec: 1.6,
   galeTailLag: 0.42,
   galeWander: 0.055,

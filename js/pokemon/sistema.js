@@ -8,22 +8,24 @@ import { atualizarCaptura } from "./captura.js";
 import {
   aplicarDanoLivre,
   impactoProjetil,
-  tentarGolpe,
   tickConjuracao,
   tickDesmaio,
 } from "./combate/executor.js";
 import { impactoFx, tickFx } from "./combate/fx/index.js";
 import { tickParticulas } from "./combate/particulas.js";
-import { atualizarProjeteis, projeteisVivos } from "./combate/projeteis.js";
+import { atualizarProjeteis } from "./combate/projeteis.js";
 import { dadosProntos } from "./dados.js";
 import { atualizarDrops, soltarDrop } from "./drops.js";
 import { carregarEmocoes, tickEmocoes } from "./emocoes.js";
 import { ganhoAoDerrotar, NIVEL_MAX, totalParaNivel } from "./experiencia.js";
 import { flutuar, tickFlutuantes } from "./flutuantes.js";
 import { atoresPerto, montarGrade } from "./grade.js";
-import { atualizarIa } from "./ia.js";
-import { coletarEmLuta, lutaBarata } from "./ia/locomocaoCampo.js";
-import { pensar, reagirEsquiva } from "./ia/seletor.js";
+import { atualizarRoamSelvagens } from "./ia.js";
+import {
+  tickGolpesCampo,
+  tickPartyCampo,
+  tickWildCampo,
+} from "./campo/tickCampo.js";
 import {
   atualizarParty,
   iniciarParty,
@@ -38,9 +40,6 @@ import { tickFxBola } from "../fx/fxBola.js";
 import { aoLiberarSom } from "../jogo/audio.js";
 import { aquecerGrito, tickGritosAmbiente } from "../jogo/som/gritos.js";
 import { markSpeciesSeen } from "../jogo/pokedex/progresso.js";
-
-/** Reuso por frame — evita alocar lista de lutadores. */
-const emLuta = [];
 
 aoLiberarSom(() => {
   aquecerGrito(pokemonNoCampo());
@@ -161,41 +160,31 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
 
   atualizarPopulacao(corpo, passo, agora);
   definirCorposAtores(listarSolidosPokemon());
-  atualizarParty(corpo, passo, agora, perfilSeguidor);
   const mon = pokemonDeployado();
   const selvagens = selvagensAtivos();
   aquecerGrito(pokemonNoCampo());
   tickGritosAmbiente(passo, corpo, selvagens);
-  atualizarIa(selvagens, mon, treinador, passo);
+
+  // Combate OW: wilds agroam antes do party (DEFEND enxerga no mesmo frame).
+  for (let i = 0; i < selvagens.length; i++) {
+    tickWildCampo(selvagens[i], mon, treinador, passo);
+  }
+  if (mon) {
+    mon._emLutaCampo = tickPartyCampo(mon, selvagens, treinador, passo);
+  }
+  atualizarRoamSelvagens(selvagens, mon, treinador, passo);
+  atualizarParty(corpo, passo, agora, perfilSeguidor);
 
   const atores = mon ? selvagens.concat(mon) : selvagens;
-  coletarEmLuta(selvagens, mon, emLuta);
-  const tiros = emLuta.length ? projeteisVivos() : null;
-  for (let i = 0; i < emLuta.length; i++) {
-    const ator = emLuta[i];
-    const alvo = ator.alvo;
-    if (!alvo || lutaBarata(ator, alvo)) continue;
-    pensar(ator, alvo, passo, tiros);
-  }
-
   for (let i = 0; i < atores.length; i++) tickPassivo(atores[i], passo, agora);
   for (let i = 0; i < atores.length; i++) tickStatus(atores[i], agora, efeitos, "real");
   for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
   montarGrade(atores.concat(treinador));
   for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
-  for (let i = 0; i < atores.length; i++) tentarGolpe(atores[i], agora, efeitos);
+  tickGolpesCampo(atores, agora, efeitos);
   atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
     impactoProjetil(p, alvo, agora, efeitos);
   });
-  if (emLuta.length) {
-    const tirosPos = projeteisVivos();
-    for (let i = 0; i < emLuta.length; i++) {
-      const ator = emLuta[i];
-      const alvo = ator.alvo;
-      if (!alvo || lutaBarata(ator, alvo)) continue;
-      reagirEsquiva(ator, alvo, tirosPos);
-    }
-  }
   atualizarCaptura(corpo, passo, agora, efeitos);
   tickFxBola(passo);
   atualizarDrops(corpo, passo, flutuar);

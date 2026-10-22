@@ -1,6 +1,6 @@
 /**
- * Integrador de combate no overworld: cérebro = pokemon/ia (pensar),
- * pernas = pathfinding 3D (atualizarAgente). Arena continua com integrarComando.
+ * Pernas do combate OW: pathfinding 3D (atualizarAgente).
+ * Política/targeting vive em js/pokemon/campo/. Arena usa integrarComando + pensar.
  */
 import { AGENTE_DIST_PARAR, POKEMON } from "../../config.js";
 import { alturaSobPes } from "../../fisica/colisao.js";

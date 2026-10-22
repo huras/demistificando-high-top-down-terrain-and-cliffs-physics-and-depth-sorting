@@ -11,8 +11,8 @@ import { raioDoPonteiro } from "../render/3d/camera3d.js";
 import { botaoDireitoSegurado, ponteiroTravado } from "./ponteiro3d.js";
 import { abrirMenuCampo } from "../campo/menu.js";
 import { tentarAtaqueNoClique } from "../pokemon/clique.js";
-import { definirSegurarBola, definirMiraCursor } from "../pokemon/captura.js";
-import { arcoNaMao } from "../jogo/blocos.js";
+import { definirMiraCursor } from "../pokemon/captura.js";
+import { pedirTiroRapido, rangedNaMao } from "../jogo/ranged.js";
 import { usarNoClique } from "../jogo/campo.js";
 import { estado, hotbarAtivo, uiAberta } from "../jogo/estado.js";
 import { atualizarLeve, pintar } from "../jogo/ui.js";
@@ -56,8 +56,9 @@ function pontoNoChao(raio, z) {
 function dispararItem(corpo, celula, alvo, mira) {
   if (uiAberta()) return;
   const item = hotbarAtivo();
-  if (item?.tipo === TIPO_ITEM.BOLA) {
-    definirSegurarBola(true, mira.x, mira.y);
+  if (item?.tipo === TIPO_ITEM.BOLA || rangedNaMao() === "bow") {
+    const cen = obterCenario3d();
+    pedirTiroRapido(corpo, cen?.camera3d ?? null, mira);
     return;
   }
   const msg = usarNoClique(corpo, celula, alvo);
@@ -65,10 +66,6 @@ function dispararItem(corpo, celula, alvo, mira) {
   if (estado.construir) pintar();
   else if (msg) atualizarLeve();
   invalidarHoverBloco();
-}
-
-function aoMouseUp() {
-  definirSegurarBola(false);
 }
 
 function aoMove2d(ev) {
@@ -81,6 +78,7 @@ function aoMove2d(ev) {
 
 function aoMove3d(ev) {
   if (obterModo() !== "3d" || estaEmCena() || !canvas3d) return;
+  if (botaoDireitoSegurado() || ponteiroTravado()) return;
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d) return;
@@ -111,9 +109,10 @@ function aoMouseDown3d(ev) {
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d || !canvas3d || uiAberta()) return;
-  // Com arco na mira, LMB é puxar/soltar flecha — não usa item do mundo.
-  if (arcoNaMao() && (botaoDireitoSegurado() || cen.camera3d.modo === "mira")) {
+  // Na mira ranged, LMB dispara com a carga atual (não edita o mundo).
+  if (rangedNaMao() && (botaoDireitoSegurado() || cen.camera3d.modo === "mira" || ponteiroTravado())) {
     ev.preventDefault();
+    pedirTiroRapido(corpo, cen.camera3d, null);
     return;
   }
   if (tentarAtaqueNoClique(ev, null, cen)) {
@@ -148,8 +147,8 @@ function mundoDoClique(ev) {
 function aoContextMenu(ev) {
   ev.preventDefault();
   if (ponteiroTravado() || uiAberta() || estaEmCena()) return;
-  // RMB com arco = mira; não abre menu de campo.
-  if (ev.currentTarget === canvas3d && arcoNaMao()) return;
+  // RMB com ranged = mira; não abre menu de campo.
+  if (ev.currentTarget === canvas3d && rangedNaMao()) return;
   const corpo = obterCorpo();
   const mundo = mundoDoClique(ev);
   if (!corpo || !mundo) return;
@@ -178,7 +177,6 @@ export function ligarEdicaoBlocos(opts) {
   canvas3d.addEventListener("mousedown", aoMouseDown3d);
   canvas2d.addEventListener("pointermove", aoMove2d);
   canvas3d.addEventListener("pointermove", aoMove3d);
-  window.addEventListener("mouseup", aoMouseUp);
   canvas2d.addEventListener("contextmenu", aoContextMenu);
   canvas3d.addEventListener("contextmenu", aoContextMenu);
 }
@@ -189,7 +187,6 @@ export function desligarEdicaoBlocos() {
   canvas3d?.removeEventListener("mousedown", aoMouseDown3d);
   canvas2d?.removeEventListener("pointermove", aoMove2d);
   canvas3d?.removeEventListener("pointermove", aoMove3d);
-  window.removeEventListener("mouseup", aoMouseUp);
   canvas2d?.removeEventListener("contextmenu", aoContextMenu);
   canvas3d?.removeEventListener("contextmenu", aoContextMenu);
   ligado = false;

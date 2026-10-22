@@ -9,6 +9,7 @@ import {
   velocidadeDe,
 } from "../pokemon/ator.js";
 import { cancelarConjuracao, ensaiarGolpe, impactoProjetil, tentarGolpe, tickConjuracao, tickDesmaio } from "../pokemon/combate/executor.js";
+import { isCombatMotionLocked, tickMeleeApproach } from "../pokemon/combate/meleeApproach.js";
 import { rotuloStatus, tickStatus } from "../pokemon/combate/status.js";
 import { limparKi } from "../pokemon/combate/ki.js";
 import { limparParticulas, poeiraDash, rajada, tickParticulas } from "../pokemon/combate/particulas.js";
@@ -507,6 +508,10 @@ export function tickLuta(dt) {
   agora += passo;
   tickImpacto(passo);
 
+  // Lunge de contato (mesmo que o OW) — antes da locomoção / golpes.
+  const lockE = tickMeleeApproach(esquerda, passo);
+  const lockD = tickMeleeApproach(direita, passo);
+
   if (lutando) {
     if (modoTurnos()) {
       const naCena = emCena();
@@ -522,15 +527,15 @@ export function tickLuta(dt) {
       const bx = direita.x;
       const by = direita.y;
       if (iaRedeLigada()) {
-        integrarComando(esquerda, direita, passo);
-        integrarComando(direita, esquerda, passo);
+        if (!lockE) integrarComando(esquerda, direita, passo);
+        if (!lockD) integrarComando(direita, esquerda, passo);
       } else {
         esquerda.miraX = NaN;
         esquerda.miraY = NaN;
         direita.miraX = NaN;
         direita.miraY = NaN;
-        avancar(esquerda, bx, by, passo);
-        avancar(direita, ax, ay, passo);
+        if (!lockE) avancar(esquerda, bx, by, passo);
+        if (!lockD) avancar(direita, ax, ay, passo);
       }
     }
     esquerda.alvo = direita;
@@ -561,9 +566,9 @@ export function tickLuta(dt) {
     if (!modoTurnos()) {
       const tiros = projeteisVivos();
       if (iaRedeLigada()) {
-        pensar(esquerda, direita, passo, tiros);
-        pensar(direita, esquerda, passo, tiros);
-      } else {
+        if (!lockE) pensar(esquerda, direita, passo, tiros);
+        if (!lockD) pensar(direita, esquerda, passo, tiros);
+      } else if (!lockE && !lockD) {
         reagirPar(esquerda, direita);
       }
     }
@@ -576,12 +581,12 @@ export function tickLuta(dt) {
     } else if (emCena()) {
       reagirPar(esquerda, direita);
     } else if (!modoTurnos()) {
-      tentarGolpe(esquerda, agora, efeitos);
-      tentarGolpe(direita, agora, efeitos);
+      if (!lockE && !isCombatMotionLocked(esquerda)) tentarGolpe(esquerda, agora, efeitos);
+      if (!lockD && !isCombatMotionLocked(direita)) tentarGolpe(direita, agora, efeitos);
       const tiros = projeteisVivos();
       if (iaRedeLigada()) {
-        reagirEsquiva(esquerda, direita, tiros);
-        reagirEsquiva(direita, esquerda, tiros);
+        if (!lockE) reagirEsquiva(esquerda, direita, tiros);
+        if (!lockD) reagirEsquiva(direita, esquerda, tiros);
       } else {
         reagirPar(esquerda, direita);
       }

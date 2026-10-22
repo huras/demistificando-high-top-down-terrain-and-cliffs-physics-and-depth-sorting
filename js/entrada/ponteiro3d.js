@@ -1,6 +1,9 @@
 /**
  * Botões no viewport com cursor livre.
- * A mira do arco pede pointer lock só no gesto do RMB (mouse-look).
+ * A mira ranged pede pointer lock só no gesto do RMB (mouse-look).
+ *
+ * Ao ganhar pointer lock, alguns browsers disparam mouseup sintético.
+ * Engolimos só a soltura logo após o lock; soltura real dispara normalmente.
  */
 
 let ligado = false;
@@ -9,9 +12,16 @@ let acumuladoY = 0;
 let direito = false;
 let esquerdo = false;
 let soltouEsquerdo = false;
+let soltouDireito = false;
+/** Intenção de mira (RMB) enquanto o gesto vale. */
+let miraIntent = false;
+/** Timestamp (ms) em que o pointer lock foi adquirido; 0 = sem lock recente. */
+let lockDesde = 0;
 let elementoAlvo = null;
 /** @type {(() => boolean) | null} */
 let predicadoTravaMira = null;
+
+const ENGOLIR_SOLTURA_MS = 120;
 
 function noViewport(ev) {
   if (!elementoAlvo) return false;
@@ -32,10 +42,12 @@ function aoBotaoBaixo(ev) {
 
   if (ev.button === 2) {
     direito = true;
-    // Pointer lock precisa do gesto do usuário — não dá pra pedir no rAF.
-    if (!travado && predicadoTravaMira?.()) {
-      ev.preventDefault();
-      elementoAlvo.requestPointerLock?.();
+    if (predicadoTravaMira?.()) {
+      miraIntent = true;
+      if (!travado) {
+        ev.preventDefault();
+        elementoAlvo.requestPointerLock?.();
+      }
     }
   }
   if (ev.button === 0) esquerdo = true;
@@ -43,8 +55,20 @@ function aoBotaoBaixo(ev) {
 
 function aoBotaoCima(ev) {
   if (ev.button === 2) {
+    const agora = performance.now();
+    // mouseup fantasma logo após adquirir o lock — mantém a mira
+    if (
+      miraIntent &&
+      lockDesde > 0 &&
+      agora - lockDesde < ENGOLIR_SOLTURA_MS &&
+      document.pointerLockElement === elementoAlvo
+    ) {
+      direito = true;
+      return;
+    }
+    if (direito || miraIntent) soltouDireito = true;
     direito = false;
-    soltarTravaMira();
+    miraIntent = false;
   }
   if (ev.button === 0) {
     if (esquerdo) soltouEsquerdo = true;
@@ -53,11 +77,24 @@ function aoBotaoCima(ev) {
 }
 
 function aoTravaMudou() {
-  if (document.pointerLockElement === elementoAlvo) return;
-  // Escape / perda da trava: encerra mira e zera botões.
+  if (document.pointerLockElement === elementoAlvo) {
+    if (miraIntent) {
+      direito = true;
+      lockDesde = performance.now();
+    } else {
+      // Soltou antes do lock completar — não fica preso na mira
+      lockDesde = 0;
+      document.exitPointerLock?.();
+    }
+    return;
+  }
+  // Escape / perda da trava: encerra mira sem disparar.
   direito = false;
+  miraIntent = false;
+  lockDesde = 0;
   esquerdo = false;
   soltouEsquerdo = false;
+  soltouDireito = false;
   acumuladoX = 0;
   acumuladoY = 0;
 }
@@ -87,12 +124,15 @@ export function desligarPonteiro3d() {
   acumuladoX = 0;
   acumuladoY = 0;
   direito = false;
+  miraIntent = false;
+  lockDesde = 0;
   esquerdo = false;
   soltouEsquerdo = false;
+  soltouDireito = false;
 }
 
 /**
- * Quando true no RMB, pede pointer lock no mesmo gesto (mira do arco).
+ * Quando true no RMB, pede pointer lock no mesmo gesto (mira ranged).
  * @param {(() => boolean) | null} fn
  */
 export function definirPredicadoTravaMira(fn) {
@@ -104,6 +144,18 @@ export function soltarTravaMira() {
   if (elementoAlvo && document.pointerLockElement === elementoAlvo) {
     document.exitPointerLock?.();
   }
+}
+
+/** Zera estado dos botões sem depender do pointerlockchange. */
+export function zerarBotoesMira() {
+  direito = false;
+  miraIntent = false;
+  lockDesde = 0;
+  esquerdo = false;
+  soltouEsquerdo = false;
+  soltouDireito = false;
+  acumuladoX = 0;
+  acumuladoY = 0;
 }
 
 /** Consome deltas do frame (pixels). Só acumula com pointer lock (mira). */
@@ -119,9 +171,9 @@ export function ponteiroTravado() {
   return !!elementoAlvo && document.pointerLockElement === elementoAlvo;
 }
 
-/** Botão direito segurado a partir do viewport (não exige lock). */
+/** Botão direito / intenção de mira (não exige lock). */
 export function botaoDireitoSegurado() {
-  return direito;
+  return direito || miraIntent;
 }
 
 /** Botão esquerdo segurado a partir do viewport (não exige lock). */
@@ -133,5 +185,12 @@ export function botaoEsquerdoSegurado() {
 export function consumirSolturaEsquerda() {
   const soltou = soltouEsquerdo;
   soltouEsquerdo = false;
+  return soltou;
+}
+
+/** True uma vez ao soltar o direito (disparo carregado). */
+export function consumirSolturaDireita() {
+  const soltou = soltouDireito;
+  soltouDireito = false;
   return soltou;
 }

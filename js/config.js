@@ -213,9 +213,12 @@ export const CAMERA3D_PROJECAO_SUAVIDADE = 4;
 export const FLECHA_VEL = 36;
 export const FLECHA_VEL_MIN = 16;
 export const FLECHA_CARGA_TEMPO = 0.7;
+export const FLECHA_FORCA_MIN = 0.18;
 export const FLECHA_GRAVIDADE = 8;
 export const FLECHA_VIDA = 8;
 export const FLECHA_MAX = 16;
+/** Carga compartilhada arco/bola na mira (RMB). */
+export const RANGED_CARGA_TEMPO = 0.7;
 
 export const CAMINHOS = {
   jogador: "assets/people/gold.png",
@@ -434,6 +437,7 @@ export const POKEMON = Object.freeze({
   DROPS_MAX: 48,
   CACHE_ATLAS: 24,
   CACHE_RETRATO: 64,
-  VEL_AGRO: 4.2,
+  // Perseguir / luta / coleta = sprint do treinador (antes 4.2 < walk 5.4).
+  VEL_AGRO: VELOCIDADE_SPRINT,
   VEL_ROAM: 1.45,
 });

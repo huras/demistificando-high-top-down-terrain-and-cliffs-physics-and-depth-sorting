@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import {
   ALTURA_BLOCO,
-  FLECHA_CARGA_TEMPO,
   FLECHA_GRAVIDADE,
   FLECHA_MAX,
   FLECHA_VEL,
@@ -16,6 +15,7 @@ const _look = new THREE.Vector3();
 
 /**
  * Arco no ombro durante a mira e flechas com queda.
+ * A carga/tiro vêm do gesto ranged; aqui só visual + física.
  */
 export function criarFlechas3d() {
   const grupo = new THREE.Group();
@@ -37,41 +37,47 @@ export function criarFlechas3d() {
   const ativas = [];
   let carga = 0;
 
+  function definirCargaVisual(valor) {
+    carga = Math.min(1, Math.max(0, Number(valor) || 0));
+  }
+
+  function direcaoDisparo(camera3d, corpo) {
+    _dir.copy(camera3d.direcaoTiro);
+    if (_dir.lengthSq() < 1e-6) _dir.set(0, 0, -1);
+    _dir.normalize();
+    // Hipfire em órbita quase de cima: usa o facing do corpo.
+    if (camera3d.modo !== "mira" && Math.abs(_dir.y) > 0.85) {
+      const dx = corpo.dirX || 0;
+      const dy = corpo.dirY || 1;
+      const len = Math.hypot(dx, dy) || 1;
+      _dir.set(dx / len, 0.12, dy / len).normalize();
+    }
+    return _dir;
+  }
+
   function disparar(camera3d, corpo, forca = 1) {
-    if (!camera3d || camera3d.modo !== "mira") return;
+    if (!camera3d || !corpo) return;
     const origem = poseArco(corpo, camera3d);
     const mesh = obterMesh();
     mesh.position.set(origem.x, origem.y, origem.z);
     mesh.visible = true;
 
-    _dir.copy(camera3d.direcaoTiro);
-    if (_dir.lengthSq() < 1e-6) _dir.set(0, 0, -1);
-    _dir.normalize();
-
+    const dir = direcaoDisparo(camera3d, corpo);
     const t = Math.min(1, Math.max(0, forca));
     const velocidade = FLECHA_VEL_MIN + (FLECHA_VEL - FLECHA_VEL_MIN) * t;
     const vel = new THREE.Vector3(
-      _dir.x * velocidade + (corpo.vx || 0) * 0.35,
-      _dir.y * velocidade,
-      _dir.z * velocidade + (corpo.vy || 0) * 0.35,
+      dir.x * velocidade + (corpo.vx || 0) * 0.35,
+      dir.y * velocidade,
+      dir.z * velocidade + (corpo.vy || 0) * 0.35,
     );
 
     mesh.lookAt(mesh.position.x + vel.x, mesh.position.y + vel.y, mesh.position.z + vel.z);
     ativas.push({ mesh, vel, vida: FLECHA_VIDA, presa: false, forca: t });
   }
 
-  function atualizar(dt, corpo, camera3d, entrada = {}) {
+  function atualizar(dt, corpo, camera3d) {
     const mirando = !!camera3d && (camera3d.modo === "mira" || camera3d.blend > 0.25);
     const naMira = !!camera3d && camera3d.modo === "mira";
-
-    if (entrada.soltou && naMira) {
-      disparar(camera3d, corpo, Math.max(carga, 0.18));
-      carga = 0;
-    } else if (entrada.segurando && naMira) {
-      carga = Math.min(1, carga + dt / FLECHA_CARGA_TEMPO);
-    } else if (!entrada.segurando) {
-      carga = 0;
-    }
 
     if (corpo && camera3d && mirando) {
       const pose = poseArco(corpo, camera3d);
@@ -85,7 +91,6 @@ export function criarFlechas3d() {
       arco.nock.visible = naMira;
     } else {
       arco.grupo.visible = false;
-      carga = 0;
     }
 
     for (let i = ativas.length - 1; i >= 0; i--) {
@@ -143,6 +148,7 @@ export function criarFlechas3d() {
   return {
     grupo,
     disparar,
+    definirCargaVisual,
     atualizar,
     carga: () => carga,
     liberar() {

@@ -5,6 +5,7 @@ import { alternarCampo } from "../pokemon/party.js";
 import { BOLAS, BERRIES, BLOCOS, FERRAMENTAS, REMEDIOS, TIPO_ITEM, slotDaTecla } from "../wild/catalogo.js";
 import { htmlIcone } from "./icones.js";
 import { atribuirSlot, alternarSlot, contar, estado, nomeDe } from "./estado.js";
+import { cancelarRanged } from "./ranged.js";
 import { pintar } from "./ui.js";
 
 const SEGURAR_MS = 160;
@@ -140,6 +141,7 @@ function catInicial(slot) {
 }
 
 function abrir(slot) {
+  cancelarRanged();
   aberta = true;
   estado.roda = true;
   slotAlvo = slot;
@@ -235,7 +237,10 @@ export function tickRoda() {
     comShift = false;
     if (aberta) fechar(true);
     else if (foiShift) alternarCampo(slot);
-    else alternarSlot(slot);
+    else {
+      cancelarRanged();
+      alternarSlot(slot);
+    }
   } else if (baixa && tecla && !aberta && performance.now() - desde >= SEGURAR_MS) {
     abrir(slotAlvo);
   }

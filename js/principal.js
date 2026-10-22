@@ -13,18 +13,18 @@ import {
   USAR_PATCH_DEMO,
 } from "./config.js";
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
-import { arcoNaMao } from "./jogo/blocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
   botaoDireitoSegurado,
-  botaoEsquerdoSegurado,
   consumirMovimentoMouse,
+  consumirSolturaDireita,
   consumirSolturaEsquerda,
   definirPredicadoTravaMira,
   desligarPonteiro3d,
   ligarPonteiro3d,
   soltarTravaMira,
 } from "./entrada/ponteiro3d.js";
+import { cancelarRanged, rangedNaMao, tickRanged } from "./jogo/ranged.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
 import { avancarHora, obterClima, alternarClima } from "./render/3d/ceu/controleCeu.js";
 import { forcarClimaPreset } from "./clima/amostra.js";
@@ -82,7 +82,6 @@ import {
   atualizarEDesenhar3d,
   aquecerProgramas3d,
   definirMira3d,
-  definirPuxadaFlecha,
   entrarVistaCena,
   iniciarCenario3d,
   olharCamera3d,
@@ -415,13 +414,14 @@ function aoTrocarModo(modo) {
     ativarInputRelativoCamera(() => cen.yaw());
     ligarPonteiro3d(canvas3d);
     definirPredicadoTravaMira(
-      () => obterModo() === "3d" && !estaEmCena() && !jogoTravaMundo() && arcoNaMao(),
+      () => obterModo() === "3d" && !estaEmCena() && !jogoTravaMundo() && !!rangedNaMao(),
     );
   } else {
     definirPredicadoTravaMira(null);
     desligarPonteiro3d();
     desativarInputRelativoCamera();
     definirMira3d(false);
+    cancelarRanged();
     if (corpo) corpo.mirando = false;
     camera.pronta = false;
   }
@@ -476,30 +476,45 @@ function loop(agora) {
     }
     if (!estaEmCena() && !trava) {
       const mouse = consumirMovimentoMouse();
-      const comArco = arcoNaMao();
-      const mirando = comArco && botaoDireitoSegurado();
-      definirMira3d(mirando);
-      if (!mirando) soltarTravaMira();
+      const soltouDir = consumirSolturaDireita();
+      consumirSolturaEsquerda();
+      const mirando = !!rangedNaMao() && botaoDireitoSegurado();
       olharCamera3d(mouse.dx, mouse.dy);
-      definirPuxadaFlecha(mirando && botaoEsquerdoSegurado(), mirando && consumirSolturaEsquerda());
+      // Disparo/carga antes de soltar o lock (evita side-effect no mesmo frame).
+      tickRanged({
+        dt,
+        corpo,
+        camera3d: obterCenario3d()?.camera3d ?? null,
+        mirando,
+        soltouDireito: soltouDir,
+      });
+      const aindaMirando = !!rangedNaMao() && botaoDireitoSegurado();
+      definirMira3d(aindaMirando);
+      if (!aindaMirando) soltarTravaMira();
       if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
       if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
         ajustarZoom3d(1 / ZOOM_PASSO);
       }
     } else {
       definirMira3d(false);
-      soltarTravaMira();
+      cancelarRanged();
       consumirSolturaEsquerda();
-      definirPuxadaFlecha(false, false);
+      consumirSolturaDireita();
     }
   } else {
-    soltarTravaMira();
+    cancelarRanged();
     consumirSolturaEsquerda();
-    definirPuxadaFlecha(false, false);
+    consumirSolturaDireita();
     if (!trava && (teclaAgora("Equal") || teclaAgora("NumpadAdd"))) ajustarZoom(camera, ZOOM_PASSO);
     if (!trava && (teclaAgora("Minus") || teclaAgora("NumpadSubtract"))) {
       ajustarZoom(camera, 1 / ZOOM_PASSO);
     }
+  }
+
+  // Escape fora de UI: cancela mira ranged sem disparar.
+  if (modo === "3d" && !trava && !estaEmCena() && teclaAgora("Escape")) {
+    cancelarRanged();
+    definirMira3d(false);
   }
 
   if (!passeioAtivo() && !trava) atualizarMovimento(corpo, dt);

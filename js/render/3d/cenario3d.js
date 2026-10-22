@@ -67,7 +67,6 @@ import { marcarCorposCrista } from "./texturasAgua3d.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
 
 let estado = null;
-const puxada = { segurando: false, soltou: false };
 let domoNoVazio = false;
 
 /** Nevoeiro calibrado no raio 5 (disco de ~80 blocos). */
@@ -592,11 +591,6 @@ export function definirMira3d(ativa) {
   definirModoCamera(estado.camera3d, ativa ? "mira" : "orbita");
 }
 
-export function definirPuxadaFlecha(segurando, soltou) {
-  puxada.segurando = !!segurando;
-  if (soltou) puxada.soltou = true;
-}
-
 /**
  * Atualiza câmera/personagem e renderiza um frame.
  */
@@ -618,8 +612,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   seguirAlvo3d(estado.camera3d, corpo, dt);
   aplicarFacingMira(corpo, estado.camera3d);
   estado.rig?.atualizar(estado.camera3d);
-  estado.flechas?.atualizar(dt, corpo, estado.camera3d, puxada);
-  puxada.soltou = false;
+  estado.flechas?.atualizar(dt, corpo, estado.camera3d);
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;
   const elevVis = elev * ALTURA_BLOCO;

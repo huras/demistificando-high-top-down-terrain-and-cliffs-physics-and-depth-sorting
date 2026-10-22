@@ -26,6 +26,7 @@ import {
   pokemonNoCampo,
   tirarDaParty,
 } from "../pokemon/party.js";
+import { cancelarRanged } from "./ranged.js";
 import {
   abrirPainel,
   atribuirSlot,
@@ -76,6 +77,15 @@ export function ligarUi(overlay) {
   raiz = overlay;
   ligarIdioma();
   pintarUtilityIcons();
+  // Libera pointer lock antes do clique na hotbar (troca/desliga item).
+  raiz.addEventListener(
+    "pointerdown",
+    (ev) => {
+      const btn = ev.target.closest('[data-act="slot"]');
+      if (btn) cancelarRanged();
+    },
+    true,
+  );
   raiz.addEventListener("click", noClique);
   raiz.addEventListener("change", noChange);
   raiz.addEventListener("input", tratarInputCapsula);
@@ -143,7 +153,10 @@ function noClique(ev) {
     avisar();
   } else if (act === "usar" || act === "usar-mon") usarSelecionado(tipo, key, "pokemon");
   else if (act === "usar-jogador") usarSelecionado(tipo, key, "jogador");
-  else if (act === "slot") alternarSlot(i); else if (act === "ciclo") cicloSlot(i);
+  else if (act === "slot") {
+    cancelarRanged();
+    alternarSlot(i);
+  } else if (act === "ciclo") cicloSlot(i);
   else if (act === "limpar-slot") atribuirSlot(i, null, null);
   else if (act === "deploy") alternarCampo(i);
   else if (act === "depositar") toast(moverDaPartyParaCaixa(i));

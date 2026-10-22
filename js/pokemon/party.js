@@ -3,6 +3,13 @@ import { AGENTE_DIST_SEGUIR, OFFSET_MON } from "../navegacao/espacoSeguir.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
 import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
+import { AI_MODE } from "./aiModes.js";
+import {
+  aplicarModoParty,
+  definirDefaultFollowerMode,
+  obterDefaultFollowerMode,
+  sincronizarModosParty,
+} from "./campo/modos.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
 import { encherPp } from "./pp.js";
@@ -15,23 +22,46 @@ const party = [];
 let deployado = 0;
 const bolsa = new Map();
 
+function hidratarModo(ator) {
+  if (!ator) return;
+  if (ator.modePreference == null) ator.modePreference = AI_MODE.DEFAULT;
+  aplicarModoParty(ator, ator.modePreference);
+}
+
 export function iniciarParty() {
   party.length = 0;
   const esp = especie("bulbasaur") || especie("pidgey");
   if (!esp) return;
-  party.push(
-    criarAtor({
-      id: "party-0",
-      especie: esp,
-      nivel: 5,
-      faccao: "party",
-      x: 0,
-      y: 0,
-      z: 1,
-      hostil: false,
-    }),
-  );
+  const mon = criarAtor({
+    id: "party-0",
+    especie: esp,
+    nivel: 5,
+    faccao: "party",
+    x: 0,
+    y: 0,
+    z: 1,
+    hostil: false,
+  });
+  hidratarModo(mon);
+  party.push(mon);
   deployado = 0;
+}
+
+export function setFollowerMode(indice, mode) {
+  const ator = party[indice | 0];
+  if (!ator) return false;
+  aplicarModoParty(ator, mode);
+  return true;
+}
+
+export function setDefaultFollowerMode(mode) {
+  definirDefaultFollowerMode(mode);
+  sincronizarModosParty(party);
+  return obterDefaultFollowerMode();
+}
+
+export function defaultFollowerMode() {
+  return obterDefaultFollowerMode();
 }
 
 export function listaParty() {
@@ -116,6 +146,7 @@ export function receberCaptura(selvagem) {
     z: selvagem.z,
   });
   copia.exp = selvagem.exp;
+  hidratarModo(copia);
   party.push(copia);
   const key = selvagem?.especie?.key || copia?.especie?.key;
   if (key) markSpeciesCaught(key);
@@ -206,6 +237,7 @@ export function colocarNaParty(ator) {
   ator.faccao = "party";
   ator.hostil = false;
   ator.capturado = party.length > 0;
+  hidratarModo(ator);
   party.push(ator);
   return true;
 }
@@ -327,6 +359,8 @@ export function atualizarParty(corpo, dt, agora, perfil) {
   }
   if (vivo.brilhoBola > 0) vivo.brilhoBola = Math.max(0, vivo.brilhoBola - dt);
   if (mon.ordemCampo) return;
+  // Combate OW (tickPartyCampo) marca _emLutaCampo quando não deve follow.
+  if (mon._emLutaCampo) return;
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;
   const usar = perfil || PERFIL_COMPANHEIRO;
   if (mon.perfil !== usar) {

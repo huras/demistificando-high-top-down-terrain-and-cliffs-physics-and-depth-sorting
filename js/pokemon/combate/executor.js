@@ -32,6 +32,8 @@ import { RAIO_PROJETIL } from "../ia/constantes.js";
 import { tocarGrito } from "../../jogo/som/gritos.js";
 import { acertaClassico } from "./acertoClassico.js";
 import { gastarPp, podeGastarPp } from "../pp.js";
+import { beginMeleeApproach, isCombatMotionLocked } from "./meleeApproach.js";
+import { marcarAtacante, marcarTiroRanged } from "../campo/retaliacao.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
 
@@ -156,8 +158,10 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
     dist: recuo.dist,
   });
   if (alvo.faccao === "selvagem") {
-    alvo.pendenteAtacante = atacante;
+    marcarAtacante(alvo, atacante);
     if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
+  } else if (alvo.faccao === "party") {
+    marcarAtacante(alvo, atacante);
   }
   if (alvo.hp > 0) return;
   derrubar(alvo, atacante, agora, efeitos);
@@ -242,9 +246,12 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
       modoTurnos: !!atacante?.resultadoTurno,
     });
   }
+  // Party/selvagem: quem bateu. Investigação de tiro ranged (com origem) fica no impactoProjetil.
   if (alvo.faccao === "selvagem") {
-    alvo.pendenteAtacante = atacante;
+    marcarAtacante(alvo, atacante);
     if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
+  } else if (alvo.faccao === "party") {
+    marcarAtacante(alvo, atacante);
   }
   if (alvo.hp > 0) return;
   derrubar(alvo, atacante, agora, efeitos);
@@ -775,27 +782,65 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
   const alcance = alcanceCorpo(def);
   const d = alvo ? dist(ator, alvo) : Infinity;
   const travado = ator.resultadoTurno && !ator.resultadoTurno.gasto;
-  if (alvo && (d <= alcance || travado)) {
-    avancarNoGolpe(ator, alvo);
-    ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
-    aplicarDano(
-      ator,
-      alvo,
-      def.poder,
-      def.tipo,
-      def.categoria,
-      agora,
-      efeitos,
-      acertoCorpo(def.acerto, d, alcance),
-      def.forma,
-      0,
-      def,
-    );
-  } else if (efeitos?.flutuar) {
-    efeitos.flutuar(ator, "errou", "#cbd5e1");
-    notar(efeitos, { tipo: "erro", ator, alvo });
+
+  // Turnos: impacto imediato (teatro). Tempo real: lunge controlado.
+  if (travado) {
+    if (alvo && (d <= alcance || travado)) {
+      avancarNoGolpe(ator, alvo);
+      ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
+      aplicarDano(
+        ator,
+        alvo,
+        def.poder,
+        def.tipo,
+        def.categoria,
+        agora,
+        efeitos,
+        acertoCorpo(def.acerto, d, alcance),
+        def.forma,
+        0,
+        def,
+      );
+    } else if (efeitos?.flutuar) {
+      efeitos.flutuar(ator, "errou", "#cbd5e1");
+      notar(efeitos, { tipo: "erro", ator, alvo });
+    }
+    abrirRecuperacao(ator, slot);
+    return;
   }
-  abrirRecuperacao(ator, slot);
+
+  const aplicarHit = () => {
+    const dNow = alvo ? dist(ator, alvo) : Infinity;
+    if (alvo && dNow <= alcance * (1 + 0.12)) {
+      ator.hopLift = Math.max(ator.hopLift || 0, 0.22);
+      aplicarDano(
+        ator,
+        alvo,
+        def.poder,
+        def.tipo,
+        def.categoria,
+        agora,
+        efeitos,
+        acertoCorpo(def.acerto, dNow, alcance),
+        def.forma,
+        0,
+        def,
+      );
+    } else if (efeitos?.flutuar) {
+      efeitos.flutuar(ator, "errou", "#cbd5e1");
+      notar(efeitos, { tipo: "erro", ator, alvo });
+    }
+    abrirRecuperacao(ator, slot);
+  };
+
+  if (!alvo) {
+    aplicarHit();
+    return;
+  }
+  if (!beginMeleeApproach(ator, def, alvo, aplicarHit)) {
+    // Já em lunge — não empilha outro hit.
+    return;
+  }
 }
 
 function manterPoseGolpe(ator, agora) {
@@ -974,6 +1019,7 @@ export function dispararGolpeTurno(ator, slot, agora, efeitos) {
 
 export function tentarGolpe(ator, agora, efeitos) {
   if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0) return;
+  if (isCombatMotionLocked(ator)) return;
   const recuoHerdado = ator.recuoNoTick == null ? emRecuo(ator) : ator.recuoNoTick > 0;
   if (ator.morto || ator.capturado || ator.dormindo > 0 || recuoHerdado || emAvanco(ator) || emEsquiva(ator)) return;
   if (ator.status === "freeze") return;
@@ -994,8 +1040,9 @@ export function tentarGolpe(ator, agora, efeitos) {
 }
 
 export function impactoProjetil(projetil, alvo, agora, efeitos) {
+  const dono = projetil.dono;
   aplicarDano(
-    projetil.dono,
+    dono,
     alvo,
     projetil.poder,
     projetil.tipo,
@@ -1005,8 +1052,16 @@ export function impactoProjetil(projetil, alvo, agora, efeitos) {
     projetil.acerto,
     projetil.forma,
     projetil.rajada,
-    projetil.defGolpe || projetil.dono?.golpeSlot?.def,
+    projetil.defGolpe || dono?.golpeSlot?.def,
   );
+  // Origem do tiro (baseX/Y) — party investiga se ainda não via o atirador.
+  if (alvo?.faccao === "party" && dono && !alvo.morto) {
+    marcarTiroRanged(alvo, dono, {
+      x: projetil.baseX ?? dono.x,
+      y: projetil.baseY ?? dono.y,
+      z: dono.elevacao ?? dono.z ?? projetil.z,
+    });
+  }
 }
 
 export { atorMorreu };

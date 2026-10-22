@@ -3,7 +3,6 @@ import { alturaSobPes } from "../fisica/colisao.js";
 import { BOLAS, TIPO_ITEM } from "../wild/catalogo.js";
 import {
   avisar,
-  contar,
   gastar,
   guardarCapturaNaCaixa,
   hotbarAtivo,
@@ -11,7 +10,8 @@ import {
   vagasNasCaixas,
 } from "../jogo/estado.js";
 import { selvagensAtivos } from "./populacao.js";
-import { ajustarItem, partyCheia, receberCaptura } from "./party.js";
+import { POKEMON } from "../config.js";
+import { ajustarItem, partyCheia, pokemonDeployado, receberCaptura } from "./party.js";
 
 export const ALCANCE_BOLA = 10;
 const LARGURA_MIRA = 0.86;
@@ -20,11 +20,9 @@ const MAX_BOLAS = 12;
 
 /** @type {object[]} */
 const bolas = [];
-let segurando = false;
-let pedidoSegurar = false;
-let soltarPendente = false;
 let carga = 0;
 let miraCursor = null;
+let gestoMirando = false;
 const particulas = [];
 
 export function particulasCaptura() {
@@ -44,12 +42,29 @@ export function bolasAtivas() {
 }
 
 export function cargaAtual() {
-  return segurando ? carga : 0;
+  return gestoMirando ? carga : 0;
+}
+
+/** True enquanto o gesto ranged está na mira com bola. */
+export function bolaEmMira() {
+  return gestoMirando;
 }
 
 /** O cursor no chão. A mira da bola lê isso o tempo todo. */
 export function definirMiraCursor(x, y) {
   if (Number.isFinite(x) && Number.isFinite(y)) miraCursor = { x, y };
+}
+
+/**
+ * Sincroniza carga/mira vindas do gesto ranged (RMB).
+ * @param {{ carga?: number, mirando?: boolean, miraX?: number, miraY?: number }} opts
+ */
+export function sincronizarGestoBola(opts = {}) {
+  gestoMirando = !!opts.mirando;
+  carga = gestoMirando ? Math.min(1, Math.max(0, Number(opts.carga) || 0)) : 0;
+  if (gestoMirando && Number.isFinite(opts.miraX) && Number.isFinite(opts.miraY)) {
+    miraCursor = { x: opts.miraX, y: opts.miraY };
+  }
 }
 
 /**
@@ -82,20 +97,8 @@ export function obterMiraBola(corpo) {
     alcance: ALCANCE_BOLA,
     voo,
     largura: LARGURA_MIRA,
-    carga: segurando ? carga : 0,
+    carga: gestoMirando ? carga : 0,
   };
-}
-
-/** Segurar o clique esquerdo com uma bola na hotbar carrega o arremesso. */
-export function definirSegurarBola(ativo, x, y) {
-  if (ativo) {
-    pedidoSegurar = true;
-    soltarPendente = false;
-    definirMiraCursor(x, y);
-    return;
-  }
-  if (pedidoSegurar || segurando) soltarPendente = true;
-  pedidoSegurar = false;
 }
 
 function chanceDe(alvo, mul) {
@@ -182,21 +185,34 @@ function limparMortas() {
   }
 }
 
-function soltar(corpo) {
+/**
+ * Arremessa a bola da hotbar.
+ * @param {object} corpo
+ * @param {{ carga?: number, mira?: { x: number, y: number }, usarFacing?: boolean }} [opts]
+ * @returns {boolean}
+ */
+export function arremessarBola(corpo, opts = {}) {
+  if (!corpo || estaEmCena()) return false;
   const item = hotbarAtivo();
-  if (!item || item.tipo !== TIPO_ITEM.BOLA) return;
+  if (!item || item.tipo !== TIPO_ITEM.BOLA) return false;
   const def = BOLAS[item.key];
-  if (!def || semLugarParaCaptura()) return;
-  if (!gastar(item.tipo, item.key, 1)) return;
+  if (!def || semLugarParaCaptura()) return false;
+  if (!gastar(item.tipo, item.key, 1)) return false;
   avisar();
 
+  if (opts.usarFacing) miraCursor = null;
+  else if (opts.mira && Number.isFinite(opts.mira.x) && Number.isFinite(opts.mira.y)) {
+    miraCursor = { x: opts.mira.x, y: opts.mira.y };
+  }
+
+  const cargaTiro = Math.min(1, Math.max(0, Number(opts.carga) || 0));
   const geo = obterMiraBola(corpo);
   const ux = geo?.ux ?? (corpo.dirX || 0);
   const uy = geo?.uy ?? (corpo.dirY || 1);
   const dist = geo?.voo ?? ALCANCE_BOLA;
   const tempo = 0.42 + dist * 0.045;
   const vel = dist / tempo;
-  const vz = -1.15 / tempo + 10 * tempo + carga * 1.4;
+  const vz = -1.15 / tempo + 10 * tempo + cargaTiro * 1.4;
   bolas.push({
     fase: "voo",
     ballKey: item.key,
@@ -220,31 +236,61 @@ function soltar(corpo) {
     faseT: 0,
     giro: 0,
   });
+  return true;
+}
+
+function estaPerto(quem, bola) {
+  if (!quem || quem.morto) return false;
+  return Math.hypot(bola.x - quem.x, bola.y - quem.y) <= RAIO_PICKUP;
 }
 
 function tentarPickup(corpo) {
-  if (!corpo) return;
+  const mon = pokemonDeployado();
   for (let i = 0; i < bolas.length; i++) {
     const b = bolas[i];
     if (b.morta || b.fase !== "grounded") continue;
-    const d = Math.hypot(b.x - corpo.x, b.y - corpo.y);
-    if (d > RAIO_PICKUP) continue;
+    if (!estaPerto(corpo, b) && !estaPerto(mon, b)) continue;
     reembolsar(b);
     b.morta = true;
     estourar(b.x, b.y, b.z, "#cbd5e1", 5, false);
   }
 }
 
+/** Bola grounded mais perto do mon no raio do treinador (coleta OW / Pokemon AI). */
+export function bolaNoChaoMaisPerto(mon, jogador, raio = POKEMON.RAIO_AGRO) {
+  if (!mon) return null;
+  const lim = (raio > 0 ? raio : POKEMON.RAIO_AGRO) ** 2;
+  let melhor = null;
+  let melhorD = Infinity;
+  for (let i = 0; i < bolas.length; i++) {
+    const b = bolas[i];
+    if (!b || b.morta || b.fase !== "grounded") continue;
+    if (jogador) {
+      const dxj = b.x - jogador.x;
+      const dyj = b.y - jogador.y;
+      if (dxj * dxj + dyj * dyj > lim) continue;
+    }
+    const dx = b.x - mon.x;
+    const dy = b.y - mon.y;
+    const d = dx * dx + dy * dy;
+    if (d < melhorD) {
+      melhor = b;
+      melhorD = d;
+    }
+  }
+  return melhor;
+}
+
 function aterrissarMiss(bola) {
+  bola.vx = 0;
+  bola.vy = 0;
+  bola.vz = 0;
   if (podeRetornar(bola, true)) {
     iniciarRetorno(bola);
     return;
   }
   bola.fase = "grounded";
   bola.faseT = 0;
-  bola.vx = 0;
-  bola.vy = 0;
-  bola.vz = 0;
 }
 
 function selar(bola, alvo) {
@@ -266,7 +312,10 @@ function selar(bola, alvo) {
 
 function tickBola(bola, corpo, dt, efeitos) {
   bola.faseT += dt;
-  bola.giro = (bola.giro || 0) + dt * 14;
+  // Gira só no ar / no rolar curto — no chão para de rolar visualmente.
+  if (bola.fase === "voo" || bola.fase === "rolando") {
+    bola.giro = (bola.giro || 0) + dt * 14;
+  }
 
   if (bola.fase === "voo") {
     bola.x += bola.vx * dt;
@@ -286,11 +335,13 @@ function tickBola(bola, corpo, dt, efeitos) {
       estourar(bola.x, bola.y, bola.z, "#f8fafc", 10, true);
       return;
     }
-    if (bola.z <= chao) {
+    const noChao = bola.z <= chao + 0.02;
+    if (noChao) {
       bola.z = chao;
       if (bola.vz < 0) bola.vz = 0;
     }
-    if (bola.viajou >= bola.max) {
+    // Chegou no alcance ou já rasteja no chão: entra no rolar curto.
+    if (bola.viajou >= bola.max || (noChao && bola.viajou >= Math.min(1.2, bola.max * 0.35))) {
       bola.z = Math.max(bola.z, chao);
       bola.vz = 0;
       bola.fase = "rolando";
@@ -300,9 +351,14 @@ function tickBola(bola, corpo, dt, efeitos) {
   }
 
   if (bola.fase === "rolando") {
-    bola.x += bola.vx * dt * 0.25;
-    bola.y += bola.vy * dt * 0.25;
+    const atrito = Math.max(0, 1 - bola.faseT / 0.45);
+    bola.x += bola.vx * dt * 0.25 * atrito;
+    bola.y += bola.vy * dt * 0.25 * atrito;
+    const chao = alturaSobPes(bola.x, bola.y, bola.z + 1);
+    bola.z = chao;
     if (bola.faseT > 0.45) {
+      bola.vx = 0;
+      bola.vy = 0;
       estourar(bola.x, bola.y, bola.z, "#cbd5e1", 6, false);
       aterrissarMiss(bola);
     }
@@ -377,33 +433,6 @@ function tickBola(bola, corpo, dt, efeitos) {
 
 export function atualizarCaptura(corpo, dt, agora, efeitos) {
   void agora;
-  const focado = document.activeElement?.tagName;
-  const digita = focado === "INPUT" || focado === "SELECT" || focado === "TEXTAREA";
-  const pode = !digita && !estaEmCena();
-
-  // Não bloqueia por bola em voo — só carga / estoque / PC.
-  if (pode && (pedidoSegurar || soltarPendente)) {
-    if (!segurando) {
-      const item = hotbarAtivo();
-      if (!item || item.tipo !== TIPO_ITEM.BOLA || contar(item.tipo, item.key) <= 0) {
-        efeitos.flutuar(corpo, "sem bola", "#fca5a5");
-        pedidoSegurar = false;
-        soltarPendente = false;
-      } else if (semLugarParaCaptura()) {
-        efeitos.flutuar(corpo, "PC cheio", "#fca5a5");
-        pedidoSegurar = false;
-        soltarPendente = false;
-      } else segurando = true;
-    }
-    if (segurando && pedidoSegurar) carga = Math.min(1, carga + dt / 0.95);
-  }
-  if (segurando && !pedidoSegurar) {
-    segurando = false;
-    soltarPendente = false;
-    if (pode) soltar(corpo);
-    carga = 0;
-  }
-
   tickParticulas(dt);
   tentarPickup(corpo);
   for (let i = 0; i < bolas.length; i++) {

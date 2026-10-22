@@ -203,8 +203,45 @@
 
 .party-combat__actions {
   display: flex;
+  align-items: center;
   gap: 6px;
   margin-top: 6px;
+}
+
+.party-combat__mode {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid rgba(40, 32, 24, 0.14);
+  border-radius: 999px;
+  color: #2c261c;
+  background: rgba(40, 32, 24, 0.08);
+  cursor: pointer;
+}
+
+.party-combat__mode:hover,
+.party-combat__mode.is-picker-open {
+  background: rgba(40, 32, 24, 0.16);
+}
+
+.party-combat__mode-glyph {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.party-combat__mode-glyph svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .party-combat__action {

@@ -91,3 +91,27 @@ export function atualizarDrops(corpo, dt, flutuar) {
 export function dropsNoChao() {
   return itens;
 }
+
+/** Drop mais perto do mon ainda no raio do treinador (coleta OW). */
+export function dropMaisPerto(mon, jogador, raio = POKEMON.RAIO_AGRO) {
+  if (!mon || !itens.length) return null;
+  const lim = (raio > 0 ? raio : POKEMON.RAIO_AGRO) ** 2;
+  let melhor = null;
+  let melhorD = Infinity;
+  for (let i = 0; i < itens.length; i++) {
+    const item = itens[i];
+    if (jogador) {
+      const dxj = item.x - jogador.x;
+      const dyj = item.y - jogador.y;
+      if (dxj * dxj + dyj * dyj > lim) continue;
+    }
+    const dx = item.x - mon.x;
+    const dy = item.y - mon.y;
+    const d = dx * dx + dy * dy;
+    if (d < melhorD) {
+      melhor = item;
+      melhorD = d;
+    }
+  }
+  return melhor;
+}

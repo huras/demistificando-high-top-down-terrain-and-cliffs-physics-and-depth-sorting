@@ -22,6 +22,7 @@ const tipos = {
   ".ico": "image/x-icon",
   ".obj": "text/plain; charset=utf-8",
   ".glb": "model/gltf-binary",
+  ".dae": "model/vnd.collada+xml",
   ".mtl": "text/plain; charset=utf-8",
   ".mp3": "audio/mpeg",
   ".ogg": "audio/ogg",

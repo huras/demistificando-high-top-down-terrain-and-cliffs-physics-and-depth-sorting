@@ -581,6 +581,7 @@ export function tickPassivo(ator, dt, agora) {
   ator.animT += dt;
 }
 
+/** `correndo` = sprint de combate/chase (VEL_AGRO); senão roam/walk. */
 export function velocidadeDe(ator, correndo) {
   const base = correndo ? POKEMON.VEL_AGRO : POKEMON.VEL_ROAM;
   const para = ator?.status === "paralysis" ? 0.5 : 1;

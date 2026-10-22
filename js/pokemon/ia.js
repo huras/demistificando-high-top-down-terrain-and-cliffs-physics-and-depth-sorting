@@ -1,3 +1,7 @@
+/**
+ * Roam de selvagens (legado / base pra turno futuro).
+ * Combate OW vive em js/pokemon/campo/.
+ */
 import { AGENTE_DIST_PARAR, POKEMON } from "../config.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { alturaSobPes } from "../fisica/colisao.js";
@@ -5,8 +9,8 @@ import { soltarEscalada } from "../fisica/escalada.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { garantirNav } from "../navegacao/seguirCaminho.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
-import { emAvanco, emEsquiva, emRecuo, velocidadeDe } from "./ator.js";
-import { integrarCombateCampo, irPara } from "./ia/locomocaoCampo.js";
+import { velocidadeDe } from "./ator.js";
+import { irPara } from "./ia/locomocaoCampo.js";
 
 export { irPara, zDePerseguicao } from "./ia/locomocaoCampo.js";
 
@@ -73,40 +77,6 @@ function desistirMeta(ator) {
   marcarAncora(ator);
 }
 
-function entrarAgro(ator, alvo) {
-  if (!alvo || alvo.morto) return;
-  ator.modo = "agro";
-  ator.alvo = alvo;
-  ator.replanejar = 0;
-  if (!ator.hab) ator.hab = "perseguir";
-}
-
-function ameacaMaisPerto(ator, party, jogador) {
-  let melhor = null;
-  let melhorD = Infinity;
-  const mon = party?.mon || null;
-  if (mon && !mon.morto) {
-    const d = dist2(ator, mon);
-    if (d < melhorD) {
-      melhor = mon;
-      melhorD = d;
-    }
-  }
-  if (jogador && jogador.hp > 0) {
-    const d = dist2(ator, jogador);
-    const prefere = ator.prefereParty && mon && !mon.morto;
-    if (!prefere && d < melhorD) melhor = jogador;
-    if (!mon || mon.morto) melhor = d < melhorD ? jogador : melhor;
-  }
-  return melhor;
-}
-
-function soltarAgro(ator, alvo) {
-  if (ator.agroPersistente) return false;
-  if (!alvo) return true;
-  return dist2(ator, alvo) > POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA;
-}
-
 function vagar(ator, dt) {
   if (ator.roam === "waiting") {
     ator.espera -= dt;
@@ -147,84 +117,22 @@ function vagar(ator, dt) {
   if (ator._ancoraT > 1.3) desistirMeta(ator);
 }
 
-function atualizarUm(ator, party, jogador, dt) {
-  if (ator.morto || ator.capturado || ator.preso) {
-    ator.andando = false;
-    ator.alvo = null;
-    return;
-  }
-  if ((ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0 || emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
-    pararCorpo(ator);
-    return;
-  }
-  if (ator.dormindo > 0) {
-    if (ator.status !== "sleep") ator.dormindo = Math.max(0, ator.dormindo - dt);
-    ator.andando = false;
-    return;
-  }
+/** Aviso de proximidade; combate fica em campo/tickCampo. */
+export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
+  for (let i = 0; i < selvagens.length; i++) {
+    const ator = selvagens[i];
+    if (!ator || ator.morto || ator.capturado || ator.preso) continue;
+    if (ator.modo === "agro" && ator.alvo && !ator.alvo.morto) continue;
 
-  if (ator.faccao === "selvagem") {
-    const raioAviso = POKEMON.RAIO_AVISO * POKEMON.RAIO_AVISO;
-    const raioVer = (ator.hostil ? POKEMON.RAIO_AGRO : POKEMON.RAIO_AGRO * 2) ** 2;
-    const foco = ameacaMaisPerto(ator, party, jogador);
-    if (!ator.efemero && !ator.avisou && foco && dist2(ator, foco) < raioAviso) {
-      ator.avisou = true;
-      definirEmocao(ator, EMOCAO.EXCLAMACAO);
-      if (foco.faccao === "party") definirEmocao(foco, EMOCAO.EXCLAMACAO, { duracao: 1.2 });
-    }
-    if (ator.pendenteAtacante && !ator.pendenteAtacante.morto) {
-      entrarAgro(ator, ator.pendenteAtacante);
-      ator.pendenteAtacante = null;
-    } else if (ator.modo !== "agro" && ator.hostil && foco && dist2(ator, foco) < raioVer) {
-      entrarAgro(ator, foco);
-    }
-    if (ator.modo === "agro") {
-      if (!ator.alvo || ator.alvo.morto) ator.alvo = ameacaMaisPerto(ator, party, jogador);
-      if (ator.alvo && !soltarAgro(ator, ator.alvo)) {
-        integrarCombateCampo(ator, ator.alvo, dt);
-        return;
+    const foco = mon && !mon.morto ? mon : jogador;
+    if (!ator.efemero && !ator.avisou && foco) {
+      const raioAviso = POKEMON.RAIO_AVISO * POKEMON.RAIO_AVISO;
+      if (dist2(ator, foco) < raioAviso) {
+        ator.avisou = true;
+        definirEmocao(ator, EMOCAO.EXCLAMACAO);
+        if (foco.faccao === "party") definirEmocao(foco, EMOCAO.EXCLAMACAO, { duracao: 1.2 });
       }
-      if (!ator.agroPersistente) {
-        ator.modo = "roam";
-        ator.alvo = null;
-        ator.hab = null;
-        ator.cmdX = 0;
-        ator.cmdY = 0;
-        ator.roam = "waiting";
-        ator.espera = 0.4;
-        cancelarPath(ator.id);
-        const nav = garantirNav(ator);
-        nav.estado = "idle";
-        nav.path = null;
-      }
-      ator.andando = false;
-      return;
     }
     vagar(ator, dt);
-    return;
   }
-
-  if (ator.ordemCampo) return;
-
-  const ordem = ator.ordemAlvo;
-  if (!ordem || ordem.morto || ordem.capturado) {
-    ator.ordemAlvo = null;
-    ator.modo = "roam";
-    ator.alvo = null;
-    ator.hab = null;
-    ator.cmdX = 0;
-    ator.cmdY = 0;
-    ator.presoT = 0;
-    return;
-  }
-  ator.modo = "agro";
-  ator.alvo = ordem;
-  if (!ator.hab) ator.hab = "perseguir";
-  integrarCombateCampo(ator, ordem, dt);
-}
-
-export function atualizarIa(selvagens, mon, jogador, dt) {
-  const party = { mon, selvagens };
-  for (let i = 0; i < selvagens.length; i++) atualizarUm(selvagens[i], party, jogador, dt);
-  if (mon) atualizarUm(mon, party, jogador, dt);
 }
