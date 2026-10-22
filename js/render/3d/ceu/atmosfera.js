@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { ALTURA_CIRRUS, ALTURA_NUVEM, ESCALA_NUVEM, uniformsNuvem } from "./parametros.js";
+import { CLIMA_CFG } from "../../../clima/config.js";
+import { ALTURA_CIRRUS, ESCALA_NUVEM, uniformsNuvem } from "./parametros.js";
 
 const VERT = /* glsl */ `
 varying vec3 vDir;
@@ -32,6 +33,10 @@ uniform float uAlturaCirrus;
 uniform float uEscalaNuvem;
 uniform float uLimiarNuvem;
 uniform float uPesoCirrus;
+uniform float uUmidade;
+uniform float uMorph;
+uniform float uEstica;
+uniform float uBordaExtra;
 uniform vec2 uVentoNuvem;
 uniform sampler2D uMapaNuvem;
 
@@ -74,34 +79,54 @@ vec3 atmosfera(vec3 rd) {
   return ceu;
 }
 
-float amostra(vec2 uv) {
-  return texture2D(uMapaNuvem, uv).r;
-}
-
 vec3 camada(vec3 rd, vec3 ro, vec3 ceu, float altura, vec2 vento, float escala, float limiar, float pesoMax, float canalCirrus) {
   float denom = rd.y;
   if (abs(denom) < 0.0015) return ceu;
   float t = (altura - ro.y) / denom;
   if (t < 0.0) return ceu;
   vec3 hit = ro + rd * t;
-  vec2 uv = (hit.xz + vento) * escala;
-  float d = canalCirrus > 0.5 ? texture2D(uMapaNuvem, uv).g : amostra(uv);
-  float dSol = canalCirrus > 0.5
-    ? texture2D(uMapaNuvem, uv - uDirSol.xz * escala * 14.0).g
-    : amostra(uv - uDirSol.xz * escala * 22.0);
-  float corpo = smoothstep(limiar, limiar + 0.2, d);
+
+  float umid = clamp(uUmidade * uMorph, 0.0, 1.0);
+  // Stratus: alonga no eixo do vento (mundo XZ).
+  vec2 eixoV = length(vento) > 1e-4 ? normalize(vento) : vec2(1.0, 0.0);
+  vec2 eixoP = vec2(-eixoV.y, eixoV.x);
+  vec2 local = hit.xz + vento;
+  float along = 1.0 + umid * uEstica;
+  vec2 esticado = eixoV * dot(local, eixoV) / along + eixoP * dot(local, eixoP) * (1.0 + umid * uEstica * 0.35);
+  vec2 uv = esticado * escala;
+
+  vec4 mapa = texture2D(uMapaNuvem, uv);
+  float puff = canalCirrus > 0.5 ? mapa.g : mapa.r;
+  float macro = mapa.b;
+  // Umidade: manto (macro) no lugar de bolhas Worley.
+  float sheet = smoothstep(0.22, 0.78, macro) * (0.55 + 0.45 * mapa.g);
+  float d = mix(puff, sheet, umid * (canalCirrus > 0.5 ? 0.35 : 1.0));
+
+  vec2 uvSol = uv - uDirSol.xz * escala * (canalCirrus > 0.5 ? 14.0 : 22.0);
+  vec4 mapaSol = texture2D(uMapaNuvem, uvSol);
+  float dSolPuff = canalCirrus > 0.5 ? mapaSol.g : mapaSol.r;
+  float dSolSheet = smoothstep(0.22, 0.78, mapaSol.b) * (0.55 + 0.45 * mapaSol.g);
+  float dSol = mix(dSolPuff, dSolSheet, umid * (canalCirrus > 0.5 ? 0.35 : 1.0));
+
+  float borda = 0.2 + umid * uBordaExtra;
+  float corpo = smoothstep(limiar, limiar + borda, d);
   float ladoSol = clamp(dot(rd, uDirSol) * 0.5 + 0.5, 0.0, 1.0);
   float luz = mix(0.16, 1.0, ladoSol);
   luz *= 0.55 + 0.45 * max(uDirSol.y, 0.0);
-  luz += (dSol - d) * 1.6;
-  luz = clamp(luz, 0.08, 1.0);
+  // Tempestade: iluminação mais plana, menos relief.
+  float relevo = (dSol - d) * mix(1.6, 0.35, umid);
+  luz += relevo;
+  luz = clamp(luz, mix(0.08, 0.18, umid), mix(1.0, 0.72, umid));
   float prata = pow(clamp(1.0 - corpo, 0.0, 1.0), 2.0) * pow(max(dot(rd, uDirSol), 0.0), 4.0);
+  prata *= 1.0 - umid * 0.92;
   vec3 cor = mix(uCorNuvemSombra, uCorNuvemLuz, luz);
   cor += uCorSol * prata * uBrilhoSol * 0.28;
   cor = mix(cor, uCorLua, uBrilhoLua * 0.35);
   float longe = exp(-t * 0.00125);
   float peso = corpo * longe * smoothstep(0.012, 0.14, abs(denom)) * pesoMax;
-  peso = min(peso, canalCirrus > 0.5 ? 0.42 : 0.93);
+  // Cobertura um pouco mais fechada sob chuva (camada baixa).
+  float teto = canalCirrus > 0.5 ? 0.42 : mix(0.93, 0.97, umid);
+  peso = min(peso, teto);
   return mix(ceu, cor, peso);
 }
 
@@ -121,7 +146,7 @@ void main() {
 
 /**
  * Domo analítico (espalhamento estilizado) + duas camadas de nuvem
- * no mesmo mapa que escurece o chão.
+ * no mesmo mapa que escurece o chão. uUmidade morpha puff → stratus.
  */
 export function criarAtmosfera() {
   const uniforms = {
@@ -145,6 +170,10 @@ export function criarAtmosfera() {
     uEscalaNuvem: uniformsNuvem.uEscalaNuvem,
     uLimiarNuvem: uniformsNuvem.uLimiarNuvem,
     uPesoCirrus: { value: 0.45 },
+    uUmidade: uniformsNuvem.uUmidade,
+    uMorph: { value: CLIMA_CFG.chuvaNuvemMorph ?? 1 },
+    uEstica: { value: CLIMA_CFG.chuvaNuvemEstica ?? 0.35 },
+    uBordaExtra: { value: CLIMA_CFG.chuvaNuvemBorda ?? 0.28 },
     uVentoNuvem: uniformsNuvem.uVentoNuvem,
     uMapaNuvem: uniformsNuvem.uMapaNuvem,
   };
@@ -190,6 +219,9 @@ export function criarAtmosfera() {
     uniforms.uFlash.value = flash;
     uniforms.uPesoCirrus.value = pesoCirrus;
     uniforms.uEscalaNuvem.value = ESCALA_NUVEM;
+    uniforms.uMorph.value = CLIMA_CFG.chuvaNuvemMorph ?? 1;
+    uniforms.uEstica.value = CLIMA_CFG.chuvaNuvemEstica ?? 0.35;
+    uniforms.uBordaExtra.value = CLIMA_CFG.chuvaNuvemBorda ?? 0.28;
   }
 
   return { mesh, atualizar };

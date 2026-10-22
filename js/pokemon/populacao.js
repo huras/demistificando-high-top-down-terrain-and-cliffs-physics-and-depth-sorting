@@ -272,8 +272,20 @@ function d2De(lar, px, py) {
   return dx * dx + dy * dy;
 }
 
+function emCenaMorte(ator) {
+  if (!ator) return false;
+  if ((ator.desmaioEm || 0) > 0) return true;
+  if ((ator.hp ?? 1) <= 0 && !ator.morto) return true;
+  if (ator.morto && agora < (ator.mortoAte || 0)) return true;
+  return false;
+}
+
 function emAgro(lar) {
-  return lar.ator?.modo === "agro";
+  const a = lar.ator;
+  if (!a) return false;
+  if (a.modo === "agro") return true;
+  // Corpo / Hurt: guarda no raio de agro pra não sumir no meio da queda.
+  return emCenaMorte(a);
 }
 
 function limiteCull(lar) {
@@ -306,7 +318,8 @@ function sincronizarLares(px, py) {
         const lar = garantirLar(cx, cy, indice);
         if (!lar || lar.sumidoAte > agora) continue;
         if (zonaSemSelvagem(lar.x, lar.y)) {
-          if (lar.ator) guardar(lar);
+          // Não some no meio do desmaio / cadáver.
+          if (lar.ator && !emCenaMorte(lar.ator)) guardar(lar);
           continue;
         }
         if (emAgro(lar)) continue;
@@ -461,7 +474,12 @@ function tentarGrama(corpo) {
 function tickGrama() {
   for (let i = grama.length - 1; i >= 0; i--) {
     const ator = grama[i];
-    if (ator.capturado || zonaSemSelvagem(ator.x, ator.y)) {
+    if (ator.capturado) {
+      grama.splice(i, 1);
+      continue;
+    }
+    // Zona vazia: só remove se não está caindo / cadáver na tela.
+    if (zonaSemSelvagem(ator.x, ator.y) && !emCenaMorte(ator)) {
       grama.splice(i, 1);
       continue;
     }

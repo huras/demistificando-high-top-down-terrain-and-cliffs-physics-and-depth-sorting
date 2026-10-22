@@ -18,7 +18,10 @@ import {
   yawCamera,
 } from "./camera3d.js";
 import { criarFlechas3d } from "./flechas3d.js";
+import { criarMiraArcoBola3d } from "./miraArcoBola3d.js";
 import { criarRigCamera3d } from "./rigCamera3d.js";
+import { bolaNaMao, cargaRanged } from "../../jogo/ranged.js";
+import { botaoDireitoSegurado } from "../../entrada/ponteiro3d.js";
 import {
   alfaSprites,
   definirChecagemMalhaTeleporte,
@@ -33,6 +36,7 @@ import { atualizarDebugCorpos, criarDebugCorpos } from "./debugCorpos.js";
 import { criarDebugCasas } from "./debugCasas.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
+import { criarVegetacaoHorizonte } from "./vegetacaoHorizonte.js";
 import { criarCidadeHorizonte } from "./cidadeHorizonte.js";
 import { criarFxCampo } from "../../campo/fx.js";
 import { criarPoeiraPasso3d } from "./poeiraPasso3d.js";
@@ -172,6 +176,7 @@ function aplicarVazioSala(dentro) {
   if (estado.terrenoSuave?.mesh) estado.terrenoSuave.mesh.visible = false;
   if (estado.vegetacao?.grupo) estado.vegetacao.grupo.visible = false;
   if (estado.vegetacaoDistante?.grupo) estado.vegetacaoDistante.grupo.visible = false;
+  if (estado.vegetacaoHorizonte?.grupo) estado.vegetacaoHorizonte.grupo.visible = false;
   if (estado.cidadeHorizonte?.grupo) estado.cidadeHorizonte.grupo.visible = false;
   if (domo) {
     domo.visible = false;
@@ -286,6 +291,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const vegetacaoDistante = criarVegetacaoDistante();
   scene.add(vegetacaoDistante.grupo);
 
+  const vegetacaoHorizonte = criarVegetacaoHorizonte();
+  scene.add(vegetacaoHorizonte.grupo);
+
   const fxCampo = criarFxCampo();
   scene.add(fxCampo.grupo);
 
@@ -332,6 +340,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
 
   const flechas = criarFlechas3d();
   scene.add(flechas.grupo);
+  const miraArcoBola = criarMiraArcoBola3d();
+  scene.add(miraArcoBola.grupo);
 
   estado = {
     canvas,
@@ -351,6 +361,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     edificios,
     vegetacao,
     vegetacaoDistante,
+    vegetacaoHorizonte,
     fxCampo,
     poeiraPasso,
     fxBola,
@@ -363,6 +374,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     ceu,
     rig,
     flechas,
+    miraArcoBola,
     nevoaBase: { near: NEVOA_NEAR, far: NEVOA_FAR },
     _alvoCeu: new THREE.Vector3(),
     pronto: true,
@@ -414,6 +426,7 @@ export function aquecerProgramas3d(px = 0, py = 0) {
     estado.cidadeHorizonte?.tick?.(px, py);
     estado.vegetacao?.atualizar?.(0, 0);
     estado.vegetacaoDistante?.tick?.(px, py, 0, 0);
+    estado.vegetacaoHorizonte?.tick?.(px, py, 0, 0);
     estado.ceu?.atualizar?.(0, {
       camera: estado.camera3d.cam,
       alvo: estado._alvoCeu?.set(px, 0, py) || undefined,
@@ -473,6 +486,7 @@ function publicarObjetosCena(scene, refs) {
   marcar(refs.alvoEscalada.mesh, "Marcadores", "marcador");
   marcar(refs.hoverTile.mesh, "Marcadores", "marcador");
   marcar(refs.flechas.grupo, "Marcadores", "flechas");
+  if (refs.miraArcoBola?.grupo) marcar(refs.miraArcoBola.grupo, "Marcadores", "mira-arco-bola");
 }
 
 function anotarEstadoSim(grupo, sim) {
@@ -505,6 +519,7 @@ function aplicarAtlasNaCena(atlas) {
   estado.terrenoHorizonte?.aplicarTexturas?.(estado.terreno.obterTexturasTopo?.());
   estado.vegetacao?.aplicarAtlas?.(atlas);
   estado.vegetacaoDistante?.aplicarAtlas?.(atlas);
+  estado.vegetacaoHorizonte?.aplicarAtlas?.(atlas);
   estado.fxCampo?.aplicarAtlas?.(atlas);
   estado.personagem.definirSprite?.(atlas?.jogador ?? null);
   estado.agente3d.definirSprite?.(atlas?.jogador ?? null);
@@ -613,6 +628,11 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   aplicarFacingMira(corpo, estado.camera3d);
   estado.rig?.atualizar(estado.camera3d);
   estado.flechas?.atualizar(dt, corpo, estado.camera3d);
+  estado.miraArcoBola?.atualizar(corpo, estado.camera3d, {
+    ativo: bolaNaMao(),
+    mirando: botaoDireitoSegurado(),
+    carga: cargaRanged(),
+  });
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;
   const elevVis = elev * ALTURA_BLOCO;
@@ -639,6 +659,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.edificios?.atualizar?.(mx, my, yaw, inclinacao);
   estado.vegetacao?.atualizar?.(yaw, inclinacao);
   estado.vegetacaoDistante?.tick?.(mx, my, yaw, inclinacao);
+  estado.vegetacaoHorizonte?.tick?.(mx, my, yaw, inclinacao);
   estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   estado.poeiraPasso?.atualizar?.();
   estado.fxBola?.atualizar?.();

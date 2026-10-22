@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { obterClimaJogo } from "../../../clima/amostra.js";
+import { CLIMA_CFG } from "../../../clima/config.js";
 import { obterClima } from "./controleCeu.js";
+
+const CAMPOS_COBERTURA = new Set(["limiar", "umidade"]);
 
 /**
  * Alvo de cada clima. A mistura é contínua pra não estourar exposição nem fog.
@@ -25,19 +28,19 @@ export const PRESETS = {
   },
   chuva: {
     limiar: 0.18,
-    forcaSombra: 0.8,
+    forcaSombra: 0.62,
     vento: 13,
-    sol: 0.32,
-    umidade: 0.78,
+    sol: 0.48,
+    umidade: 0.85,
     chuva: 1,
     areia: 0,
     neve: 0,
     raio: 1,
     neblinaPerto: 0.55,
     neblinaLonge: 0.5,
-    pesoNeblina: 0.78,
-    pesoZenite: 0.36,
-    neblina: 0x5a6570,
+    pesoNeblina: 0.58,
+    pesoZenite: 0.48,
+    neblina: 0x6a7582,
   },
   areia: {
     limiar: 0.62,
@@ -107,7 +110,10 @@ export function avaliarClima(dt) {
   const nevoaFamilia =
     jogo?.familia === "nevoa" &&
     (jogo.display === "nevoa" || jogo.logicalKind === "precip" || jogo.display === "nublado");
-  const k = dt > 0 ? 1 - Math.exp(-dt / 3.4) : 1;
+  const tauLuz = 3.4;
+  const tauCobertura = CLIMA_CFG.nuvemCoberturaTau ?? 7;
+  const kLuz = dt > 0 ? 1 - Math.exp(-dt / tauLuz) : 1;
+  const kCobertura = dt > 0 ? 1 - Math.exp(-dt / tauCobertura) : 1;
   for (let i = 0; i < CAMPOS.length; i++) {
     const campo = CAMPOS[i];
     let alvo = preset[campo];
@@ -118,9 +124,10 @@ export function avaliarClima(dt) {
       else if (campo === "pesoZenite") alvo = Math.max(alvo, 0.22);
       else if (campo === "sol") alvo = Math.min(alvo, 0.72);
     }
+    const k = CAMPOS_COBERTURA.has(campo) ? kCobertura : kLuz;
     atual[campo] += (alvo - atual[campo]) * k;
   }
   corAlvo.setHex(nevoaFamilia ? 0xa8b4bc : preset.neblina).convertSRGBToLinear();
-  atual.neblina.lerp(corAlvo, k);
+  atual.neblina.lerp(corAlvo, kLuz);
   return atual;
 }

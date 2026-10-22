@@ -33,7 +33,9 @@ import {
   aplicarAlcanceSombra,
   sincronizarSombraSuja,
 } from "./sombraEstavel.js";
+import { CLIMA_CFG } from "../../../clima/config.js";
 import { obterVentoMundo } from "../../../clima/amostra.js";
+import { ventoHud01 } from "../../../clima/vento.js";
 import { criarGale3d } from "./gale/gale3d.js";
 
 export {
@@ -53,6 +55,8 @@ const DIST_LUZ = 72;
 const ALCANCE_SOMBRA_MIN = 34;
 const vento = new THREE.Vector2();
 const dirVento = new THREE.Vector2(0.82, 0.57).normalize();
+/** vx/vz do mundo para precipitação (não confundir com acumulador UV das nuvens). */
+const ventoPrecip = new THREE.Vector2();
 const corFill = new THREE.Color();
 const corRim = new THREE.Color();
 
@@ -137,8 +141,10 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     const ventoMundo = obterVentoMundo();
     const vl = Math.hypot(ventoMundo.vx, ventoMundo.vy) || 1;
     dirVento.set(ventoMundo.vx / vl, ventoMundo.vy / vl);
+    // Magnitude real do vento do mundo (HUD / asa) — não o preset clima.vento.
+    ventoPrecip.set(ventoMundo.vx, ventoMundo.vy);
 
-    aplicarNuvemPasso(visual, clima, seguro);
+    aplicarNuvemPasso(visual, clima, seguro, ventoMundo);
     aplicarLuzes(visual, alvo);
     sincronizarSombraSuja(sol, alcanceSombra, camera, alvo, hora);
     aplicarNevoa(visual, clima, nevoa);
@@ -147,16 +153,23 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     const trovao = relampago.consumirEvento();
     if (trovao) tocarTrovao(trovao === "eco" ? "longe" : "perto");
     atmosfera.atualizar(visual, camera, flash * 0.55, pesoCirrus, seguro);
-    precipitacao.atualizar(clima, dirVento, seguro, camera, renderer);
+    precipitacao.atualizar(clima, ventoPrecip, seguro, camera, renderer);
     atualizarPoca(seguro, clima.chuva);
     gale.atualizar(seguro, { x: alvo.x, y: alvo.z }, galeLigado, Math.max(18, (raioBlocos || 24) * 0.85));
     renderer.toneMappingExposure = visual.exposicao * (1 + flash * 1.35);
   }
 
-  function aplicarNuvemPasso(visual, clima, dt) {
+  function aplicarNuvemPasso(visual, clima, dt, ventoMundo) {
     const periodo = 1 / ESCALA_NUVEM;
-    vento.x += dirVento.x * clima.vento * dt;
-    vento.y += dirVento.y * clima.vento * dt;
+    // Deriva lenta pelo vento do mundo — não usa clima.vento do preset
+    // (senão a troca de clima arrasta o céu).
+    const wind01 = ventoHud01(ventoMundo, CLIMA_CFG);
+    const base = CLIMA_CFG.nuvemDerivaBase ?? 0.55;
+    const porVento = CLIMA_CFG.nuvemDerivaVento ?? 0.9;
+    const teto = CLIMA_CFG.nuvemDerivaMax ?? 1.6;
+    const deriva = Math.min(teto, base + wind01 * porVento);
+    vento.x += dirVento.x * deriva * dt;
+    vento.y += dirVento.y * deriva * dt;
     vento.x -= Math.floor(vento.x / periodo) * periodo;
     vento.y -= Math.floor(vento.y / periodo) * periodo;
     uniformsNuvem.uVentoNuvem.value.copy(vento);

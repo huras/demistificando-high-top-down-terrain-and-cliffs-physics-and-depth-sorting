@@ -6,6 +6,17 @@ import { definirLocal } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 
 /**
+ * Slab de 1 célula. `deck` = altura walkable; bloco em deck-1.
+ * Não preenche a coluna — água/ar ficam embaixo.
+ */
+export function aplicarDeckPonteCelula(chunk, lx, ly, deck, id = BLOCO.PONTE) {
+  const zBloco = (deck | 0) - 1;
+  if (zBloco < 0 || zBloco >= CHUNK_Y) return false;
+  if (lx < 0 || ly < 0 || lx >= CHUNK_XZ || ly >= CHUNK_XZ) return false;
+  return definirLocal(chunk, lx, ly, zBloco, id);
+}
+
+/**
  * Coloca um deck retangular no chunk (só células que caem neste chunk).
  * zBloco = lz do sólido; walk height = zBloco + 1.
  * Não toca blocos abaixo — o void fica sob o deck.

@@ -217,6 +217,25 @@ export const FLECHA_FORCA_MIN = 0.18;
 export const FLECHA_GRAVIDADE = 8;
 export const FLECHA_VIDA = 8;
 export const FLECHA_MAX = 16;
+
+/** Pickup da bola no chão (células). Min throw = 10% além disso. */
+export const BOLA_PICKUP_RAIO = 2;
+export const BOLA_ALCANCE_MIN = BOLA_PICKUP_RAIO * 1.1;
+/** Diâmetro visual Three; raio em blocos = (diam/2)/ALTURA_BLOCO. */
+export const BOLA_DIAMETRO = 0.5;
+export const BOLA_RAIO_BLOCO = BOLA_DIAMETRO / 2 / ALTURA_BLOCO;
+/**
+ * Velocidade Three da bola. VEL_MIN garante ~BOLA_ALCANCE_MIN no chão plano
+ * (queda da mão ≈ 0.83u, g=10 → t≈0.41s → 2.2/0.41≈5.4).
+ */
+export const BOLA_VEL_MIN = BOLA_ALCANCE_MIN / Math.sqrt((2 * 0.828) / 10);
+export const BOLA_VEL_MAX = 20;
+export const BOLA_GRAVIDADE = 10;
+export const BOLA_MAX = 12;
+export const BOLA_ROLAR_TEMPO = 0.4;
+/** Amostras do arco de mira 3D (grenade-aim). */
+export const BOLA_ARCO_AMOSTRAS = 48;
+
 /** Carga compartilhada arco/bola no LMB (segure para carregar). */
 export const RANGED_CARGA_TEMPO = 0.7;
 
@@ -312,13 +331,25 @@ export const ROLE_CLIFF_CENTER = ROLE_EDGE_S;
 export const USAR_PATCH_DEMO =
   typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
 export const CHUNK_XZ = 16;
-export const CHUNK_Y = 64;
+export const CHUNK_Y = 128;
+/** Folga acima do relevo (prédio / prop no pico). */
+export const FOLGA_TETO_CHUNK = 4;
+/** Teto canônico do heightfield (blocos). */
+export const ALTURA_MAX_RELEVO = CHUNK_Y - FOLGA_TETO_CHUNK;
+
+/** Clamp de altura de relevo → [1, ALTURA_MAX_RELEVO]. */
+export function clampAltura(h) {
+  const n = Math.round(Number(h) || 0);
+  if (n < 1) return 1;
+  if (n > ALTURA_MAX_RELEVO) return ALTURA_MAX_RELEVO;
+  return n;
+}
 /** Disco de chunks em volta do jogador. 5 ≈ 80 blocos. */
 export const RAIO_STREAM = 5;
 export const RAIO_STREAM_MIN = 0;
 export const RAIO_STREAM_MAX = 10;
-/** Disco externo da malha suave, em chunks. 0 desliga. A câmera ortográfica não mostra esse anel. */
-export const RAIO_SUAVE = 0;
+/** Disco externo da malha suave, em chunks. 0 desliga. Mid ring pra impostores entre stream e horizonte. */
+export const RAIO_SUAVE = 8;
 export const RAIO_SUAVE_MIN = 0;
 export const RAIO_SUAVE_MAX = 20;
 /** Distância entre vértices da malha suave, em blocos. */
@@ -342,6 +373,8 @@ export const UV_ESCALA_HORIZONTE = 1;
 export const UV_ESCALA_MAR_HORIZONTE = 1;
 /** Árvores billboard em todo o disco suave, fora dos chunks de bloco. */
 export const IMPOSTOR_CAP = 256;
+/** Clusters de floresta no anel horizonte (cards densos). */
+export const CLUMP_HORIZONTE_CAP = 448;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 5;
 /** Cursor enxerga o chão com a câmera longe; editar continua no alcance curto. */

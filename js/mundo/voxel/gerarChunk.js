@@ -6,6 +6,7 @@ import {
   superficieDoRelevo,
 } from "../bioma/catalogo.js";
 import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
+import { aplicarDeckPonteCelula } from "../autor/ponte.js";
 import { aplicarCascaNoChunk, cascasProntas } from "../cidade/cascaCasa.js";
 import { aplicarSalaNoChunk } from "../cidade/sala3d.js";
 import { aplicarLaboratorioNoChunk, dentroDoTerrenoLaboratorio } from "../cidade/laboratorio.js";
@@ -42,11 +43,28 @@ export function* passosChunk(chunk, seed) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
       const wy = baseY + ly;
+      const amostra = dentroDoKanto(wx, wy) ? amostraKanto(wx, wy) : null;
+
+      // Ponte oca: leito + água até o mar + slab no deck (void entre eles).
+      if (amostra?.ponte && amostra.rua) {
+        const deck = Math.max(1, amostra.h | 0);
+        const leito = Math.max(1, Math.min(deck - 2, amostra.hLeito | 0));
+        alturas[ly * CHUNK_XZ + lx] = deck;
+        preencherColunaSolida(chunk, lx, ly, leito, BLOCO.TERRA);
+        const topoAgua = Math.min(CHUNK_Y, nivel);
+        for (let lz = leito; lz < topoAgua; lz++) {
+          chunk.blocos[((ly * CHUNK_XZ + lx) * CHUNK_Y + lz) | 0] = BLOCO.AGUA;
+        }
+        chunk.fluido[ly * CHUNK_XZ + lx] = FLUIDO.AGUA;
+        aplicarDeckPonteCelula(chunk, lx, ly, deck, BLOCO.PONTE);
+        if ((++coluna & 15) === 0) yield;
+        continue;
+      }
+
       const h = alturaDoRelevo(wx, wy);
       alturas[ly * CHUNK_XZ + lx] = h;
       preencherColunaSolida(chunk, lx, ly, h, superficieDoRelevo(wx, wy));
-      if (dentroDoKanto(wx, wy)) {
-        const amostra = amostraKanto(wx, wy);
+      if (amostra) {
         const extra = amostra.predio;
         if (extra > 0 && !(cascasProntas() && amostra.modelo)) {
           const topo = Math.min(CHUNK_Y, h + extra);

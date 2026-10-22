@@ -206,15 +206,20 @@ export function tempoClipGolpe(ator, nome) {
   return t;
 }
 
-/** Hurt existe na folha: agenda o desmaio depois do clipe. Senão desmaia na hora. */
+/** Hurt na folha → desmaio depois do clipe. Atlas ainda carregando → espera curta. */
 export function agendarDesmaio(ator, agora) {
   const pack = garantirAtlas(ator?.especie?.dex, ator?.shiny);
-  if (!pack?.anims?.Hurt) {
-    ator.desmaioEm = 0;
-    return false;
+  if (pack?.anims?.Hurt) {
+    ator.desmaioEm = agora + duracaoFaixa(pack, "Hurt");
+    return true;
   }
-  ator.desmaioEm = agora + duracaoFaixa(pack, "Hurt");
-  return true;
+  // Sem Hurt pronto: ainda agenda um beat pra não sumir no frame do kill.
+  if (!pack || pack.estado === "fila" || pack.estado === "carregando" || !pack.anims) {
+    ator.desmaioEm = agora + 0.55;
+    return true;
+  }
+  ator.desmaioEm = 0;
+  return false;
 }
 
 export function marcarPose(ator, nome, agora) {

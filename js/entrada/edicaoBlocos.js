@@ -12,7 +12,11 @@ import { botaoDireitoSegurado, ponteiroTravado } from "./ponteiro3d.js";
 import { abrirMenuCampo } from "../campo/menu.js";
 import { tentarAtaqueNoClique } from "../pokemon/clique.js";
 import { definirMiraCursor } from "../pokemon/captura.js";
-import { rangedNaMao } from "../jogo/ranged.js";
+import {
+  iniciarCargaRanged,
+  pedirDisparoRanged,
+  rangedNaMao,
+} from "../jogo/ranged.js";
 import { usarNoClique } from "../jogo/campo.js";
 import { estado, uiAberta } from "../jogo/estado.js";
 import { atualizarLeve, pintar } from "../jogo/ui.js";
@@ -90,6 +94,7 @@ function aoMouseDown2d(ev) {
   if (!corpo || !camera || !canvas2d || uiAberta()) return;
   if (rangedNaMao()) {
     ev.preventDefault();
+    iniciarCargaRanged();
     return;
   }
   if (tentarAtaqueNoClique(ev, camera, obterCenario3d())) {
@@ -108,9 +113,10 @@ function aoMouseDown3d(ev) {
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d || !canvas3d || uiAberta()) return;
-  // Arco/bola: LMB só carrega (disparo ao soltar no tick). Não edita o mundo.
+  // Arco/bola: LMB inicia carga (disparo no mouseup/tick). Não edita o mundo.
   if (rangedNaMao()) {
     ev.preventDefault();
+    iniciarCargaRanged();
     return;
   }
   if (tentarAtaqueNoClique(ev, null, cen)) {
@@ -140,6 +146,12 @@ function mundoDoClique(ev) {
   if (!camera || !canvas2d) return null;
   const { mx, my } = telaParaMundo2d(ev.clientX, ev.clientY, camera, canvas2d);
   return { x: mx, y: my };
+}
+
+function aoMouseUpRanged(ev) {
+  if (ev.button !== 0 || uiAberta() || estaEmCena()) return;
+  if (!rangedNaMao()) return;
+  pedirDisparoRanged();
 }
 
 function aoContextMenu(ev) {
@@ -173,6 +185,8 @@ export function ligarEdicaoBlocos(opts) {
 
   canvas2d.addEventListener("mousedown", aoMouseDown2d);
   canvas3d.addEventListener("mousedown", aoMouseDown3d);
+  // mouseup no document: cobre soltar fora do canvas / pointer lock
+  document.addEventListener("mouseup", aoMouseUpRanged);
   canvas2d.addEventListener("pointermove", aoMove2d);
   canvas3d.addEventListener("pointermove", aoMove3d);
   canvas2d.addEventListener("contextmenu", aoContextMenu);
@@ -183,6 +197,7 @@ export function desligarEdicaoBlocos() {
   if (!ligado) return;
   canvas2d?.removeEventListener("mousedown", aoMouseDown2d);
   canvas3d?.removeEventListener("mousedown", aoMouseDown3d);
+  document.removeEventListener("mouseup", aoMouseUpRanged);
   canvas2d?.removeEventListener("pointermove", aoMove2d);
   canvas3d?.removeEventListener("pointermove", aoMove3d);
   canvas2d?.removeEventListener("contextmenu", aoContextMenu);

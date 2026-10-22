@@ -24,6 +24,8 @@ export function amostraAgua(x, y, elevPes = 0) {
   const col = colunaAgua(x, y);
   if (col.superficie <= 0) return SECA;
   const elev = Number.isFinite(elevPes) ? elevPes : 0;
+  // Deck oco / ponte: pés acima da lâmina — seco (senão força nado e fura o chão).
+  if (elev > col.superficie + 0.08) return SECA;
   const familia = familiaDaColuna(col.fluido);
   let profundidade = col.profundidade;
   if (familia.raso) profundidade = Math.min(profundidade, AGUA_LIMIAR_VADO);

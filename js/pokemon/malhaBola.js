@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import { ColladaLoader } from "three/addons/loaders/ColladaLoader.js";
 import { clone as clonarEsqueleto } from "three/addons/utils/SkeletonUtils.js";
+import { BOLA_DIAMETRO } from "../config.js";
 
 const loader = new ColladaLoader();
 
@@ -22,9 +23,6 @@ const URL_POR_KEY = Object.freeze({
   premierball: "/assets/models/pokeballs/premierball/modelo.dae",
   boomerangball: "/assets/models/pokeballs/boomerangball/modelo.dae",
 });
-
-/** Diâmetro alvo no mundo (unidades Three). */
-const DIAMETRO = 0.5;
 
 /** Transparency do Collada LGPE deixa blending quebrado — não troca o map. */
 function consertarMaterial(mat) {
@@ -102,7 +100,7 @@ function normalizarTamanho(grupo) {
     grupo.children[i].position.sub(centro);
   }
   const maior = Math.max(tam.x, tam.y, tam.z, 1e-4);
-  grupo.scale.setScalar(DIAMETRO / maior);
+  grupo.scale.setScalar(BOLA_DIAMETRO / maior);
   grupo.updateMatrixWorld(true);
   return true;
 }

@@ -1,7 +1,7 @@
 /**
  * Gesto ranged unificado: arco e pokébola.
- * RMB segurar = só mirar (sem carga).
- * LMB segurar = carregar; soltar LMB = disparo.
+ * RMB = só mirar. LMB segurar = carregar; soltar = disparo.
+ * Hipfire: círculo de carga. Mira: arco 3D (miraArcoBola3d).
  */
 import { FLECHA_FORCA_MIN, RANGED_CARGA_TEMPO } from "../config.js";
 import {
@@ -21,6 +21,9 @@ import { contar, hotbarAtivo } from "./estado.js";
 let carga = 0;
 let estavaMirando = false;
 let estavaCarregando = false;
+/** LMB down via input — permanece até mouseup/cancel (não depende só do ponteiro). */
+let segurandoCarga = false;
+let disparoPedido = false;
 
 export function bolaNaMao() {
   const item = hotbarAtivo();
@@ -36,6 +39,27 @@ export function rangedNaMao() {
 
 export function cargaRanged() {
   return carga;
+}
+
+export function rangedCarregando() {
+  return segurandoCarga || estavaCarregando;
+}
+
+/** mousedown LMB com arco/bola — inicia carga (fonte de verdade do hipfire). */
+export function iniciarCargaRanged() {
+  if (!rangedNaMao()) return false;
+  segurandoCarga = true;
+  estavaCarregando = true;
+  return true;
+}
+
+/** mouseup LMB — pede disparo no próximo tick. */
+export function pedirDisparoRanged() {
+  if (!rangedNaMao()) return false;
+  if (!segurandoCarga && !estavaCarregando && carga <= 0) return false;
+  segurandoCarga = false;
+  disparoPedido = true;
+  return true;
 }
 
 function definirCargaFlecha(valor) {
@@ -54,55 +78,37 @@ export function cancelarRanged() {
   carga = 0;
   estavaMirando = false;
   estavaCarregando = false;
+  segurandoCarga = false;
+  disparoPedido = false;
   definirCargaFlecha(0);
-  sincronizarGestoBola({ carga: 0, mirando: false });
+  sincronizarGestoBola({ carga: 0, mirando: false, camera3d: null });
   zerarBotoesMira();
   soltarTravaMira();
 }
 
-function miraChaoDaCamera(camera3d, corpo) {
-  if (!camera3d?.direcaoTiro || !corpo) return null;
-  const d = camera3d.direcaoTiro;
-  const hx = d.x;
-  const hy = d.z;
-  const len = Math.hypot(hx, hy);
-  if (len < 1e-4) {
-    const fx = corpo.dirX || 0;
-    const fy = corpo.dirY || 1;
-    const fl = Math.hypot(fx, fy) || 1;
-    return { x: corpo.x + (fx / fl) * 6, y: corpo.y + (fy / fl) * 6 };
-  }
-  const dist = 4 + carga * 6;
-  return { x: corpo.x + (hx / len) * dist, y: corpo.y + (hy / len) * dist };
-}
-
-function disparar(tipo, corpo, camera3d, forca, miraChao) {
+function disparar(tipo, corpo, camera3d, forca) {
   if (tipo === "bow") {
     dispararFlecha(corpo, forca);
     return;
   }
   if (tipo === "bola") {
-    arremessarBola(corpo, {
-      carga: forca,
-      mira: miraChao || undefined,
-      usarFacing: !miraChao,
-    });
+    arremessarBola(corpo, { carga: forca, camera3d });
   }
 }
 
-function sincronizarVisual(tipo, mirando, camera3d, corpo) {
-  const miraChao = mirando ? miraChaoDaCamera(camera3d, corpo) : null;
+function sincronizarVisual(tipo, mirando, camera3d) {
   if (tipo === "bow") {
     definirCargaFlecha(carga);
-    sincronizarGestoBola({ carga: 0, mirando: false });
+    sincronizarGestoBola({ carga: 0, mirando: false, camera3d: null });
     return;
   }
   definirCargaFlecha(0);
+  // Sempre passa câmera: hipfire usa facing; mira usa direcaoTiro.
   sincronizarGestoBola({
     carga,
     mirando,
-    miraX: miraChao?.x,
-    miraY: miraChao?.y,
+    carregando: estavaCarregando,
+    camera3d,
   });
 }
 
@@ -124,55 +130,52 @@ export function tickRanged(opts) {
     if (estavaMirando || estavaCarregando || carga > 0) cancelarRanged();
     else {
       definirCargaFlecha(0);
-      sincronizarGestoBola({ carga: 0, mirando: false });
+      sincronizarGestoBola({ carga: 0, mirando: false, camera3d: null });
     }
     return;
   }
 
-  // Soltar LMB dispara (com a carga acumulada). RMB nunca dispara.
-  if (soltouEsquerdo && (estavaCarregando || carga > 0)) {
-    const forca = Math.max(carga, FLECHA_FORCA_MIN);
-    const mira = mirando || estavaMirando || botaoDireitoSegurado()
-      ? miraChaoDaCamera(camera3d, corpo)
-      : null;
-    disparar(tipo, corpo, camera3d, forca, mira);
+  const deveDisparar = disparoPedido || (soltouEsquerdo && (segurandoCarga || estavaCarregando || carga > 0));
+  if (deveDisparar && (estavaCarregando || segurandoCarga || carga > 0 || disparoPedido)) {
+    const forca = tipo === "bola" ? carga : Math.max(carga, FLECHA_FORCA_MIN);
+    disparar(tipo, corpo, camera3d, forca);
     carga = 0;
     estavaCarregando = false;
+    segurandoCarga = false;
+    disparoPedido = false;
     estavaMirando = !!(mirando || botaoDireitoSegurado());
-    sincronizarVisual(tipo, estavaMirando, camera3d, corpo);
+    sincronizarVisual(tipo, estavaMirando, camera3d);
     return;
   }
+  disparoPedido = false;
 
-  if (carregando) {
+  // Carga: segurandoCarga (input) ou botão do ponteiro (mira com lock).
+  if (segurandoCarga || carregando) {
     estavaCarregando = true;
     carga = Math.min(1, carga + dt / RANGED_CARGA_TEMPO);
-  } else if (estavaCarregando) {
-    // Soltura já tratada acima; se chegou aqui, carga foi cancelada.
-    estavaCarregando = false;
-    carga = 0;
   }
 
   estavaMirando = !!mirando;
-  sincronizarVisual(tipo, mirando, camera3d, corpo);
+  sincronizarVisual(tipo, mirando, camera3d);
 }
 
 /**
- * Disparo imediato (atalhos / legado). Mantém a mira se o RMB estiver segurado.
+ * Disparo imediato (atalhos / legado).
  * @param {object} corpo
  * @param {object | null} camera3d
- * @param {{ x: number, y: number } | null} [miraChao]
  */
-export function pedirTiroRapido(corpo, camera3d, miraChao = null) {
+export function pedirTiroRapido(corpo, camera3d) {
   const tipo = rangedNaMao();
   if (!tipo || !corpo) return false;
 
   const naMira = estavaMirando || botaoDireitoSegurado();
-  const forca = Math.max(carga, FLECHA_FORCA_MIN);
-  const mira = naMira ? miraChaoDaCamera(camera3d, corpo) || miraChao : miraChao;
-  disparar(tipo, corpo, camera3d, forca, mira);
+  const forca = tipo === "bola" ? carga : Math.max(carga, FLECHA_FORCA_MIN);
+  disparar(tipo, corpo, camera3d, forca);
   carga = 0;
   estavaCarregando = false;
+  segurandoCarga = false;
+  disparoPedido = false;
   estavaMirando = naMira;
-  sincronizarVisual(tipo, naMira, camera3d, corpo);
+  sincronizarVisual(tipo, naMira, camera3d);
   return true;
 }

@@ -7,6 +7,7 @@ import {
   FLECHA_VEL_MIN,
   FLECHA_VIDA,
 } from "../../config.js";
+import { direcaoDisparoRanged, origemMaoRanged } from "../../jogo/rangedFisica.js";
 import { raycastVoxel } from "../../mundo/voxel/alvoBloco.js";
 import { tentarAcertoFlecha } from "../../pokemon/sistema.js";
 
@@ -41,34 +42,21 @@ export function criarFlechas3d() {
     carga = Math.min(1, Math.max(0, Number(valor) || 0));
   }
 
-  function direcaoDisparo(camera3d, corpo) {
-    _dir.copy(camera3d.direcaoTiro);
-    if (_dir.lengthSq() < 1e-6) _dir.set(0, 0, -1);
-    _dir.normalize();
-    // Hipfire em órbita quase de cima: usa o facing do corpo.
-    if (camera3d.modo !== "mira" && Math.abs(_dir.y) > 0.85) {
-      const dx = corpo.dirX || 0;
-      const dy = corpo.dirY || 1;
-      const len = Math.hypot(dx, dy) || 1;
-      _dir.set(dx / len, 0.12, dy / len).normalize();
-    }
-    return _dir;
-  }
-
   function disparar(camera3d, corpo, forca = 1) {
     if (!camera3d || !corpo) return;
-    const origem = poseArco(corpo, camera3d);
+    const origem = origemMaoRanged(corpo, camera3d);
     const mesh = obterMesh();
     mesh.position.set(origem.x, origem.y, origem.z);
     mesh.visible = true;
 
-    const dir = direcaoDisparo(camera3d, corpo);
+    const dir = direcaoDisparoRanged(camera3d, corpo);
+    _dir.set(dir.x, dir.y, dir.z);
     const t = Math.min(1, Math.max(0, forca));
     const velocidade = FLECHA_VEL_MIN + (FLECHA_VEL - FLECHA_VEL_MIN) * t;
     const vel = new THREE.Vector3(
-      dir.x * velocidade + (corpo.vx || 0) * 0.35,
-      dir.y * velocidade,
-      dir.z * velocidade + (corpo.vy || 0) * 0.35,
+      _dir.x * velocidade + (corpo.vx || 0) * 0.35,
+      _dir.y * velocidade,
+      _dir.z * velocidade + (corpo.vy || 0) * 0.35,
     );
 
     mesh.lookAt(mesh.position.x + vel.x, mesh.position.y + vel.y, mesh.position.z + vel.z);
@@ -80,7 +68,7 @@ export function criarFlechas3d() {
     const naMira = !!camera3d && camera3d.modo === "mira";
 
     if (corpo && camera3d && mirando) {
-      const pose = poseArco(corpo, camera3d);
+      const pose = origemMaoRanged(corpo, camera3d);
       arco.grupo.visible = true;
       arco.grupo.position.set(pose.x, pose.y, pose.z);
       _look.set(pose.x, pose.y, pose.z).add(camera3d.direcaoTiro);
@@ -177,19 +165,6 @@ function testarImpacto(pos, vel, passo) {
     hit.y + 0.5 + hit.ny * 0.52,
   );
   return true;
-}
-
-function poseArco(corpo, camera3d) {
-  const elev = (corpo.elevacao ?? corpo.z ?? 0) * ALTURA_BLOCO;
-  const yaw = camera3d.yaw;
-  const sinY = Math.sin(yaw);
-  const cosY = Math.cos(yaw);
-  const altura = elev + (camera3d.alturaPivo ?? 1.15) * 0.72;
-  return {
-    x: corpo.x + cosY * 0.22 + -sinY * 0.28,
-    y: altura,
-    z: corpo.y + -sinY * 0.22 + -cosY * 0.28,
-  };
 }
 
 function criarArco(matFlecha) {

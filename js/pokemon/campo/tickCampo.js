@@ -125,6 +125,15 @@ export function tickPartyCampo(mon, selvagens, jogador, dt) {
 export function tickWildCampo(ator, partyMon, jogador, dt) {
   if (!ator || ator.morto || ator.capturado || ator.preso) return;
 
+  // Hurt/desmaio: não troca pra roam (senão a população cull e o mon some).
+  if ((ator.hp != null && ator.hp <= 0) || (ator.desmaioEm || 0) > 0) {
+    ator.vx = 0;
+    ator.vy = 0;
+    ator.andando = false;
+    ator.correndo = false;
+    return;
+  }
+
   if (tickMeleeApproach(ator, dt)) return;
 
   if (ator.dormindo > 0) {

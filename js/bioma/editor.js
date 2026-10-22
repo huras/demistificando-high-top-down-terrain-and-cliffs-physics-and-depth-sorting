@@ -1,4 +1,4 @@
-import { SEED_MUNDO } from "../config.js";
+import { ALTURA_MAX_RELEVO, SEED_MUNDO } from "../config.js";
 import {
   alturaDoRelevo,
   biomaDominante,
@@ -651,7 +651,7 @@ function pintarPreviews() {
       ctxR.fillStyle = dom?.cor || "#333";
       ctxR.fillRect(px, py, cel, cel);
       const h = alturaDoRelevo(wx, wy, dados, seed);
-      const t = Math.max(0, Math.min(1, h / 60));
+      const t = Math.max(0, Math.min(1, h / ALTURA_MAX_RELEVO));
       const c = Math.floor(30 + t * 210);
       ctxH.fillStyle = `rgb(${c},${Math.floor(c * 0.86)},${Math.floor(80 + t * 40)})`;
       ctxH.fillRect(px, py, cel, cel);

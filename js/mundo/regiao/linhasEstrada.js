@@ -5,6 +5,7 @@
 import { deLocalKanto, paraLocalKanto, dentroDoKanto } from "../bounds.js";
 import { nivelMarBlocos } from "../bioma/catalogo.js";
 import { amostraKanto } from "./amostraKanto.js";
+import { cotaDeckEstrada } from "./cotasEstrada.js";
 import {
   AREA_KANTO,
   CENTRO_AREA,
@@ -17,13 +18,14 @@ import {
   zonaNoMundo,
 } from "./grafoKanto.js";
 
+export { cotaDeckEstrada } from "./cotasEstrada.js";
+
 /** Distância do eixo ao centro da célula da borda (ehRua). */
 export const MEIA_LARGURA_ESTRADA = 3.5;
 /** Meia-largura da malha: cobre blocos [centro−4, centro+4]. */
 export const MEIA_LARGURA_FAIXA = 4;
 /** Ombro suave do furo no LOD (montanha / costa). */
 const OMBRO_CORREDOR = 6;
-const COTA_PONTE = 16;
 
 /**
  * Trechos locais de uma rota (saídas ou caminho).
@@ -102,17 +104,6 @@ export function projetarEixoEstradaLocal(lx, ly, zona) {
 }
 
 /**
- * Deck visual da faixa: terra segue a cota da rua; rota de água vira ponte
- * acima do mar (o canal real continua só no LOD de blocos).
- */
-export function cotaDeckEstrada(zona) {
-  if (!zona) return COTA_PONTE;
-  if (zona.agua) return Math.max(COTA_PONTE, nivelMarBlocos() + 1);
-  if (zona.montanha) return 34;
-  return COTA_PONTE;
-}
-
-/**
  * Abaixa o heightfield LOD em torno do corredor (montanha),
  * sem erguer mar/costa. Ombro suave evita parede de 16m na borda da faixa.
  */
@@ -126,7 +117,7 @@ export function ajustarAlturaCorredorEstrada(wx, wy, h) {
   const alcance = MEIA_LARGURA_ESTRADA + OMBRO_CORREDOR;
   if (proj.d >= alcance) return h;
 
-  let deck = cotaDeckEstrada(zona);
+  let deck = cotaDeckEstrada(zona, nivelMarBlocos());
   if (!zona.agua) {
     const eixo = deLocalKanto(zona.ax * AREA_KANTO + proj.x, zona.ay * AREA_KANTO + proj.y);
     const a = amostraKanto(eixo.x, eixo.y);
@@ -154,7 +145,7 @@ export function segmentosEstradaMundo() {
       const zona = zonaEm(ax, ay);
       const locais = linhasLocaisLod(zona);
       const ponte = !!(zona && zona.tipo === "rota" && zona.agua);
-      const deck = cotaDeckEstrada(zona);
+      const deck = cotaDeckEstrada(zona, nivelMarBlocos());
       for (let i = 0; i < locais.length; i++) {
         const [a, b] = locais[i];
         const len = Math.hypot(b[0] - a[0], b[1] - a[1]);

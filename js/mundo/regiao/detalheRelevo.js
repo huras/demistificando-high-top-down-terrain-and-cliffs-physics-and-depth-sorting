@@ -2,6 +2,7 @@
  * Detalhe residual: o relevo pintado manda no macro;
  * o grafo do bioma só soma variação em torno da faixa média.
  */
+import { clampAltura } from "../../config.js";
 import { alturaGrafoDoPar, midBandDoPar } from "../bioma/catalogo.js";
 
 const PESO_MILO = 0.45;
@@ -37,8 +38,5 @@ export function aplicarDetalheBioma(hMacro, wx, wy, par, perfilU, travado = fals
 
   const hGrafo = alturaGrafoDoPar(par, wx, wy);
   const mid = midBandDoPar(par);
-  let h = hMacro + peso * (hGrafo - mid);
-  if (h < 1) h = 1;
-  else if (h > 60) h = 60;
-  return Math.round(h);
+  return clampAltura(hMacro + peso * (hGrafo - mid));
 }

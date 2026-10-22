@@ -173,11 +173,11 @@ export function inicioPassoChao(corpo, velMax) {
 
 /** Depois do XY no chão, antes de grudar no piso. */
 export function fimPassoChao(corpo) {
-  const agua = amostraAgua(corpo.x, corpo.y, corpo.elevacao ?? corpo.z);
+  const elev = corpo.elevacao ?? corpo.z;
+  const agua = amostraAgua(corpo.x, corpo.y, elev);
   gravarAmostra(corpo, agua);
-  if (agua.caindo) return "queda";
-  if (agua.familia && !agua.familia.nada) return "chao";
-  if (agua.profundidade > AGUA_LIMIAR_VADO) {
+  if (agua.caindo && elev <= agua.superficie + 0.2) return "queda";
+  if (deveNadar(agua, elev)) {
     entrarNado(corpo, agua);
     return "nado";
   }

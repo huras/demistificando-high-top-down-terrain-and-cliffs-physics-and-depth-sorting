@@ -53,6 +53,10 @@ import {
 } from "./texturasAgua3d.js";
 import { canvasParaTextura, criarTexturasTerreno3d } from "./texturasTerreno3d.js";
 
+/** Kit sintético: topo do slab BLOCO.PONTE (bridge.png). */
+const KIT_PONTE = "_ponte";
+const URL_PONTE = "assets/terrain/bridge.png";
+
 const LEDGE_H = 0.12;
 /** Aresta da face vertical ligeiramente abaixo do topo — evita z-fight. */
 const INSET_TOPO = 0.002;
@@ -1595,14 +1599,24 @@ function* construirGeosChunk(chunk) {
           if (d.nome === "u") {
             const cortesL = ehSuperficie ? cortesConvexosL(wx, wy, lz) : [];
             const yTopo = lz + 1 - INSET_TOPO;
-            const loteTop =
-              id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2 ? loteTerra : loteGrama;
+            let loteTop;
+            let extrasTop;
+            if (id === BLOCO.PONTE) {
+              const sacoPonte = sacoDe(sacosTopo, KIT_PONTE);
+              loteTop = sacoPonte.lote;
+              extrasTop = sacoPonte.extras;
+            } else if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
+              loteTop = loteTerra;
+              extrasTop = topsTerra;
+            } else {
+              loteTop = loteGrama;
+              extrasTop = topsGrama;
+            }
 
             if (ehBordaCliff) {
               empurrarBevel(loteTop, loteFaces, wx, wy, lz, lateraisAr);
             } else if (cortesL.length > 0) {
               // Canto L: corta o topo de A + triângulo de mitra
-              const extrasTop = loteTop === loteTerra ? topsTerra : topsGrama;
               for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
                 extrasTop.push(comSplat(pintarPlano(t, loteTop._rgb), 0));
               }
@@ -1903,6 +1917,33 @@ export function criarTerrenoMalha(atlas = null) {
   let atlasAplicado = false;
   /** Visual ativo: cubos (didático) vs real (tiles). */
   let modoCubos = true;
+  /** @type {THREE.Texture | null} */
+  let texPonte = null;
+
+  function aquecerTexPonte() {
+    if (texPonte) return;
+    new THREE.TextureLoader().load(
+      URL_PONTE,
+      (tex) => {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
+        texPonte = tex;
+        const item = materiaisKit.get(`topo:${KIT_PONTE}`);
+        if (item?.mat) {
+          item.mat.map = tex;
+          item.mat.color.set(0xffffff);
+          item.mat.needsUpdate = true;
+        }
+      },
+      undefined,
+      () => {},
+    );
+  }
+  aquecerTexPonte();
 
   function montarMateriaisTextura(tex) {
     materiais.grama = new THREE.MeshStandardMaterial({
@@ -1963,8 +2004,26 @@ export function criarTerrenoMalha(atlas = null) {
     return naFrenteDoSuave(mat);
   }
 
+  function materialPonte() {
+    const chave = `topo:${KIT_PONTE}`;
+    const pronto = materiaisKit.get(chave);
+    if (pronto) return pronto.mat;
+    aquecerTexPonte();
+    const mat = new THREE.MeshStandardMaterial({
+      map: texPonte,
+      color: texPonte ? 0xffffff : 0xb45309,
+      roughness: 0.86,
+      metalness: 0.02,
+      vertexColors: true,
+    });
+    materiaisKit.set(chave, { mat, tex: null });
+    aplicarSombraNuvem(mat);
+    return naFrenteDoSuave(mat);
+  }
+
   function materialKit(kit, tipo) {
     if (tipo === "parede") return materialPenhasco();
+    if (kit === KIT_PONTE) return materialPonte();
     const chave = `${tipo}:${kit}`;
     const pronto = materiaisKit.get(chave);
     if (pronto) return pronto.mat;

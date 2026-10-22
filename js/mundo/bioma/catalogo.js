@@ -1,4 +1,4 @@
-import { SEED_MUNDO } from "../../config.js";
+import { ALTURA_MAX_RELEVO, SEED_MUNDO, clampAltura } from "../../config.js";
 import { distAssinadaKanto, pesoCostura } from "../bounds.js";
 import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
 import { dentroDoTerrenoSala } from "../cidade/sala3d.js";
@@ -170,14 +170,14 @@ export function amostrarRegiao(wx, wy, catalogo = dados, seed = semente) {
 function snap(h, degrau) {
   const d = Math.max(1, Number(degrau) || 1);
   const q = Math.round(h / d) * d;
-  return Math.max(1, Math.min(60, q));
+  return clampAltura(q);
 }
 
 /** Linha única do oceano, em blocos. A lâmina fica nessa cota no mundo inteiro. */
 export function nivelMarBlocos(catalogo = dados) {
   const n = Number(catalogo?.nivelMarBlocos);
   if (!Number.isFinite(n)) return 12;
-  return Math.max(2, Math.min(59, Math.round(n)));
+  return Math.max(2, Math.min(ALTURA_MAX_RELEVO - 1, Math.round(n)));
 }
 
 function tetoMar(bioma, h, nivel) {
@@ -282,7 +282,7 @@ function alturaProcedural(wx, wy, catalogo, seed) {
     h = Math.round(fundo * (1 - t) + h * t);
     if (t < 0.55) h = Math.min(h, nivel - 1);
   }
-  return Math.max(1, Math.min(60, h));
+  return clampAltura(h);
 }
 
 /**
@@ -315,7 +315,7 @@ export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
     return hP;
   }
   const hK = Number.isFinite(hKamostra) ? hKamostra : hP;
-  let h = Math.max(1, Math.min(60, Math.round(hK * (1 - t) + hP * t)));
+  let h = clampAltura(hK * (1 - t) + hP * t);
   if (hK < nivel) h = Math.min(h, nivel - 1);
   return h;
 }

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { CLIMA_CFG } from "../../../clima/config.js";
 import { INCLINACAO_SOL_PADRAO, ROTACAO_SOL_PADRAO } from "./parametros.js";
 
 const GRAUS = Math.PI / 180;
@@ -37,6 +38,9 @@ const CHAVES = [
 
 const COR_LUA = linear(0xd0def8);
 const BRANCO = new THREE.Color(1, 1, 1);
+/** Ardósia clara / sombra de tempestade (linear). */
+const NUVEM_TEMPESTADE_LUZ = linear(0x7a8694);
+const NUVEM_TEMPESTADE_SOMBRA = linear(0x2a323c);
 
 const saida = {
   zenite: new THREE.Color(),
@@ -140,10 +144,24 @@ export function avaliarVisual(hora, clima, orbita) {
     saida.nuvemLuz.lerp(clima.neblina, clima.pesoNeblina * 0.35);
     saida.nuvemSombra.lerp(clima.neblina, clima.pesoNeblina * 0.4);
   }
+  // Tempestade: manto cinza, sem cumulus branco.
+  const tempestade = Math.max(clima.chuva || 0, (clima.umidade || 0) * 0.85);
+  if (tempestade > 0.01) {
+    const t = Math.min(1, tempestade);
+    saida.nuvemLuz.lerp(NUVEM_TEMPESTADE_LUZ, t * 0.92);
+    saida.nuvemSombra.lerp(NUVEM_TEMPESTADE_SOMBRA, t * 0.88);
+    saida.nuvemLuz.lerp(clima.neblina, t * 0.22);
+    saida.nuvemSombra.lerp(clima.neblina, t * 0.18);
+  }
 
-  saida.exposicao *= 1 - clima.pesoNeblina * 0.28;
-  saida.ambiente = saida.ambiente * (0.75 + 0.25 * clima.sol) + clima.pesoNeblina * 0.05;
-  saida.hemi *= 0.7 + 0.3 * (1 - clima.pesoNeblina);
+  const expMul = CLIMA_CFG.chuvaExposicaoMul ?? 0.16;
+  const ambExtra = CLIMA_CFG.chuvaAmbienteExtra ?? 0.08;
+  saida.exposicao *= 1 - clima.pesoNeblina * expMul;
+  saida.ambiente =
+    saida.ambiente * (0.75 + 0.25 * clima.sol) +
+    clima.pesoNeblina * 0.05 +
+    tempestade * ambExtra;
+  saida.hemi *= 0.78 + 0.22 * (1 - clima.pesoNeblina * 0.85);
   saida.fill = 0.06 + pesoDia * 0.24 * clima.sol;
   saida.rim = 0.12 + (1 - Math.min(1, Math.abs(saida.dirSol.y) * 1.4)) * 0.42 * pesoDia;
 

@@ -54,7 +54,8 @@ import {
 } from "./coresVeg.js";
 
 const COTA_CIDADE = 16;
-const COTA_MONTANHA = 34;
+const COTA_MONTANHA = 72;
+const COTA_PICO = 108;
 const COTA_RASO = 10;
 const COTA_FUNDO = 8;
 const SEMENTE = 1337;
@@ -283,8 +284,8 @@ function alturaNatural(x, y, zona, perfil) {
   const montanha = zona.montanha || byte === RELEVO_MONTANHA;
   let terra = plano;
   if (montanha) {
-    const t = Math.min(1, perfil.dentro / 40);
-    const pico = Math.max(22, Math.min(48, Math.round(COTA_MONTANHA + (n - 0.5) * 16)));
+    const t = Math.min(1, perfil.dentro / 32);
+    const pico = Math.max(COTA_MONTANHA, Math.min(COTA_PICO, Math.round(COTA_MONTANHA + n * (COTA_PICO - COTA_MONTANHA))));
     terra = Math.round(plano + (pico - plano) * t);
   }
   return Math.round(COTA_FUNDO + (terra - COTA_FUNDO) * perfil.u);

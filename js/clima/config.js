@@ -41,4 +41,41 @@ export const CLIMA_CFG = Object.freeze({
   asaGaleExtra: 1.4,
   asaRajada: 0.35,
   asaSinkAlinhar: 0.22,
+  /**
+   * Precipitação visual (mundo/s). Vento horizontal = vento.vx/vy * mul
+   * (mesma amostra do HUD / asa). Em ~60 km/h, chuvaVentoMul≈28 e
+   * chuvaQueda≈30 ⇒ inclinção ~35°.
+   */
+  chuvaQueda: 30,
+  chuvaVentoMul: 28,
+  chuvaStreakMundo: 0.9,
+  chuvaStreakPx: 10,
+  chuvaStreakVelK: 0.055,
+  chuvaStreakPxVelK: 0.42,
+  chuvaLarguraPx: 0.95,
+  chuvaAlphaMin: 0.32,
+  chuvaAlphaSpan: 0.48,
+  areiaQueda: 2.4,
+  areiaVentoMul: 34,
+  neveQueda: 3.1,
+  neveVentoMul: 12,
+  /** Quão forte a neblina corta exposição (ciclo). */
+  chuvaExposicaoMul: 0.16,
+  /** Piso extra de ambient sob umidade/chuva. */
+  chuvaAmbienteExtra: 0.08,
+  /** Morph puff→manto no domo (0..1 escala uUmidade). */
+  chuvaNuvemMorph: 1,
+  /** Alongamento UV stratus — baixo pra não parecer o céu deslizando na troca. */
+  chuvaNuvemEstica: 0.08,
+  /** Widen do soft-edge da cobertura sob umidade. */
+  chuvaNuvemBorda: 0.28,
+  /**
+   * Deriva UV das nuvens (offset mundo/s). Independente de clima.vento do preset
+   * pra troca de clima não acelerar o céu.
+   */
+  nuvemDerivaBase: 0.55,
+  nuvemDerivaVento: 0.9,
+  nuvemDerivaMax: 1.6,
+  /** Tau (s) só de limiar/umidade — cobertura enche mais devagar que a luz. */
+  nuvemCoberturaTau: 7,
 });

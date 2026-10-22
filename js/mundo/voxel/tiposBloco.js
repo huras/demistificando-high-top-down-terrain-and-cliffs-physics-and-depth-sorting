@@ -7,6 +7,8 @@ export const BLOCO = {
   PEDRA: 3,
   AGUA: 4,
   LAVA: 5,
+  /** Slab de ponte oca (textura madeira). */
+  PONTE: 6,
 };
 
 const FLAGS = {
@@ -16,6 +18,7 @@ const FLAGS = {
   [BLOCO.PEDRA]: { solido: true, climbavel: true, liquido: false },
   [BLOCO.AGUA]: { solido: false, climbavel: false, liquido: true },
   [BLOCO.LAVA]: { solido: false, climbavel: false, liquido: true },
+  [BLOCO.PONTE]: { solido: true, climbavel: true, liquido: false },
 };
 
 export function ehSolido(id) {
@@ -43,6 +46,8 @@ export function nomeBloco(id) {
       return "agua";
     case BLOCO.LAVA:
       return "lava";
+    case BLOCO.PONTE:
+      return "ponte";
     default:
       return "ar";
   }

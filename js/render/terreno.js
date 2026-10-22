@@ -379,7 +379,7 @@ function desenharTopoReal(ctx, cx, cy, z) {
   // Sem bleed pro vizinho — câmera já snapa em pixels; overlap gerava linha nas bordas.
   const id = z > 0 ? obterBloco(cx, cy, z - 1) : BLOCO.AR;
   const img =
-    id === BLOCO.TERRA || id === BLOCO.PEDRA || z >= 2
+    id === BLOCO.TERRA || id === BLOCO.PEDRA || id === BLOCO.PONTE || z >= 2
       ? _atlas.terra || _atlas.grama
       : _atlas.grama;
   blitRole(ctx, img, ROLE_CENTER, FLOOR_ROW_OFFSET, px, py, s, s);

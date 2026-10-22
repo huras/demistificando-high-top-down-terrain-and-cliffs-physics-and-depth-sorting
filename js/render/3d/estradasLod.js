@@ -14,9 +14,37 @@ import {
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
 const COR_ESTRADA = new THREE.Color(BIOMA_KANTO.caminho.cor);
+const COR_PONTE = new THREE.Color("#b45309");
+const URL_PONTE = "assets/terrain/bridge.png";
 const ORCAMENTO_MS = 0.45;
 const BUILDS_POR_TICK = 3;
 const EPS_Y = 0.06;
+
+const loaderPonte = new THREE.TextureLoader();
+/** @type {THREE.Texture | null} */
+let texPonteCache = null;
+/** @type {Promise<THREE.Texture | null> | null} */
+let promessaPonte = null;
+
+function carregarTexPonte() {
+  if (texPonteCache) return Promise.resolve(texPonteCache);
+  if (promessaPonte) return promessaPonte;
+  promessaPonte = new Promise((resolve) => {
+    loaderPonte.load(
+      URL_PONTE,
+      (tex) => {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        texPonteCache = tex;
+        resolve(tex);
+      },
+      undefined,
+      () => resolve(null),
+    );
+  });
+  return promessaPonte;
+}
 
 /** Índice estático id→seg (catálogo imutável). */
 let cachePorId = null;
@@ -52,23 +80,32 @@ export function criarEstradasLod(opts) {
   const grupo = new THREE.Group();
   grupo.name = id;
 
-  const matSolido = prepararMaterial(
-    aplicarSombraNuvem(
-      new THREE.MeshStandardMaterial({
-        color: COR_ESTRADA,
-        roughness: 0.9,
-        metalness: 0.02,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2,
-      }),
-    ),
-  );
+  function matBase(cor) {
+    return prepararMaterial(
+      aplicarSombraNuvem(
+        new THREE.MeshStandardMaterial({
+          color: cor,
+          roughness: 0.9,
+          metalness: 0.02,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: -2,
+        }),
+      ),
+    );
+  }
+
+  const matSolidoDirt = matBase(COR_ESTRADA);
+  const matSolidoPonte = matBase(COR_PONTE);
 
   /** @type {THREE.MeshStandardMaterial} */
-  let matAtual = matSolido;
+  let matDirt = matSolidoDirt;
+  /** @type {THREE.MeshStandardMaterial} */
+  let matPonte = matSolidoPonte;
   /** @type {THREE.Texture | null} */
   let mapaDirt = null;
+  /** @type {THREE.Texture | null} */
+  let mapaPonte = null;
 
   /** @type {Map<string, THREE.Mesh>} */
   const vivos = new Map();
@@ -88,6 +125,10 @@ export function criarEstradasLod(opts) {
     rotulo,
     tipo: "relevo",
   });
+
+  function materialDoSeg(seg) {
+    return seg?.ponte ? matPonte : matDirt;
+  }
 
   function liberarMesh(mesh) {
     if (!mesh) return;
@@ -115,10 +156,12 @@ export function criarEstradasLod(opts) {
       }
       return;
     }
+    const mat = materialDoSeg(seg);
     let mesh = vivos.get(seg.id);
     if (!mesh) {
-      mesh = new THREE.Mesh(geo, matAtual);
+      mesh = new THREE.Mesh(geo, mat);
       mesh.name = `estrada-${seg.id}`;
+      mesh.userData.ponte = !!seg.ponte;
       mesh.castShadow = false;
       mesh.receiveShadow = false;
       mesh.frustumCulled = true;
@@ -129,9 +172,33 @@ export function criarEstradasLod(opts) {
     }
     const antiga = mesh.geometry;
     mesh.geometry = geo;
-    mesh.material = matAtual;
+    mesh.material = mat;
+    mesh.userData.ponte = !!seg.ponte;
     if (antiga && antiga !== geo) antiga.dispose();
   }
+
+  // Aquecimento da textura de ponte (Pokemon AI).
+  carregarTexPonte().then((tex) => {
+    if (!tex || mapaPonte === tex) return;
+    mapaPonte = tex;
+    if (matPonte !== matSolidoPonte) matPonte.dispose();
+    matPonte = prepararMaterial(
+      aplicarSombraNuvem(
+        new THREE.MeshStandardMaterial({
+          map: tex,
+          color: 0xffffff,
+          roughness: 0.86,
+          metalness: 0.02,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: -2,
+        }),
+      ),
+    );
+    for (const mesh of vivos.values()) {
+      if (mesh.userData.ponte) mesh.material = matPonte;
+    }
+  });
 
   function planejar(px, py, interno, externo) {
     const segs = segmentosEstradaMundo();
@@ -206,30 +273,32 @@ export function criarEstradasLod(opts) {
 
   function aplicarTexturas(tex) {
     const nova = tex?.doKit?.("brown-earth") || tex?.terra || null;
-    if (nova === mapaDirt) return;
-    mapaDirt = nova;
-    if (matAtual !== matSolido) matAtual.dispose();
-    if (mapaDirt) {
-      // Mesmo wrapping do topo dos cubos (não clonar — textura compartilhada).
-      mapaDirt.wrapS = THREE.RepeatWrapping;
-      mapaDirt.wrapT = THREE.RepeatWrapping;
-      matAtual = prepararMaterial(
-        aplicarSombraNuvem(
-          new THREE.MeshStandardMaterial({
-            map: mapaDirt,
-            color: 0xffffff,
-            roughness: 0.88,
-            metalness: 0.02,
-            polygonOffset: true,
-            polygonOffsetFactor: -2,
-            polygonOffsetUnits: -2,
-          }),
-        ),
-      );
-    } else {
-      matAtual = matSolido;
+    if (nova !== mapaDirt) {
+      mapaDirt = nova;
+      if (matDirt !== matSolidoDirt) matDirt.dispose();
+      if (mapaDirt) {
+        mapaDirt.wrapS = THREE.RepeatWrapping;
+        mapaDirt.wrapT = THREE.RepeatWrapping;
+        matDirt = prepararMaterial(
+          aplicarSombraNuvem(
+            new THREE.MeshStandardMaterial({
+              map: mapaDirt,
+              color: 0xffffff,
+              roughness: 0.88,
+              metalness: 0.02,
+              polygonOffset: true,
+              polygonOffsetFactor: -2,
+              polygonOffsetUnits: -2,
+            }),
+          ),
+        );
+      } else {
+        matDirt = matSolidoDirt;
+      }
     }
-    for (const mesh of vivos.values()) mesh.material = matAtual;
+    for (const mesh of vivos.values()) {
+      mesh.material = mesh.userData.ponte ? matPonte : matDirt;
+    }
   }
 
   return {
@@ -238,8 +307,10 @@ export function criarEstradasLod(opts) {
     aplicarTexturas,
     liberar() {
       limparTudo();
-      if (matAtual !== matSolido) matAtual.dispose();
-      matSolido.dispose();
+      if (matDirt !== matSolidoDirt) matDirt.dispose();
+      if (matPonte !== matSolidoPonte) matPonte.dispose();
+      matSolidoDirt.dispose();
+      matSolidoPonte.dispose();
     },
   };
 }

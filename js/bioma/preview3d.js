@@ -7,6 +7,7 @@ import {
   VEG_ARVORE_ESCALA,
   VEG_MATA_ESCALA,
   VEG_YAW_EPS,
+  clampAltura,
 } from "../config.js";
 import {
   carregarPivosProps,
@@ -106,7 +107,7 @@ function encaixar(h, degrau) {
   if (!Number.isFinite(n)) return 1;
   const d = Math.max(1, Number(degrau) || 1);
   const q = Math.round(n / d) * d;
-  return Math.max(1, Math.min(60, q));
+  return clampAltura(q);
 }
 
 function acumular() {

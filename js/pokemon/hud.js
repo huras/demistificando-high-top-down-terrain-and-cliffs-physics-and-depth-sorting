@@ -1,6 +1,6 @@
 import { colunaEmocao, folhaEmocoes } from "./emocoes.js";
 import { flutuantes } from "./flutuantes.js";
-import { bolaEmMira, cargaAtual, obterMiraBola } from "./captura.js";
+import { bolaEmMira, cargaAtual } from "./captura.js";
 import { alvoDeOrdem } from "./party.js";
 import { pedirRetrato } from "./retrato.js";
 import { atoresVisiveis, pokemonLigado, relogioPokemon } from "./sistema.js";
@@ -108,54 +108,8 @@ function tracarMundo(ctx, pts, projetar, z, fechar) {
   return algum;
 }
 
-function desenharMira(ctx, projetar, corpo) {
-  if (!bolaNaMao() || !bolaEmMira() || !projetar || !corpo) return;
-  const geo = obterMiraBola(corpo);
-  if (!geo) return;
-  const z = geo.z;
-  const raio = geo.largura * 0.5;
-  const comp = Math.max(raio + 0.2, geo.voo - raio);
-  const anel = pontosAnel(geo.x0, geo.y0, geo.alcance, 72);
-  const faixa = pontosCapsula(geo.x0, geo.y0, geo.ux, geo.uy, comp, raio);
-  const pontaX = geo.x0 + geo.ux * comp;
-  const pontaY = geo.y0 + geo.uy * comp;
-  const ponta = pontosAnel(pontaX, pontaY, geo.largura * 0.52, 20);
-
-  ctx.save();
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-
-  ctx.fillStyle = "rgba(90, 170, 255, 0.08)";
-  ctx.strokeStyle = "rgba(186, 226, 255, 0.82)";
-  ctx.lineWidth = 2;
-  if (tracarMundo(ctx, anel, projetar, z, true)) {
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  ctx.shadowColor = "rgba(80, 170, 255, 0.45)";
-  ctx.shadowBlur = 10;
-  ctx.fillStyle = corCarga(geo.carga, 0.28 + geo.carga * 0.22);
-  ctx.strokeStyle = corCarga(geo.carga, 0.95);
-  ctx.lineWidth = 2.25;
-  if (tracarMundo(ctx, faixa, projetar, z, true)) {
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.shadowBlur = 0;
-
-  ctx.fillStyle = corCarga(geo.carga, 0.55);
-  if (tracarMundo(ctx, ponta, projetar, z, true)) ctx.fill();
-
-  const eixo = [
-    [geo.x0 + geo.ux * 0.45, geo.y0 + geo.uy * 0.45],
-    [pontaX, pontaY],
-  ];
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([7, 6]);
-  if (tracarMundo(ctx, eixo, projetar, z, false)) ctx.stroke();
-  ctx.restore();
+function desenharMira(_ctx, _projetar, _corpo) {
+  // Mira com RMB: arco 3D (miraArcoBola3d). Sem mira: círculo de carga abaixo.
 }
 export function projetar3d(cam, largura, altura) {
   return (x, y, z, hop) => {
@@ -263,16 +217,25 @@ function textos(ctx, projetar) {
 }
 
 function carga(ctx, projetar, corpo) {
+  // Na mira 3D o arco já comunica a força; círculo só no hipfire.
+  if (bolaEmMira()) return;
   const t = cargaAtual();
   if (t <= 0 || !corpo) return;
   const z = corpo.elevacao ?? corpo.z ?? 0;
   const p = projetar(corpo.x, corpo.y, z, 0);
   if (!p) return;
+  const raio = 14 + t * 10;
   ctx.save();
-  ctx.strokeStyle = "rgba(248, 250, 252, 0.9)";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = corCarga(t, 0.95);
+  ctx.lineWidth = 3.25;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.arc(p.x, p.y - 28, 16, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * t);
+  ctx.arc(p.x, p.y - 30, raio, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * t);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(15, 23, 42, 0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y - 30, raio, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }

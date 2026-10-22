@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { CLIMA_CFG } from "../../../clima/config.js";
 
 const N = 8000;
 const SEMENTE = 4096;
@@ -12,6 +13,7 @@ attribute vec2 aCanto;
 attribute vec3 aOrigem;
 attribute float aFase;
 uniform float uTempo;
+uniform vec3 uOffset;
 uniform vec3 uVolume;
 uniform vec3 uCentro;
 uniform vec3 uDireita;
@@ -32,7 +34,7 @@ varying float vBorda;
 
 void main() {
   float marcha = 0.72 + aFase * 0.55;
-  vec3 mov = uVel * (uTempo * marcha);
+  vec3 mov = uOffset * marcha;
   float fase = uTempo * 1.4 + aFase * 6.28318;
   mov.x += sin(fase) * uBamboleio;
   mov.z += cos(fase * 0.8) * uBamboleio;
@@ -182,18 +184,20 @@ function medirVolume(camera) {
 
 /**
  * Um draw cobre chuva, areia e neve.
- * A lâmina acompanha a vista: no ortográfico ela tem o retângulo da tela,
- * e a gota só reentra quando sai desse volume.
+ * Deslocamento integrado (offset += vel * dt) — mudar o vento não teleporta pingos.
+ * Vento horizontal vem de obterVentoMundo (mesmo do HUD / asa).
  */
 export function criarPrecipitacao() {
+  const cfg = CLIMA_CFG;
   const uniforms = {
     uTempo: { value: 0 },
+    uOffset: { value: new THREE.Vector3() },
     uVolume: { value: new THREE.Vector3(16, 12, 12) },
     uCentro: { value: new THREE.Vector3() },
     uDireita: { value: new THREE.Vector3(1, 0, 0) },
     uCima: { value: new THREE.Vector3(0, 1, 0) },
     uFrente: { value: new THREE.Vector3(0, 0, -1) },
-    uVel: { value: new THREE.Vector3(0, -14, 0) },
+    uVel: { value: new THREE.Vector3(0, -30, 0) },
     uLargura: { value: 0.03 },
     uLarguraPx: { value: 0 },
     uComprimento: { value: 1.35 },
@@ -231,11 +235,24 @@ export function criarPrecipitacao() {
   const corNeve = new THREE.Color(0xf4f7fb).convertSRGBToLinear();
   const tela = new THREE.Vector2();
   const camPos = new THREE.Vector3();
+  const camPosAnt = new THREE.Vector3();
+  const camVel = new THREE.Vector3();
+  const velMundo = new THREE.Vector3();
+  const velVisual = new THREE.Vector3();
+  const offset = uniforms.uOffset.value;
   let tempo = 0;
+  let temCamAnt = false;
 
-  function aplicarTipo(tipo, clima, vx, vz) {
+  function ventoHoriz(ventoXZ, mul) {
+    const vx = (ventoXZ?.x || 0) * mul;
+    const vz = (ventoXZ?.y || 0) * mul;
+    return { vx, vz };
+  }
+
+  function aplicarTipo(tipo, clima, ventoXZ) {
     if (tipo === 1) {
-      uniforms.uVel.value.set(vx * 1.15, -2.4, vz * 1.15);
+      const { vx, vz } = ventoHoriz(ventoXZ, cfg.areiaVentoMul ?? 34);
+      velMundo.set(vx, -(cfg.areiaQueda ?? 2.4), vz);
       uniforms.uLargura.value = 0.09;
       uniforms.uLarguraPx.value = 2.4;
       uniforms.uComprimento.value = 0.42;
@@ -247,7 +264,8 @@ export function criarPrecipitacao() {
       return;
     }
     if (tipo === 2) {
-      uniforms.uVel.value.set(vx * 0.45, -3.1, vz * 0.45);
+      const { vx, vz } = ventoHoriz(ventoXZ, cfg.neveVentoMul ?? 12);
+      velMundo.set(vx, -(cfg.neveQueda ?? 3.1), vz);
       uniforms.uLargura.value = 0.07;
       uniforms.uLarguraPx.value = 3.2;
       uniforms.uComprimento.value = 0.1;
@@ -258,23 +276,53 @@ export function criarPrecipitacao() {
       uniforms.uCor.value.copy(corNeve);
       return;
     }
-    uniforms.uVel.value.set(vx * 0.35, -17, vz * 0.35);
+    const { vx, vz } = ventoHoriz(ventoXZ, cfg.chuvaVentoMul ?? 28);
+    const queda = cfg.chuvaQueda ?? 30;
+    velMundo.set(vx, -queda, vz);
     uniforms.uLargura.value = 0;
-    uniforms.uLarguraPx.value = 0.9;
-    uniforms.uComprimento.value = 1.45;
-    uniforms.uComprimentoPx.value = 14;
+    uniforms.uLarguraPx.value = cfg.chuvaLarguraPx ?? 0.95;
     uniforms.uBamboleio.value = 0;
     const intensidade = Math.min(1, clima.chuva * 1.15);
-    uniforms.uAlpha.value = 0.28 + 0.42 * intensidade;
+    const a0 = cfg.chuvaAlphaMin ?? 0.32;
+    const a1 = cfg.chuvaAlphaSpan ?? 0.48;
+    uniforms.uAlpha.value = a0 + a1 * intensidade;
     uniforms.uPesoLarguraPx.value = 1;
     uniforms.uCor.value.copy(corChuva);
   }
 
-  function atualizar(clima, ventoDir, dt, camera, renderer) {
-    tempo += dt;
+  function aplicarStreak(tipo) {
+    const rapidez = velVisual.length();
+    if (tipo === 1) {
+      uniforms.uComprimento.value = 0.42 + rapidez * 0.02;
+      uniforms.uComprimentoPx.value = 5 + rapidez * 0.12;
+      return;
+    }
+    if (tipo === 2) {
+      uniforms.uComprimento.value = 0.1 + rapidez * 0.008;
+      uniforms.uComprimentoPx.value = 3.2 + rapidez * 0.08;
+      return;
+    }
+    const baseM = cfg.chuvaStreakMundo ?? 0.9;
+    const basePx = cfg.chuvaStreakPx ?? 10;
+    const kM = cfg.chuvaStreakVelK ?? 0.055;
+    const kPx = cfg.chuvaStreakPxVelK ?? 0.42;
+    uniforms.uComprimento.value = baseM + rapidez * kM;
+    uniforms.uComprimentoPx.value = basePx + rapidez * kPx;
+  }
+
+  /**
+   * @param {*} clima mix do céu
+   * @param {{x:number,y:number}} ventoXZ vx/vz do mundo (obterVentoMundo), não normalizado
+   */
+  function atualizar(clima, ventoXZ, dt, camera, renderer) {
+    const seguro = Math.min(Math.max(dt || 0, 0), 0.05);
+    tempo += seguro;
     const peso = clima.chuva + clima.areia + clima.neve;
     mesh.visible = peso > 0.025;
-    if (!mesh.visible) return;
+    if (!mesh.visible) {
+      temCamAnt = false;
+      return;
+    }
 
     if (camera) {
       camera.updateMatrixWorld(true);
@@ -283,10 +331,20 @@ export function criarPrecipitacao() {
       uniforms.uCima.value.set(e[4], e[5], e[6]).normalize();
       const frente = uniforms.uFrente.value.set(-e[8], -e[9], -e[10]).normalize();
       camPos.set(e[12], e[13], e[14]);
+      if (temCamAnt && seguro > 1e-5) {
+        camVel.copy(camPos).sub(camPosAnt).multiplyScalar(1 / seguro);
+      } else {
+        camVel.set(0, 0, 0);
+      }
+      camPosAnt.copy(camPos);
+      temCamAnt = true;
       const medido = medirVolume(camera);
       uniforms.uVolume.value.set(medido.meiaX, medido.meiaY, medido.meiaZ);
       uniforms.uCentro.value.copy(camPos).addScaledVector(frente, medido.avanco);
       uniforms.uOrto.value = medido.blend;
+    } else {
+      camVel.set(0, 0, 0);
+      temCamAnt = false;
     }
     if (renderer) {
       renderer.getDrawingBufferSize(tela);
@@ -297,9 +355,12 @@ export function criarPrecipitacao() {
     if (clima.areia >= clima.chuva && clima.areia >= clima.neve) tipo = 1;
     else if (clima.neve >= clima.chuva && clima.neve >= clima.areia) tipo = 2;
 
-    const vx = ventoDir.x * clima.vento;
-    const vz = ventoDir.y * clima.vento;
-    aplicarTipo(tipo, clima, vx, vz);
+    aplicarTipo(tipo, clima, ventoXZ);
+    // Integração no mundo; streak usa velocidade relativa à câmera.
+    offset.addScaledVector(velMundo, seguro);
+    velVisual.copy(velMundo).sub(camVel);
+    uniforms.uVel.value.copy(velVisual);
+    aplicarStreak(tipo);
     uniforms.uTipo.value = tipo;
     uniforms.uTempo.value = tempo;
   }

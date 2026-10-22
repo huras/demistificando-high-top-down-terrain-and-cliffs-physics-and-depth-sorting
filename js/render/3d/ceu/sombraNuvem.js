@@ -47,7 +47,7 @@ vMundoCeu = (modelMatrix * mundoCeuV).xyz;
 `;
 
 const FRAG_LUZ = `
-diffuseColor.rgb *= mix(vec3(1.0), vec3(0.62, 0.68, 0.76), uUmidade);
+diffuseColor.rgb *= mix(vec3(1.0), vec3(0.78, 0.82, 0.88), uUmidade);
 roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.34), uUmidade);
 `;
 
