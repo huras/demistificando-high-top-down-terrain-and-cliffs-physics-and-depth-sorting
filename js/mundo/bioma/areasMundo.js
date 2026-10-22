@@ -129,6 +129,50 @@ function suave01(t) {
   return x * x * (3 - 2 * x);
 }
 
+function clamp01(t) {
+  return t < 0 ? 0 : t > 1 ? 1 : t;
+}
+
+/** Campânula suave: 1 no centro, 0 fora de [centro±largura]. */
+function pico(valor, centro, largura) {
+  const t = Math.abs(valor - centro) / Math.max(1e-6, largura);
+  if (t >= 1) return 0;
+  const u = 1 - t;
+  return u * u * (3 - 2 * u);
+}
+
+/** Rampa: sobe de 0→1 entre a e b. */
+function rampa(valor, a, b) {
+  if (!(b > a)) return valor >= b ? 1 : 0;
+  return suave01((valor - a) / (b - a));
+}
+
+/**
+ * Domain warp continental — quebra faixas de latitude e o anel AABB
+ * sem mudar o hot path (2–4 FBMs, sem busca).
+ */
+function warpContinente(wx, wy, seed) {
+  const e1 = 1100;
+  const a1 = 480;
+  const e2 = 480;
+  const a2 = 200;
+  const ox =
+    (fbm2(wx / e1, wy / e1, seed + 101, 4) * 2 - 1) * a1 +
+    (fbm2(wx / e2, wy / e2, seed + 303, 3) * 2 - 1) * a2;
+  const oy =
+    (fbm2(wx / e1 + 19.7, wy / e1 - 8.3, seed + 202, 4) * 2 - 1) * a1 +
+    (fbm2(wx / e2 + 5.1, wy / e2 + 13.4, seed + 404, 3) * 2 - 1) * a2;
+  return { x: wx + ox, y: wy + oy };
+}
+
+/** Distância a Kanto entortada — o halo deixa de ser retângulo. */
+function distKantoOrganica(wx, wy, seed) {
+  const d = distAssinadaKanto(wx, wy);
+  const n = fbm2(wx / 360, wy / 360, seed + 8801, 3) - 0.5;
+  const n2 = fbm2(wx / 180, wy / 180, seed + 8911, 2) - 0.5;
+  return d + n * 340 + n2 * 140;
+}
+
 /**
  * Espelho leve da máscara de continente (mesmos seeds/escalas do catálogo)
  * para precip/encontros sem importar catalogo.js (evita ciclo).
@@ -138,7 +182,7 @@ function pareceMar(wx, wy, seed) {
   const largo = fbm2(wx / escala, wy / escala, seed + 901, 5);
   const costa = fbm2(wx / (escala * 0.34), wy / (escala * 0.34), seed + 1409, 3);
   let terra = largo * 0.7 + costa * 0.3;
-  const d = distAssinadaKanto(wx, wy);
+  const d = distKantoOrganica(wx, wy, seed);
   if (d > 0) {
     const anel = 320;
     const puxa = 1 - suave01(Math.min(1, d / anel));
@@ -147,32 +191,100 @@ function pareceMar(wx, wy, seed) {
   return terra < 0.5;
 }
 
+function escolherPorScore(candidatos, wx, wy, seed) {
+  let melhor = candidatos[0];
+  let segundo = candidatos[1] || candidatos[0];
+  for (let i = 1; i < candidatos.length; i++) {
+    const c = candidatos[i];
+    if (c.score > melhor.score) {
+      segundo = melhor;
+      melhor = c;
+    } else if (c.score > segundo.score) {
+      segundo = c;
+    }
+  }
+  // Fronteira contestada: ruído fino decide — borda meandrante, não reta.
+  const margem = melhor.score - segundo.score;
+  if (margem < 0.16 && segundo.id !== melhor.id) {
+    const n = fbm2(wx / 95, wy / 95, seed + 9901, 2);
+    const vies = 0.5 + (melhor.score - segundo.score) / 0.32;
+    if (n > clamp01(vies)) return POR_ID.get(segundo.id);
+  }
+  return POR_ID.get(melhor.id);
+}
+
 function areaMar(wx, wy, seed) {
-  const n = fbm2(wx / 1400, wy / 1400, seed + 2201, 3);
-  const d = distAssinadaKanto(wx, wy);
-  // Perto de Kanto: plataforma; longe + ruído baixo: fossa.
-  if (d < 900 || n > 0.42) return POR_ID.get("mundo-shelf");
-  return POR_ID.get("mundo-trench");
+  const p = warpContinente(wx, wy, seed);
+  const d = distKantoOrganica(wx, wy, seed);
+  const n = fbm2(p.x / 1400, p.y / 1400, seed + 2201, 4);
+  const shelf =
+    0.55 +
+    (1 - rampa(d, 500, 1600)) * 0.7 +
+    n * 0.45 +
+    pico(d, 200, 700) * 0.35;
+  const trench = rampa(d, 700, 1800) * (1.15 - n) + (1 - n) * 0.25;
+  return escolherPorScore(
+    [
+      { id: "mundo-shelf", score: shelf },
+      { id: "mundo-trench", score: trench },
+    ],
+    p.x,
+    p.y,
+    seed,
+  );
 }
 
 function areaTerra(wx, wy, seed) {
-  const d = distAssinadaKanto(wx, wy);
-  // Anel próximo à ilha: temperado estável (costura visual com Kanto).
-  if (d >= 0 && d < 720) return POR_ID.get("mundo-temperate");
+  const p = warpContinente(wx, wy, seed);
+  const d = distKantoOrganica(wx, wy, seed);
 
-  const lat = Math.max(0, Math.min(1, wy / LADO_MUNDO));
-  const clima = fbm2(wx / 1600, wy / 1600, seed + 3307, 4);
-  const relevo = fbm2(wx / 920, wy / 920, seed + 4411, 3);
-  const umidade = fbm2(wx / 1100, wy / 1100, seed + 5523, 3);
+  // Temperatura mistura latitude + clima — mata a faixa horizontal pura.
+  const lat = clamp01(p.y / LADO_MUNDO);
+  const clima = fbm2(p.x / 1600, p.y / 1600, seed + 3307, 4);
+  const relevo = fbm2(p.x / 920, p.y / 920, seed + 4411, 3);
+  const umidade = fbm2(p.x / 1100, p.y / 1100, seed + 5523, 3);
+  const detalhe = fbm2(p.x / 520, p.y / 520, seed + 6631, 3);
+  const temp = clamp01(lat * 0.5 + clima * 0.38 + (detalhe - 0.5) * 0.22);
 
-  if (lat < 0.22 || (lat < 0.32 && clima < 0.38)) return POR_ID.get("mundo-tundra");
-  if (relevo > 0.72) return POR_ID.get("mundo-mountain");
-  if (lat > 0.72 && clima < 0.4) return POR_ID.get("mundo-desert");
-  if (lat > 0.55 && clima < 0.48) return POR_ID.get("mundo-savanna");
-  if (umidade > 0.7 && clima > 0.45) return POR_ID.get("mundo-marsh");
-  if (umidade > 0.58) return POR_ID.get("mundo-forest");
-  if (clima > 0.62 && umidade > 0.4 && umidade < 0.58) return POR_ID.get("mundo-floral");
-  return POR_ID.get("mundo-temperate");
+  // Halo de costura com Kanto: temperado ganha perto, sem corte duro.
+  const anelKanto = (1 - rampa(d, 180, 980)) * (d > -80 ? 1 : 0.35);
+
+  const candidatos = [
+    {
+      id: "mundo-tundra",
+      score: pico(temp, 0.14, 0.22) * 1.35 + (1 - umidade) * 0.25 + (1 - rampa(temp, 0.2, 0.38)) * 0.4,
+    },
+    {
+      id: "mundo-mountain",
+      score: rampa(relevo, 0.58, 0.86) * 1.55 + pico(relevo, 0.78, 0.2) * 0.5,
+    },
+    {
+      id: "mundo-desert",
+      score: rampa(temp, 0.62, 0.92) * (1.1 - umidade) * 1.4 + pico(temp, 0.82, 0.2) * 0.45,
+    },
+    {
+      id: "mundo-savanna",
+      score: pico(temp, 0.62, 0.22) * (0.55 + (1 - umidade) * 0.7) + pico(umidade, 0.38, 0.22) * 0.35,
+    },
+    {
+      id: "mundo-marsh",
+      score: rampa(umidade, 0.62, 0.92) * pico(temp, 0.52, 0.28) * 1.45 + rampa(umidade, 0.7, 0.95) * 0.4,
+    },
+    {
+      id: "mundo-forest",
+      score: rampa(umidade, 0.48, 0.78) * pico(temp, 0.45, 0.32) * 1.25 + pico(umidade, 0.66, 0.2) * 0.4,
+    },
+    {
+      id: "mundo-floral",
+      score: pico(clima, 0.68, 0.2) * pico(umidade, 0.48, 0.18) * 1.35 + pico(temp, 0.5, 0.2) * 0.3,
+    },
+    {
+      id: "mundo-temperate",
+      score: 0.55 + pico(temp, 0.42, 0.28) * 0.7 + anelKanto * 1.85 + (1 - Math.abs(umidade - 0.5)) * 0.2,
+    },
+  ];
+
+  return escolherPorScore(candidatos, p.x, p.y, seed);
 }
 
 export function areaPorId(id) {

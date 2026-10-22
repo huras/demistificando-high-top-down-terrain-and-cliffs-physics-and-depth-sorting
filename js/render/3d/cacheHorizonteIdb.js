@@ -1,7 +1,7 @@
 /**
- * Persistência de tiles do LOD horizonte em IndexedDB.
- * Namespace por save + schema (passo/chunk/UV). Worldgen puro por enquanto —
- * edits de bloco perto não invalidam (passo 16).
+ * Persistência de tiles do LOD horizonte em IndexedDB (fallback).
+ * Prefira o prebake offline em assets/horizonte (npm run horizonte:assar).
+ * Namespace por save + schema; edits de bloco perto não invalidam (passo 16).
  */
 import {
   CHUNK_HORIZONTE,

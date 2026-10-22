@@ -179,6 +179,12 @@
   image-rendering: pixelated;
 }
 
+/* Tileset: background-size/position vêm do JS no mesmo px — não seguir --bag-wheel-icon. */
+.bag-wheel__icon.jogo-icone--tileset {
+  width: 56px !important;
+  height: 56px !important;
+}
+
 .bag-wheel__cmds {
   margin: 0;
   color: #5c5346;
@@ -197,8 +203,7 @@
 @media (max-width: 520px) {
   .bag-wheel__center-icon,
   .bag-wheel__center-icon img,
-  .bag-wheel__center-icon canvas,
-  .bag-wheel__center-icon.jogo-icone--tileset {
+  .bag-wheel__center-icon canvas {
     width: 88px !important;
     height: 88px !important;
   }

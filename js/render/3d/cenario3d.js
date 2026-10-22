@@ -33,6 +33,7 @@ import { atualizarDebugCorpos, criarDebugCorpos } from "./debugCorpos.js";
 import { criarDebugCasas } from "./debugCasas.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
+import { criarCidadeHorizonte } from "./cidadeHorizonte.js";
 import { criarFxCampo } from "../../campo/fx.js";
 import { criarPoeiraPasso3d } from "./poeiraPasso3d.js";
 import { criarFxBola3d } from "./fxBola3d.js";
@@ -172,6 +173,7 @@ function aplicarVazioSala(dentro) {
   if (estado.terrenoSuave?.mesh) estado.terrenoSuave.mesh.visible = false;
   if (estado.vegetacao?.grupo) estado.vegetacao.grupo.visible = false;
   if (estado.vegetacaoDistante?.grupo) estado.vegetacaoDistante.grupo.visible = false;
+  if (estado.cidadeHorizonte?.grupo) estado.cidadeHorizonte.grupo.visible = false;
   if (domo) {
     domo.visible = false;
     domoNoVazio = true;
@@ -276,6 +278,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   terreno.grupo.add(terrenoHorizonte.mesh);
   terrenoHorizonte.aplicarTexturas?.(terreno.obterTexturasTopo?.());
 
+  const cidadeHorizonte = criarCidadeHorizonte();
+  terreno.grupo.add(cidadeHorizonte.grupo);
+
   const vegetacao = criarVegetacaoBillboard3d();
   scene.add(vegetacao.grupo);
 
@@ -343,6 +348,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     terreno,
     terrenoSuave,
     terrenoHorizonte,
+    cidadeHorizonte,
     edificios,
     vegetacao,
     vegetacaoDistante,
@@ -406,6 +412,7 @@ export function aquecerProgramas3d(px = 0, py = 0) {
     estado.terreno?.tickMalha?.(px, py);
     estado.terrenoSuave?.tick?.(px, py, estado.terreno?.chunksExibidos?.());
     estado.edificios?.atualizar?.(px, py, 0, 0);
+    estado.cidadeHorizonte?.tick?.(px, py);
     estado.vegetacao?.atualizar?.(0, 0);
     estado.vegetacaoDistante?.tick?.(px, py, 0, 0);
     estado.ceu?.atualizar?.(0, {
@@ -607,6 +614,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   comecarMapaChao();
   estado.terrenoSuave?.tick(mx, my, estado.terreno.chunksExibidos?.());
   estado.terrenoHorizonte?.tick(mx, my);
+  estado.cidadeHorizonte?.tick?.(mx, my);
   seguirAlvo3d(estado.camera3d, corpo, dt);
   aplicarFacingMira(corpo, estado.camera3d);
   estado.rig?.atualizar(estado.camera3d);

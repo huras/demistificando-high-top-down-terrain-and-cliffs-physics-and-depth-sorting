@@ -98,7 +98,11 @@ const VERT_COLUNA = `
 varying float vProfundidadeColuna;
 `;
 
-/** XZ do pivô (pé) + Y do fragmento — sort high-top-down com oclusão por altura. */
+/**
+ * XZ do pivô (pé) + Y do fragmento — sort high-top-down com oclusão por altura.
+ * Y nunca abaixo do pé: no tilt o cartão enterra a base e o chão ganhava o depth
+ * (cristais, pedras, berry trees mostrando grama no retângulo inferior).
+ */
 function calcColuna(folgaTxt) {
   return `
 {
@@ -114,7 +118,8 @@ function calcColuna(folgaTxt) {
   #endif
   vec4 pivoWorld = modelMatrix * localPivo;
   vec4 fragWorld = modelMatrix * localFrag;
-  vec3 colunaWorld = vec3(pivoWorld.x, fragWorld.y, pivoWorld.z);
+  float yColuna = max(fragWorld.y, pivoWorld.y);
+  vec3 colunaWorld = vec3(pivoWorld.x, yColuna, pivoWorld.z);
   vec4 colunaVista = viewMatrix * vec4(colunaWorld, 1.0);
   colunaVista.z += ${folgaTxt};
   vec4 colunaClip = projectionMatrix * colunaVista;
@@ -269,7 +274,7 @@ export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
   };
   material.customProgramCacheKey = function chaveLuzBillboard() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-billboard|coluna|${folgaTxt}`;
+    return `${base}|luz-billboard|coluna|pe-clamp|${folgaTxt}`;
   };
   return material;
 }

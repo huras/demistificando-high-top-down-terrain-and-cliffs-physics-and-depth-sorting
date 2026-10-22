@@ -1,12 +1,14 @@
 /**
  * Handoff de LOD por stencil (BOTW-style layers).
  *
- * 1. Blocos escrevem ref=1 (Always + Replace)
- * 2. Suave terra: ≠1 + Replace (cobertura média)
+ * 1. Blocos escrevem ref=1 (Always + Replace, inclusive em ZFail —
+ *    veg/atores já podem ter ganhado o depth nesses pixels)
+ * 2. Suave terra: ≠1 + Replace (cobertura média; ZFail também marca)
  * 2b. Suave oceano: Always + Replace — a lâmina precisa cobrir o fundo
  *     que o próprio suave já marcou; senão o mar do horizonte some e
  *     o anel médio fica seco
- * 3. Horizonte: ≠1 (só o que blocos/suave não cobriram)
+ * 3. Horizonte: Equal(0) — só stencil limpo (ref=1 dos LODs e ref=2
+ *    da grama bloqueiam; NotEqual(1) furava a base dos details)
  *
  * Ordem de draw: blocos → suave terra → suave água → horizonte.
  */
@@ -20,7 +22,7 @@ export function marcarLodFino(material) {
   material.stencilRef = STENCIL_LOD_FINO;
   material.stencilFunc = THREE.AlwaysStencilFunc;
   material.stencilFail = THREE.KeepStencilOp;
-  material.stencilZFail = THREE.KeepStencilOp;
+  material.stencilZFail = THREE.ReplaceStencilOp;
   material.stencilZPass = THREE.ReplaceStencilOp;
   return material;
 }
@@ -36,7 +38,7 @@ export function atrasDoLodFinoMarcando(material) {
   material.stencilRef = STENCIL_LOD_FINO;
   material.stencilFunc = THREE.NotEqualStencilFunc;
   material.stencilFail = THREE.KeepStencilOp;
-  material.stencilZFail = THREE.KeepStencilOp;
+  material.stencilZFail = THREE.ReplaceStencilOp;
   material.stencilZPass = THREE.ReplaceStencilOp;
   return material;
 }
@@ -76,13 +78,13 @@ export function cobrirLodComEstrada(material) {
   return material;
 }
 
-/** Horizonte: só onde blocos e suave deixaram o stencil limpo. */
+/** Horizonte: só onde o stencil ainda está limpo (0). */
 export function atrasDoLodMedio(material) {
   material.depthTest = true;
   material.depthWrite = true;
   material.stencilWrite = true;
-  material.stencilRef = STENCIL_LOD_FINO;
-  material.stencilFunc = THREE.NotEqualStencilFunc;
+  material.stencilRef = 0;
+  material.stencilFunc = THREE.EqualStencilFunc;
   material.stencilFail = THREE.KeepStencilOp;
   material.stencilZFail = THREE.KeepStencilOp;
   material.stencilZPass = THREE.KeepStencilOp;

@@ -7,7 +7,8 @@
     "start": "node servidor.mjs",
     "treino:ia": "node treino/iaCombate.mjs",
     "treino:seguir": "node treino/seguir.mjs",
-    "mapa:assar": "node js/ui/mapa/assarMapa.mjs"
+    "mapa:assar": "node js/ui/mapa/assarMapa.mjs",
+    "horizonte:assar": "node js/render/3d/assarHorizonte.mjs"
   },
   "dependencies": {
     "pngjs": "^7.0.0",

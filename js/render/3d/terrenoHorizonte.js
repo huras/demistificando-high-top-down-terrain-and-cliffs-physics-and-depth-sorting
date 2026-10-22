@@ -2,7 +2,7 @@
  * LOD2: anel terraced longe (silhueta BOTW) + mar.
  * Terra: center sprites do bioma (igual suave). Mar: material lago longe.
  *
- * Tiles 128² estáveis (sem furo do player) + cache RAM + IndexedDB por save.
+ * Tiles 128² estáveis + cache RAM + prebake offline (assets) + IDB fallback.
  * O anel só escolhe quais tiles entram; stencil (blocos/suave) tapa o miolo.
  */
 import * as THREE from "three";
@@ -11,32 +11,36 @@ import {
   CHUNK_HORIZONTE,
   CHUNK_XZ,
   PASSO_HORIZONTE,
-  QUANT_ALTURA_HORIZONTE,
   RAIO_HORIZONTE,
   RAIO_HORIZONTE_MAX,
   RAIO_HORIZONTE_MIN,
-  UV_ESCALA_HORIZONTE,
-  UV_ESCALA_MAR_HORIZONTE,
 } from "../../config.js";
-import { alturaDoRelevo, amostrarRegiao, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
-import { cruSplat, urlPele } from "../../mundo/bioma/detalhe.js";
-import { obterKits } from "../../mundo/bioma/kits.js";
-import { rgbBioma } from "../../mundo/bioma/tinta.js";
-import { amostraKanto, dentroDoKanto } from "../../mundo/regiao/amostraKanto.js";
+import { urlPele } from "../../mundo/bioma/detalhe.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { obterRaioSuave } from "./terrenoSuave.js";
-import { criarGeometriaMarPlano, criarGeometriaTerraced } from "./geometriaTerraced.js";
 import { obterMaterialLagoHorizonte } from "./texturasAgua3d.js";
 import { imagemPele } from "./peleSplat.js";
 import { atrasDoLodMedio } from "./stencilLod.js";
 import { criarEstradasLod } from "./estradasLod.js";
-import { ajustarAlturaCorredorEstrada } from "../../mundo/regiao/linhasEstrada.js";
 import {
   chaveSchemaHorizonte,
   gravarTileHorizonteIdb,
   hidratarGeometria,
   lerTileHorizonteIdb,
 } from "./cacheHorizonteIdb.js";
+import {
+  amostrarTileHorizonte,
+  geometriasDoTileHorizonte,
+  idsKitsHorizonte,
+} from "./amostraTileHorizonte.js";
+import {
+  iniciarPrebakeHorizonte,
+  lerPrebakeHorizonteSync,
+  pedirPrebakeHorizonte,
+  prebakeHorizonteEmVoo,
+  prebakeHorizonteMiss,
+  prebakeHorizontePronto,
+} from "./prebakeHorizonte.js";
 import { idSaveAtual } from "../../jogo/estado.js";
 import { registrarObjetoCena } from "../../cena/registroCena.js";
 
@@ -94,49 +98,8 @@ function materialSolido() {
   );
 }
 
-let gradeBioma = { chave: "", ids: [] };
-
 function garantirGrade() {
-  const ids = Object.keys(obterKits()?.kits || {}).sort();
-  const chave = ids.join("|");
-  if (gradeBioma.chave === chave) return gradeBioma;
-  gradeBioma = { chave, ids };
-  return gradeBioma;
-}
-
-function celulaDe(kit) {
-  const { ids } = garantirGrade();
-  const i = ids.indexOf(kit);
-  return i < 0 ? 0 : i;
-}
-
-function parNoPonto(wx, wy) {
-  if (dentroDoKanto(wx, wy)) {
-    const amostra = amostraKanto(wx, wy);
-    let a = amostra?.bioma?.kit || "_";
-    let b = amostra?.biomaB?.kit || a;
-    let peso = amostra ? amostra.dominio : 1;
-    if (a === b) return { a, b, peso: 1 };
-    if (a > b) {
-      const t = a;
-      a = b;
-      b = t;
-      peso = 1 - peso;
-    }
-    return { a, b, peso };
-  }
-  const reg = amostrarRegiao(wx, wy);
-  let a = reg?.a?.kit || "_";
-  let b = reg?.b?.kit || a;
-  let peso = reg ? reg.dominio : 1;
-  if (a === b) return { a, b, peso: 1 };
-  if (a > b) {
-    const t = a;
-    a = b;
-    b = t;
-    peso = 1 - peso;
-  }
-  return { a, b, peso };
+  return { ids: idsKitsHorizonte() };
 }
 
 function texturaBranca() {
@@ -284,28 +247,12 @@ diffuseColor *= sampledDiffuseColor;
   return atrasDoLodMedio(aplicarSombraNuvem(mat));
 }
 
-function quantizar(h) {
-  const q = QUANT_ALTURA_HORIZONTE;
-  if (q <= 0) return h;
-  return Math.round(h / q) * q;
-}
-
-function amostraAltura(wx, wy) {
-  let h;
-  if (dentroDoKanto(wx, wy)) {
-    const a = amostraKanto(wx, wy);
-    h = a && Number.isFinite(a.h) ? a.h : alturaDoRelevo(wx, wy);
-  } else {
-    h = alturaDoRelevo(wx, wy);
-  }
-  return quantizar(ajustarAlturaCorredorEstrada(wx, wy, h));
-}
-
 function chaveChunk(hx, hy) {
   return `${hx},${hy}`;
 }
 
 export function criarTerrenoHorizonte() {
+  iniciarPrebakeHorizonte();
   const grupo = new THREE.Group();
   grupo.name = "terreno-horizonte";
 
@@ -451,77 +398,7 @@ export function criarTerrenoHorizonte() {
 
   /** Tile completo 128² — independente do player (cacheável). */
   function montarTile(hx, hy) {
-    const passo = PASSO_HORIZONTE;
-    const lado = CHUNK_HORIZONTE;
-    const ox = hx * lado;
-    const oy = hy * lado;
-    const nx = Math.max(1, Math.round(lado / passo));
-    const ny = nx;
-    const nivel = nivelMarBlocos();
-
-    const alturas = new Float32Array((nx + 1) * (ny + 1));
-    const cores = new Float32Array(nx * ny * 3);
-    const bioma = new Float32Array(nx * ny * 3);
-    const splat = new Float32Array(nx * ny);
-    const mar = new Uint8Array(nx * ny);
-    let celulas = 0;
-    let celulasMar = 0;
-
-    for (let cy = 0; cy <= ny; cy++) {
-      for (let cx = 0; cx <= nx; cx++) {
-        alturas[cy * (nx + 1) + cx] = amostraAltura(ox + cx * passo, oy + cy * passo);
-      }
-    }
-
-    for (let cy = 0; cy < ny; cy++) {
-      for (let cx = 0; cx < nx; cx++) {
-        const wx = ox + cx * passo + passo * 0.5;
-        const wy = oy + cy * passo + passo * 0.5;
-        const iCor = (cy * nx + cx) * 3;
-        const h = alturas[cy * (nx + 1) + cx];
-        if (!Number.isFinite(h)) continue;
-        celulas += 1;
-        const rgb = rgbBioma(wx, wy, false);
-        cores[iCor] = rgb[0];
-        cores[iCor + 1] = rgb[1];
-        cores[iCor + 2] = rgb[2];
-        const par = parNoPonto(wx, wy);
-        bioma[iCor] = celulaDe(par.a);
-        bioma[iCor + 1] = celulaDe(par.b);
-        bioma[iCor + 2] = par.peso;
-        splat[cy * nx + cx] = cruSplat(wx, wy, par.a) ? 1 : 0;
-        if (h < nivel) {
-          mar[cy * nx + cx] = 1;
-          celulasMar += 1;
-        }
-      }
-    }
-
-    if (!celulas) return { terra: null, agua: null };
-
-    const terra = criarGeometriaTerraced(alturas, cores, {
-      ox,
-      oy,
-      passo,
-      nx,
-      ny,
-      uvEscala: UV_ESCALA_HORIZONTE,
-      bioma,
-      splat,
-    });
-    const agua =
-      celulasMar > 0
-        ? criarGeometriaMarPlano(mar, {
-            ox,
-            oy,
-            passo,
-            nx,
-            ny,
-            nivel,
-            uvEscala: UV_ESCALA_MAR_HORIZONTE,
-          })
-        : null;
-    return { terra, agua };
+    return geometriasDoTileHorizonte(amostrarTileHorizonte(hx, hy));
   }
 
   function tocarCache(chave, entry) {
@@ -693,12 +570,22 @@ export function criarTerrenoHorizonte() {
       planejar(px, py);
     }
 
-    // Prefetch IDB dos próximos da fila (não bloqueia).
+    // Prefetch prebake / IDB dos próximos da fila (não bloqueia).
     for (let i = 0; i < Math.min(8, fila.length); i++) {
       const k = fila[i];
       if (!k || vivos.has(k) || cache.has(k)) continue;
       const [chx, chy] = k.split(",").map(Number);
-      pedirIdb(k, chx, chy);
+      if (prebakeHorizontePronto() && !prebakeHorizonteMiss(chx, chy) && !prebakeHorizonteEmVoo(chx, chy)) {
+        if (lerPrebakeHorizonteSync(chx, chy) === undefined) {
+          void pedirPrebakeHorizonte(chx, chy).then((entry) => {
+            if (!entry) return;
+            tocarCache(k, entry);
+            if (desejados.has(k) && !vivos.has(k) && !vazios.has(k)) instalar(k, entry);
+          });
+        }
+      } else {
+        pedirIdb(k, chx, chy);
+      }
     }
 
     const t0 = performance.now();
@@ -718,6 +605,29 @@ export function criarTerrenoHorizonte() {
 
       const [chx, chy] = k.split(",").map(Number);
 
+      // 1) Prebake offline (assets) — mesmo papel do minimapa assado.
+      if (prebakeHorizontePronto() && !prebakeHorizonteMiss(chx, chy)) {
+        const sync = lerPrebakeHorizonteSync(chx, chy);
+        if (sync) {
+          tocarCache(k, sync);
+          instalar(k, sync);
+          continue;
+        }
+        if (sync === undefined || prebakeHorizonteEmVoo(chx, chy)) {
+          if (sync === undefined && !prebakeHorizonteEmVoo(chx, chy)) {
+            void pedirPrebakeHorizonte(chx, chy).then((entry) => {
+              if (!entry) return;
+              tocarCache(k, entry);
+              if (desejados.has(k) && !vivos.has(k) && !vazios.has(k)) instalar(k, entry);
+            });
+          }
+          fila.push(k);
+          adiados += 1;
+          continue;
+        }
+      }
+
+      // 2) IndexedDB (sessão / save).
       if (aguardandoIdb.has(k)) {
         fila.push(k);
         adiados += 1;
@@ -731,6 +641,7 @@ export function criarTerrenoHorizonte() {
         continue;
       }
 
+      // 3) Gera na CPU (e grava IDB).
       if (builds >= BUILDS_POR_TICK) {
         fila.unshift(k);
         break;

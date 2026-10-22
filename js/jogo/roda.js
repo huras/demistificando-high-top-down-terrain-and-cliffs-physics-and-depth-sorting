@@ -91,7 +91,7 @@ function desenhar() {
     const raio = 30;
     el.style.left = `calc(50% + ${Math.cos(rad) * raio}%)`;
     el.style.top = `calc(50% + ${Math.sin(rad) * raio}%)`;
-    el.innerHTML = `${htmlIcone(item.key, "bag-wheel__icon")}<span>${contar(item.tipo, item.key)}</span>`;
+    el.innerHTML = `${htmlIcone(item.key, "bag-wheel__icon", 56)}<span>${contar(item.tipo, item.key)}</span>`;
     el.addEventListener("pointerenter", () => {
       mira = i;
       pintarCentro(lista);
@@ -113,7 +113,7 @@ function pintarCentro(lista) {
     qtd.textContent = "";
     return;
   }
-  icone.innerHTML = htmlIcone(item.key, "bag-wheel__center-icon");
+  icone.innerHTML = htmlIcone(item.key, "bag-wheel__center-icon", 120);
   nome.textContent = item.nome || nomeDe(item.tipo, item.key);
   qtd.textContent = `×${contar(item.tipo, item.key)}`;
 }
