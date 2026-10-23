@@ -83,7 +83,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   const projetar = projetar2d(camera);
   const projetarPes = projetarPes2d(camera);
   desenharHudStamina(ctx, corpo, projetar);
-  desenharHudPokemon(ctx, projetar, corpo);
+  desenharHudPokemon(ctx, projetar, corpo, projetarPes);
   desenharPokemonSobCursor(ctx, canvas, projetar, projetarPes);
   desenharLabelHoverHud(ctx, canvas.width, canvas.height);
 

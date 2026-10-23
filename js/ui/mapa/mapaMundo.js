@@ -8,7 +8,8 @@ import { AREA_KANTO, CENTRO_AREA, zonaNoMundo } from "../../mundo/regiao/grafoKa
 import { estado } from "../../jogo/estado.js";
 import { comecarSubida, prepararViagem, teleporteOcupado } from "../../jogo/teleporte.js";
 import { marcasSantuario } from "../../santuario/mapaMarcas.js";
-import { shrineOutdoorStand } from "../../santuario/colocacao.js";
+import { getWorldShrinePlan, shrineOutdoorStand } from "../../santuario/colocacao.js";
+import { revelarSantuarios } from "../../santuario/estadoSantuario.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
 import { LADO_MUNDO } from "./grade.js";
 import { tickIntimo } from "./intimo.js";
@@ -38,6 +39,7 @@ let calorForca = false;
 let botaoCalor = null;
 let jornadaVisivel = true;
 let botaoJornada = null;
+let botaoRevelarSantuarios = null;
 
 const RAIO_CIDADE = 22;
 const RAIO_SANTUARIO = 18;
@@ -289,6 +291,7 @@ export function ligarMapaMundo() {
   confirmTxt = document.getElementById("mapa-mundo-confirm-txt");
   botaoCalor = document.getElementById("mapa-calor-forca");
   botaoJornada = document.getElementById("mapa-jornada");
+  botaoRevelarSantuarios = document.getElementById("mapa-revelar-santuarios");
   if (!raiz || !tela) return;
   iniciarAtlas();
   calorForca = false;
@@ -306,6 +309,17 @@ export function ligarMapaMundo() {
     ev.stopPropagation();
     jornadaVisivel = !jornadaVisivel;
     sincronizarBotaoJornada();
+  });
+  botaoRevelarSantuarios?.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const slots = getWorldShrinePlan().slots;
+    const ids = [];
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i]?.id) ids.push(slots[i].id);
+    }
+    revelarSantuarios(ids);
+    botaoRevelarSantuarios.classList.add("is-ativo");
   });
   document.getElementById("mapa-confirm-ir")?.addEventListener("click", (ev) => {
     ev.preventDefault();

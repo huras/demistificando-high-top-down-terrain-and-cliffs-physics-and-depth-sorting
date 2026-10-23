@@ -30,9 +30,9 @@ export function projetarPes2d(camera) {
 }
 
 export function projetarChao3d(cam, largura, altura) {
-  return (x, y, z) => {
+  return (x, y, z, hop) => {
     if (!cam) return null;
-    _ponto.set(x, (z || 0) * ALTURA_BLOCO + 0.08, y);
+    _ponto.set(x, ((z || 0) + (hop || 0)) * ALTURA_BLOCO + 0.08, y);
     _ponto.project(cam);
     if (_ponto.z < -1 || _ponto.z > 1) return null;
     return {
@@ -136,10 +136,11 @@ function painel(_ctx) {
   /* no-op: hotbar + corações + dinheiro são DOM */
 }
 
-function marcador(ctx, ator, p) {
+function marcador(ctx, ator, p, pes) {
   const hp = ator.morto ? 0 : ator.hp / ator.hpMax;
   if (!ator.morto) {
-    barra(ctx, p.x - 16, p.y - 8, 32, 4, hp, ator.faccao === "party" ? "#4ade80" : "#f87171", "rgba(0,0,0,0.55)");
+    const base = pes || p;
+    barra(ctx, base.x - 16, base.y + 6, 32, 4, hp, ator.faccao === "party" ? "#4ade80" : "#f87171", "rgba(0,0,0,0.55)");
   }
   const revelar = ator.morto && relogioPokemon() - ator.morreuEm > 0.8;
   if (revelar) {
@@ -417,17 +418,21 @@ export function desenharHoverPokemon(ctx, ator, projetar, projetarPes, comAnel =
 
 /**
  * Marcadores em espaço de tela. `projetar(x, y, z, hop)` devolve {x, y} ou null.
+ * `projetarPes` ancora a barra de HP abaixo da entidade (chão / pés).
  */
-export function desenharHudPokemon(ctx, projetar, corpo, projetarChao) {
+export function desenharHudPokemon(ctx, projetar, corpo, projetarPes) {
   painel(ctx);
   if (!pokemonLigado() || !projetar) return;
-  desenharMira(ctx, projetarChao || projetar, corpo);
+  desenharMira(ctx, projetarPes || projetar, corpo);
   const atores = atoresVisiveis();
   for (let i = 0; i < atores.length; i++) {
     const a = atores[i];
-    const p = projetar(a.x, a.y, a.z, a.hopLift || 0);
+    const z = a.elevacao ?? a.z ?? 0;
+    const hop = a.hopLift || 0;
+    const p = projetar(a.x, a.y, z, hop);
     if (!p) continue;
-    marcador(ctx, a, p);
+    const pes = projetarPes ? projetarPes(a.x, a.y, z, hop) : null;
+    marcador(ctx, a, p, pes);
   }
   textos(ctx, projetar);
   carga(ctx, projetar, corpo);

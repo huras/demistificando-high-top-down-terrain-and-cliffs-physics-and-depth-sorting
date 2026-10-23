@@ -740,7 +740,7 @@ function pintarRelogio() {
   if (perEl) perEl.textContent = periodo.nome;
 }
 
-const ZOOM_MINI = 1.05;
+const ZOOM_MINI = 2;
 const MINI_PX = 220;
 
 function pontoMini() {

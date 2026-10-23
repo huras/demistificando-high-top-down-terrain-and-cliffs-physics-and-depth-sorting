@@ -40,6 +40,20 @@ export function descobrirSantuario(shrineId) {
   return true;
 }
 
+/** Marca vários ids como descobertos (ex.: cheat do mapa). */
+export function revelarSantuarios(ids) {
+  if (!ids?.length) return 0;
+  let n = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!id || estadoSantuario.discovered.has(id)) continue;
+    estadoSantuario.discovered.add(id);
+    n++;
+  }
+  if (n) bumpMapa();
+  return n;
+}
+
 export function entradaAberta(shrineId) {
   return !!(shrineId && estadoSantuario.unlocked.has(shrineId));
 }
