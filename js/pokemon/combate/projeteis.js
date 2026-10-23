@@ -1,6 +1,7 @@
 import { POKEMON } from "../../config.js";
 import { FOLGA_PROJETIL, RAIO_PROJETIL } from "../ia/constantes.js";
 import { alturaCorpo, alturaPe } from "../ator.js";
+import { faccoesAliadas } from "../faccao.js";
 import { COR_TIPO } from "../tipos.js";
 import { FOLHAS } from "./folhasGolpe.js";
 import { rajada } from "./particulas.js";
@@ -152,7 +153,7 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
     for (let k = 0; k < candidatos.length; k++) {
       const alvo = candidatos[k];
       if (!alvo || alvo.morto || alvo.capturado) continue;
-      if (alvo === p.dono || alvo.faccao === p.faccao) continue;
+      if (alvo === p.dono || faccoesAliadas(p.faccao, alvo.faccao)) continue;
       const dx = alvo.x - p.x;
       const dy = alvo.y - p.y;
       const alcance = p.raio + FOLGA_PROJETIL;

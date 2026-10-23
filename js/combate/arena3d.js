@@ -28,7 +28,7 @@ import {
 const PX_MUNDO = 1 / TILE;
 const LADO = 256;
 const PE_X = LADO * 0.5;
-const PE_Y = LADO - 64;
+const PE_Y = LADO - 8;
 const PIVO_X = PE_X / LADO;
 const PIVO_Y = PE_Y / LADO;
 const CAP_TIRO = 64;

@@ -1,5 +1,6 @@
 import { POKEMON, RAIO_POKEMON } from "../../config.js";
 import { sondarCobertura } from "../../combate/arenas.js";
+import { faccoesAliadas } from "../faccao.js";
 import { ppDe } from "../pp.js";
 import {
   CORREDOR_REDE,
@@ -41,7 +42,7 @@ function buscarAmeaca(ator, tiros, lx, ly, janela, corredor) {
   let melhor = janela;
   for (let i = 0; i < n; i++) {
     const p = tiros[i];
-    if (!p || p.dono === ator || p.faccao === ator.faccao) continue;
+    if (!p || p.dono === ator || faccoesAliadas(p.faccao, ator.faccao)) continue;
     const vx = p.vx || 0;
     const vy = p.vy || 0;
     const vv = vx * vx + vy * vy;

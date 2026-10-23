@@ -9,7 +9,7 @@ import {
   nivelMarBlocos,
   pesoCosturaRelevo,
 } from "../../mundo/bioma/catalogo.js";
-import { plantaNoBioma, vegetacaoNoPonto } from "../../mundo/bioma/detalhe.js";
+import { vegetacaoNoPonto } from "../../mundo/bioma/detalhe.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
 import {
   deLocalKanto,
@@ -362,8 +362,9 @@ function aplicarVeg(rgb, bioma, limpo, x, y, comMote) {
     cor = misturar(cor, GRAMA_CAMPO, Math.min(FORCA_GRAMA, veg.grama * 0.9));
   }
   if (comMote && veg.mote === 1 && podeGrama) cor = misturar(cor, MOTE_GRAMA, FORCA_MOTE_GRAMA);
-  if (podeArvore && veg.arvore > 0.04 && veg.arvore >= veg.grama) {
-    cor = misturar(cor, COPA, Math.min(FORCA_COPA, veg.arvore * 0.85));
+  // Copa por cima da grama — senão o halo da marca some onde tem tufo.
+  if (podeArvore && veg.arvore > 0.04) {
+    cor = misturar(cor, COPA, Math.min(FORCA_COPA, veg.arvore * 0.9));
   }
   if (comMote && veg.mote === 2 && podeArvore) cor = misturar(cor, MOTE_ARVORE, FORCA_MOTE_ARVORE);
   return cor;
@@ -457,8 +458,8 @@ function pintarProcedural(wx, wy, comMote, saida) {
     rgb = misturar(AGUA_FUNDO, AGUA_RASO, t);
   } else {
     const limpo = bioma?.superficie === "pedra" || bioma?.camada === "mar";
-    const planta = limpo ? null : plantaNoBioma(bioma, wx, wy);
-    rgb = aplicarVeg(rgb, bioma, limpo || !planta, wx, wy, comMote);
+    // Não gatear em plantaNoBioma: o halo da copa pinta células vizinhas sem prop.
+    rgb = aplicarVeg(rgb, bioma, limpo, wx, wy, comMote);
   }
   saida.h = h;
   saida.u = u;

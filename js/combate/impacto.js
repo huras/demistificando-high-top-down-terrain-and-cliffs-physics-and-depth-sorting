@@ -1,10 +1,10 @@
-/** Batidas cinemáticas do turno: disparo lento, voo rápido, aproximação e impacto. */
+/** Batidas cinemáticas do turno: disparo no atirador, voo do projétil, aproximação e impacto. */
 
 import { CAM_TURNO } from "./cameraTurno.js";
 
 const DISPARO_DUR = 0.4;
 const DISPARO_RITMO = 0.28;
-const VOO_RITMO = 1.75;
+const VOO_RITMO = 1;
 const APROX_DIST = 2.4;
 const APROX_FRAC = 0.78;
 const APROX_RITMO = 0.36;
@@ -32,6 +32,14 @@ const pose = {
 const poseTiroDisparo = {
   tipo: "tiro",
   alvo: null,
+};
+
+const poseAtiradorDisparo = {
+  tipo: "volta",
+  alvo: null,
+  raio: CAM_TURNO.volta.raio,
+  altura: CAM_TURNO.volta.altura,
+  giro: 0.18,
 };
 
 function limparFaseTiro() {
@@ -186,9 +194,13 @@ export function poseImpacto() {
   return pose;
 }
 
-/** Perfil lateral já no wind-up do projétil (mesmo eixo do tracking de voo). */
+/** Wind-up: filma o atirador; sem dono, cai no tracking do projétil. */
 export function poseDisparo() {
   if (cena.tipo !== "disparo" || cena.restante <= 0) return null;
+  if (cena.atirador) {
+    poseAtiradorDisparo.alvo = cena.atirador;
+    return poseAtiradorDisparo;
+  }
   const p = cena.projetil;
   if (!p) return null;
   poseTiroDisparo.alvo = p;

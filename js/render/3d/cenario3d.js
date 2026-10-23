@@ -710,13 +710,11 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   aplicarVazioSala(!!estadoJogo.interior?.sala3d);
   // Plano do espelho = chão sob os pés (não elevacao/hop).
   const chaoVis = (corpo.z ?? 0) * ALTURA_BLOCO;
+  // Só atores no re-pose: vegetação/edifício reescrevem milhares de instâncias 2×/frame.
   desenharReflexo(estado.renderer, estado.scene, camRender, chaoVis, !!estadoJogo.interior?.sala3d, {
     prepararBillboards(camVirtual) {
       const yawVirt = yawDeCameraThree(camVirtual);
       const inclReflexo = 0;
-      estado.edificios?.atualizar?.(mx, my, yawVirt, inclReflexo);
-      estado.vegetacao?.atualizar?.(yawVirt, inclReflexo);
-      estado.vegetacaoDistante?.tick?.(mx, my, yawVirt, inclReflexo);
       estado.personagem.atualizar(corpo, camVirtual, yawVirt, inclReflexo);
       if (agente && estado.agente3d) {
         estado.agente3d.atualizar(agente, camVirtual, yawVirt, inclReflexo);
@@ -724,9 +722,6 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
       atualizarPokemon3d(yawVirt, camVirtual, inclReflexo);
     },
     restaurarBillboards() {
-      estado.edificios?.atualizar?.(mx, my, yaw, inclinacao);
-      estado.vegetacao?.atualizar?.(yaw, inclinacao);
-      estado.vegetacaoDistante?.tick?.(mx, my, yaw, inclinacao);
       estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
       if (agente && estado.agente3d) {
         estado.agente3d.atualizar(agente, camRender, yaw, inclinacao);

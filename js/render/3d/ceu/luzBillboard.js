@@ -95,15 +95,20 @@ export const FOLGA_ATOR = 0.08;
 export const FOLGA_CHAO_DECAL = 1.5;
 
 const VERT_COLUNA = `
-varying float vProfundidadeColuna;
+varying vec3 vPivoWorldColuna;
+varying float vFragWorldYColuna;
 `;
 
 /**
  * XZ do pivô (pé) + Y do fragmento — sort high-top-down com oclusão por altura.
  * Y nunca abaixo do pé: no tilt o cartão enterra a base e o chão ganhava o depth
  * (cristais, pedras, berry trees mostrando grama no retângulo inferior).
+ *
+ * Depth no fragment: interpolar gl_FragDepth no quad contaminava o pé com a
+ * cabeça (cartão alto / pivô longe da base — ex. Pokémon em PIVO_Y=0.75),
+ * e o ator ganhava da raiz da árvore mesmo atrás dela.
  */
-function calcColuna(folgaTxt) {
+function calcColunaVert() {
   return `
 {
   vec4 localPivo = vec4(0.0, 0.0, 0.0, 1.0);
@@ -118,26 +123,38 @@ function calcColuna(folgaTxt) {
   #endif
   vec4 pivoWorld = modelMatrix * localPivo;
   vec4 fragWorld = modelMatrix * localFrag;
-  float yColuna = max(fragWorld.y, pivoWorld.y);
-  vec3 colunaWorld = vec3(pivoWorld.x, yColuna, pivoWorld.z);
+  vPivoWorldColuna = pivoWorld.xyz;
+  vFragWorldYColuna = fragWorld.y;
+}
+`;
+}
+
+function calcColunaFrag(folgaTxt) {
+  return `
+{
+  float yColuna = max(vFragWorldYColuna, vPivoWorldColuna.y);
+  vec3 colunaWorld = vec3(vPivoWorldColuna.x, yColuna, vPivoWorldColuna.z);
   vec4 colunaVista = viewMatrix * vec4(colunaWorld, 1.0);
   colunaVista.z += ${folgaTxt};
   vec4 colunaClip = projectionMatrix * colunaVista;
-  vProfundidadeColuna = colunaClip.z / colunaClip.w * 0.5 + 0.5;
+  gl_FragDepth = colunaClip.z / colunaClip.w * 0.5 + 0.5;
 }
 `;
 }
 
 function profundidadeColuna(shader, folgaTxt) {
-  if (shader.vertexShader.includes("vProfundidadeColuna")) return;
+  if (shader.vertexShader.includes("vPivoWorldColuna")) return;
   shader.vertexShader = shader.vertexShader
     .replace("#include <common>", `#include <common>\n${VERT_COLUNA}`)
-    .replace("#include <project_vertex>", `#include <project_vertex>\n${calcColuna(folgaTxt)}`);
+    .replace("#include <project_vertex>", `#include <project_vertex>\n${calcColunaVert()}`);
   shader.fragmentShader = shader.fragmentShader
-    .replace("#include <common>", `#include <common>\n${VERT_COLUNA}`)
+    .replace(
+      "#include <common>",
+      `#include <common>\nuniform mat4 projectionMatrix;\n${VERT_COLUNA}`,
+    )
     .replace(
       "#include <dithering_fragment>",
-      "#include <dithering_fragment>\ngl_FragDepth = vProfundidadeColuna;",
+      `#include <dithering_fragment>\n${calcColunaFrag(folgaTxt)}`,
     );
 }
 
@@ -274,7 +291,7 @@ export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
   };
   material.customProgramCacheKey = function chaveLuzBillboard() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-billboard|coluna|pe-clamp|${folgaTxt}`;
+    return `${base}|luz-billboard|coluna|pe-clamp-frag|${folgaTxt}`;
   };
   return material;
 }

@@ -5,7 +5,9 @@ import { texReflexoVazia, uniformsPoca } from "./pocaChao.js";
 export const CAMADA_REFLEXO = 2;
 
 const LIMIAR = 0.04;
-const LARGURA_MAX = 960;
+const LARGURA_MAX = 512;
+/** Far do passe: só o que cabe nas poças perto do jogador. */
+const FAR_REFLEXO = 36;
 const FOLGA_PLANO = 0.05;
 
 const raizes = new Set();
@@ -130,9 +132,10 @@ function espelhar(camera, planoY) {
   virtual.position.copy(vista);
   virtual.up.set(0, 1, 0).applyMatrix4(rotacao).reflect(normal);
   virtual.near = camera.near;
-  virtual.far = camera.far;
+  virtual.far = Math.min(camera.far, FAR_REFLEXO);
   virtual.lookAt(alvoOlhar);
   virtual.updateMatrixWorld();
+  // Mantém a proj da vista (blend orto/persp); o far curto só ajuda o frustum do Three.
   virtual.projectionMatrix.copy(camera.projectionMatrix);
   return true;
 }

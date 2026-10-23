@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
-import { marcarReflexo, soltarReflexo } from "./ceu/reflexoPoca.js";
+import { soltarReflexo } from "./ceu/reflexoPoca.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import {
   ALTURA_BLOCO,
@@ -136,7 +136,7 @@ export function criarVegetacaoDistante() {
     mesh.frustumCulled = true;
     mesh.count = 0;
     grupo.add(mesh);
-    marcarReflexo(mesh);
+    soltarReflexo(mesh); // impostor longe: fora do passe de poça
     const lote = {
       sprite,
       mesh,
@@ -300,10 +300,17 @@ export function criarVegetacaoDistante() {
     inclinacaoAplicada = 0;
   }
 
+  let limpouReflexo = false;
+
   function tick(px, py, yawCam, inclinacao = 0) {
     if (!(obterRaioSuave() > obterRaioStream())) {
       if (grupo.visible || lotes.size || cache.size || trabalho) desligar();
       return;
+    }
+    // Sessões antigas ainda tinham impostor na camada do reflexo.
+    if (!limpouReflexo) {
+      limpouReflexo = true;
+      for (const lote of lotes.values()) soltarReflexo(lote.mesh);
     }
 
     const banda = montarBanda(px, py);

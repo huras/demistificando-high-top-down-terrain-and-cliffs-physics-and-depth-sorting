@@ -14,7 +14,7 @@ export const CAM_TURNO = Object.freeze({
     atras: 0.55,
     altura: 2.55,
     olhar: 3.4,
-    misturaAlvo: 0.42,
+    misturaAlvo: 0,
   }),
   impactoAcerto: Object.freeze({
     raio0: 5.5,

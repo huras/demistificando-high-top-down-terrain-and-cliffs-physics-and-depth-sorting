@@ -43,7 +43,8 @@ import {
 const PX_MUNDO = 1 / TILE;
 const LADO = 256;
 const PE_X = LADO * 0.5;
-const PE_Y = LADO - 64;
+/** Pé perto da base do canvas — igual ao player (pivô ~1). Padding só pra dy. */
+const PE_Y = LADO - 8;
 const PIVO_X = PE_X / LADO;
 const PIVO_Y = PE_Y / LADO;
 const CAP_ATOR = 20;

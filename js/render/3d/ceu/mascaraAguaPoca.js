@@ -9,6 +9,8 @@ const METROS = 96;
 const PASSO = 4;
 
 const dados = new Uint8Array(LADO * LADO);
+/** Água bruta antes da dilatação (orla sem poça). */
+const bruto = new Uint8Array(LADO * LADO);
 const textura = new THREE.DataTexture(dados, LADO, LADO, THREE.RedFormat, THREE.UnsignedByteType);
 textura.wrapS = THREE.ClampToEdgeWrapping;
 textura.wrapT = THREE.ClampToEdgeWrapping;
@@ -32,7 +34,7 @@ export const uniformsMascaraAgua = {
 };
 
 /**
- * 1 = pode encharcar; 0 = água / fundo submerso.
+ * 1 = pode encharcar; 0 = água / fundo submerso / orla do mar.
  * Fora do atlas local a máscara não cobre o LOD horizonte: a cota do mar
  * é a guarda global (oceano infinito sem poça no leito).
  */
@@ -43,10 +45,11 @@ uniform float uTexelAguaPoca;
 uniform float uNivelMar;
 
 float secoPoca(vec3 mundo) {
-  if (mundo.y < uNivelMar) return 0.0;
+  float faixaMar = smoothstep(uNivelMar, uNivelMar + 0.6, mundo.y);
+  if (faixaMar <= 0.001) return 0.0;
   vec2 uv = (mundo.xz - uOrigemAguaPoca) * uTexelAguaPoca;
-  if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return 1.0;
-  return 1.0 - texture2D(uMapaAguaPoca, uv).r;
+  if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return faixaMar;
+  return (1.0 - texture2D(uMapaAguaPoca, uv).r) * faixaMar;
 }
 `;
 
@@ -80,7 +83,21 @@ export function resolverMascaraAguaPoca(camX, camZ) {
     const base = j * LADO;
     for (let i = 0; i < LADO; i++) {
       const agua = colunaAgua(ox + (i + 0.5) * passo, wz);
-      dados[base + i] = agua.superficie > 0 && !agua.caindo ? 255 : 0;
+      bruto[base + i] = agua.superficie > 0 && !agua.caindo ? 255 : 0;
+    }
+  }
+  // Dilata 1 célula ortogonal: faixa seca na borda água/terra (praia sem riscos).
+  for (let j = 0; j < LADO; j++) {
+    const base = j * LADO;
+    for (let i = 0; i < LADO; i++) {
+      let v = bruto[base + i];
+      if (!v) {
+        if (i > 0 && bruto[base + i - 1]) v = 255;
+        else if (i + 1 < LADO && bruto[base + i + 1]) v = 255;
+        else if (j > 0 && bruto[base - LADO + i]) v = 255;
+        else if (j + 1 < LADO && bruto[base + LADO + i]) v = 255;
+      }
+      dados[base + i] = v;
     }
   }
   textura.needsUpdate = true;

@@ -113,5 +113,10 @@
     "offsetY": -0.01,
     "dx": 0,
     "dy": 0
+  },
+  "dunsparce": {
+    "offsetY": -0.08,
+    "dx": 0,
+    "dy": 0
   }
 }

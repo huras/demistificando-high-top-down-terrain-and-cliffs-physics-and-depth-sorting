@@ -25,6 +25,7 @@ import { tickEmocoes } from "../pokemon/emocoes.js";
 import { flutuar, limparFlutuantes, tickFlutuantes } from "../pokemon/flutuantes.js";
 import { montarGrade } from "../pokemon/grade.js";
 import { tickVisual } from "../pokemon/sprites.js";
+import { faccoesAliadas } from "../pokemon/faccao.js";
 import { CORREDOR_TIRO, JANELA_TIRO, RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
 import { limitarArena, paradaDe, posturaDe, sentidoParada, vaiMelee } from "../pokemon/ia/espaco.js";
 import { empurrarCorpo } from "./arenas.js";
@@ -203,7 +204,7 @@ function publicar() {
 }
 
 function tiroVem(p, ator) {
-  if (!p || p.dono === ator || p.faccao === ator.faccao) return false;
+  if (!p || p.dono === ator || faccoesAliadas(p.faccao, ator.faccao)) return false;
   const dx = ator.x - p.x;
   const dy = ator.y - p.y;
   const vel = Math.hypot(p.vx, p.vy);

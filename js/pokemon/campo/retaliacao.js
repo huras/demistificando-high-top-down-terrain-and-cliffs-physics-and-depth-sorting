@@ -4,6 +4,7 @@
  */
 import { POKEMON } from "../../config.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
+import { saoInimigos } from "../faccao.js";
 
 const INVESTIGAR_SEG = 10;
 const CHEGOU = 1.35;
@@ -21,12 +22,7 @@ function dist2(a, b) {
 
 function inimigoDe(vitima, atacante) {
   if (!vivo(vitima) || !vivo(atacante)) return false;
-  if (atacante === vitima) return false;
-  if (vitima.faccao === "party" && atacante.faccao === "selvagem") return true;
-  if (vitima.faccao === "selvagem" && (atacante.faccao === "party" || atacante.faccao === "treinador")) {
-    return true;
-  }
-  return false;
+  return saoInimigos(vitima, atacante);
 }
 
 /** Marca quem bateu (melee ou ranged). */

@@ -276,6 +276,15 @@ function passaGrama(x, y) {
 
 const VEG = { arvore: 0, grama: 0, mote: 0 };
 
+/**
+ * Raio da marca de copa (células mundo). Spawn/mote = 1 célula.
+ * Perto (comHash, 1 px/bloco): 2 → marca ~2×.
+ * Visão (!comHash, 1 px/4 blocos): 4 → ~2× no atlas longe.
+ */
+function raioMarcaArvore(comHash) {
+  return comHash ? 2 : 4;
+}
+
 function forcaArvoreSpawn(ox, oy) {
   if (!passaArvore(ox, oy) || !ganhaPegada(ox, oy)) return 0;
   const a = valorArvore(ox, oy);
@@ -286,9 +295,8 @@ function forcaArvoreSpawn(ox, oy) {
 
 /**
  * Cobertura do campo no ponto (mapa).
- * Árvore usa o mesmo filtro do mundo (passaArvore + ganhaPegada) —
- * aproximação de copa, não inventário 1:1. Sem comHash, espalha um pouco
- * na pegada para o overview (passo>1) não apagar as árvores.
+ * Árvore usa o mesmo filtro do mundo (passaArvore + ganhaPegada).
+ * A marca de copa é maior que a célula de spawn — aproximação visual, não inventário.
  */
 export function vegetacaoNoPonto(x, y, comHash, saida = VEG) {
   const xi = x | 0;
@@ -301,19 +309,15 @@ export function vegetacaoNoPonto(x, y, comHash, saida = VEG) {
   if (noCentro > 0) {
     saida.arvore = noCentro;
     if (comHash) saida.mote = 2;
-  } else if (!comHash) {
-    const cfg = dados?.arvore;
-    const w = Math.max(1, cfg?.largura | 0 || 2);
-    const h = Math.max(1, cfg?.altura | 0 || 3);
+  } else {
     let melhor = 0;
-    for (let oy = yi - (h - 1); oy <= yi + (h - 1); oy++) {
-      for (let ox = xi - (w - 1); ox <= xi + (w - 1); ox++) {
-        if (ox === xi && oy === yi) continue;
+    const raio = raioMarcaArvore(comHash);
+    for (let oy = yi - raio; oy <= yi + raio; oy++) {
+      for (let ox = xi - raio; ox <= xi + raio; ox++) {
         const f = forcaArvoreSpawn(ox, oy);
         if (f <= 0) continue;
-        const alcance = Math.hypot(w, h) * 0.55;
-        const t = Math.max(0, 1 - Math.hypot(ox + 0.5 - x, oy + 0.5 - y) / (alcance + 0.5));
-        melhor = Math.max(melhor, f * (0.35 + 0.65 * t));
+        const t = Math.max(0, 1 - Math.hypot(ox + 0.5 - x, oy + 0.5 - y) / (raio + 0.5));
+        melhor = Math.max(melhor, f * (0.55 + 0.45 * t));
       }
     }
     saida.arvore = melhor;

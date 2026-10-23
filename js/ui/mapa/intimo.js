@@ -115,6 +115,29 @@ function pintarKernel(data, bx, by, kernel, cor, alfa) {
   }
 }
 
+/** Tufo 4×4 esticado 2× (8×8 texels) — marca maior, mesma quantidade de árvores. */
+function pintarKernelArvore(data, bx, by, kernel, cor, alfa) {
+  const x0 = bx * TEXEL_INTIMO - TEXEL_INTIMO;
+  const y0 = by * TEXEL_INTIMO - TEXEL_INTIMO;
+  for (let i = 0; i < 16; i++) {
+    if (!kernel[i]) continue;
+    const sx = (i & 3) * 2;
+    const sy = (i >> 2) * 2;
+    for (let dy = 0; dy < 2; dy++) {
+      for (let dx = 0; dx < 2; dx++) {
+        const x = x0 + sx + dx;
+        const y = y0 + sy + dy;
+        if (x < 0 || y < 0 || x >= LADO_INTIMO || y >= LADO_INTIMO) continue;
+        const o = (y * LADO_INTIMO + x) * 4;
+        data[o] = cor[0];
+        data[o + 1] = cor[1];
+        data[o + 2] = cor[2];
+        data[o + 3] = alfa;
+      }
+    }
+  }
+}
+
 function compor(ox, oy) {
   const tela = document.createElement("canvas");
   tela.width = LADO_INTIMO;
@@ -139,7 +162,7 @@ function compor(ox, oy) {
         const kernel = TUFO_ARVORE[(wx * 3 + wy) & 3];
         const cor = info.moteArvore ? MOTE_ARVORE : COPA;
         const alfa = info.moteArvore ? 245 : 150 + Math.round(info.arvore * 100);
-        pintarKernel(data, bx, by, kernel, cor, alfa);
+        pintarKernelArvore(data, bx, by, kernel, cor, alfa);
       }
     }
   }

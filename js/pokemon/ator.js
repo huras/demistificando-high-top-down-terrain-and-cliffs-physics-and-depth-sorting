@@ -554,7 +554,7 @@ export function recarregarBarraEsquiva(ator, dt) {
   const vel = Math.max(1, ator.stats?.velocidade || 50);
   const cheia = Math.min(9, Math.max(1.6, 6.2 * (50 / vel)));
   const ritmo = ator.andando ? 1.25 : 1;
-  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 5 * ritmo);
+  ator.esquiva = Math.min(1, (ator.esquiva || 0) + (dt / cheia) * 6.5 * ritmo);
 }
 
 export function tickPassivo(ator, dt, agora) {

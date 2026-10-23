@@ -1,4 +1,5 @@
 import { atoresPerto } from "../grade.js";
+import { saoInimigos } from "../faccao.js";
 import {
   alturaPe,
   comecarAvanco,
@@ -108,9 +109,7 @@ function notar(efeitos, item) {
 }
 
 function inimigo(a, b) {
-  if (!a || !b || a === b) return false;
-  if (a.faccao === b.faccao) return false;
-  return true;
+  return saoInimigos(a, b);
 }
 
 function resultadoTravado(atacante, alvo) {

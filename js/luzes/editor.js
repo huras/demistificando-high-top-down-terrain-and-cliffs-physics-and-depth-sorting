@@ -7,7 +7,7 @@ import { blitQuadro, garantirAtlas } from "../pokemon/sprites.js";
 const PX = 1.2 / 32;
 const LADO = 256;
 const PE_X = LADO * 0.5;
-const PE_Y = LADO - 64;
+const PE_Y = LADO - 8;
 const MAX_PONTOS = 12;
 
 const ROTULOS = {

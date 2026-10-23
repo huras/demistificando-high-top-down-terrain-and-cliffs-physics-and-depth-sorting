@@ -90,6 +90,10 @@ export const FRAG_POCA_SAIDA = `
   float fresnelPoca;
   float dentroUv;
   float longePlano;
+  float orlaMar;
+  float jitPoca;
+  float margemUv;
+  float pertoReflexo;
   vec3 pEsp;
   vec4 clipR;
   nPoca = nLen > 1e-5 ? nPoca / nLen : vec3(0.0, 1.0, 0.0);
@@ -112,17 +116,24 @@ export const FRAG_POCA_SAIDA = `
   usoReflexoPoca = 0.0;
   if (uTemReflexo > 0.5 && pesoPoca > 0.001) {
     ondaZp = sin(vMundoCeu.z * 2.3 + uTempoPoca * 1.8);
+    // Só o terraço ativo usa o RT; orla do mar reduz jitter (evita riscos no UV).
+    longePlano = 1.0 - smoothstep(0.08, 0.35, abs(vMundoCeu.y - uPlanoPoca));
+    orlaMar = smoothstep(uNivelMar, uNivelMar + 1.2, vMundoCeu.y);
+    // Mesmo terraço no horizonte não amostra o RT (barato e evita “reflexo mundial”).
+    pertoReflexo = 1.0 - smoothstep(12.0, 22.0, length(vMundoCeu.xz - cameraPosition.xz));
+    jitPoca = manchaPoca * orlaMar * longePlano * pertoReflexo;
     pEsp = vMundoCeu;
-    pEsp.x += ondaPoca * 0.15 * manchaPoca;
-    pEsp.z += ondaZp * 0.1 * manchaPoca;
+    pEsp.x += ondaPoca * 0.15 * jitPoca;
+    pEsp.z += ondaZp * 0.1 * jitPoca;
     pEsp.y = uPlanoPoca * 2.0 - pEsp.y;
     clipR = uMatReflexo * vec4(pEsp, 1.0);
     uvReflexoPoca = clipR.xy / max(clipR.w, 1e-4) * 0.5 + 0.5;
-    dentroUv = step(0.0, uvReflexoPoca.x) * step(uvReflexoPoca.x, 1.0);
-    dentroUv *= step(0.0, uvReflexoPoca.y) * step(uvReflexoPoca.y, 1.0);
+    // Margem suave na borda do RT — sample na orla do alvo gera riscos.
+    margemUv = 0.04;
+    dentroUv = smoothstep(0.0, margemUv, uvReflexoPoca.x) * smoothstep(0.0, margemUv, uvReflexoPoca.y);
+    dentroUv *= smoothstep(0.0, margemUv, 1.0 - uvReflexoPoca.x) * smoothstep(0.0, margemUv, 1.0 - uvReflexoPoca.y);
     dentroUv *= step(0.0, clipR.w);
-    longePlano = 1.0 - smoothstep(0.45, 2.0, abs(vMundoCeu.y - uPlanoPoca));
-    usoReflexoPoca = dentroUv * longePlano;
+    usoReflexoPoca = dentroUv * longePlano * orlaMar * pertoReflexo;
     pesoReflexoPoca = clamp(pesoPoca * fresnelPoca, 0.0, 0.88);
   }
 }
