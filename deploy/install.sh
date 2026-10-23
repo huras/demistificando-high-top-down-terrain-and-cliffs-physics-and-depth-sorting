@@ -63,8 +63,10 @@ EOF
   nginx -t
   systemctl reload nginx
 
-  echo "==> Requesting TLS certificate (certbot)..."
-  certbot certonly --nginx \
+  echo "==> Requesting TLS certificate (certbot webroot)..."
+  # --webroot evita o parser nginx do certbot antigo (quebra em confs UTF-8 + locale ASCII).
+  export LC_ALL=C.UTF-8 LANG=C.UTF-8 PYTHONIOENCODING=utf-8
+  certbot certonly --webroot -w "$APP_DIR" \
     -d "$PRIMARY_HOST" \
     --non-interactive --agree-tos -m admin@hurast.com \
     --cert-name "$PRIMARY_HOST" || true
