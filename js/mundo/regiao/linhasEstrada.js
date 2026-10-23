@@ -111,6 +111,9 @@ export function ajustarAlturaCorredorEstrada(wx, wy, h) {
   if (!dentroDoKanto(wx, wy) || !Number.isFinite(h)) return h;
   const zona = zonaNoMundo(wx, wy);
   if (!zona || (zona.tipo !== "rota" && zona.tipo !== "cidade")) return h;
+  // Rota de água: não cava o heightfield (deck ~16 abriria canyon no LOD).
+  // Ponte visual = faixa estradasLod; stream perto = voxel oco.
+  if (zona.agua) return h;
   const local = paraLocalKanto(wx, wy);
   const proj = projetarEixoEstradaLocal(local.x, local.y, zona);
   if (!proj) return h;
@@ -118,11 +121,9 @@ export function ajustarAlturaCorredorEstrada(wx, wy, h) {
   if (proj.d >= alcance) return h;
 
   let deck = cotaDeckEstrada(zona, nivelMarBlocos());
-  if (!zona.agua) {
-    const eixo = deLocalKanto(zona.ax * AREA_KANTO + proj.x, zona.ay * AREA_KANTO + proj.y);
-    const a = amostraKanto(eixo.x, eixo.y);
-    if (a && Number.isFinite(a.h)) deck = a.h;
-  }
+  const eixo = deLocalKanto(zona.ax * AREA_KANTO + proj.x, zona.ay * AREA_KANTO + proj.y);
+  const a = amostraKanto(eixo.x, eixo.y);
+  if (a && Number.isFinite(a.h)) deck = a.h;
   // Só fura pra baixo — oceano ao lado da ponte permanece.
   if (h <= deck) return h;
   if (proj.d <= MEIA_LARGURA_ESTRADA) return deck;

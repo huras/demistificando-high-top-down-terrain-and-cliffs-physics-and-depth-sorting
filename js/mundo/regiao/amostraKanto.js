@@ -35,7 +35,7 @@ import {
 } from "./cotasEstrada.js";
 
 const COTA_CIDADE = 16;
-const SPRITE_PREDIO = new Set(["ginasio", "museu", "torre", "coliseu", "porto", "safari", "mansao", "esconderijo"]);
+const SPRITE_PREDIO = new Set(["torre", "porto", "safari"]);
 
 function predioSprite(papel) {
   return SPRITE_PREDIO.has(papel);
@@ -377,7 +377,7 @@ function calcularBase(x, y) {
     floresta,
     predio: predio && !predioSprite(predio.papel) ? predio.altura : 0,
     entradaLab: !!(zona.tipo === "cidade" && zona.layout && noQuintalDoLote(lx, ly, zona.layout)),
-    modelo: !!(predio && (predio.papel === "casa" || predio.papel === "centro" || predio.papel === "loja" || predio.papel === "lab" || predioSprite(predio.papel))),
+    modelo: !!(predio && (predio.modelo || predioSprite(predio.papel))),
     nome: zona.nome,
     reservado,
   };

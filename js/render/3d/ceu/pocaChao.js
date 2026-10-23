@@ -1,15 +1,16 @@
 import * as THREE from "three";
 import { GLSL_MASCARA_AGUA, ligarUniformsMascaraAgua } from "./mascaraAguaPoca.js";
 
-const texVazia = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1);
-texVazia.needsUpdate = true;
-texVazia.name = "reflexo-poca-vazio";
+/** Placeholder enquanto o passe de reflexo escreve no alvo (evita feedback loop). */
+export const texReflexoVazia = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1);
+texReflexoVazia.needsUpdate = true;
+texReflexoVazia.name = "reflexo-poca-vazio";
 
 /** Mesmos objetos entram em todo material de terreno. Atualizar aqui basta. */
 export const uniformsPoca = {
   uPoca: { value: 0 },
   uTempoPoca: { value: 0 },
-  uReflexoPoca: { value: texVazia },
+  uReflexoPoca: { value: texReflexoVazia },
   uMatReflexo: { value: new THREE.Matrix4() },
   uPlanoPoca: { value: 0 },
   uTemReflexo: { value: 0 },

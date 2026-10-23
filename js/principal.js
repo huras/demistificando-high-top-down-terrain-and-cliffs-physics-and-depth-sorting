@@ -35,7 +35,7 @@ import { definirCorposAtores, definirCorposFixos } from "./fisica/obstaculos.js"
 import { iniciarStamina } from "./fisica/stamina.js";
 import { AGENTE_DIST_SEGUIR, OFFSET_NPC } from "./navegacao/espacoSeguir.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
-import { atualizarPasseio, ligarBotaoPasseio, passeioAtivo } from "./debug/passeioKanto.js";
+import { atualizarPasseio, focoPasseio, ligarBotaoPasseio, passeioAtivo } from "./debug/passeioKanto.js";
 import { CAPS_PADRAO } from "./navegacao/capacidades.js";
 import { carregarCatalogo } from "./mundo/bioma/catalogo.js";
 import { carregarDetalhe } from "./mundo/bioma/detalhe.js";
@@ -547,8 +547,11 @@ function loop(agora) {
     aabbTela,
   });
 
+  const alvoPasseio = focoPasseio();
   if (foco && teleporteNaOrigem()) {
     atualizarStreamingDuplo(corpo.x, corpo.y, foco.x, foco.y);
+  } else if (alvoPasseio) {
+    atualizarStreamingDuplo(corpo.x, corpo.y, alvoPasseio.x, alvoPasseio.y);
   } else if (foco) {
     atualizarStreaming(foco.x, foco.y);
   } else {

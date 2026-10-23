@@ -29,6 +29,7 @@ import {
   ordenarPorPrioridade,
   scoreChunk,
 } from "./prioridadeChunk.js";
+import { medir } from "../../diagnostico/perfChunk.js";
 
 /** @type {Map<string, object>} */
 const chunks = new Map();
@@ -78,21 +79,23 @@ function aplicarEditsNoChunk(chunk) {
 }
 
 function publicarChunkCarregado(chunk) {
-  aplicarPatchDemo(chunk, ALTURAS);
-  aplicarEditsNoChunk(chunk);
-  chunk.gerado = true;
-  chunk.sujo = true;
-  invalidarFluxo(chunk);
-  chunks.set(chaveChunk(chunk.cx, chunk.cy), chunk);
-  marcarChunkVizinhosSujos(chunk.cx, chunk.cy);
-  invalidarFluxoVizinhos(chunk.cx, chunk.cy);
-  emitirDirty({
-    x0: chunk.cx * CHUNK_XZ,
-    y0: chunk.cy * CHUNK_XZ,
-    x1: chunk.cx * CHUNK_XZ + CHUNK_XZ - 1,
-    y1: chunk.cy * CHUNK_XZ + CHUNK_XZ - 1,
-    z0: 0,
-    z1: CHUNK_Y - 1,
+  medir("publicar", () => {
+    aplicarPatchDemo(chunk, ALTURAS);
+    aplicarEditsNoChunk(chunk);
+    chunk.gerado = true;
+    chunk.sujo = true;
+    invalidarFluxo(chunk);
+    chunks.set(chaveChunk(chunk.cx, chunk.cy), chunk);
+    marcarChunkVizinhosSujos(chunk.cx, chunk.cy);
+    invalidarFluxoVizinhos(chunk.cx, chunk.cy);
+    emitirDirty({
+      x0: chunk.cx * CHUNK_XZ,
+      y0: chunk.cy * CHUNK_XZ,
+      x1: chunk.cx * CHUNK_XZ + CHUNK_XZ - 1,
+      y1: chunk.cy * CHUNK_XZ + CHUNK_XZ - 1,
+      z0: 0,
+      z1: CHUNK_Y - 1,
+    });
   });
 }
 
@@ -104,6 +107,12 @@ export function carregarChunk(cx, cy) {
 
   chunk = criarChunk(cx, cy);
   gerarChunkProcedural(chunk, seed);
+  publicarChunkCarregado(chunk);
+  return chunk;
+}
+
+/** Publica chunk já gerado (página de profiling / stream simulado). */
+export function publicarChunkGerado(chunk) {
   publicarChunkCarregado(chunk);
   return chunk;
 }

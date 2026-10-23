@@ -49,9 +49,9 @@ export function criarFlechas3d() {
     mesh.position.set(origem.x, origem.y, origem.z);
     mesh.visible = true;
 
-    const dir = direcaoDisparoRanged(camera3d, corpo);
-    _dir.set(dir.x, dir.y, dir.z);
     const t = Math.min(1, Math.max(0, forca));
+    const dir = direcaoDisparoRanged(camera3d, corpo, { carga: t });
+    _dir.set(dir.x, dir.y, dir.z);
     const velocidade = FLECHA_VEL_MIN + (FLECHA_VEL - FLECHA_VEL_MIN) * t;
     const vel = new THREE.Vector3(
       _dir.x * velocidade + (corpo.vx || 0) * 0.35,

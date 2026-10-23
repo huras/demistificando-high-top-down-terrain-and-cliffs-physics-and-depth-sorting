@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profiling — load de chunk</title>
+  <link rel="stylesheet" href="css/chunks.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Load de chunk</h1>
+    <p class="topo__nota" id="status">Preparando…</p>
+    <button type="button" id="btn-copiar">Copiar relatório</button>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna">
+      <section>
+        <h2>Presets</h2>
+        <ul class="presets" id="presets"></ul>
+        <p class="nota" id="nota-preset"></p>
+      </section>
+
+      <section>
+        <h2>Alvo</h2>
+        <label class="campo">
+          <span>cx</span>
+          <input id="cx" type="number" step="1" value="0" />
+        </label>
+        <label class="campo">
+          <span>cy</span>
+          <input id="cy" type="number" step="1" value="0" />
+        </label>
+        <label class="campo">
+          <span>Raio do disco (0 = 1 chunk)</span>
+          <input id="raio" type="number" min="0" max="2" step="1" value="0" />
+        </label>
+        <p class="nota">Raio 2 gera o anel e destaca o chunk mais caro.</p>
+      </section>
+
+      <section>
+        <h2>Bench</h2>
+        <label class="campo">
+          <span>Modo</span>
+          <select id="modo">
+            <option value="wall" selected>Wall-clock (síncrono)</option>
+            <option value="stream">Stream (orçamento do jogo)</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Runs</span>
+          <select id="runs">
+            <option value="1">1</option>
+            <option value="5" selected>5</option>
+            <option value="20">20</option>
+          </select>
+        </label>
+        <label class="marca">
+          <input type="checkbox" id="instalar" checked />
+          Medir instalarMeshes (descartável)
+        </label>
+        <button type="button" class="btn-primario" id="btn-rodar">Rodar bench</button>
+      </section>
+
+      <section>
+        <h2>Como ler</h2>
+        <ul class="lista-ajuda">
+          <li><strong>Wall-clock</strong> — custo real de 1 chunk ponta a ponta.</li>
+          <li><strong>Stream</strong> — fatias de 0.8 ms (gen) + 1 ms (malha); reporta frames até pronto.</li>
+          <li>Estágios estáveis pra diff entre commits.</li>
+        </ul>
+      </section>
+    </aside>
+
+    <main class="resultado">
+      <section class="painel">
+        <h2>Resumo</h2>
+        <p id="resumo" class="resumo">Ainda sem dados.</p>
+      </section>
+
+      <section class="painel">
+        <h2>Waterfall (média)</h2>
+        <div id="waterfall" class="waterfall">
+          <p class="nota">Rode o bench para ver o breakdown.</p>
+        </div>
+      </section>
+
+      <section class="painel">
+        <h2>Estágios</h2>
+        <div class="tabela-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Estágio</th>
+                <th>min</th>
+                <th>méd</th>
+                <th>p50</th>
+                <th>p95</th>
+                <th>max</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-estagios"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="js/diagnostico/benchChunk.js"></script>
+</body>
+</html>

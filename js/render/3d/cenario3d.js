@@ -20,7 +20,8 @@ import {
 import { criarFlechas3d } from "./flechas3d.js";
 import { criarMiraArcoBola3d } from "./miraArcoBola3d.js";
 import { criarRigCamera3d } from "./rigCamera3d.js";
-import { bolaNaMao, cargaRanged } from "../../jogo/ranged.js";
+import { bolaNaMao, cargaRanged, rangedCarregando } from "../../jogo/ranged.js";
+import { obterMiraCursor } from "../../pokemon/captura.js";
 import { botaoDireitoSegurado } from "../../entrada/ponteiro3d.js";
 import {
   alfaSprites,
@@ -630,8 +631,10 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.flechas?.atualizar(dt, corpo, estado.camera3d);
   estado.miraArcoBola?.atualizar(corpo, estado.camera3d, {
     ativo: bolaNaMao(),
-    mirando: botaoDireitoSegurado(),
+    // Arco na mira E no hipfire enquanto carrega (top-down precisa ver a queda).
+    mostrar: botaoDireitoSegurado() || rangedCarregando() || cargaRanged() > 0.02,
     carga: cargaRanged(),
+    mira: obterMiraCursor(),
   });
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;

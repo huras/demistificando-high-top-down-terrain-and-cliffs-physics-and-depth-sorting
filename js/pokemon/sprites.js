@@ -297,8 +297,32 @@ function escolherFaixa(ator, pack, agora, passo) {
   return "Idle";
 }
 
+/** Progresso 0..1 no ciclo da faixa atual (frame + t). */
+function atualizarFase(v, spec) {
+  const n = spec.frameCount || spec.durations?.length || 1;
+  if (n <= 0) {
+    v.fase = 0;
+    return;
+  }
+  let total = 0;
+  let antes = 0;
+  const frame = Math.max(0, Math.min(n - 1, v.frame | 0));
+  for (let i = 0; i < n; i++) {
+    const d = (spec.durations[i] || spec.durations[0] || 80) / 1000;
+    if (i < frame) antes += d;
+    total += d;
+  }
+  if (!(total > 0)) {
+    v.fase = 0;
+    return;
+  }
+  const dur = (spec.durations[frame] || spec.durations[0] || 80) / 1000;
+  const dentro = Math.max(0, Math.min(dur, v.t || 0));
+  v.fase = Math.min(0.999999, (antes + dentro) / total);
+}
+
 export function tickVisual(ator, dt, agora) {
-  if (!ator.visual) ator.visual = { anim: "Idle", dir: 0, frame: 0, t: 0 };
+  if (!ator.visual) ator.visual = { anim: "Idle", dir: 0, frame: 0, t: 0, fase: 0 };
   const v = ator.visual;
   const d = direcao8(ator.dirX, ator.dirY);
   if (d != null) v.dir = d;
@@ -316,7 +340,10 @@ export function tickVisual(ator, dt, agora) {
     v.t = 0;
   }
   let spec = pack.anims?.[v.anim];
-  if (!spec) return pack;
+  if (!spec) {
+    v.fase = 0;
+    return pack;
+  }
   const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0;
   const estica = noGolpe && ator.golpeClip > 0 && !ator.poseSeguinte;
   const ritmo = v.anim === "Walk" || v.anim === "FlapAround"
@@ -324,7 +351,10 @@ export function tickVisual(ator, dt, agora) {
     : estica
       ? duracaoFaixa(pack, v.anim) / ator.golpeClip
       : 1;
-  if ((ator.recuoTrava || 0) > 0) return pack;
+  if ((ator.recuoTrava || 0) > 0) {
+    atualizarFase(v, spec);
+    return pack;
+  }
   v.t += dt * ritmo;
   for (let i = 0; i < 6; i++) {
     const dur = (spec.durations[v.frame] || spec.durations[0] || 80) / 1000;
@@ -362,6 +392,7 @@ export function tickVisual(ator, dt, agora) {
     ator.poseMedida = false;
     break;
   }
+  atualizarFase(v, spec);
   return pack;
 }
 

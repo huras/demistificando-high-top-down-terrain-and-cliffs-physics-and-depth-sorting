@@ -19,10 +19,8 @@ import {
   vagasNasCaixas,
 } from "../jogo/estado.js";
 import {
-  direcaoDisparoRanged,
   estimarQuedaBola,
-  origemMaoRanged,
-  velocidadeBolaPorCarga,
+  parametrosArremessoBola,
 } from "../jogo/rangedFisica.js";
 import { selvagensAtivos } from "./populacao.js";
 import { ajustarItem, partyCheia, pokemonDeployado, receberCaptura } from "./party.js";
@@ -72,6 +70,11 @@ export function definirMiraCursor(x, y) {
   if (Number.isFinite(x) && Number.isFinite(y)) miraCursor = { x, y };
 }
 
+/** @returns {{ x: number, y: number } | null} */
+export function obterMiraCursor() {
+  return miraCursor;
+}
+
 /**
  * Sincroniza carga/mira vindas do gesto ranged (LMB carga, RMB mira).
  * @param {{ carga?: number, mirando?: boolean, miraX?: number, miraY?: number, camera3d?: object | null }} opts
@@ -94,7 +97,12 @@ export function sincronizarGestoBola(opts = {}) {
  */
 export function obterMiraBola(corpo) {
   if (!corpo) return null;
-  const queda = estimarQuedaBola(corpo, cameraMira, gestoMirando ? carga : 0);
+  const queda = estimarQuedaBola(
+    corpo,
+    cameraMira,
+    gestoMirando || gestoCarregando || carga > 0 ? carga : 0,
+    miraCursor,
+  );
   if (queda) {
     return {
       x0: corpo.x,
@@ -243,9 +251,9 @@ export function arremessarBola(corpo, opts = {}) {
 
   const camera3d = opts.camera3d || cameraMira;
   const cargaTiro = Math.min(1, Math.max(0, Number(opts.carga) || 0));
-  const origem = origemMaoRanged(corpo, camera3d);
-  const dir = direcaoDisparoRanged(camera3d, corpo);
-  const vel = velocidadeBolaPorCarga(cargaTiro);
+  const mira = opts.mira || miraCursor;
+  // Top-down: vel resolvida até o cursor. Ombro: vel por carga.
+  const { origem, dir, vel } = parametrosArremessoBola(corpo, camera3d, cargaTiro, mira);
 
   // Espaço captura: (x,y) horizontal = Three (x,z); altura z = Three y / ALTURA_BLOCO.
   const gBlocos = BOLA_GRAVIDADE / ALTURA_BLOCO;

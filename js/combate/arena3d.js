@@ -15,6 +15,7 @@ import {
   versaoCobertura,
 } from "./arenas.js";
 import { CAM_TURNO } from "./cameraTurno.js";
+import { oscilacaoAndar, squashAndar } from "../pokemon/bounceAndar.js";
 import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
 import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 import { tickFadeArena } from "../render/3d/fadeObstaculo3d.js";
@@ -671,7 +672,7 @@ function pintarAtor(slot, ator) {
   }
   slot.grupo.visible = true;
   slot.sombra.visible = true;
-  const elev = (ator.elevacao ?? ator.z ?? 0) + (ator.hopLift || 0);
+  const elev = (ator.elevacao ?? ator.z ?? 0) + (ator.hopLift || 0) + oscilacaoAndar(ator);
   slot.grupo.position.set(ator.x, elev * ALTURA_BLOCO, ator.y);
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
   const visual = ator.visual;
@@ -684,6 +685,11 @@ function pintarAtor(slot, ator) {
   if (fr && pack.img && pack.estado === "pronto") pintar(slot, ator, fr, pack);
   else fallback(slot, ator);
   aplicarMedida(slot, ator);
+  const { sx, sy } = squashAndar(ator);
+  if (sx !== 1 || sy !== 1) {
+    slot.sprite.scale.x *= sx;
+    slot.sprite.scale.y *= sy;
+  }
   if (visual && dirMundo != null) visual.dir = dirMundo;
   slot.mat.opacity = ator.morto ? 0.45 : 1;
   const hop = ator.hopLift || 0;

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { uniformsPoca } from "./pocaChao.js";
+import { texReflexoVazia, uniformsPoca } from "./pocaChao.js";
 
 /** A camada 1 já é a auxiliar da cena. O chão fica só na 0. */
 export const CAMADA_REFLEXO = 2;
@@ -186,6 +186,9 @@ export function desenharReflexo(renderer, scene, camera, planoY, sala) {
     corteObliquo();
     aplicarLadoDuplo(true);
 
+    // Vegetação/edifício no passe usam o mesmo shader da poça; sem soltar o
+    // sampler, o WebGL forma feedback loop (RT + texture2D no mesmo draw).
+    uniformsPoca.uReflexoPoca.value = texReflexoVazia;
     renderer.xr.enabled = false;
     renderer.shadowMap.autoUpdate = false;
     renderer.shadowMap.needsUpdate = false;
@@ -195,6 +198,7 @@ export function desenharReflexo(renderer, scene, camera, planoY, sala) {
     renderer.render(scene, virtual);
     uniformsPoca.uTemReflexo.value = 1;
   } finally {
+    uniformsPoca.uReflexoPoca.value = alvo.texture;
     aplicarLadoDuplo(false);
     renderer.xr.enabled = xr;
     renderer.shadowMap.autoUpdate = autoSombra;

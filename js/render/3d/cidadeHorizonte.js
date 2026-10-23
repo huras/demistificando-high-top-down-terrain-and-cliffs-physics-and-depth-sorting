@@ -29,7 +29,7 @@ const COR_PAPEL = Object.freeze({
   torre: 0x6e5a72,
   porto: 0x7a8b9a,
   safari: 0x6f9a5a,
-  esconderijo: 0x5a5a62,
+  ruina: 0x5a5a62,
   coliseu: 0xa09070,
   mansao: 0xd0c4a8,
 });

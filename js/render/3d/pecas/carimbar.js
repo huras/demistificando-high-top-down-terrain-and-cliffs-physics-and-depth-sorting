@@ -217,12 +217,14 @@ function dentroDoCap(p, cap) {
 
 function capDe(viz) {
   const h = viz[4];
-  return {
-    x0: viz[3] < h ? LABIO : 0,
-    x1: viz[5] < h ? 1 - LABIO : 1,
-    z0: viz[1] < h ? LABIO : 0,
-    z1: viz[7] < h ? 1 - LABIO : 1,
-  };
+  let x0 = viz[3] < h ? LABIO : 0;
+  let x1 = viz[5] < h ? 1 - LABIO : 1;
+  let z0 = viz[1] < h ? LABIO : 0;
+  let z1 = viz[7] < h ? 1 - LABIO : 1;
+  // LABIO>0.5: lábios opostos se cruzam — cap plano some.
+  if (x0 > x1) x0 = x1 = (x0 + x1) * 0.5;
+  if (z0 > z1) z0 = z1 = (z0 + z1) * 0.5;
+  return { x0, x1, z0, z1 };
 }
 
 /**

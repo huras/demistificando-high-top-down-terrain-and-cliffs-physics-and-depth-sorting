@@ -12,6 +12,7 @@ import { ligarFxCena, sincronizarFx } from "./combate/fx/index.js";
 import { aurasVivas, ORBES_KI } from "./combate/ki.js";
 import { dropsNoChao } from "./drops.js";
 import { imagemIcone } from "../jogo/icones.js";
+import { oscilacaoAndar, squashAndar } from "./bounceAndar.js";
 import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
@@ -506,7 +507,7 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     }
     vistos.add(ator.id);
     slot.grupo.visible = true;
-    const elev = alturaPe(ator) + oscilacaoNado(ator);
+    const elev = alturaPe(ator) + oscilacaoNado(ator) + oscilacaoAndar(ator);
     slot.grupo.position.set(ator.x, elev * ALTURA_BLOCO, ator.y);
     const pack = garantirAtlas(ator.especie.dex, ator.shiny);
     const visual = ator.visual;
@@ -520,8 +521,10 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     else fallback(slot, ator);
     const offsetY = aplicarMedida(slot, ator);
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
+    const { sx, sy } = squashAndar(ator);
     slot.sprite.visible = true;
-    slot.sprite.scale.multiplyScalar(some);
+    slot.sprite.scale.x *= some * sx;
+    slot.sprite.scale.y *= some * sy;
     poseAtorCartao(slot.sprite, {
       x: 0,
       y: -offsetY,

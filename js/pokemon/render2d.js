@@ -4,6 +4,7 @@ import { oscilacaoNado } from "../fx/fxAgua.js";
 import { cobrirPernasAgua } from "../render/agua2d.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { chaveEntidade, empilhar } from "../render/ordenacaoProfundidade.js";
+import { oscilacaoAndar, squashAndar } from "./bounceAndar.js";
 import { bolasAtivas } from "./captura.js";
 import { dropsNoChao } from "./drops.js";
 import { imagemIcone } from "../jogo/icones.js";
@@ -32,17 +33,24 @@ function desenharCorpo(ctx, ator) {
   const { escala, offsetY, dx, dy } = medida;
   const chaoX = mundoParaTelaX(ator.x);
   const hop = ator.hopLift || 0;
+  const bob = oscilacaoNado(ator) + oscilacaoAndar(ator);
   const chaoY = mundoParaTelaY(ator.y, ator.z, hop);
   const footX = chaoX;
-  const footY = mundoParaTelaY(ator.y, ator.z, hop + oscilacaoNado(ator)) + offsetY * TILE * ESCALA;
+  const footY = mundoParaTelaY(ator.y, ator.z, hop + bob) + offsetY * TILE * ESCALA;
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
   const fr = quadroDe(ator, pack);
   const pronto = !!(fr && pack.img && pack.estado === "pronto");
   const centro = centroDoQuadro(fr, medida);
-  if (alfa > 0.04) desenharSombra(ctx, chaoX + centro.x * PX * escala, chaoY, escala * alfa);
+  const { sx, sy } = squashAndar(ator);
+  if (alfa > 0.04) desenharSombra(ctx, chaoX + centro.x * PX * escala, chaoY, escala * alfa * sx);
   ctx.save();
   ctx.globalAlpha = alfa;
   ctx.imageSmoothingEnabled = false;
+  if (sx !== 1 || sy !== 1) {
+    ctx.translate(footX, footY);
+    ctx.scale(sx, sy);
+    ctx.translate(-footX, -footY);
+  }
   if (pronto) {
     blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala, { dx, dy });
   } else {

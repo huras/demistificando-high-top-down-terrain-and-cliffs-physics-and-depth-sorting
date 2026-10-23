@@ -30,9 +30,10 @@ const CHAVES = [
   quadro(10, 0x2f74c8, 0xb7e2f8, 0xc5c0b0, 0xfff3dd, 1.08, 0.3, 0.4, 0),
   quadro(13, 0x2a6ec2, 0x9ad4f5, 0xb9c6c4, 0xfff7ea, 1.1, 0.32, 0.42, 0),
   quadro(16.3, 0x3a6aab, 0xffc8a0, 0xdcc4a8, 0xffe0b8, 1.12, 0.28, 0.36, 0),
-  quadro(18.15, 0x243e78, 0xffb090, 0xc89880, 0xffd4a8, 0.96, 0.22, 0.26, 0.02),
-  quadro(19.7, 0x223858, 0x546078, 0x343848, 0xe8c4d8, 0.76, 0.19, 0.23, 0.35),
-  quadro(22.2, 0x1c2e4c, 0x4a6a98, 0x344458, 0xd5e4ff, 0.74, 0.2, 0.24, 0.85),
+  // Anoitecer: mantém leitura quente e piso de luz mais alto (antes caía demais).
+  quadro(18.15, 0x2c5088, 0xffb898, 0xd2a890, 0xffdab0, 1.04, 0.3, 0.36, 0.02),
+  quadro(19.7, 0x2e4a70, 0x7a8aa0, 0x4e5868, 0xf0d4e4, 0.92, 0.3, 0.34, 0.28),
+  quadro(22.2, 0x1e3250, 0x526e9a, 0x3a4a5c, 0xd5e4ff, 0.8, 0.24, 0.28, 0.85),
   quadro(24, 0x1c2e4c, 0x4a6a98, 0x344458, 0xd5e4ff, 0.74, 0.2, 0.24, 1),
 ];
 

@@ -18,7 +18,7 @@ const DB_VERSAO = 1;
 const STORE = "tiles";
 
 /** Bump manual se o layout do blob mudar. */
-export const SCHEMA_BLOB_HORIZONTE = 1;
+export const SCHEMA_BLOB_HORIZONTE = 2;
 
 export function chaveSchemaHorizonte() {
   return [

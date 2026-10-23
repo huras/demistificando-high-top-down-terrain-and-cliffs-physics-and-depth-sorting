@@ -1,8 +1,8 @@
 /**
- * Célula horizontal = 1. Altura do bloco = metade do lado.
- * A simulação conta degraus (1 bloco = 1); a tela e o 3D espremem só o eixo vertical.
+ * Célula horizontal = 1. Altura do bloco = 1 (mesmo do lado).
+ * A simulação conta degraus (1 bloco = 1); a tela e o 3D escalam o eixo vertical com isto.
  */
-export const ALTURA_BLOCO = 0.5;
+export const ALTURA_BLOCO = 1;
 export const TILE = 16;
 /** Pixels de um degrau, antes do ESCALA. */
 export const FACE_H = TILE * ALTURA_BLOCO;
@@ -142,6 +142,10 @@ export const AGUA_NADO_BOB_A = 0.05;
 export const AGUA_NADO_BOB_B = 0.03;
 export const AGUA_NADO_BOB_PARADO = 0.62;
 
+/** Bounce só visual do Walk PMD (compensa trim do atlas). Em blocos / fração de scale. */
+export const POKE_ANDAR_BOB = 0.055;
+export const POKE_ANDAR_SQUASH = 0.035;
+
 /** Elipse na lâmina. rx cresce até CRESCE vezes; ry é fração de rx. */
 export const AGUA_ONDA_INTERVALO = 0.12;
 export const AGUA_ONDA_INTERVALO_PARADO = 0.55;
@@ -233,6 +237,8 @@ export const BOLA_VEL_MAX = 20;
 export const BOLA_GRAVIDADE = 10;
 export const BOLA_MAX = 12;
 export const BOLA_ROLAR_TEMPO = 0.4;
+/** Loft fixo no top-down (força vem da distância até o cursor). */
+export const BOLA_LOFT_TOPDOWN = 0.48;
 /** Amostras do arco de mira 3D (grenade-aim). */
 export const BOLA_ARCO_AMOSTRAS = 48;
 

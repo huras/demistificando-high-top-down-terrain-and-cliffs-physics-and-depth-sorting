@@ -43,6 +43,12 @@ import { alturaLocal, gradeDoChunk, mascaraLocal } from "./pecas/mascara.js";
 import { amostraKanto } from "../../mundo/regiao/amostraKanto.js";
 import { obterKit } from "../../mundo/bioma/kits.js";
 import {
+  acumular,
+  cronometroFatia,
+  medir,
+  sessaoAtiva,
+} from "../../diagnostico/perfChunk.js";
+import {
   avancarMateriaisAgua,
   liberarMateriaisAgua,
   obterMaterialEspuma,
@@ -1540,16 +1546,22 @@ function* construirGeosChunk(chunk) {
   const simplesCel = new Uint8Array(nCel);
   const fundivel = new Uint8Array(nCel);
   const kitsCel = new Array(nCel);
-  garantirFluxoChunk(chunk);
+  const perf = sessaoAtiva();
+  medir("fluxoAgua", () => garantirFluxoChunk(chunk));
   yield;
 
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
+  const cronFaces = perf ? cronometroFatia("colunasFaces") : null;
 
   let _colunas = 0;
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
-      if ((_colunas++ & 7) === 7) yield;
+      if ((_colunas++ & 7) === 7) {
+        cronFaces?.pausar();
+        yield;
+        cronFaces?.retomar();
+      }
       const wx = baseX + lx;
       const wy = baseY + ly;
       const ia = ly * CHUNK_XZ + lx;
@@ -1775,7 +1787,10 @@ function* construirGeosChunk(chunk) {
     }
   }
 
+  cronFaces?.fim();
   yield;
+
+  const tFin = perf ? performance.now() : 0;
   const topos = [];
   for (const [kit, saco] of sacosTopo) {
     const geo = finalizarLote(saco.lote, saco.extras);
@@ -1798,6 +1813,7 @@ function* construirGeosChunk(chunk) {
     geoQueda: mesclarLista(quedas),
     geoQuedaLava: mesclarLista(quedasLava),
   };
+  if (perf) acumular("finalizarGeos", performance.now() - tFin);
   return out;
 }
 
@@ -1811,6 +1827,57 @@ function drenarGeosChunk(chunk) {
 /** Malha real de um chunk já instalado no store. A página de faces usa isso. */
 export function malharChunk(chunk) {
   return drenarGeosChunk(chunk);
+}
+
+/** Iterator do mesher — a página de profiling drena com orçamento de frame. */
+export function* iterarGeosChunk(chunk) {
+  return yield* construirGeosChunk(chunk);
+}
+
+function vertsDeGeo(geo) {
+  return geo?.attributes?.position?.count | 0;
+}
+
+/** Conta vértices das geometrias geradas (debug / relatório). */
+export function contarVertsGeos(geos) {
+  if (!geos) return 0;
+  let n = vertsDeGeo(geos.geoCubos) + vertsDeGeo(geos.geoLedges);
+  n += vertsDeGeo(geos.geoAgua) + vertsDeGeo(geos.geoAguaPantano) + vertsDeGeo(geos.geoAguaLava);
+  n += vertsDeGeo(geos.geoEspuma) + vertsDeGeo(geos.geoQueda) + vertsDeGeo(geos.geoQuedaLava);
+  for (const item of geos.topos || []) n += vertsDeGeo(item.geo);
+  for (const item of geos.paredes || []) n += vertsDeGeo(item.geo);
+  return n;
+}
+
+/**
+ * Cria meshes descartáveis a partir das geos (aproxima o custo de instalarMeshes).
+ * Não entra na cena do jogo.
+ */
+export function instalarGeosDescartavel(geos) {
+  return medir("instalarMeshes", () => {
+    const mat = new THREE.MeshBasicMaterial({ vertexColors: true });
+    const meshes = [];
+    const add = (geo) => {
+      if (!geo) return;
+      meshes.push(new THREE.Mesh(geo, mat));
+    };
+    add(geos.geoCubos);
+    add(geos.geoLedges);
+    add(geos.geoAgua);
+    add(geos.geoAguaPantano);
+    add(geos.geoAguaLava);
+    add(geos.geoEspuma);
+    add(geos.geoQueda);
+    add(geos.geoQuedaLava);
+    for (const item of geos.topos || []) add(item.geo);
+    for (const item of geos.paredes || []) add(item.geo);
+    const verts = contarVertsGeos(geos);
+    for (const m of meshes) {
+      m.geometry?.dispose();
+    }
+    mat.dispose();
+    return { meshes: meshes.length, verts };
+  });
 }
 
 function geoProp(p) {

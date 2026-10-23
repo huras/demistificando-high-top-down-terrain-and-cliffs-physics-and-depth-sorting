@@ -184,8 +184,8 @@ function medirVolume(camera) {
 
 /**
  * Um draw cobre chuva, areia e neve.
- * Deslocamento integrado (offset += vel * dt) — mudar o vento não teleporta pingos.
- * Vento horizontal vem de obterVentoMundo (mesmo do HUD / asa).
+ * Volume de wrap em eixos do mundo (não da câmera) — a chuva não “anda” com a tela.
+ * Densidade sobe/desce via instanceCount (poucos pingos → chuva cheia).
  */
 export function criarPrecipitacao() {
   const cfg = CLIMA_CFG;
@@ -196,7 +196,7 @@ export function criarPrecipitacao() {
     uCentro: { value: new THREE.Vector3() },
     uDireita: { value: new THREE.Vector3(1, 0, 0) },
     uCima: { value: new THREE.Vector3(0, 1, 0) },
-    uFrente: { value: new THREE.Vector3(0, 0, -1) },
+    uFrente: { value: new THREE.Vector3(0, 0, 1) },
     uVel: { value: new THREE.Vector3(0, -30, 0) },
     uLargura: { value: 0.03 },
     uLarguraPx: { value: 0 },
@@ -224,7 +224,8 @@ export function criarPrecipitacao() {
     fog: false,
   });
 
-  const mesh = new THREE.Mesh(criarGeometria(), material);
+  const geo = criarGeometria();
+  const mesh = new THREE.Mesh(geo, material);
   mesh.name = "ceu-precipitacao";
   mesh.frustumCulled = false;
   mesh.renderOrder = 4;
@@ -235,18 +236,27 @@ export function criarPrecipitacao() {
   const corNeve = new THREE.Color(0xf4f7fb).convertSRGBToLinear();
   const tela = new THREE.Vector2();
   const camPos = new THREE.Vector3();
-  const camPosAnt = new THREE.Vector3();
-  const camVel = new THREE.Vector3();
   const velMundo = new THREE.Vector3();
-  const velVisual = new THREE.Vector3();
   const offset = uniforms.uOffset.value;
+  const volumeSuave = new THREE.Vector3(16, 12, 16);
   let tempo = 0;
-  let temCamAnt = false;
+  let temVolume = false;
 
   function ventoHoriz(ventoXZ, mul) {
     const vx = (ventoXZ?.x || 0) * mul;
     const vz = (ventoXZ?.y || 0) * mul;
     return { vx, vz };
+  }
+
+  /** Poucos pingos no início/fim; curva suave até N. */
+  function contarInstancias(pesoTipo) {
+    const t = Math.max(0, Math.min(1, pesoTipo));
+    if (t < 0.02) return 0;
+    const pow = cfg.chuvaDensidadePow ?? 1.85;
+    const minF = cfg.chuvaDensidadeMin ?? 0.035;
+    const eased = Math.pow(t, pow);
+    const n = Math.floor(N * Math.max(minF, eased));
+    return Math.min(N, Math.max(1, n));
   }
 
   function aplicarTipo(tipo, clima, ventoXZ) {
@@ -258,9 +268,10 @@ export function criarPrecipitacao() {
       uniforms.uComprimento.value = 0.42;
       uniforms.uComprimentoPx.value = 5;
       uniforms.uBamboleio.value = 0.15;
-      uniforms.uAlpha.value = 0.28 * Math.min(1, clima.areia * 1.3);
+      uniforms.uAlpha.value = 0.28 * Math.min(1, 0.45 + clima.areia * 0.85);
       uniforms.uPesoLarguraPx.value = uniforms.uOrto.value;
       uniforms.uCor.value.copy(corAreia);
+      geo.instanceCount = contarInstancias(clima.areia);
       return;
     }
     if (tipo === 2) {
@@ -271,9 +282,10 @@ export function criarPrecipitacao() {
       uniforms.uComprimento.value = 0.1;
       uniforms.uComprimentoPx.value = 3.2;
       uniforms.uBamboleio.value = 0.55;
-      uniforms.uAlpha.value = 0.72 * Math.min(1, clima.neve * 1.3);
+      uniforms.uAlpha.value = 0.72 * Math.min(1, 0.45 + clima.neve * 0.85);
       uniforms.uPesoLarguraPx.value = uniforms.uOrto.value;
       uniforms.uCor.value.copy(corNeve);
+      geo.instanceCount = contarInstancias(clima.neve);
       return;
     }
     const { vx, vz } = ventoHoriz(ventoXZ, cfg.chuvaVentoMul ?? 28);
@@ -282,16 +294,19 @@ export function criarPrecipitacao() {
     uniforms.uLargura.value = 0;
     uniforms.uLarguraPx.value = cfg.chuvaLarguraPx ?? 0.95;
     uniforms.uBamboleio.value = 0;
-    const intensidade = Math.min(1, clima.chuva * 1.15);
-    const a0 = cfg.chuvaAlphaMin ?? 0.32;
-    const a1 = cfg.chuvaAlphaSpan ?? 0.48;
-    uniforms.uAlpha.value = a0 + a1 * intensidade;
+    const intensidade = Math.min(1, clima.chuva);
+    const a0 = cfg.chuvaAlphaMin ?? 0.42;
+    const a1 = cfg.chuvaAlphaSpan ?? 0.28;
+    // Alpha por gota estável; a transição suave é o número de pingos.
+    uniforms.uAlpha.value = a0 + a1 * Math.min(1, 0.55 + intensidade * 0.45);
     uniforms.uPesoLarguraPx.value = 1;
     uniforms.uCor.value.copy(corChuva);
+    geo.instanceCount = contarInstancias(intensidade);
   }
 
   function aplicarStreak(tipo) {
-    const rapidez = velVisual.length();
+    // Streak no eixo da chuva no mundo — não usa vel da câmera (zoom não alonga).
+    const rapidez = velMundo.length();
     if (tipo === 1) {
       uniforms.uComprimento.value = 0.42 + rapidez * 0.02;
       uniforms.uComprimentoPx.value = 5 + rapidez * 0.12;
@@ -318,33 +333,40 @@ export function criarPrecipitacao() {
     const seguro = Math.min(Math.max(dt || 0, 0), 0.05);
     tempo += seguro;
     const peso = clima.chuva + clima.areia + clima.neve;
-    mesh.visible = peso > 0.025;
+    mesh.visible = peso > 0.02;
     if (!mesh.visible) {
-      temCamAnt = false;
+      temVolume = false;
+      geo.instanceCount = 0;
       return;
     }
+
+    // Eixos do mundo: giro da câmera não remapeia o wrap (chuva não gruda na tela).
+    uniforms.uDireita.value.set(1, 0, 0);
+    uniforms.uCima.value.set(0, 1, 0);
+    uniforms.uFrente.value.set(0, 0, 1);
 
     if (camera) {
       camera.updateMatrixWorld(true);
       const e = camera.matrixWorld.elements;
-      uniforms.uDireita.value.set(e[0], e[1], e[2]).normalize();
-      uniforms.uCima.value.set(e[4], e[5], e[6]).normalize();
-      const frente = uniforms.uFrente.value.set(-e[8], -e[9], -e[10]).normalize();
       camPos.set(e[12], e[13], e[14]);
-      if (temCamAnt && seguro > 1e-5) {
-        camVel.copy(camPos).sub(camPosAnt).multiplyScalar(1 / seguro);
-      } else {
-        camVel.set(0, 0, 0);
-      }
-      camPosAnt.copy(camPos);
-      temCamAnt = true;
       const medido = medirVolume(camera);
-      uniforms.uVolume.value.set(medido.meiaX, medido.meiaY, medido.meiaZ);
-      uniforms.uCentro.value.copy(camPos).addScaledVector(frente, medido.avanco);
+      const halfXZ = Math.max(medido.meiaX, medido.meiaY, 8) * MARGEM;
+      const halfY = Math.max(ESPESSURA * 0.55, halfXZ * 0.45);
+      // Suaviza o volume: zoom muda distOlhar e sem isso o mod remapeia e “acelera”.
+      const kVol = 1 - Math.exp(-seguro / 0.22);
+      if (!temVolume) {
+        volumeSuave.set(halfXZ, halfY, halfXZ);
+        temVolume = true;
+      } else {
+        volumeSuave.x += (halfXZ - volumeSuave.x) * kVol;
+        volumeSuave.y += (halfY - volumeSuave.y) * kVol;
+        volumeSuave.z += (halfXZ - volumeSuave.z) * kVol;
+      }
+      uniforms.uVolume.value.copy(volumeSuave);
+      uniforms.uCentro.value.copy(camPos);
       uniforms.uOrto.value = medido.blend;
     } else {
-      camVel.set(0, 0, 0);
-      temCamAnt = false;
+      temVolume = false;
     }
     if (renderer) {
       renderer.getDrawingBufferSize(tela);
@@ -356,10 +378,9 @@ export function criarPrecipitacao() {
     else if (clima.neve >= clima.chuva && clima.neve >= clima.areia) tipo = 2;
 
     aplicarTipo(tipo, clima, ventoXZ);
-    // Integração no mundo; streak usa velocidade relativa à câmera.
     offset.addScaledVector(velMundo, seguro);
-    velVisual.copy(velMundo).sub(camVel);
-    uniforms.uVel.value.copy(velVisual);
+    // Eixo/comprimento do fio = vel no mundo (ignora dólly do zoom).
+    uniforms.uVel.value.copy(velMundo);
     aplicarStreak(tipo);
     uniforms.uTipo.value = tipo;
     uniforms.uTempo.value = tempo;

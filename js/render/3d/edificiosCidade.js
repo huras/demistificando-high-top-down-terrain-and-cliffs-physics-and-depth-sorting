@@ -415,24 +415,24 @@ function montarCidade(moldes, folhas, def, sprites, predios) {
       grupo.add(sprite);
       continue;
     }
-    const spriteId = chaveSpritePredio(v.papel, def.ginasio);
-    const folhaPredio = spriteId ? predios?.get(spriteId) : null;
-    if (folhaPredio) {
-      const sprite = criarSpritePredio(folhaPredio);
-      sprite.position.set(ox + mx, ALTURA_PRACA, oy + my);
-      grupo.add(sprite);
-      continue;
-    }
     const id = v.modelo;
     const molde = id ? moldes.get(id) : null;
-    if (!molde) continue;
-    const inst = molde.grupo.clone(true);
-    inst.rotation.y = v.papel === "casa" || v.papel === "lab" ? 0 : yawDaRua(mx, my);
-    inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
-    const dono = `${def.key}:${i}`;
-    pendurarLuzes(inst, id, dono);
-    if (v.papel === "casa" && inst.userData.pontosLuz) prepararRoletaJanela(inst, dono);
-    grupo.add(inst);
+    if (molde) {
+      const inst = molde.grupo.clone(true);
+      inst.rotation.y = v.papel === "casa" || v.papel === "lab" ? 0 : yawDaRua(mx, my);
+      inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
+      const dono = `${def.key}:${i}`;
+      pendurarLuzes(inst, id, dono);
+      if (v.papel === "casa" && inst.userData.pontosLuz) prepararRoletaJanela(inst, dono);
+      grupo.add(inst);
+      continue;
+    }
+    const spriteId = chaveSpritePredio(v.papel, def.ginasio);
+    const folhaPredio = spriteId ? predios?.get(spriteId) : null;
+    if (!folhaPredio) continue;
+    const sprite = criarSpritePredio(folhaPredio);
+    sprite.position.set(ox + mx, ALTURA_PRACA, oy + my);
+    grupo.add(sprite);
   }
   const poste = moldes.get("poste");
   const acender = (inst, dono) => pendurarLuzes(inst, "poste", dono);

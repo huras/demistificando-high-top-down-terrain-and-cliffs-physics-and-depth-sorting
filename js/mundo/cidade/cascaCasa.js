@@ -80,7 +80,18 @@ function topoDoVolume(casa) {
 
 function modeloDoPapel(papel, variante, cidade) {
   if (papel === "casa") return idDaCasa(cidade, variante);
-  if (papel === "centro" || papel === "loja" || papel === "lab") return papel;
+  if (
+    papel === "centro" ||
+    papel === "loja" ||
+    papel === "lab" ||
+    papel === "ginasio" ||
+    papel === "museu" ||
+    papel === "coliseu" ||
+    papel === "mansao" ||
+    papel === "ruina"
+  ) {
+    return papel;
+  }
   return null;
 }
 

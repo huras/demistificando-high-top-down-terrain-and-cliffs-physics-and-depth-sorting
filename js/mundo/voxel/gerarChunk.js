@@ -22,6 +22,11 @@ import { FLUIDO } from "../agua/fluidos.js";
 import { definirLocal, preencherColunaSolida, recalcularSuperficies } from "./chunk.js";
 import { valueNoise3 } from "./ruido.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
+import {
+  cronometroFatia,
+  medir,
+  sessaoAtiva,
+} from "../../diagnostico/perfChunk.js";
 
 /** Desligado para isolar o relevo do bioma (coluna sólida, sem bloco solto). */
 const GERAR_CAVERNAS = false;
@@ -34,6 +39,8 @@ export function* passosChunk(chunk, seed) {
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
   const nivel = nivelMarBlocos();
+  const perf = sessaoAtiva();
+  const cronColunas = perf ? cronometroFatia("colunas") : null;
 
   /** @type {Int16Array} */
   const alturas = new Int16Array(CHUNK_XZ * CHUNK_XZ);
@@ -57,7 +64,11 @@ export function* passosChunk(chunk, seed) {
         }
         chunk.fluido[ly * CHUNK_XZ + lx] = FLUIDO.AGUA;
         aplicarDeckPonteCelula(chunk, lx, ly, deck, BLOCO.PONTE);
-        if ((++coluna & 15) === 0) yield;
+        if ((++coluna & 15) === 0) {
+          cronColunas?.pausar();
+          yield;
+          cronColunas?.retomar();
+        }
         continue;
       }
 
@@ -78,7 +89,11 @@ export function* passosChunk(chunk, seed) {
         }
         chunk.fluido[ly * CHUNK_XZ + lx] = FLUIDO.AGUA;
       }
-      if ((++coluna & 15) === 0) yield;
+      if ((++coluna & 15) === 0) {
+        cronColunas?.pausar();
+        yield;
+        cronColunas?.retomar();
+      }
     }
   }
 
@@ -152,9 +167,11 @@ export function* passosChunk(chunk, seed) {
       if (!ehSolido(chunk.blocos[i])) chunk.blocos[i] = BLOCO.PEDRA;
     }
   }
+  cronColunas?.fim();
 
-  carimbarCorpos(chunk);
+  medir("carimbarCorpos", () => carimbarCorpos(chunk));
 
+  const cronProps = perf ? cronometroFatia("propsBerries") : null;
   const props = [];
   let arbustos = 0;
   coluna = 0;
@@ -206,19 +223,27 @@ export function* passosChunk(chunk, seed) {
           sprite: planta.sprite,
         });
       }
-      if ((++coluna & 31) === 0) yield;
+      if ((++coluna & 31) === 0) {
+        cronProps?.pausar();
+        yield;
+        cronProps?.retomar();
+      }
     }
   }
   aplicarNaLista(props);
   definirPropsChunk(chunk.cx, chunk.cy, props);
+  cronProps?.fim();
 
   yield;
-  if (cascasProntas()) aplicarCascaNoChunk(chunk);
-  aplicarSalaNoChunk(chunk);
-  aplicarLaboratorioNoChunk(chunk);
-  aplicarCentroNoChunk(chunk);
-  aplicarLojaNoChunk(chunk);
-  recalcularSuperficies(chunk);
+
+  medir("cascaCasa", () => {
+    if (cascasProntas()) aplicarCascaNoChunk(chunk);
+  });
+  medir("sala", () => aplicarSalaNoChunk(chunk));
+  medir("laboratorio", () => aplicarLaboratorioNoChunk(chunk));
+  medir("centro", () => aplicarCentroNoChunk(chunk));
+  medir("loja", () => aplicarLojaNoChunk(chunk));
+  medir("recalcularSuperficies", () => recalcularSuperficies(chunk));
   chunk.gerado = true;
   chunk.sujo = true;
 }

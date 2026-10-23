@@ -4,6 +4,8 @@ import { CLIMA_CFG } from "../../../clima/config.js";
 import { obterClima } from "./controleCeu.js";
 
 const CAMPOS_COBERTURA = new Set(["limiar", "umidade"]);
+/** Precipitação: densifica/some mais devagar (poucos pingos → chuva). */
+const CAMPOS_PRECIP = new Set(["chuva", "areia", "neve"]);
 
 /**
  * Alvo de cada clima. A mistura é contínua pra não estourar exposição nem fog.
@@ -112,8 +114,10 @@ export function avaliarClima(dt) {
     (jogo.display === "nevoa" || jogo.logicalKind === "precip" || jogo.display === "nublado");
   const tauLuz = 3.4;
   const tauCobertura = CLIMA_CFG.nuvemCoberturaTau ?? 7;
+  const tauPrecip = CLIMA_CFG.chuvaDensidadeTau ?? 5.5;
   const kLuz = dt > 0 ? 1 - Math.exp(-dt / tauLuz) : 1;
   const kCobertura = dt > 0 ? 1 - Math.exp(-dt / tauCobertura) : 1;
+  const kPrecip = dt > 0 ? 1 - Math.exp(-dt / tauPrecip) : 1;
   for (let i = 0; i < CAMPOS.length; i++) {
     const campo = CAMPOS[i];
     let alvo = preset[campo];
@@ -124,7 +128,9 @@ export function avaliarClima(dt) {
       else if (campo === "pesoZenite") alvo = Math.max(alvo, 0.22);
       else if (campo === "sol") alvo = Math.min(alvo, 0.72);
     }
-    const k = CAMPOS_COBERTURA.has(campo) ? kCobertura : kLuz;
+    let k = kLuz;
+    if (CAMPOS_COBERTURA.has(campo)) k = kCobertura;
+    else if (CAMPOS_PRECIP.has(campo)) k = kPrecip;
     atual[campo] += (alvo - atual[campo]) * k;
   }
   corAlvo.setHex(nevoaFamilia ? 0xa8b4bc : preset.neblina).convertSRGBToLinear();

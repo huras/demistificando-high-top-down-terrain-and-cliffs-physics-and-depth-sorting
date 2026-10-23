@@ -10,7 +10,7 @@ export const LESTE = 4;
 export const OESTE = 8;
 
 export const LABIO = 0.2;
-export const QUEDA_LABIO = 0.16;
+export const QUEDA_LABIO = 0.3;
 export const PASSOS = [0, LABIO, 1 - LABIO, 1];
 
 const OC_TOPO = 1;

@@ -8,6 +8,11 @@ const FIXOS = {
   centro: { base: "assets/models/cidade/centro/", arquivo: "modelo.obj" },
   loja: { base: "assets/models/cidade/loja/", arquivo: "modelo.obj" },
   lab: { base: "assets/models/cidade/lab/", arquivo: "modelo.obj" },
+  ginasio: { base: "assets/models/cidade/ginasio/", arquivo: "modelo.obj" },
+  museu: { base: "assets/models/cidade/museu/", arquivo: "modelo.obj" },
+  coliseu: { base: "assets/models/cidade/coliseu/", arquivo: "modelo.obj" },
+  mansao: { base: "assets/models/cidade/mansao/", arquivo: "modelo.obj" },
+  ruina: { base: "assets/models/cidade/ruina/", arquivo: "modelo.obj" },
   poste: { base: "assets/models/cidade/poste/", arquivo: "modelo.obj" },
   "casa-bark": { base: "assets/models/cidade/casa-bark/", arquivo: "modelo.obj" },
   "casa-amigo": { base: "assets/models/cidade/casa-amigo/", arquivo: "modelo.obj" },
@@ -85,7 +90,9 @@ export function urlDoModelo(caminho) {
 }
 
 export function idsVisuais() {
-  return ["centro", "loja", "lab", "poste"].concat([...POR_ID.keys()].filter((id) => id !== "centro" && id !== "loja" && id !== "lab" && id !== "poste"));
+  const fixos = ["centro", "loja", "lab", "ginasio", "museu", "coliseu", "mansao", "ruina", "poste"];
+  const resto = [...POR_ID.keys()].filter((id) => !fixos.includes(id));
+  return fixos.concat(resto);
 }
 
 export function idsColisao() {

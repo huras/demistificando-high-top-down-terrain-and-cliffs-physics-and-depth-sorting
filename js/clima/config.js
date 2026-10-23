@@ -53,8 +53,15 @@ export const CLIMA_CFG = Object.freeze({
   chuvaStreakVelK: 0.055,
   chuvaStreakPxVelK: 0.42,
   chuvaLarguraPx: 0.95,
-  chuvaAlphaMin: 0.32,
-  chuvaAlphaSpan: 0.48,
+  /** Alpha por pingo quase constante — densidade vem do instanceCount. */
+  chuvaAlphaMin: 0.42,
+  chuvaAlphaSpan: 0.28,
+  /** Fração mínima de pingos no começo da chuva. */
+  chuvaDensidadeMin: 0.035,
+  /** Curva de densidade (1 = linear; >1 = poucos pingos no início/fim). */
+  chuvaDensidadePow: 1.85,
+  /** Tau (s) do mix chuva/areia/neve — sobe/desce pingos com suavidade. */
+  chuvaDensidadeTau: 5.5,
   areiaQueda: 2.4,
   areiaVentoMul: 34,
   neveQueda: 3.1,

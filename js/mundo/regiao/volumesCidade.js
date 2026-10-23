@@ -49,7 +49,7 @@ const CORPO_POR_PAPEL = Object.freeze({
   mansao: Object.freeze({ x: 18, y: 9 }),
   porto: Object.freeze({ x: 6, y: 5 }),
   safari: Object.freeze({ x: 6, y: 5 }),
-  esconderijo: Object.freeze({ x: 8, y: 6 }),
+  ruina: Object.freeze({ x: 8, y: 6 }),
 });
 
 /** Quatro modelos de casa. */
@@ -69,7 +69,7 @@ const ALTURA = Object.freeze({
   torre: 14,
   porto: 3,
   safari: 4,
-  esconderijo: 6,
+  ruina: 6,
   coliseu: 7,
   mansao: 8,
 });
@@ -187,11 +187,18 @@ function montarVolume(def, papel, lote, casas) {
   let cartao = false;
   let folha = 0;
   if (papel === "casa") {
-    cartao = def.key === "pallet-town" && (casas.n % 2) === 1;
-    if (cartao) folha = (casas.n % 5) + 1;
     modelo = idDaCasa(def.key, casas.n);
     casas.n += 1;
-  } else if (papel === "centro" || papel === "loja" || papel === "lab") {
+  } else if (
+    papel === "centro" ||
+    papel === "loja" ||
+    papel === "lab" ||
+    papel === "ginasio" ||
+    papel === "museu" ||
+    papel === "coliseu" ||
+    papel === "mansao" ||
+    papel === "ruina"
+  ) {
     modelo = papel;
   }
   return {

@@ -20,7 +20,7 @@ const SPRITE_PAPEL = Object.freeze({
   porto: "pokemart",
   safari: "pokemart",
   mansao: "pokemon-mansion-cinnabar",
-  esconderijo: "underground-ruins-entrance-doors-closed",
+  ruina: "underground-ruins-entrance-doors-closed",
 });
 
 const TIPO_GINASIO = Object.freeze({
@@ -94,7 +94,7 @@ export function entradasEditorSprite() {
     { id: "tower-A", nome: "Torre", sprite: "tower-A" },
     { id: "pokemart", nome: "Porto e safari", sprite: "pokemart" },
     { id: "pokemon-mansion-cinnabar", nome: "Mansão", sprite: "pokemon-mansion-cinnabar" },
-    { id: "underground-ruins-entrance-doors-closed", nome: "Esconderijo", sprite: "underground-ruins-entrance-doors-closed" },
+    { id: "underground-ruins-entrance-doors-closed", nome: "Ruína", sprite: "underground-ruins-entrance-doors-closed" },
   );
   return lista;
 }
