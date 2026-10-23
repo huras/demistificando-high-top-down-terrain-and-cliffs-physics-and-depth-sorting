@@ -89,22 +89,21 @@ export function criarCorpo(spawn) {
   return corpo;
 }
 
-export function atualizarMovimento(corpo, dt) {
+/**
+ * Pipeline de locomoção com vetor externo (teclado ou passeio).
+ * opts: correndo, apertouPulo, querEscalar, podeSoltarEscala, autoEscalar, desceAsa
+ */
+export function atualizarMovimentoDirecionado(corpo, dxIn, dyIn, dt, opts = {}) {
   tickFluido(corpo, dt);
-  if (entradaJogadorSuspensa()) {
-    simularSemInput(corpo, dt);
-    return;
-  }
-  let { dx, dy } = vetorMovimento();
-
-  // F: toggle fly (não drena stamina)
-  if (teclaAgora("KeyF")) {
-    if (estaVoando(corpo)) sairVoo(corpo, { pousar: false });
-    else {
-      corpo.nadando = false;
-      entrarVoo(corpo);
-    }
-  }
+  let dx = dxIn;
+  let dy = dyIn;
+  const apertouPulo = !!opts.apertouPulo;
+  const querEscalar = !!opts.querEscalar;
+  const podeSoltarEscala = opts.podeSoltarEscala !== false;
+  const autoEscalar = !!opts.autoEscalar;
+  const desceAsa = !!opts.desceAsa;
+  const sobeVoo = !!opts.sobeVoo;
+  const forcarCorrida = !!opts.correndo;
 
   if (estaVoando(corpo)) {
     if (dx !== 0 || dy !== 0) {
@@ -114,14 +113,12 @@ export function atualizarMovimento(corpo, dt) {
       if (dy !== 0 && dx === 0) corpo.dirX = 0;
       corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
     }
-    const sobe = teclaBaixa("Space");
-    const desce = teclaBaixa("ControlLeft");
-    corpo.correndo = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+    corpo.correndo = forcarCorrida;
     const velVoo = corpo.correndo ? VELOCIDADE_MAX * ASA_DELTA_CORRIDA_MUL : VELOCIDADE_MAX;
-    const aindaVoo = atualizarVoo(corpo, dx, dy, sobe, desce, dt, velVoo);
-    if (aindaVoo && corpo.correndo && desce) corpo.acao = "voando sprint+desce";
+    const aindaVoo = atualizarVoo(corpo, dx, dy, sobeVoo, desceAsa, dt, velVoo);
+    if (aindaVoo && corpo.correndo && desceAsa) corpo.acao = "voando sprint+desce";
     else if (aindaVoo && corpo.correndo) corpo.acao = "voando sprint";
-    else if (aindaVoo && desce) corpo.acao = "voando desce";
+    else if (aindaVoo && desceAsa) corpo.acao = "voando desce";
     regenerarStamina(corpo, dt);
     return;
   }
@@ -131,19 +128,15 @@ export function atualizarMovimento(corpo, dt) {
     const ainda = atualizarMantle(corpo, dt);
     corpo.andando = false;
     if (ainda) return;
-    // pousou — continua o frame no chão com travaPosMantle
   }
 
-  // —— Escalando: WASD na face; Space ou E solta ——
+  // —— Escalando: WASD na face; Space/E soltam só se permitido ——
   if (corpo.escalando && corpo.escalada) {
-    const apertouPulo = teclaAgora("Space");
-    const apertouEscala = teclaEscaladaAgora();
-    if (apertouPulo || apertouEscala) {
+    if (podeSoltarEscala && (apertouPulo || querEscalar)) {
       soltarEscalada(corpo, {
         impulso: true,
-        motivo: apertouEscala ? "escala" : "space",
+        motivo: querEscalar ? "escala" : "space",
       });
-      // continua o frame na queda
     } else {
       corpo.hopLift = atualizarEscalada(corpo, dt, dx, dy);
       if (corpo.escalando || corpo.mantle) {
@@ -163,7 +156,6 @@ export function atualizarMovimento(corpo, dt) {
 
   if (corpo.puloBufferT > 0) corpo.puloBufferT = Math.max(0, corpo.puloBufferT - dt);
 
-  const apertouPulo = teclaAgora("Space");
   registrarBufferPulo(corpo, apertouPulo);
 
   // Space: chão = hop Mario; nado = braçada; 2º toque no ar = asa-delta
@@ -171,17 +163,14 @@ export function atualizarMovimento(corpo, dt) {
     tentarBracada(corpo);
   } else if (estaPlanando(corpo)) {
     tratarInputAsaDelta(corpo, apertouPulo);
-  } else if (
-    (apertouPulo || corpo.puloBufferT > 0) &&
-    podeIniciarPulo(corpo)
-  ) {
+  } else if ((apertouPulo || corpo.puloBufferT > 0) && podeIniciarPulo(corpo)) {
     iniciarPulo(corpo);
   } else if (apertouPulo && !corpo.noChao && !corpo.nadando) {
     tratarInputAsaDelta(corpo, true);
   }
 
-  // E: gruda na face — tecla segurada vira “subir”
-  if (teclaEscaladaAgora() && !corpo.escalando) {
+  // E: gruda na face (auto-escala só em colisão / ar — ver abaixo)
+  if (querEscalar && !corpo.escalando) {
     const res = tentarEscalar(corpo);
     if (res?.ok) {
       anexarEscalada(corpo, res, dx, dy);
@@ -199,10 +188,9 @@ export function atualizarMovimento(corpo, dt) {
     corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
   }
 
-  const shift = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
   const planando = estaPlanando(corpo);
   corpo.correndo =
-    shift &&
+    forcarCorrida &&
     !corpo.escalando &&
     !corpo.mantle &&
     (planando || (corpo.noChao && (dx !== 0 || dy !== 0)));
@@ -212,13 +200,48 @@ export function atualizarMovimento(corpo, dt) {
     return;
   }
 
-  if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt);
+  if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt, autoEscalar);
   else {
     if (!planando) corpo.correndo = false;
-    atualizarNoAr(corpo, dx, dy, dt);
+    atualizarNoAr(corpo, dx, dy, dt, desceAsa);
+    if (autoEscalar && !corpo.escalando && !corpo.mantle) {
+      const res = tentarEscalar(corpo);
+      if (res?.ok) {
+        anexarEscalada(corpo, res, dx, dy);
+        corpo.hopLift = atualizarEscalada(corpo, 0, dx, dy);
+      }
+    }
   }
 
   regenerarStamina(corpo, dt);
+}
+
+export function atualizarMovimento(corpo, dt) {
+  if (entradaJogadorSuspensa()) {
+    tickFluido(corpo, dt);
+    simularSemInput(corpo, dt);
+    return;
+  }
+  let { dx, dy } = vetorMovimento();
+
+  // F: toggle fly (não drena stamina)
+  if (teclaAgora("KeyF")) {
+    if (estaVoando(corpo)) sairVoo(corpo, { pousar: false });
+    else {
+      corpo.nadando = false;
+      entrarVoo(corpo);
+    }
+  }
+
+  const shift = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+  atualizarMovimentoDirecionado(corpo, dx, dy, dt, {
+    correndo: shift,
+    apertouPulo: teclaAgora("Space"),
+    querEscalar: teclaEscaladaAgora(),
+    podeSoltarEscala: true,
+    sobeVoo: teclaBaixa("Space"),
+    desceAsa: teclaBaixa("ControlLeft"),
+  });
 }
 
 function simularSemInput(corpo, dt) {
@@ -258,12 +281,12 @@ function simularSemInput(corpo, dt) {
     return;
   }
 
-  if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt);
-  else atualizarNoAr(corpo, dx, dy, dt);
+  if (corpo.noChao) atualizarNoChao(corpo, dx, dy, dt, false);
+  else atualizarNoAr(corpo, dx, dy, dt, false);
   regenerarStamina(corpo, dt);
 }
 
-function atualizarNoChao(corpo, dx, dy, dt) {
+function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
   corpo.planando = false;
   corpo.tempoAr = 0;
   const velMax = corpo.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
@@ -295,6 +318,16 @@ function atualizarNoChao(corpo, dx, dy, dt) {
 
   corpo.x = novo.x;
   corpo.y = novo.y;
+
+  // Parede na frente: tenta grudar (passeio / stress test).
+  if (autoEscalar && (novo.bloqueouX || novo.bloqueouY) && !corpo.escalando) {
+    const res = tentarEscalar(corpo);
+    if (res?.ok) {
+      anexarEscalada(corpo, res, dx, dy);
+      corpo.hopLift = atualizarEscalada(corpo, 0, dx, dy);
+      return;
+    }
+  }
 
   const depois = fimPassoChao(corpo);
   if (depois === "nado") {
@@ -339,7 +372,7 @@ function atualizarNoChao(corpo, dx, dy, dt) {
   }
 }
 
-function atualizarNoAr(corpo, dx, dy, dt) {
+function atualizarNoAr(corpo, dx, dy, dt, desceAsa = false) {
   const planando = estaPlanando(corpo);
   if (planando) {
     atualizarCorridaAsaDelta(corpo, dx, dy, dt, corpo.correndo);
@@ -359,7 +392,7 @@ function atualizarNoAr(corpo, dx, dy, dt) {
   corpo.y = pos.y;
 
   if (planando) {
-    atualizarAsaDelta(corpo, dt, teclaBaixa("ControlLeft"));
+    atualizarAsaDelta(corpo, dt, desceAsa);
   } else {
     atualizarAereo(corpo, dt);
   }
