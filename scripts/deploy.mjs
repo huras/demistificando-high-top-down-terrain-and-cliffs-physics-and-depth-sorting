@@ -252,14 +252,15 @@ async function syncDirectToVps() {
   rmSync(tmp, { recursive: true, force: true });
   if (!uploaded) fail("envio via SSH pipe esgotou as tentativas");
 
-  const remoteCmd = [
+  const extractCmd = [
     `mkdir -p '${APP_DIR}'`,
     `tar -xzf '${remoteArchive}' -C '${APP_DIR}'`,
     `rm -f '${remoteArchive}'`,
     `chmod +x '${APP_DIR}/deploy/install.sh'`,
-    `SKIP_GIT=1 bash '${APP_DIR}/deploy/install.sh'`,
   ].join(" && ");
-  sshWithRetries(remoteCmd);
+  sshWithRetries(extractCmd);
+  // Install separado: se falhar (ex.: TLS), não tenta re-extrair o .tgz já apagado.
+  sshWithRetries(`SKIP_GIT=1 bash '${APP_DIR}/deploy/install.sh'`);
 }
 
 async function main() {
