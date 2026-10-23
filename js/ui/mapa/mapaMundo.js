@@ -3,9 +3,12 @@
  * trocam o quanto do ruído do terreno cabe na tela.
  */
 import { deLocalKanto } from "../../mundo/bounds.js";
+import { alturaEm } from "../../mundo/altura.js";
 import { AREA_KANTO, CENTRO_AREA, zonaNoMundo } from "../../mundo/regiao/grafoKanto.js";
 import { estado } from "../../jogo/estado.js";
 import { comecarSubida, prepararViagem, teleporteOcupado } from "../../jogo/teleporte.js";
+import { marcasSantuario } from "../../santuario/mapaMarcas.js";
+import { shrineOutdoorStand } from "../../santuario/colocacao.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
 import { LADO_MUNDO } from "./grade.js";
 import { tickIntimo } from "./intimo.js";
@@ -37,6 +40,7 @@ let jornadaVisivel = true;
 let botaoJornada = null;
 
 const RAIO_CIDADE = 22;
+const RAIO_SANTUARIO = 18;
 const ZOOM_VIAGEM = 1.15;
 
 function sincronizarBotaoCalor() {
@@ -104,39 +108,73 @@ function mesmaCidade(cidade) {
   return ((jogadorX / AREA_KANTO) | 0) === cidade.ax && ((jogadorY / AREA_KANTO) | 0) === cidade.ay;
 }
 
-function cidadeNoPonto(clientX, clientY) {
-  if (!tela || !aberto) return null;
-  const rect = tela.getBoundingClientRect();
-  const sx = clientX - rect.left;
-  const sy = clientY - rect.top;
-  const cidades = cidadesDoMapa();
+function mesmoDestino(dest) {
+  if (!dest) return false;
+  if (dest.tipo === "santuario") {
+    return Math.hypot(jogadorX - dest.x, jogadorY - dest.y) < 40;
+  }
+  return mesmaCidade(dest);
+}
+
+function destinoSantuario(marca) {
+  const stand = shrineOutdoorStand(marca);
+  const z =
+    alturaEm(Math.floor(stand.x), Math.floor(stand.y)) ||
+    (Number.isFinite(marca.z) ? marca.z : 1);
+  return {
+    tipo: "santuario",
+    id: marca.id,
+    nome: marca.nome || "Santuário",
+    x: stand.x,
+    y: stand.y,
+    z,
+    element: marca.element,
+  };
+}
+
+function hitNoPonto(lista, sx, sy, rect, raio) {
   let melhor = null;
-  let melhorD = RAIO_CIDADE * RAIO_CIDADE;
-  for (let i = 0; i < cidades.length; i++) {
-    const cidade = cidades[i];
-    const px = (cidade.x - cx) * zoom + rect.width / 2;
-    const py = (cidade.y - cy) * zoom + rect.height / 2;
+  let melhorD = raio * raio;
+  for (let i = 0; i < lista.length; i++) {
+    const item = lista[i];
+    const px = (item.x - cx) * zoom + rect.width / 2;
+    const py = (item.y - cy) * zoom + rect.height / 2;
     const dx = sx - px;
     const dy = sy - py;
     const d = dx * dx + dy * dy;
     if (d <= melhorD) {
       melhorD = d;
-      melhor = cidade;
+      melhor = item;
     }
   }
   return melhor;
 }
 
+/** Cidade ou santuário descoberto sob o cursor (mapa mundo). */
+function destinoNoPonto(clientX, clientY) {
+  if (!tela || !aberto) return null;
+  const rect = tela.getBoundingClientRect();
+  const sx = clientX - rect.left;
+  const sy = clientY - rect.top;
+  const cidade = hitNoPonto(cidadesDoMapa(), sx, sy, rect, RAIO_CIDADE);
+  if (cidade) return cidade;
+  const marca = hitNoPonto(marcasSantuario(), sx, sy, rect, RAIO_SANTUARIO);
+  if (!marca) return null;
+  return destinoSantuario(marca);
+}
+
 function apontarCidade(ev) {
   if (!tela || viagem || pendente) return;
-  const cidade = cidadeNoPonto(ev.clientX, ev.clientY);
-  const viaja = cidade && !mesmaCidade(cidade);
+  const dest = destinoNoPonto(ev.clientX, ev.clientY);
+  const viaja = dest && !mesmoDestino(dest);
   tela.classList.toggle("mapa-mundo__tela--cidade", !!viaja);
 }
 
-function mostrarConfirmacao(cidade) {
-  pendente = cidade;
-  if (confirmTxt) confirmTxt.textContent = `Teleportar para ${cidade.nome}?`;
+function mostrarConfirmacao(dest) {
+  pendente = dest;
+  const rotulo =
+    dest.tipo === "santuario" ? `o santuário ${dest.nome}` : dest.nome;
+  if (confirmTxt) confirmTxt.textContent = `Teleportar para ${rotulo}?`;
   if (confirmEl) confirmEl.hidden = false;
   tela?.classList.remove("mapa-mundo__tela--cidade");
 }
@@ -153,28 +191,28 @@ export function cancelarConfirmacaoMapa() {
   return true;
 }
 
-function iniciarViagem(cidade) {
-  if (!cidade || viagem || teleporteOcupado()) return;
-  prepararViagem(cidade);
+function iniciarViagem(dest) {
+  if (!dest || viagem || teleporteOcupado()) return;
+  prepararViagem(dest);
   ajustarTela();
   const cssW = tela.width / dpr;
   const cssH = tela.height / dpr;
   zoomAlvo = Math.min(ZOOM_MAX, Math.max(ZOOM_VIAGEM, zoom * 1.8));
-  ancora = { wx: cidade.x, wy: cidade.y, sx: cssW / 2, sy: cssH / 2 };
+  ancora = { wx: dest.x, wy: dest.y, sx: cssW / 2, sy: cssH / 2 };
   arraste = null;
   tela.classList.remove("mapa-mundo__tela--arraste");
   tela.classList.remove("mapa-mundo__tela--cidade");
   ocultarConfirmacao();
-  viagem = { cidade, t: 0 };
+  viagem = { cidade: dest, t: 0 };
 }
 
 function escolherCidade(ev) {
   if (!aberto || viagem || pendente || teleporteOcupado()) return;
-  const cidade = cidadeNoPonto(ev.clientX, ev.clientY);
-  if (!cidade || mesmaCidade(cidade)) return;
+  const dest = destinoNoPonto(ev.clientX, ev.clientY);
+  if (!dest || mesmoDestino(dest)) return;
   arraste = null;
   tela.classList.remove("mapa-mundo__tela--arraste");
-  mostrarConfirmacao(cidade);
+  mostrarConfirmacao(dest);
 }
 
 export function zoomMapa(fator) {

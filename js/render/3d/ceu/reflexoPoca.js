@@ -163,8 +163,10 @@ function corteObliquo() {
 /**
  * Desenha árvore e estrutura no plano dos pés. Sem céu.
  * Sem poça, dentro da sala ou com a câmera abaixo do plano, não roda.
+ * opts.prepararBillboards(camVirtual) / opts.restaurarBillboards() — re-pose
+ * dos cartões para a câmera espelhada (top-down precisa inclinacao 0 + yaw virtual).
  */
-export function desenharReflexo(renderer, scene, camera, planoY, sala) {
+export function desenharReflexo(renderer, scene, camera, planoY, sala, opts = null) {
   uniformsPoca.uTemReflexo.value = 0;
   uniformsPoca.uPlanoPoca.value = planoY || 0;
   if (sala || !renderer || !scene || !camera) return;
@@ -173,6 +175,8 @@ export function desenharReflexo(renderer, scene, camera, planoY, sala) {
   sincronizarRaizes();
   if (!espelhar(camera, planoY)) return;
 
+  const preparar = opts?.prepararBillboards;
+  const restaurar = opts?.restaurarBillboards;
   const autoSombra = renderer.shadowMap.autoUpdate;
   const precisaSombra = renderer.shadowMap.needsUpdate;
   const xr = renderer.xr.enabled;
@@ -195,9 +199,15 @@ export function desenharReflexo(renderer, scene, camera, planoY, sala) {
     renderer.setRenderTarget(alvo);
     renderer.setClearColor(0x000000, 0);
     renderer.clear(true, true, true);
+    preparar?.(virtual);
     renderer.render(scene, virtual);
     uniformsPoca.uTemReflexo.value = 1;
   } finally {
+    try {
+      restaurar?.();
+    } catch (_) {
+      /* restaura vista principal mesmo se o callback falhar */
+    }
     uniformsPoca.uReflexoPoca.value = alvo.texture;
     aplicarLadoDuplo(false);
     renderer.xr.enabled = xr;

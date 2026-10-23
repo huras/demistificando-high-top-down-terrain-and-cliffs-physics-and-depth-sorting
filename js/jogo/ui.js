@@ -68,8 +68,9 @@ import { ligarHudVento, tickHudVento } from "./hudVento.js";
 import { deLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
+import { tickTiles } from "../ui/mapa/atlas.js";
 import { pintarMapa } from "../ui/mapa/pintar.js";
-import { abrirMapa } from "../ui/mapa/mapaMundo.js";
+import { abrirMapa, mapaAberto } from "../ui/mapa/mapaMundo.js";
 
 let raiz = null;
 
@@ -739,7 +740,7 @@ function pintarRelogio() {
   if (perEl) perEl.textContent = periodo.nome;
 }
 
-const ZOOM_MINI = 0.42;
+const ZOOM_MINI = 1.05;
 const MINI_PX = 220;
 
 function pontoMini() {
@@ -762,6 +763,19 @@ function pintarMini() {
     tela.height = px;
   }
   const ponto = pontoMini();
+  // Com o mapa grande fechado, pedimos os tiles de perto da janela do mini.
+  if (!mapaAberto()) {
+    const meio = MINI_PX / (2 * ZOOM_MINI);
+    tickTiles(
+      ponto.x,
+      ponto.y,
+      ZOOM_MINI,
+      ponto.x - meio,
+      ponto.y - meio,
+      ponto.x + meio,
+      ponto.y + meio,
+    );
+  }
   pintarMapa(tela.getContext("2d"), px, px, dpr, {
     cx: ponto.x,
     cy: ponto.y,

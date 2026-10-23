@@ -301,6 +301,15 @@ export function yawCamera(camera3d) {
   return camera3d.yaw;
 }
 
+const _frenteYaw = new THREE.Vector3();
+
+/** Yaw horizontal a partir de uma PerspectiveCamera Three (ex.: câmera virtual do reflexo). */
+export function yawDeCameraThree(cam) {
+  if (!cam) return 0;
+  cam.getWorldDirection(_frenteYaw);
+  return Math.atan2(-_frenteYaw.x, -_frenteYaw.z);
+}
+
 /** Facing do sprite acompanha a mira, mesmo em strafe. */
 export function aplicarFacingMira(corpo, camera3d) {
   if (!corpo) return;

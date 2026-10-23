@@ -1,6 +1,6 @@
 /**
- * Carrega o terreno assado. A visão cobre o minimapa e o zoom aberto;
- * os tiles de perto entram só quando o mapa grande aproxima.
+ * Carrega o terreno assado. A visão cobre o overworld inteiro;
+ * os tiles de perto entram no mapa grande e no minimapa quando o zoom ≥ ZOOM_TILE.
  * O manifesto valida semente/lado no boot.
  */
 import {

@@ -16,6 +16,7 @@ import {
   distanciaNormalizada,
   seguirAlvo3d,
   yawCamera,
+  yawDeCameraThree,
 } from "./camera3d.js";
 import { criarFlechas3d } from "./flechas3d.js";
 import { criarMiraArcoBola3d } from "./miraArcoBola3d.js";
@@ -52,6 +53,7 @@ import { desenharReflexo, marcarLuzReflexo } from "./ceu/reflexoPoca.js";
 import { atualizarLuzBillboard } from "./ceu/luzBillboard.js";
 import { comecarQuadroLuzes, criarPoolLuzes, definirPesoNoite, resolverLuzes } from "./luzes/pool.js";
 import { comecarMapaChao, resolverMapaChao } from "./luzes/mapaChao.js";
+import { oferecerLuzesTotemSantuario } from "../../santuario/luzTotem.js";
 import { resolverMascaraAguaPoca } from "./ceu/mascaraAguaPoca.js";
 import { uniformsNuvem } from "./ceu/parametros.js";
 import { estaEmCena } from "../../cena/modoCena.js";
@@ -700,12 +702,38 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   atualizarPokemon3d(yaw, camRender, inclinacao);
   atualizarDebugCorpos();
   const camPos = estado.camera3d.cam.position;
+  oferecerLuzesTotemSantuario(camPos.x, camPos.z, { interior });
   resolverLuzes(camPos.x, camPos.y, camPos.z, estado.scene.fog?.far ?? 90);
   resolverMapaChao(camPos.x, camPos.z);
   resolverMascaraAguaPoca(camPos.x, camPos.z);
   atualizarRealceCena();
   aplicarVazioSala(!!estadoJogo.interior?.sala3d);
-  desenharReflexo(estado.renderer, estado.scene, camRender, elevVis, !!estadoJogo.interior?.sala3d);
+  // Plano do espelho = chão sob os pés (não elevacao/hop).
+  const chaoVis = (corpo.z ?? 0) * ALTURA_BLOCO;
+  desenharReflexo(estado.renderer, estado.scene, camRender, chaoVis, !!estadoJogo.interior?.sala3d, {
+    prepararBillboards(camVirtual) {
+      const yawVirt = yawDeCameraThree(camVirtual);
+      const inclReflexo = 0;
+      estado.edificios?.atualizar?.(mx, my, yawVirt, inclReflexo);
+      estado.vegetacao?.atualizar?.(yawVirt, inclReflexo);
+      estado.vegetacaoDistante?.tick?.(mx, my, yawVirt, inclReflexo);
+      estado.personagem.atualizar(corpo, camVirtual, yawVirt, inclReflexo);
+      if (agente && estado.agente3d) {
+        estado.agente3d.atualizar(agente, camVirtual, yawVirt, inclReflexo);
+      }
+      atualizarPokemon3d(yawVirt, camVirtual, inclReflexo);
+    },
+    restaurarBillboards() {
+      estado.edificios?.atualizar?.(mx, my, yaw, inclinacao);
+      estado.vegetacao?.atualizar?.(yaw, inclinacao);
+      estado.vegetacaoDistante?.tick?.(mx, my, yaw, inclinacao);
+      estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
+      if (agente && estado.agente3d) {
+        estado.agente3d.atualizar(agente, camRender, yaw, inclinacao);
+      }
+      atualizarPokemon3d(yaw, camRender, inclinacao);
+    },
+  });
   estado.renderer.render(estado.scene, camRender);
   return estado;
 }

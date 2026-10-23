@@ -8,7 +8,15 @@ import {
   pintarCalorForcaMundo,
   pintarLegendaCalor,
 } from "./calorForca.js";
-import { BLOCOS_INTIMO, LADO_INTIMO, LADO_MUNDO, LADO_TILE, LADO_TILE_MUNDO, ZOOM_INTIMO } from "./grade.js";
+import {
+  BLOCOS_INTIMO,
+  LADO_INTIMO,
+  LADO_MUNDO,
+  LADO_TILE,
+  LADO_TILE_MUNDO,
+  ZOOM_INTIMO,
+  ZOOM_TILE,
+} from "./grade.js";
 import { listarIntimos } from "./intimo.js";
 import { cidadesDoMapa, layoutDaCidade, marcasExtras, rotasDoMapa } from "./marcas.js";
 import {
@@ -224,7 +232,8 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   ctx.imageSmoothingQuality = "high";
   const atlas = canvasAtlas();
   if (atlas) ctx.drawImage(atlas, 0, 0, LADO_MUNDO, LADO_MUNDO);
-  if (!vista.mini && vista.zoom >= 0.42) {
+  // Tiles de perto (também no minimapa quando o zoom passa do limiar).
+  if (vista.zoom >= ZOOM_TILE) {
     const visiveis = listarTiles();
     for (let i = 0; i < visiveis.length; i++) {
       const tile = visiveis[i];

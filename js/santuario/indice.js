@@ -11,6 +11,7 @@ export { santuarioPerto, promptSantuario, abrirPuzzleSantuario } from "./interag
 export { tentarEntrarSantuario, checarSaidaSantuario, sairSantuario } from "./entrar.js";
 export { reclamarTotem } from "./gemas.js";
 export { closestShrineBearing } from "./bussola.js";
+export { oferecerLuzesTotemSantuario } from "./luzTotem.js";
 export {
   serializarSantuarios,
   hidratarSantuarios,

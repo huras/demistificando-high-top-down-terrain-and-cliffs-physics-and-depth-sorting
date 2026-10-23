@@ -9,6 +9,8 @@ const LIMITE = 2.2;
 
 const PERFIL_POSTE = { raio: 16, ganho: 0.12, cor: 0xffc56a, curva: 4 };
 const PERFIL_CASA = { raio: 8, ganho: 0.12, cor: 0xffffff, curva: 4 };
+/** Base branca: a cor do elemento multiplica limpa no oferecerLuzChao. */
+const PERFIL_SANTUARIO = { raio: 18, ganho: 0.15, cor: 0xffffff, curva: 3 };
 
 const dados = new Float32Array(LADO * LADO * 4);
 const pesos = new Float32Array(LADO * LADO);
@@ -132,7 +134,9 @@ export function aplicarLuzCidade(material) {
 }
 
 function perfilDe(id) {
-  return id === "poste" ? PERFIL_POSTE : PERFIL_CASA;
+  if (id === "poste") return PERFIL_POSTE;
+  if (id === "santuario") return PERFIL_SANTUARIO;
+  return PERFIL_CASA;
 }
 
 export function comecarMapaChao() {
