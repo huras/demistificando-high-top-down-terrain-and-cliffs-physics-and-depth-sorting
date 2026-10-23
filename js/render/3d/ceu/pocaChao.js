@@ -1,5 +1,9 @@
 import * as THREE from "three";
-import { GLSL_MASCARA_AGUA, ligarUniformsMascaraAgua } from "./mascaraAguaPoca.js";
+import {
+  GLSL_MASCARA_AGUA,
+  ligarUniformsMascaraAgua,
+  sincronizarNivelMarPoca,
+} from "./mascaraAguaPoca.js";
 
 /** Placeholder enquanto o passe de reflexo escreve no alvo (evita feedback loop). */
 export const texReflexoVazia = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1);
@@ -31,6 +35,8 @@ export function atualizarPoca(dt, chuva) {
   tempo += dt;
   uniformsPoca.uPoca.value = nivel;
   uniformsPoca.uTempoPoca.value = tempo;
+  // Oceano do LOD horizonte fica fora do atlas 96 m — a cota do mar fecha o buraco.
+  sincronizarNivelMarPoca();
 }
 
 export const FRAG_POCA = `

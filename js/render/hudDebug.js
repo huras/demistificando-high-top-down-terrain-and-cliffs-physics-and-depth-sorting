@@ -25,6 +25,50 @@ export function obterFps() {
   return _fpsMostrado;
 }
 
+function atualizarTexto(el, texto) {
+  if (el && el.textContent !== texto) el.textContent = texto;
+}
+
+function atualizarReadoutsMinimap(zoom, modoVisual, modoJogo, ocl, fps) {
+  const modoEl = document.querySelector("[data-minimap-modo]");
+  atualizarTexto(modoEl, modoJogo === "3d" ? "3D" : "2D");
+
+  const metaEl = document.querySelector("[data-minimap-meta]");
+  let meta = `zoom ${zoom.toFixed(2)}× · ${modoVisual}`;
+  let oclStatus = "";
+  if (modoJogo === "2d" && ocl?.status) {
+    meta = `${ocl.status} · ${meta}`;
+    oclStatus = ocl.status;
+  }
+  atualizarTexto(metaEl, meta);
+  const modeWrap = metaEl?.closest(".area-minimap__mode");
+  if (modeWrap) modeWrap.dataset.ocl = oclStatus;
+
+  const fpsHud = document.querySelector(".area-minimap__fps [data-fps]");
+  if (fpsHud) {
+    const texto = fps > 0 ? String(fps) : "—";
+    atualizarTexto(fpsHud, texto);
+    const wrap = fpsHud.closest(".area-minimap__fps");
+    if (wrap) {
+      wrap.dataset.band =
+        fps >= 55 ? "ok" : fps >= 40 ? "mid" : fps > 0 ? "low" : "";
+    }
+  }
+
+  const hoverWrap = document.getElementById("area-minimap-hover");
+  const hoverEl = hoverWrap?.querySelector("[data-minimap-hover]");
+  if (hoverWrap && hoverEl) {
+    const t = textoHoverBloco();
+    if (t) {
+      atualizarTexto(hoverEl, t);
+      if (hoverWrap.hidden) hoverWrap.hidden = false;
+    } else if (!hoverWrap.hidden) {
+      hoverWrap.hidden = true;
+      atualizarTexto(hoverEl, "");
+    }
+  }
+}
+
 export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo = "2d") {
   const f = formulasPersonagem(corpo);
   const ocl = modoJogo === "2d" ? consultarOclusao(corpo) : null;
@@ -41,30 +85,32 @@ export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo 
   }
 
   const estado = document.getElementById("estado");
-  if (!estado) return ocl;
-  const dds = estado.querySelectorAll("dd");
-  if (dds.length < 6) return ocl;
-  const elev = corpo.elevacao ?? corpo.z;
-  dds[0].textContent = `${corpo.x.toFixed(2)}, ${corpo.y.toFixed(2)}, z${corpo.z}`;
-  dds[1].textContent = modoJogo === "3d" ? "—" : f.screenY.toFixed(2);
-  dds[2].textContent = modoJogo === "3d" ? "—" : f.sortKey.toFixed(4);
-  dds[3].textContent = `${corpo.hopLift.toFixed(2)} (e${elev.toFixed(2)})`;
-  const agua = amostraAgua(corpo.x, corpo.y, elev);
-  if (agua.superficie > 0) {
-    const prof = agua.caindo
-      ? Math.max(0, agua.superficie - agua.pisoQueda)
-      : agua.profundidade;
-    const modo = corpo.nadando ? " nado" : agua.caindo ? " queda" : "";
-    dds[4].textContent = `${corpo.acao} · água ${prof.toFixed(1)}${modo}`;
-  } else {
-    dds[4].textContent = corpo.acao;
-  }
-  if (modoJogo === "3d") {
-    dds[5].textContent = "3D";
-    dds[5].dataset.status = "";
-  } else {
-    dds[5].textContent = ocl.status;
-    dds[5].dataset.status = ocl.status;
+  if (estado) {
+    const dds = estado.querySelectorAll("dd");
+    if (dds.length >= 6) {
+      const elev = corpo.elevacao ?? corpo.z;
+      dds[0].textContent = `${corpo.x.toFixed(2)}, ${corpo.y.toFixed(2)}, z${corpo.z}`;
+      dds[1].textContent = modoJogo === "3d" ? "—" : f.screenY.toFixed(2);
+      dds[2].textContent = modoJogo === "3d" ? "—" : f.sortKey.toFixed(4);
+      dds[3].textContent = `${corpo.hopLift.toFixed(2)} (e${elev.toFixed(2)})`;
+      const agua = amostraAgua(corpo.x, corpo.y, elev);
+      if (agua.superficie > 0) {
+        const prof = agua.caindo
+          ? Math.max(0, agua.superficie - agua.pisoQueda)
+          : agua.profundidade;
+        const modo = corpo.nadando ? " nado" : agua.caindo ? " queda" : "";
+        dds[4].textContent = `${corpo.acao} · água ${prof.toFixed(1)}${modo}`;
+      } else {
+        dds[4].textContent = corpo.acao;
+      }
+      if (modoJogo === "3d") {
+        dds[5].textContent = "3D";
+        dds[5].dataset.status = "";
+      } else {
+        dds[5].textContent = ocl.status;
+        dds[5].dataset.status = ocl.status;
+      }
+    }
   }
 
   const staminaEl = document.getElementById("stamina-status");
@@ -74,17 +120,6 @@ export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo 
 
   const fpsEl = document.getElementById("fps-status");
   if (fpsEl) fpsEl.textContent = fps > 0 ? String(fps) : "—";
-
-  const fpsHud = document.querySelector("#jogo-relogio [data-fps]");
-  if (fpsHud) {
-    const texto = fps > 0 ? String(fps) : "—";
-    if (fpsHud.textContent !== texto) fpsHud.textContent = texto;
-    const wrap = fpsHud.closest(".hud-clock__fps");
-    if (wrap) {
-      wrap.dataset.band =
-        fps >= 55 ? "ok" : fps >= 40 ? "mid" : fps > 0 ? "low" : "";
-    }
-  }
 
   const hoverEl = document.getElementById("hover-status");
   if (hoverEl) {
@@ -101,9 +136,12 @@ export function atualizarPainel(corpo, zoom = 1, modoVisual = "cubos", modoJogo 
   const modoEl = document.getElementById("modo-status");
   if (modoEl) modoEl.textContent = modoJogo === "3d" ? "3D" : "2D";
 
+  atualizarReadoutsMinimap(zoom, modoVisual, modoJogo, ocl, fps);
+
   return ocl;
 }
 
+/** Legenda de debug no canvas; modo/zoom/FPS ficam no dock do minimapa. */
 export function desenharOverlayAjuda(
   ctx,
   camera,
@@ -112,45 +150,23 @@ export function desenharOverlayAjuda(
   modoVisual = "cubos",
   modoJogo = "2d",
 ) {
+  if (!debug || modoJogo !== "2d") return;
+
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const boxX = 10;
   const boxY = 10;
-  const boxW = 220;
-  const h = debug && modoJogo === "2d" ? 62 : 48;
+  const boxW = 180;
   ctx.fillStyle = "rgba(0,0,0,0.45)";
-  ctx.fillRect(boxX, boxY, boxW, h);
+  ctx.fillRect(boxX, boxY, boxW, 28);
 
   ctx.font = "12px Segoe UI, sans-serif";
   ctx.textAlign = "left";
-  ctx.fillStyle = "#d8f0d0";
-  ctx.fillText(modoJogo === "3d" ? "3D" : "2D", 18, 26);
-  /* FPS fica no chip do relógio (ao lado do período), não neste overlay */
-
-  const zoom = camera?.zoom ?? 1;
-  let statusEsq = `zoom ${zoom.toFixed(2)}× · ${modoVisual}`;
-  let corEsq = "#a8c4a8";
-  if (modoJogo === "2d" && ocl) {
-    statusEsq = `${ocl.status} · ${statusEsq}`;
-    corEsq =
-      ocl.status === "ATRÁS"
-        ? "#e0c36a"
-        : ocl.status === "NA FRENTE"
-          ? "#7dce6a"
-          : "#a8c4a8";
-  }
-
-  ctx.textAlign = "left";
-  ctx.fillStyle = corEsq;
-  ctx.fillText(statusEsq, 18, 42);
-
-  if (debug && modoJogo === "2d") {
-    ctx.fillStyle = "#ffe66d";
-    ctx.fillText("pivô Y", 18, 58);
-    ctx.fillStyle = "#4ecdc4";
-    ctx.fillText("topo", 70, 58);
-    ctx.fillStyle = "#ff6b6b";
-    ctx.fillText("face", 110, 58);
-  }
+  ctx.fillStyle = "#ffe66d";
+  ctx.fillText("pivô Y", 18, 28);
+  ctx.fillStyle = "#4ecdc4";
+  ctx.fillText("topo", 70, 28);
+  ctx.fillStyle = "#ff6b6b";
+  ctx.fillText("face", 110, 28);
   ctx.restore();
 }

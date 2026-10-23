@@ -15,6 +15,11 @@ export function definirPropsChunk(cx, cy, lista) {
   indexarBases(cx, cy, lista);
 }
 
+/** Lista viva do chunk (mutável) — ou null se ainda não gerou props. */
+export function propsDoChunk(cx, cy) {
+  return porChunk.get(chave(cx, cy)) || null;
+}
+
 export function limparPropsChunk(cx, cy) {
   porChunk.delete(chave(cx, cy));
   limparBases(cx, cy);

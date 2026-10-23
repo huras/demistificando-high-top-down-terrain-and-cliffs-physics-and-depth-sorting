@@ -122,7 +122,7 @@ export function aplicarSombraNuvem(material) {
   };
   material.customProgramCacheKey = function chaveSombra() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|sombra-nuvem|poca|reflexo-sem-ceu|mascara-agua|luz-cidade|clareia-branco`;
+    return `${base}|sombra-nuvem|poca|reflexo-sem-ceu|mascara-agua-nivel-mar|luz-cidade|clareia-branco`;
   };
   return material;
 }

@@ -33,6 +33,8 @@ let viagem = null;
 let pendente = null;
 let calorForca = false;
 let botaoCalor = null;
+let jornadaVisivel = true;
+let botaoJornada = null;
 
 const RAIO_CIDADE = 22;
 const ZOOM_VIAGEM = 1.15;
@@ -41,6 +43,12 @@ function sincronizarBotaoCalor() {
   if (!botaoCalor) return;
   botaoCalor.setAttribute("aria-pressed", calorForca ? "true" : "false");
   botaoCalor.classList.toggle("is-ativo", calorForca);
+}
+
+function sincronizarBotaoJornada() {
+  if (!botaoJornada) return;
+  botaoJornada.setAttribute("aria-pressed", jornadaVisivel ? "true" : "false");
+  botaoJornada.classList.toggle("is-ativo", jornadaVisivel);
 }
 
 export function mapaAberto() {
@@ -242,15 +250,24 @@ export function ligarMapaMundo() {
   confirmEl = document.getElementById("mapa-mundo-confirm");
   confirmTxt = document.getElementById("mapa-mundo-confirm-txt");
   botaoCalor = document.getElementById("mapa-calor-forca");
+  botaoJornada = document.getElementById("mapa-jornada");
   if (!raiz || !tela) return;
   iniciarAtlas();
   calorForca = false;
+  jornadaVisivel = true;
   sincronizarBotaoCalor();
+  sincronizarBotaoJornada();
   botaoCalor?.addEventListener("click", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
     calorForca = !calorForca;
     sincronizarBotaoCalor();
+  });
+  botaoJornada?.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    jornadaVisivel = !jornadaVisivel;
+    sincronizarBotaoJornada();
   });
   document.getElementById("mapa-confirm-ir")?.addEventListener("click", (ev) => {
     ev.preventDefault();
@@ -366,6 +383,7 @@ export function tickMapaMundo(px, py, dt = 1 / 60) {
     jogadorY: py,
     agora: performance.now(),
     calorForca,
+    jornada: jornadaVisivel,
   });
   if (titulo) {
     const zona = zonaNoMundo(px, py);

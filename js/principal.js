@@ -96,6 +96,11 @@ import { ligarHierarquiaCena, sincronizarHierarquiaCena } from "./ui/cena/hierar
 import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.js";
 import { carregarDados } from "./pokemon/dados.js";
 import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
+import {
+  getWorldShrinePlan,
+  sincronizarSantuarioPosCatalogo,
+} from "./santuario/colocacao.js";
+import { ensureShrineArtLoaded } from "./santuario/arte.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
 import {
@@ -197,8 +202,21 @@ async function iniciar() {
   try {
     const cat = await carregarDados();
     ligarPokemon();
+    ensureShrineArtLoaded();
+    const pedras = await sincronizarSantuarioPosCatalogo();
+    const plan = getWorldShrinePlan();
+    let perto = Infinity;
+    for (let i = 0; i < plan.slots.length; i++) {
+      const m = plan.slots[i];
+      const d = Math.hypot(m.x - SPAWN.x, m.y - SPAWN.y);
+      if (d < perto) perto = d;
+    }
     console.info(
       `Pokémon: ${cat.especies} espécies, ${cat.golpes} golpes, ${cat.biomas | 0} biomas de encontro`,
+    );
+    console.info(
+      `Santuários: ${plan.slots.length} no mundo, ${pedras} pedras nos chunks carregados` +
+        (Number.isFinite(perto) ? `, mais próximo ~${Math.round(perto)} m do spawn` : ""),
     );
   } catch (erro) {
     console.error("Pokémon não carregou", erro);

@@ -165,6 +165,7 @@ function aplicarVazioSala(dentro) {
   if (!dentro) {
     if (agua) agua.visible = true;
     if (estado.terrenoSuave?.mesh) estado.terrenoSuave.mesh.visible = true;
+    if (estado.terrenoHorizonte?.mesh) estado.terrenoHorizonte.mesh.visible = true;
     if (domoNoVazio && domo) domo.visible = true;
     domoNoVazio = false;
     return;
@@ -175,6 +176,7 @@ function aplicarVazioSala(dentro) {
   if (real) real.visible = false;
   if (agua) agua.visible = false;
   if (estado.terrenoSuave?.mesh) estado.terrenoSuave.mesh.visible = false;
+  if (estado.terrenoHorizonte?.mesh) estado.terrenoHorizonte.mesh.visible = false;
   if (estado.vegetacao?.grupo) estado.vegetacao.grupo.visible = false;
   if (estado.vegetacaoDistante?.grupo) estado.vegetacaoDistante.grupo.visible = false;
   if (estado.vegetacaoHorizonte?.grupo) estado.vegetacaoHorizonte.grupo.visible = false;

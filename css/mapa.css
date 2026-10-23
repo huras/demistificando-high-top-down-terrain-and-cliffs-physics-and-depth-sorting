@@ -103,11 +103,18 @@
   opacity: 0.9;
 }
 
-.mapa-mundo__toggle {
+.mapa-mundo__toggles {
   position: absolute;
   z-index: 2;
   top: 12px;
   right: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.mapa-mundo__toggle {
   margin: 0;
   padding: 6px 12px;
   border-radius: 999px;

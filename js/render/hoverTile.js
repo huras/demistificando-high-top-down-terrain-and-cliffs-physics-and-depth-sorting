@@ -2,7 +2,7 @@
  * Highlight do tile sob o cursor — 2D outline + marcador 3D reutilizado.
  */
 import { ALTURA_BLOCO, ESCALA, FACE_H, TILE } from "../config.js";
-import { hoverEmAlcanceEdicao, obterHoverBloco, textoHoverBloco } from "../entrada/hoverBloco.js";
+import { hoverEmAlcanceEdicao, obterHoverBloco } from "../entrada/hoverBloco.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
 
 const COR = Object.freeze({
@@ -147,47 +147,25 @@ export function desenharMarcadorTileTela(ctx, projetarChao) {
 }
 
 /**
- * Label HUD (screen space) com coords do hover.
- * @param {boolean} [mira3d] desenha cruz no centro (pointer lock).
+ * Mira central (pointer lock). Coords do hover vão no dock do minimapa.
+ * @param {boolean} [mira3d] desenha cruz no centro.
  */
 export function desenharLabelHoverHud(ctx, canvasW, canvasH, mira3d = false) {
-  if (!ctx) return;
+  if (!ctx || !mira3d) return;
 
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-  if (mira3d) {
-    const cx = canvasW * 0.5;
-    const cy = canvasH * 0.5;
-    const r = 6;
-    ctx.strokeStyle = "rgba(232, 255, 224, 0.85)";
-    ctx.lineWidth = 1.25;
-    ctx.beginPath();
-    ctx.moveTo(cx - r, cy);
-    ctx.lineTo(cx + r, cy);
-    ctx.moveTo(cx, cy - r);
-    ctx.lineTo(cx, cy + r);
-    ctx.stroke();
-  }
-
-  const texto = textoHoverBloco();
-  if (texto) {
-    ctx.font = "12px Cascadia Mono, Consolas, monospace";
-    const padX = 10;
-    const tw = ctx.measureText(texto).width;
-    const w = tw + padX * 2;
-    const h = 22;
-    const x = 18;
-    const y = canvasH - 56;
-
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = "#d8f0d0";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(texto, x + padX, y + h * 0.5);
-  }
-
+  const cx = canvasW * 0.5;
+  const cy = canvasH * 0.5;
+  const r = 6;
+  ctx.strokeStyle = "rgba(232, 255, 224, 0.85)";
+  ctx.lineWidth = 1.25;
+  ctx.beginPath();
+  ctx.moveTo(cx - r, cy);
+  ctx.lineTo(cx + r, cy);
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx, cy + r);
+  ctx.stroke();
   ctx.restore();
 }
 

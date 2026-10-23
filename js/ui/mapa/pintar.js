@@ -263,7 +263,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   if (vista.calorForca && !vista.mini) pintarCalorForcaMundo(ctx);
   for (let i = 0; i < rotas.length; i++) desenharRota(ctx, rotas[i]);
   for (let i = 0; i < cidades.length; i++) desenharLayout(ctx, cidades[i], z);
-  if (!vista.mini) desenharJornadaMundo(ctx);
+  if (!vista.mini && vista.jornada !== false) desenharJornadaMundo(ctx);
   ctx.restore();
 
   const nomes = [];
@@ -395,7 +395,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     pintarLegendaCalor(ctx, w, h, dpr);
   }
 
-  if (!vista.mini) desenharMortesTela(ctx, vista, w, h, dpr, z);
+  if (!vista.mini && vista.jornada !== false) desenharMortesTela(ctx, vista, w, h, dpr, z);
 
   const px = (vista.jogadorX - vista.cx) * z + w / 2;
   const py = (vista.jogadorY - vista.cy) * z + h / 2;

@@ -11,6 +11,11 @@ import {
 import { AREA_KANTO, ehCidade, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { alturaDoRelevo, nivelMarBlocos } from "../mundo/bioma/catalogo.js";
 import {
+  chunksComProps,
+  definirPropsChunk,
+  propsDoChunk,
+} from "../mundo/bioma/propsBioma.js";
+import {
   RAIO_SANTUARIO,
   SHRINE_FOOTPRINT_ROWS,
   SHRINE_VEG_CLEARANCE,
@@ -18,7 +23,12 @@ import {
   shrineDefByIndex,
   shrineMapColor,
 } from "./catalogo.js";
-import { mapaPorDex, shrineQuotaTotal, shrineSpeciesAll } from "./cota.js";
+import {
+  invalidarCacheCotaSantuario,
+  mapaPorDex,
+  shrineQuotaTotal,
+  shrineSpeciesAll,
+} from "./cota.js";
 import { entradaAberta, santuarioLimpo } from "./estadoSantuario.js";
 
 /** Célula de planejamento (= área Kanto). */
@@ -233,6 +243,51 @@ export function getWorldShrinePlan() {
 
 export function limparCacheSantuario() {
   worldPlan = null;
+}
+
+/**
+ * Depois do catálogo carregar: reconstrói o plano e injeta pedras nos chunks
+ * que já streamaram sem santuário (boot race).
+ * @returns {Promise<number>} pedras injetadas
+ */
+export async function sincronizarSantuarioPosCatalogo() {
+  invalidarCacheCotaSantuario();
+  limparCacheSantuario();
+  const plan = getWorldShrinePlan();
+  if (!plan.slots.length) return 0;
+
+  const { aplicarNaLista } = await import("../campo/estadoProps.js");
+  const chaves = chunksComProps();
+  let n = 0;
+  for (const ck of chaves) {
+    const [cxS, cyS] = String(ck).split(",");
+    const cx = Number(cxS);
+    const cy = Number(cyS);
+    const lista = propsDoChunk(cx, cy);
+    if (!lista) continue;
+    const bloqueio = celulasSantuarioChunk(cx, cy);
+    const pedras = propsSantuarioChunk(cx, cy);
+    if (!pedras.length && !lista.some((p) => p?.tipo === "santuario")) continue;
+
+    const filtrada = [];
+    for (let i = 0; i < lista.length; i++) {
+      const p = lista[i];
+      if (!p || p.tipo === "santuario") continue;
+      if (bloqueio?.has(`${Math.floor(p.x)},${Math.floor(p.y)}`)) continue;
+      filtrada.push(p);
+    }
+    for (let i = 0; i < pedras.length; i++) filtrada.push(pedras[i]);
+    aplicarNaLista(filtrada);
+    definirPropsChunk(cx, cy, filtrada);
+    n += pedras.length;
+  }
+  try {
+    const store = await import("../mundo/voxel/storeMundo.js");
+    store.avisarDirty?.();
+  } catch {
+    /* ignore */
+  }
+  return n;
 }
 
 export function findShrineSlotForSpecies(speciesKey) {

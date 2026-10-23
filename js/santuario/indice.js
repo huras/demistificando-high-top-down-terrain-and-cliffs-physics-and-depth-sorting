@@ -1,7 +1,12 @@
 /**
  * API pública do sistema de santuários elementais.
  */
-export { getWorldShrinePlan, findShrineSlotForSpecies, findNearbyShrine } from "./colocacao.js";
+export {
+  getWorldShrinePlan,
+  findShrineSlotForSpecies,
+  findNearbyShrine,
+  sincronizarSantuarioPosCatalogo,
+} from "./colocacao.js";
 export { santuarioPerto, promptSantuario, abrirPuzzleSantuario } from "./interagir.js";
 export { tentarEntrarSantuario, checarSaidaSantuario, sairSantuario } from "./entrar.js";
 export { reclamarTotem } from "./gemas.js";

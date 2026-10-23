@@ -472,10 +472,6 @@
                     <span class="hud-clock__icon" aria-hidden="true"></span>
                     <b data-hora>09:21</b>
                     <span class="hud-clock__period" data-periodo>Dia</span>
-                    <span class="hud-clock__fps" data-tip="FPS" title="FPS">
-                      <b data-fps>0</b>
-                      <span>FPS</span>
-                    </span>
                   </div>
                   <div id="jogo-vento" class="hud-chip hud-chip--wind hud-vento" aria-label="Vento">
                     <div class="hud-vento__view">
@@ -499,6 +495,19 @@
                 <canvas id="jogo-mini" class="area-minimap__canvas" width="220" height="220" aria-hidden="true"></canvas>
                 <div class="area-minimap__north" aria-hidden="true">N</div>
               </aside>
+              <div class="area-minimap__readouts" aria-label="Status do mapa">
+                <div class="area-minimap__mode" aria-label="Modo e zoom">
+                  <b data-minimap-modo>3D</b>
+                  <span data-minimap-meta>zoom 1.00× · real</span>
+                </div>
+                <div class="area-minimap__fps" data-tip="FPS" title="FPS" aria-label="FPS">
+                  <b data-fps>0</b>
+                  <span>FPS</span>
+                </div>
+              </div>
+              <div class="area-minimap__hover" id="area-minimap-hover" hidden>
+                <span data-minimap-hover></span>
+              </div>
               <div id="quest-objective-hud" class="quest-objective-hud" hidden></div>
             </div>
           </div>
@@ -539,16 +548,27 @@
             <div class="mapa-mundo__moldura">
               <canvas id="mapa-mundo-tela" class="mapa-mundo__tela" aria-label="Mapa de Kanto"></canvas>
               <p class="mapa-mundo__titulo" id="mapa-mundo-titulo">Kanto</p>
-              <button
-                type="button"
-                class="mapa-mundo__toggle"
-                id="mapa-calor-forca"
-                aria-pressed="false"
-                title="Mapa de força dos selvagens"
-              >
-                Força
-              </button>
-              <p class="mapa-mundo__dica">Arraste · scroll · botão direito teleporta · Força · M ou Esc fecha</p>
+              <div class="mapa-mundo__toggles">
+                <button
+                  type="button"
+                  class="mapa-mundo__toggle"
+                  id="mapa-calor-forca"
+                  aria-pressed="false"
+                  title="Mapa de força dos selvagens"
+                >
+                  Força
+                </button>
+                <button
+                  type="button"
+                  class="mapa-mundo__toggle is-ativo"
+                  id="mapa-jornada"
+                  aria-pressed="true"
+                  title="Jornada do mestre — trajetória do jogador"
+                >
+                  Jornada
+                </button>
+              </div>
+              <p class="mapa-mundo__dica">Arraste · scroll · botão direito teleporta · Força · Jornada · M ou Esc fecha</p>
               <div class="mapa-mundo__confirm" id="mapa-mundo-confirm" hidden>
                 <p class="mapa-mundo__confirm-txt" id="mapa-mundo-confirm-txt"></p>
                 <div class="mapa-mundo__confirm-acoes">

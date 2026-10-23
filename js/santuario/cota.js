@@ -17,18 +17,27 @@ export const DEX_MAX = 493;
 /** @type {Map<number, object> | null} */
 let porDex = null;
 
+/**
+ * Índice dex→espécie. Não cacheia vazio: o mundo streama antes do catálogo
+ * carregar, e um Map vazio permanente zerava todos os santuários.
+ */
 export function mapaPorDex() {
-  if (porDex) return porDex;
-  porDex = new Map();
+  if (porDex && porDex.size > 0) return porDex;
+  const mapa = new Map();
   const lista = listarEspecies();
   for (let i = 0; i < lista.length; i++) {
     const esp = lista[i];
     const dex = esp?.dex | 0;
-    if (dex >= DEX_MIN && dex <= DEX_MAX && !porDex.has(dex)) {
-      porDex.set(dex, esp);
+    if (dex >= DEX_MIN && dex <= DEX_MAX && !mapa.has(dex)) {
+      mapa.set(dex, esp);
     }
   }
-  return porDex;
+  if (mapa.size > 0) porDex = mapa;
+  return mapa;
+}
+
+export function invalidarCacheCotaSantuario() {
+  porDex = null;
 }
 
 export function especiePorDex(dex) {
