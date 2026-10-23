@@ -7,9 +7,16 @@ import { extrairDistribuicao } from "./js/pokemon/extrairDistribuicao.mjs";
 import { garantirAtlasPmd, interpretarPedidoAtlas } from "./js/pokemon/assarAtlas.mjs";
 
 const raiz = path.dirname(fileURLToPath(import.meta.url));
-const raizRef = path.resolve(raiz, "..", "Pokemon AI");
+const modoProducao =
+  process.env.MODO_PRODUCAO === "1" ||
+  process.env.MODO_PRODUCAO === "true" ||
+  process.env.NODE_ENV === "production";
+const raizRef = process.env.RAIZ_REF
+  ? path.resolve(process.env.RAIZ_REF)
+  : path.resolve(raiz, "..", "Pokemon AI");
 const cacheAtlas = path.join(raiz, ".cache", "pmd-atlas", "v9");
-const porta = 4177;
+const porta = Number(process.env.PORT || process.env.PORTA || 4177);
+const hostBind = modoProducao ? "127.0.0.1" : undefined;
 
 const tipos = {
   ".html": "text/html; charset=utf-8",
@@ -77,6 +84,13 @@ const servidor = http.createServer((req, res) => {
 
   if (url.pathname === "/favicon.ico") {
     res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // Em produção os editores (POST /api/*) ficam bloqueados.
+  if (modoProducao && req.method === "POST" && url.pathname.startsWith("/api/")) {
+    res.writeHead(404);
     res.end();
     return;
   }
@@ -654,6 +668,13 @@ function enviarArquivo(req, res, arquivo) {
   });
 }
 
-servidor.listen(porta, () => {
-  console.log(`http://localhost:${porta}`);
-});
+const aoOuvir = () => {
+  const onde = hostBind || "localhost";
+  console.log(`http://${onde}:${porta}`);
+  if (modoProducao) {
+    console.log(`  producao: RAIZ_REF=${raizRef}`);
+  }
+};
+
+if (hostBind) servidor.listen(porta, hostBind, aoOuvir);
+else servidor.listen(porta, aoOuvir);

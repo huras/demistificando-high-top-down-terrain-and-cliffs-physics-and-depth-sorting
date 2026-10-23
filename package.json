@@ -8,7 +8,9 @@
     "treino:ia": "node treino/iaCombate.mjs",
     "treino:seguir": "node treino/seguir.mjs",
     "mapa:assar": "node js/ui/mapa/assarMapa.mjs",
-    "horizonte:assar": "node js/render/3d/assarHorizonte.mjs"
+    "horizonte:assar": "node js/render/3d/assarHorizonte.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:direct": "node scripts/deploy.mjs --direct"
   },
   "dependencies": {
     "pngjs": "^7.0.0",
