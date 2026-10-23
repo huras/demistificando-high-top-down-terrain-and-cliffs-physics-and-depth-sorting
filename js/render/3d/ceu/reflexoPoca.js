@@ -172,6 +172,8 @@ function corteObliquo() {
 export function desenharReflexo(renderer, scene, camera, planoY, sala, opts = null) {
   uniformsPoca.uTemReflexo.value = 0;
   uniformsPoca.uPlanoPoca.value = planoY || 0;
+  const jogador = opts?.jogador;
+  if (jogador) uniformsPoca.uJogadorPoca.value.set(jogador.x ?? 0, jogador.y ?? 0);
   if (sala || !renderer || !scene || !camera) return;
   if (uniformsPoca.uPoca.value < LIMIAR) return;
 

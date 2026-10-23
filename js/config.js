@@ -369,7 +369,7 @@ export const RAIO_STREAM = 5;
 export const RAIO_STREAM_MIN = 0;
 export const RAIO_STREAM_MAX = 10;
 /** Disco externo da malha suave, em chunks. 0 desliga. Mid ring pra impostores entre stream e horizonte. */
-export const RAIO_SUAVE = 8;
+export const RAIO_SUAVE = 0;
 export const RAIO_SUAVE_MIN = 0;
 export const RAIO_SUAVE_MAX = 20;
 /** Distância entre vértices da malha suave, em blocos. */
@@ -378,7 +378,7 @@ export const PASSO_MALHA_SUAVE = 8;
  * LOD horizonte terraced (estilo BOTW), em unidades de CHUNK_XZ.
  * 80 ≈ 1280 blocos de alcance. 0 desliga.
  */
-export const RAIO_HORIZONTE = 80;
+export const RAIO_HORIZONTE = 0;
 export const RAIO_HORIZONTE_MIN = 0;
 export const RAIO_HORIZONTE_MAX = 160;
 /** Célula da malha horizonte, em blocos (precisa dividir CHUNK_HORIZONTE). */

@@ -571,6 +571,7 @@ export function atribuirSlot(indice, tipo, key) {
   if (indice < 0 || indice >= SLOTS_HOTBAR) return;
   if (!tipo || !key) {
     estado.hotbar[indice] = null;
+    if (estado.slotAtivo === indice) estado.slotAtivo = -1;
   } else {
     estado.hotbar[indice] = { tipo, key };
   }
@@ -750,7 +751,12 @@ export function carregar() {
   if (!estado.hotbar[5] && contarItem("bow") > 0) {
     estado.hotbar[5] = { tipo: TIPO_ITEM.FERRAMENTA, key: "bow" };
   }
-  estado.slotAtivo = bruto.slotAtivo | 0;
+  {
+    const s = Number(bruto.slotAtivo);
+    estado.slotAtivo =
+      Number.isInteger(s) && s >= -1 && s < SLOTS_HOTBAR ? s : -1;
+  }
+  soltarSlotVazio();
   estado.caixas = bruto.caixas?.length === CAIXAS ? bruto.caixas : caixasVazias();
   estado.plots = [];
   const plots = bruto.plots || [];

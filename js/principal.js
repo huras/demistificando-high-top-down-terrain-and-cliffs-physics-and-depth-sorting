@@ -3,10 +3,13 @@ import {
   CHUNK_XZ,
   PASSO_HORIZONTE,
   PASSO_MALHA_SUAVE,
+  RAIO_HORIZONTE,
   RAIO_HORIZONTE_MAX,
   RAIO_HORIZONTE_MIN,
+  RAIO_STREAM,
   RAIO_STREAM_MAX,
   RAIO_STREAM_MIN,
+  RAIO_SUAVE,
   RAIO_SUAVE_MAX,
   RAIO_SUAVE_MIN,
   ZOOM_PASSO,
@@ -393,6 +396,9 @@ function ligarRaioHorizonte() {
 }
 
 function ligarRaioStream() {
+  definirRaioStream(RAIO_STREAM);
+  definirRaioSuave(RAIO_SUAVE);
+  definirRaioHorizonte(RAIO_HORIZONTE);
   const atualizarSuave = ligarRaioSuave();
   ligarRaioHorizonte();
   const input = document.getElementById("raio-stream");

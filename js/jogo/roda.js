@@ -30,6 +30,8 @@ let ponteiro = null;
 let acumScroll = 0;
 let slotAlvo = 0;
 let comShift = false;
+/** Depois de Escape (ou fechar sem equipar), ignora o Digit até soltar. */
+let ignoraAteSoltar = false;
 
 function campoFocado() {
   const tag = document.activeElement?.tagName;
@@ -184,8 +186,14 @@ function fechar(equipar) {
   raiz.classList.remove("is-in");
   raiz.hidden = true;
   if (item) {
-    atribuirSlot(slot, item.tipo, item.key);
-    estado.slotAtivo = contar(item.tipo, item.key) > 0 ? slot : -1;
+    const atual = estado.hotbar[slot];
+    const mesmo = !!(atual && atual.tipo === item.tipo && atual.key === item.key);
+    // Mesmo item já no slot: soltar a roda = toque (liga/desliga), não re-arma sempre.
+    if (mesmo) alternarSlot(slot);
+    else {
+      atribuirSlot(slot, item.tipo, item.key);
+      estado.slotAtivo = contar(item.tipo, item.key) > 0 ? slot : -1;
+    }
   }
   pintar();
 }
@@ -221,6 +229,7 @@ export function tickRoda() {
     if (aberta) fechar(false);
     tecla = "";
     comShift = false;
+    ignoraAteSoltar = false;
     return;
   }
   if (aberta) {
@@ -230,6 +239,7 @@ export function tickRoda() {
       fechar(false);
       tecla = "";
       comShift = false;
+      ignoraAteSoltar = true;
       return;
     }
   }
@@ -241,6 +251,10 @@ export function tickRoda() {
       baixa = TECLAS[i];
       break;
     }
+  }
+  if (ignoraAteSoltar) {
+    if (!baixa) ignoraAteSoltar = false;
+    return;
   }
   const shift = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
   if (baixa && !tecla) {

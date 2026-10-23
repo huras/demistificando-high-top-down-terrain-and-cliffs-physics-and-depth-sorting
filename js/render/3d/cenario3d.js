@@ -122,8 +122,12 @@ function criarLuzSala(cena) {
   return { luz, bulbo, x, y, z };
 }
 
-/** Dentro, o ciclo do céu não entra: a sala fica clara por igual, com a lâmpada parada no teto. */
-function ligarLuzSala(dentro) {
+/**
+ * Dentro, o ciclo do céu não entra.
+ * Casa/lab: lâmpada fixa no teto da sala authored.
+ * Santuário: a dungeon é voxel — luz segue o jogador no bolso.
+ */
+function ligarLuzSala(dentro, corpo = null) {
   const lamp = estado.luzSala;
   if (!lamp) return;
   lamp.luz.intensity = dentro ? 4 : 0;
@@ -133,32 +137,63 @@ function ligarLuzSala(dentro) {
   definirPesoNoite(0);
   uniformsNuvem.uForcaSombra.value = 0;
 
+  const ehSantuario = estadoJogo.interior?.papel === "santuario";
   const chaoY = ALTURA_PRACA * ALTURA_BLOCO;
+  let lx = lamp.x;
+  let ly = lamp.y;
+  let lz = lamp.z;
+  if (ehSantuario && corpo) {
+    lx = corpo.x;
+    lz = corpo.y;
+    ly = chaoY + 4.2;
+    lamp.luz.intensity = 3.2;
+    lamp.luz.distance = 28;
+    lamp.luz.decay = 1.6;
+  } else {
+    lamp.luz.distance = 18;
+    lamp.luz.decay = 2;
+  }
+  lamp.luz.position.set(lx, ly, lz);
+  lamp.bulbo.position.set(lx, ly, lz);
+
   const { sol, hemi, ambient, fill, rim } = estado;
-  sol.color.set(0xfff4e4);
-  sol.intensity = 0.95;
+  if (ehSantuario) {
+    sol.color.set(0xd8e4ff);
+    sol.intensity = 0.55;
+    hemi.color.set(0xc8d4f0);
+    hemi.groundColor.set(0x2a2438);
+    hemi.intensity = 0.55;
+    ambient.color.set(0xb8c4e0);
+    ambient.intensity = 0.42;
+    fill.color.set(0xa8b8e8);
+    fill.intensity = 0.22;
+    estado.renderer.toneMappingExposure = 1.0;
+  } else {
+    sol.color.set(0xfff4e4);
+    sol.intensity = 0.95;
+    hemi.color.set(0xfff7ee);
+    hemi.groundColor.set(0xe8d2b2);
+    hemi.intensity = 0.7;
+    ambient.color.set(0xfff3e6);
+    ambient.intensity = 0.58;
+    fill.color.set(0xffe7c8);
+    fill.intensity = 0.28;
+    estado.renderer.toneMappingExposure = 1.06;
+  }
   sol.castShadow = false;
-  sol.position.set(lamp.x, lamp.y + 14, lamp.z);
-  sol.target.position.set(lamp.x, chaoY, lamp.z);
-
-  hemi.color.set(0xfff7ee);
-  hemi.groundColor.set(0xe8d2b2);
-  hemi.intensity = 0.7;
-
-  ambient.color.set(0xfff3e6);
-  ambient.intensity = 0.58;
-
-  fill.color.set(0xffe7c8);
-  fill.intensity = 0.28;
-  fill.position.set(lamp.x - 8, lamp.y, lamp.z + 5);
-  fill.target.position.set(lamp.x, chaoY, lamp.z);
-
+  sol.position.set(lx, ly + 14, lz);
+  sol.target.position.set(lx, chaoY, lz);
+  fill.position.set(lx - 8, ly, lz + 5);
+  fill.target.position.set(lx, chaoY, lz);
   rim.intensity = 0;
-  estado.renderer.toneMappingExposure = 1.06;
   atualizarLuzBillboard({ sol, ambient, hemi, fill, rim });
 }
 
-/** Dentro da sala 3D o mapa some: sobra a sala e o preto. */
+/**
+ * Dentro da sala 3D o overworld some.
+ * Casa/lab: some o terreno (a sala authored fica sozinha no preto).
+ * Santuário: o dungeon É o terreno voxel — mantém cubos/real.
+ */
 function aplicarVazioSala(dentro) {
   const cena = estado.scene;
   const domo = cena.getObjectByName("ceu-domo");
@@ -172,10 +207,14 @@ function aplicarVazioSala(dentro) {
     domoNoVazio = false;
     return;
   }
+  const ehSantuario = estadoJogo.interior?.papel === "santuario";
   const cubos = terreno.getObjectByName("terreno-cubos");
   const real = terreno.getObjectByName("terreno-real");
-  if (cubos) cubos.visible = false;
-  if (real) real.visible = false;
+  // Só esconde o heightfield outdoor; no santuário a malha voxel é a cena.
+  if (!ehSantuario) {
+    if (cubos) cubos.visible = false;
+    if (real) real.visible = false;
+  }
   if (agua) agua.visible = false;
   if (estado.terrenoSuave?.mesh) estado.terrenoSuave.mesh.visible = false;
   if (estado.terrenoHorizonte?.mesh) estado.terrenoHorizonte.mesh.visible = false;
@@ -191,11 +230,20 @@ function aplicarVazioSala(dentro) {
   const raio = cena.getObjectByName("ceu-relampago");
   if (chuva) chuva.visible = false;
   if (raio) raio.visible = false;
-  cena.background.set(0x000000);
-  if (cena.fog) {
-    cena.fog.color.set(0x000000);
-    cena.fog.near = 500;
-    cena.fog.far = 900;
+  if (ehSantuario) {
+    cena.background.set(0x0a0c14);
+    if (cena.fog) {
+      cena.fog.color.set(0x0a0c14);
+      cena.fog.near = 14;
+      cena.fog.far = 48;
+    }
+  } else {
+    cena.background.set(0x000000);
+    if (cena.fog) {
+      cena.fog.color.set(0x000000);
+      cena.fog.near = 500;
+      cena.fog.far = 900;
+    }
   }
 }
 
@@ -660,7 +708,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     raioBlocos: obterRaioStream() * CHUNK_XZ,
     galeLigado: !interior && !emCena,
   });
-  ligarLuzSala(interior);
+  ligarLuzSala(interior, corpo);
 
   const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
   estado.edificios?.atualizar?.(mx, my, yaw, inclinacao);
@@ -712,6 +760,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   const chaoVis = (corpo.z ?? 0) * ALTURA_BLOCO;
   // Só atores no re-pose: vegetação/edifício reescrevem milhares de instâncias 2×/frame.
   desenharReflexo(estado.renderer, estado.scene, camRender, chaoVis, !!estadoJogo.interior?.sala3d, {
+    jogador: { x: corpo.x, y: corpo.y },
     prepararBillboards(camVirtual) {
       const yawVirt = yawDeCameraThree(camVirtual);
       const inclReflexo = 0;

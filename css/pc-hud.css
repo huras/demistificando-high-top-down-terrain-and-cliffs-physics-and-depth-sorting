@@ -419,8 +419,7 @@ body.is-pc-open #jogo-dialogo,
 body.is-pc-open #jogo-toast,
 body.is-pc-open #jogo-painel,
 body.is-pc-open #jogo-construir,
-body.is-pc-open #jogo-craft,
-body.is-pc-open #jogo-roda {
+body.is-pc-open #jogo-craft {
   visibility: hidden !important;
   pointer-events: none !important;
 }

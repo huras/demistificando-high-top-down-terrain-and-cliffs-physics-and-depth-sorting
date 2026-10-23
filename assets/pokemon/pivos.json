@@ -118,5 +118,20 @@
     "offsetY": -0.08,
     "dx": 0,
     "dy": 0
+  },
+  "horsea": {
+    "offsetY": -0.06,
+    "dx": 0,
+    "dy": 0
+  },
+  "seadra": {
+    "offsetY": -0.08,
+    "dx": 0,
+    "dy": 0
+  },
+  "kingdra": {
+    "offsetY": -0.06,
+    "dx": 0,
+    "dy": 0
   }
 }

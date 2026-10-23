@@ -18,16 +18,27 @@ export const uniformsPoca = {
   uMatReflexo: { value: new THREE.Matrix4() },
   uPlanoPoca: { value: 0 },
   uTemReflexo: { value: 0 },
+  /** XZ do jogador — fade do RT pela distância dele, não da câmera. */
+  uJogadorPoca: { value: new THREE.Vector2() },
 };
 
 let nivel = 0;
 let tempo = 0;
+
+/** Desligado: sem azul/molhado nem passe de reflexo. */
+const POCA_LIGADA = false;
 
 /**
  * Enche ~0,04/s na chuva cheia e seca ~0,02/s no tempo limpo.
  * Sem céu analítico: só escurece e, com o passe, puxa árvore e estrutura.
  */
 export function atualizarPoca(dt, chuva) {
+  if (!POCA_LIGADA) {
+    nivel = 0;
+    uniformsPoca.uPoca.value = 0;
+    uniformsPoca.uTemReflexo.value = 0;
+    return;
+  }
   const c = Math.max(0, Math.min(1, chuva || 0));
   nivel += dt * (0.04 * c - 0.02 * (1 - c));
   if (nivel < 0) nivel = 0;
@@ -46,6 +57,7 @@ uniform sampler2D uReflexoPoca;
 uniform mat4 uMatReflexo;
 uniform float uPlanoPoca;
 uniform float uTemReflexo;
+uniform vec2 uJogadorPoca;
 ${GLSL_MASCARA_AGUA}
 float pesoReflexoPoca = 0.0;
 float usoReflexoPoca = 0.0;
@@ -119,8 +131,8 @@ export const FRAG_POCA_SAIDA = `
     // Só o terraço ativo usa o RT; orla do mar reduz jitter (evita riscos no UV).
     longePlano = 1.0 - smoothstep(0.08, 0.35, abs(vMundoCeu.y - uPlanoPoca));
     orlaMar = smoothstep(uNivelMar, uNivelMar + 1.2, vMundoCeu.y);
-    // Mesmo terraço no horizonte não amostra o RT (barato e evita “reflexo mundial”).
-    pertoReflexo = 1.0 - smoothstep(12.0, 22.0, length(vMundoCeu.xz - cameraPosition.xz));
+    // Mesmo terraço no horizonte não amostra o RT (distância do jogador, não da câmera).
+    pertoReflexo = 1.0 - smoothstep(12.0, 22.0, length(vMundoCeu.xz - uJogadorPoca));
     jitPoca = manchaPoca * orlaMar * longePlano * pertoReflexo;
     pEsp = vMundoCeu;
     pEsp.x += ondaPoca * 0.15 * jitPoca;
@@ -157,5 +169,6 @@ export function ligarUniformsPoca(shader) {
   shader.uniforms.uMatReflexo = uniformsPoca.uMatReflexo;
   shader.uniforms.uPlanoPoca = uniformsPoca.uPlanoPoca;
   shader.uniforms.uTemReflexo = uniformsPoca.uTemReflexo;
+  shader.uniforms.uJogadorPoca = uniformsPoca.uJogadorPoca;
   ligarUniformsMascaraAgua(shader);
 }

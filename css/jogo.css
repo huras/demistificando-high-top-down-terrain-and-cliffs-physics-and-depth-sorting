@@ -163,8 +163,7 @@
 /* toast: posicionado via .hud-toast-stack */
 
 .jogo-dialogo,
-.jogo-painel,
-.jogo-roda {
+.jogo-painel {
   pointer-events: auto;
   background: #f6efe2;
   color: #1c1917;
@@ -317,18 +316,6 @@
 .capsula-resto {
   grid-column: 1 / -1;
   margin: 4px 0;
-}
-
-.jogo-roda {
-  position: absolute;
-  left: 50%;
-  bottom: 96px;
-  transform: translateX(-50%);
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 8px;
-  padding: 12px;
-  width: min(420px, calc(100% - 32px));
 }
 
 .jogo-abas,
