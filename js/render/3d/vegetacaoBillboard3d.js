@@ -22,6 +22,8 @@ import { FASE } from "../../campo/estadoProps.js";
 import { imagemToco } from "../../campo/visualToco.js";
 import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "../../campo/sacudida.js";
 import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto, quadroArbusto } from "./folhaBerry.js";
+import { ensureShrineArtLoaded, imagemSantuario } from "../../santuario/arte.js";
+import { SHRINE_DRAW_SCALE } from "../../santuario/catalogo.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
@@ -32,6 +34,7 @@ import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto, quadroArbusto } from
 const CAP_INSTANCIAS = 4096;
 
 function estiloDe(prop) {
+  if (prop.tipo === "santuario") return SHRINE_DRAW_SCALE;
   if (prop.tipo === "berry") return ESCALA_ARBUSTO;
   if (prop.tipo === "arvore") return VEG_ARVORE_ESCALA;
   if (prop.tipo === "pedra" || prop.tipo === "cristal") return 1;
@@ -116,6 +119,10 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function imagemDe(prop) {
+    if (prop?.tipo === "santuario") {
+      ensureShrineArtLoaded();
+      return imagemSantuario(prop.atlasCol ?? 0);
+    }
     if (prop?.tipo === "berry") return imagemArbusto(prop.berryKey, prop.estagio || "maduro", 0);
     const base = imagemBase(prop);
     if (!base) return null;
@@ -136,6 +143,10 @@ export function criarVegetacaoBillboard3d() {
     if ((prop.tipo === "pedra" || prop.tipo === "cristal") && prop.hpMax > 0 && prop.hp < prop.hpMax - 1e-3) {
       const t = Math.max(0, Math.min(1, prop.hp / prop.hpMax));
       corInst.setRGB(0.42 + 0.58 * t, 0.34 + 0.66 * t, 0.3 + 0.7 * t);
+      return corInst;
+    }
+    if (prop.tipo === "santuario" && !prop.cleared) {
+      corInst.setRGB(1.15, 1.1, 1.25);
       return corInst;
     }
     corInst.setRGB(1, 1, 1);

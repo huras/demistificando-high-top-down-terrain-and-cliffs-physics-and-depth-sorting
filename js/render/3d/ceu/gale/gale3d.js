@@ -4,7 +4,8 @@
 import * as THREE from "three";
 import { ALTURA_PRACA } from "../../../../mundo/regiao/amostraKanto.js";
 import { CLIMA_CFG } from "../../../../clima/config.js";
-import { obterVentoMundo } from "../../../../clima/amostra.js";
+import { obterClimaJogo, obterVentoMundo } from "../../../../clima/amostra.js";
+import { CLIMA_LOGICO } from "../../../../clima/kinds.js";
 import { ventoHud01 } from "../../../../clima/vento.js";
 import {
   atualizarCampoGale,
@@ -141,7 +142,9 @@ export function criarGale3d(cena) {
     for (; i < faixas.length; i++) faixas[i].mesh.visible = false;
 
     // Opacidade única no material compartilhado (densidade 2× sem saturar).
-    matBase.opacity = 0.1 + ventoHud01(vento, CLIMA_CFG) * 0.12;
+    const fill = ventoHud01(vento, CLIMA_CFG);
+    const vendaval = obterClimaJogo()?.logicalKind === CLIMA_LOGICO.VENDAVAL;
+    matBase.opacity = (0.1 + fill * 0.12) * (vendaval ? 1.45 : 1);
   }
 
   return { atualizar, grupo };

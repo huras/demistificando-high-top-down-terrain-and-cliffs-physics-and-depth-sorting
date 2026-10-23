@@ -60,6 +60,23 @@ export const PRESETS = {
     pesoZenite: 0.55,
     neblina: 0xc48848,
   },
+  /** Vento forte + nuvens; partículas zeradas — o visual são as faixas de gale. */
+  vendaval: {
+    limiar: 0.34,
+    forcaSombra: 0.72,
+    vento: 22,
+    sol: 0.7,
+    umidade: 0.12,
+    chuva: 0,
+    areia: 0,
+    neve: 0,
+    raio: 0,
+    neblinaPerto: 0.78,
+    neblinaLonge: 0.72,
+    pesoNeblina: 0.32,
+    pesoZenite: 0.2,
+    neblina: 0x8a96a0,
+  },
   nevasca: {
     limiar: 0.26,
     forcaSombra: 0.66,

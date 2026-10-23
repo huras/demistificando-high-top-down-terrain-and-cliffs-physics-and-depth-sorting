@@ -3,12 +3,12 @@ import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import { marcarSombraSuja } from "./ceu/sombraEstavel.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
-  ALTURA_BLOCO,
   CHUNK_XZ,
   CHUNK_Y,
   MESH_CHUNKS_POR_FRAME,
   TRONCO_INSET,
 } from "../../config.js";
+import { escalaYGrupoRelevo } from "./escalaVertical.js";
 import { FLUIDO } from "../../mundo/agua/fluidos.js";
 import { colunaAgua, garantirFluxoChunk } from "../../mundo/agua/fluxo.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
@@ -1919,7 +1919,7 @@ function construirProps() {
 export function criarTerrenoMalha(atlas = null) {
   const grupo = new THREE.Group();
   grupo.name = "terreno";
-  grupo.scale.set(1, ALTURA_BLOCO, 1);
+  grupo.scale.set(1, escalaYGrupoRelevo(), 1);
 
   const grupoCubos = new THREE.Group();
   grupoCubos.name = "terreno-cubos";

@@ -30,6 +30,7 @@ import { atualizarLaboratorio, montarLaboratorio3d } from "./laboratorio3d.js";
 import { atualizarCentro, montarCentro3d } from "./centro3d.js";
 import { montarLoja3d } from "./loja3d.js";
 import { carregarSpritesPredio, chaveSpritePredio, criarSpritePredio, montarUsina } from "./prediosSprite.js";
+import { aplicarEscalaCasa, aplicarEscalaProp, aplicarFatorYCasa } from "./escalaVertical.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
@@ -326,7 +327,8 @@ export function carregarMoldeCidade(id) {
   return carregarObj(id).then((raiz) => {
     const medido = preparar(raiz, id === "poste");
     const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
-    medido.grupo.scale.setScalar(escala);
+    if (id === "poste") aplicarEscalaProp(medido.grupo, escala);
+    else aplicarEscalaCasa(medido.grupo, escala);
     return medido.grupo;
   });
 }
@@ -389,7 +391,7 @@ function criarCartaoCasa(folha) {
   mesh.castShadow = false;
   mesh.receiveShadow = true;
   mesh.rotation.order = "YXZ";
-  const raiz = new THREE.Group();
+  const raiz = aplicarFatorYCasa(new THREE.Group());
   raiz.add(mesh);
   raiz.userData.cartao = mesh;
   return raiz;
@@ -475,7 +477,8 @@ export function criarEdificiosCidade() {
         const [id, item] = pares[i];
         const medido = preparar(item.grupo, id === "poste");
         const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
-        medido.grupo.scale.setScalar(escala);
+        if (id === "poste") aplicarEscalaProp(medido.grupo, escala);
+        else aplicarEscalaCasa(medido.grupo, escala);
         moldes.set(id, medido);
       }
       const acender = (inst, dono) => pendurarLuzes(inst, "poste", dono);

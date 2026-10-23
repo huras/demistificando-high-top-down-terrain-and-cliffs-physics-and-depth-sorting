@@ -9,6 +9,8 @@ import {
   poolDoBioma,
 } from "../../pokemon/distribuicao/indice.js";
 import { idsDeKit, obterKit } from "../../mundo/bioma/kits.js";
+import { findShrineSlotForSpecies } from "../../santuario/colocacao.js";
+import { nomeTemplo } from "../../santuario/nomes.js";
 
 /** @type {Map<string, string[]> | null} */
 let cache = null;
@@ -98,7 +100,13 @@ export function listarHabitats(speciesKey) {
   if (!chave) return [];
   if (!distribuicaoPronta()) return [];
   if (!cache) reconstruir();
-  return cache?.get(chave)?.slice() || [];
+  const nomes = cache?.get(chave)?.slice() || [];
+  const slot = findShrineSlotForSpecies(chave);
+  if (slot) {
+    const label = nomeTemplo(slot.id, slot.element);
+    if (!nomes.includes(label)) nomes.push(label);
+  }
+  return nomes;
 }
 
 /** Invalida o índice (ex.: após recarregar distribuição). */

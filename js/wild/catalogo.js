@@ -219,6 +219,16 @@ export const CHAVES = Object.freeze({
     unica: true,
     dica: "Divide a EXP com o time.",
   }),
+  elementalShrineDevice: Object.freeze({
+    key: "elementalShrineDevice",
+    nome: "Dispositivo de Santuário",
+    nameKey: "keys.elementalShrineDevice",
+    tipo: TIPO_ITEM.CHAVE,
+    compra: 0,
+    venda: 0,
+    unica: true,
+    dica: "Aponta para o santuário elemental intacto mais próximo.",
+  }),
 });
 
 export const ESTOQUE_LOJA = Object.freeze([

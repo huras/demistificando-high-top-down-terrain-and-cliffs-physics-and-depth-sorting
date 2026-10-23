@@ -11,6 +11,9 @@ import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { predioNoLayout } from "../mundo/regiao/volumesCidade.js";
 import { ancoraDoHub } from "./hub.js";
 import { arbustoMaduroPerto } from "../campo/colherBerry.js";
+import { promptSantuario, santuarioPerto } from "../santuario/interagir.js";
+import { puzzleSantuarioAberto } from "../santuario/puzzleModal.js";
+import { totemPerto } from "../santuario/interior.js";
 
 const FOLGA_ESCALADA_MS = 160;
 let escaladaAte = 0;
@@ -46,6 +49,19 @@ function folgaEscalada() {
 export function acaoContexto(ctx) {
   const { corpo, entrarPorta, curaPerto, alvoLab, alvoHub, papelHub, interior } = ctx;
   if (!corpo) return null;
+  if (puzzleSantuarioAberto()) return null;
+
+  if (interior?.papel === "santuario") {
+    const totem = totemPerto(corpo.x, corpo.y);
+    if (totem) {
+      return {
+        id: "totemSantuario",
+        rotulo: totem.cleared ? "Vazio" : "Tocar",
+        ancora: { x: totem.x, y: totem.y, z: corpo.z || 0 },
+        totem,
+      };
+    }
+  }
 
   if (entrarPorta) {
     escaladaAte = 0;
@@ -91,6 +107,11 @@ export function acaoContexto(ctx) {
   if (noMundo && faceAgora(corpo)) return { id: "escalar", rotulo: "Escalar", ancora: null };
 
   if (!interior && !corpo.escalando) {
+    const stone = santuarioPerto(corpo.x, corpo.y);
+    if (stone) {
+      const p = promptSantuario(stone);
+      if (p) return p;
+    }
     const placa = placaPerto(corpo.x, corpo.y, corpo.z || 0);
     if (placa) {
       return {

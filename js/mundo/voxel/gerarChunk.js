@@ -12,10 +12,16 @@ import { aplicarSalaNoChunk } from "../cidade/sala3d.js";
 import { aplicarLaboratorioNoChunk, dentroDoTerrenoLaboratorio } from "../cidade/laboratorio.js";
 import { aplicarCentroNoChunk, plantaCentro } from "../cidade/centro.js";
 import { aplicarLojaNoChunk, plantaLoja } from "../cidade/loja.js";
+import { aplicarSantuarioNoChunk } from "../../santuario/carimbar.js";
 import { dentroDoTerrenoHub } from "../cidade/plantaHub.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { aplicarNaLista } from "../../campo/estadoProps.js";
 import { arbustoNaCelula, MAX_ARBUSTO_CHUNK, spriteBerry } from "../bioma/berriesBioma.js";
+import {
+  celulasSantuarioChunk,
+  propsSantuarioChunk,
+} from "../../santuario/colocacao.js";
+import { dentroDoTerrenoSantuario } from "../../santuario/interior.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { carimbarCorpos } from "../agua/carimbar.js";
 import { FLUIDO } from "../agua/fluidos.js";
@@ -173,6 +179,7 @@ export function* passosChunk(chunk, seed) {
 
   const cronProps = perf ? cronometroFatia("propsBerries") : null;
   const props = [];
+  const bloqueioSantuario = celulasSantuarioChunk(chunk.cx, chunk.cy);
   let arbustos = 0;
   coluna = 0;
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
@@ -198,6 +205,8 @@ export function* passosChunk(chunk, seed) {
       if (dentroDoTerrenoLaboratorio(wx, wy)) continue;
       if (dentroDoTerrenoHub(plantaCentro(), wx, wy)) continue;
       if (dentroDoTerrenoHub(plantaLoja(), wx, wy)) continue;
+      if (dentroDoTerrenoSantuario(wx, wy)) continue;
+      if (bloqueioSantuario?.has(`${wx},${wy}`)) continue;
       const planta = plantaDoRelevo(wx, wy);
       const livre = !planta || planta.classe === "grama";
       const chaveBerry = livre && arbustos < MAX_ARBUSTO_CHUNK && h >= nivel ? arbustoNaCelula(wx, wy) : null;
@@ -230,6 +239,8 @@ export function* passosChunk(chunk, seed) {
       }
     }
   }
+  const pedras = propsSantuarioChunk(chunk.cx, chunk.cy);
+  for (let i = 0; i < pedras.length; i++) props.push(pedras[i]);
   aplicarNaLista(props);
   definirPropsChunk(chunk.cx, chunk.cy, props);
   cronProps?.fim();
@@ -243,6 +254,7 @@ export function* passosChunk(chunk, seed) {
   medir("laboratorio", () => aplicarLaboratorioNoChunk(chunk));
   medir("centro", () => aplicarCentroNoChunk(chunk));
   medir("loja", () => aplicarLojaNoChunk(chunk));
+  medir("santuario", () => aplicarSantuarioNoChunk(chunk));
   medir("recalcularSuperficies", () => recalcularSuperficies(chunk));
   chunk.gerado = true;
   chunk.sujo = true;

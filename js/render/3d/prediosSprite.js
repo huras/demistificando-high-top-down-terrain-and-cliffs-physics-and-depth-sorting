@@ -14,6 +14,7 @@ import {
   medidaSprite,
   pontosGradeUsina,
 } from "../../mundo/cidade/spritesPredio.js";
+import { aplicarFatorYCasa } from "./escalaVertical.js";
 
 const ALFA = 0.12;
 
@@ -89,7 +90,7 @@ export function criarSpritePredio(folha) {
   mesh.castShadow = false;
   mesh.receiveShadow = true;
   mesh.rotation.order = "YXZ";
-  const raiz = new THREE.Group();
+  const raiz = aplicarFatorYCasa(new THREE.Group());
   raiz.add(mesh);
   raiz.userData.cartao = mesh;
   return raiz;

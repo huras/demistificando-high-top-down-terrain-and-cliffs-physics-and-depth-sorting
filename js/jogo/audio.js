@@ -301,6 +301,7 @@ export function chaveBgm(zona, clima, interiorKind) {
   if (interiorKind === "heal") return "hub.center";
   if (interiorKind === "mart") return "hub.mart";
   if (interiorKind === "house") return "hub.house";
+  if (interiorKind === "shrine" || interiorKind === "santuario") return "hub.house";
   if (clima && clima !== "limpo") return "chuva";
   if (zona?.tipo === "cidade") return "cidade";
   return "campo";

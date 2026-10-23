@@ -28,6 +28,7 @@ import {
   facesParedeInterior,
 } from "./cartaoPe.js";
 import { carregarMoldesProps, criarBolasCuraNaMalha, instanciarProp } from "./propsObj3d.js";
+import { fatorYCasa, fatorYProp } from "./escalaVertical.js";
 
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
 const FOLHA_VASO = "/ref/sprites/interiors/Safari-Zone-Inner-Room-Hospital-Tileset-629434880.png";
@@ -75,7 +76,7 @@ function bloco(largura, altura, fundo, x, y, z, mat) {
 function anexarCasca(grupo, piso) {
   const planta = plantaLaboratorio();
   const parede = facesParedeInterior(materialCaixa("#c4b8a8"));
-  const h = ALTURA_PAREDE_LAB;
+  const h = ALTURA_PAREDE_LAB * fatorYCasa();
   const y = ALTURA_PRACA + h * 0.5;
   for (let i = 0; i < planta.muros.length; i++) {
     const r = planta.muros[i];
@@ -163,7 +164,7 @@ function anexarBolas(grupo) {
     cinto.rotation.z = Math.PI / 2;
     raiz.add(corpo);
     raiz.add(cinto);
-    raiz.position.set(ORIGEM_LAB_X + bola.x, ALTURA_PRACA + 1.7, ORIGEM_LAB_Y + bola.y);
+    raiz.position.set(ORIGEM_LAB_X + bola.x, ALTURA_PRACA + 1.7 * fatorYProp(), ORIGEM_LAB_Y + bola.y);
     grupo.add(raiz);
   }
 }

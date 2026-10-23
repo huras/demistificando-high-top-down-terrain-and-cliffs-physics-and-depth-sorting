@@ -155,6 +155,18 @@ export default {
     "vazio": "Empty.",
     "idioma": "Language"
   },
+  "keys": {
+    "elementalShrineDevice": "Elemental Shrine Device"
+  },
+  "santuario": {
+    "entrar": "Enter",
+    "falar": "Talk",
+    "totemVazio": "The totem already gave its gem.",
+    "totemOk": "The elemental gem shines in your bag.",
+    "puzzleHint": "Drag the pieces to rebuild the portrait.",
+    "questTitulo": "Elemental shrines",
+    "questTexto": "Talk to Rina in the lab about the shrines."
+  },
   "pokedex": {
     "titulo": "Pokédex",
     "fechar": "Close Pokédex",

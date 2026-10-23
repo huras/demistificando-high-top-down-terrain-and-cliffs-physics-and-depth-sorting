@@ -1,11 +1,25 @@
 /**
- * Célula horizontal = 1. Altura do bloco = 1 (mesmo do lado).
- * A simulação conta degraus (1 bloco = 1); a tela e o 3D escalam o eixo vertical com isto.
+ * Escalas Y do 3D — knobs separados (não misturar cliff com casa/prop).
+ *
+ * - ALTURA_BLOCO: bloco de simulação → metros Three (jogador, câmera, chão).
+ * - ESCALA_Y_RELEVO: só a malha de cliffs/relevo (multiplica ALTURA_BLOCO).
+ * - ESCALA_Y_CASA / ESCALA_Y_PROP / ESCALA_Y_CARTAO: arte em espaço mundo,
+ *   independentes do relevo (casas/props vivem sob o grupo do terreno e
+ *   compensam com fator local = desejado / (ALTURA_BLOCO·ESCALA_Y_RELEVO)).
  */
 export const ALTURA_BLOCO = 1;
+/** 1 = cliffs acompanham o jogador; >1 só estica relevo (e o chão tem de acompanhar). */
+export const ESCALA_Y_RELEVO = 1;
+/** Casas / lotes / prédios GLB (0.5 ≈ look antigo com ALTURA_BLOCO 0.5). */
+export const ESCALA_Y_CASA = 0.5;
+/** Props OBJ, móveis, balcão, postes. */
+export const ESCALA_Y_PROP = 0.5;
+/** Billboards/cartões em pé (1 = altura em pixels→mundo sem squash extra). */
+export const ESCALA_Y_CARTAO = 1;
+
 export const TILE = 16;
-/** Pixels de um degrau, antes do ESCALA. */
-export const FACE_H = TILE * ALTURA_BLOCO;
+/** Pixels de um degrau de relevo, antes do ESCALA. */
+export const FACE_H = TILE * ALTURA_BLOCO * ESCALA_Y_RELEVO;
 export const ESCALA = 2;
 export const EPS_SORT = 0.001;
 

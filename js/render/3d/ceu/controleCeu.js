@@ -18,13 +18,14 @@ export {
   ROTACAO_SOL_PADRAO,
 };
 
-export const CLIMAS = ["limpo", "chuva", "areia", "nevasca"];
+export const CLIMAS = ["limpo", "chuva", "areia", "nevasca", "vendaval"];
 
 const NOMES = {
   limpo: "Limpo",
   chuva: "Chuva",
   areia: "Tempestade de areia",
   nevasca: "Nevasca",
+  vendaval: "Vendaval",
 };
 
 let hora = 9.35;

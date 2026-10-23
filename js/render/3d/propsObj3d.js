@@ -10,6 +10,7 @@ import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 import { aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
 import { aplicarTintCorreio } from "./props/tintCorreio.js";
 import { SLOTS_CURA } from "../../jogo/maquinaCura.js";
+import { aplicarEscalaProp } from "./escalaVertical.js";
 
 const cache = new Map();
 const pedidos = new Map();
@@ -210,7 +211,7 @@ export function carregarMoldeProp(id) {
       const escala = (def.alturaAlvo || 1.5) / medido.sy;
       if (!Number.isFinite(escala) || escala <= 0) throw new Error(`escala invalida ${escala}`);
       const multY = Number.isFinite(def.escalaY) && def.escalaY > 0 ? def.escalaY : 1;
-      medido.grupo.scale.set(escala, escala * multY, escala);
+      aplicarEscalaProp(medido.grupo, escala, multY);
       medido.grupo.name = `molde-${id}`;
       const molde = {
         id,

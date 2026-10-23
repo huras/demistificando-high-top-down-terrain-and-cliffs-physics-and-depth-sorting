@@ -1,0 +1,35 @@
+.shrine-compass {
+  position: absolute;
+  right: 14px;
+  bottom: 118px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(8, 12, 20, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+  color: #f8fafc;
+  font: 600 12px/1.2 "Segoe UI", sans-serif;
+}
+
+.shrine-compass[hidden] {
+  display: none;
+}
+
+.shrine-compass__seta {
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 14px solid #e2e8f0;
+  transform-origin: 50% 70%;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.45));
+}
+
+.shrine-compass__dist {
+  min-width: 3.2em;
+  letter-spacing: 0.02em;
+}

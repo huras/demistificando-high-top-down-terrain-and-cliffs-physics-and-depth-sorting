@@ -28,6 +28,10 @@ import { especie } from "./dados.js";
 import { nivelEm } from "./distribuicao/forca.js";
 import { sortearEspecie } from "./distribuicao/sorteio.js";
 import { aquecerGrito, tocarGrito } from "../jogo/som/gritos.js";
+import {
+  defensoresSantuario,
+  tickDefensoresSantuario,
+} from "../santuario/defensores.js";
 
 const lares = new Map();
 const ativos = [];
@@ -494,10 +498,11 @@ export function atualizarPopulacao(corpo, dt, relogio) {
   tickMoradores();
   tentarGrama(corpo);
   tickGrama();
+  tickDefensoresSantuario();
 }
 
 export function selvagensAtivos() {
-  return ativos.concat(grama);
+  return ativos.concat(grama).concat(defensoresSantuario());
 }
 
 export function marcarCaptura(ator) {

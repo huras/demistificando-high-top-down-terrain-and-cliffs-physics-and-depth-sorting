@@ -6,6 +6,9 @@ import { SPAWN as SPAWN_DEMO } from "../../mundo/mapaDemo.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO, zonaEm } from "../../mundo/regiao/grafoKanto.js";
 import { ROTAS_KANTO } from "../../mundo/regiao/kantoRotas.js";
+import { marcasSantuario } from "../../santuario/mapaMarcas.js";
+import { marcasBerry } from "../../mapa/marcasBerry.js";
+import { marcasWild } from "../../mapa/marcasWild.js";
 
 const extras = [];
 
@@ -108,7 +111,7 @@ export function rotasDoMapa() {
 }
 
 export function marcasExtras() {
-  return extras;
+  return extras.concat(marcasSantuario(), marcasBerry(), marcasWild());
 }
 
 export function layoutDaCidade(cidade) {

@@ -17,6 +17,8 @@
   <link rel="stylesheet" href="css/hud-chrome.css" />
   <link rel="stylesheet" href="css/action-prompt-hud.css" />
   <link rel="stylesheet" href="css/item-get-hud.css" />
+  <link rel="stylesheet" href="css/entrance-puzzle.css" />
+  <link rel="stylesheet" href="css/shrine-compass.css" />
   <script type="importmap">
   {
     "imports": {
@@ -154,6 +156,21 @@
             <section id="jogo-construir" class="jogo-painel jogo-painel--lado" hidden></section>
             <section id="jogo-craft" class="jogo-painel jogo-painel--lado" hidden></section>
             <section id="jogo-roda" class="jogo-roda" hidden></section>
+
+            <div id="entrance-puzzle" class="entrance-puzzle" hidden role="dialog" aria-modal="true" aria-labelledby="entrance-puzzle-title">
+              <div class="entrance-puzzle__panel">
+                <h2 id="entrance-puzzle-title" class="entrance-puzzle__title" data-entrance-puzzle-title>Santuário</h2>
+                <p class="entrance-puzzle__hint" data-entrance-puzzle-hint>Arraste as peças para montar o retrato.</p>
+                <div class="entrance-puzzle__layout">
+                  <img class="entrance-puzzle__preview" data-entrance-puzzle-preview alt="" draggable="false" />
+                  <div class="entrance-puzzle__board" data-entrance-puzzle-board></div>
+                </div>
+                <div class="entrance-puzzle__actions">
+                  <button type="button" class="entrance-puzzle__debug" data-entrance-puzzle-debug>Resolver (debug)</button>
+                  <button type="button" class="entrance-puzzle__cancel" data-entrance-puzzle-cancel>Cancelar</button>
+                </div>
+              </div>
+            </div>
 
             <div
               id="pokedex-hud"

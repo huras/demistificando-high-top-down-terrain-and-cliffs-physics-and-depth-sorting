@@ -38,6 +38,12 @@ import { atualizarCuraMaquina, curaOcupada } from "./maquinaCura.js";
 import { promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
 import { acaoContexto, acaoConsomeE } from "./acaoContexto.js";
+import { tentarEntrarSantuario } from "../santuario/entrar.js";
+import { reclamarTotem } from "../santuario/gemas.js";
+import { tickFeixe, feixeAtivo } from "../santuario/feixe.js";
+import { atualizarBussolaSantuario } from "../santuario/bussolaHud.js";
+import { puzzleSantuarioAberto } from "../santuario/puzzleModal.js";
+import { tickDescobertaMapa } from "../mapa/descoberta.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
 import {
   abrirMapa,
@@ -117,6 +123,7 @@ export function tickJogo(dt, corpo) {
   registrarParty();
   soltarSlotVazio();
   tickCampo(dt);
+  tickDescobertaMapa(corpo, { interior: !!estado.interior });
   tickBlocos(corpo, dt);
   if (!campoFocado()) {
     tickRoda();
@@ -170,14 +177,32 @@ export function tickJogo(dt, corpo) {
   estado.promptAncora = acao?.ancora || null;
   const livreDeMenu = !estado.painel && !estado.roda && !estado.construir && !estado.craft && !estado.ganhoAberto;
   if (!mapaAberto() && !campoFocado() && estado.dialogo && teclaAgora("KeyE")) avancarDialogo();
-  else if (!mapaAberto() && !campoFocado() && livreDeMenu && acaoConsomeE(acao) && teclaAgora("KeyE")) {
+  else if (
+    !mapaAberto() &&
+    !campoFocado() &&
+    !puzzleSantuarioAberto() &&
+    !feixeAtivo() &&
+    livreDeMenu &&
+    acaoConsomeE(acao) &&
+    teclaAgora("KeyE")
+  ) {
     executarAcaoE(acao, corpo, porta, alvoLab, alvoHub);
   }
+  tickFeixe(dt);
+  atualizarBussolaSantuario(corpo, !!estado.interior);
   const texto =
     alvoLab ? promptDoLaboratorio(alvoLab) : alvoHub ? promptDoHub(papelHub, alvoHub) : promptDe(alvo, ferramenta);
   estado.prompt = acaoConsomeE(acao) ? "" : texto;
   const zona = zonaNoMundo(corpo.x, corpo.y);
-  definirBgm(chaveBgm(zona, obterClima(), estado.interior?.sala?.kind));
+  definirBgm(
+    chaveBgm(
+      zona,
+      obterClima(),
+      estado.interior?.papel === "santuario"
+        ? "santuario"
+        : estado.interior?.sala?.kind
+    )
+  );
   atualizarAudio(dt, lerMixClima(), !!estado.interior);
   atualizarBillboardsBerry();
   if (estado.itemGet) {
@@ -199,7 +224,15 @@ export function tickJogo(dt, corpo) {
 
 function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
   if (acao.id === "entrar") tentarEntrar(corpo, porta);
-  else if (acao.id === "cura") {
+  else if (acao.id === "falarSantuario" || acao.id === "entrarSantuario") {
+    tentarEntrarSantuario(corpo, acao.stone);
+  } else if (acao.id === "totemSantuario") {
+    if (acao.totem?.cleared) mostrar("O totem já entregou sua gema.");
+    else {
+      const r = reclamarTotem();
+      if (r.msg) mostrar(r.msg);
+    }
+  } else if (acao.id === "cura") {
     if (alvoHub?.tipo === "cura") executarAlvoHub(alvoHub);
     else executarAlvoLaboratorio(alvoLab);
   } else if (acao.id === "pc") executarAlvoHub(alvoHub);

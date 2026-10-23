@@ -58,11 +58,8 @@ export function displayPrecip(familia) {
 
 /** Preset GPU do céu 3D a partir do display. */
 export function presetCeuDe(display, familia) {
-  if (display === CLIMA.VENDAVAL) {
-    if (familia === FAMILIA_PRECIP.AREIA) return "areia";
-    if (familia === FAMILIA_PRECIP.NEVE) return "nevasca";
-    return "chuva";
-  }
+  // Vendaval = gales (ribbons), sem partículas de areia/chuva/neve.
+  if (display === CLIMA.VENDAVAL) return "vendaval";
   if (display === CLIMA.NEVASCA) return "nevasca";
   if (display === CLIMA.AREIA) return "areia";
   if (display === CLIMA.CHUVA) return "chuva";

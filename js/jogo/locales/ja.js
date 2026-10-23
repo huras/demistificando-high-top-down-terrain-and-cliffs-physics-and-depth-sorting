@@ -155,6 +155,18 @@ export default {
     "vazio": "からっぽ。",
     "idioma": "言語"
   },
+  "keys": {
+    "elementalShrineDevice": "エレメンタルのほこらデバイス"
+  },
+  "santuario": {
+    "entrar": "はいる",
+    "falar": "はなす",
+    "totemVazio": "トーテムはすでにジェムを渡した。",
+    "totemOk": "エレメンタルジェムがバッグで輝いた。",
+    "puzzleHint": "ピースを動かして肖像を完成させよう。",
+    "questTitulo": "エレメンタルのほこら",
+    "questTexto": "研究所のリナにほこらの話を聞こう。"
+  },
   "pokedex": {
     "titulo": "ポケモン図鑑",
     "fechar": "図鑑を閉じる",

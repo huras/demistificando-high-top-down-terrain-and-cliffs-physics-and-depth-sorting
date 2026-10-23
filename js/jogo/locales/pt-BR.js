@@ -155,6 +155,18 @@ export default {
     "vazio": "Vazio.",
     "idioma": "Idioma"
   },
+  "keys": {
+    "elementalShrineDevice": "Dispositivo de Santuário"
+  },
+  "santuario": {
+    "entrar": "Entrar",
+    "falar": "Falar",
+    "totemVazio": "O totem já entregou sua gema.",
+    "totemOk": "A gema elemental brilha na sua bolsa.",
+    "puzzleHint": "Arraste as peças para montar o retrato.",
+    "questTitulo": "Santuários elementais",
+    "questTexto": "Fale com a Rina no laboratório sobre os santuários."
+  },
   "pokedex": {
     "titulo": "Pokédex",
     "fechar": "Fechar Pokédex",

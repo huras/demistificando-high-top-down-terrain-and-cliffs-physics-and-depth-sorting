@@ -42,6 +42,16 @@ import {
   trocarMembro,
   trocarOrdemParty,
 } from "../pokemon/party.js";
+import {
+  hidratarSantuarios,
+  resetEstadoSantuario,
+  serializarSantuarios,
+} from "../santuario/estadoSantuario.js";
+import {
+  hidratarDescobertaMapa,
+  resetDescobertaMapa,
+  serializarDescobertaMapa,
+} from "../mapa/descoberta.js";
 
 const CHAVE_SAVE = "demo-jogo-v1";
 const CAIXAS = 8;
@@ -65,6 +75,14 @@ function questsIniciais() {
     { id: "berry", titulo: "Primeira colheita", texto: "Colha uma berry no campo.", feita: false, progresso: 0, meta: 1 },
     { id: "centro", titulo: "Centro Pokémon", texto: "Peça para a enfermeira curar o time.", feita: false, progresso: 0, meta: 1 },
     { id: "loja", titulo: "Poké Mart", texto: "Compre qualquer item no balcão.", feita: false, progresso: 0, meta: 1 },
+    {
+      id: "santuarioDevice",
+      titulo: "Santuários elementais",
+      texto: "Fale com a Rina no laboratório sobre os santuários.",
+      feita: false,
+      progresso: 0,
+      meta: 1,
+    },
   ];
 }
 
@@ -685,6 +703,8 @@ export function salvar() {
     vistosItens: estado.vistosItens || {},
     quests: estado.quests,
     chaves: estado.chaves,
+    santuarios: serializarSantuarios(),
+    descobertaMapa: serializarDescobertaMapa(),
     party,
   };
   try {
@@ -752,7 +772,19 @@ export function carregar() {
     }
   }
   estado.quests = bruto.quests || questsIniciais();
+  if (!estado.quests.some((q) => q.id === "santuarioDevice")) {
+    estado.quests.push({
+      id: "santuarioDevice",
+      titulo: "Santuários elementais",
+      texto: "Fale com a Rina no laboratório sobre os santuários.",
+      feita: false,
+      progresso: 0,
+      meta: 1,
+    });
+  }
   estado.chaves = bruto.chaves || ["pokedex"];
+  hidratarSantuarios(bruto.santuarios);
+  hidratarDescobertaMapa(bruto.descobertaMapa);
   if (bruto.vistosItens && typeof bruto.vistosItens === "object" && !Array.isArray(bruto.vistosItens)) {
     estado.vistosItens = { ...bruto.vistosItens };
   } else {
@@ -771,6 +803,8 @@ export function carregar() {
 }
 
 function semearInicio() {
+  resetEstadoSantuario();
+  resetDescobertaMapa();
   estado.vistosItens = {};
   if (contarItem("oran") <= 0) ajustarItem("oran", 5, "mudo");
   if (contarItem("potion") <= 0) ajustarItem("potion", 2, "mudo");

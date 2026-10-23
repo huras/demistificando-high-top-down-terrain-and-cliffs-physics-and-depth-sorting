@@ -4,6 +4,7 @@ import {
   RAIO_CORPO,
 } from "../config.js";
 import { ALTURAS, PROPS } from "../mundo/mapaDemo.js";
+import { RAIO_SANTUARIO } from "../santuario/catalogo.js";
 
 /** Mesmo piso: um degrau ainda encosta; voo alto passa. */
 const FOLGA_PISO = 1.05;
@@ -27,6 +28,7 @@ function chaveCelula(x, y) {
 function raioBase(tipo) {
   if (tipo === "arvore") return RAIO_BASE_ARVORE;
   if (tipo === "pedra") return RAIO_BASE_PEDRA;
+  if (tipo === "santuario") return RAIO_SANTUARIO;
   return 0;
 }
 

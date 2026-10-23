@@ -8,6 +8,7 @@ import { POKEMON } from "../config.js";
 import { tocarCuraCentro } from "./audio.js";
 import { curaOcupada, iniciarCuraMaquina } from "./maquinaCura.js";
 import { abrirPainel, darChave, estado, guardarNaCaixa, guardarVariosNaCaixa, marcarQuest, snapshot, temChave, vagasNasCaixas, avisar } from "./estado.js";
+import { falarRinaSantuario, garantirQuestDevice } from "../santuario/questDevice.js";
 
 export function alvoLaboratorio(x, y) {
   return alvoDoLaboratorio(x, y);
@@ -45,6 +46,17 @@ export function executarAlvoLaboratorio(alvo) {
 }
 
 function falarNpc(npc) {
+  if (npc.id === "rina") {
+    garantirQuestDevice();
+    estado.dialogo = {
+      nome: npc.nome,
+      linhas: falarRinaSantuario(),
+      i: 0,
+      retrato: npc.retrato || "",
+    };
+    avisar();
+    return;
+  }
   const feita = !!(npc.presente && temChave(npc.presente));
   if (npc.presente && !feita) {
     ganharBolas(10);

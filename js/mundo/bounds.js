@@ -24,7 +24,8 @@ export const FAIXA_COSTURA = 64;
  */
 export const BOLSO_SALA_X0 = 99936;
 export const BOLSO_SALA_Y0 = 99936;
-export const BOLSO_SALA_X1 = 100640;
+/** Inclui bolso das casas/lab e o dungeon de santuário (~100700+). */
+export const BOLSO_SALA_X1 = 100900;
 export const BOLSO_SALA_Y1 = 100640;
 
 export function dentroDoMundo(wx, wy) {

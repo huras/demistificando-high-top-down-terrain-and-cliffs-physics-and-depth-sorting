@@ -40,6 +40,7 @@ import {
   usarNoJogador,
   usarNoPokemon,
 } from "./estado.js";
+import { checarSaidaSantuario, sairSantuario } from "../santuario/entrar.js";
 
 const PAPEIS = new Set(["casa", "loja", "centro", "lab"]);
 /**
@@ -264,6 +265,9 @@ function pousar(corpo, x, y) {
 export function checarSaidaSala(corpo) {
   if (!estado.interior?.sala3d) return false;
   const papel = estado.interior.papel;
+  if (papel === "santuario") {
+    return checarSaidaSantuario(corpo);
+  }
   const naSaida =
     papel === "lab"
       ? naSaidaLaboratorio(corpo.x, corpo.y)
@@ -286,6 +290,10 @@ function saidaDoPredio(interior) {
 export function sairInterior(corpo) {
   const interior = estado.interior;
   if (!interior) return;
+  if (interior.papel === "santuario") {
+    sairSantuario(corpo);
+    return;
+  }
   const saida = saidaDoPredio(interior);
   corpo.x = saida.x;
   corpo.y = saida.y;

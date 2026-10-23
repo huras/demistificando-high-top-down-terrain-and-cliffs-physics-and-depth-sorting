@@ -2,6 +2,8 @@
  * Pool de rajadas em mundo. Spawn upwind da câmera; curvas sozinhas.
  */
 import { CLIMA_CFG } from "../../../../clima/config.js";
+import { obterClimaJogo } from "../../../../clima/amostra.js";
+import { CLIMA_LOGICO } from "../../../../clima/kinds.js";
 import { intervaloSpawnGale, ventoHud01 } from "../../../../clima/vento.js";
 import { VARIANTES_GALE } from "./formaGouja.js";
 
@@ -150,7 +152,12 @@ export function atualizarCampoGale(estado, dt, vento, centro, raio, cfg = CLIMA_
   const tailLag = cfg.galeTailLag ?? 0.42;
   const wander = cfg.galeWander ?? 0.055;
   const poolMax = capacidadePoolGale(cfg);
-  const maxVivos = Math.min(poolMax, Math.ceil((cfg.galeGouges ?? 28) * (0.45 + wind01)));
+  const vendaval = obterClimaJogo()?.logicalKind === CLIMA_LOGICO.VENDAVAL;
+  const densMul = vendaval ? 1.7 : 1;
+  const maxVivos = Math.min(
+    poolMax,
+    Math.ceil((cfg.galeGouges ?? 28) * (0.45 + wind01) * densMul),
+  );
   const zMin = cfg.galeAlturaMin ?? 0.45;
   const zMax = cfg.galeAlturaMax ?? 2.3;
   const zSpan = Math.max(0, zMax - zMin);
@@ -188,7 +195,7 @@ export function atualizarCampoGale(estado, dt, vento, centro, raio, cfg = CLIMA_
   vivos.length = w;
 
   estado.spawnCd -= dt;
-  const intervalo = intervaloSpawnGale(wind01, cfg);
+  const intervalo = intervaloSpawnGale(wind01, cfg) / densMul;
   while (estado.spawnCd <= 0 && vivos.length < maxVivos) {
     estado.spawnCd += intervalo * (0.55 + Math.random() * 0.9);
     const lat = (Math.random() - 0.5) * (raio || 18) * 1.6;

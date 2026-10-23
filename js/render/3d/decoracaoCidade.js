@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { ALTURA_BLOCO } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
+import { aplicarEscalaCartao, fatorYCasa } from "./escalaVertical.js";
 import { decoracaoDaCidade, decoracaoDasRotas } from "../../mundo/regiao/decoracaoKanto.js";
 import {
   FOLHA_INTERIOR,
@@ -101,8 +101,7 @@ function texto(linhas, largura, altura, fundo, tinta) {
 }
 
 function emPe(grupo) {
-  grupo.scale.y = 1 / ALTURA_BLOCO;
-  return grupo;
+  return aplicarEscalaCartao(grupo);
 }
 
 function carregarImagem(url) {
@@ -318,7 +317,7 @@ export function anexarCascaSala(grupo, piso) {
     grupo.add(mesh);
   }
   const parede = facesParedeInterior(materialSala("#f3e7cf"));
-  const h = m.alturaParede + 0.2;
+  const h = (m.alturaParede + 0.2) * fatorYCasa();
   const y = ALTURA_PRACA + h * 0.5;
   const meioX = (m.x0 + m.x1) * 0.5;
   const meioY = (m.y0 + m.y1) * 0.5;

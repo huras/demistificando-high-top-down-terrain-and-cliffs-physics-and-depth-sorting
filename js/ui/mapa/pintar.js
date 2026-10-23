@@ -11,6 +11,15 @@ import {
 import { BLOCOS_INTIMO, LADO_INTIMO, LADO_MUNDO, LADO_TILE, LADO_TILE_MUNDO, ZOOM_INTIMO } from "./grade.js";
 import { listarIntimos } from "./intimo.js";
 import { cidadesDoMapa, layoutDaCidade, marcasExtras, rotasDoMapa } from "./marcas.js";
+import {
+  desenharPinSantuario,
+  kickTypeShieldsLoad,
+} from "../../santuario/mapaPin.js";
+import { desenharPinBerry } from "../../mapa/pinBerry.js";
+import { filtrarWildParaVista } from "../../mapa/marcasWild.js";
+import { desenharPinWild, wildPinVisivelNoZoom } from "../../mapa/pinWild.js";
+import { imagemIcone } from "../../jogo/icones.js";
+import { pedirRetrato } from "../../pokemon/retrato.js";
 
 const ZOOM_NOME_ROTA = 0.36;
 const ZOOM_LAYOUT = 64;
@@ -279,13 +288,59 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     });
   }
 
-  const extras = marcasExtras();
+  const extrasBrutos = marcasExtras();
+  const wildCap = filtrarWildParaVista(
+    extrasBrutos.filter((m) => m.tipo === "wild"),
+    vista,
+  );
+  const wildIds = new Set(wildCap.map((m) => m.id));
+  const extras = extrasBrutos.filter((m) => m.tipo !== "wild" || wildIds.has(m.id));
+  let santuarioVisto = false;
+  let berryVisto = false;
+  let wildVisto = false;
   for (let i = 0; i < extras.length; i++) {
     const marca = extras[i];
     const sx = (marca.x - vista.cx) * z + w / 2;
     const sy = (marca.y - vista.cy) * z + h / 2;
     if (sx < -20 || sy < -20 || sx > w + 20 || sy > h + 20) continue;
-    ctx.fillStyle = "#f2d48a";
+    if (marca.tipo === "santuario") {
+      santuarioVisto = true;
+      desenharPinSantuario(ctx, marca, sx, sy, { mini: !!vista.mini, dpr });
+      if (!vista.mini && marca.nome) {
+        nomes.push({
+          texto: marca.nome,
+          x: sx + 10 * dpr,
+          y: sy + alturaFonte * 0.3,
+          altura: alturaFonte,
+          prio: 1,
+          dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
+        });
+      }
+      continue;
+    }
+    if (marca.tipo === "berry") {
+      if (!vista.mini) continue;
+      berryVisto = true;
+      desenharPinBerry(ctx, marca, sx, sy, { dpr });
+      continue;
+    }
+    if (marca.tipo === "wild") {
+      if (!wildPinVisivelNoZoom(vista)) continue;
+      wildVisto = true;
+      desenharPinWild(ctx, marca, sx, sy, { mini: !!vista.mini, dpr });
+      if (!vista.mini && marca.nome) {
+        nomes.push({
+          texto: marca.nome,
+          x: sx + 10 * dpr,
+          y: sy + alturaFonte * 0.3,
+          altura: alturaFonte,
+          prio: 0,
+          dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
+        });
+      }
+      continue;
+    }
+    ctx.fillStyle = marca.cor || "#f2d48a";
     ctx.beginPath();
     ctx.arc(sx, sy, 4.5 * dpr, 0, Math.PI * 2);
     ctx.fill();
@@ -298,6 +353,18 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
         prio: 0,
         dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
       });
+    }
+  }
+  if (santuarioVisto) kickTypeShieldsLoad();
+  if (berryVisto) {
+    for (let i = 0; i < extras.length; i++) {
+      if (extras[i].tipo === "berry") imagemIcone(extras[i].berryKey);
+    }
+  }
+  if (wildVisto) {
+    for (let i = 0; i < extras.length; i++) {
+      const m = extras[i];
+      if (m.tipo === "wild" && m.dex) pedirRetrato(m.dex, !!m.shiny);
     }
   }
 

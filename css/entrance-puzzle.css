@@ -1,0 +1,320 @@
+.entrance-puzzle {
+  position: fixed;
+  inset: 0;
+  z-index: 420;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 8, 16, 0.72);
+  backdrop-filter: blur(6px);
+  touch-action: none;
+  transition: opacity 0.32s ease, background 0.32s ease;
+}
+
+.entrance-puzzle[hidden] {
+  display: none;
+}
+
+.entrance-puzzle.is-resolving {
+  pointer-events: none;
+}
+
+.entrance-puzzle.is-fading {
+  opacity: 0;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.entrance-puzzle__panel {
+  width: min(920px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  overflow: auto;
+  padding: 18px 18px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+  background: linear-gradient(165deg, rgba(14, 22, 40, 0.97), rgba(8, 12, 22, 0.96));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  transition: opacity 0.28s ease, transform 0.28s ease, filter 0.28s ease;
+}
+
+.entrance-puzzle.is-resolving .entrance-puzzle__panel {
+  filter: saturate(1.15);
+}
+
+.entrance-puzzle.is-fading .entrance-puzzle__panel {
+  opacity: 0;
+  transform: scale(1.04);
+  filter: brightness(2.4);
+}
+
+.entrance-puzzle__title {
+  margin: 0 0 6px;
+  font-family: Syne, "Segoe UI", sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.entrance-puzzle__hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.entrance-puzzle.is-resolving .entrance-puzzle__hint {
+  color: #fef9c3;
+}
+
+.entrance-puzzle__layout {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) minmax(220px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.entrance-puzzle__preview {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  background: #0a121c;
+  image-rendering: pixelated;
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
+.entrance-puzzle.is-resolving .entrance-puzzle__preview {
+  opacity: 0.35;
+  filter: blur(1px) brightness(1.4);
+}
+
+.entrance-puzzle__board {
+  --puzzle-size: 4;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--puzzle-size), 1fr);
+  gap: 4px;
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: min(64vh, 560px);
+  touch-action: none;
+  user-select: none;
+  transform-origin: center;
+}
+
+.entrance-puzzle__board.is-charging {
+  animation:
+    entrance-puzzle-board-shake 1.2s ease-in forwards,
+    entrance-puzzle-board-glow 1.2s ease-in forwards;
+}
+
+.entrance-puzzle__board.is-charging::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0);
+  mix-blend-mode: screen;
+  animation: entrance-puzzle-board-whiteout 1.2s ease-in forwards;
+}
+
+.entrance-puzzle__board.is-whiteout::after {
+  background: rgba(255, 255, 255, 1);
+}
+
+.entrance-puzzle__slot {
+  position: relative;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0b1220;
+  cursor: grab;
+}
+
+.entrance-puzzle.is-resolving .entrance-puzzle__slot {
+  cursor: default;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.entrance-puzzle__slot:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+}
+
+.entrance-puzzle__piece {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  background-color: #0b1220;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+
+.entrance-puzzle__piece.is-dragging {
+  opacity: 0.35;
+}
+
+.entrance-puzzle__ghost {
+  position: fixed;
+  z-index: 430;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 8px;
+  pointer-events: none;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  image-rendering: pixelated;
+  /* Não herdar height/min-height % da peça (no body vira viewport). */
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  background-repeat: no-repeat;
+  background-color: #0b1220;
+  box-sizing: border-box;
+  flex: none;
+}
+
+.entrance-puzzle__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.entrance-puzzle__debug {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: rgba(250, 204, 21, 0.18);
+  color: #fde68a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.entrance-puzzle__debug:hover {
+  background: rgba(250, 204, 21, 0.3);
+}
+
+.entrance-puzzle__debug:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.entrance-puzzle__cancel {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.entrance-puzzle__cancel:hover {
+  background: rgba(148, 163, 184, 0.28);
+}
+
+.entrance-quake {
+  position: fixed;
+  inset: 0;
+  z-index: 410;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse at center, rgba(255, 248, 230, 0.08), transparent 55%),
+    radial-gradient(ellipse at center, transparent 35%, rgba(20, 14, 10, 0.42) 100%);
+  mix-blend-mode: multiply;
+  transition: opacity 0.08s linear;
+}
+
+.entrance-quake[hidden] {
+  display: none;
+}
+
+.entrance-quake.is-active {
+  display: block;
+  animation: entrance-quake-flicker 0.12s steps(2) infinite;
+}
+
+@keyframes entrance-puzzle-board-shake {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  18% {
+    transform: translate(-2px, 1px) scale(1.01);
+  }
+  36% {
+    transform: translate(3px, -2px) scale(1.02);
+  }
+  54% {
+    transform: translate(-4px, 3px) scale(1.03);
+  }
+  72% {
+    transform: translate(5px, -4px) scale(1.045);
+  }
+  88% {
+    transform: translate(-6px, 5px) scale(1.06);
+  }
+  100% {
+    transform: translate(0, 0) scale(1.08);
+  }
+}
+
+@keyframes entrance-puzzle-board-glow {
+  0% {
+    filter: brightness(1) saturate(1);
+    box-shadow: 0 0 8px rgba(250, 250, 255, 0.15);
+  }
+  55% {
+    filter: brightness(1.55) saturate(1.25);
+    box-shadow:
+      0 0 18px rgba(250, 250, 255, 0.45),
+      0 0 36px rgba(125, 211, 252, 0.35);
+  }
+  100% {
+    filter: brightness(2.4) saturate(0.4);
+    box-shadow:
+      0 0 28px rgba(255, 255, 255, 0.9),
+      0 0 54px rgba(255, 255, 255, 0.65);
+  }
+}
+
+@keyframes entrance-puzzle-board-whiteout {
+  0% {
+    background: rgba(255, 255, 255, 0);
+  }
+  55% {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  78% {
+    background: rgba(255, 255, 255, 0.55);
+  }
+  100% {
+    background: rgba(255, 255, 255, 1);
+  }
+}
+
+@keyframes entrance-quake-flicker {
+  0% {
+    opacity: var(--quake-opacity, 0.35);
+  }
+  100% {
+    opacity: calc(var(--quake-opacity, 0.35) * 0.78);
+  }
+}
+
+@media (max-width: 720px) {
+  .entrance-puzzle__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .entrance-puzzle__preview {
+    max-width: 180px;
+  }
+}

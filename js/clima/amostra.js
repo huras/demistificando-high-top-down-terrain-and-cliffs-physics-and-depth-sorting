@@ -95,7 +95,7 @@ export function obterBancoClima() {
 
 /**
  * Override debug (G / painel). TTL em segundos.
- * @param {string} presetCeu limpo|chuva|areia|nevasca
+ * @param {string} presetCeu limpo|chuva|areia|nevasca|vendaval
  * @param {number} [seg]
  */
 export function forcarClimaPreset(presetCeu, seg = CLIMA_CFG.forcarSeg) {
@@ -107,6 +107,7 @@ export function forcarClimaPreset(presetCeu, seg = CLIMA_CFG.forcarSeg) {
     chuva: CLIMA_LOGICO.PRECIP,
     areia: CLIMA_LOGICO.PRECIP,
     nevasca: CLIMA_LOGICO.PRECIP,
+    vendaval: CLIMA_LOGICO.VENDAVAL,
   };
   banco.setKind(map[presetCeu] || CLIMA_LOGICO.LIMPO);
 }

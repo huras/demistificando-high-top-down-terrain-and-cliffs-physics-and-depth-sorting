@@ -3,8 +3,8 @@
  * O grupo do terreno esmaga o Y; o billboard desfaz isso.
  */
 import * as THREE from "three";
-import { ALTURA_BLOCO } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
+import { aplicarEscalaCartao } from "./escalaVertical.js";
 import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard, FOLGA_CHAO_DECAL } from "./ceu/luzBillboard.js";
@@ -80,8 +80,7 @@ export function moldeChao(tela) {
 }
 
 export function emPe(grupo) {
-  grupo.scale.y = 1 / ALTURA_BLOCO;
-  return grupo;
+  return aplicarEscalaCartao(grupo);
 }
 
 export function porBillboard(molde, x, z) {

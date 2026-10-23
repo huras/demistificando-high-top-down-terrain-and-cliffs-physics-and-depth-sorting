@@ -4,7 +4,6 @@
 import * as THREE from "three";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { ALTURA_PAREDE_HUB } from "../../mundo/cidade/plantaHub.js";
-import { ALTURA_BLOCO } from "../../config.js";
 import { plantaCentro } from "../../mundo/cidade/centro.js";
 import { MESA_CENTRO } from "../../mundo/cidade/catalogoProps.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
@@ -17,6 +16,7 @@ import {
   recortar,
 } from "./cartaoPe.js";
 import { carregarMoldesProps, criarBolasCuraNaMalha, instanciarProp } from "./propsObj3d.js";
+import { fatorYCasa, fatorYCartao, fatorYProp } from "./escalaVertical.js";
 
 const FOLHA = "/ref/sprites/interiors/pokecenter-emerald-bg.png";
 const FOLHA_FRENTE = "/ref/sprites/interiors/pokecenter-emerald-fg.png";
@@ -108,9 +108,10 @@ function anexarBalcao(sala, planta, frente) {
   if (!pecas || !frente) return;
   const matLado = material(texturaSprite(frente, pecas[0].sprite), true);
   const matTopo = material(texturaFaixa(frente, pecas[0].sprite, 0, FAIXA_TOPO), true);
-  const geo = new THREE.BoxGeometry(1, ALTURA_BALCAO, 1);
+  const hBalcao = ALTURA_BALCAO * fatorYProp();
+  const geo = new THREE.BoxGeometry(1, hBalcao, 1);
   const materiais = [matLado, matLado, matTopo, matLado, matLado, matLado];
-  const y = ALTURA_PRACA + ALTURA_BALCAO * 0.5;
+  const y = ALTURA_PRACA + hBalcao * 0.5;
   for (let p = 0; p < pecas.length; p++) {
     const peca = pecas[p];
     for (let iz = 0; iz < peca.h; iz++) {
@@ -172,8 +173,9 @@ function anexarMapa(sala, planta, frente) {
   const tela = telaMapa(frente);
   const inst = porBillboard(moldePe(tela), planta.origemX + lugar.x, planta.origemY + lugar.y);
   if (!inst) return;
-  const altura = tela.height / TILE / ALTURA_BLOCO;
-  inst.position.y += ALTURA_PAREDE_HUB - altura - 0.55;
+  const altura = (tela.height / TILE) * fatorYCartao();
+  const hParede = ALTURA_PAREDE_HUB * fatorYCasa();
+  inst.position.y += hParede - altura - 0.55 * fatorYCasa();
   sala.add(inst);
 }
 
@@ -247,13 +249,14 @@ function anexarSala(sala, planta, img) {
 
   const lado = texturaParede(img);
   const topo = texturaFaixa(img, SPRITE_PAREDE_CIMA, 1, 4);
-  const y = ALTURA_PRACA + ALTURA_PAREDE_HUB * 0.5;
+  const hParede = ALTURA_PAREDE_HUB * fatorYCasa();
+  const y = ALTURA_PRACA + hParede * 0.5;
   const cascas = planta.cascas;
   for (let i = 0; i < cascas.length; i++) {
     const faixa = cascas[i];
     const aoLongoX = faixa.w >= faixa.h;
     const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(faixa.w, ALTURA_PAREDE_HUB, faixa.h),
+      new THREE.BoxGeometry(faixa.w, hParede, faixa.h),
       materiaisDaCasca(lado, topo, aoLongoX, aoLongoX ? faixa.w : faixa.h),
     );
     mesh.position.set(
