@@ -434,7 +434,8 @@ function pintarKanto(wx, wy, comMote, saida) {
   const local = paraLocalKanto(wx, wy);
   const ponto = lerPontoLocal(local.x, local.y);
   if (ponto.h < nivel) return pintarAgua(ponto.h, nivel, saida);
-  const base = aplicarVeg(corDoPar(ponto.par, ponto.u), ponto.bioma, ponto.limpo, ponto.x, ponto.y, comMote);
+  // wx/wy mundiais — mesmo espaço de plantaNoBioma / props do chunk.
+  const base = aplicarVeg(corDoPar(ponto.par, ponto.u), ponto.bioma, ponto.limpo, wx, wy, comMote);
   const corpo = aplicarCorpoLocal(ponto, base);
   if (corpo.h < nivel) return pintarAgua(corpo.h, nivel, saida);
   saida.h = corpo.h;
@@ -541,7 +542,7 @@ export function byteNoPonto(wx, wy) {
     if (CORPO.tem && CORPO.fluido && !ponto.rua && !ponto.predio) return 0;
     if (ponto.limpo) return 0;
     const kit = obterKit(ponto.bioma?.kit);
-    const veg = vegetacaoNoPonto(ponto.x, ponto.y, true);
+    const veg = vegetacaoNoPonto(wx, wy, true);
     const podeArvore = !!kit?.arvore?.length;
     const podeGrama = !!kit?.grama?.length;
     let mote = 0;

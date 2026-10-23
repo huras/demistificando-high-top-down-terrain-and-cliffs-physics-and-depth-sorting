@@ -3,6 +3,7 @@
 import { teclaAgora, teclaBaixa } from "../entrada/teclado.js";
 import { alternarCampo } from "../pokemon/party.js";
 import { BOLAS, BERRIES, BLOCOS, FERRAMENTAS, REMEDIOS, TIPO_ITEM, slotDaTecla } from "../wild/catalogo.js";
+import { descricaoItem } from "./descricaoItem.js";
 import { htmlIcone } from "./icones.js";
 import { atribuirSlot, alternarSlot, contar, estado, nomeDe } from "./estado.js";
 import { cancelarRanged } from "./ranged.js";
@@ -45,6 +46,11 @@ function itensDaCat() {
   return lista;
 }
 
+function pintarCmds() {
+  const el = raiz?.querySelector("[data-cmds-soltar]");
+  if (el) el.textContent = `atribuir no ${slotAlvo + 1}`;
+}
+
 function montarDom() {
   raiz = document.createElement("div");
   raiz.className = "bag-wheel";
@@ -56,11 +62,16 @@ function montarDom() {
       <div class="bag-wheel__ring" data-anel>
         <div class="bag-wheel__center">
           <div data-centro-icone></div>
+          <span class="bag-wheel__center-qty" data-centro-qtd hidden></span>
           <div class="bag-wheel__center-name" data-centro-nome></div>
-          <div class="bag-wheel__center-desc" data-centro-qtd></div>
+          <div class="bag-wheel__center-desc" data-centro-desc></div>
         </div>
       </div>
-      <p class="bag-wheel__cmds">Segure o número · mire com o mouse · solte para equipar · scroll, Q e E trocam a categoria</p>
+      <div class="bag-wheel__cmds">
+        <span class="bag-wheel__cmd"><b>Scroll</b> página / categoria</span>
+        <span class="bag-wheel__cmd"><b>Mouse</b> aponta para escolher</span>
+        <span class="bag-wheel__cmd"><b>Soltar</b> <span data-cmds-soltar>atribuir no 1</span></span>
+      </div>
     </div>`;
   document.body.appendChild(raiz);
   anel = raiz.querySelector("[data-anel]");
@@ -89,10 +100,11 @@ function desenhar() {
     el.type = "button";
     el.className = `bag-wheel__item${i === mira ? " is-on" : ""}`;
     const rad = -Math.PI / 2 + (i / n) * Math.PI * 2;
-    const raio = 30;
+    const raio = 37;
     el.style.left = `calc(50% + ${Math.cos(rad) * raio}%)`;
     el.style.top = `calc(50% + ${Math.sin(rad) * raio}%)`;
-    el.innerHTML = `${htmlIcone(item.key, "bag-wheel__icon", 56)}<span>${contar(item.tipo, item.key)}</span>`;
+    const qtd = contar(item.tipo, item.key);
+    el.innerHTML = `${htmlIcone(item.key, "bag-wheel__icon", 40)}<span class="bag-wheel__qty">x${qtd}</span>`;
     el.addEventListener("pointerenter", () => {
       mira = i;
       pintarCentro(lista);
@@ -100,6 +112,7 @@ function desenhar() {
     });
     anel.appendChild(el);
   });
+  pintarCmds();
   pintarCentro(lista);
 }
 
@@ -108,15 +121,20 @@ function pintarCentro(lista) {
   const icone = raiz.querySelector("[data-centro-icone]");
   const nome = raiz.querySelector("[data-centro-nome]");
   const qtd = raiz.querySelector("[data-centro-qtd]");
+  const desc = raiz.querySelector("[data-centro-desc]");
   if (!item) {
     icone.innerHTML = "";
     nome.textContent = "Vazio";
+    qtd.hidden = true;
     qtd.textContent = "";
+    desc.textContent = "";
     return;
   }
   icone.innerHTML = htmlIcone(item.key, "bag-wheel__center-icon", 120);
   nome.textContent = item.nome || nomeDe(item.tipo, item.key);
-  qtd.textContent = `×${contar(item.tipo, item.key)}`;
+  qtd.hidden = false;
+  qtd.textContent = `x${contar(item.tipo, item.key)}`;
+  desc.textContent = descricaoItem(item.tipo, item.key);
 }
 
 function apontar() {

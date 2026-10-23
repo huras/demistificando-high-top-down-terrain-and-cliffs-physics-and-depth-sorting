@@ -276,19 +276,49 @@ function passaGrama(x, y) {
 
 const VEG = { arvore: 0, grama: 0, mote: 0 };
 
-/** Cobertura do campo no ponto. O hash vira mote só quando o mapa pede o zoom perto. */
+function forcaArvoreSpawn(ox, oy) {
+  if (!passaArvore(ox, oy) || !ganhaPegada(ox, oy)) return 0;
+  const a = valorArvore(ox, oy);
+  if (!a) return 0;
+  const faixa = Math.max(0.25, 0.7 - a.limiar);
+  return Math.min(1, Math.max(0.35, (a.n - a.limiar) / faixa));
+}
+
+/**
+ * Cobertura do campo no ponto (mapa).
+ * Árvore usa o mesmo filtro do mundo (passaArvore + ganhaPegada) —
+ * aproximação de copa, não inventário 1:1. Sem comHash, espalha um pouco
+ * na pegada para o overview (passo>1) não apagar as árvores.
+ */
 export function vegetacaoNoPonto(x, y, comHash, saida = VEG) {
   const xi = x | 0;
   const yi = y | 0;
   saida.arvore = 0;
   saida.grama = 0;
   saida.mote = 0;
-  const a = valorArvore(xi, yi);
-  if (a && a.n >= a.limiar) {
-    const faixa = Math.max(0.25, 0.7 - a.limiar);
-    saida.arvore = Math.min(1, (a.n - a.limiar) / faixa);
-    if (comHash && hash2(xi, yi, a.seed) <= a.densidade) saida.mote = 2;
+
+  const noCentro = forcaArvoreSpawn(xi, yi);
+  if (noCentro > 0) {
+    saida.arvore = noCentro;
+    if (comHash) saida.mote = 2;
+  } else if (!comHash) {
+    const cfg = dados?.arvore;
+    const w = Math.max(1, cfg?.largura | 0 || 2);
+    const h = Math.max(1, cfg?.altura | 0 || 3);
+    let melhor = 0;
+    for (let oy = yi - (h - 1); oy <= yi + (h - 1); oy++) {
+      for (let ox = xi - (w - 1); ox <= xi + (w - 1); ox++) {
+        if (ox === xi && oy === yi) continue;
+        const f = forcaArvoreSpawn(ox, oy);
+        if (f <= 0) continue;
+        const alcance = Math.hypot(w, h) * 0.55;
+        const t = Math.max(0, 1 - Math.hypot(ox + 0.5 - x, oy + 0.5 - y) / (alcance + 0.5));
+        melhor = Math.max(melhor, f * (0.35 + 0.65 * t));
+      }
+    }
+    saida.arvore = melhor;
   }
+
   const g = valorGrama(xi, yi);
   if (g && g.n >= g.limiar) {
     const faixa = Math.max(0.25, 0.7 - g.limiar);
