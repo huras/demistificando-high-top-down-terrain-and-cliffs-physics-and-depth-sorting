@@ -496,6 +496,24 @@ export function classificarArvorePreview(biomaId, x, y) {
   return 2;
 }
 
+/** Bioma tem bloco negarArvore. */
+export function temClareiraArvore(biomaId) {
+  return !!(biomaId && dados?.negarArvore?.[biomaId]);
+}
+
+/**
+ * Campo de clareira no plano (independente de densidade de árvore).
+ * @returns {-1|number} -1 sem negarArvore · 0 abaixo do limiar · 0..1 força na zona negada
+ */
+export function forcaClareiraPreview(biomaId, x, y) {
+  const { clareira } = arvoreDoBioma(biomaId || "");
+  if (!clareira) return -1;
+  const n = amostraCampo(x | 0, y | 0, clareira);
+  if (n < clareira.limiar) return 0;
+  const faixa = Math.max(0.15, 1 - clareira.limiar);
+  return Math.min(1, Math.max(0.2, (n - clareira.limiar) / faixa));
+}
+
 function melhorDaFamilia(x, y, familias) {
   let melhor = null;
   let nota = -Infinity;

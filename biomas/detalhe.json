@@ -110,7 +110,7 @@
       "altura": 3
     },
     "dirty-sand": {
-      "limiar": 0.28,
+      "limiar": 0.02,
       "densidade": 0.18,
       "escala": 0.03,
       "oitavas": 2,
@@ -189,8 +189,8 @@
   "negarArvore": {
     "light-grass": {
       "canal": 90,
-      "freq": 0.012,
-      "limiar": 0.18,
+      "freq": 0.008,
+      "limiar": 0.07,
       "oitavas": 2,
       "persistencia": 0.5,
       "lacunaridade": 2

@@ -152,6 +152,46 @@ button, input, select {
   padding: 5px 7px;
 }
 
+.secao {
+  margin: 0 0 8px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: #151d19;
+  overflow: hidden;
+}
+
+.secao > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--texto);
+  background: #1e2923;
+}
+
+.secao > summary::-webkit-details-marker {
+  display: none;
+}
+
+.secao > summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1em;
+  color: var(--destaque);
+  transition: transform 0.12s ease;
+}
+
+.secao[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.secao__corpo {
+  padding: 8px 10px 4px;
+  border-top: 1px solid var(--borda);
+}
+
 .grafo {
   display: flex;
   flex-direction: column;
@@ -260,17 +300,24 @@ button, input, select {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
-  height: clamp(300px, 36vh, 420px);
+  flex: 0 0 auto;
+  height: clamp(280px, 34vh, 400px);
+  min-height: 260px;
   padding: 10px 14px 12px;
   border-top: 1px solid var(--borda);
   background: #18211c;
+  overflow: hidden;
 }
 
 .previas__mapas {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  align-content: center;
+  align-self: stretch;
+  max-height: 100%;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .previas figure {
@@ -279,11 +326,38 @@ button, input, select {
 
 .previas__mapas canvas {
   display: block;
-  width: 150px;
-  height: 78px;
+  width: 118px;
+  height: 72px;
   border: 1px solid var(--borda);
   image-rendering: pixelated;
   background: #0c100e;
+}
+
+.previa-arvore__modos {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.previa-arvore__modos button {
+  flex: 1;
+  border: 1px solid var(--borda);
+  background: #243028;
+  color: var(--suave);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.previa-arvore__modos button.ativo {
+  border-color: var(--destaque);
+  color: var(--destaque);
+}
+
+.previa-arvore__modos button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 #prev-arvore {
@@ -296,9 +370,11 @@ button, input, select {
 }
 
 .previas__mapas figcaption {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--suave);
   margin-top: 2px;
+  line-height: 1.2;
+  max-width: 118px;
 }
 
 .previa-3d {

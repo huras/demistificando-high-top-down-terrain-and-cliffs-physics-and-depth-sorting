@@ -61,9 +61,13 @@
         <canvas id="prev-bioma" width="200" height="160"></canvas>
         <figcaption>Só este bioma</figcaption>
       </figure>
-      <figure>
+      <figure class="previa-arvore">
+        <div class="previa-arvore__modos" id="prev-arvore-modos">
+          <button type="button" data-modo="spawn" class="ativo">Spawn</button>
+          <button type="button" data-modo="negar">Negar</button>
+        </div>
         <canvas id="prev-arvore" width="200" height="160"></canvas>
-        <figcaption id="prev-arvore-legenda">Árvores · WASD pan · scroll zoom</figcaption>
+        <figcaption id="prev-arvore-legenda">Spawn · WASD pan · scroll zoom</figcaption>
       </figure>
     </div>
     <figure class="previa-3d">

@@ -351,7 +351,7 @@ export const ROLE_CLIFF_CENTER = ROLE_EDGE_S;
 export const USAR_PATCH_DEMO =
   typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
 export const CHUNK_XZ = 16;
-export const CHUNK_Y = 128;
+export const CHUNK_Y = 64;
 /** Folga acima do relevo (prédio / prop no pico). */
 export const FOLGA_TETO_CHUNK = 4;
 /** Teto canônico do heightfield (blocos). */

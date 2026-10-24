@@ -1,13 +1,19 @@
 /**
  * Preview em pixels da porta de árvore do bioma (editor).
- * WASD / arraste = pan · scroll = zoom.
+ * Modos: spawn · negar (clareira). WASD / arraste = pan · scroll = zoom.
  */
-import { classificarArvorePreview } from "../mundo/bioma/detalhe.js";
+import {
+  classificarArvorePreview,
+  forcaClareiraPreview,
+  temClareiraArvore,
+} from "../mundo/bioma/detalhe.js";
 import { obterKit } from "../mundo/bioma/kits.js";
 
 const COR_VAZIO = [18, 24, 20];
 const COR_CLAREIRA = [168, 120, 48];
 const COR_SPAWN = [56, 170, 88];
+const COR_NEGAR_BASE = [28, 22, 14];
+const COR_NEGAR = [210, 140, 42];
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 8;
@@ -17,6 +23,10 @@ const PASSO_PAN = 8;
 let canvas = null;
 /** @type {HTMLElement | null} */
 let caption = null;
+/** @type {HTMLElement | null} */
+let modosEl = null;
+/** @type {"spawn" | "negar"} */
+let modo = "spawn";
 /** @type {string} */
 let biomaId = "";
 /** @type {string | null} */
@@ -37,12 +47,34 @@ function focoEmCampo() {
   return tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
 }
 
+function misturar(a, b, t) {
+  return [
+    (a[0] + (b[0] - a[0]) * t) | 0,
+    (a[1] + (b[1] - a[1]) * t) | 0,
+    (a[2] + (b[2] - a[2]) * t) | 0,
+  ];
+}
+
 function pedirDesenho() {
   if (pedido) return;
   pedido = requestAnimationFrame(() => {
     pedido = 0;
     desenhar();
   });
+}
+
+function atualizarModosUi() {
+  if (!modosEl) return;
+  const temNegar = temClareiraArvore(biomaId);
+  modosEl.hidden = false;
+  const botoes = modosEl.querySelectorAll("button[data-modo]");
+  for (let i = 0; i < botoes.length; i++) {
+    const btn = botoes[i];
+    const m = btn.getAttribute("data-modo");
+    btn.classList.toggle("ativo", m === modo);
+    if (m === "negar") btn.disabled = !temNegar;
+  }
+  if (modo === "negar" && !temNegar) modo = "spawn";
 }
 
 function desenhar() {
@@ -54,14 +86,19 @@ function desenhar() {
   const data = img.data;
   const kit = kitId ? obterKit(kitId) : null;
   const temArvore = !!(kit?.arvore?.length);
+  const temNegar = temClareiraArvore(biomaId);
+  atualizarModosUi();
 
   if (caption) {
-    caption.textContent = temArvore
-      ? "Árvores · WASD pan · scroll zoom"
-      : "Árvores · sem kit de árvore";
+    if (!temArvore) caption.textContent = "Árvores · sem kit de árvore";
+    else if (modo === "negar") {
+      caption.textContent = temNegar
+        ? "Negar árvore · âmbar = zona limpa"
+        : "Negar árvore · sem clareira neste bioma";
+    } else caption.textContent = "Spawn · WASD pan · scroll zoom";
   }
 
-  if (!temArvore || !biomaId) {
+  if (!temArvore || !biomaId || (modo === "negar" && !temNegar)) {
     for (let i = 0; i < w * h; i++) {
       const o = i * 4;
       data[o] = COR_VAZIO[0];
@@ -76,12 +113,20 @@ function desenhar() {
   const passo = celulasPorPixel;
   const halfW = w * 0.5;
   const halfH = h * 0.5;
+  const verNegar = modo === "negar";
+
   for (let py = 0; py < h; py++) {
     const wy = Math.floor(origemY + (py - halfH) * passo);
     for (let px = 0; px < w; px++) {
       const wx = Math.floor(origemX + (px - halfW) * passo);
-      const cls = classificarArvorePreview(biomaId, wx, wy);
-      const cor = cls === 2 ? COR_SPAWN : cls === 1 ? COR_CLAREIRA : COR_VAZIO;
+      let cor = COR_VAZIO;
+      if (verNegar) {
+        const f = forcaClareiraPreview(biomaId, wx, wy);
+        cor = f > 0 ? misturar(COR_NEGAR_BASE, COR_NEGAR, f) : COR_VAZIO;
+      } else {
+        const cls = classificarArvorePreview(biomaId, wx, wy);
+        cor = cls === 2 ? COR_SPAWN : cls === 1 ? COR_CLAREIRA : COR_VAZIO;
+      }
       const o = (py * w + px) * 4;
       data[o] = cor[0];
       data[o + 1] = cor[1];
@@ -124,11 +169,24 @@ function garantirPanLoop() {
 /**
  * @param {HTMLCanvasElement} el
  * @param {HTMLElement | null} [legenda]
+ * @param {HTMLElement | null} [modos]
  */
-export function ligarPreviewArvore(el, legenda = null) {
+export function ligarPreviewArvore(el, legenda = null, modos = null) {
   canvas = el;
   caption = legenda;
+  modosEl = modos;
   canvas.style.cursor = "grab";
+
+  if (modosEl) {
+    modosEl.addEventListener("click", (ev) => {
+      const btn = ev.target?.closest?.("button[data-modo]");
+      if (!btn || btn.disabled) return;
+      const prox = btn.getAttribute("data-modo");
+      if (prox !== "spawn" && prox !== "negar") return;
+      modo = prox;
+      pedirDesenho();
+    });
+  }
 
   canvas.addEventListener("pointerdown", (ev) => {
     if (ev.button !== 0) return;

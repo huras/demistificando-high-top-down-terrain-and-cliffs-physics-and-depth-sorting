@@ -54,8 +54,8 @@ import {
 } from "./coresVeg.js";
 
 const COTA_CIDADE = 16;
-const COTA_MONTANHA = 72;
-const COTA_PICO = 108;
+const COTA_MONTANHA = 36;
+const COTA_PICO = 54;
 const COTA_RASO = 10;
 const COTA_FUNDO = 8;
 const SEMENTE = 1337;

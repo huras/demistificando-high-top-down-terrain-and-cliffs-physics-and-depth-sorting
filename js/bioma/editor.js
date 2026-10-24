@@ -345,7 +345,7 @@ function campo(rotulo, valor, aoMudar, tipo = "number") {
   label.append(document.createTextNode(rotulo));
   const input = document.createElement("input");
   input.type = tipo;
-  if (tipo === "number") input.step = "any";
+  if (tipo === "number") input.step = "0.01";
   input.value = valor ?? "";
   input.addEventListener("input", () => {
     aoMudar(tipo === "number" ? Number(input.value) : input.value);
@@ -356,11 +356,29 @@ function campo(rotulo, valor, aoMudar, tipo = "number") {
   return label;
 }
 
-function tituloSecao(texto) {
-  const h = document.createElement("h2");
-  h.textContent = texto;
-  h.style.fontSize = "0.95rem";
-  return h;
+function secaoColapsavel(id, titulo, abertaPadrao = false) {
+  const det = document.createElement("details");
+  det.className = "secao";
+  const chave = `bioma-secao:${id}`;
+  try {
+    const salvo = sessionStorage.getItem(chave);
+    det.open = salvo != null ? salvo === "1" : abertaPadrao;
+  } catch {
+    det.open = abertaPadrao;
+  }
+  det.addEventListener("toggle", () => {
+    try {
+      sessionStorage.setItem(chave, det.open ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  });
+  const sum = document.createElement("summary");
+  sum.textContent = titulo;
+  const corpo = document.createElement("div");
+  corpo.className = "secao__corpo";
+  det.append(sum, corpo);
+  return { raiz: det, corpo };
 }
 
 function campoDetalhe(rotulo, valor, aoMudar) {
@@ -374,11 +392,12 @@ function campoDetalhe(rotulo, valor, aoMudar) {
 function pintarDetalhe(bioma) {
   const detalhe = obterDetalhe();
   if (!detalhe) return;
-  inspectorEl.append(tituloSecao("Portas do mundo"));
   const grama = detalhe.grama || (detalhe.grama = {});
   const arvore = detalhe.arvore || (detalhe.arvore = {});
   const mar = detalhe.mar || (detalhe.mar = {});
-  inspectorEl.append(
+
+  const portas = secaoColapsavel("portas", "Portas do mundo", false);
+  portas.corpo.append(
     campoDetalhe("Grama limiar", grama.limiar, (v) => { grama.limiar = v; }),
     campoDetalhe("Grama densidade", grama.densidade, (v) => { grama.densidade = v; }),
     campoDetalhe("Grama escala", grama.escala, (v) => { grama.escala = v; }),
@@ -391,6 +410,7 @@ function pintarDetalhe(bioma) {
     campoDetalhe("Árvore semente", arvore.semente, (v) => { arvore.semente = v; }),
     campoDetalhe("Mar densidade", mar.densidade, (v) => { mar.densidade = v; }),
   );
+  inspectorEl.append(portas.raiz);
 
   const id = bioma.id;
   const kit = obterKit(bioma.kit || id);
@@ -398,27 +418,31 @@ function pintarDetalhe(bioma) {
   const doBioma = pesos[id] || (pesos[id] = {});
   const gramas = kit?.grama || [];
   if (gramas.length) {
-    inspectorEl.append(tituloSecao("Pesos da grama"));
+    const sec = secaoColapsavel("pesos-grama", "Pesos da grama", false);
     for (let i = 0; i < gramas.length; i++) {
       const sprite = gramas[i].id;
       if (!sprite) continue;
       const atual = Object.prototype.hasOwnProperty.call(doBioma, sprite) ? doBioma[sprite] : 1;
-      inspectorEl.append(campoDetalhe(sprite, atual, (v) => { doBioma[sprite] = v; }));
+      sec.corpo.append(campoDetalhe(sprite, atual, (v) => { doBioma[sprite] = v; }));
     }
+    inspectorEl.append(sec.raiz);
   }
 
   const ruido = detalhe.ruidoGrama?.[id];
   if (ruido) {
     const sprites = Object.keys(ruido);
-    if (sprites.length) inspectorEl.append(tituloSecao("Ruído da grama"));
-    for (let i = 0; i < sprites.length; i++) {
-      const spec = ruido[sprites[i]];
-      inspectorEl.append(
-        campoDetalhe(`${sprites[i]} canal`, spec.canal, (v) => { spec.canal = v; }),
-        campoDetalhe(`${sprites[i]} freq`, spec.freq, (v) => { spec.freq = v; }),
-        campoDetalhe(`${sprites[i]} limiar`, spec.limiar, (v) => { spec.limiar = v; }),
-        campoDetalhe(`${sprites[i]} oitavas`, spec.oitavas, (v) => { spec.oitavas = v; }),
-      );
+    if (sprites.length) {
+      const sec = secaoColapsavel("ruido-grama", "Ruído da grama", false);
+      for (let i = 0; i < sprites.length; i++) {
+        const spec = ruido[sprites[i]];
+        sec.corpo.append(
+          campoDetalhe(`${sprites[i]} canal`, spec.canal, (v) => { spec.canal = v; }),
+          campoDetalhe(`${sprites[i]} freq`, spec.freq, (v) => { spec.freq = v; }),
+          campoDetalhe(`${sprites[i]} limiar`, spec.limiar, (v) => { spec.limiar = v; }),
+          campoDetalhe(`${sprites[i]} oitavas`, spec.oitavas, (v) => { spec.oitavas = v; }),
+        );
+      }
+      inspectorEl.append(sec.raiz);
     }
   }
 
@@ -426,12 +450,12 @@ function pintarDetalhe(bioma) {
   if (temArvore) {
     const mapaArvore = detalhe.ruidoArvore || (detalhe.ruidoArvore = {});
     const ra = mapaArvore[id] || {};
-    const gravarArvore = (campo, v) => {
+    const gravarArvore = (campoNome, v) => {
       const alvo = mapaArvore[id] || (mapaArvore[id] = {});
-      alvo[campo] = v;
+      alvo[campoNome] = v;
     };
-    inspectorEl.append(tituloSecao("Árvore deste bioma"));
-    inspectorEl.append(
+    const secArvore = secaoColapsavel("arvore-bioma", "Árvore deste bioma", true);
+    secArvore.corpo.append(
       campoDetalhe("Limiar", ra.limiar ?? arvore.limiar, (v) => { gravarArvore("limiar", v); }),
       campoDetalhe("Densidade", ra.densidade ?? arvore.densidade, (v) => { gravarArvore("densidade", v); }),
       campoDetalhe("Escala", ra.escala ?? arvore.escala, (v) => { gravarArvore("escala", v); }),
@@ -440,6 +464,8 @@ function pintarDetalhe(bioma) {
       campoDetalhe("Largura", ra.largura ?? arvore.largura, (v) => { gravarArvore("largura", v); }),
       campoDetalhe("Altura", ra.altura ?? arvore.altura, (v) => { gravarArvore("altura", v); }),
     );
+    inspectorEl.append(secArvore.raiz);
+
     const mapaNegar = detalhe.negarArvore || (detalhe.negarArvore = {});
     const clareiraPadrao = {
       canal: 90,
@@ -450,36 +476,41 @@ function pintarDetalhe(bioma) {
       lacunaridade: 2,
     };
     const clareira = mapaNegar[id] || clareiraPadrao;
-    const gravarClareira = (campo, v) => {
+    const gravarClareira = (campoNome, v) => {
       const alvo = mapaNegar[id] || (mapaNegar[id] = { ...clareiraPadrao });
-      alvo[campo] = v;
+      alvo[campoNome] = v;
     };
-    inspectorEl.append(tituloSecao("Clareira (negar árvore)"));
-    inspectorEl.append(
+    const secClareira = secaoColapsavel("clareira", "Clareira (negar árvore)", true);
+    secClareira.corpo.append(
       campoDetalhe("Canal", clareira.canal, (v) => { gravarClareira("canal", v); }),
       campoDetalhe("Frequência", clareira.freq, (v) => { gravarClareira("freq", v); }),
       campoDetalhe("Limiar", clareira.limiar, (v) => { gravarClareira("limiar", v); }),
       campoDetalhe("Oitavas", clareira.oitavas, (v) => { gravarClareira("oitavas", v); }),
     );
+    inspectorEl.append(secClareira.raiz);
   }
 
   const splat = (detalhe.splat || (detalhe.splat = {}))[id] || (detalhe.splat[id] = {});
-  inspectorEl.append(tituloSecao("Mancha do chão"));
-  inspectorEl.append(
+  const secSplat = secaoColapsavel("splat", "Mancha do chão", false);
+  secSplat.corpo.append(
     campoDetalhe("Canal", splat.canal, (v) => { splat.canal = v; }),
     campoDetalhe("Frequência", splat.freq, (v) => { splat.freq = v; }),
     campoDetalhe("Limiar", splat.limiar, (v) => { splat.limiar = v; }),
     campoDetalhe("Oitavas", splat.oitavas, (v) => { splat.oitavas = v; }),
   );
+  inspectorEl.append(secSplat.raiz);
 
   const pedras = (detalhe.pedras || []).filter((p) => p.biomas?.includes(id));
-  if (pedras.length) inspectorEl.append(tituloSecao("Pedras"));
-  for (let i = 0; i < pedras.length; i++) {
-    const pedra = pedras[i];
-    inspectorEl.append(
-      campoDetalhe(`${pedra.id} freq`, pedra.freq, (v) => { pedra.freq = v; }),
-      campoDetalhe(`${pedra.id} limiar`, pedra.limiar, (v) => { pedra.limiar = v; }),
-    );
+  if (pedras.length) {
+    const secPedras = secaoColapsavel("pedras", "Pedras", false);
+    for (let i = 0; i < pedras.length; i++) {
+      const pedra = pedras[i];
+      secPedras.corpo.append(
+        campoDetalhe(`${pedra.id} freq`, pedra.freq, (v) => { pedra.freq = v; }),
+        campoDetalhe(`${pedra.id} limiar`, pedra.limiar, (v) => { pedra.limiar = v; }),
+      );
+    }
+    inspectorEl.append(secPedras.raiz);
   }
 }
 
@@ -846,6 +877,7 @@ await carregarDetalhe();
 ligarPreviewArvore(
   document.getElementById("prev-arvore"),
   document.getElementById("prev-arvore-legenda"),
+  document.getElementById("prev-arvore-modos"),
 );
 try {
   await iniciarPreviewBioma(document.getElementById("prev-3d"));

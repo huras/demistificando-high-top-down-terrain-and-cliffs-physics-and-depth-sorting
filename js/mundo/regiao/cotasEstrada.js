@@ -2,7 +2,7 @@
  * Cotas de deck / ponte — sem importar amostra ou catálogo (evita ciclo).
  */
 export const COTA_PONTE = 16;
-export const COTA_ESTRADA_MONTANHA = 72;
+export const COTA_ESTRADA_MONTANHA = 36;
 /** Pad de abutment (blocos) na junção terra↔ponte. */
 export const PAD_ABUTMENT_PONTE = 3;
 /** Fallback se o catálogo ainda não carregou. */
