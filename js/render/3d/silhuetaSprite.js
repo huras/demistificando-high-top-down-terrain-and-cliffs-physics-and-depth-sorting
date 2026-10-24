@@ -11,8 +11,6 @@ const FOLGA_SILHUETA = FOLGA_CHAO + FOLGA_ATOR;
 
 /** Mesma cor do personagem e do Pokémon da party. */
 export const COR_SILHUETA_JOGADOR = 0xc5d6ee;
-/** Selvagem: quente, para não confundir com o aliado atrás do sólido. */
-export const COR_SILHUETA_SELVAGEM = 0xf2b08a;
 /** Terreno e árvore gravam 1. A grama grava 2 por cima, no pixel que ela ganha. */
 export const STENCIL_SOLIDO = 1;
 export const STENCIL_GRAMA = 2;

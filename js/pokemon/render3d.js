@@ -21,7 +21,6 @@ import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
 import { aplicarCorSprite } from "../render/3d/ceu/luzBillboard.js";
 import {
   COR_SILHUETA_JOGADOR,
-  COR_SILHUETA_SELVAGEM,
   criarMalhaSilhueta,
 } from "../render/3d/silhuetaSprite.js";
 import { fatorSombraMundo } from "../render/3d/ceu/mapaNuvem.js";
@@ -114,8 +113,9 @@ function criarAtorSlot() {
   sprite.scale.set(lado, lado, 1);
   marcarReflexo(sprite);
   grupo.add(sprite);
-  const silhueta = criarMalhaSilhueta(tex, COR_SILHUETA_SELVAGEM);
+  const silhueta = criarMalhaSilhueta(tex, COR_SILHUETA_JOGADOR);
   silhueta.scale.copy(sprite.scale);
+  silhueta.visible = false;
   grupo.add(silhueta);
   const planoVeu = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
   const veu = criarAtorCartao(tex, {
@@ -551,9 +551,12 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     const imerso = agua.superficie > 0 && pe < agua.superficie - 0.05;
     slot.veu.visible = imerso && some > 0.04;
     if (imerso) slot.planoVeu.constant = agua.superficie * ALTURA_BLOCO;
-    slot.silhueta.material.color.setHex(
-      ator.faccao === "party" ? COR_SILHUETA_JOGADOR : COR_SILHUETA_SELVAGEM,
-    );
+    // Selvagem: sem silhueta atrás de árvore/sólido (só party/jogador).
+    const silhuetaLigada = ator.faccao === "party" && some > 0.04;
+    slot.silhueta.visible = silhuetaLigada;
+    if (silhuetaLigada) {
+      slot.silhueta.material.color.setHex(COR_SILHUETA_JOGADOR);
+    }
     slot.grupo.visible = some > 0.04;
     if (visual && dirMundo != null) visual.dir = dirMundo;
     const centro = centroDoQuadro(fr, medidaSprite(ator));
