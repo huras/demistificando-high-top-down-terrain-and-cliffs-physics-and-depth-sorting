@@ -67,7 +67,7 @@ function aplicarPivos(arquivo) {
 }
 
 export async function carregarDados() {
-  const [catRes, dropRes, pivoRes, distRes] = await Promise.all([
+  const [catRes, dropRes, pivoRes, distRes, evoRes] = await Promise.all([
     fetch("/ref/catalogo.json"),
     fetch("/ref/src/data/pokemon/speciesDrops.json"),
     fetch("/assets/pokemon/pivos.json"),
@@ -78,6 +78,7 @@ export async function carregarDados() {
       );
       return 0;
     }),
+    fetch("/ref/src/data/pokemon/evolution-lines.json").catch(() => null),
   ]);
   if (!catRes.ok) throw new Error("catálogo de pokémon indisponível");
   const cat = await catRes.json();
@@ -93,6 +94,10 @@ export async function carregarDados() {
     };
   }
   if (pivoRes.ok) aplicarPivos(await pivoRes.json());
+  if (evoRes?.ok) {
+    const { instalarLinhasEvo } = await import("./pack.js");
+    instalarLinhasEvo(await evoRes.json(), especies);
+  }
   pronto = true;
   const biomas = distRes | 0;
   if (!biomas) {

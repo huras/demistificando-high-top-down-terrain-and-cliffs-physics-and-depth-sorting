@@ -11,6 +11,14 @@ import { garantirNav } from "../navegacao/seguirCaminho.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
 import { velocidadeDe } from "./ator.js";
 import { irPara } from "./ia/locomocaoCampo.js";
+import {
+  cfgPack,
+  ehMembroPack,
+  liderPackVivo,
+  pontoSlot,
+  reempilharLideranca,
+  vivoPack,
+} from "./pack.js";
 
 export { irPara, zDePerseguicao } from "./ia/locomocaoCampo.js";
 
@@ -117,6 +125,35 @@ function vagar(ator, dt) {
   if (ator._ancoraT > 1.3) desistirMeta(ator);
 }
 
+function seguirLider(ator, selvagens, dt) {
+  if (!vivoPack(ator) || !ehMembroPack(ator)) {
+    vagar(ator, dt);
+    return;
+  }
+  let lider = liderPackVivo(selvagens, ator.packId);
+  if (!lider) {
+    lider = reempilharLideranca(selvagens, ator.packId);
+  }
+  if (!lider || lider === ator || !ehMembroPack(ator)) {
+    vagar(ator, dt);
+    return;
+  }
+  const packCfg = cfgPack();
+  const slot = pontoSlot(lider, ator.packSlot ?? 1, packCfg);
+  const dx = slot.x - ator.x;
+  const dy = slot.y - ator.y;
+  const dist = Math.hypot(dx, dy);
+  const arrive = packCfg.arriveRadius ?? 0.55;
+  if (dist <= arrive) {
+    pararCorpo(ator);
+    ator.acao = "parado";
+    ator.roam = "waiting";
+    return;
+  }
+  const catchUp = dist > (packCfg.catchUpDistance ?? 2.4);
+  irPara(ator, slot.x, slot.y, null, velocidadeDe(ator, catchUp), dt);
+}
+
 /** Aviso de proximidade; combate fica em campo/tickCampo. */
 export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
   for (let i = 0; i < selvagens.length; i++) {
@@ -133,6 +170,7 @@ export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
         if (foco.faccao === "party") definirEmocao(foco, EMOCAO.EXCLAMACAO, { duracao: 1.2 });
       }
     }
-    vagar(ator, dt);
+    if (ehMembroPack(ator)) seguirLider(ator, selvagens, dt);
+    else vagar(ator, dt);
   }
 }

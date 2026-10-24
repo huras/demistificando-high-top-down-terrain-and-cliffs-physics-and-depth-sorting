@@ -20,6 +20,8 @@ import {
   pontoInvestigacao,
   tickInvestigacao,
 } from "./retaliacao.js";
+import { alertarPackAgro } from "../pack.js";
+import { selvagensAtivos } from "../populacao.js";
 
 const DIST_ITEM = 0.35;
 
@@ -144,8 +146,16 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
 
   const alvo = escolherAlvoWild(ator, partyMon, jogador);
   if (alvo) {
+    const mudou = ator.modo !== "agro" || ator.alvo !== alvo;
     ator.modo = "agro";
     ator.alvo = alvo;
+    if (mudou && ator.packId != null) {
+      alertarPackAgro(selvagensAtivos(), ator, alvo, (mate, t) => {
+        mate.modo = "agro";
+        mate.alvo = t;
+        mate.dormindo = 0;
+      });
+    }
     if (ocupadoCast(ator)) {
       ator.andando = false;
       return;

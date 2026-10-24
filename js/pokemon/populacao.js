@@ -27,6 +27,15 @@ import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
 import { nivelEm } from "./distribuicao/forca.js";
 import { sortearEspecie } from "./distribuicao/sorteio.js";
+import {
+  amarrarPack,
+  cfgPack,
+  escolherMate,
+  planPackDoLar,
+  pontoMembro,
+  reempilharLideranca,
+  vivoPack,
+} from "./pack.js";
 import { aquecerGrito, tocarGrito } from "../jogo/som/gritos.js";
 import {
   defensoresSantuario,
@@ -194,6 +203,37 @@ function garantirLar(cx, cy, indice) {
     lares.set(id, null);
     return null;
   }
+  const hostil = unidade(hash(cx, cy, 60 + indice)) < POKEMON.HOSTIL;
+  const packSize = planPackDoLar(
+    unidade(hash(cx, cy, 70 + indice)),
+    hash(cx, cy, 71 + indice),
+    cfgPack(),
+  );
+  const membros = [
+    {
+      slot: 0,
+      chave: esp.key,
+      nivel,
+      shiny: unidade(hash(cx, cy, 50 + indice)) < POKEMON.SHINY,
+    },
+  ];
+  for (let s = 1; s < packSize; s++) {
+    let sal = 80 + s * 10;
+    const mate = escolherMate(
+      { chave: esp.key, nivel },
+      () => {
+        const u = unidade(hash(cx, cy, sal));
+        sal += 1;
+        return u;
+      },
+    );
+    membros.push({
+      slot: s,
+      chave: mate.chave,
+      nivel: mate.nivel,
+      shiny: unidade(hash(cx, cy, 50 + indice + s * 17)) < POKEMON.SHINY,
+    });
+  }
   const lar = {
     id,
     x,
@@ -201,78 +241,176 @@ function garantirLar(cx, cy, indice) {
     z,
     chave: esp.key,
     nivel,
-    shiny: unidade(hash(cx, cy, 50 + indice)) < POKEMON.SHINY,
-    hostil: unidade(hash(cx, cy, 60 + indice)) < POKEMON.HOSTIL,
-    ator: null,
+    shiny: membros[0].shiny,
+    hostil,
+    packSize,
+    membros,
+    atores: [],
     sumidoAte: 0,
   };
   lares.set(id, lar);
   return lar;
 }
 
-function criarMorador(lar) {
-  const esp = especie(lar.chave);
+function rngDe(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+function criarMoradorSlot(lar, mem) {
+  const esp = especie(mem.chave) || especie(lar.chave);
   if (!esp) return null;
   const ator = criarAtor({
-    id: `lar-${lar.id}`,
+    id: mem.slot === 0 ? `lar-${lar.id}` : `lar-${lar.id}-${mem.slot}`,
     especie: esp,
-    nivel: lar.nivel,
-    shiny: lar.shiny,
+    nivel: mem.nivel,
+    shiny: mem.shiny,
     faccao: "selvagem",
-    x: lar.poseX ?? lar.x,
-    y: lar.poseY ?? lar.y,
-    z: lar.poseZ ?? lar.z,
+    x: mem.poseX ?? lar.x,
+    y: mem.poseY ?? lar.y,
+    z: mem.poseZ ?? lar.z,
     casaX: lar.x,
     casaY: lar.y,
     casaZ: lar.z,
     hostil: lar.hostil,
-    hp: lar.hpGuardado,
+    hp: mem.hpGuardado,
     dormindo: 1,
   });
-  if (lar.mortoGuardado) {
+  ator.larId = lar.id;
+  ator.packSlot = mem.slot;
+  if (mem.mortoGuardado) {
     ator.morto = true;
-    ator.mortoAte = lar.mortoAte || 0;
-    ator.morreuEm = lar.morreuEm || 0;
+    ator.mortoAte = mem.mortoAte || 0;
+    ator.morreuEm = mem.morreuEm || 0;
     ator.hp = 0;
   }
   return ator;
 }
 
 function acordar(lar) {
-  if (lar.ator) return;
+  if (lar.atores?.length) return;
   if (lar.sumidoAte > agora) return;
-  const ator = criarMorador(lar);
-  if (!ator) return;
-  lar.ator = ator;
-  ativos.push(ator);
+  const membros = lar.membros || [];
+  if (!membros.length) return;
+
+  const criados = [];
+  const liderMem = membros[0];
+  const lider = criarMoradorSlot(lar, liderMem);
+  if (!lider) return;
+  criados.push(lider);
+
+  const rng = rngDe(hash(Math.floor(lar.x), Math.floor(lar.y), 99));
+  const longeSpawn = (x, y, min) => {
+    if (!longeDeAtivos(x, y, min)) return false;
+    const min2 = min * min;
+    for (let j = 0; j < criados.length; j++) {
+      const a = criados[j];
+      const dx = a.x - x;
+      const dy = a.y - y;
+      if (dx * dx + dy * dy < min2) return false;
+    }
+    return true;
+  };
+  for (let i = 1; i < membros.length; i++) {
+    const mem = membros[i];
+    if (mem.sumido) continue;
+    let px = mem.poseX;
+    let py = mem.poseY;
+    let pz = mem.poseZ;
+    if (px == null || py == null) {
+      const pt = pontoMembro(
+        { x: lider.x, y: lider.y, z: lider.z },
+        pisoSeco,
+        longeSpawn,
+        rng,
+      );
+      px = pt.x;
+      py = pt.y;
+      pz = pt.z;
+      mem.poseX = px;
+      mem.poseY = py;
+      mem.poseZ = pz;
+    }
+    const ator = criarMoradorSlot(lar, {
+      ...mem,
+      poseX: px,
+      poseY: py,
+      poseZ: pz ?? lar.z,
+    });
+    if (ator) criados.push(ator);
+  }
+
+  if (criados.length >= 2) {
+    amarrarPack(criados, lar.id);
+  } else if (criados.length === 1) {
+    criados[0].packId = null;
+    criados[0].packRole = null;
+    criados[0].packSlot = 0;
+  }
+
+  lar.atores = criados;
+  for (let i = 0; i < criados.length; i++) ativos.push(criados[i]);
 }
 
 function guardar(lar) {
-  const ator = lar.ator;
-  if (!ator) return;
-  const i = ativos.indexOf(ator);
-  if (i >= 0) ativos.splice(i, 1);
-  cancelarPath(ator.id);
-  if (ator.capturado) {
-    lar.ator = null;
-    lar.sumidoAte = agora + POKEMON.RESPAWN_CAPTURA;
-    return;
+  const lista = lar.atores;
+  if (!lista?.length) return;
+
+  let algumCapturado = false;
+  let vivosRestantes = 0;
+  for (let i = 0; i < lista.length; i++) {
+    const ator = lista[i];
+    const idx = ativos.indexOf(ator);
+    if (idx >= 0) ativos.splice(idx, 1);
+    cancelarPath(ator.id);
+    const mem = lar.membros[ator.packSlot ?? i] || lar.membros[i];
+    if (ator.capturado) {
+      algumCapturado = true;
+      if (mem) mem.sumido = true;
+      continue;
+    }
+    if (mem) {
+      mem.poseX = ator.x;
+      mem.poseY = ator.y;
+      mem.poseZ = ator.z;
+      mem.hpGuardado = ator.hp;
+      mem.mortoGuardado = ator.morto;
+      mem.mortoAte = ator.mortoAte;
+      mem.morreuEm = ator.morreuEm;
+      vivosRestantes++;
+    }
   }
-  lar.poseX = ator.x;
-  lar.poseY = ator.y;
-  lar.poseZ = ator.z;
-  lar.hpGuardado = ator.hp;
-  lar.mortoGuardado = ator.morto;
-  lar.mortoAte = ator.mortoAte;
-  lar.morreuEm = ator.morreuEm;
-  lar.ator = null;
+  lar.atores = [];
+  if (algumCapturado && vivosRestantes === 0) {
+    lar.sumidoAte = agora + POKEMON.RESPAWN_CAPTURA;
+    for (let i = 0; i < lar.membros.length; i++) {
+      lar.membros[i].sumido = false;
+      lar.membros[i].poseX = null;
+      lar.membros[i].poseY = null;
+      lar.membros[i].poseZ = null;
+    }
+  }
 }
 
 function d2De(lar, px, py) {
-  const x = lar.ator ? lar.ator.x : lar.x;
-  const y = lar.ator ? lar.ator.y : lar.y;
-  const dx = x - px;
-  const dy = y - py;
+  const lista = lar.atores;
+  if (lista?.length) {
+    let best = Infinity;
+    for (let i = 0; i < lista.length; i++) {
+      const a = lista[i];
+      if (a.capturado) continue;
+      const dx = a.x - px;
+      const dy = a.y - py;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < best) best = d2;
+    }
+    if (best < Infinity) return best;
+  }
+  const dx = lar.x - px;
+  const dy = lar.y - py;
   return dx * dx + dy * dy;
 }
 
@@ -284,17 +422,34 @@ function emCenaMorte(ator) {
   return false;
 }
 
+function larTemAtores(lar) {
+  return !!(lar.atores && lar.atores.length);
+}
+
+function emCenaMorteLar(lar) {
+  const lista = lar.atores;
+  if (!lista) return false;
+  for (let i = 0; i < lista.length; i++) {
+    if (emCenaMorte(lista[i])) return true;
+  }
+  return false;
+}
+
 function emAgro(lar) {
-  const a = lar.ator;
-  if (!a) return false;
-  if (a.modo === "agro") return true;
-  // Corpo / Hurt: guarda no raio de agro pra não sumir no meio da queda.
-  return emCenaMorte(a);
+  const lista = lar.atores;
+  if (!lista?.length) return false;
+  for (let i = 0; i < lista.length; i++) {
+    const a = lista[i];
+    if (a.capturado) continue;
+    if (a.modo === "agro") return true;
+    if (emCenaMorte(a)) return true;
+  }
+  return false;
 }
 
 function limiteCull(lar) {
   if (emAgro(lar)) return POKEMON.RAIO_MANTER_AGRO;
-  if (lar.ator) return POKEMON.RAIO_MANTER;
+  if (larTemAtores(lar)) return POKEMON.RAIO_MANTER;
   return POKEMON.RAIO_SIM;
 }
 
@@ -306,7 +461,7 @@ function sincronizarLares(px, py) {
   const perto = [];
 
   for (const lar of lares.values()) {
-    if (!lar?.ator || !emAgro(lar) || lar.sumidoAte > agora) continue;
+    if (!lar || !larTemAtores(lar) || !emAgro(lar) || lar.sumidoAte > agora) continue;
     const d2 = d2De(lar, px, py);
     if (d2 > POKEMON.RAIO_MANTER_AGRO * POKEMON.RAIO_MANTER_AGRO) continue;
     perto.push({ lar, d2, agro: true });
@@ -323,7 +478,7 @@ function sincronizarLares(px, py) {
         if (!lar || lar.sumidoAte > agora) continue;
         if (zonaSemSelvagem(lar.x, lar.y)) {
           // Não some no meio do desmaio / cadáver.
-          if (lar.ator && !emCenaMorte(lar.ator)) guardar(lar);
+          if (larTemAtores(lar) && !emCenaMorteLar(lar)) guardar(lar);
           continue;
         }
         if (emAgro(lar)) continue;
@@ -345,43 +500,102 @@ function sincronizarLares(px, py) {
     const limite = limiteCull(lar);
     if (d2 > limite * limite) continue;
     acordar(lar);
-    if (lar.ator) {
+    if (larTemAtores(lar)) {
       manter.add(lar.id);
       vagas--;
     }
   }
 
   for (const lar of lares.values()) {
-    if (!lar?.ator) continue;
+    if (!lar || !larTemAtores(lar)) continue;
     if (manter.has(lar.id)) continue;
     guardar(lar);
   }
+}
+
+function larDeAtor(ator) {
+  if (ator?.larId != null && lares.has(ator.larId)) return lares.get(ator.larId);
+  const id = ator?.id;
+  if (!id || !id.startsWith("lar-")) return null;
+  const resto = id.slice(4);
+  if (lares.has(resto)) return lares.get(resto);
+  const corte = resto.lastIndexOf("-");
+  if (corte > 0) {
+    const base = resto.slice(0, corte);
+    if (lares.has(base)) return lares.get(base);
+  }
+  return null;
+}
+
+function removerAtorDoLar(lar, ator) {
+  if (!lar?.atores) return;
+  const i = lar.atores.indexOf(ator);
+  if (i >= 0) lar.atores.splice(i, 1);
+  const mem = lar.membros[ator.packSlot | 0];
+  if (mem) mem.sumido = true;
 }
 
 function tickMoradores() {
   for (let i = ativos.length - 1; i >= 0; i--) {
     const ator = ativos[i];
     if (ator.capturado) {
-      const lar = lares.get(ator.id.slice(4));
-      if (lar) {
-        lar.ator = null;
-        lar.sumidoAte = agora + POKEMON.RESPAWN_CAPTURA;
-      }
+      const lar = larDeAtor(ator);
       ativos.splice(i, 1);
+      if (lar) {
+        removerAtorDoLar(lar, ator);
+        cancelarPath(ator.id);
+        const vivos = lar.atores.filter((a) => !a.capturado);
+        if (!vivos.length) {
+          lar.sumidoAte = agora + POKEMON.RESPAWN_CAPTURA;
+          for (let m = 0; m < lar.membros.length; m++) {
+            lar.membros[m].sumido = false;
+            lar.membros[m].poseX = null;
+            lar.membros[m].poseY = null;
+            lar.membros[m].poseZ = null;
+          }
+        } else if (vivos.length >= 2) {
+          reempilharLideranca(vivos, lar.id);
+        } else {
+          vivos[0].packId = null;
+          vivos[0].packRole = null;
+          vivos[0].packSlot = 0;
+        }
+      }
       continue;
     }
     if (!ator.morto) continue;
     if (agora < ator.mortoAte) continue;
     reviverAtor(ator, ator.casaX, ator.casaY, ator.casaZ);
-    const lar = lares.get(ator.id.slice(4));
+    const lar = larDeAtor(ator);
     const shiny = Math.random() < POKEMON.SHINY;
     ator.shiny = shiny;
     if (lar) {
-      lar.shiny = shiny;
-      lar.mortoGuardado = false;
-      lar.hpGuardado = ator.hpMax;
-      lar.morreuEm = 0;
+      const mem = lar.membros[ator.packSlot | 0];
+      if (mem) {
+        mem.shiny = shiny;
+        mem.mortoGuardado = false;
+        mem.hpGuardado = ator.hpMax;
+        mem.morreuEm = 0;
+      }
+      if (ator.packId != null) reempilharLideranca(lar.atores, lar.id);
     }
+  }
+
+  // Sem líder vivo: promove o mate mais próximo.
+  const vistos = new Set();
+  for (let i = 0; i < ativos.length; i++) {
+    const ator = ativos[i];
+    if (ator.packId == null || vistos.has(ator.packId)) continue;
+    vistos.add(ator.packId);
+    let temLider = false;
+    for (let j = 0; j < ativos.length; j++) {
+      const a = ativos[j];
+      if (a.packId === ator.packId && a.packRole === "leader" && vivoPack(a)) {
+        temLider = true;
+        break;
+      }
+    }
+    if (!temLider) reempilharLideranca(ativos, ator.packId);
   }
 }
 

@@ -495,4 +495,19 @@ export const POKEMON = Object.freeze({
   // Perseguir / luta / coleta = sprint do treinador (antes 4.2 < walk 5.4).
   VEL_AGRO: VELOCIDADE_SPRINT,
   VEL_ROAM: 1.45,
+  // Packs em lares do overworld (paridade Pokemon AI). Grama / santuário ficam solo.
+  PACK: Object.freeze({
+    enabled: true,
+    groupedFraction: 0.5,
+    sizes: Object.freeze([2, 3]),
+    memberRadiusMin: 2.0,
+    memberRadiusMax: 3.2,
+    memberClearance: 0.55,
+    slotBack: 2.0,
+    slotSide: 1.35,
+    arriveRadius: 0.55,
+    catchUpDistance: 2.4,
+    memberPlaceAttempts: 64,
+    alertPackOnAgro: true,
+  }),
 });
