@@ -286,6 +286,8 @@ export const VISUAL_REAL_PADRAO = true;
  * Cutout no passe opaco (sem soft-alpha).
  */
 export const VEG_ALPHA_TEST = 0.12;
+/** Cristal: leve vidro no passe transparente (poucas instâncias). */
+export const VEG_CRISTAL_OPACIDADE = 0.62;
 export const VEG_ARVORE_ESCALA = 1;
 export const VEG_MATA_ESCALA = 0.75;
 /** Só reescreve instanceMatrix se o yaw mudou mais que isto (rad). */

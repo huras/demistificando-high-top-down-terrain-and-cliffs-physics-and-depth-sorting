@@ -13,8 +13,10 @@ import {
   presetCeuDe,
 } from "./kinds.js";
 import { definirClima, obterHora } from "../render/3d/ceu/controleCeu.js";
+import { zerarVento } from "./vento.js";
 
 const banco = new BancoFamilias(CLIMA_CFG);
+const ventoInterior = { intensidade: 0, angulo: 0, vx: 0, vy: 0 };
 
 /** @type {{ display: string, logicalKind: string, intensity: string, familia: string, preset: string, vento: object, cloudCover: number, storm: number } | null} */
 let amostraAtual = null;
@@ -50,13 +52,19 @@ export function tickClima(dt, ctx = {}) {
   const preset = forcarPreset || presetCeuDe(display, raw.familia);
   definirClima(preset);
 
+  let vento = raw.vento;
+  if (ctx.interior === true) {
+    zerarVento(ventoInterior);
+    vento = ventoInterior;
+  }
+
   amostraAtual = {
     display,
     logicalKind: raw.logicalKind,
     intensity: raw.intensity,
     familia: raw.familia,
     preset,
-    vento: raw.vento,
+    vento,
     cloudCover: raw.cloudCover,
     storm: raw.storm,
     nome: nomeClimaDisplay(display),

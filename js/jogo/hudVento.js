@@ -4,6 +4,7 @@
 import { CLIMA_CFG } from "../clima/config.js";
 import { obterVentoMundo } from "../clima/amostra.js";
 import { ventoHud01, ventoHudKmh } from "../clima/vento.js";
+import { estado } from "./estado.js";
 
 const SVG = "http://www.w3.org/2000/svg";
 const DARTS = 3;
@@ -115,6 +116,10 @@ export function ligarHudVento(host) {
 export function tickHudVento(dt, host) {
   if (!pronto) ligarHudVento(host);
   if (!root || !rotor) return;
+  if (estado.interior) {
+    root.hidden = true;
+    return;
+  }
   root.hidden = false;
 
   const vento = obterVentoMundo();

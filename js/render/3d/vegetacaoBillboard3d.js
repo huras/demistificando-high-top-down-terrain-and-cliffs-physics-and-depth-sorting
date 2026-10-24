@@ -6,6 +6,7 @@ import {
   ALTURA_BLOCO,
   TILE,
   VEG_ALPHA_TEST,
+  VEG_CRISTAL_OPACIDADE,
   VEG_ARVORE_ESCALA,
   VEG_MATA_ESCALA,
   VEG_YAW_EPS,
@@ -230,11 +231,13 @@ export function criarVegetacaoBillboard3d() {
       tex = texturasAnim[quadro & 1];
     }
     const grama = def.amostra?.tipo === "grama" || def.amostra?.tipo === "mata";
+    const cristal = def.amostra?.tipo === "cristal";
     const material = aplicarSombraNuvem(aplicarLuzBillboard(new THREE.MeshStandardMaterial({
       map: tex,
       roughness: 1,
       metalness: 0,
-      transparent: false,
+      transparent: cristal,
+      opacity: cristal ? VEG_CRISTAL_OPACIDADE : 1,
       alphaTest: VEG_ALPHA_TEST,
       depthWrite: true,
       depthTest: true,

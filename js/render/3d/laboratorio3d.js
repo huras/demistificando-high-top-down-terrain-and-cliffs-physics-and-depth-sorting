@@ -29,6 +29,7 @@ import {
 } from "./cartaoPe.js";
 import { carregarMoldesProps, criarBolasCuraNaMalha, instanciarProp } from "./propsObj3d.js";
 import { fatorYCasa, fatorYProp } from "./escalaVertical.js";
+import { criarFaixaParede } from "./paredeInteriorDual.js";
 
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
 const FOLHA_VASO = "/ref/sprites/interiors/Safari-Zone-Inner-Room-Hospital-Tileset-629434880.png";
@@ -65,12 +66,23 @@ function materialCaixa(cor) {
   return mat;
 }
 
-function bloco(largura, altura, fundo, x, y, z, mat) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(largura, altura, fundo), mat);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = false;
-  mesh.receiveShadow = true;
-  return mesh;
+function anexarFaixas(grupo, lista, h, y, parede, cxSala, czSala) {
+  for (let i = 0; i < lista.length; i++) {
+    const r = lista[i];
+    grupo.add(
+      criarFaixaParede({
+        x: ORIGEM_LAB_X + r.x + r.w * 0.5,
+        y,
+        z: ORIGEM_LAB_Y + r.y + r.h * 0.5,
+        w: r.w,
+        d: r.h,
+        h,
+        materiais: parede,
+        cxSala,
+        czSala,
+      }),
+    );
+  }
 }
 
 function anexarCasca(grupo, piso) {
@@ -78,34 +90,10 @@ function anexarCasca(grupo, piso) {
   const parede = facesParedeInterior(materialCaixa("#c4b8a8"));
   const h = ALTURA_PAREDE_LAB * fatorYCasa();
   const y = ALTURA_PRACA + h * 0.5;
-  for (let i = 0; i < planta.muros.length; i++) {
-    const r = planta.muros[i];
-    grupo.add(
-      bloco(
-        r.w,
-        h,
-        r.h,
-        ORIGEM_LAB_X + r.x + r.w * 0.5,
-        y,
-        ORIGEM_LAB_Y + r.y + r.h * 0.5,
-        parede,
-      ),
-    );
-  }
-  for (let i = 0; i < planta.vedacoes.length; i++) {
-    const r = planta.vedacoes[i];
-    grupo.add(
-      bloco(
-        r.w,
-        h,
-        r.h,
-        ORIGEM_LAB_X + r.x + r.w * 0.5,
-        y,
-        ORIGEM_LAB_Y + r.y + r.h * 0.5,
-        parede,
-      ),
-    );
-  }
+  const cxSala = ORIGEM_LAB_X + COLS_LAB * 0.5;
+  const czSala = ORIGEM_LAB_Y + ROWS_LAB * 0.5;
+  anexarFaixas(grupo, planta.muros, h, y, parede, cxSala, czSala);
+  anexarFaixas(grupo, planta.vedacoes, h, y, parede, cxSala, czSala);
   if (!piso) return;
   for (let i = 0; i < planta.pisos.length; i++) {
     const r = planta.pisos[i];

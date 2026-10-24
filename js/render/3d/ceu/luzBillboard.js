@@ -94,13 +94,14 @@ export const FOLGA_ATOR = 0.08;
 /** Decal horizontal no chão ainda pode pedir folga alta (moldeChao). */
 export const FOLGA_CHAO_DECAL = 1.5;
 /**
- * Desempate em view-Z a partir do NDC do pé (tela ∈ [-1,1]).
- * High top-down: altura do fragmento domina a coluna — pés lado a lado
- * quase empatam; o NDC separa de verdade. Soma |X|+|Y| < FOLGA_ATOR.
- * X: esquerda na tela ganha. Y: mais baixo na tela ganha (sul / +Z mapa).
+ * Desempate no depth buffer [0,1] a partir do NDC do pé (tela ∈ [-1,1]).
+ * Em view-Z o bias some com a distância (projeção); aqui é estável em
+ * qualquer zoom. Afeta todo billboard com coluna (árvore, pedra, cristal…).
+ * X: esquerda ganha. Y: mais baixo na tela ganha (sul / +Z mapa).
+ * Folga do ator continua em view-Z (FOLGA_ATOR) e não compete com isto.
  */
-export const DESEMPATE_TELA_X = 0.015;
-export const DESEMPATE_TELA_Y = 0.02;
+export const DESEMPATE_DEPTH_X = 4e-4;
+export const DESEMPATE_DEPTH_Y = 5e-4;
 
 const VERT_COLUNA = `
 varying vec3 vPivoWorldColuna;
@@ -116,8 +117,8 @@ varying float vFragWorldYColuna;
  * cabeça (cartão alto / pivô longe da base — ex. Pokémon em PIVO_Y=0.75),
  * e o ator ganhava da raiz da árvore mesmo atrás dela.
  *
- * Desempate NDC do pé: esquerda (tela X) e mais baixo (tela Y ≈ eixo Z do
- * mapa) ganham — quebra empate entre billboards sem mexer na pose.
+ * Desempate NDC do pé no depth buffer (não em view-Z): esquerda e mais baixo
+ * na tela ganham — estável em qualquer distância de câmera.
  */
 function calcColunaVert() {
   return `
@@ -140,20 +141,22 @@ function calcColunaVert() {
 `;
 }
 
-function calcColunaFrag(folgaTxt, telaXTxt, telaYTxt) {
+function calcColunaFrag(folgaTxt, depthXTxt, depthYTxt) {
   return `
 {
   float yColuna = max(vFragWorldYColuna, vPivoWorldColuna.y);
   vec3 colunaWorld = vec3(vPivoWorldColuna.x, yColuna, vPivoWorldColuna.z);
   vec4 colunaVista = viewMatrix * vec4(colunaWorld, 1.0);
+  colunaVista.z += ${folgaTxt};
   vec4 peVista = viewMatrix * vec4(vPivoWorldColuna, 1.0);
   vec4 peClip = projectionMatrix * peVista;
   float invW = 1.0 / max(abs(peClip.w), 1e-6);
   float telaX = peClip.x * invW;
   float telaY = peClip.y * invW;
-  colunaVista.z += ${folgaTxt} - telaX * ${telaXTxt} - telaY * ${telaYTxt};
   vec4 colunaClip = projectionMatrix * colunaVista;
-  gl_FragDepth = colunaClip.z / colunaClip.w * 0.5 + 0.5;
+  float profundidade = colunaClip.z / colunaClip.w * 0.5 + 0.5;
+  profundidade -= telaX * ${depthXTxt} + telaY * ${depthYTxt};
+  gl_FragDepth = clamp(profundidade, 0.0, 1.0);
 }
 `;
 }
@@ -291,8 +294,8 @@ export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
   material.userData.luzBillboard = true;
 
   const folgaTxt = Number(folgaPivo).toFixed(2);
-  const telaXTxt = Number(DESEMPATE_TELA_X).toFixed(4);
-  const telaYTxt = Number(DESEMPATE_TELA_Y).toFixed(4);
+  const depthXTxt = Number(DESEMPATE_DEPTH_X).toFixed(6);
+  const depthYTxt = Number(DESEMPATE_DEPTH_Y).toFixed(6);
   const anterior = material.onBeforeCompile;
   const chaveAnterior = material.customProgramCacheKey;
   material.onBeforeCompile = (shader, renderer) => {
@@ -305,11 +308,11 @@ export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
       "#include <normal_fragment_maps>",
       "#include <normal_fragment_maps>\nnormal = normalize( mat3( viewMatrix ) * uNormalSol );",
     );
-    profundidadeColuna(shader, folgaTxt, telaXTxt, telaYTxt);
+    profundidadeColuna(shader, folgaTxt, depthXTxt, depthYTxt);
   };
   material.customProgramCacheKey = function chaveLuzBillboard() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-billboard|coluna|pe-clamp-frag|desempate-tela|${folgaTxt}|${telaXTxt}|${telaYTxt}`;
+    return `${base}|luz-billboard|coluna|pe-clamp-frag|desempate-depth|${folgaTxt}|${depthXTxt}|${depthYTxt}`;
   };
   return material;
 }

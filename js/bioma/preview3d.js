@@ -4,6 +4,7 @@ import {
   BILLBOARD_INCLINACAO,
   TILE,
   VEG_ALPHA_TEST,
+  VEG_CRISTAL_OPACIDADE,
   VEG_ARVORE_ESCALA,
   VEG_MATA_ESCALA,
   VEG_YAW_EPS,
@@ -285,11 +286,13 @@ function loteSprite(id, classe) {
   const escala = estiloDe(classe);
   const pw = fonte.naturalWidth || fonte.width || TILE;
   const ph = fonte.naturalHeight || fonte.height || TILE;
+  const cristal = classe === "cristal";
   const material = new THREE.MeshStandardMaterial({
     map: tex,
     roughness: 0.9,
     metalness: 0,
-    transparent: false,
+    transparent: cristal,
+    opacity: cristal ? VEG_CRISTAL_OPACIDADE : 1,
     alphaTest: VEG_ALPHA_TEST,
     depthWrite: true,
     side: THREE.FrontSide,

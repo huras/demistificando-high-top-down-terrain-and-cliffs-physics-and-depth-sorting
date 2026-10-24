@@ -7,6 +7,7 @@ import {
   TERRENO_2D_MARGEM,
   TILE,
   TILE_ART,
+  VEG_CRISTAL_OPACIDADE,
 } from "../config.js";
 import { alturaEm, solidoEm } from "../mundo/altura.js";
 import { PROPS } from "../mundo/mapaDemo.js";
@@ -475,7 +476,10 @@ function desenharPropReal(ctx, prop, z) {
   const dh = img.height * ESCALA * escala;
   const px = mundoParaTelaX(prop.x);
   const py = mundoParaTelaY(prop.y, z);
+  const alfaAntes = ctx.globalAlpha;
+  if (prop.tipo === "cristal") ctx.globalAlpha = alfaAntes * VEG_CRISTAL_OPACIDADE;
   ctx.drawImage(img, px - dw * 0.5, py - dh * pivotY, dw, dh);
+  ctx.globalAlpha = alfaAntes;
   return true;
 }
 

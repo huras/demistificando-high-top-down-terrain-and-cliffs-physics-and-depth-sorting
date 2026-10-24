@@ -15,6 +15,7 @@ import {
   facesParedeInterior,
 } from "./cartaoPe.js";
 import { fatorYCasa, fatorYProp } from "./escalaVertical.js";
+import { criarFaixaParede } from "./paredeInteriorDual.js";
 
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
 const FOLHA_GENTE =
@@ -51,18 +52,22 @@ function anexarCaixas(grupo, planta) {
   const balcao = materialCaixa(planta.corBalcao);
   const h = ALTURA_PAREDE_HUB * fatorYCasa();
   const y = ALTURA_PRACA + h * 0.5;
+  const cxSala = planta.origemX + planta.cols * 0.5;
+  const czSala = planta.origemY + planta.rows * 0.5;
   for (let i = 0; i < planta.cascas.length; i++) {
     const r = planta.cascas[i];
     grupo.add(
-      bloco(
-        r.w,
-        h,
-        r.h,
-        planta.origemX + r.x + r.w * 0.5,
+      criarFaixaParede({
+        x: planta.origemX + r.x + r.w * 0.5,
         y,
-        planta.origemY + r.y + r.h * 0.5,
-        parede,
-      ),
+        z: planta.origemY + r.y + r.h * 0.5,
+        w: r.w,
+        d: r.h,
+        h,
+        materiais: parede,
+        cxSala,
+        czSala,
+      }),
     );
   }
   const hb = 1.15 * fatorYProp();

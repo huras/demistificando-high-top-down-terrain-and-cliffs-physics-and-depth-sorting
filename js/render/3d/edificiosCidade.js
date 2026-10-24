@@ -31,6 +31,7 @@ import { atualizarCentro, montarCentro3d } from "./centro3d.js";
 import { montarLoja3d } from "./loja3d.js";
 import { carregarSpritesPredio, chaveSpritePredio, criarSpritePredio, montarUsina } from "./prediosSprite.js";
 import { aplicarEscalaCasa, aplicarEscalaProp, aplicarFatorYCasa } from "./escalaVertical.js";
+import { atualizarParedesDual } from "./paredeInteriorDual.js";
 
 const FOLGA = 0.96;
 const LADO_X = 6;
@@ -525,6 +526,7 @@ export function criarEdificiosCidade() {
     atualizar(px, py, yaw = 0, inclinacao = 0) {
       atualizarLaboratorio(yaw, inclinacao, px, py);
       atualizarCentro(px, py);
+      atualizarParedesDual(inclinacao);
       const pesoNoite = obterPesoNoite();
       const dtJanela = comecarQuadroJanelas();
       if (materialFlare) materialFlare.opacity = pesoNoite;

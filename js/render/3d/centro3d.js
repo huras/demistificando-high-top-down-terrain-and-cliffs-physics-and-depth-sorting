@@ -17,6 +17,7 @@ import {
 } from "./cartaoPe.js";
 import { carregarMoldesProps, criarBolasCuraNaMalha, instanciarProp } from "./propsObj3d.js";
 import { fatorYCasa, fatorYCartao, fatorYProp } from "./escalaVertical.js";
+import { criarFaixaParede } from "./paredeInteriorDual.js";
 
 const FOLHA = "/ref/sprites/interiors/pokecenter-emerald-bg.png";
 const FOLHA_FRENTE = "/ref/sprites/interiors/pokecenter-emerald-fg.png";
@@ -251,22 +252,25 @@ function anexarSala(sala, planta, img) {
   const topo = texturaFaixa(img, SPRITE_PAREDE_CIMA, 1, 4);
   const hParede = ALTURA_PAREDE_HUB * fatorYCasa();
   const y = ALTURA_PRACA + hParede * 0.5;
+  const cxSala = planta.origemX + planta.cols * 0.5;
+  const czSala = planta.origemY + planta.rows * 0.5;
   const cascas = planta.cascas;
   for (let i = 0; i < cascas.length; i++) {
     const faixa = cascas[i];
     const aoLongoX = faixa.w >= faixa.h;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(faixa.w, hParede, faixa.h),
-      materiaisDaCasca(lado, topo, aoLongoX, aoLongoX ? faixa.w : faixa.h),
+    sala.add(
+      criarFaixaParede({
+        x: planta.origemX + faixa.x + faixa.w * 0.5,
+        y,
+        z: planta.origemY + faixa.y + faixa.h * 0.5,
+        w: faixa.w,
+        d: faixa.h,
+        h: hParede,
+        materiais: materiaisDaCasca(lado, topo, aoLongoX, aoLongoX ? faixa.w : faixa.h),
+        cxSala,
+        czSala,
+      }),
     );
-    mesh.position.set(
-      planta.origemX + faixa.x + faixa.w * 0.5,
-      y,
-      planta.origemY + faixa.y + faixa.h * 0.5,
-    );
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-    sala.add(mesh);
   }
 }
 

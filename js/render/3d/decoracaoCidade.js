@@ -13,6 +13,7 @@ import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { facesParedeInterior } from "./cartaoPe.js";
+import { criarFaixaParede } from "./paredeInteriorDual.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 import { propDoSprite } from "../../mundo/cidade/catalogoProps.js";
 import {
@@ -293,14 +294,6 @@ function materialSala(cor, mapa) {
   return mat;
 }
 
-function blocoSala(largura, altura, fundo, x, y, z, mat) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(largura, altura, fundo), mat);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = false;
-  mesh.receiveShadow = true;
-  return mesh;
-}
-
 /** Piso de azulejo e paredes por cima do voxel, pra não aparecer o mato. */
 export function anexarCascaSala(grupo, piso) {
   const m = medidasSala();
@@ -323,16 +316,20 @@ export function anexarCascaSala(grupo, piso) {
   const meioY = (m.y0 + m.y1) * 0.5;
   const largura = m.x1 - m.x0;
   const fundo = m.y1 - m.y0;
-  grupo.add(blocoSala(largura, h, 1.05, meioX, y, m.y0 + 0.5, parede));
-  grupo.add(blocoSala(1.05, h, fundo, m.x0 + 0.5, y, meioY, parede));
-  grupo.add(blocoSala(1.05, h, fundo, m.x1 - 0.5, y, meioY, parede));
+  const cxSala = meioX;
+  const czSala = meioY;
+  const faixa = (w, d, x, z) =>
+    criarFaixaParede({ x, y, z, w, d, h, materiais: parede, cxSala, czSala });
+  grupo.add(faixa(largura, 1.05, meioX, m.y0 + 0.5));
+  grupo.add(faixa(1.05, fundo, m.x0 + 0.5, meioY));
+  grupo.add(faixa(1.05, fundo, m.x1 - 0.5, meioY));
   const esq = m.portaX0 - m.x0;
   const dir = m.x1 - m.portaX1;
   if (esq > 0.2) {
-    grupo.add(blocoSala(esq, h, 1.05, m.x0 + esq * 0.5, y, m.portaY + 0.5, parede));
+    grupo.add(faixa(esq, 1.05, m.x0 + esq * 0.5, m.portaY + 0.5));
   }
   if (dir > 0.2) {
-    grupo.add(blocoSala(dir, h, 1.05, m.portaX1 + dir * 0.5, y, m.portaY + 0.5, parede));
+    grupo.add(faixa(dir, 1.05, m.portaX1 + dir * 0.5, m.portaY + 0.5));
   }
 }
 
