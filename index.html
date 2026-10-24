@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>High Top-Down — Cliffs, Física e Depth Sorting</title>
   <link rel="stylesheet" href="css/demo.css" />
+  <link rel="stylesheet" href="css/carregamento.css" />
   <link rel="stylesheet" href="css/jogo.css" />
   <link rel="stylesheet" href="css/hud-gameplay.css" />
   <link rel="stylesheet" href="css/bag-wheel.css" />
@@ -28,7 +29,38 @@
   }
   </script>
 </head>
-<body data-modo="3d">
+<body data-modo="3d" class="esta-carregando">
+  <div
+    id="boot-carregamento"
+    class="boot-load"
+    role="progressbar"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow="0"
+    aria-busy="true"
+    aria-label="Carregando o jogo"
+  >
+    <div class="boot-load__painel">
+      <div class="boot-load__marca">
+        <h1 class="boot-load__titulo">High Top-Down</h1>
+        <p class="boot-load__sub">Cliffs · física · depth sorting</p>
+      </div>
+      <div class="boot-load__status-wrap">
+        <p class="boot-load__status" data-boot-status>Preparando…</p>
+        <span class="boot-load__pct" data-boot-pct>0%</span>
+      </div>
+      <div class="boot-load__trilha" aria-hidden="true">
+        <div class="boot-load__barra" data-boot-barra></div>
+      </div>
+      <p class="boot-load__detalhe" data-boot-detalhe hidden></p>
+      <ul class="boot-load__lista" data-boot-lista></ul>
+      <p class="boot-load__dica">
+        A primeira abertura depois de reiniciar o computador costuma demorar:
+        o navegador recarrega arquivos do disco e a GPU recompila os shaders.
+        Nas próximas vezes (mesmo com hard refresh) fica bem mais rápido.
+      </p>
+    </div>
+  </div>
   <div class="app">
     <header class="cabecalho">
       <div class="cabecalho__texto">
@@ -902,6 +934,6 @@
     </main>
   </div>
 
-  <script type="module" src="js/principal.js"></script>
+  <script type="module" src="js/boot/entrada.js"></script>
 </body>
 </html>

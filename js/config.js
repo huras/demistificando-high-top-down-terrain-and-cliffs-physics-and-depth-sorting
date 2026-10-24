@@ -292,6 +292,13 @@ export const VEG_ARVORE_ESCALA = 1;
 export const VEG_MATA_ESCALA = 0.75;
 /** Só reescreve instanceMatrix se o yaw mudou mais que isto (rad). */
 export const VEG_YAW_EPS = 0.001;
+/**
+ * Balanço GPU (ventoVeg). forca = metros no topo com intensidade≈1;
+ * tipPow >1 deixa o pé mais parado.
+ */
+export const VEG_VENTO_ARVORE = Object.freeze({ forca: 0.014, freq: 1.15, tipPow: 2.0 });
+export const VEG_VENTO_MATA = Object.freeze({ forca: 0.09, freq: 2.4, tipPow: 1.35 });
+export const VEG_VENTO_CLUMP = Object.freeze({ forca: 0.01, freq: 0.95, tipPow: 2.0 });
 
 export const JOGADOR_FRAME = 64;
 export const JOGADOR_ESCALA = 0.5;

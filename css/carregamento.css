@@ -1,0 +1,226 @@
+/* Boot / loading — cobre a 1ª abertura (disco frio + compile de shaders) */
+
+.boot-load {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--texto, #e8f0e6);
+  background:
+    radial-gradient(900px 520px at 18% 8%, #243528 0%, transparent 55%),
+    radial-gradient(700px 480px at 88% 92%, #1a2a22 0%, transparent 50%),
+    linear-gradient(165deg, #121a14 0%, #0c110e 48%, #0a0e0b 100%);
+  opacity: 1;
+  transition: opacity 0.45s ease;
+  pointer-events: auto;
+}
+
+.boot-load[hidden] {
+  display: none !important;
+}
+
+.boot-load.is-saindo {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-load__painel {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.boot-load__marca {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.boot-load__titulo {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--destaque, #7dce6a);
+  text-shadow: 0 0 28px rgba(125, 206, 106, 0.22);
+}
+
+.boot-load__sub {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--texto-suave, #9aaf9a);
+  letter-spacing: 0.02em;
+}
+
+.boot-load__status-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 1.4em;
+}
+
+.boot-load__status {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--texto, #e8f0e6);
+}
+
+.boot-load__pct {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--destaque, #7dce6a);
+  letter-spacing: 0.04em;
+}
+
+.boot-load__trilha {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(42, 56, 44, 0.85);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.boot-load__barra {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(0);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4a9a3c 0%, #7dce6a 55%, #b6f0a4 100%);
+  box-shadow: 0 0 14px rgba(125, 206, 106, 0.45);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.boot-load__trilha::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.14) 48%,
+    transparent 66%
+  );
+  background-size: 220% 100%;
+  animation: boot-load-brilho 2.2s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+@keyframes boot-load-brilho {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -40% 0;
+  }
+}
+
+.boot-load__detalhe {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--aviso, #e0c36a);
+}
+
+.boot-load__detalhe[hidden] {
+  display: none !important;
+}
+
+.boot-load__lista {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--texto-suave, #9aaf9a);
+}
+
+.boot-load__lista li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.42;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.boot-load__lista li.is-ativa {
+  opacity: 1;
+  color: var(--texto, #e8f0e6);
+}
+
+.boot-load__lista li.is-feita {
+  opacity: 0.72;
+  color: var(--destaque, #7dce6a);
+}
+
+.boot-load__check {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: rgba(154, 175, 154, 0.35);
+  box-shadow: 0 0 0 1px rgba(42, 56, 44, 0.8);
+}
+
+.boot-load__lista li.is-ativa .boot-load__check {
+  background: var(--destaque, #7dce6a);
+  box-shadow: 0 0 8px rgba(125, 206, 106, 0.55);
+  animation: boot-load-pulso 1s ease-in-out infinite;
+}
+
+.boot-load__lista li.is-feita .boot-load__check {
+  background: var(--destaque, #7dce6a);
+  box-shadow: none;
+  animation: none;
+}
+
+@keyframes boot-load-pulso {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+}
+
+.boot-load__dica {
+  margin: 8px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: rgba(154, 175, 154, 0.78);
+}
+
+.boot-load.is-erro .boot-load__titulo {
+  color: #e07a6a;
+  text-shadow: none;
+}
+
+.boot-load.is-erro .boot-load__barra {
+  background: linear-gradient(90deg, #8a3a32, #e07a6a);
+  box-shadow: none;
+}
+
+.boot-load.is-erro .boot-load__trilha::after {
+  animation: none;
+  opacity: 0;
+}
+
+body.esta-carregando {
+  overflow: hidden;
+}
+
+body.esta-carregando .app {
+  visibility: hidden;
+}

@@ -39,6 +39,7 @@ import { criarDebugCasas } from "./debugCasas.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarVegetacaoHorizonte } from "./vegetacaoHorizonte.js";
+import { atualizarVentoVeg } from "./vegetacao/ventoVeg.js";
 import { criarCidadeHorizonte } from "./cidadeHorizonte.js";
 import { criarFxCampo } from "../../campo/fx.js";
 import { criarPoeiraPasso3d } from "./poeiraPasso3d.js";
@@ -457,9 +458,10 @@ export function iniciarCenario3d(canvas, atlas = null) {
   if (atlas) aplicarAtlasNaCena(atlas);
 
   // Quando a cidade termina de montar (async), recompila na última posição aquecida.
-  edificios.quandoPronto?.then?.(() => {
-    aquecerProgramas3d(estado?._warmPx ?? 0, estado?._warmPy ?? 0);
-  });
+  // No boot o principal já espera quandoPronto + aquecer; isto cobre troca tardia 2D→3D.
+  edificios.quandoPronto?.then?.(() =>
+    aquecerProgramas3d(estado?._warmPx ?? 0, estado?._warmPy ?? 0),
+  );
 
   return estado;
 }
@@ -467,8 +469,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
 /**
  * Compila programas WebGL fora do loop. O 1º renderer.render sem isso
  * chega a ~700–1000 ms (shader compile) e derruba o FPS no começo.
+ * Pós-reboot a GPU recompila do zero — use await no boot.
  */
-export function aquecerProgramas3d(px = 0, py = 0) {
+export async function aquecerProgramas3d(px = 0, py = 0) {
   if (!estado?.renderer || !estado?.scene || !estado?.camera3d?.cam) return;
   try {
     estado._warmPx = px;
@@ -487,10 +490,22 @@ export function aquecerProgramas3d(px = 0, py = 0) {
       raioBlocos: obterRaioStream() * CHUNK_XZ,
       galeLigado: true,
     });
-    estado.renderer.compile(estado.scene, estado.camera3d.cam);
+    const renderer = estado.renderer;
+    const cena = estado.scene;
+    const cam = estado.camera3d.cam;
+    if (typeof renderer.compileAsync === "function") {
+      await renderer.compileAsync(cena, cam);
+    } else {
+      renderer.compile(cena, cam);
+    }
   } catch (err) {
     console.warn("aquecerProgramas3d", err);
   }
+}
+
+/** Resolve quando OBJs/sprites da cidade entraram na cena (ou se já prontos). */
+export function aguardarEdificios3d() {
+  return estado?.edificios?.quandoPronto ?? Promise.resolve();
 }
 
 function publicarObjetosCena(scene, refs) {
@@ -701,6 +716,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   const interior = !!estadoJogo.interior?.sala3d;
   tickClima(dt, { x: corpo.x, y: corpo.y, interior });
+  atualizarVentoVeg(dt);
   estado.ceu.atualizar(dt, {
     camera: camRender,
     alvo: estado._alvoCeu,

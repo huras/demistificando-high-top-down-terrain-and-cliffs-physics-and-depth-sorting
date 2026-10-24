@@ -85,6 +85,7 @@ import {
   ajustarZoom3d,
   atualizarEDesenhar3d,
   aquecerProgramas3d,
+  aguardarEdificios3d,
   definirMira3d,
   entrarVistaCena,
   iniciarCenario3d,
@@ -93,6 +94,13 @@ import {
   redimensionarCenario3d,
   resetarCamera3d,
 } from "./render/3d/cenario3d.js";
+import {
+  concluirCarregamento,
+  definirStatus,
+  esperarPaint,
+  falharCarregamento,
+  marcarFase,
+} from "./boot/carregamento.js";
 import { aplicarScrollCena, enquadrarSelecaoCena } from "./cena/cameraCena.js";
 import { alternarModoCena, aoMudarCena, definirModoCena, estaEmCena } from "./cena/modoCena.js";
 import { ligarHierarquiaCena, sincronizarHierarquiaCena } from "./ui/cena/hierarquia.js";
@@ -153,30 +161,74 @@ function redimensionarCena() {
   if (cenario3dPronto) redimensionarCenario3d(w, h);
 }
 
-async function iniciar() {
+export async function iniciar() {
+  try {
+    await iniciarInterno();
+  } catch (erro) {
+    console.error(erro);
+    falharCarregamento(erro);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#200";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#fff";
+    ctx.font = "14px monospace";
+    ctx.fillText("Falha ao carregar assets. Sirva a pasta via HTTP.", 24, 40);
+    ctx.fillText(String(erro), 24, 64);
+    throw erro;
+  }
+}
+
+async function iniciarInterno() {
   iniciarTeclado();
   redimensionarCena();
+
+  definirStatus("Carregando kits de bioma…");
   await carregarKits();
+  marcarFase("kits", 1);
+
+  definirStatus("Carregando texturas e sprites…");
+  let visuaisFeitos = 0;
+  const marcarVisual = () => {
+    visuaisFeitos += 1;
+    marcarFase("visuais", visuaisFeitos / 4);
+  };
   const visuaisKits = await Promise.all([
-    montarAtlas(CAMINHOS),
-    carregarVisuaisKits(),
-    carregarCatalogo(),
-    carregarDetalhe(),
+    montarAtlas(CAMINHOS).then((r) => {
+      marcarVisual();
+      return r;
+    }),
+    carregarVisuaisKits().then((r) => {
+      marcarVisual();
+      return r;
+    }),
+    carregarCatalogo().then((r) => {
+      marcarVisual();
+      return r;
+    }),
+    carregarDetalhe().then((r) => {
+      marcarVisual();
+      return r;
+    }),
   ]);
   atlas = visuaisKits[0];
   atlas.sprites = visuaisKits[1].sprites;
   atlas.centros = visuaisKits[1].centros;
   atlas.cliffs = visuaisKits[1].cliffs;
   window.__atlas = atlas;
+  marcarFase("visuais", 1);
 
+  definirStatus("Gerando mundo no spawn…");
   indexarColisaoCidade();
   iniciarMundoAoRedor(SPAWN.x, SPAWN.y);
-  carregarCascasCidade().then((ok) => {
-    if (!ok) return;
+  marcarFase("mundo", 1);
+
+  const promessaCascas = carregarCascasCidade().then((ok) => {
+    if (!ok) return false;
     paraCadaChunk((chunk) => {
       if (aplicarCascaNoChunk(chunk)) marcarChunkSujo(chunk);
     });
     invalidarNavCache();
+    return true;
   });
   // Nav só invalida em edição de bloco — streaming não deve rebuildar (era ~18s).
 
@@ -203,10 +255,15 @@ async function iniciar() {
   ligarHierarquiaCena();
   ligarInspetorCena();
   try {
+    definirStatus("Carregando catálogo Pokémon…");
     const cat = await carregarDados();
     ligarPokemon();
-    ensureShrineArtLoaded();
+    marcarFase("pokemon", 1);
+
+    definirStatus("Colocando santuários…");
+    const artePronta = new Promise((resolve) => ensureShrineArtLoaded(resolve));
     const pedras = await sincronizarSantuarioPosCatalogo();
+    await artePronta;
     const plan = getWorldShrinePlan();
     let perto = Infinity;
     for (let i = 0; i < plan.slots.length; i++) {
@@ -221,8 +278,11 @@ async function iniciar() {
       `Santuários: ${plan.slots.length} no mundo, ${pedras} pedras nos chunks carregados` +
         (Number.isFinite(perto) ? `, mais próximo ~${Math.round(perto)} m do spawn` : ""),
     );
+    marcarFase("santuarios", 1);
   } catch (erro) {
     console.error("Pokémon não carregou", erro);
+    marcarFase("pokemon", 1);
+    marcarFase("santuarios", 1);
   }
   ligarControleModo(document.getElementById("btn-modo-3d"));
   ligarBotaoPasseio(document.getElementById("btn-passeio"), corpo);
@@ -237,9 +297,29 @@ async function iniciar() {
     }
   });
   sincronizarCamadas(obterModo());
+
+  definirStatus("Montando cena 3D e terreno…");
   if (obterModo() === "3d") aoTrocarModo("3d");
-  // Tira o hitch de compile do 1º frame jogável (era ~700–1000 ms em render).
-  if (obterModo() === "3d" && corpo) aquecerProgramas3d(corpo.x, corpo.y);
+  marcarFase("cena3d", 1);
+
+  definirStatus(
+    "Carregando modelos da cidade…",
+    "Casas, postes, interiores e cascas voxel.",
+  );
+  await Promise.all([aguardarEdificios3d(), promessaCascas]);
+  marcarFase("cidade", 1);
+
+  // Compile fora do 1º frame jogável. Pós-reboot a GPU recompila do zero.
+  if (obterModo() === "3d" && corpo) {
+    definirStatus(
+      "Compilando shaders da GPU…",
+      "Só demora de verdade na 1ª abertura após reiniciar o PC.",
+    );
+    marcarFase("shaders", 0.05);
+    await esperarPaint();
+    await aquecerProgramas3d(corpo.x, corpo.y);
+  }
+  marcarFase("shaders", 1);
 
   const optsPonteiro = {
     canvas2d: canvas,
@@ -332,6 +412,8 @@ async function iniciar() {
       atualizarStreaming(x, y, undefined, true);
     },
   };
+
+  await concluirCarregamento();
 
   ultimo = performance.now();
   montarJogo({ viewport, corpo });
@@ -668,14 +750,3 @@ function ligarBotaoFaces() {
 }
 
 ligarBotaoFaces();
-
-iniciar().catch((err) => {
-  console.error(err);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = "#200";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#fff";
-  ctx.font = "14px monospace";
-  ctx.fillText("Falha ao carregar assets. Sirva a pasta via HTTP.", 24, 40);
-  ctx.fillText(String(err), 24, 64);
-});

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { aplicarLuzBillboard, yawCartaoSol } from "./ceu/luzBillboard.js";
 import { marcarReflexo, soltarReflexo } from "./ceu/reflexoPoca.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
+import { aplicarVentoVeg } from "./vegetacao/ventoVeg.js";
 import {
   ALTURA_BLOCO,
   TILE,
@@ -232,7 +233,9 @@ export function criarVegetacaoBillboard3d() {
     }
     const grama = def.amostra?.tipo === "grama" || def.amostra?.tipo === "mata";
     const cristal = def.amostra?.tipo === "cristal";
-    const material = aplicarSombraNuvem(aplicarLuzBillboard(new THREE.MeshStandardMaterial({
+    const toco = typeof def.chave === "string" && def.chave.startsWith("toco");
+    const perfilVento = grama ? "mata" : def.amostra?.tipo === "arvore" && !toco ? "arvore" : null;
+    let material = aplicarSombraNuvem(aplicarLuzBillboard(new THREE.MeshStandardMaterial({
       map: tex,
       roughness: 1,
       metalness: 0,
@@ -243,6 +246,7 @@ export function criarVegetacaoBillboard3d() {
       depthTest: true,
       side: THREE.FrontSide,
     })), { clareia: true });
+    if (perfilVento) material = aplicarVentoVeg(material, perfilVento);
     if (grama) {
       material.stencilWrite = true;
       material.stencilRef = STENCIL_GRAMA;
@@ -253,12 +257,13 @@ export function criarVegetacaoBillboard3d() {
     } else if (def.amostra?.tipo === "arvore") {
       marcarStencilSolido(material);
     }
-    const depth = new THREE.MeshDepthMaterial({
+    let depth = new THREE.MeshDepthMaterial({
       depthPacking: THREE.RGBADepthPacking,
       map: tex,
       alphaTest: VEG_ALPHA_TEST,
       side: THREE.DoubleSide,
     });
+    if (perfilVento) depth = aplicarVentoVeg(depth, perfilVento);
 
     const pivo = pivoDoProp(img, def.chave);
     const geo = geometriaNoPe(pivo.x, pivo.y);
@@ -275,13 +280,14 @@ export function criarVegetacaoBillboard3d() {
     grupo.add(mesh);
     if (!grama) marcarReflexo(mesh);
 
-    const matSombra = new THREE.MeshBasicMaterial({
+    let matSombra = new THREE.MeshBasicMaterial({
       map: tex,
       alphaTest: VEG_ALPHA_TEST,
       colorWrite: false,
       depthWrite: false,
       side: THREE.DoubleSide,
     });
+    if (perfilVento) matSombra = aplicarVentoVeg(matSombra, perfilVento);
     // O sol olha a face da frente. O padrão do Three só rasteriza a de trás.
     matSombra.shadowSide = THREE.DoubleSide;
     const sombra = new THREE.InstancedMesh(geo, matSombra, CAP_INSTANCIAS);

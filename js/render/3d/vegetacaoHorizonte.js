@@ -5,6 +5,7 @@
 import * as THREE from "three";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
+import { aplicarVentoVeg } from "./vegetacao/ventoVeg.js";
 import {
   ALTURA_BLOCO,
   CHUNK_XZ,
@@ -200,21 +201,24 @@ export function criarVegetacaoHorizonte() {
     const anterior = lotes.get(chave);
     if (anterior) soltarLote(anterior);
     const geo = geometriaNoPe(0.5, 1);
-    const material = aplicarSombraNuvem(
-      aplicarLuzBillboard(
-        new THREE.MeshStandardMaterial({
-          map: clump.tex,
-          color: TINT_FAR,
-          roughness: 1,
-          metalness: 0,
-          transparent: false,
-          alphaTest: VEG_ALPHA_TEST,
-          depthWrite: true,
-          depthTest: true,
-          side: THREE.FrontSide,
-        }),
+    const material = aplicarVentoVeg(
+      aplicarSombraNuvem(
+        aplicarLuzBillboard(
+          new THREE.MeshStandardMaterial({
+            map: clump.tex,
+            color: TINT_FAR,
+            roughness: 1,
+            metalness: 0,
+            transparent: false,
+            alphaTest: VEG_ALPHA_TEST,
+            depthWrite: true,
+            depthTest: true,
+            side: THREE.FrontSide,
+          }),
+        ),
+        { clareia: true },
       ),
-      { clareia: true },
+      "clump",
     );
     marcarStencilSolido(material);
     const mesh = new THREE.InstancedMesh(geo, material, CLUMP_CAP);

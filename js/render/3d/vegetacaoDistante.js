@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
 import { soltarReflexo } from "./ceu/reflexoPoca.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
+import { aplicarVentoVeg } from "./vegetacao/ventoVeg.js";
 import {
   ALTURA_BLOCO,
   CHUNK_XZ,
@@ -107,20 +108,23 @@ export function criarVegetacaoDistante() {
     const anterior = lotes.get(sprite);
     if (anterior) soltarLote(anterior);
     const tex = criarTextura(img);
-    const material = aplicarSombraNuvem(
-      aplicarLuzBillboard(
-        new THREE.MeshStandardMaterial({
-          map: tex,
-          roughness: 1,
-          metalness: 0,
-          transparent: false,
-          alphaTest: VEG_ALPHA_TEST,
-          depthWrite: true,
-          depthTest: true,
-          side: THREE.FrontSide,
-        }),
+    const material = aplicarVentoVeg(
+      aplicarSombraNuvem(
+        aplicarLuzBillboard(
+          new THREE.MeshStandardMaterial({
+            map: tex,
+            roughness: 1,
+            metalness: 0,
+            transparent: false,
+            alphaTest: VEG_ALPHA_TEST,
+            depthWrite: true,
+            depthTest: true,
+            side: THREE.FrontSide,
+          }),
+        ),
+        { clareia: true },
       ),
-      { clareia: true },
+      "arvore",
     );
     marcarStencilSolido(material);
     const pivo = pivoDoProp(img, sprite);
