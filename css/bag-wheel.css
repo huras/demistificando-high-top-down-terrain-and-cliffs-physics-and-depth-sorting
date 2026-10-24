@@ -27,7 +27,7 @@
   position: relative;
   left: auto;
   top: auto;
-  width: min(92vw, 640px);
+  width: min(96vw, 720px);
   transform: none;
   display: grid;
   justify-items: center;
@@ -70,20 +70,20 @@
 
 .bag-wheel__ring {
   position: relative;
-  width: min(520px, 78vh);
-  height: min(520px, 78vh);
+  width: min(620px, 84vh);
+  height: min(620px, 84vh);
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 50%, #fffef8 0 27%, transparent 28% 100%);
+    radial-gradient(circle at 50% 50%, #fffef8 0 24%, transparent 25% 100%);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
-  --bag-wheel-chip: 13%;
-  --bag-wheel-icon: 40px;
+  --bag-wheel-chip: 15.5%;
+  --bag-wheel-icon: 56px;
 }
 
 .bag-wheel__ring::before {
   content: "";
   position: absolute;
-  inset: 18%;
+  inset: 14%;
   border-radius: 50%;
   border: 2px dotted rgba(90, 80, 68, 0.45);
   pointer-events: none;
@@ -94,8 +94,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 48%;
-  height: 48%;
+  width: 42%;
+  height: 42%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   display: grid;
@@ -160,7 +160,7 @@
 
 .bag-wheel__item {
   position: absolute;
-  width: var(--bag-wheel-chip, 13%);
+  width: var(--bag-wheel-chip, 15.5%);
   aspect-ratio: 1;
   height: auto;
   transform: translate(-50%, -50%);
@@ -182,10 +182,10 @@
 }
 
 .bag-wheel__item.is-on {
-  transform: translate(-50%, -50%) scale(1.12);
+  transform: translate(-50%, -50%) scale(1.1);
   background: linear-gradient(180deg, #fffef8 0%, #efe8da 100%);
   box-shadow:
-    inset 0 0 0 2px rgba(40, 32, 24, 0.35),
+    inset 0 0 0 2.5px rgba(40, 32, 24, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     0 8px 18px rgba(0, 0, 0, 0.22);
   outline: none;
@@ -194,14 +194,14 @@
 
 .bag-wheel__qty {
   position: absolute;
-  right: -4%;
-  bottom: -2%;
-  min-width: 1.6em;
-  padding: 2px 6px;
+  right: -2%;
+  bottom: -4%;
+  min-width: 1.7em;
+  padding: 3px 7px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffe56a 0%, #e8c547 100%);
   color: #1a1408;
-  font: 800 10px/1.1 "Segoe UI", system-ui, sans-serif;
+  font: 800 11px/1.1 "Segoe UI", system-ui, sans-serif;
   text-align: center;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.65),
@@ -213,16 +213,16 @@
 .bag-wheel__icon img,
 .bag-wheel__icon canvas,
 .bag-wheel__icon.jogo-icone--tileset {
-  width: var(--bag-wheel-icon, 40px) !important;
-  height: var(--bag-wheel-icon, 40px) !important;
+  width: var(--bag-wheel-icon, 56px) !important;
+  height: var(--bag-wheel-icon, 56px) !important;
   object-fit: contain;
   image-rendering: pixelated;
 }
 
 /* Tileset: background-size/position vêm do JS no mesmo px — não seguir --bag-wheel-icon. */
 .bag-wheel__icon.jogo-icone--tileset {
-  width: 40px !important;
-  height: 40px !important;
+  width: 56px !important;
+  height: 56px !important;
 }
 
 .bag-wheel__cmds {
@@ -271,8 +271,13 @@
   }
 
   .bag-wheel__ring {
-    --bag-wheel-chip: 15%;
-    --bag-wheel-icon: 32px;
+    --bag-wheel-chip: 16%;
+    --bag-wheel-icon: 44px;
+  }
+
+  .bag-wheel__icon.jogo-icone--tileset {
+    width: 44px !important;
+    height: 44px !important;
   }
 
   .bag-wheel__cmds {

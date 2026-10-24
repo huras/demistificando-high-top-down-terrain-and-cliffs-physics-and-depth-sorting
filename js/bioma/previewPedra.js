@@ -11,8 +11,17 @@ import {
 } from "../mundo/bioma/detalhe.js";
 
 const COR_VAZIO = [18, 24, 20];
-const COR_PEDRA = [140, 130, 118];
-const COR_CRISTAL = [120, 180, 220];
+/** porte 0..2 */
+const COR_PEDRA = [
+  [110, 105, 98],
+  [150, 140, 128],
+  [190, 178, 160],
+];
+const COR_CRISTAL = [
+  [70, 130, 180],
+  [100, 175, 220],
+  [160, 220, 255],
+];
 const COR_DEP_BASE = [28, 24, 18];
 const COR_DEP = [180, 150, 90];
 const COR_VEIA_BASE = [18, 22, 32];
@@ -94,7 +103,7 @@ function desenhar() {
     if (!biomaId) caption.textContent = "Mineral · sem bioma";
     else if (modo === "deposito") caption.textContent = "Depósito · âmbar = afloramento";
     else if (modo === "veia") caption.textContent = "Veia · azul = zona de cristal";
-    else caption.textContent = "Spawn · cinza pedra · azul cristal";
+    else caption.textContent = "Spawn · tom = porte (beira→centro)";
   }
 
   if (!biomaId) {
@@ -126,7 +135,9 @@ function desenhar() {
         cor = f > 0 ? misturar(COR_VEIA_BASE, COR_VEIA, f) : COR_VAZIO;
       } else {
         const cls = classificarPedraPreview(biomaId, wx, wy);
-        cor = cls === 2 ? COR_CRISTAL : cls === 1 ? COR_PEDRA : COR_VAZIO;
+        if (cls >= 20) cor = COR_CRISTAL[Math.min(2, cls - 20)] || COR_CRISTAL[0];
+        else if (cls >= 10) cor = COR_PEDRA[Math.min(2, cls - 10)] || COR_PEDRA[0];
+        else cor = COR_VAZIO;
       }
       const o = (py * w + px) * 4;
       data[o] = cor[0];

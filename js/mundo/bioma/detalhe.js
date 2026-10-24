@@ -192,6 +192,16 @@ function listaGrama(bioma, kit) {
   return lista;
 }
 
+function porteDe(item) {
+  const p = Number(item?.porte);
+  if (Number.isFinite(p)) return Math.max(0, Math.min(2, p | 0));
+  return 1;
+}
+
+function ordenarPorPorte(membros) {
+  return [...membros].sort((a, b) => porteDe(a) - porteDe(b) || String(a.id).localeCompare(String(b.id)));
+}
+
 function familiasDo(bioma) {
   const todas = dados?.pedras || [];
   const minhas = [];
@@ -213,7 +223,7 @@ function familiasDo(bioma) {
       membros.push(pedra);
       usado.add(pedra.id);
     }
-    if (membros.length) familias.push(membros);
+    if (membros.length) familias.push(ordenarPorPorte(membros));
   }
   for (let i = 0; i < minhas.length; i++) {
     if (!usado.has(minhas[i].id)) familias.push([minhas[i]]);
@@ -556,9 +566,16 @@ export function forcaClareiraPreview(biomaId, x, y) {
   return Math.min(1, Math.max(0.2, (n - clareira.limiar) / faixa));
 }
 
-function passaMascaraMineral(x, y, params) {
-  if (!params?.mascara) return false;
-  return amostraCampo(x, y, params.mascara) >= params.mascara.limiar;
+function amostraMascaraMineral(x, y, params) {
+  if (!params?.mascara) return null;
+  return amostraCampo(x, y, params.mascara);
+}
+
+function forcaMascara(params, n) {
+  if (!params?.mascara || !Number.isFinite(n)) return 0;
+  if (n < params.mascara.limiar) return 0;
+  const faixa = Math.max(0.15, 1 - params.mascara.limiar);
+  return Math.min(1, Math.max(0, (n - params.mascara.limiar) / faixa));
 }
 
 function passaDensidadeMineral(x, y, params, salt) {
@@ -566,11 +583,18 @@ function passaDensidadeMineral(x, y, params, salt) {
   return hash2(x, y, (params.semente | 0) ^ salt) <= params.densidade;
 }
 
-function passaMineralCelula(x, y, biomaId, tipo) {
+/** @returns {false | { params: object, forca: number }} */
+function avaliarMineralCelula(x, y, biomaId, tipo) {
   const params = mineralDoBioma(biomaId, tipo);
-  if (!passaMascaraMineral(x, y, params)) return false;
+  const n = amostraMascaraMineral(x, y, params);
+  if (n == null || n < params.mascara.limiar) return false;
   const salt = tipo === "cristal" ? 0x63727973 : 0x726f636b;
-  return passaDensidadeMineral(x, y, params, salt);
+  if (!passaDensidadeMineral(x, y, params, salt)) return false;
+  return { params, forca: forcaMascara(params, n) };
+}
+
+function passaMineralCelula(x, y, biomaId, tipo) {
+  return !!avaliarMineralCelula(x, y, biomaId, tipo);
 }
 
 /**
@@ -599,24 +623,26 @@ function ganhaPegadaMineral(x, y, biomaId, tipo, params, saltPegada, passaViz, f
   return true;
 }
 
-function sortearVarianteFamilia(familias, x, y, salt) {
+/**
+ * Membros ordenados small→large. Força alta (centro) → porte grande.
+ * Jitter ±1 faixa pra não virar anel perfeito.
+ */
+function sortearPorPorte(membros, forca, x, y, salt) {
+  if (!membros?.length) return null;
+  if (membros.length === 1) return membros[0];
+  const n = membros.length;
+  const f = Math.max(0, Math.min(1, Number(forca) || 0));
+  let idx = Math.min(n - 1, Math.floor(f * n * 0.999));
+  const j = hash2(x, y, salt ^ 0x706f7274);
+  if (j < 0.22 && idx > 0) idx -= 1;
+  else if (j > 0.78 && idx < n - 1) idx += 1;
+  return membros[idx];
+}
+
+function sortearVarianteFamilia(familias, forca, x, y, salt) {
   if (!familias?.length) return null;
   const fi = Math.min(familias.length - 1, (hash2(x, y, salt) * familias.length) | 0);
-  const membros = familias[fi];
-  if (!membros?.length) return null;
-  let total = 0;
-  const pesos = new Array(membros.length);
-  for (let i = 0; i < membros.length; i++) {
-    const w = Math.pow(0.55, i);
-    pesos[i] = w;
-    total += w;
-  }
-  let r = hash2(x, y, salt ^ 0x51eded) * total;
-  for (let i = 0; i < membros.length; i++) {
-    r -= pesos[i];
-    if (r <= 0) return membros[i];
-  }
-  return membros[membros.length - 1];
+  return sortearPorPorte(familias[fi], forca, x, y, salt);
 }
 
 function planoMineralPreview(biomaId) {
@@ -645,53 +671,54 @@ function planoMineralPreview(biomaId) {
 function escolherPedra(x, y, plano, forcarBioma = false) {
   const id = plano.id || "";
   if (plano.rochas?.length) {
-    const params = plano.paramsPedra;
+    const aval = avaliarMineralCelula(x, y, id, "pedra");
     if (
-      passaMineralCelula(x, y, id, "pedra") &&
+      aval &&
       ganhaPegadaMineral(
         x,
         y,
         id,
         "pedra",
-        params,
+        aval.params,
         0x70656472,
         (ox, oy, idViz) => passaMineralCelula(ox, oy, idViz, "pedra"),
         forcarBioma,
       )
     ) {
-      const item = sortearVarianteFamilia(plano.rochas, x, y, 0x726f636b);
-      if (item) return { classe: "pedra", sprite: item.id };
+      const item = sortearVarianteFamilia(plano.rochas, aval.forca, x, y, 0x726f636b);
+      if (item) return { classe: "pedra", sprite: item.id, porte: porteDe(item) };
     }
   }
   if (plano.cristaisFam?.length) {
-    const params = plano.paramsCristal;
+    const aval = avaliarMineralCelula(x, y, id, "cristal");
     if (
-      passaMineralCelula(x, y, id, "cristal") &&
+      aval &&
       ganhaPegadaMineral(
         x,
         y,
         id,
         "cristal",
-        params,
+        aval.params,
         0x63727970,
         (ox, oy, idViz) => passaMineralCelula(ox, oy, idViz, "cristal"),
         forcarBioma,
       )
     ) {
-      const item = sortearVarianteFamilia(plano.cristaisFam, x, y, 0x63727973);
-      if (item) return { classe: "cristal", sprite: item.id };
+      const item = sortearVarianteFamilia(plano.cristaisFam, aval.forca, x, y, 0x63727973);
+      if (item) return { classe: "cristal", sprite: item.id, porte: porteDe(item) };
     }
   }
   return null;
 }
 
 /**
- * Preview: 0 vazio · 1 pedra · 2 cristal
+ * Preview: 0 vazio · 10+porte pedra · 20+porte cristal
  */
 export function classificarPedraPreview(biomaId, x, y) {
   const r = escolherPedra(x | 0, y | 0, planoMineralPreview(biomaId), true);
   if (!r) return 0;
-  return r.classe === "cristal" ? 2 : 1;
+  const porte = Math.max(0, Math.min(2, r.porte | 0));
+  return (r.classe === "cristal" ? 20 : 10) + porte;
 }
 
 export function temDepositoPedra(biomaId) {
@@ -706,20 +733,18 @@ export function temVeiaCristal(biomaId) {
 export function forcaDepositoPreview(biomaId, x, y) {
   const params = mineralDoBioma(biomaId || "", "pedra");
   if (!params?.mascara) return -1;
-  const n = amostraCampo(x | 0, y | 0, params.mascara);
-  if (n < params.mascara.limiar) return 0;
-  const faixa = Math.max(0.15, 1 - params.mascara.limiar);
-  return Math.min(1, Math.max(0.2, (n - params.mascara.limiar) / faixa));
+  const n = amostraMascaraMineral(x | 0, y | 0, params);
+  const f = forcaMascara(params, n);
+  return f > 0 ? Math.max(0.2, f) : 0;
 }
 
 /** @returns {-1|number} força na veia de cristal */
 export function forcaVeiaPreview(biomaId, x, y) {
   const params = mineralDoBioma(biomaId || "", "cristal");
   if (!params?.mascara) return -1;
-  const n = amostraCampo(x | 0, y | 0, params.mascara);
-  if (n < params.mascara.limiar) return 0;
-  const faixa = Math.max(0.15, 1 - params.mascara.limiar);
-  return Math.min(1, Math.max(0.2, (n - params.mascara.limiar) / faixa));
+  const n = amostraMascaraMineral(x | 0, y | 0, params);
+  const f = forcaMascara(params, n);
+  return f > 0 ? Math.max(0.2, f) : 0;
 }
 
 /**
