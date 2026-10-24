@@ -11,7 +11,8 @@ import {
   golpeBasico,
   recargaDoGolpe,
 } from "../ator.js";
-import { acertoCorpo, alcanceCorpo } from "../ia/espaco.js";
+import { acertoCorpo, alcanceCorpo, alcanceTiro } from "../ia/espaco.js";
+import { ALCANCE_TIRO_MAX } from "../ia/constantes.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
 import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
@@ -331,7 +332,7 @@ function statusEmAlcance(ator, def, d) {
   if (forma === "contact") return usaCorpo(ator) && d <= alcanceCorpo(def);
   if (forma === "radius") return usaCorpo(ator) && d <= Math.max(2.2, def.alcance || 2.2);
   if (forma === "projectile" || forma === "arc") {
-    return usaDistancia(ator) && d <= (def.alcance || 10);
+    return usaDistancia(ator) && d <= alcanceTiro(def);
   }
   return d <= (def.alcance || 10);
 }
@@ -420,7 +421,7 @@ function escolher(ator, alvo, d) {
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
     if ((g.def.poder || 0) <= 0) continue;
-    if (distancia && linhaLivre && (g.def.forma === "projectile" || g.def.forma === "arc") && d <= g.def.alcance) {
+    if (distancia && linhaLivre && (g.def.forma === "projectile" || g.def.forma === "arc") && d <= alcanceTiro(g.def)) {
       return g;
     }
   }
@@ -572,7 +573,7 @@ function soltarTiro(ator, slot, ang, extra) {
     acerto: extra.acerto != null ? extra.acerto : def.acerto,
     forma: def.forma,
     raio: extra.raio || def.raio,
-    max: Math.max(def.alcance || 12, longe),
+    max: Math.min(ALCANCE_TIRO_MAX, Math.max(alcanceTiro(def), longe)),
     garantirAlvo: travado?.alvo || null,
     ensaio: !!extra.ensaio,
     arco: !!extra.arco,
@@ -943,7 +944,7 @@ function slotEnsaio(ator, alvo, d) {
 function serveEnsaio(ator, alvo, def, d) {
   const forma = def.forma;
   if ((forma === "projectile" || forma === "arc") && usaDistancia(ator)) {
-    return d <= (def.alcance || 12) && tiroLimpo(ator, alvo);
+    return d <= alcanceTiro(def) && tiroLimpo(ator, alvo);
   }
   if (!usaCorpo(ator)) return false;
   if (forma === "contact") return d <= alcanceCorpo(def);

@@ -1,6 +1,7 @@
 /** Catálogo carregado uma vez: espécies, golpes e tabelas de drop. */
 
 import { carregarDistribuicao } from "./distribuicao/indice.js";
+import { ALCANCE_TIRO_MAX } from "./ia/constantes.js";
 
 let especies = null;
 let golpes = null;
@@ -45,6 +46,10 @@ function dobrarCustoPp(tabela) {
     const g = tabela[chaves[i]];
     if (!g) continue;
     g.pp = (g.pp | 0 || 1) * 2;
+    if (g.forma === "projectile" || g.forma === "arc") {
+      const a = Number(g.alcance);
+      g.alcance = Number.isFinite(a) && a > 0 ? Math.min(a, ALCANCE_TIRO_MAX) : ALCANCE_TIRO_MAX;
+    }
     if (g.forma !== "contact" && g.forma !== "radius") continue;
     g.pp = Math.max(1, Math.round(g.pp / 2));
   }

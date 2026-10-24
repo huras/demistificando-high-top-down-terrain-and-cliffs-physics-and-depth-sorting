@@ -1,5 +1,5 @@
 import { POKEMON } from "../../config.js";
-import { FOLGA_PROJETIL, RAIO_PROJETIL } from "../ia/constantes.js";
+import { ALCANCE_TIRO_MAX, FOLGA_PROJETIL, RAIO_PROJETIL } from "../ia/constantes.js";
 import { alturaCorpo, alturaPe } from "../ator.js";
 import { faccoesAliadas } from "../faccao.js";
 import { COR_TIPO } from "../tipos.js";
@@ -37,7 +37,7 @@ export function soltarProjetil(opts) {
     cor: COR_TIPO[opts.tipo] || "#f8fafc",
     raio: opts.raio || RAIO_PROJETIL,
     viajou: 0,
-    max: opts.max || 12,
+    max: Math.min(ALCANCE_TIRO_MAX, opts.max || ALCANCE_TIRO_MAX),
     viva: true,
     rajada: opts.rajada || 0,
     giro: opts.giro || 0,

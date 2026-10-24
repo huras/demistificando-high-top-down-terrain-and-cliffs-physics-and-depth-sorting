@@ -1,6 +1,6 @@
 import { golpeBasico } from "../ator.js";
 import { podeGastarPp } from "../pp.js";
-import { FOLGA_PARADA, RAIO_ARENA } from "./constantes.js";
+import { ALCANCE_TIRO_MAX, FOLGA_PARADA, RAIO_ARENA } from "./constantes.js";
 
 /** Corpo a corpo nunca fica mais curto que isto. */
 export const ALCANCE_CORPO_MIN = 2.5;
@@ -11,6 +11,13 @@ export function alcanceCorpo(def) {
   const lista = Number(def?.alcance);
   const base = Number.isFinite(lista) && lista > 0 ? lista : ALCANCE_CORPO_MIN;
   return Math.max(ALCANCE_CORPO_MIN, base);
+}
+
+/** Alcance efetivo de projectile/arc — nunca passa de ALCANCE_TIRO_MAX tiles. */
+export function alcanceTiro(def) {
+  const lista = Number(def?.alcance);
+  const base = Number.isFinite(lista) && lista > 0 ? lista : ALCANCE_TIRO_MAX;
+  return Math.min(ALCANCE_TIRO_MAX, base);
 }
 
 /** Taxa do golpe no instante do acerto. Perto vale a taxa cheia; no limite, cai. */
@@ -29,11 +36,12 @@ export function paradaDe(def) {
     return Math.min(alcance * 0.5, Math.max(1.05, alcance - 1.15));
   }
   if ((def.poder || 0) <= 0) return 2.8;
-  const alcance = Math.max(0.6, def.alcance || 1);
   if (def.forma === "radius") {
+    const alcance = Math.max(0.6, def.alcance || 1);
     const raio = Math.max(2.2, alcance);
     return Math.min(4.2, Math.min(raio - 0.25, Math.max(1.55, raio * 0.7)));
   }
+  const alcance = Math.max(0.6, alcanceTiro(def));
   const dentro = Math.min(alcance * 0.72, 4.4);
   if (alcance <= 1.35) return Math.max(0.7, dentro);
   return Math.min(dentro, Math.max(1.55, Math.min(alcance * 0.45, 4.4)));
@@ -135,7 +143,7 @@ export function vaiMelee(oponente, ator) {
   const contato = golpeProntoForma(oponente, "contact", "contact");
   if (contato && d <= alcanceCorpo(contato)) return true;
   const tiro = oponente.usaDistancia !== false && golpeProntoForma(oponente, "projectile", "arc");
-  if (tiro && d <= tiro.alcance) return false;
+  if (tiro && d <= alcanceTiro(tiro)) return false;
   const area = golpeProntoForma(oponente, "radius", "radius");
   if (area && area.poder > 0 && d <= Math.max(2.2, area.alcance)) return true;
   return false;

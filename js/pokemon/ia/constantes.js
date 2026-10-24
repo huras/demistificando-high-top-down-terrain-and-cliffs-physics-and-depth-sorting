@@ -1,6 +1,8 @@
 /** Números da arena e da rede. A luta, o projétil e o treino leem daqui. */
 
 export const RAIO_ARENA = 13;
+/** Teto de tiles p/ projectile/arc no overworld (tempo real). */
+export const ALCANCE_TIRO_MAX = 10;
 export const FOLGA_PARADA = 0.18;
 /** Rolamento: preparação, janela que desvia tiro, recuperação. Corpo a corpo não desvia. */
 export const ESQUIVA_PREP = 0.09;
