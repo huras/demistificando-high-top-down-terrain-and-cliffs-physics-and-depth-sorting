@@ -420,6 +420,47 @@ function pintarDetalhe(bioma) {
     }
   }
 
+  const temArvore = !!(kit?.arvore?.length);
+  if (temArvore) {
+    const mapaArvore = detalhe.ruidoArvore || (detalhe.ruidoArvore = {});
+    const ra = mapaArvore[id] || {};
+    const gravarArvore = (campo, v) => {
+      const alvo = mapaArvore[id] || (mapaArvore[id] = {});
+      alvo[campo] = v;
+    };
+    inspectorEl.append(tituloSecao("Árvore deste bioma"));
+    inspectorEl.append(
+      campoDetalhe("Limiar", ra.limiar ?? arvore.limiar, (v) => { gravarArvore("limiar", v); }),
+      campoDetalhe("Densidade", ra.densidade ?? arvore.densidade, (v) => { gravarArvore("densidade", v); }),
+      campoDetalhe("Escala", ra.escala ?? arvore.escala, (v) => { gravarArvore("escala", v); }),
+      campoDetalhe("Oitavas", ra.oitavas ?? arvore.oitavas, (v) => { gravarArvore("oitavas", v); }),
+      campoDetalhe("Semente", ra.semente ?? arvore.semente, (v) => { gravarArvore("semente", v); }),
+      campoDetalhe("Largura", ra.largura ?? arvore.largura, (v) => { gravarArvore("largura", v); }),
+      campoDetalhe("Altura", ra.altura ?? arvore.altura, (v) => { gravarArvore("altura", v); }),
+    );
+    const mapaNegar = detalhe.negarArvore || (detalhe.negarArvore = {});
+    const clareiraPadrao = {
+      canal: 90,
+      freq: 0.012,
+      limiar: 1,
+      oitavas: 2,
+      persistencia: 0.5,
+      lacunaridade: 2,
+    };
+    const clareira = mapaNegar[id] || clareiraPadrao;
+    const gravarClareira = (campo, v) => {
+      const alvo = mapaNegar[id] || (mapaNegar[id] = { ...clareiraPadrao });
+      alvo[campo] = v;
+    };
+    inspectorEl.append(tituloSecao("Clareira (negar árvore)"));
+    inspectorEl.append(
+      campoDetalhe("Canal", clareira.canal, (v) => { gravarClareira("canal", v); }),
+      campoDetalhe("Frequência", clareira.freq, (v) => { gravarClareira("freq", v); }),
+      campoDetalhe("Limiar", clareira.limiar, (v) => { gravarClareira("limiar", v); }),
+      campoDetalhe("Oitavas", clareira.oitavas, (v) => { gravarClareira("oitavas", v); }),
+    );
+  }
+
   const splat = (detalhe.splat || (detalhe.splat = {}))[id] || (detalhe.splat[id] = {});
   inspectorEl.append(tituloSecao("Mancha do chão"));
   inspectorEl.append(

@@ -28,6 +28,198 @@
     "largura": 2,
     "altura": 3
   },
+  "ruidoArvore": {
+    "jungle": {
+      "limiar": 0.06,
+      "densidade": 0.82,
+      "escala": 0.052,
+      "oitavas": 4,
+      "semente": 11,
+      "largura": 2,
+      "altura": 2
+    },
+    "palm-jungle": {
+      "limiar": 0.08,
+      "densidade": 0.72,
+      "escala": 0.048,
+      "oitavas": 4,
+      "semente": 13,
+      "largura": 2,
+      "altura": 3
+    },
+    "marsh": {
+      "limiar": 0.09,
+      "densidade": 0.7,
+      "escala": 0.05,
+      "oitavas": 3,
+      "semente": 17,
+      "largura": 2,
+      "altura": 3
+    },
+    "lush-grass": {
+      "limiar": 0.1,
+      "densidade": 0.65,
+      "escala": 0.046,
+      "oitavas": 4,
+      "semente": 19
+    },
+    "autum-forest": {
+      "limiar": 0.11,
+      "densidade": 0.68,
+      "escala": 0.044,
+      "oitavas": 4,
+      "semente": 23
+    },
+    "ghost-forest": {
+      "limiar": 0.14,
+      "densidade": 0.5,
+      "escala": 0.038,
+      "oitavas": 3,
+      "semente": 29
+    },
+    "light-grass": {
+      "limiar": 0.16,
+      "densidade": 0.42,
+      "escala": 0.04,
+      "oitavas": 3,
+      "semente": 31
+    },
+    "honey-trees-flower-fields": {
+      "limiar": 0.15,
+      "densidade": 0.48,
+      "escala": 0.042,
+      "oitavas": 3,
+      "semente": 37
+    },
+    "savanna": {
+      "limiar": 0.22,
+      "densidade": 0.28,
+      "escala": 0.028,
+      "oitavas": 2,
+      "semente": 41,
+      "largura": 3,
+      "altura": 4
+    },
+    "brown-earth": {
+      "limiar": 0.2,
+      "densidade": 0.32,
+      "escala": 0.032,
+      "oitavas": 3,
+      "semente": 43,
+      "largura": 3,
+      "altura": 3
+    },
+    "dirty-sand": {
+      "limiar": 0.28,
+      "densidade": 0.18,
+      "escala": 0.03,
+      "oitavas": 2,
+      "semente": 47,
+      "largura": 3,
+      "altura": 4
+    },
+    "faroeste-desert": {
+      "limiar": 0.32,
+      "densidade": 0.12,
+      "escala": 0.026,
+      "oitavas": 2,
+      "semente": 53,
+      "largura": 3,
+      "altura": 4
+    },
+    "amber-rock": {
+      "limiar": 0.3,
+      "densidade": 0.15,
+      "escala": 0.028,
+      "oitavas": 2,
+      "semente": 59,
+      "largura": 3,
+      "altura": 4
+    },
+    "snow": {
+      "limiar": 0.24,
+      "densidade": 0.22,
+      "escala": 0.034,
+      "oitavas": 3,
+      "semente": 61
+    },
+    "tundra": {
+      "limiar": 0.26,
+      "densidade": 0.18,
+      "escala": 0.03,
+      "oitavas": 2,
+      "semente": 67
+    },
+    "stone": {
+      "limiar": 0.28,
+      "densidade": 0.16,
+      "escala": 0.032,
+      "oitavas": 2,
+      "semente": 71
+    },
+    "rift-ground": {
+      "limiar": 0.18,
+      "densidade": 0.4,
+      "escala": 0.04,
+      "oitavas": 3,
+      "semente": 73
+    },
+    "pewter-massif": {
+      "limiar": 0.2,
+      "densidade": 0.35,
+      "escala": 0.036,
+      "oitavas": 3,
+      "semente": 79
+    },
+    "tunnel-hills": {
+      "limiar": 0.22,
+      "densidade": 0.3,
+      "escala": 0.034,
+      "oitavas": 3,
+      "semente": 83
+    },
+    "johto-past": {
+      "limiar": 0.14,
+      "densidade": 0.5,
+      "escala": 0.042,
+      "oitavas": 3,
+      "semente": 89
+    }
+  },
+  "negarArvore": {
+    "light-grass": {
+      "canal": 90,
+      "freq": 0.012,
+      "limiar": 0.18,
+      "oitavas": 2,
+      "persistencia": 0.5,
+      "lacunaridade": 2
+    },
+    "honey-trees-flower-fields": {
+      "canal": 91,
+      "freq": 0.014,
+      "limiar": 0.22,
+      "oitavas": 2,
+      "persistencia": 0.5,
+      "lacunaridade": 2
+    },
+    "savanna": {
+      "canal": 92,
+      "freq": 0.01,
+      "limiar": 0.12,
+      "oitavas": 2,
+      "persistencia": 0.5,
+      "lacunaridade": 2
+    },
+    "brown-earth": {
+      "canal": 93,
+      "freq": 0.011,
+      "limiar": 0.2,
+      "oitavas": 2,
+      "persistencia": 0.5,
+      "lacunaridade": 2
+    }
+  },
   "mar": {
     "densidade": 0.14
   },

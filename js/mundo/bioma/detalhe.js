@@ -15,10 +15,18 @@ let dados = null;
 let revisao = 0;
 /** @type {Map<string, object>} */
 const planos = new Map();
-/** @type {Map<string, number | boolean>} */
+/** @type {Map<string, number | boolean | string>} */
 const cache = new Map();
 /** @type {Map<string, number>} */
 let indicePele = new Map();
+/** @type {((x: number, y: number) => object | null) | null} */
+let resolverBioma = null;
+
+/** Injeta o resolvedor de bioma (evita import circular com catalogo). */
+export function amarrarBioma(fn) {
+  resolverBioma = typeof fn === "function" ? fn : null;
+  cache.clear();
+}
 
 function mod289(x) {
   return x - Math.floor(x * (1 / 289)) * 289;
@@ -213,6 +221,30 @@ function familiasDo(bioma) {
   return familias;
 }
 
+function mesclarArvore(biomaId) {
+  const base = dados?.arvore || {};
+  const over = (biomaId && dados?.ruidoArvore?.[biomaId]) || {};
+  return {
+    limiar: Number.isFinite(Number(over.limiar)) ? Number(over.limiar) : Number(base.limiar) || 0,
+    densidade: Number.isFinite(Number(over.densidade)) ? Number(over.densidade) : Number(base.densidade) || 0,
+    semente: (over.semente != null ? over.semente : base.semente) | 0,
+    escala: Number.isFinite(Number(over.escala)) ? Number(over.escala) : Number(base.escala) || 0.0452,
+    oitavas: (over.oitavas != null ? over.oitavas : base.oitavas) | 0 || 4,
+    persistencia: Number.isFinite(Number(over.persistencia))
+      ? Number(over.persistencia)
+      : Number.isFinite(Number(base.persistencia))
+        ? Number(base.persistencia)
+        : 0.5,
+    lacunaridade: Number.isFinite(Number(over.lacunaridade))
+      ? Number(over.lacunaridade)
+      : Number.isFinite(Number(base.lacunaridade))
+        ? Number(base.lacunaridade)
+        : 2.1,
+    largura: Math.max(1, (over.largura != null ? over.largura : base.largura) | 0 || 2),
+    altura: Math.max(1, (over.altura != null ? over.altura : base.altura) | 0 || 3),
+  };
+}
+
 function planoDe(bioma) {
   const id = bioma?.id || "";
   const pronto = planos.get(id);
@@ -220,14 +252,38 @@ function planoDe(bioma) {
   const kit = obterKit(bioma?.kit);
   const plano = {
     revisao,
+    id,
     mar: bioma?.camada === "mar",
     grama: listaGrama(bioma, kit),
     arvore: kit?.arvore || [],
+    paramsArvore: mesclarArvore(id),
+    clareira: campoDe(dados?.negarArvore?.[id], 0x6e656761),
     familias: familiasDo(bioma),
     cristais: new Set((kit?.cristal || []).map((item) => item.id)),
   };
   planos.set(id, plano);
   return plano;
+}
+
+function idBiomaEm(x, y) {
+  if (!resolverBioma) return "";
+  return lembrar(`b${x},${y}`, () => {
+    const b = resolverBioma(x, y);
+    return b?.id || "";
+  });
+}
+
+/** Params + clareira sem montar kit/grama (evita plano incompleto no cache). */
+function arvoreDoBioma(biomaId) {
+  const id = biomaId || "";
+  const pronto = planos.get(id);
+  if (pronto && pronto.revisao === revisao) {
+    return { params: pronto.paramsArvore, clareira: pronto.clareira };
+  }
+  return lembrar(`pa${id}`, () => ({
+    params: mesclarArvore(id),
+    clareira: campoDe(dados?.negarArvore?.[id], 0x6e656761),
+  }));
 }
 
 function valorGrama(x, y) {
@@ -249,14 +305,15 @@ function valorGrama(x, y) {
   };
 }
 
-function valorArvore(x, y) {
-  const a = dados?.arvore;
+function valorArvore(x, y, params) {
+  const a = params || dados?.arvore;
   if (!a) return null;
   const seed = a.semente | 0;
+  const escala = Number(a.escala) || 0.0452;
   return {
     n: fbm(
-      (x + seed * 17.3) * (Number(a.escala) || 0.0452),
-      (y + seed * 31.7) * (Number(a.escala) || 0.0452),
+      (x + seed * 17.3) * escala,
+      (y + seed * 31.7) * escala,
       a.oitavas | 0 || 4,
       a.persistencia,
       a.lacunaridade,
@@ -286,8 +343,9 @@ function raioMarcaArvore(comHash) {
 }
 
 function forcaArvoreSpawn(ox, oy) {
-  if (!passaArvore(ox, oy) || !ganhaPegada(ox, oy)) return 0;
-  const a = valorArvore(ox, oy);
+  const biomaId = idBiomaEm(ox, oy);
+  if (!passaArvore(ox, oy, biomaId) || !ganhaPegada(ox, oy, biomaId)) return 0;
+  const a = valorArvore(ox, oy, arvoreDoBioma(biomaId).params);
   if (!a) return 0;
   const faixa = Math.max(0.25, 0.7 - a.limiar);
   return Math.min(1, Math.max(0.35, (a.n - a.limiar) / faixa));
@@ -385,28 +443,33 @@ function escolherGrama(x, y, lista) {
   return sortearSprite(vivas.map((item) => ({ id: item.id, peso: item.peso })), uVariante(x, y));
 }
 
-function passaArvore(x, y) {
-  const a = dados?.arvore;
-  if (!a) return false;
-  return lembrar(`a${x},${y}`, () => {
-    const v = valorArvore(x, y);
+function passaArvore(x, y, biomaId) {
+  if (!dados?.arvore && !dados?.ruidoArvore) return false;
+  const id = biomaId || "";
+  return lembrar(`a${id}:${x},${y}`, () => {
+    const { params, clareira } = arvoreDoBioma(id);
+    const v = valorArvore(x, y, params);
     if (!v || v.n < v.limiar) return false;
-    return hash2(x, y, v.seed) <= v.densidade;
+    if (hash2(x, y, v.seed) > v.densidade) return false;
+    if (clareira && amostraCampo(x, y, clareira) >= clareira.limiar) return false;
+    return true;
   });
 }
 
-function ganhaPegada(x, y) {
-  const a = dados?.arvore;
+function ganhaPegada(x, y, biomaId) {
+  const a = arvoreDoBioma(biomaId || idBiomaEm(x, y)).params;
   if (!a) return false;
-  const w = Math.max(1, a.largura | 0 || 2);
-  const h = Math.max(1, a.altura | 0 || 3);
+  const w = a.largura;
+  const h = a.altura;
   const seed = (a.semente | 0) ^ 0xa24baed5;
   const meu = hash2(x, y, seed);
   for (let oy = y - (h - 1); oy <= y + (h - 1); oy++) {
     for (let ox = x - (w - 1); ox <= x + (w - 1); ox++) {
       if (ox === x && oy === y) continue;
-      if (!(x < ox + w && x + w > ox && y < oy + h && y + h > oy)) continue;
-      if (!passaArvore(ox, oy)) continue;
+      const idViz = idBiomaEm(ox, oy);
+      const viz = arvoreDoBioma(idViz).params;
+      if (!(x < ox + viz.largura && x + w > ox && y < oy + viz.altura && y + h > oy)) continue;
+      if (!passaArvore(ox, oy, idViz)) continue;
       const outro = hash2(ox, oy, seed);
       if (outro < meu || (outro === meu && (oy < y || (oy === y && ox < x)))) return false;
     }
@@ -471,7 +534,7 @@ export function plantaNoBioma(bioma, wx, wy) {
     if (!sprite) return null;
     return { classe: "grama", sprite };
   }
-  if (plano.arvore.length && passaArvore(x, y) && ganhaPegada(x, y)) {
+  if (plano.arvore.length && passaArvore(x, y, plano.id) && ganhaPegada(x, y, plano.id)) {
     const sprite = sortearSprite(plano.arvore, hash2(x, y, 0x74726565));
     if (sprite) return { classe: "arvore", sprite };
   }

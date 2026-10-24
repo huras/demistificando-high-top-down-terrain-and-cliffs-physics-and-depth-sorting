@@ -6,7 +6,7 @@ import { BLOCO } from "../voxel/tiposBloco.js";
 import { fbm2, hash2 } from "../voxel/ruido.js";
 import { areaLogicaNoMundo, biomasDaPaleta } from "./areasMundo.js";
 import { avaliarGrafo } from "./grafo.js";
-import { plantaNoBioma } from "./detalhe.js";
+import { amarrarBioma, plantaNoBioma } from "./detalhe.js";
 
 /** @type {object | null} */
 let dados = null;
@@ -368,3 +368,5 @@ export function plantaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   if (!b || b.camada === "mar") return null;
   return plantaNoBioma(b, wx, wy);
 }
+
+amarrarBioma((wx, wy) => biomaDominante(wx, wy));
