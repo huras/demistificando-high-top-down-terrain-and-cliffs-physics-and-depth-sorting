@@ -220,6 +220,200 @@
       "lacunaridade": 2
     }
   },
+  "pedra": {
+    "densidade": 0.32,
+    "largura": 2,
+    "altura": 2,
+    "semente": 11,
+    "deposito": {
+      "canal": 99,
+      "freq": 0.013,
+      "limiar": 0.22,
+      "oitavas": 2,
+      "persistencia": 0.5,
+      "lacunaridade": 2
+    }
+  },
+  "cristal": {
+    "densidade": 0.08,
+    "largura": 2,
+    "altura": 2,
+    "semente": 13,
+    "veia": {
+      "canal": 119,
+      "freq": 0.008,
+      "limiar": 0.68,
+      "oitavas": 2,
+      "persistencia": 0.5,
+      "lacunaridade": 2
+    }
+  },
+  "ruidoPedra": {
+    "stone": {
+      "deposito": { "canal": 100, "freq": 0.014, "limiar": 0.08, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.55,
+      "largura": 2,
+      "altura": 2
+    },
+    "amber-rock": {
+      "deposito": { "canal": 102, "freq": 0.015, "limiar": 0.1, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.5,
+      "largura": 2,
+      "altura": 2
+    },
+    "pewter-massif": {
+      "deposito": { "canal": 103, "freq": 0.014, "limiar": 0.12, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.48,
+      "largura": 2,
+      "altura": 2
+    },
+    "tunnel-hills": {
+      "deposito": { "canal": 104, "freq": 0.014, "limiar": 0.14, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.45,
+      "largura": 2,
+      "altura": 2
+    },
+    "rift-ground": {
+      "deposito": { "canal": 105, "freq": 0.013, "limiar": 0.16, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.4,
+      "largura": 2,
+      "altura": 2
+    },
+    "brown-earth": {
+      "deposito": { "canal": 106, "freq": 0.012, "limiar": 0.24, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.28,
+      "largura": 3,
+      "altura": 3
+    },
+    "light-grass": {
+      "deposito": { "canal": 101, "freq": 0.012, "limiar": 0.28, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.2,
+      "largura": 3,
+      "altura": 3
+    },
+    "lush-grass": {
+      "deposito": { "canal": 107, "freq": 0.012, "limiar": 0.26, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.22,
+      "largura": 3,
+      "altura": 3
+    },
+    "savanna": {
+      "deposito": { "canal": 108, "freq": 0.011, "limiar": 0.3, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.18,
+      "largura": 3,
+      "altura": 3
+    },
+    "dirty-sand": {
+      "deposito": { "canal": 109, "freq": 0.012, "limiar": 0.26, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.25,
+      "largura": 3,
+      "altura": 3
+    },
+    "faroeste-desert": {
+      "deposito": { "canal": 110, "freq": 0.011, "limiar": 0.28, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.22,
+      "largura": 3,
+      "altura": 3
+    },
+    "jungle": {
+      "deposito": { "canal": 111, "freq": 0.013, "limiar": 0.22, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.3,
+      "largura": 2,
+      "altura": 2
+    },
+    "palm-jungle": {
+      "deposito": { "canal": 112, "freq": 0.013, "limiar": 0.24, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.28,
+      "largura": 2,
+      "altura": 2
+    },
+    "autum-forest": {
+      "deposito": { "canal": 113, "freq": 0.012, "limiar": 0.25, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.26,
+      "largura": 3,
+      "altura": 3
+    },
+    "ghost-forest": {
+      "deposito": { "canal": 114, "freq": 0.012, "limiar": 0.27, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.24,
+      "largura": 3,
+      "altura": 3
+    },
+    "snow": {
+      "deposito": { "canal": 115, "freq": 0.011, "limiar": 0.32, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.2,
+      "largura": 3,
+      "altura": 3
+    },
+    "tundra": {
+      "deposito": { "canal": 116, "freq": 0.011, "limiar": 0.34, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.18,
+      "largura": 3,
+      "altura": 3
+    },
+    "johto-past": {
+      "deposito": { "canal": 117, "freq": 0.012, "limiar": 0.26, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.25,
+      "largura": 2,
+      "altura": 2
+    }
+  },
+  "ruidoCristal": {
+    "light-grass": {
+      "veia": { "canal": 120, "freq": 0.007, "limiar": 0.7, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.08,
+      "largura": 2,
+      "altura": 2
+    },
+    "lush-grass": {
+      "veia": { "canal": 122, "freq": 0.0075, "limiar": 0.68, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.08,
+      "largura": 2,
+      "altura": 2
+    },
+    "stone": {
+      "veia": { "canal": 121, "freq": 0.009, "limiar": 0.68, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.08,
+      "largura": 2,
+      "altura": 2
+    },
+    "brown-earth": {
+      "veia": { "canal": 123, "freq": 0.008, "limiar": 0.7, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.08,
+      "largura": 2,
+      "altura": 2
+    },
+    "jungle": {
+      "veia": { "canal": 124, "freq": 0.008, "limiar": 0.66, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.09,
+      "largura": 2,
+      "altura": 2
+    },
+    "amber-rock": {
+      "veia": { "canal": 125, "freq": 0.0085, "limiar": 0.68, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.08,
+      "largura": 2,
+      "altura": 2
+    },
+    "ghost-forest": {
+      "veia": { "canal": 126, "freq": 0.0075, "limiar": 0.69, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.08,
+      "largura": 2,
+      "altura": 2
+    },
+    "rift-ground": {
+      "veia": { "canal": 127, "freq": 0.008, "limiar": 0.66, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.09,
+      "largura": 2,
+      "altura": 2
+    },
+    "honey-trees-flower-fields": {
+      "veia": { "canal": 128, "freq": 0.007, "limiar": 0.72, "oitavas": 2, "persistencia": 0.5, "lacunaridade": 2 },
+      "densidade": 0.07,
+      "largura": 2,
+      "altura": 2
+    }
+  },
   "mar": {
     "densidade": 0.14
   },

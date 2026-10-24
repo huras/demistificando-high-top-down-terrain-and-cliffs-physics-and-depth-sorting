@@ -333,10 +333,59 @@ button, input, select {
   background: #0c100e;
 }
 
+.previa-pedra {
+  margin: 8px 0 10px;
+}
+
+.previa-pedra__modos,
 .previa-arvore__modos {
   display: flex;
   gap: 4px;
   margin-bottom: 4px;
+}
+
+.previa-pedra__modos button {
+  flex: 1;
+  border: 1px solid var(--borda);
+  background: #243028;
+  color: var(--suave);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.previa-pedra__modos button.ativo {
+  border-color: var(--destaque);
+  color: var(--destaque);
+}
+
+.previa-pedra__modos button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#prev-pedra {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  border: 1px solid var(--borda);
+  image-rendering: pixelated;
+  background: #0c100e;
+  cursor: grab;
+  touch-action: none;
+}
+
+#prev-pedra.arrastando {
+  cursor: grabbing;
+}
+
+.previa-pedra__legenda {
+  margin: 4px 0 0;
+  font-size: 0.68rem;
+  color: var(--suave);
+  line-height: 1.2;
 }
 
 .previa-arvore__modos button {

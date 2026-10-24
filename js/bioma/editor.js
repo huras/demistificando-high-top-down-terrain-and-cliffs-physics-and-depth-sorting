@@ -8,6 +8,7 @@ import { carregarDetalhe, definirDetalhe, obterDetalhe } from "../mundo/bioma/de
 import { carregarKits, idsDeKit, obterKit } from "../mundo/bioma/kits.js";
 import { DEMO_3D, atualizarPreviewBioma, iniciarPreviewBioma } from "./preview3d.js";
 import { atualizarPreviewArvore, ligarPreviewArvore } from "./previewArvore.js";
+import { atualizarPreviewPedra, montarPreviewPedra } from "./previewPedra.js";
 
 const PORTAS = {
   constante: { entradas: [], saidas: ["Out"] },
@@ -500,17 +501,71 @@ function pintarDetalhe(bioma) {
   );
   inspectorEl.append(secSplat.raiz);
 
-  const pedras = (detalhe.pedras || []).filter((p) => p.biomas?.includes(id));
-  if (pedras.length) {
-    const secPedras = secaoColapsavel("pedras", "Pedras", false);
-    for (let i = 0; i < pedras.length; i++) {
-      const pedra = pedras[i];
-      secPedras.corpo.append(
-        campoDetalhe(`${pedra.id} freq`, pedra.freq, (v) => { pedra.freq = v; }),
-        campoDetalhe(`${pedra.id} limiar`, pedra.limiar, (v) => { pedra.limiar = v; }),
+  const temPedraCat = (detalhe.pedras || []).some((p) => p.biomas?.includes(id) && !p.cristal);
+  const temCristalCat = (detalhe.pedras || []).some((p) => p.biomas?.includes(id) && p.cristal);
+  const pedraGlobal = detalhe.pedra || (detalhe.pedra = {
+    densidade: 0.32, largura: 2, altura: 2, semente: 11,
+    deposito: { canal: 99, freq: 0.013, limiar: 0.22, oitavas: 2, persistencia: 0.5, lacunaridade: 2 },
+  });
+  const cristalGlobal = detalhe.cristal || (detalhe.cristal = {
+    densidade: 0.18, largura: 2, altura: 2, semente: 13,
+    veia: { canal: 119, freq: 0.008, limiar: 0.4, oitavas: 2, persistencia: 0.5, lacunaridade: 2 },
+  });
+
+  if (temPedraCat || temCristalCat) {
+    const mapaPedra = detalhe.ruidoPedra || (detalhe.ruidoPedra = {});
+    const rp = mapaPedra[id] || {};
+    const depPadrao = pedraGlobal.deposito || {
+      canal: 99, freq: 0.013, limiar: 0.22, oitavas: 2, persistencia: 0.5, lacunaridade: 2,
+    };
+    const dep = rp.deposito || depPadrao;
+    const gravarPedra = (campoNome, v) => {
+      const alvo = mapaPedra[id] || (mapaPedra[id] = {});
+      alvo[campoNome] = v;
+    };
+    const gravarDep = (campoNome, v) => {
+      const alvo = mapaPedra[id] || (mapaPedra[id] = {});
+      const d = alvo.deposito || (alvo.deposito = { ...depPadrao });
+      d[campoNome] = v;
+    };
+    const secPedra = secaoColapsavel("pedra-bioma", "Pedra deste bioma", true);
+    if (temPedraCat) {
+      secPedra.corpo.append(
+        campoDetalhe("Depósito canal", dep.canal, (v) => { gravarDep("canal", v); }),
+        campoDetalhe("Depósito freq", dep.freq, (v) => { gravarDep("freq", v); }),
+        campoDetalhe("Depósito limiar", dep.limiar, (v) => { gravarDep("limiar", v); }),
+        campoDetalhe("Depósito oitavas", dep.oitavas, (v) => { gravarDep("oitavas", v); }),
+        campoDetalhe("Densidade", rp.densidade ?? pedraGlobal.densidade, (v) => { gravarPedra("densidade", v); }),
+        campoDetalhe("Largura", rp.largura ?? pedraGlobal.largura, (v) => { gravarPedra("largura", v); }),
+        campoDetalhe("Altura", rp.altura ?? pedraGlobal.altura, (v) => { gravarPedra("altura", v); }),
       );
     }
-    inspectorEl.append(secPedras.raiz);
+    if (temCristalCat) {
+      const mapaCri = detalhe.ruidoCristal || (detalhe.ruidoCristal = {});
+      const rc = mapaCri[id] || {};
+      const veiaPadrao = cristalGlobal.veia || {
+        canal: 119, freq: 0.008, limiar: 0.4, oitavas: 2, persistencia: 0.5, lacunaridade: 2,
+      };
+      const veia = rc.veia || veiaPadrao;
+      const gravarCri = (campoNome, v) => {
+        const alvo = mapaCri[id] || (mapaCri[id] = {});
+        alvo[campoNome] = v;
+      };
+      const gravarVeia = (campoNome, v) => {
+        const alvo = mapaCri[id] || (mapaCri[id] = {});
+        const d = alvo.veia || (alvo.veia = { ...veiaPadrao });
+        d[campoNome] = v;
+      };
+      secPedra.corpo.append(
+        campoDetalhe("Veia canal", veia.canal, (v) => { gravarVeia("canal", v); }),
+        campoDetalhe("Veia freq", veia.freq, (v) => { gravarVeia("freq", v); }),
+        campoDetalhe("Veia limiar", veia.limiar, (v) => { gravarVeia("limiar", v); }),
+        campoDetalhe("Veia oitavas", veia.oitavas, (v) => { gravarVeia("oitavas", v); }),
+        campoDetalhe("Cristal densidade", rc.densidade ?? cristalGlobal.densidade, (v) => { gravarCri("densidade", v); }),
+      );
+    }
+    montarPreviewPedra(secPedra.corpo, id);
+    inspectorEl.append(secPedra.raiz);
   }
 }
 
@@ -783,6 +838,7 @@ function pintarPreviews() {
     seed,
   });
   atualizarPreviewArvore(bioma);
+  atualizarPreviewPedra(bioma?.id || "");
 }
 
 function pintarPaleta() {
