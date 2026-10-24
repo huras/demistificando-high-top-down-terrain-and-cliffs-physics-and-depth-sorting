@@ -5,3 +5,6 @@ __pycache__/
 /tools/vendor/
 # Junction local → Pokemon AI/sprites (servido também via /ref/)
 /ref/
+# Fontes brutas de modelo — não entram no git nem no deploy
+assets/models/**/*.zip
+*.zip
