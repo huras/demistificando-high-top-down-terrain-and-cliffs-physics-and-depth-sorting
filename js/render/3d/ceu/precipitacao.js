@@ -29,7 +29,7 @@ uniform float uOrto;
 uniform float uPesoLarguraPx;
 uniform vec2 uResolucao;
 varying vec2 vCanto;
-varying float vZ;
+varying float vDistCam;
 varying float vBorda;
 
 void main() {
@@ -76,20 +76,23 @@ void main() {
   vec2 offLargMundo = dirL * uLargura;
   vec2 offCompPx = nE * (uComprimentoPx * compVar) * ndcY;
   vec2 offLargPx = nL * uLarguraPx * ndcY;
-  vec2 offComp = mix(offCompMundo, offCompPx, uOrto);
+  // Mira (persp): mistura um pouco de px pra gota não sumir; top-down usa mais px.
+  float pesoComp = mix(0.35, 1.0, uOrto);
+  vec2 offComp = mix(offCompMundo, offCompPx, pesoComp);
   vec2 offLarg = mix(offLargMundo, offLargPx, uPesoLarguraPx);
   clip.xy += (offComp * aCanto.y + offLarg * aCanto.x) * clip.w;
   gl_Position = clip;
 
   vCanto = aCanto;
-  vZ = clamp((caixa.z + meia.z) / tamanho.z, 0.0, 1.0);
-  vBorda = max(abs(caixa.x) / meia.x, abs(caixa.y) / meia.y);
+  // Fade pela distância da câmera (não pelo Z mundo — na mira o Z mundo vira faixa).
+  vDistCam = paraLen;
+  vBorda = max(abs(caixa.x) / meia.x, max(abs(caixa.y) / meia.y, abs(caixa.z) / meia.z));
 }
 `;
 
 const FRAG = /* glsl */ `
 varying vec2 vCanto;
-varying float vZ;
+varying float vDistCam;
 varying float vBorda;
 uniform vec3 uCor;
 uniform float uAlpha;
@@ -102,9 +105,9 @@ void main() {
   float grao = smoothstep(0.0, 0.35, ax) * smoothstep(0.0, 0.28, ay);
   float floco = smoothstep(0.05, 0.85, 1.0 - length(vCanto));
   float forma = uTipo < 0.5 ? fio : mix(grao, floco, clamp(uTipo - 1.0, 0.0, 1.0));
-  float perto = smoothstep(0.0, 0.08, vZ);
-  float longe = 1.0 - smoothstep(0.88, 1.0, vZ);
-  float borda = 1.0 - smoothstep(0.94, 1.0, vBorda);
+  float perto = smoothstep(0.35, 1.6, vDistCam);
+  float longe = 1.0 - smoothstep(26.0, 40.0, vDistCam);
+  float borda = 1.0 - smoothstep(0.92, 1.0, vBorda);
   float alpha = forma * uAlpha * perto * longe * borda;
   if (alpha < 0.012) discard;
   gl_FragColor = vec4(uCor, alpha);
@@ -235,12 +238,13 @@ export function criarPrecipitacao() {
   const corAreia = new THREE.Color(0xd7a15a).convertSRGBToLinear();
   const corNeve = new THREE.Color(0xf4f7fb).convertSRGBToLinear();
   const tela = new THREE.Vector2();
-  const camPos = new THREE.Vector3();
+  const centroAlvo = new THREE.Vector3();
   const velMundo = new THREE.Vector3();
   const offset = uniforms.uOffset.value;
-  const volumeSuave = new THREE.Vector3(16, 12, 16);
+  const volumeSuave = new THREE.Vector3(16, 14, 16);
   let tempo = 0;
   let temVolume = false;
+  let blendSuave = -1;
 
   function ventoHoriz(ventoXZ, mul) {
     const vx = (ventoXZ?.x || 0) * mul;
@@ -328,14 +332,16 @@ export function criarPrecipitacao() {
   /**
    * @param {*} clima mix do céu
    * @param {{x:number,y:number}} ventoXZ vx/vz do mundo (obterVentoMundo), não normalizado
+   * @param {THREE.Vector3} [alvo] posição do jogador (mundo) — âncora do volume
    */
-  function atualizar(clima, ventoXZ, dt, camera, renderer) {
+  function atualizar(clima, ventoXZ, dt, camera, renderer, alvo = null) {
     const seguro = Math.min(Math.max(dt || 0, 0), 0.05);
     tempo += seguro;
     const peso = clima.chuva + clima.areia + clima.neve;
     mesh.visible = peso > 0.02;
     if (!mesh.visible) {
       temVolume = false;
+      blendSuave = -1;
       geo.instanceCount = 0;
       return;
     }
@@ -347,14 +353,14 @@ export function criarPrecipitacao() {
 
     if (camera) {
       camera.updateMatrixWorld(true);
-      const e = camera.matrixWorld.elements;
-      camPos.set(e[12], e[13], e[14]);
       const medido = medirVolume(camera);
-      const halfXZ = Math.max(medido.meiaX, medido.meiaY, 8) * MARGEM;
-      const halfY = Math.max(ESPESSURA * 0.55, halfXZ * 0.45);
-      // Suaviza o volume: zoom muda distOlhar e sem isso o mod remapeia e “acelera”.
-      const kVol = 1 - Math.exp(-seguro / 0.22);
-      if (!temVolume) {
+      // Caixa estável: mira não encolhe o volume (era isso que sumia / concentrava no retorno).
+      const halfXZ = Math.min(24, Math.max(14, Math.max(medido.meiaX, medido.meiaY) * 0.55));
+      const halfY = Math.max(12, halfXZ * 0.75);
+      const kVol = 1 - Math.exp(-seguro / 0.28);
+      const mudouModo = blendSuave >= 0 && Math.abs(medido.blend - blendSuave) > 0.2;
+      blendSuave = medido.blend;
+      if (!temVolume || mudouModo) {
         volumeSuave.set(halfXZ, halfY, halfXZ);
         temVolume = true;
       } else {
@@ -363,10 +369,18 @@ export function criarPrecipitacao() {
         volumeSuave.z += (halfXZ - volumeSuave.z) * kVol;
       }
       uniforms.uVolume.value.copy(volumeSuave);
-      uniforms.uCentro.value.copy(camPos);
+      // Âncora no jogador (não na câmera): top-down e mira compartilham o mesmo wrap.
+      if (alvo && Number.isFinite(alvo.x) && Number.isFinite(alvo.y) && Number.isFinite(alvo.z)) {
+        centroAlvo.set(alvo.x, alvo.y + volumeSuave.y * 0.35, alvo.z);
+      } else {
+        const e = camera.matrixWorld.elements;
+        centroAlvo.set(e[12], e[13] + volumeSuave.y * 0.2, e[14]);
+      }
+      uniforms.uCentro.value.copy(centroAlvo);
       uniforms.uOrto.value = medido.blend;
     } else {
       temVolume = false;
+      blendSuave = -1;
     }
     if (renderer) {
       renderer.getDrawingBufferSize(tela);

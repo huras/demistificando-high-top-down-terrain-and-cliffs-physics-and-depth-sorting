@@ -93,6 +93,14 @@ export const FOLGA_CHAO = 0.08;
 export const FOLGA_ATOR = 0.08;
 /** Decal horizontal no chão ainda pode pedir folga alta (moldeChao). */
 export const FOLGA_CHAO_DECAL = 1.5;
+/**
+ * Desempate em view-Z a partir do NDC do pé (tela ∈ [-1,1]).
+ * High top-down: altura do fragmento domina a coluna — pés lado a lado
+ * quase empatam; o NDC separa de verdade. Soma |X|+|Y| < FOLGA_ATOR.
+ * X: esquerda na tela ganha. Y: mais baixo na tela ganha (sul / +Z mapa).
+ */
+export const DESEMPATE_TELA_X = 0.015;
+export const DESEMPATE_TELA_Y = 0.02;
 
 const VERT_COLUNA = `
 varying vec3 vPivoWorldColuna;
@@ -107,6 +115,9 @@ varying float vFragWorldYColuna;
  * Depth no fragment: interpolar gl_FragDepth no quad contaminava o pé com a
  * cabeça (cartão alto / pivô longe da base — ex. Pokémon em PIVO_Y=0.75),
  * e o ator ganhava da raiz da árvore mesmo atrás dela.
+ *
+ * Desempate NDC do pé: esquerda (tela X) e mais baixo (tela Y ≈ eixo Z do
+ * mapa) ganham — quebra empate entre billboards sem mexer na pose.
  */
 function calcColunaVert() {
   return `
@@ -129,20 +140,25 @@ function calcColunaVert() {
 `;
 }
 
-function calcColunaFrag(folgaTxt) {
+function calcColunaFrag(folgaTxt, telaXTxt, telaYTxt) {
   return `
 {
   float yColuna = max(vFragWorldYColuna, vPivoWorldColuna.y);
   vec3 colunaWorld = vec3(vPivoWorldColuna.x, yColuna, vPivoWorldColuna.z);
   vec4 colunaVista = viewMatrix * vec4(colunaWorld, 1.0);
-  colunaVista.z += ${folgaTxt};
+  vec4 peVista = viewMatrix * vec4(vPivoWorldColuna, 1.0);
+  vec4 peClip = projectionMatrix * peVista;
+  float invW = 1.0 / max(abs(peClip.w), 1e-6);
+  float telaX = peClip.x * invW;
+  float telaY = peClip.y * invW;
+  colunaVista.z += ${folgaTxt} - telaX * ${telaXTxt} - telaY * ${telaYTxt};
   vec4 colunaClip = projectionMatrix * colunaVista;
   gl_FragDepth = colunaClip.z / colunaClip.w * 0.5 + 0.5;
 }
 `;
 }
 
-function profundidadeColuna(shader, folgaTxt) {
+function profundidadeColuna(shader, folgaTxt, telaXTxt, telaYTxt) {
   if (shader.vertexShader.includes("vPivoWorldColuna")) return;
   shader.vertexShader = shader.vertexShader
     .replace("#include <common>", `#include <common>\n${VERT_COLUNA}`)
@@ -154,7 +170,7 @@ function profundidadeColuna(shader, folgaTxt) {
     )
     .replace(
       "#include <dithering_fragment>",
-      `#include <dithering_fragment>\n${calcColunaFrag(folgaTxt)}`,
+      `#include <dithering_fragment>\n${calcColunaFrag(folgaTxt, telaXTxt, telaYTxt)}`,
     );
 }
 
@@ -275,6 +291,8 @@ export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
   material.userData.luzBillboard = true;
 
   const folgaTxt = Number(folgaPivo).toFixed(2);
+  const telaXTxt = Number(DESEMPATE_TELA_X).toFixed(4);
+  const telaYTxt = Number(DESEMPATE_TELA_Y).toFixed(4);
   const anterior = material.onBeforeCompile;
   const chaveAnterior = material.customProgramCacheKey;
   material.onBeforeCompile = (shader, renderer) => {
@@ -287,11 +305,11 @@ export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
       "#include <normal_fragment_maps>",
       "#include <normal_fragment_maps>\nnormal = normalize( mat3( viewMatrix ) * uNormalSol );",
     );
-    profundidadeColuna(shader, folgaTxt);
+    profundidadeColuna(shader, folgaTxt, telaXTxt, telaYTxt);
   };
   material.customProgramCacheKey = function chaveLuzBillboard() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-billboard|coluna|pe-clamp-frag|${folgaTxt}`;
+    return `${base}|luz-billboard|coluna|pe-clamp-frag|desempate-tela|${folgaTxt}|${telaXTxt}|${telaYTxt}`;
   };
   return material;
 }

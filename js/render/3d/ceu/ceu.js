@@ -153,7 +153,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     const trovao = relampago.consumirEvento();
     if (trovao) tocarTrovao(trovao === "eco" ? "longe" : "perto");
     atmosfera.atualizar(visual, camera, flash * 0.55, pesoCirrus, seguro);
-    precipitacao.atualizar(clima, ventoPrecip, seguro, camera, renderer);
+    precipitacao.atualizar(clima, ventoPrecip, seguro, camera, renderer, alvo);
     atualizarPoca(seguro, clima.chuva);
     gale.atualizar(seguro, { x: alvo.x, y: alvo.z }, galeLigado, Math.max(18, (raioBlocos || 24) * 0.85));
     renderer.toneMappingExposure = visual.exposicao * (1 + flash * 1.35);
