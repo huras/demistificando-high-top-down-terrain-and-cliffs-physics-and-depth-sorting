@@ -443,21 +443,27 @@ function escolherGrama(x, y, lista) {
   return sortearSprite(vivas.map((item) => ({ id: item.id, peso: item.peso })), uVariante(x, y));
 }
 
-function passaArvore(x, y, biomaId) {
-  if (!dados?.arvore && !dados?.ruidoArvore) return false;
+/** 0 = vazio · 1 = clareira · 2 = passou ruído/densidade */
+function portaArvore(x, y, biomaId) {
+  if (!dados?.arvore && !dados?.ruidoArvore) return 0;
   const id = biomaId || "";
-  return lembrar(`a${id}:${x},${y}`, () => {
+  return lembrar(`p${id}:${x},${y}`, () => {
     const { params, clareira } = arvoreDoBioma(id);
     const v = valorArvore(x, y, params);
-    if (!v || v.n < v.limiar) return false;
-    if (hash2(x, y, v.seed) > v.densidade) return false;
-    if (clareira && amostraCampo(x, y, clareira) >= clareira.limiar) return false;
-    return true;
+    if (!v || v.n < v.limiar) return 0;
+    if (hash2(x, y, v.seed) > v.densidade) return 0;
+    if (clareira && amostraCampo(x, y, clareira) >= clareira.limiar) return 1;
+    return 2;
   });
 }
 
-function ganhaPegada(x, y, biomaId) {
-  const a = arvoreDoBioma(biomaId || idBiomaEm(x, y)).params;
+function passaArvore(x, y, biomaId) {
+  return portaArvore(x, y, biomaId) === 2;
+}
+
+function ganhaPegada(x, y, biomaId, forcarBioma = false) {
+  const idCentro = biomaId || idBiomaEm(x, y);
+  const a = arvoreDoBioma(idCentro).params;
   if (!a) return false;
   const w = a.largura;
   const h = a.altura;
@@ -466,7 +472,7 @@ function ganhaPegada(x, y, biomaId) {
   for (let oy = y - (h - 1); oy <= y + (h - 1); oy++) {
     for (let ox = x - (w - 1); ox <= x + (w - 1); ox++) {
       if (ox === x && oy === y) continue;
-      const idViz = idBiomaEm(ox, oy);
+      const idViz = forcarBioma ? idCentro : idBiomaEm(ox, oy);
       const viz = arvoreDoBioma(idViz).params;
       if (!(x < ox + viz.largura && x + w > ox && y < oy + viz.altura && y + h > oy)) continue;
       if (!passaArvore(ox, oy, idViz)) continue;
@@ -475,6 +481,19 @@ function ganhaPegada(x, y, biomaId) {
     }
   }
   return true;
+}
+
+/**
+ * Preview do editor: plano forçado num bioma (sem bordas do mundo).
+ * @returns {0|1|2} 0 vazio · 1 clareira · 2 spawn
+ */
+export function classificarArvorePreview(biomaId, x, y) {
+  const id = biomaId || "";
+  const porta = portaArvore(x | 0, y | 0, id);
+  if (porta === 0) return 0;
+  if (porta === 1) return 1;
+  if (!ganhaPegada(x | 0, y | 0, id, true)) return 0;
+  return 2;
 }
 
 function melhorDaFamilia(x, y, familias) {

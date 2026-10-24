@@ -7,6 +7,7 @@ import { amostrarNos, avaliarGrafo } from "../mundo/bioma/grafo.js";
 import { carregarDetalhe, definirDetalhe, obterDetalhe } from "../mundo/bioma/detalhe.js";
 import { carregarKits, idsDeKit, obterKit } from "../mundo/bioma/kits.js";
 import { DEMO_3D, atualizarPreviewBioma, iniciarPreviewBioma } from "./preview3d.js";
+import { atualizarPreviewArvore, ligarPreviewArvore } from "./previewArvore.js";
 
 const PORTAS = {
   constante: { entradas: [], saidas: ["Out"] },
@@ -366,6 +367,7 @@ function campoDetalhe(rotulo, valor, aoMudar) {
   return campo(rotulo, valor, (v) => {
     aoMudar(v);
     definirDetalhe(obterDetalhe());
+    pedirPreviews();
   });
 }
 
@@ -749,6 +751,7 @@ function pintarPreviews() {
     catalogo: dados,
     seed,
   });
+  atualizarPreviewArvore(bioma);
 }
 
 function pintarPaleta() {
@@ -840,6 +843,10 @@ window.addEventListener("keydown", (ev) => {
 
 await carregarKits();
 await carregarDetalhe();
+ligarPreviewArvore(
+  document.getElementById("prev-arvore"),
+  document.getElementById("prev-arvore-legenda"),
+);
 try {
   await iniciarPreviewBioma(document.getElementById("prev-3d"));
 } catch (erro) {

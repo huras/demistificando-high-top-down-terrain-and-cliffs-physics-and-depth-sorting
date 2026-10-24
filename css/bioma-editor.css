@@ -286,6 +286,15 @@ button, input, select {
   background: #0c100e;
 }
 
+#prev-arvore {
+  cursor: grab;
+  touch-action: none;
+}
+
+#prev-arvore.arrastando {
+  cursor: grabbing;
+}
+
 .previas__mapas figcaption {
   font-size: 0.72rem;
   color: var(--suave);
