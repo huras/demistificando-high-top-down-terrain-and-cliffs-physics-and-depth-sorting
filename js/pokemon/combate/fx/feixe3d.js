@@ -212,35 +212,6 @@ export function tickFeixes(dt) {
     f.t += dt;
     f.pulso += dt;
   }
-  // #region agent log
-  {
-    let vivaN = 0;
-    let maxT = 0;
-    for (let i = 0; i < vivos.length; i++) {
-      if (!vivos[i].viva) continue;
-      vivaN++;
-      if (vivos[i].t > maxT) maxT = vivos[i].t;
-    }
-    if (vivaN > 0 && maxT > 1.5) {
-      const agora = Date.now();
-      if (!tickFeixes._dbgUlt || agora - tickFeixes._dbgUlt > 800) {
-        tickFeixes._dbgUlt = agora;
-        fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
-          body: JSON.stringify({
-            sessionId: "b822fd",
-            hypothesisId: "A",
-            location: "feixe3d.js:tickFeixes",
-            message: "feixe vivo além do esperado",
-            data: { vivaN, maxT: +maxT.toFixed(2), total: vivos.length },
-            timestamp: agora,
-          }),
-        }).catch(() => {});
-      }
-    }
-  }
-  // #endregion
 }
 
 const _de = new THREE.Vector3(0, 1, 0);

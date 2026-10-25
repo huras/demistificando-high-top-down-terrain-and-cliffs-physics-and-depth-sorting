@@ -33,8 +33,8 @@ export const ACAO_FORCA = Object.freeze({
 export function companionsDeployados() {
   const out = [];
   const mon = pokemonDeployado();
-  if (mon && !mon.morto && !mon.capturado && mon._colocado) out.push(mon);
-  // Party com vários no campo futuro: só o deployado oficial por enquanto.
+  // Deployado no campo (mesmo ainda colocando o sprite) — ordem RMB não exige _colocado.
+  if (mon && !mon.morto && !mon.capturado) out.push(mon);
   return out;
 }
 

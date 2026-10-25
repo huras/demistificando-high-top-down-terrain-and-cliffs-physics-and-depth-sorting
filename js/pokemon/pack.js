@@ -4,6 +4,10 @@
  */
 import { POKEMON } from "../config.js";
 import { especie } from "./dados.js";
+import {
+  nivelMinSelvagem,
+  podeSpawnarNoNivel,
+} from "./distribuicao/nivelSelvagem.js";
 
 export const PACK_ROLE = Object.freeze({
   LEADER: "leader",
@@ -50,6 +54,30 @@ export function instalarLinhasEvo(json, mapaEspecies = null) {
   linhasPorChave = mapa;
 }
 
+/** Linha evolutiva da espécie (ou só ela). */
+export function linhaDaEspecie(chave) {
+  const line = linhasPorChave?.get(chave);
+  return line?.length ? line : chave ? [chave] : [];
+}
+
+/**
+ * Demote forma ilegal no nível até a mais alta permitida (resolveWildSpeciesAtLevel).
+ * @param {string|null|undefined} chave
+ * @param {number} nivel
+ * @returns {string|null}
+ */
+export function resolverEspecieNoNivel(chave, nivel) {
+  if (!chave) return null;
+  const lv = Math.max(1, nivel | 0);
+  if (especie(chave) && podeSpawnarNoNivel(chave, lv)) return chave;
+  const linha = linhaDaEspecie(chave);
+  for (let i = linha.length - 1; i >= 0; i--) {
+    const k = linha[i];
+    if (k && especie(k) && podeSpawnarNoNivel(k, lv)) return k;
+  }
+  return null;
+}
+
 export function cfgPack() {
   const raw = POKEMON.PACK;
   if (!raw || raw.enabled === false) {
@@ -84,7 +112,7 @@ export function planPackDoLar(unidade01, hashInt, packCfg = cfgPack()) {
 }
 
 /**
- * Mate na linha evolutiva do líder (nível com jitter).
+ * Mate na linha evolutiva do líder (nível com jitter; só formas legais no band).
  * @param {{ chave: string, nivel: number }} lider
  * @param {() => number} rng
  */
@@ -92,14 +120,18 @@ export function escolherMate(lider, rng) {
   const base = Math.max(1, lider.nivel | 0);
   const minL = Math.max(1, base - 3);
   const maxL = base + 3;
-  const line = linhasPorChave?.get(lider.chave);
-  const keys = line?.length ? line : [lider.chave];
+  const keys = linhaDaEspecie(lider.chave);
   const candidates = [];
   for (let i = 0; i < keys.length; i++) {
-    if (especie(keys[i])) candidates.push(keys[i]);
+    const k = keys[i];
+    if (!especie(k)) continue;
+    if (nivelMinSelvagem(k) > maxL) continue;
+    candidates.push(k);
   }
   if (!candidates.length) {
-    return { chave: lider.chave, nivel: base };
+    const segura =
+      resolverEspecieNoNivel(lider.chave, base) || lider.chave;
+    return { chave: segura, nivel: base };
   }
   const others = [];
   for (let i = 0; i < candidates.length; i++) {
@@ -111,7 +143,9 @@ export function escolherMate(lider, rng) {
   } else {
     pick = candidates[(rng() * candidates.length) | 0];
   }
-  const nivel = minL + ((rng() * (maxL - minL + 1)) | 0);
+  const lo = Math.max(minL, nivelMinSelvagem(pick));
+  const hi = Math.max(lo, maxL);
+  const nivel = lo + ((rng() * (hi - lo + 1)) | 0);
   return { chave: pick, nivel: Math.max(1, nivel) };
 }
 

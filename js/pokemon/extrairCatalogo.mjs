@@ -4,16 +4,22 @@
  */
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { extrairPortoesSelvagem } from "./extrairPortoesSelvagem.mjs";
+
+/** Bumpe quando o schema do JSON muda (ex.: nivelMin). */
+const VERSAO_SCHEMA = 2;
 
 let cache = null;
+let cacheVersao = 0;
 let pendente = null;
 
 export function extrairCatalogo(raizRef) {
-  if (cache) return Promise.resolve(cache);
+  if (cache && cacheVersao === VERSAO_SCHEMA) return Promise.resolve(cache);
   if (pendente) return pendente;
   pendente = montar(raizRef)
     .then((cat) => {
       cache = cat;
+      cacheVersao = VERSAO_SCHEMA;
       pendente = null;
       return cat;
     })
@@ -39,7 +45,7 @@ async function importOpcional(arquivo) {
 async function montar(raizRef) {
   const base = path.join(raizRef, "src", "data", "pokemon");
   const escalaMod = path.join(raizRef, "src", "sprites", "pmd", "pmdScale.js");
-  const [especiesMod, golpesMod, pmdEscala, bodyMod, metaMod, flavorMod] =
+  const [especiesMod, golpesMod, pmdEscala, bodyMod, metaMod, flavorMod, portoes] =
     await Promise.all([
       import(pathToFileURL(path.join(base, "index.js")).href),
       import(pathToFileURL(path.join(base, "moves.js")).href),
@@ -47,7 +53,9 @@ async function montar(raizRef) {
       importOpcional(path.join(base, "bodyMetrics.js")),
       importOpcional(path.join(base, "speciesDexMeta.js")),
       importOpcional(path.join(base, "speciesFlavor.js")),
+      extrairPortoesSelvagem(raizRef),
     ]);
+  const nivelMin = portoes?.nivelMin || {};
   const escalaDe = pmdEscala.getPmdVisualScale;
   const offsetDe = pmdEscala.getPmdYOffset;
   const corpoDe = bodyMod?.getSpeciesBody || null;
@@ -85,6 +93,7 @@ async function montar(raizRef) {
       cor: sp.color || "#9ca3af",
       escala: numeroOu(escalaDe(sp.dex), 1),
       offsetY: numeroOu(offsetDe(sp.dex), 0),
+      nivelMin: Math.max(1, nivelMin[sp.key] | 0 || 1),
       learnset: learn,
     };
 

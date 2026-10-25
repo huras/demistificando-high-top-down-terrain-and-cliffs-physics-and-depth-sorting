@@ -15,7 +15,7 @@ import { acertoCorpo, alcanceCorpo, alcanceTiro } from "../ia/espaco.js";
 import { ALCANCE_TIRO_MAX } from "../ia/constantes.js";
 import { definirEmocao, EMOCAO, EMOCAO_ANIM } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
-import { abrirKi, auraDe, fecharKi, pulsarKi } from "./ki.js";
+import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
 import { puloNoGolpe } from "./pulo.js";
 import { soltarProjetil } from "./projeteis.js";
 import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
@@ -338,32 +338,6 @@ function atorMorreu(alvo, agora) {
   cancelarGolpe(alvo);
   // Um ciclo de suor (sem presa): presa + loop em colunaEmocao deixava a emoção infinita no cadáver.
   definirEmocao(alvo, EMOCAO.SUOR, { duracao: EMOCAO_ANIM });
-  // #region agent log
-  {
-    const aura = auraDe(alvo);
-    fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
-      body: JSON.stringify({
-        sessionId: "b822fd",
-        runId: "post-fix",
-        hypothesisId: "D",
-        location: "executor.js:atorMorreu",
-        message: "morte — emoção com duracao (sem presa)",
-        data: {
-          especie: alvo.especie?.key || alvo.especie?.nome || "",
-          emocao: alvo.emocao,
-          emocaoPresa: !!alvo.emocaoPresa,
-          emocaoAte: alvo.emocaoAte,
-          kiViva: !!(aura && aura.viva),
-          conjuro: +(alvo.conjuroRestante || 0),
-          jato: +(alvo.jatoDur || 0),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
 }
 
 function campoEstagio(stat) {
@@ -545,32 +519,6 @@ function pararNoLugar(ator) {
 
 export function cancelarGolpe(ator) {
   if (!ator) return;
-  // #region agent log
-  {
-    const auraAntes = auraDe(ator);
-    if (auraAntes?.viva || (ator.conjuroRestante || 0) > 0 || (ator.jatoDur || 0) > 0) {
-      fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
-        body: JSON.stringify({
-          sessionId: "b822fd",
-          hypothesisId: "B",
-          location: "executor.js:cancelarGolpe",
-          message: "cancelar golpe / fechar ki",
-          data: {
-            especie: ator.especie?.key || "",
-            morto: !!ator.morto,
-            hp: ator.hp,
-            kiAntes: !!auraAntes?.viva,
-            conjuro: +(ator.conjuroRestante || 0),
-            jato: +(ator.jatoDur || 0),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-  }
-  // #endregion
   ator.conjuroRestante = 0;
   ator.conjuroDur = 0;
   ator.conjuroSlot = null;

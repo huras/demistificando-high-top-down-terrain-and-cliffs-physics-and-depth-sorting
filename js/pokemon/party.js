@@ -84,6 +84,7 @@ function recolher(ator) {
   ator.capturado = true;
   ator._colocado = false;
   ator.ordemCampo = null;
+  ator.ordemForca = null;
   ator.ordemAlvo = null;
   ator.alvo = null;
   if (ator.modo === "agro") ator.modo = "roam";
@@ -361,7 +362,7 @@ export function atualizarParty(corpo, dt, agora, perfil) {
     }
   }
   if (vivo.brilhoBola > 0) vivo.brilhoBola = Math.max(0, vivo.brilhoBola - dt);
-  if (mon.ordemCampo) return;
+  if (mon.ordemCampo || mon.ordemForca) return;
   // Combate OW (tickPartyCampo) marca _emLutaCampo quando não deve follow.
   if (mon._emLutaCampo) return;
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;

@@ -1,4 +1,12 @@
 import {
+  aplicarCatalogoEfeitos,
+  carregarCatalogoEfeitos,
+  catalogoEfeitos,
+  defaultsEfeitos,
+  listaEfeitos,
+} from "../efeitos/catalogo.js";
+import { carregarFolhasGolpe, sincronizarFolhasDoCatalogo } from "../pokemon/combate/folhasGolpe.js";
+import {
   aplicarCatalogoParticulas,
   catalogoParticulas,
   defaultsParticulas,
@@ -16,6 +24,7 @@ const hudEl = document.getElementById("hud-perf");
 const btnLoop = document.getElementById("loop");
 
 const CATEGORIAS = [
+  { id: "efeitos", rotulo: "Efeitos" },
   { id: "combate", rotulo: "Combate" },
   { id: "passo", rotulo: "Passo" },
   { id: "campo", rotulo: "Campo" },
@@ -170,13 +179,43 @@ const CAMPOS = {
     { path: "douradoB", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Dourado B" },
     { path: "arrasto", tipo: "range", min: 0.5, max: 12, step: 0.1, rotulo: "Arrasto" },
   ],
+  efeitoFolha: [
+    { path: "folha.frames", tipo: "range", min: 1, max: 16, step: 1, rotulo: "Frames" },
+    { path: "folha.duracaoFrame", tipo: "range", min: 0.02, max: 0.3, step: 0.01, rotulo: "Dur. frame" },
+    { path: "folha.escalaVoo", tipo: "range", min: 0.05, max: 4, step: 0.01, rotulo: "Escala voo" },
+    { path: "folha.escalaImpacto", tipo: "range", min: 0.05, max: 4, step: 0.01, rotulo: "Escala impacto" },
+    { path: "folha.offsetAngulo", tipo: "range", min: -3.14, max: 3.14, step: 0.01, rotulo: "Offset ângulo" },
+    { path: "folha.giro", tipo: "range", min: 0, max: 8, step: 0.1, rotulo: "Giro (rps)" },
+  ],
+  efeitoDisparo: [
+    { path: "disparo.n", tipo: "range", min: 1, max: 12, step: 1, rotulo: "Pellets" },
+    { path: "disparo.graus", tipo: "range", min: 0, max: 45, step: 1, rotulo: "Espalhamento°" },
+    { path: "disparo.vel", tipo: "range", min: 4, max: 24, step: 0.1, rotulo: "Velocidade" },
+  ],
+  efeitoFeixe: [
+    { path: "feixe.largura", tipo: "range", min: 0.1, max: 1.5, step: 0.01, rotulo: "Largura" },
+    { path: "feixe.alcance", tipo: "range", min: 4, max: 20, step: 0.5, rotulo: "Alcance" },
+    { path: "feixe.primaria", tipo: "cor", rotulo: "Primária" },
+    { path: "feixe.secundaria", tipo: "cor", rotulo: "Secundária" },
+    { path: "feixe.nucleo", tipo: "cor", rotulo: "Núcleo" },
+  ],
+  efeitoStatus: [
+    { path: "status.alcance", tipo: "range", min: 2, max: 14, step: 0.5, rotulo: "Alcance" },
+    { path: "status.duracao", tipo: "range", min: 0.2, max: 2, step: 0.01, rotulo: "Duração" },
+  ],
+  efeitoOrbe: [
+    { path: "orbe.escala", tipo: "range", min: 0.1, max: 1, step: 0.01, rotulo: "Escala orbe" },
+  ],
 };
 
 /** @type {object} */
 let catalogo = defaultsParticulas();
+/** @type {object} */
+let catalogoFx = defaultsEfeitos();
 let sujo = false;
-let categoria = "combate";
-let presetId = "fire";
+let sujoFx = false;
+let categoria = "efeitos";
+let presetId = "ember";
 const preview = criarPreviewParticulas(canvas, hudEl);
 
 function dizer(texto) {
@@ -184,6 +223,13 @@ function dizer(texto) {
 }
 
 function marcarSujo() {
+  if (categoria === "efeitos") {
+    if (!sujoFx) {
+      sujoFx = true;
+      dizer("Efeito alterado — não salvo.");
+    }
+    return;
+  }
   if (!sujo) {
     sujo = true;
     dizer("Alterado — não salvo.");
@@ -211,6 +257,7 @@ function escreverPath(obj, path, valor) {
 }
 
 function objetoPreset() {
+  if (categoria === "efeitos") return catalogoFx.efeitos[presetId] || null;
   if (categoria === "combate") return catalogo.combate.elementos[presetId];
   if (categoria === "passo") return catalogo.passo[presetId];
   if (categoria === "campo") return catalogo.campo[presetId];
@@ -220,6 +267,18 @@ function objetoPreset() {
 }
 
 function schemaCampos() {
+  if (categoria === "efeitos") {
+    const ef = catalogoFx.efeitos[presetId];
+    if (!ef) return [];
+    /** @type {typeof CAMPOS.efeitoFolha} */
+    const out = [];
+    if (ef.folha) out.push(...CAMPOS.efeitoFolha);
+    if (ef.disparo) out.push(...CAMPOS.efeitoDisparo);
+    if (ef.feixe) out.push(...CAMPOS.efeitoFeixe);
+    if (ef.status) out.push(...CAMPOS.efeitoStatus);
+    if (ef.orbe) out.push(...CAMPOS.efeitoOrbe);
+    return out;
+  }
   if (categoria === "combate") return CAMPOS.combate;
   if (categoria === "passo") return CAMPOS.passo;
   if (categoria === "campo") {
@@ -241,6 +300,7 @@ function schemaCampos() {
 }
 
 function idsDaCategoria() {
+  if (categoria === "efeitos") return listaEfeitos().map((e) => e.id);
   if (categoria === "combate") return idsElemento();
   if (categoria === "passo") return ["andar", "correr"];
   if (categoria === "campo") return ["fagulha", "fagulhaForte", "lasca"];
@@ -249,8 +309,22 @@ function idsDaCategoria() {
   return [];
 }
 
+function rotuloPreset(id) {
+  if (categoria === "efeitos") {
+    const ef = catalogoFx.efeitos[id];
+    if (!ef) return id;
+    return `${ef.nome || id} · ${ef.kind}`;
+  }
+  return ROTULOS[id] || id;
+}
+
 function sincronizarRuntime() {
   aplicarCatalogoParticulas(catalogo);
+  if (categoria === "efeitos") {
+    aplicarCatalogoEfeitos(catalogoFx);
+    sincronizarFolhasDoCatalogo();
+    carregarFolhasGolpe();
+  }
   preview.definirSelecao(categoria, presetId);
 }
 
@@ -266,10 +340,12 @@ function pintarAbas() {
       categoria = c.id;
       const ids = idsDaCategoria();
       presetId = ids[0];
+      preview.limpar();
       pintarAbas();
       pintarLista();
       pintarInspector();
       sincronizarRuntime();
+      preview.disparar();
     });
     abasEl.appendChild(btn);
   }
@@ -281,7 +357,7 @@ function pintarLista() {
   const ids = idsDaCategoria();
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i];
-    const nome = ROTULOS[id] || id;
+    const nome = rotuloPreset(id);
     if (filtro && !nome.toLowerCase().includes(filtro) && !id.includes(filtro)) continue;
     const li = document.createElement("li");
     const btn = document.createElement("button");
@@ -315,7 +391,19 @@ function pintarInspector() {
     inspectorEl.textContent = "Preset não encontrado.";
     return;
   }
+  if (categoria === "efeitos") {
+    const meta = document.createElement("p");
+    meta.className = "nota";
+    meta.textContent = `kind: ${alvo.kind}${alvo.folha?.url ? " · folha" : ""}${alvo.visual ? ` · visual ${alvo.visual}` : ""}`;
+    inspectorEl.appendChild(meta);
+  }
   const campos = schemaCampos();
+  if (!campos.length && categoria === "efeitos") {
+    const dica = document.createElement("p");
+    dica.className = "nota";
+    dica.textContent = "Sem parâmetros numéricos — Disparar pra ver o padrão.";
+    inspectorEl.appendChild(dica);
+  }
   for (let i = 0; i < campos.length; i++) {
     const def = campos[i];
     if (def.path === "puxa" && presetId !== "recolher") continue;
@@ -358,23 +446,30 @@ function pintarInspector() {
 }
 
 function resetPreset() {
-  const base = defaultsParticulas();
-  if (categoria === "combate") {
-    catalogo.combate.elementos[presetId] = structuredClone(base.combate.elementos[presetId]);
-  } else if (categoria === "passo") {
-    catalogo.passo[presetId] = structuredClone(base.passo[presetId]);
-  } else if (categoria === "campo") {
-    catalogo.campo[presetId] = structuredClone(base.campo[presetId]);
-  } else if (categoria === "agua") {
-    catalogo.agua[presetId] = structuredClone(base.agua[presetId]);
-  } else if (categoria === "bola") {
-    catalogo.bola[presetId] = structuredClone(base.bola[presetId]);
+  if (categoria === "efeitos") {
+    const base = defaultsEfeitos();
+    if (base.efeitos[presetId]) {
+      catalogoFx.efeitos[presetId] = structuredClone(base.efeitos[presetId]);
+    }
+  } else {
+    const base = defaultsParticulas();
+    if (categoria === "combate") {
+      catalogo.combate.elementos[presetId] = structuredClone(base.combate.elementos[presetId]);
+    } else if (categoria === "passo") {
+      catalogo.passo[presetId] = structuredClone(base.passo[presetId]);
+    } else if (categoria === "campo") {
+      catalogo.campo[presetId] = structuredClone(base.campo[presetId]);
+    } else if (categoria === "agua") {
+      catalogo.agua[presetId] = structuredClone(base.agua[presetId]);
+    } else if (categoria === "bola") {
+      catalogo.bola[presetId] = structuredClone(base.bola[presetId]);
+    }
   }
   marcarSujo();
   pintarInspector();
   sincronizarRuntime();
   preview.disparar();
-  dizer(`Reset: ${ROTULOS[presetId] || presetId}`);
+  dizer(`Reset: ${rotuloPreset(presetId)}`);
 }
 
 document.getElementById("disparar").addEventListener("click", () => {
@@ -404,21 +499,41 @@ function payloadSalvar() {
 document.getElementById("salvar").addEventListener("click", async () => {
   dizer("Salvando…");
   sincronizarRuntime();
-  const res = await fetch("/api/particulas", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payloadSalvar()),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    dizer(json.erro || "Não salvou.");
-    return;
+  if (categoria === "efeitos" || sujoFx) {
+    const resFx = await fetch("/api/efeitos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(catalogoFx),
+    });
+    const jsonFx = await resFx.json().catch(() => ({}));
+    if (!resFx.ok) {
+      dizer(jsonFx.erro || "Não salvou efeitos.");
+      return;
+    }
+    sujoFx = false;
   }
-  sujo = false;
-  dizer("Catálogo salvo.");
+  if (categoria !== "efeitos" || sujo) {
+    const res = await fetch("/api/particulas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payloadSalvar()),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      dizer(json.erro || "Não salvou partículas.");
+      return;
+    }
+    sujo = false;
+  }
+  dizer(categoria === "efeitos" ? "Efeitos salvos." : "Catálogo salvo.");
 });
 
 async function iniciar() {
+  await carregarCatalogoEfeitos();
+  catalogoFx = structuredClone(catalogoEfeitos());
+  sincronizarFolhasDoCatalogo();
+  carregarFolhasGolpe();
+
   const res = await fetch("/assets/particulas/catalogo.json");
   if (res.ok) {
     const json = await res.json();
@@ -428,12 +543,14 @@ async function iniciar() {
     catalogo = defaultsParticulas();
     aplicarCatalogoParticulas(catalogo);
   }
+  categoria = "efeitos";
+  presetId = "ember";
   pintarAbas();
   pintarLista();
   pintarInspector();
   sincronizarRuntime();
   preview.disparar();
-  dizer("Pronto.");
+  dizer(`Pronto — ${listaEfeitos().length} efeitos + partículas.`);
 }
 
 iniciar().catch((erro) => {

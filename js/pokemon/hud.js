@@ -155,34 +155,6 @@ function marcador(ctx, ator, p, pes) {
     return;
   }
   if (ator.emocao == null || !folhaEmocoes()) return;
-  // #region agent log
-  if (ator.morto || ator.emocaoPresa) {
-    const agora = Date.now();
-    if (!marcador._dbgUlt || agora - marcador._dbgUlt > 900) {
-      marcador._dbgUlt = agora;
-      fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
-        body: JSON.stringify({
-          sessionId: "b822fd",
-          runId: "post-fix",
-          hypothesisId: "D",
-          location: "hud.js:marcador",
-          message: "desenhando emoção em morto/presa",
-          data: {
-            especie: ator.especie?.key || "",
-            morto: !!ator.morto,
-            presa: !!ator.emocaoPresa,
-            idade: +(ator.emocaoIdade || 0).toFixed(2),
-            revelar,
-            temFace: !!(ator.especie?.dex && pedirRetrato(ator.especie.dex, ator.shiny)),
-          },
-          timestamp: agora,
-        }),
-      }).catch(() => {});
-    }
-  }
-  // #endregion
   desenharEmocao(ctx, p.x, p.y - 10, ator);
 }
 

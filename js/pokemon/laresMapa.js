@@ -153,7 +153,8 @@ export function resolverLarSlot(cx, cy, indice) {
   if (!z) return null;
   const hBioma = hash(cx, cy, 35 + indice);
   const biomaId = biomaIdEm(x, y, hBioma);
-  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice));
+  const nivel = nivelEm(x, y);
+  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel);
   const esp = especie(chave) || especie("pidgey");
   if (!esp) return null;
   return {
@@ -164,7 +165,7 @@ export function resolverLarSlot(cx, cy, indice) {
     speciesKey: esp.key,
     dex: esp.dex | 0,
     shiny: unidade(hash(cx, cy, 50 + indice)) < POKEMON.SHINY,
-    nivel: nivelEm(x, y),
+    nivel,
   };
 }
 

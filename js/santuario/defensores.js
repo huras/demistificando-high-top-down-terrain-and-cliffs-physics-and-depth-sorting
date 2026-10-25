@@ -4,6 +4,8 @@
 import { criarAtor } from "../pokemon/ator.js";
 import { especie, listarEspecies } from "../pokemon/dados.js";
 import { nivelEm } from "../pokemon/distribuicao/forca.js";
+import { filtrarPorNivel } from "../pokemon/distribuicao/nivelSelvagem.js";
+import { resolverEspecieNoNivel } from "../pokemon/pack.js";
 import { mulberry32, hashSeed } from "./dungeonGen.js";
 import { ORIGEM_SANTUARIO_X, ORIGEM_SANTUARIO_Y, santuarioAtivo } from "./interior.js";
 
@@ -33,10 +35,12 @@ function garantirPools() {
   return poolPorTipo;
 }
 
-function poolPara(element) {
+function poolPara(element, nivel) {
   const pools = garantirPools();
   const key = String(element || "normal").toLowerCase();
-  return pools.get(key) || pools.get("normal") || ["eevee", "pidgey"];
+  const bruto = pools.get(key) || pools.get("normal") || ["eevee", "pidgey"];
+  const ok = filtrarPorNivel(bruto, nivel);
+  return ok.length ? ok : bruto;
 }
 
 export function limparDefensoresSantuario() {
@@ -54,10 +58,10 @@ export function spawnDefensoresSantuario(hub) {
   limparDefensoresSantuario();
   if (!hub?.rooms?.length) return;
   const rng = mulberry32(hashSeed(`${hub.shrineId}:guards`));
-  const typed = poolPara(hub.element);
   const outdoorX = hub.outdoorX ?? 0;
   const outdoorY = hub.outdoorY ?? 0;
   const level = Math.max(5, nivelEm(outdoorX, outdoorY) | 0);
+  const typed = poolPara(hub.element, level);
   let index = 0;
 
   for (let i = 0; i < hub.rooms.length; i++) {
@@ -70,7 +74,9 @@ export function spawnDefensoresSantuario(hub) {
     const y1 = room.y1 - pad;
     const wx = ORIGEM_SANTUARIO_X + (x0 + x1) * 0.5;
     const wy = ORIGEM_SANTUARIO_Y + (y0 + y1) * 0.5;
-    const speciesKey = typed[Math.floor(rng() * typed.length)] || "eevee";
+    const bruta = typed[Math.floor(rng() * typed.length)] || "eevee";
+    const speciesKey =
+      resolverEspecieNoNivel(bruta, level) || bruta;
     const esp = especie(speciesKey) || especie("eevee") || especie("pidgey");
     if (!esp) continue;
     const ator = criarAtor({

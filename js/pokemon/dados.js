@@ -71,8 +71,21 @@ function aplicarPivos(arquivo) {
   }
 }
 
+/** Sobrescreve nivelMin (portões) — não depende do cache velho do catálogo. */
+function aplicarPortoesSelvagem(bruto) {
+  const tabela = bruto?.nivelMin;
+  if (!tabela || typeof tabela !== "object") return;
+  const chaves = Object.keys(especies);
+  for (let i = 0; i < chaves.length; i++) {
+    const esp = especies[chaves[i]];
+    if (!esp) continue;
+    const n = tabela[chaves[i]] | 0;
+    esp.nivelMin = n > 0 ? n : Math.max(1, esp.nivelMin | 0 || 1);
+  }
+}
+
 export async function carregarDados() {
-  const [catRes, dropRes, pivoRes, distRes, evoRes] = await Promise.all([
+  const [catRes, dropRes, pivoRes, distRes, evoRes, portoesRes] = await Promise.all([
     fetch("/ref/catalogo.json"),
     fetch("/ref/src/data/pokemon/speciesDrops.json"),
     fetch("/assets/pokemon/pivos.json"),
@@ -84,6 +97,7 @@ export async function carregarDados() {
       return 0;
     }),
     fetch("/ref/src/data/pokemon/evolution-lines.json").catch(() => null),
+    fetch("/ref/portoes-selvagem.json").catch(() => null),
   ]);
   if (!catRes.ok) throw new Error("catálogo de pokémon indisponível");
   const cat = await catRes.json();
@@ -99,6 +113,9 @@ export async function carregarDados() {
     };
   }
   if (pivoRes.ok) aplicarPivos(await pivoRes.json());
+  if (portoesRes?.ok) {
+    aplicarPortoesSelvagem(await portoesRes.json());
+  }
   if (evoRes?.ok) {
     const { instalarLinhasEvo } = await import("./pack.js");
     instalarLinhasEvo(await evoRes.json(), especies);

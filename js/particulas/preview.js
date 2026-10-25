@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { emitirFagulha, emitirLascas, criarFxCampo } from "../campo/fx.js";
+import { efeitoDe, folhaDoEfeito } from "../efeitos/catalogo.js";
 import {
   emitirGotaPreview,
   emitirOndaPreview,
@@ -12,17 +13,25 @@ import {
 } from "../fx/fxAgua.js";
 import { soltarFxEnvio, soltarFxRecolher, tickFxBola } from "../fx/fxBola.js";
 import { emitirPoeiraEm, puffsPasso } from "../fx/poeiraPasso.js";
+import { carregarFolhasGolpe } from "../pokemon/combate/folhasGolpe.js";
+import {
+  desligarFxCena,
+  dispararGolpeFx,
+  limparFx,
+  ligarFxCena,
+  sincronizarFx,
+  tickFx,
+} from "../pokemon/combate/fx/index.js";
 import { emitirImpacto } from "../pokemon/combate/fx/impacto.js";
 import {
   CAP_FX,
   contarPoolFx,
-  desligarPoolGpu,
   limparPoolFx,
-  ligarPoolGpu,
   sincronizarPoolGpu,
   tickPoolFx,
 } from "../pokemon/combate/fx/poolParticulas3d.js";
 import { emitirRastro } from "../pokemon/combate/fx/rastro.js";
+import { atualizarProjeteis, limparProjeteis, soltarProjetil } from "../pokemon/combate/projeteis.js";
 import { elementoDe } from "./catalogo.js";
 import { criarFxAgua3d } from "../render/3d/fxAgua3d.js";
 import { criarFxBola3d } from "../render/3d/fxBola3d.js";
@@ -59,7 +68,8 @@ export function criarPreviewParticulas(canvas, hudEl) {
   alvo.position.set(0, 1.1, 0);
   cena.add(alvo);
 
-  ligarPoolGpu(cena);
+  carregarFolhasGolpe();
+  ligarFxCena(cena);
   const fxCampo = criarFxCampo();
   cena.add(fxCampo.grupo);
   const poeira = criarPoeiraPasso3d();
@@ -68,6 +78,9 @@ export function criarPreviewParticulas(canvas, hudEl) {
   cena.add(agua.grupo);
   const bola = criarFxBola3d();
   cena.add(bola.grupo);
+
+  const origemFx = { x: -2.2, y: 0, z: 0, elevacao: 0, dirX: 1, dirY: 0 };
+  const alvoFx = { x: 2.8, y: 0, z: 0, elevacao: 0 };
 
   let loopAtivo = false;
   let loopCd = 0;
@@ -156,21 +169,76 @@ export function criarPreviewParticulas(canvas, hudEl) {
       const a = atorDummy();
       if (id === "recolher") soltarFxRecolher(a, { silencio: true });
       else soltarFxEnvio(a, { silencio: true });
+      return;
+    }
+    if (categoria === "efeitos") {
+      dispararEfeito(id);
+    }
+  }
+
+  function dispararEfeito(id) {
+    const ef = efeitoDe(id);
+    if (!ef) return;
+    limparProjeteis();
+    limparFx();
+    const def = {
+      key: id,
+      tipo: ef.elemento || "normal",
+      poder: 40,
+      forma: "projectile",
+      nome: ef.nome || id,
+    };
+    dispararGolpeFx(origemFx, alvoFx, def);
+    if (ef.kind === "feixe" || ef.kind === "raio" || ef.kind === "status" || ef.kind === "melee" || ef.kind === "overlay") {
+      return;
+    }
+    const folha = folhaDoEfeito(id);
+    const disp = ef.disparo || { tipo: "unico" };
+    const n = disp.tipo === "leque" ? disp.n || 3 : disp.tipo === "jato" ? 5 : 1;
+    const graus = ((disp.graus || 0) * Math.PI) / 180;
+    for (let i = 0; i < n; i++) {
+      const t = n <= 1 ? 0.5 : i / (n - 1);
+      const ang = -graus / 2 + graus * t;
+      const vel = disp.vel || 12;
+      soltarProjetil({
+        x: origemFx.x,
+        y: origemFx.y,
+        z: 0.25,
+        vx: Math.cos(ang) * vel,
+        vy: Math.sin(ang) * vel,
+        dono: origemFx,
+        faccao: "player",
+        poder: 10,
+        tipo: ef.elemento || "normal",
+        categoria: "special",
+        acerto: 100,
+        folha: id,
+        escala: folha?.escalaVoo || ef.orbe?.escala || 0.3,
+        giro: disp.giro || 0,
+        amp: disp.amp || 0,
+        freq: disp.freq || 0,
+        cresce: disp.cresce || 0,
+        distCresce: disp.distCresce || 7,
+      });
     }
   }
 
   function limpar() {
     limparPoolFx();
+    limparFx();
+    limparProjeteis();
     const puffs = puffsPasso();
     for (let i = 0; i < puffs.length; i++) puffs[i].viva = false;
   }
 
   function pintarHud() {
     if (!hudEl) return;
+    const sel = selecao ? `${selecao.categoria}/${selecao.id}` : "—";
     hudEl.innerHTML =
       `<div>FPS <b>${fps}</b></div>` +
       `<div>Combate <b>${contarPoolFx()}</b> / ${CAP_FX}</div>` +
       `<div>Poeira <b>${contarPuffs()}</b></div>` +
+      `<div>Sel <b>${sel}</b></div>` +
       `<div>Loop <b>${loopAtivo ? "on" : "off"}</b></div>`;
   }
 
@@ -197,8 +265,14 @@ export function criarPreviewParticulas(canvas, hudEl) {
       }
     }
 
-    tickPoolFx(dt);
-    sincronizarPoolGpu(0, null);
+    if (selecao?.categoria === "efeitos") {
+      tickFx(dt);
+      atualizarProjeteis(dt, [], () => {});
+      sincronizarFx(0, null, camera);
+    } else {
+      tickPoolFx(dt);
+      sincronizarPoolGpu(0, null);
+    }
     fxCampo.atualizar(0, 0, dt);
     envelhecerPoeira(dt);
     poeira.atualizar();
@@ -232,7 +306,7 @@ export function criarPreviewParticulas(canvas, hudEl) {
     limpar,
     destruir() {
       rodando = false;
-      desligarPoolGpu();
+      desligarFxCena();
       fxCampo.liberar?.();
       renderer.dispose();
     },

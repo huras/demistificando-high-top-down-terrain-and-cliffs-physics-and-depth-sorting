@@ -141,34 +141,6 @@ export class PadraoRaio extends PadraoBase {
     const y2 = this.my;
     const z2 = this.alvo ? this.peito(this.alvo) : z;
     const n = 6 + Math.floor(Math.random() * 4);
-    // #region agent log
-    {
-      let orfaos = 0;
-      for (let oi = 0; oi < this.segmentos.length; oi++) {
-        if (this.segmentos[oi]?.viva) orfaos++;
-      }
-      fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
-        body: JSON.stringify({
-          sessionId: "b822fd",
-          runId: "post-fix",
-          hypothesisId: "A",
-          location: "feixe.js:PadraoRaio.rebuild",
-          message: "rebuild raio — matando segs antes de recriar",
-          data: {
-            segsAntesVivos: orfaos,
-            segsAntes: this.segmentos.length,
-            nNovo: n,
-            golpe: this.def?.key || "",
-            origemMorto: !!this.origem?.morto,
-            origemHp: this.origem?.hp,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
     // Sem isso o rebuild órfão deixava feixe.viva=true pra sempre no chão.
     for (let i = 0; i < this.segmentos.length; i++) {
       if (this.segmentos[i]) this.segmentos[i].viva = false;

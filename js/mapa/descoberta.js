@@ -1,5 +1,6 @@
 /**
  * Discovery de berries e wild homes para pins de mapa.
+ * Espécie do pin sempre reconcilia com o sorteio atual (nível / portões).
  */
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { selvagensAtivos } from "../pokemon/populacao.js";
@@ -37,6 +38,66 @@ export function wildsDescobertos() {
 }
 
 /**
+ * Snapshot canônico do lar (sorteio + portão de nível), com fallback do info.
+ * @param {string} larId
+ * @param {{ x?: number, y?: number, speciesKey?: string, dex?: number, shiny?: boolean } | null} [info]
+ */
+function snapshotDoLar(larId, info = null) {
+  const lar = resolverLarPorId(larId);
+  if (lar) {
+    return {
+      x: lar.x,
+      y: lar.y,
+      speciesKey: lar.speciesKey,
+      dex: lar.dex | 0,
+      shiny: info?.shiny != null ? !!info.shiny : !!lar.shiny,
+    };
+  }
+  return {
+    x: Number(info?.x) || 0,
+    y: Number(info?.y) || 0,
+    speciesKey: String(info?.speciesKey || "pidgey"),
+    dex: info?.dex | 0,
+    shiny: !!info?.shiny,
+  };
+}
+
+/**
+ * Atualiza espécie/dex se o portão de spawn mudou (não recria o pin).
+ * @param {string} id
+ * @param {ReturnType<typeof snapshotDoLar>} snap
+ */
+function aplicarSnap(id, snap) {
+  const prev = wilds.get(id);
+  if (!prev) {
+    wilds.set(id, {
+      x: snap.x,
+      y: snap.y,
+      speciesKey: snap.speciesKey,
+      dex: snap.dex | 0,
+      shiny: !!snap.shiny,
+    });
+    bump();
+    return true;
+  }
+  let mudou = false;
+  if (prev.speciesKey !== snap.speciesKey) {
+    prev.speciesKey = snap.speciesKey;
+    mudou = true;
+  }
+  if ((prev.dex | 0) !== (snap.dex | 0)) {
+    prev.dex = snap.dex | 0;
+    mudou = true;
+  }
+  if (snap.shiny && !prev.shiny) {
+    prev.shiny = true;
+    mudou = true;
+  }
+  if (mudou) bump();
+  return mudou;
+}
+
+/**
  * @param {number} wx
  * @param {number} wy
  * @param {string} berryKey
@@ -59,16 +120,17 @@ export function descobrirBerry(wx, wy, berryKey) {
  */
 export function descobrirWild(larId, info) {
   const id = String(larId || "");
-  if (!id || wilds.has(id)) return false;
-  wilds.set(id, {
-    x: info.x,
-    y: info.y,
-    speciesKey: info.speciesKey,
-    dex: info.dex | 0,
-    shiny: !!info.shiny,
-  });
-  bump();
-  return true;
+  if (!id) return false;
+  return aplicarSnap(id, snapshotDoLar(id, info));
+}
+
+/** Reaplica portões de nível em todos os wilds já descobertos (save / hotfix). */
+export function reconciliarWildsDescobertos() {
+  let mudou = false;
+  for (const id of wilds.keys()) {
+    if (aplicarSnap(id, snapshotDoLar(id, wilds.get(id)))) mudou = true;
+  }
+  return mudou;
 }
 
 /**
@@ -96,7 +158,6 @@ export function tickDescobertaMapa(corpo, opts = {}) {
     const a = ativos[i];
     if (!a?.id?.startsWith("lar-") || a.capturado) continue;
     const larId = a.id.slice(4);
-    if (wilds.has(larId)) continue;
     const hx = a.casaX ?? a.x;
     const hy = a.casaY ?? a.y;
     const dx = hx - px;
@@ -114,7 +175,7 @@ export function tickDescobertaMapa(corpo, opts = {}) {
   const candidatos = listarLaresProximos(px, py, r);
   for (let i = 0; i < candidatos.length; i++) {
     const lar = candidatos[i];
-    if (!lar || wilds.has(lar.id)) continue;
+    if (!lar) continue;
     descobrirWild(lar.id, {
       x: lar.x,
       y: lar.y,
@@ -159,14 +220,14 @@ export function hidratarDescobertaMapa(bruto) {
       });
     }
   }
+  reconciliarWildsDescobertos();
   bump();
 }
 
 /** Resolve snapshot se só tivermos id (save antigo). */
 export function completarWildSePreciso(larId) {
-  if (wilds.has(larId)) return wilds.get(larId);
-  const lar = resolverLarPorId(larId);
-  if (!lar) return null;
-  descobrirWild(lar.id, lar);
-  return wilds.get(larId);
+  const id = String(larId || "");
+  if (!id) return null;
+  descobrirWild(id, wilds.get(id) || { x: 0, y: 0, speciesKey: "pidgey" });
+  return wilds.get(id) || null;
 }

@@ -168,14 +168,22 @@ function aoClique(ev) {
         op.kind === "faintedWild" || op.enemy
           ? { kind: "faintedWild", enemy: op.enemy, weightTier: op.weightTier, x: op.enemy.x, y: op.enemy.y, z: op.enemy.z }
           : { kind: "rock", id: op.prop?.id, prop: op.prop, weightTier: op.weightTier, x: op.prop.x, y: op.prop.y, z: op.prop.z, tipo: op.prop?.tipo };
-      // Garante deploy do assignee
       const idx = indiceDoMon(op.mon);
       if (idx >= 0) definirDeployado(idx);
-      ordenarForca(op.mon, ACAO_FORCA.LEVANTAR, alvo, miraX, miraY);
+      // Usa o mon da party pós-deploy (referência viva).
+      const mon = idx >= 0 ? listaParty()[idx] : op.mon;
+      if (mon) {
+        mon.capturado = false;
+        ordenarForca(mon, ACAO_FORCA.LEVANTAR, alvo, miraX, miraY);
+      }
     } else if (op.id === ACAO_FORCA.SOLTAR) {
-      ordenarForca(op.mon, ACAO_FORCA.SOLTAR, null, miraX, miraY);
+      const idx = indiceDoMon(op.mon);
+      const mon = idx >= 0 ? listaParty()[idx] : op.mon;
+      if (mon) ordenarForca(mon, ACAO_FORCA.SOLTAR, null, miraX, miraY);
     } else if (op.id === ACAO_FORCA.ARREMESSAR) {
-      ordenarForca(op.mon, ACAO_FORCA.ARREMESSAR, null, miraX, miraY);
+      const idx = indiceDoMon(op.mon);
+      const mon = idx >= 0 ? listaParty()[idx] : op.mon;
+      if (mon) ordenarForca(mon, ACAO_FORCA.ARREMESSAR, null, miraX, miraY);
     }
     return;
   }

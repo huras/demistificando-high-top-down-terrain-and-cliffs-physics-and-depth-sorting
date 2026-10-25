@@ -26,6 +26,8 @@ import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "..
 import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto, quadroArbusto } from "./folhaBerry.js";
 import { ensureShrineArtLoaded, imagemSantuario } from "../../santuario/arte.js";
 import { SHRINE_DRAW_SCALE } from "../../santuario/catalogo.js";
+import { obterGrabAction } from "../../forca/sistemaForca.js";
+import { amostrarMotionFalha, ehFalhaGrab } from "../../forca/falhaLevantar.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
@@ -390,15 +392,27 @@ export function criarVegetacaoBillboard3d() {
     const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
     const roll = amostra ? amostra.roll : 0;
     const esmaga = amostra ? amostra.esmaga : 0;
+    let px = p.x;
+    let pz = p.y;
+    let lift = 0;
+    let rollForca = 0;
+    const grab = obterGrabAction();
+    if (ehFalhaGrab(grab) && grab.prop === p) {
+      const m = amostrarMotionFalha(grab);
+      px += m.shakeX;
+      pz += m.shakeY;
+      lift = m.lift * ALTURA_BLOCO;
+      rollForca = m.shakeX * 1.8;
+    }
     poseCartao(dummy, {
-      x: p.x,
-      y: base * ALTURA_BLOCO,
-      z: p.y,
+      x: px,
+      y: base * ALTURA_BLOCO + lift,
+      z: pz,
       largura: largura * (1 + esmaga * 0.03),
       altura: altura * (1 - esmaga * 0.045),
       yaw,
       inclinacao,
-      roll,
+      roll: roll + rollForca,
       pivotY,
       opacoY,
       dz,
@@ -490,6 +504,11 @@ export function criarVegetacaoBillboard3d() {
       const p = acabaram[i];
       aplicarVinculo(p._veg, p, yaw, yawSol, inclinacao, null);
     }
+    // Strain de lift falho: atualiza a matriz todo frame (shake + lift).
+    const grab = obterGrabAction();
+    if (ehFalhaGrab(grab) && grab.prop) {
+      aplicarVinculo(grab.prop._veg, grab.prop, yaw, yawSol, inclinacao, null);
+    }
     for (let i = 0; i < malhasSujas.length; i++) malhasSujas[i].instanceMatrix.needsUpdate = true;
   }
 
@@ -530,7 +549,9 @@ export function criarVegetacaoBillboard3d() {
     const agora = performance.now();
     const animou = sincronizarAnimBerry(agora);
     const acabaram = podarSacudidas(agora);
-    const sacode = temSacudida() || acabaram.length > 0;
+    const grab = obterGrabAction();
+    const falhaForca = ehFalhaGrab(grab) && !!grab.prop;
+    const sacode = temSacudida() || acabaram.length > 0 || falhaForca;
     const primeira = yawAplicado == null;
     if (!mudouYaw && !mudouSol && !mudouTilt && !alturasSujas && !sacode && !primeira && !animou) return;
     yawAplicado = yaw;
@@ -541,6 +562,8 @@ export function criarVegetacaoBillboard3d() {
       alturasSujas = false;
       escrever(yaw, yawSol, tilt, recalcular);
       sincronizarVisivel();
+      // Após rebuild completo, ainda pulsa o strain se estiver ativo.
+      if (sacode) pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
       return;
     }
     if (sacode) pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);

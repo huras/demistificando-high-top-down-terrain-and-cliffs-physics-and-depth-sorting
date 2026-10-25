@@ -185,15 +185,28 @@ export function tickJogo(dt, corpo) {
     papelHub,
     interior: estado.interior,
   });
+  const pf = !jogadorMorto() ? promptForca(corpo) : null;
   if (jogadorMorto()) {
     estado.promptEntrar = false;
     estado.promptRotulo = "";
     estado.promptAncora = null;
     estado.prompt = "";
+  } else if (acao) {
+    // Mesmo chip do Escalar / Entrar / Colher.
+    estado.promptEntrar = true;
+    estado.promptRotulo = acao.rotulo || "Entrar";
+    estado.promptAncora = acao.ancora || null;
+  } else if (pf?.kind === "grab" || pf?.kind === "place") {
+    estado.promptEntrar = true;
+    estado.promptRotulo = pf.kind === "place" ? "Soltar" : "Pegar";
+    const alvo = pf.target?.prop || pf.target?.enemy || null;
+    estado.promptAncora = alvo
+      ? { x: alvo.x, y: alvo.y, z: alvo.z ?? corpo.z ?? 0 }
+      : null;
   } else {
-    estado.promptEntrar = !!acao;
-    estado.promptRotulo = acao?.rotulo || "Entrar";
-    estado.promptAncora = acao?.ancora || null;
+    estado.promptEntrar = false;
+    estado.promptRotulo = "";
+    estado.promptAncora = null;
   }
   const livreDeMenu =
     !estado.painel &&
@@ -218,20 +231,19 @@ export function tickJogo(dt, corpo) {
   tickFeixe(dt);
   atualizarBussolaSantuario(corpo, !!estado.interior);
   if (!jogadorMorto()) {
-    const pf = promptForca(corpo);
-    let textoForca = "";
-    if (pf?.kind === "grab") textoForca = t("forca.promptPegar");
-    else if (pf?.kind === "place") {
-      textoForca = t("forca.promptSoltar");
-      if (pf.mobility?.kind === "heavy") textoForca += ` · ${t("forca.pesado")}`;
-      textoForca += ` · ${t("forca.promptArremessar")}`;
-    } else if (pf?.kind === "grabbing") {
-      textoForca = `${Math.round((pf.progress || 0) * 100)}%`;
+    // Chip de ação (Pegar/Soltar) já cuida do feedback principal.
+    // Texto secundário: pesado / laboratório / hub / ferramenta.
+    let texto = "";
+    if (pf?.kind === "place" && pf.mobility?.kind === "heavy") {
+      texto = t("forca.pesado");
+    } else if (!estado.promptEntrar) {
+      texto = alvoLab
+        ? promptDoLaboratorio(alvoLab)
+        : alvoHub
+          ? promptDoHub(papelHub, alvoHub)
+          : promptDe(alvo, ferramenta);
     }
-    const texto =
-      textoForca ||
-      (alvoLab ? promptDoLaboratorio(alvoLab) : alvoHub ? promptDoHub(papelHub, alvoHub) : promptDe(alvo, ferramenta));
-    estado.prompt = acaoConsomeE(acao) && !textoForca ? "" : texto;
+    estado.prompt = acaoConsomeE(acao) ? "" : texto;
   }
   const zona = zonaNoMundo(corpo.x, corpo.y);
   definirBgm(

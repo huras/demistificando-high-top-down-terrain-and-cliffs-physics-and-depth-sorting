@@ -1,6 +1,8 @@
-/** Sorteio ponderado casa (3) / extras (1) a partir do índice de bioma. */
+/** Sorteio ponderado casa (3) / extras (1), filtrado pelo nível da área. */
 
 import { especie } from "../dados.js";
+import { resolverEspecieNoNivel } from "../pack.js";
+import { filtrarPorNivel } from "./nivelSelvagem.js";
 import { poolDoBioma } from "./indice.js";
 
 const PESO_CASA = 3;
@@ -32,28 +34,52 @@ function poolFiltrado(biomaId) {
   return hit;
 }
 
+function ticketNoPool(casa, extras, h) {
+  const total = casa.length * PESO_CASA + extras.length * PESO_EXTRA;
+  if (!total) return null;
+  let ticket = h % total;
+  for (let i = 0; i < casa.length; i++) {
+    if (ticket < PESO_CASA) return casa[i];
+    ticket -= PESO_CASA;
+  }
+  for (let i = 0; i < extras.length; i++) {
+    if (ticket < PESO_EXTRA) return extras[i];
+    ticket -= PESO_EXTRA;
+  }
+  return casa[0] || extras[0] || null;
+}
+
 /**
  * @param {string} biomaId
  * @param {number} h hash uint32
+ * @param {number} [nivel] nível da área (porta formas evolutivas cedo demais)
  * @returns {string} species key
  */
-export function sortearEspecie(biomaId, h) {
+export function sortearEspecie(biomaId, h, nivel = 1) {
+  const lv = Math.max(1, nivel | 0);
   let pool = poolFiltrado(biomaId);
-  let total = pool.casa.length * PESO_CASA + pool.extras.length * PESO_EXTRA;
-  if (!total) {
-    pool = poolFiltrado("light-grass");
-    total = pool.casa.length * PESO_CASA + pool.extras.length * PESO_EXTRA;
-  }
-  if (!total) return FALLBACK;
+  let casa = filtrarPorNivel(pool.casa, lv);
+  let extras = filtrarPorNivel(pool.extras, lv);
 
-  let ticket = h % total;
-  for (let i = 0; i < pool.casa.length; i++) {
-    if (ticket < PESO_CASA) return pool.casa[i];
-    ticket -= PESO_CASA;
+  if (!casa.length && !extras.length) {
+    pool = poolFiltrado("light-grass");
+    casa = filtrarPorNivel(pool.casa, lv);
+    extras = filtrarPorNivel(pool.extras, lv);
   }
-  for (let i = 0; i < pool.extras.length; i++) {
-    if (ticket < PESO_EXTRA) return pool.extras[i];
-    ticket -= PESO_EXTRA;
+
+  let chave = ticketNoPool(casa, extras, h);
+  if (!chave) {
+    // Pool vazio no nível: tira do bruto e demote na linha.
+    pool = poolFiltrado(biomaId);
+    chave =
+      ticketNoPool(pool.casa, pool.extras, h) ||
+      ticketNoPool(
+        poolFiltrado("light-grass").casa,
+        poolFiltrado("light-grass").extras,
+        h,
+      ) ||
+      FALLBACK;
   }
-  return pool.casa[0] || pool.extras[0] || FALLBACK;
+
+  return resolverEspecieNoNivel(chave, lv) || FALLBACK;
 }

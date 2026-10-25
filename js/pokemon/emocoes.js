@@ -50,25 +50,6 @@ export function tickEmocoes(atores, dt) {
     a.emocaoIdade += dt;
     // Morto: suor não fica preso animando — limpa após um ciclo.
     if (a.morto && a.emocaoIdade >= EMOCAO_ANIM) {
-      // #region agent log
-      fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
-        body: JSON.stringify({
-          sessionId: "b822fd",
-          runId: "post-fix",
-          hypothesisId: "D",
-          location: "emocoes.js:tickEmocoes",
-          message: "limpando emoção de morto após ciclo",
-          data: {
-            especie: a.especie?.key || "",
-            idade: +a.emocaoIdade.toFixed(2),
-            presa: !!a.emocaoPresa,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       limparEmocao(a);
       continue;
     }

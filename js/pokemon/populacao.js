@@ -34,6 +34,7 @@ import {
   planPackDoLar,
   pontoMembro,
   reempilharLideranca,
+  resolverEspecieNoNivel,
   vivoPack,
 } from "./pack.js";
 import { aquecerGrito, tocarGrito } from "../jogo/som/gritos.js";
@@ -196,8 +197,8 @@ function garantirLar(cx, cy, indice) {
   }
   const hBioma = hash(cx, cy, 35 + indice);
   const biomaId = biomaIdEm(x, y, hBioma);
-  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice));
   const nivel = nivelEm(x, y);
+  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel);
   const esp = especie(chave) || especie("pidgey");
   if (!esp) {
     lares.set(id, null);
@@ -261,12 +262,17 @@ function rngDe(seed) {
 }
 
 function criarMoradorSlot(lar, mem) {
-  const esp = especie(mem.chave) || especie(lar.chave);
+  const nivel = Math.max(1, mem.nivel | 0 || lar.nivel | 0 || 1);
+  const chaveBruta = mem.chave || lar.chave;
+  const chave =
+    resolverEspecieNoNivel(chaveBruta, nivel) || chaveBruta;
+  if (chave !== mem.chave) mem.chave = chave;
+  const esp = especie(chave) || especie(lar.chave);
   if (!esp) return null;
   const ator = criarAtor({
     id: mem.slot === 0 ? `lar-${lar.id}` : `lar-${lar.id}-${mem.slot}`,
     especie: esp,
-    nivel: mem.nivel,
+    nivel,
     shiny: mem.shiny,
     faccao: "selvagem",
     x: mem.poseX ?? lar.x,
@@ -659,8 +665,12 @@ function tentarGrama(corpo) {
   if (!longeDeAtivos(x, y, POKEMON.MIN_ESPACO_GRAMA)) return;
   const z = pisoSeco(Math.floor(x), Math.floor(y)) || (corpo.elevacao ?? corpo.z ?? 0);
   const biomaId = biomaIdEm(x, y, (Math.random() * 4294967296) >>> 0);
-  const chaveEsp = sortearEspecie(biomaId, (Math.random() * 4294967296) >>> 0);
   const nivel = nivelEm(x, y);
+  const chaveEsp =
+    resolverEspecieNoNivel(
+      sortearEspecie(biomaId, (Math.random() * 4294967296) >>> 0, nivel),
+      nivel,
+    ) || "pidgey";
   const esp = especie(chaveEsp) || especie("pidgey");
   if (!esp) return;
   const ator = criarAtor({

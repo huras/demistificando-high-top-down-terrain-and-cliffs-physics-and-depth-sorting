@@ -85,6 +85,12 @@ export function criarPersonagem3d(opts = {}) {
     aplicarPivoCartao(mesh, pivotX, pivotY);
   }
 
+  function sincronizarPivoCom(px, py) {
+    aplicarPivoCartao(cartao, px, py);
+    aplicarPivoCartao(veu, px, py);
+    aplicarPivoCartao(silhueta, px, py);
+  }
+
   function pintarFrame(corpoEstado, yawCam) {
     if (!sheet || !frameCtx) return;
     const linha = linhaFacingDoCorpo(corpoEstado, yawCam ?? 0);
@@ -188,37 +194,39 @@ export function criarPersonagem3d(opts = {}) {
 
       const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
       // Queda: billboard em pé + roll 90°.
-      // 1) lift = meio-lado * cos(tilt) — só o bastante pra borda tocar o chão
-      //    (lift cheio flutuava por causa da inclinação top-down).
-      // 2) desloca o pivô no eixo local X pra o centro do corpo ficar
-      //    em cima da sombra (pés), não offset pra o lado.
+      // Pivô vai do pé → centro (corpo fica sobre a sombra).
+      // Lift = raio do CORPO opaco (não a meia-folha do PNG) * cos(tilt),
+      // senão o padding transparente “assenta” e o personagem voa.
       let roll = 0;
+      let px = pivotX;
+      let py = pivotY;
+      let yCartao = folgaPe;
       if (corpoEstado.morteDesde != null) {
         const DUR = 0.62;
         const u = Math.min(1, (performance.now() - corpoEstado.morteDesde) / 1000 / DUR);
         const e = 1 - (1 - u) * (1 - u) * (1 - u);
         const sinal = corpoEstado.morteRollSinal === -1 ? -1 : 1;
         roll = sinal * (Math.PI * 0.5) * e;
+        const t = Math.abs(Math.sin(roll));
+        px = pivotX + (0.5 - pivotX) * t;
+        py = pivotY + (0.5 - pivotY) * t;
+        // ~24px de ~64: meia-largura do corpo no sheet
+        const raioCorpo = ALTURA_SPRITE_JOGADOR * 0.19;
+        yCartao = folgaPe + t * raioCorpo * Math.cos(Math.abs(tilt));
+        sincronizarPivoCom(px, py);
       }
       const lado = ALTURA_SPRITE_JOGADOR;
-      const sinR = Math.sin(roll);
-      const absR = Math.abs(sinR);
-      const liftMorte = absR * (lado * 0.5) * Math.cos(Math.abs(tilt));
-      // right na face do cartão após yaw: (cos yaw, −sin yaw) em (x, z)
-      const localX = sinR * (lado * 0.5);
-      const ox = Math.cos(yaw) * localX;
-      const oz = -Math.sin(yaw) * localX;
       const poseOpts = {
-        x: ox,
-        y: folgaPe + liftMorte,
-        z: oz,
+        x: 0,
+        y: yCartao,
+        z: 0,
         largura: lado,
         altura: lado,
         yaw,
         inclinacao: tilt,
         roll,
-        pivotX,
-        pivotY,
+        pivotX: px,
+        pivotY: py,
       };
       poseAtorCartao(cartao, poseOpts);
       poseAtorCartao(silhueta, poseOpts);

@@ -122,34 +122,6 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
     p.viajouAntes = p.viajou;
     const passo = Math.hypot(p.vx, p.vy) * dt;
     p.t += dt;
-    // #region agent log
-    if (p.dono?.morto && p.t > 0.4) {
-      const agora = Date.now();
-      if (!atualizarProjeteis._dbgUlt || agora - atualizarProjeteis._dbgUlt > 700) {
-        atualizarProjeteis._dbgUlt = agora;
-        fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
-          body: JSON.stringify({
-            sessionId: "b822fd",
-            hypothesisId: "C",
-            location: "projeteis.js:atualizarProjeteis",
-            message: "projétil vivo com dono morto",
-            data: {
-              tipo: p.tipo,
-              folha: p.folha || "",
-              t: +p.t.toFixed(2),
-              viajou: +p.viajou.toFixed(2),
-              max: p.max,
-              vel: +Math.hypot(p.vx, p.vy).toFixed(2),
-              donoEsp: p.dono?.especie?.key || "",
-            },
-            timestamp: agora,
-          }),
-        }).catch(() => {});
-      }
-    }
-    // #endregion
 
     if (p.amp > 0) {
       p.baseX += p.vx * dt;

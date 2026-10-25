@@ -83,7 +83,9 @@ export function tickOrdensForca(dt) {
 function tickUm(mon, dt) {
   const ordem = mon.ordemForca;
   if (!ordem) return;
+  // Espera sair da bola / spawn — não cancela a ordem.
   if (!mon._colocado && !obterCarry()) return;
+  if (mon.capturado) return;
 
   if (obterOrderCarrier() === mon && estaNoCanalForca() && ordem.acao === ACAO_FORCA.LEVANTAR) {
     return;
@@ -130,6 +132,7 @@ function tickUm(mon, dt) {
 
     const dist = Math.hypot(mon.x - alvoX, mon.y - alvoY);
     if (dist > ALCANCE_GRAB) {
+      mon.correndo = true;
       aproximar(mon, alvoX, alvoY, alvoZ, dt);
       return;
     }
@@ -137,8 +140,10 @@ function tickUm(mon, dt) {
     mon.vx = 0;
     mon.vy = 0;
     mon.andando = false;
-    iniciarGrabOrdenado(mon, target);
-    mon.ordemForca = null;
+    mon.correndo = false;
+    if (iniciarGrabOrdenado(mon, target)) {
+      mon.ordemForca = null;
+    }
     return;
   }
 
