@@ -6,7 +6,7 @@ import { alturaEm } from "../mundo/altura.js";
 import { propPorId } from "../mundo/bioma/propsBioma.js";
 import { flutuar } from "../pokemon/flutuantes.js";
 import { ajustarItem } from "../pokemon/party.js";
-import { sfx } from "../jogo/audio.js";
+import { tocarChopFell, tocarChopHit } from "../jogo/som/mundoSfx.js";
 import { acenderGramaEm } from "./grama.js";
 import { emitirFagulha, emitirLascas } from "./fx.js";
 import { sacudir, soltarSacudida } from "./sacudida.js";
@@ -72,7 +72,7 @@ export function acenderArvore(prop) {
   confirmar(prop);
   emitirFagulha(prop.x, prop.y, true, 16, true);
   acenderGramaEm(prop.x, prop.y, prop.inicioMs, null);
-  sfx("cavar");
+  tocarChopHit(prop);
   return true;
 }
 
@@ -89,13 +89,14 @@ export function cortarArvore(prop) {
     prop.hp -= 1;
     ajustarItem(carvao ? "coal" : "wood", 1);
     golpeNaMadeira(prop, 1);
-    sfx("cavar");
     if (prop.hp <= 0) {
       prop.fase = FASE.REMOVIDO;
       prop.hp = 0;
       confirmar(prop);
+      tocarChopFell(prop);
       return carvao ? "carvao" : "madeira";
     }
+    tocarChopHit(prop);
     confirmar(prop);
     return carvao ? "carvao" : "madeira";
   }
@@ -103,11 +104,12 @@ export function cortarArvore(prop) {
   prop.hp -= 1;
   ajustarItem("wood", 1);
   golpeNaMadeira(prop, 1);
-  sfx("cavar");
   if (prop.hp <= 0) {
     derrubar(prop);
+    tocarChopFell(prop);
     return "madeira";
   }
+  tocarChopHit(prop);
   confirmar(prop);
   return "madeira";
 }
@@ -133,7 +135,7 @@ export function queimarArvore(prop) {
     acenderArvore(prop);
     return "fogo";
   }
-  sfx("cavar");
+  tocarChopHit(prop);
   confirmar(prop);
   return "acertou";
 }

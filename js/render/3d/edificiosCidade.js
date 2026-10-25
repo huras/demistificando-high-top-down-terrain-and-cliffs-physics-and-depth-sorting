@@ -9,6 +9,7 @@ import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { postesDeRua } from "../../mundo/regiao/decoracaoKanto.js";
 import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
+import { yawDoEdificio } from "../../mundo/cidade/orientacaoEdificio.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "./luzes/catalogo.js";
 import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
 import { aplicarLuzCidade, oferecerLuzChao } from "./luzes/mapaChao.js";
@@ -109,13 +110,6 @@ function materialDoGlobo(mapa) {
 }
 
 export const MODELOS_CIDADE = idsVisuais();
-
-function yawDaRua(mx, my) {
-  const dx = mx - 64;
-  const dy = my - 64;
-  if (Math.abs(dy) <= Math.abs(dx)) return dy > 0 ? Math.PI : 0;
-  return dx > 0 ? -Math.PI / 2 : Math.PI / 2;
-}
 
 function carregarObj(id) {
   const origem = origemDoModelo(id);
@@ -422,7 +416,7 @@ function montarCidade(moldes, folhas, def, sprites, predios) {
     const molde = id ? moldes.get(id) : null;
     if (molde) {
       const inst = molde.grupo.clone(true);
-      inst.rotation.y = v.papel === "casa" || v.papel === "lab" ? 0 : yawDaRua(mx, my);
+      inst.rotation.y = yawDoEdificio(v.papel, mx, my);
       inst.position.set(ox + mx, ALTURA_PRACA, oy + my);
       const dono = `${def.key}:${i}`;
       pendurarLuzes(inst, id, dono);

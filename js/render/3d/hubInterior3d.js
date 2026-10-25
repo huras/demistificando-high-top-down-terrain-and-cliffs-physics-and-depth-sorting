@@ -16,6 +16,7 @@ import {
 } from "./cartaoPe.js";
 import { fatorYCasa, fatorYProp } from "./escalaVertical.js";
 import { criarFaixaParede } from "./paredeInteriorDual.js";
+import { carregarSlotsCura } from "../../jogo/slotsCuraConfig.js";
 
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
 const FOLHA_GENTE =
@@ -182,6 +183,7 @@ export function montarHub3d(grupo, planta, bolas) {
     imagem(FOLHA_GENTE).catch(() => null),
     imagem(RECORTE.cura.url).catch(() => null),
     imagem(RECORTE.pc.url).catch(() => null),
+    carregarSlotsCura(),
   ]).then((imagens) => {
     const [bg, fg, gente, curaImg, pcImg] = imagens;
     if (bg) anexarChao(sala, planta, texturaChao(bg, planta.camada));

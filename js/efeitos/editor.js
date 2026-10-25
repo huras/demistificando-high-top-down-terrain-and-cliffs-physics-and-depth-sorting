@@ -4,6 +4,11 @@ import {
   defaultsEfeitos,
   listaEfeitos,
 } from "./catalogo.js";
+import {
+  carregarCatalogoElemental,
+  catalogoElemental,
+  listaTexturasElemental,
+} from "./elemental.js";
 import { sincronizarFolhasDoCatalogo, carregarFolhasGolpe } from "../pokemon/combate/folhasGolpe.js";
 import { criarPreviewEfeitos } from "./preview.js";
 
@@ -13,9 +18,13 @@ const listaEl = document.getElementById("lista");
 const buscaEl = document.getElementById("busca");
 const inspectorEl = document.getElementById("inspector");
 const bancoEl = document.getElementById("banco");
+const elfBrowserEl = document.getElementById("elf-browser");
 const canvas = document.getElementById("vista");
 const hudEl = document.getElementById("hud-perf");
 const btnLoop = document.getElementById("loop");
+
+/** @type {"orbe"|"rastro"|"impacto"} */
+let papelElf = "rastro";
 
 const KINDS = [
   { id: "todos", rotulo: "Todos" },
@@ -151,6 +160,101 @@ function montarLista() {
   }
 }
 
+function vincularElf(ef, papel, idTex) {
+  if (!ef.elf || typeof ef.elf !== "object") ef.elf = {};
+  ef.elf[papel] = idTex || "";
+  if (papel === "orbe") {
+    if (!ef.orbe || typeof ef.orbe !== "object") ef.orbe = { escala: 0.32 };
+    ef.orbe.elf = idTex || "";
+  }
+  if (papel === "rastro" && ef.orbe && typeof ef.orbe === "object") {
+    ef.orbe.rastroElf = idTex || "";
+  }
+  if ((ef.kind === "feixe" || ef.kind === "raio") && papel === "orbe") {
+    if (!ef.feixe || typeof ef.feixe !== "object") ef.feixe = {};
+    ef.feixe.modo = "stretch";
+    ef.feixe.textura = idTex || "";
+    if (!ef.feixe.lengthScale) ef.feixe.lengthScale = 3;
+  }
+}
+
+function montarBrowserElf() {
+  if (!elfBrowserEl) return;
+  elfBrowserEl.innerHTML = "";
+  const ef = efeitoAtual();
+  if (!ef) {
+    elfBrowserEl.innerHTML = "<p class='nota'>Selecione um efeito.</p>";
+    return;
+  }
+  const binds = document.createElement("p");
+  binds.className = "nota elf-browser__binds";
+  const e = ef.elf || {};
+  binds.textContent = `orbe: ${e.orbe || ef.orbe?.elf || "—"}${
+    ef.feixe?.textura ? ` · feixe: ${ef.feixe.textura}` : ""
+  } · rastro: ${e.rastro || ef.orbe?.rastroElf || "—"} · impacto: ${e.impacto || "—"}`;
+  elfBrowserEl.appendChild(binds);
+
+  const papeis = document.createElement("div");
+  papeis.className = "elf-browser__papeis";
+  for (const p of [
+    { id: "orbe", rotulo: "Orbe/feixe" },
+    { id: "rastro", rotulo: "Rastro" },
+    { id: "impacto", rotulo: "Impacto" },
+  ]) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = p.rotulo;
+    if (papelElf === p.id) btn.classList.add("ativo");
+    btn.addEventListener("click", () => {
+      papelElf = /** @type {"orbe"|"rastro"|"impacto"} */ (p.id);
+      montarBrowserElf();
+    });
+    papeis.appendChild(btn);
+  }
+  elfBrowserEl.appendChild(papeis);
+
+  const grade = document.createElement("div");
+  grade.className = "elf-browser__grade";
+  const quentes = catalogoElemental().quentes || [];
+  let itens = listaTexturasElemental();
+  if (quentes.length) {
+    const ordem = new Map(quentes.map((id, i) => [id, i]));
+    itens = [...itens].sort((a, b) => (ordem.get(a.id) ?? 999) - (ordem.get(b.id) ?? 999));
+  }
+  const ativoId =
+    papelElf === "orbe"
+      ? ef.elf?.orbe || ef.orbe?.elf || ef.feixe?.textura || ""
+      : papelElf === "rastro"
+        ? ef.elf?.rastro || ef.orbe?.rastroElf || ""
+        : ef.elf?.impacto || "";
+  for (const tex of itens) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "elf-browser__item";
+    if (tex.id === ativoId) btn.classList.add("ativo");
+    const cols = tex.cols || 1;
+    const rows = tex.rows || 1;
+    const lay = cols * rows > 1 ? `${cols}×${rows}` : "1×1";
+    btn.title = `${tex.id} · ${tex.blend || "additive"} · folha ${lay} · ${tex.anim || "estatico"}`;
+    btn.style.backgroundImage = `url(${tex.path})`;
+    if (tex.blend === "additive") btn.classList.add("is-additive");
+    const cap = document.createElement("span");
+    cap.textContent = `${tex.id.replace(/_/g, " ")} ${lay}`;
+    btn.appendChild(cap);
+    btn.addEventListener("click", () => {
+      vincularElf(ef, papelElf, tex.id);
+      sincronizarFolhasDoCatalogo();
+      carregarFolhasGolpe();
+      montarInspector();
+      montarBrowserElf();
+      preview?.disparar(selecionado);
+      setStatus(`${tex.id} → ${selecionado}.${papelElf}`);
+    });
+    grade.appendChild(btn);
+  }
+  elfBrowserEl.appendChild(grade);
+}
+
 function montarInspector() {
   const ef = efeitoAtual();
   inspectorEl.innerHTML = "";
@@ -197,6 +301,7 @@ function montarInspector() {
     wrap.appendChild(input);
     inspectorEl.appendChild(wrap);
   }
+  montarBrowserElf();
 }
 
 async function carregarBanco() {
@@ -271,7 +376,7 @@ function resetPreset() {
 }
 
 async function boot() {
-  await carregarCatalogoEfeitos();
+  await Promise.all([carregarCatalogoEfeitos(), carregarCatalogoElemental()]);
   sincronizarFolhasDoCatalogo();
   carregarFolhasGolpe();
   montarAbas();
@@ -280,7 +385,9 @@ async function boot() {
   preview = criarPreviewEfeitos(canvas, hudEl);
   preview.disparar(selecionado);
   await carregarBanco();
-  setStatus(`${listaEfeitos().length} efeitos · catálogo pronto`);
+  setStatus(
+    `${listaEfeitos().length} efeitos · ${listaTexturasElemental().length} texturas Elemental`,
+  );
 }
 
 buscaEl.addEventListener("input", montarLista);

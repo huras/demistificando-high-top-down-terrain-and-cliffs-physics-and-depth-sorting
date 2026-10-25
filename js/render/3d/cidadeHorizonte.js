@@ -3,12 +3,12 @@
  * quadradinhos de janela emissivos à noite. Sem OBJ, sem luz real, sem suave.
  */
 import * as THREE from "three";
-import { CHUNK_XZ } from "../../config.js";
+import { CHUNK_XZ, ESCALA_Y_CASA_REF } from "../../config.js";
 import { deLocalKanto } from "../../mundo/bounds.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
-import { fatorYCasa } from "./escalaVertical.js";
+import { fatorYSobRelevo } from "./escalaVertical.js";
 import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { obterRaioHorizonte, discoHorizonteAtivo } from "./terrenoHorizonte.js";
@@ -81,7 +81,8 @@ function facePraPraca(v) {
 function escreverCaixa(lista, ox, oy, v, cor, cidadeKey, indice) {
   const sx = Math.max(0.2, v.x1 - v.x0);
   const sz = Math.max(0.2, v.y1 - v.y0);
-  const sy = Math.max(0.5, v.altura || 5) * fatorYCasa();
+  // v.altura já vem de alturaDoPapel (escala o REF); desfaz REF→mundo via fator do baseline.
+  const sy = Math.max(0.5, v.altura || 5) * fatorYSobRelevo(ESCALA_Y_CASA_REF);
   const mx = (v.x0 + v.x1) * 0.5;
   const mz = (v.y0 + v.y1) * 0.5;
   _p.set(ox + mx, ALTURA_PRACA + sy * 0.5, oy + mz);
@@ -97,7 +98,7 @@ function escreverCaixa(lista, ox, oy, v, cor, cidadeKey, indice) {
 }
 
 function escreverJanelas(lista, ox, oy, v, cidadeKey, indice) {
-  const sy = Math.max(0.5, v.altura || 5) * fatorYCasa();
+  const sy = Math.max(0.5, v.altura || 5) * fatorYSobRelevo(ESCALA_Y_CASA_REF);
   const face = facePraPraca(v);
   const y = ALTURA_PRACA + sy * JANELA_Y;
   const span = face.eixo === "x" ? face.z1 - face.z0 : face.x1 - face.x0;

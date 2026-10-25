@@ -137,6 +137,7 @@ export function criarAtor(opts) {
     geloAte: 0,
     paraTrava: 0,
     shiny: !!opts.shiny,
+    ballKey: typeof opts.ballKey === "string" && opts.ballKey ? opts.ballKey : "pokeball",
     faccao: opts.faccao,
     x: opts.x,
     y: opts.y,

@@ -9,7 +9,9 @@ import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard, FOLGA_CHAO_DECAL } from "./ceu/luzBillboard.js";
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
-import { fotoCuraMaquina, SLOTS_CURA } from "../../jogo/maquinaCura.js";
+import { fotoCuraMaquina } from "../../jogo/maquinaCura.js";
+import { QTD_SLOTS_CURA, slotsCuraAtuais } from "../../jogo/slotsCuraConfig.js";
+import { garantirVisualBolaCura } from "./propsObj3d.js";
 
 const PX = 16;
 const FOLGA_PE = 0.08;
@@ -135,13 +137,16 @@ export function facesParedeInterior(lateral, topo) {
 }
 
 export function criarBolasCura(cartao) {
+  const layout = slotsCuraAtuais();
   const bolas = [];
-  const geo = new THREE.SphereGeometry(0.16, 10, 8);
-  const faixaGeo = new THREE.CylinderGeometry(0.165, 0.165, 0.045, 10);
+  const diametro = 0.35;
+  const r = diametro * 0.5;
+  const geo = new THREE.SphereGeometry(r, 10, 8);
+  const faixaGeo = new THREE.CylinderGeometry(r * 1.03, r * 1.03, r * 0.28, 10);
   const faixa = new THREE.MeshLambertMaterial({ color: 0xef4444 });
   aplicarLuzCidade(faixa);
-  for (let i = 0; i < SLOTS_CURA.length; i++) {
-    const slot = SLOTS_CURA[i];
+  for (let i = 0; i < QTD_SLOTS_CURA; i++) {
+    const slot = layout.slots[i];
     const mat = new THREE.MeshLambertMaterial({
       color: 0xf8fafc,
       emissive: 0xb8fff0,
@@ -158,11 +163,37 @@ export function criarBolasCura(cartao) {
     bola.position.set(slot.x, baseY, 0.18);
     bola.userData.baseY = baseY;
     bola.userData.mat = mat;
+    bola.userData.placeholder = true;
+    bola.userData.diametroAlvo = diametro;
     bola.visible = false;
     cartao.add(bola);
     bolas.push(bola);
+    garantirVisualBolaCura(bola, "pokeball");
   }
   return bolas;
+}
+
+function aplicarBrilhoBola(bola, brilho) {
+  const b = brilho || 0;
+  if (bola.userData.mat) {
+    bola.userData.mat.emissiveIntensity = b;
+    return;
+  }
+  const malha = bola.userData.malha;
+  if (!malha) return;
+  malha.traverse((filho) => {
+    if (!filho.isMesh || !filho.material) return;
+    const mats = Array.isArray(filho.material) ? filho.material : [filho.material];
+    for (let i = 0; i < mats.length; i++) {
+      const m = mats[i];
+      if (!m) continue;
+      if (m.emissive) {
+        if (!m.userData._emissiveBase) m.userData._emissiveBase = m.emissive.clone();
+        m.emissive.copy(m.userData._emissiveBase).multiplyScalar(0.2 + b);
+      }
+      if ("emissiveIntensity" in m) m.emissiveIntensity = 0.15 + b * 0.85;
+    }
+  });
 }
 
 export function atualizarBolasCura(bolas, ativo) {
@@ -175,9 +206,10 @@ export function atualizarBolasCura(bolas, ativo) {
       continue;
     }
     bola.visible = true;
+    if (quadro.ballKey) garantirVisualBolaCura(bola, quadro.ballKey);
     const s = quadro.escala;
     bola.scale.set(s, s, s);
     bola.position.y = bola.userData.baseY + (quadro.sobe || 0);
-    bola.userData.mat.emissiveIntensity = quadro.brilho || 0;
+    aplicarBrilhoBola(bola, quadro.brilho || 0);
   }
 }

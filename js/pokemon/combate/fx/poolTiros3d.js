@@ -6,6 +6,11 @@ import * as THREE from "three";
 import { ALTURA_BLOCO } from "../../../config.js";
 import { efeitoDe, idEfeito } from "../../../efeitos/catalogo.js";
 import {
+  carregarCatalogoElemental,
+  layoutElemental,
+  texturaElemental,
+} from "../../../efeitos/elemental.js";
+import {
   anguloDoMovimento,
   carregarFolhasGolpe,
   folhaGolpe,
@@ -56,18 +61,31 @@ void main() {
 const FRAG_FOLHA = /* glsl */ `
 uniform sampler2D map;
 uniform float uFrames;
+uniform float uCols;
+uniform float uRows;
 varying vec2 vUv;
 varying vec3 vColor;
 varying float vFrame;
 varying float vAlpha;
 
 void main() {
-  float frames = max(1.0, uFrames);
+  float cols = max(1.0, uCols);
+  float rows = max(1.0, uRows);
+  float frames = max(1.0, max(uFrames, cols * rows));
   float f = clamp(floor(vFrame + 1e-4), 0.0, frames - 1.0);
-  vec2 uv = vec2(vUv.x, 1.0 - (f + (1.0 - vUv.y)) / frames);
+  vec2 uv;
+  if (cols > 1.0 || rows > 1.0) {
+    float col = mod(f, cols);
+    float row = floor(f / cols);
+    float rowUv = (rows - 1.0) - row;
+    uv = vec2((col + vUv.x) / cols, (rowUv + vUv.y) / rows);
+  } else {
+    uv = vec2(vUv.x, 1.0 - (f + (1.0 - vUv.y)) / frames);
+  }
   vec4 tex = texture2D(map, uv);
-  if (tex.a * vAlpha < 0.04) discard;
-  gl_FragColor = vec4(tex.rgb * vColor, tex.a * vAlpha);
+  float a = max(tex.a, max(tex.r, max(tex.g, tex.b))) * vAlpha;
+  if (a < 0.04) discard;
+  gl_FragColor = vec4(tex.rgb * vColor, a);
 }
 `;
 
@@ -118,6 +136,7 @@ void main() {
 /** @type {{
  *   cena: THREE.Scene,
  *   folhas: Map<string, PaginaFolha>,
+ *   elf: Map<string, PaginaFolha>,
  *   orbe: PaginaFolha,
  *   estrela: PaginaFolha,
  *   dummy: THREE.Object3D,
@@ -125,6 +144,73 @@ void main() {
  *   _eixo: THREE.Vector3
  * } | null} */
 let gpu = null;
+
+/** @type {Map<string, THREE.Texture>} */
+const texElfTiro = new Map();
+/** @type {Set<string>} */
+const pedindoElfTiro = new Set();
+
+function pedirTexElfTiro(id) {
+  if (texElfTiro.has(id)) return texElfTiro.get(id);
+  const meta = texturaElemental(id);
+  if (!meta?.path || pedindoElfTiro.has(id) || typeof Image === "undefined") return null;
+  pedindoElfTiro.add(id);
+  const img = new Image();
+  img.onload = () => {
+    const tex = new THREE.Texture(img);
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    texElfTiro.set(id, tex);
+    if (gpu?.elf?.has(id)) {
+      gpu.elf.get(id).mat.uniforms.map.value = tex;
+      gpu.elf.get(id).mat.needsUpdate = true;
+    }
+  };
+  img.src = meta.path;
+  return null;
+}
+
+/** @type {THREE.Texture | null} */
+let texPlaceholderTiro = null;
+
+function placeholderTiro() {
+  if (texPlaceholderTiro) return texPlaceholderTiro;
+  const c = document.createElement("canvas");
+  c.width = c.height = 4;
+  const ctx = c.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, 4, 4);
+  }
+  texPlaceholderTiro = new THREE.CanvasTexture(c);
+  texPlaceholderTiro.magFilter = THREE.NearestFilter;
+  texPlaceholderTiro.minFilter = THREE.NearestFilter;
+  return texPlaceholderTiro;
+}
+
+function garantirPaginaElfTiro(id) {
+  if (!gpu || !id) return null;
+  let pag = gpu.elf.get(id);
+  if (pag) {
+    pedirTexElfTiro(id);
+    return pag;
+  }
+  const meta = texturaElemental(id);
+  if (!meta) return null;
+  const tex = pedirTexElfTiro(id) || placeholderTiro();
+  const lay = layoutElemental(id);
+  pag = criarPagina(FRAG_FOLHA, lay.frames, tex);
+  pag.chave = id;
+  pag.mat.uniforms.uFrames.value = lay.frames;
+  pag.mat.uniforms.uCols.value = lay.cols;
+  pag.mat.uniforms.uRows.value = lay.rows;
+  pag.mat.blending = meta.blend === "alpha" ? THREE.NormalBlending : THREE.AdditiveBlending;
+  gpu.cena.add(pag.mesh);
+  gpu.elf.set(id, pag);
+  return pag;
+}
 
 function hexRgb(hex) {
   const h = String(hex || "#ffffff").replace("#", "");
@@ -144,6 +230,8 @@ function criarPagina(frag, frames, map) {
     uniforms: {
       map: { value: map || null },
       uFrames: { value: frames || 1 },
+      uCols: { value: 1 },
+      uRows: { value: 1 },
     },
     vertexShader: VERT,
     fragmentShader: frag,
@@ -191,6 +279,11 @@ function liberar() {
     pag.mesh.geometry.dispose();
     pag.mat.dispose();
   }
+  for (const pag of gpu.elf.values()) {
+    gpu.cena.remove(pag.mesh);
+    pag.mesh.geometry.dispose();
+    pag.mat.dispose();
+  }
   for (const pag of [gpu.orbe, gpu.estrela]) {
     if (!pag) continue;
     gpu.cena.remove(pag.mesh);
@@ -202,6 +295,7 @@ function liberar() {
 
 /** @param {THREE.Scene} cena */
 export function ligarPoolTiros(cena) {
+  carregarCatalogoElemental();
   carregarFolhasGolpe();
   if (gpu?.cena === cena) return;
   liberar();
@@ -216,6 +310,7 @@ export function ligarPoolTiros(cena) {
   gpu = {
     cena,
     folhas: new Map(),
+    elf: new Map(),
     orbe,
     estrela,
     dummy: new THREE.Object3D(),
@@ -316,6 +411,11 @@ export function sincronizarPoolTiros(camera) {
       }
     }
     const ef = efeitoDe(p.folha) || efeitoDe(idEfeito(p.folha));
+    const elfId = ef?.orbe?.elf || ef?.elf?.orbe || "";
+    if (elfId && garantirPaginaElfTiro(elfId)) {
+      pegar(`elf:${elfId}`).push({ p, pose: null, tipo: "elf", ef });
+      continue;
+    }
     const visual = ef?.visual || (ef?.orbe?.estrela ? "estrela" : ef?.orbe ? "orbe" : "");
     if (visual === "estrela" || p.folha === "swift") {
       pegar("estrela").push({ p, pose: null, tipo: "estrela", ef });
@@ -325,11 +425,11 @@ export function sincronizarPoolTiros(camera) {
       pegar("orbe").push({ p, pose: null, tipo: "orbe", ef });
       continue;
     }
-    // Sem catálogo: orbe tintado (debug) — ainda melhor que Sprite solto
     pegar("orbe").push({ p, pose: null, tipo: "orbe", ef: null });
   }
 
   for (const pag of gpu.folhas.values()) pag.mesh.count = 0;
+  for (const pag of gpu.elf.values()) pag.mesh.count = 0;
   gpu.orbe.mesh.count = 0;
   gpu.estrela.mesh.count = 0;
 
@@ -338,6 +438,7 @@ export function sincronizarPoolTiros(camera) {
     if (chave === "orbe") pag = gpu.orbe;
     else if (chave === "estrela") pag = gpu.estrela;
     else if (chave.startsWith("folha:")) pag = gpu.folhas.get(chave.slice(6));
+    else if (chave.startsWith("elf:")) pag = gpu.elf.get(chave.slice(4));
     if (!pag) continue;
     const n = Math.min(itens.length, CAP_TIROS);
     for (let i = 0; i < n; i++) {
@@ -360,8 +461,19 @@ export function sincronizarPoolTiros(camera) {
         const escala = p.escala || orbe.escala || 0.28;
         const rgb = hexRgb(orbe.cor || p.cor || "#ffffff");
         const ang = anguloDoMovimento(camera, p.vx, p.vy, "direita", 0) || p.ang || 0;
-        const sy = tipo === "estrela" ? escala : p.giro ? escala * 0.42 : escala;
-        escreverInstancia(pag, i, p.x, p.y, p.z, sy, tipo === "estrela" ? ang : 0, 0, 1, rgb);
+        const sy = tipo === "estrela" || tipo === "elf" ? escala : p.giro ? escala * 0.42 : escala;
+        const rot = tipo === "estrela" || tipo === "elf" ? ang : 0;
+        let fr = 0;
+        if (tipo === "elf" && chave.startsWith("elf:")) {
+          const lay = layoutElemental(chave.slice(4));
+          if (lay.anim === "variacao") {
+            if (p.elfFrame == null) p.elfFrame = Math.floor(Math.random() * lay.frames);
+            fr = p.elfFrame;
+          } else if (lay.anim === "flipbook" && lay.frames > 1) {
+            fr = Math.floor(((p.t || 0) / 0.08) % lay.frames);
+          }
+        }
+        escreverInstancia(pag, i, p.x, p.y, p.z, sy, rot, fr, 1, rgb);
       }
     }
     pag.mesh.count = n;

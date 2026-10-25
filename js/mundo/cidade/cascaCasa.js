@@ -13,6 +13,8 @@ import { ajusteDe, definirAjustes } from "./ajustesColisor.js";
 import { corpoPadraoSprite, portaPadraoSprite } from "./caixaSprite.js";
 import { chaveColisorSprite, medidaSprite, pontosGradeUsina } from "./spritesPredio.js";
 import { caixaDoCorpo, faixaDaPorta, montarLayout } from "../regiao/volumesCidade.js";
+import { yawDoEdificio } from "./orientacaoEdificio.js";
+import { fatorYCasa } from "../../render/3d/escalaVertical.js";
 import { indiceLocal, invalidarFluxo, recalcularSuperficies } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
 import { idDaCasa, idsColisao, origemDoModelo, urlDoModelo } from "./catalogoCasas.js";
@@ -93,13 +95,6 @@ function modeloDoPapel(papel, variante, cidade) {
     return papel;
   }
   return null;
-}
-
-function yawDaRua(mx, my) {
-  const dx = mx - 64;
-  const dy = my - 64;
-  if (Math.abs(dy) <= Math.abs(dx)) return dy > 0 ? Math.PI : 0;
-  return dx > 0 ? -Math.PI / 2 : Math.PI / 2;
 }
 
 function giro(x, z, yaw) {
@@ -270,13 +265,14 @@ function descreverFundo(solidos, vaos, caixa) {
   const outro = eixo === 0 ? 2 : 0;
   const plano = paraDentro > 0 ? caixa.min[eixo] : caixa.max[eixo];
   if (!Number.isFinite(plano)) return null;
+  const medido = Math.ceil(caixa.max[1] || 0);
   return {
     eixo,
     paraDentro,
     plano,
     minU: caixa.min[outro],
     maxU: caixa.max[outro],
-    topo: 3,
+    topo: Math.max(3, Math.ceil(1.75), medido),
   };
 }
 
@@ -361,10 +357,11 @@ export function moldeDaMalha(objTexto, portas = null) {
     if (v[2] > maxZ) maxZ = v[2];
   }
   const escala = Math.min(LADO_X / (maxX - minX || 1), LADO_Z / (maxZ - minZ || 1)) * FOLGA;
+  const escalaY = escala * fatorYCasa();
   const cx = (minX + maxX) * 0.5;
   const cz = (minZ + maxZ) * 0.5;
   function local(v) {
-    return [(v[0] - cx) * escala, (v[1] - minY) * escala, (v[2] - cz) * escala];
+    return [(v[0] - cx) * escala, (v[1] - minY) * escalaY, (v[2] - cz) * escala];
   }
 
   const solidos = [];
@@ -400,11 +397,14 @@ export function moldeDaMalha(objTexto, portas = null) {
 
   const celulas = new Int16Array(marcas.size * 3);
   let cursor = 0;
+  let maxAltura = 0;
   for (const chave of marcas) {
     const p = chave.split(",");
+    const iy = +p[1];
     celulas[cursor++] = +p[0];
-    celulas[cursor++] = +p[1];
+    celulas[cursor++] = iy;
     celulas[cursor++] = +p[2];
+    if (iy + 1 > maxAltura) maxAltura = iy + 1;
   }
   if (!Number.isFinite(minVX)) {
     minVX = 0;
@@ -418,8 +418,22 @@ export function moldeDaMalha(objTexto, portas = null) {
       else maxVX += 1;
     } else if (fundo.paraDentro > 0) minVZ -= 1;
     else maxVZ += 1;
+    if (fundo.topo > maxAltura) maxAltura = fundo.topo;
   }
-  return { celulas, minX: minVX, maxX: maxVX, minZ: minVZ, maxZ: maxVZ, temPorta: vaos.length > 0, fundo, vao, porta };
+  const predioH = predio ? Math.ceil(predio.max[1] || 0) : 0;
+  if (predioH > maxAltura) maxAltura = predioH;
+  return {
+    celulas,
+    minX: minVX,
+    maxX: maxVX,
+    minZ: minVZ,
+    maxZ: maxVZ,
+    altura: Math.max(3, maxAltura),
+    temPorta: vaos.length > 0,
+    fundo,
+    vao,
+    porta,
+  };
 }
 
 function caixaLocal(verts, local) {
@@ -829,14 +843,14 @@ function montarColocacoes() {
         sprite: sprite || undefined,
         px: ox + mx,
         py: oy + my,
-        yaw: v.papel === "casa" || v.papel === "lab" ? 0 : yawDaRua(mx, my),
+        yaw: yawDoEdificio(v.papel, mx, my),
         ox,
         oy,
         x0: v.x0,
         y0: v.y0,
         x1: v.x1,
         y1: v.y1,
-        altura: v.altura,
+        altura: Math.max(v.altura | 0, moldes.get(id)?.altura | 0),
         papel: v.papel,
         cartao: false,
         porta: v.porta !== false,

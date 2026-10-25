@@ -385,6 +385,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/maquina-cura-slots") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 40_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        const normalizado = validarSlotsMaquinaCura(obj);
+        const dest = path.join(raiz, "assets", "models", "cidade", "props", "cura", "slots.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(normalizado, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/partes") {
     const pedacos = [];
     let total = 0;
@@ -836,6 +866,33 @@ function validarPivos(obj) {
     if (item.offsetY < -4 || item.offsetY > 4) throw new Error(`${id} altura fora`);
     if (Math.abs(item.dx) > 256 || Math.abs(item.dy) > 256) throw new Error(`${id} pivô fora`);
   }
+}
+
+function validarSlotsMaquinaCura(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("arquivo sem slots da máquina");
+  }
+  const lim = 64;
+  const ponto = (src, rotulo) => {
+    const x = Number(src?.x);
+    const y = Number(src?.y);
+    const z = Number(src?.z);
+    if (![x, y, z].every(Number.isFinite)) throw new Error(`${rotulo} incompleto`);
+    if (Math.abs(x) > lim || Math.abs(y) > lim || Math.abs(z) > lim) {
+      throw new Error(`${rotulo} fora do intervalo`);
+    }
+    return {
+      x: Math.round(x * 100) / 100,
+      y: Math.round(y * 100) / 100,
+      z: Math.round(z * 100) / 100,
+    };
+  };
+  const suporte = ponto(obj.suporte, "suporte");
+  if (!Array.isArray(obj.slots) || obj.slots.length !== 6) {
+    throw new Error("precisam ser 6 slots");
+  }
+  const slots = obj.slots.map((s, i) => ponto(s, `slot ${i}`));
+  return { suporte, slots };
 }
 
 function validarPivosProps(obj) {

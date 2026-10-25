@@ -2,9 +2,11 @@
  * Lotes e volumes de prédio. A colisão é a coluna do chunk carregado;
  * o layout em si é só conta, sem malha.
  */
+import { ESCALA_Y_CASA, ESCALA_Y_CASA_REF } from "../../config.js";
 import { ajusteDe } from "../cidade/ajustesColisor.js";
 import { idDaCasa } from "../cidade/catalogoCasas.js";
 import { portaPadraoSprite } from "../cidade/caixaSprite.js";
+import { yawDoEdificio } from "../cidade/orientacaoEdificio.js";
 
 /** casa-2 e casa-4 não têm porta. Igual red-house-2/4. */
 const FOLHAS_SEM_PORTA = new Set([2, 4]);
@@ -59,6 +61,7 @@ export function varianteCasa(indice) {
   return ((indice % VARIANTES_CASA) + VARIANTES_CASA) % VARIANTES_CASA;
 }
 
+/** Alturas em blocos calibradas em ESCALA_Y_CASA_REF. */
 const ALTURA = Object.freeze({
   casa: 5,
   centro: 4,
@@ -73,6 +76,13 @@ const ALTURA = Object.freeze({
   coliseu: 7,
   mansao: 8,
 });
+
+/** Coluna sólida do lote acompanha o knob visual ESCALA_Y_CASA. */
+export function alturaDoPapel(papel) {
+  const base = ALTURA[papel] || ALTURA.casa;
+  const ref = ESCALA_Y_CASA_REF > 1e-8 ? ESCALA_Y_CASA_REF : 0.5;
+  return Math.max(3, Math.round(base * (ESCALA_Y_CASA / ref)));
+}
 
 function gradeDe(def) {
   const base = GRADE[def.tier] || GRADE.town;
@@ -207,7 +217,7 @@ function montarVolume(def, papel, lote, casas) {
     x1: cx0 + corpo.x,
     y1: cy0 + corpo.y,
     lote: { x0: lote.x0, y0: lote.y0, x1: lote.x1, y1: lote.y1 },
-    altura: ALTURA[papel] || ALTURA.casa,
+    altura: alturaDoPapel(papel),
     papel,
     variante,
     modelo,
@@ -336,13 +346,10 @@ export function montarLayout(def) {
 }
 
 function yawDaFrente(v) {
-  if (v.cartao || v.sprite || v.papel === "casa" || v.papel === "lab") return 0;
+  if (v.cartao || v.sprite) return 0;
   const mx = (v.x0 + v.x1) * 0.5;
   const my = (v.y0 + v.y1) * 0.5;
-  const dx = mx - CENTRO;
-  const dy = my - CENTRO;
-  if (Math.abs(dy) <= Math.abs(dx)) return dy > 0 ? Math.PI : 0;
-  return dx > 0 ? -Math.PI / 2 : Math.PI / 2;
+  return yawDoEdificio(v.papel, mx, my);
 }
 
 function giroLocal(x, z, yaw) {

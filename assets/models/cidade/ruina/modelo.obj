@@ -1,7 +1,7 @@
 # Created by MKDS Course Modifier
 mtllib modelo.mtl
 g polygon0
-usemtl lambert8
+usemtl h_kage
 v -72 1.5 56
 v 80 1.5 -60
 v -76 1.5 56

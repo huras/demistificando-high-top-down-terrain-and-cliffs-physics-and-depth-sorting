@@ -389,7 +389,6 @@ export function colherSilvestre(prop) {
   if (!ganho?.key) return "";
   darItem(TIPO_ITEM.BERRY, ganho.key, ganho.n);
   marcarQuest("berry");
-  sfx("colher");
   const nome = nomeDe(TIPO_ITEM.BERRY, ganho.key);
   return ganho.n > 1 ? `Colheu ${ganho.n} ${nome}.` : `Colheu ${nome}.`;
 }
@@ -402,7 +401,6 @@ export function plantarOuColher(alvo, item) {
     if (!key) return "";
     darItem(TIPO_ITEM.BERRY, key, 2 + Math.floor(Math.random() * 2));
     marcarQuest("berry");
-    sfx("colher");
     return `Colheu ${nomeDe(TIPO_ITEM.BERRY, key)}.`;
   }
   if (plot.stage === ESTAGIO.SOLO && item?.tipo === TIPO_ITEM.BERRY && BERRIES[item.key]) {

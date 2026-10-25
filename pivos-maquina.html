@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pivôs da máquina de cura</title>
+  <link rel="stylesheet" href="css/pivos.css" />
+  <link rel="stylesheet" href="css/pivos-maquina.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Pivôs — máquina de cura</h1>
+    <p class="topo__nota" id="status">Carregando…</p>
+    <button type="button" id="previa">Prévia</button>
+    <button type="button" id="salvar">Salvar</button>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna coluna--maquina">
+      <section class="painel-pivo">
+        <h2>Suporte (origem)</h2>
+        <p class="nota">Ponto-base no topo da malha <code>cura</code> onde os 6 slots se apoiam.</p>
+        <div class="grade-xyz" id="suporte-campos"></div>
+        <h2>Slots (6 bolas)</h2>
+        <p class="nota">Unidades de mundo (1 ≈ altura da máquina / ~1.8). Number livre; slider acompanha. y do slot: <code>Y = -y</code>.</p>
+        <div class="lista-slots" id="slots-campos"></div>
+        <button type="button" id="resetar">Resetar padrão</button>
+      </section>
+    </aside>
+    <div class="palco palco--maquina">
+      <span class="palco__tag">3D — máquina · órbita livre</span>
+      <canvas id="vista3d"></canvas>
+    </div>
+  </div>
+  <script type="module" src="js/pivos/editorMaquina.js"></script>
+</body>
+</html>

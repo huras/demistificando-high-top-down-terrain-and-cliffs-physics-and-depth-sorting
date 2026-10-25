@@ -55,6 +55,8 @@ export class PadraoFeixe extends PadraoBase {
     const ponta = calcularPontaFeixe({ x: a.x, y: a.y }, mira, alcance);
     const alpha = Math.min(1, this.tempoTiro * 8) * (this.tempo >= this.duracao - 0.15 ? (this.duracao - this.tempo) / 0.15 : 1);
     const largura = (cfg.largura || 0.4) * (cfg.sobrecarga || 1) * this.escala;
+    const modo = cfg.modo || (cfg.textura ? "stretch" : "ribbon");
+    const textura = cfg.textura || "";
     if (!this.feixe) {
       this.feixe = soltarFeixe({
         x1: ponta.x1 + ponta.nx * 0.5,
@@ -69,6 +71,9 @@ export class PadraoFeixe extends PadraoBase {
         nucleo: cfg.nucleo || this.elemento.nucleo,
         alpha,
         grossuraExtra: !!cfg.grossuraExtra,
+        modo,
+        textura,
+        lengthScale: cfg.lengthScale || 3,
       });
     } else {
       this.feixe.x1 = ponta.x1 + ponta.nx * 0.5;
@@ -80,6 +85,8 @@ export class PadraoFeixe extends PadraoBase {
       this.feixe.largura = largura;
       this.feixe.alpha = Math.max(0, alpha);
       this.feixe.pulso += dt;
+      this.feixe.modo = modo;
+      this.feixe.textura = textura;
     }
 
     if (!this.hit && this.alvo && this.tempoTiro > 0.08) {
@@ -166,6 +173,9 @@ export class PadraoRaio extends PadraoBase {
           nucleo: this.cfg.nucleo || this.elemento.nucleo,
           alpha: 1,
           grossuraExtra: false,
+          modo: "stretch",
+          textura: this.cfg.textura || "Thunder_01",
+          lengthScale: this.cfg.lengthScale || 3,
         }),
       );
     }

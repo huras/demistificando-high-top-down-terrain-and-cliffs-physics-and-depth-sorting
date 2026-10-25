@@ -10,8 +10,13 @@
 export const ALTURA_BLOCO = 1;
 /** 1 = cliffs acompanham o jogador; >1 só estica relevo (e o chão tem de acompanhar). */
 export const ESCALA_Y_RELEVO = 1;
-/** Casas / lotes / prédios GLB (0.5 ≈ look antigo com ALTURA_BLOCO 0.5). */
-export const ESCALA_Y_CASA = 0.5;
+/**
+ * Baseline em que a tabela ALTURA de volumesCidade foi calibrada.
+ * alturaEmBlocos = ALTURA[papel] * ESCALA_Y_CASA / ESCALA_Y_CASA_REF.
+ */
+export const ESCALA_Y_CASA_REF = 0.5;
+/** Casas / lotes / prédios GLB (0.75 = +50% sobre o look antigo em REF). */
+export const ESCALA_Y_CASA = 0.75;
 /** Props OBJ, móveis, balcão, postes. */
 export const ESCALA_Y_PROP = 0.5;
 /** Billboards/cartões em pé (1 = altura em pixels→mundo sem squash extra). */

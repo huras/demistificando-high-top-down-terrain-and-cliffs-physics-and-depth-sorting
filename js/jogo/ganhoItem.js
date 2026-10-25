@@ -5,6 +5,7 @@
 
 import { itensBolsa, obterBolas } from "../pokemon/party.js";
 import { classificarChave, defItem } from "../wild/catalogo.js";
+import { tocarPegarItem } from "./audio.js";
 import { estado, avisar } from "./estado.js";
 import { htmlIcone } from "./icones.js";
 import { aoMudarIdioma, t } from "./i18n.js";
@@ -54,6 +55,7 @@ export function anunciarGanho(chave, qtd, fonte) {
   item.qtd = n;
   const novo = !estado.vistosItens?.[chave];
   marcarVisto(chave);
+  tocarPegarItem();
   if (typeof document === "undefined") return;
   if (novo) abrirCarta(item);
   else empurrarAviso(item);

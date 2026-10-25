@@ -53,6 +53,7 @@ import {
 import { celulaConstrucao, pertoDe, propsDaSala } from "./sala.js";
 import { celulaLivre } from "../wild/salas.js";
 import { sfx } from "./audio.js";
+import { tocarChoose } from "./som/mundoSfx.js";
 import { htmlIcone } from "./icones.js";
 import { abrirDex, dexAberta, fecharDex, toggleRideSlot } from "./apiHud.js";
 import { tratarUtilityHud } from "./hud/bootHud.js";
@@ -466,6 +467,7 @@ export function avancarDialogo() {
   if (!dlg) return;
   if (dlg.escolhas && dlg.i >= dlg.linhas.length - 1) return;
   dlg.i += 1;
+  tocarChoose();
   if (dlg.i >= dlg.linhas.length) {
     if (dlg.acao === "loja") {
       estado.dialogo = null;

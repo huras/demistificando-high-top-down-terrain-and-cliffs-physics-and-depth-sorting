@@ -1,9 +1,14 @@
 /**
- * Feixes 3D (port visual do BattleParticles Canvas laser).
- * Ribbon billboarded origem→ponta + bloom na ponta.
+ * Feixes 3D (port visual do BattleParticles Canvas laser + Elemental stretch).
+ * Ribbon billboarded origem→ponta + bloom na ponta; modo stretch usa Ray/Thunder.
  */
 import * as THREE from "three";
 import { ALTURA_BLOCO } from "../../../config.js";
+import {
+  carregarCatalogoElemental,
+  layoutElemental,
+  texturaElemental,
+} from "../../../efeitos/elemental.js";
 
 export const CAP_FEIXES = 8;
 
@@ -19,7 +24,11 @@ export const CAP_FEIXES = 8;
  *   alpha: number,
  *   pulso: number,
  *   grossuraExtra: boolean,
- *   t: number
+ *   t: number,
+ *   modo: string,
+ *   textura: string,
+ *   lengthScale: number,
+ *   frame: number
  * }} FeixeVivo
  */
 
@@ -37,6 +46,57 @@ const vivos = [];
  * } | null}
  */
 let gpu = null;
+
+/** @type {Map<string, THREE.Texture>} */
+const texStretch = new Map();
+/** @type {Set<string>} */
+const pedindoStretch = new Set();
+
+function pedirTexStretch(id) {
+  if (!id) return null;
+  if (texStretch.has(id)) return texStretch.get(id);
+  const meta = texturaElemental(id);
+  if (!meta?.path || pedindoStretch.has(id) || typeof Image === "undefined") return null;
+  pedindoStretch.add(id);
+  const img = new Image();
+  img.onload = () => {
+    const tex = new THREE.Texture(img);
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    texStretch.set(id, tex);
+  };
+  img.src = meta.path;
+  return null;
+}
+
+/**
+ * Clona a textura base e isola 1 tile da folha (Thunder 1×4, etc.).
+ * @param {string} id
+ * @param {number} frame
+ */
+function texStretchDoFrame(id, frame) {
+  const base = pedirTexStretch(id) || texStretch.get(id);
+  if (!base) return null;
+  const lay = layoutElemental(id);
+  const chave = `${id}#${frame}`;
+  if (texStretch.has(chave)) return texStretch.get(chave);
+  const tex = base.clone();
+  tex.needsUpdate = true;
+  const cols = lay.cols;
+  const rows = lay.rows;
+  const f = Math.max(0, Math.min(lay.frames - 1, frame | 0));
+  const col = f % cols;
+  const row = Math.floor(f / cols);
+  const rowUv = rows - 1 - row;
+  tex.repeat.set(1 / cols, 1 / rows);
+  tex.offset.set(col / cols, rowUv / rows);
+  texStretch.set(chave, tex);
+  return tex;
+}
 
 function hex(c) {
   return new THREE.Color(c || "#ffffff");
@@ -82,6 +142,7 @@ function criarPonta() {
 
 /** @param {THREE.Scene} cena */
 export function ligarFeixes(cena) {
+  carregarCatalogoElemental();
   if (gpu?.cena === cena) return;
   desligarFeixes();
   const geo = new THREE.PlaneGeometry(1, 1);
@@ -145,7 +206,18 @@ export function soltarFeixe(opts) {
     pulso: opts.pulso || 0,
     grossuraExtra: !!opts.grossuraExtra,
     t: 0,
+    modo: opts.modo || "ribbon",
+    textura: opts.textura || "",
+    lengthScale: opts.lengthScale > 0 ? opts.lengthScale : 3,
+    frame: opts.frame != null ? opts.frame : -1,
   };
+  if (f.textura) {
+    pedirTexStretch(f.textura);
+    if (f.frame < 0) {
+      const lay = layoutElemental(f.textura);
+      f.frame = lay.anim === "variacao" ? Math.floor(Math.random() * lay.frames) : 0;
+    }
+  }
   if (vivos.length >= CAP_FEIXES) {
     const velho = vivos.shift();
     if (velho) velho.viva = false;
@@ -218,7 +290,7 @@ const _de = new THREE.Vector3(0, 1, 0);
 const _para = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 
-function orientarRibbon(mesh, x1, y1, z1, x2, y2, z2, largura) {
+function orientarRibbon(mesh, x1, y1, z1, x2, y2, z2, largura, lengthMul = 1) {
   const ax = x1;
   const ay = Math.max(0.1, z1 * ALTURA_BLOCO);
   const az = y1;
@@ -226,12 +298,36 @@ function orientarRibbon(mesh, x1, y1, z1, x2, y2, z2, largura) {
   const by = Math.max(0.1, z2 * ALTURA_BLOCO);
   const bz = y2;
   _para.set(bx - ax, by - ay, bz - az);
-  const len = _para.length() || 0.001;
-  _para.multiplyScalar(1 / len);
+  const len = (_para.length() || 0.001) * lengthMul;
+  _para.normalize();
   mesh.position.set((ax + bx) * 0.5, (ay + by) * 0.5, (az + bz) * 0.5);
   _quat.setFromUnitVectors(_de, _para);
   mesh.quaternion.copy(_quat);
   mesh.scale.set(largura, len, 1);
+}
+
+/**
+ * @param {THREE.MeshBasicMaterial} mat
+ * @param {FeixeVivo} f
+ * @param {boolean} nucleo
+ */
+function aplicarMaterialFeixe(mat, f, nucleo) {
+  const stretch = f.modo === "stretch" && f.textura;
+  const tex = stretch
+    ? texStretchDoFrame(f.textura, f.frame >= 0 ? f.frame : 0) ||
+      pedirTexStretch(f.textura) ||
+      texStretch.get(f.textura)
+    : null;
+  if (tex && mat.map !== tex) {
+    mat.map = tex;
+    mat.needsUpdate = true;
+  } else if (!tex && mat.map) {
+    mat.map = null;
+    mat.needsUpdate = true;
+  }
+  mat.color.copy(hex(nucleo ? f.nucleo : f.primaria));
+  mat.opacity = f.alpha * (nucleo ? 0.95 : stretch ? 0.85 : 0.55);
+  mat.transparent = true;
 }
 
 /**
@@ -245,20 +341,30 @@ export function sincronizarFeixes(_camera) {
     if (!f.viva || f.alpha <= 0.01) continue;
     const flicker = f.grossuraExtra ? 0 : Math.sin(f.pulso * 20) * Math.min(0.08, f.largura * 0.15);
     const lw = f.largura + flicker;
+    const stretch = f.modo === "stretch";
+    const lenMul = stretch ? Math.max(1, f.lengthScale || 3) / 3 : 1;
     const tronco = gpu.tronco[slot];
     const nucleo = gpu.nucleo[slot];
     const ponta = gpu.ponta[slot];
     tronco.visible = true;
     nucleo.visible = true;
     ponta.visible = true;
-    tronco.material.color.copy(hex(f.primaria));
-    tronco.material.opacity = f.alpha * 0.55;
-    nucleo.material.color.copy(hex(f.nucleo));
-    nucleo.material.opacity = f.alpha * 0.9;
+    aplicarMaterialFeixe(/** @type {THREE.MeshBasicMaterial} */ (tronco.material), f, false);
+    aplicarMaterialFeixe(/** @type {THREE.MeshBasicMaterial} */ (nucleo.material), f, true);
     ponta.material.color.copy(hex(f.nucleo));
     ponta.material.opacity = f.alpha;
-    orientarRibbon(tronco, f.x1, f.y1, f.z1, f.x2, f.y2, f.z2, lw * (f.grossuraExtra ? 1.35 : 1.8));
-    orientarRibbon(nucleo, f.x1, f.y1, f.z1, f.x2, f.y2, f.z2, Math.max(0.06, lw * 0.28));
+    orientarRibbon(
+      tronco,
+      f.x1,
+      f.y1,
+      f.z1,
+      f.x2,
+      f.y2,
+      f.z2,
+      lw * (stretch ? 0.55 : f.grossuraExtra ? 1.35 : 1.8),
+      lenMul,
+    );
+    orientarRibbon(nucleo, f.x1, f.y1, f.z1, f.x2, f.y2, f.z2, Math.max(0.06, lw * (stretch ? 0.18 : 0.28)), lenMul);
     const rPonta = lw * (f.grossuraExtra ? 1.4 : 1.9);
     ponta.position.set(f.x2, Math.max(0.1, f.z2 * ALTURA_BLOCO), f.y2);
     ponta.scale.set(rPonta * 2.2, rPonta * 2.2, 1);

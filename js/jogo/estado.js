@@ -27,6 +27,15 @@ import { obterTreinador } from "../pokemon/sistema.js";
 import { hidratarCampo, idsRemovidos, reaplicarCarregados, serializarCampo } from "../campo/estadoProps.js";
 import { anunciarGanho, semearVistosDaBolsa } from "./ganhoItem.js";
 import { nomeDoItem } from "./nomeItem.js";
+import { tocarCura } from "./som/combateSfx.js";
+import {
+  tocarBump,
+  tocarHotbarEquip,
+  tocarHotbarUnequip,
+  tocarPcClose,
+  tocarPcOpen,
+  tocarSalvar,
+} from "./som/mundoSfx.js";
 import {
   ajustarItem,
   colocarNaParty,
@@ -194,7 +203,11 @@ export function usarNoPokemon(tipo, key, ator) {
   if (!ok) {
     darItem(tipo, key, 1);
     estado.itemGet = "";
+    tocarBump();
     return false;
+  }
+  if (def.efeito.curaHp || def.efeito.curaFrac || def.efeito.reviver) {
+    tocarCura(ator);
   }
   avisar();
   return true;
@@ -211,6 +224,7 @@ export function usarNoJogador(tipo, key) {
   if (def.efeito.curaFrac) {
     treino.hp = Math.min(treino.hpMax, treino.hp + Math.round(treino.hpMax * def.efeito.curaFrac));
   }
+  tocarCura(treino);
   avisar();
   return true;
 }
@@ -326,13 +340,14 @@ export function guardarNaCaixa(snap, silencioso = false) {
 }
 
 /** Captura curada na primeira vaga das caixas. Não avisa: quem chama decide o texto. */
-export function guardarCapturaNaCaixa(selvagem) {
+export function guardarCapturaNaCaixa(selvagem, ballKey = "pokeball") {
   if (!selvagem?.especie) return false;
   const ator = criarAtor({
     id: `pc-${selvagem.especie.key}`,
     especie: selvagem.especie,
     nivel: Math.max(1, selvagem.nivel | 0),
     shiny: !!selvagem.shiny,
+    ballKey: typeof ballKey === "string" && ballKey ? ballKey : "pokeball",
     faccao: "party",
     x: 0,
     y: 0,
@@ -491,6 +506,7 @@ export function snapshot(ator) {
     hpMax: ator.hpMax,
     exp: ator.exp,
     shiny: !!ator.shiny,
+    ballKey: typeof ator.ballKey === "string" && ator.ballKey ? ator.ballKey : "pokeball",
   };
 }
 
@@ -502,6 +518,7 @@ export function atorDoSnapshot(snap) {
     nivel: snap.nivel || 1,
     shiny: !!snap.shiny,
     hp: snap.hp,
+    ballKey: typeof snap.ballKey === "string" && snap.ballKey ? snap.ballKey : "pokeball",
     faccao: "party",
     x: 0,
     y: 0,
@@ -576,10 +593,13 @@ export function soltarSlotVazio() {
 export function atribuirSlot(indice, tipo, key) {
   if (indice < 0 || indice >= SLOTS_HOTBAR) return;
   if (!tipo || !key) {
+    const tinha = !!estado.hotbar[indice];
     estado.hotbar[indice] = null;
     if (estado.slotAtivo === indice) estado.slotAtivo = -1;
+    if (tinha) tocarHotbarUnequip();
   } else {
     estado.hotbar[indice] = { tipo, key };
+    tocarHotbarEquip();
   }
   avisar();
 }
@@ -670,6 +690,7 @@ export function fecharTopo() {
     return true;
   }
   if (estado.painel) {
+    if (estado.painel === "pc") tocarPcClose();
     estado.painel = null;
     avisar();
     return true;
@@ -678,10 +699,13 @@ export function fecharTopo() {
 }
 
 export function abrirPainel(nome) {
+  const anterior = estado.painel;
   estado.roda = false;
   estado.construir = false;
   estado.craft = false;
   estado.painel = nome;
+  if (nome === "pc" && anterior !== "pc") tocarPcOpen();
+  else if (anterior === "pc" && nome !== "pc") tocarPcClose();
   avisar();
 }
 
@@ -717,6 +741,7 @@ export function salvar() {
   try {
     localStorage.setItem(CHAVE_SAVE, JSON.stringify(dados));
     estado.itemGet = "Jogo salvo.";
+    tocarSalvar();
     avisar();
     return true;
   } catch {

@@ -1,23 +1,21 @@
 /**
  * Máquina do Centro: as bolas entram uma a uma, pulsam e recolhem juntas.
- * Os deslocamentos são o centro do carimbo, iguais aos pivôs do Pokémon AI.
+ * Layout 3D dos slots fica em slotsCuraConfig / slots.json.
  */
+
+import { QTD_SLOTS_CURA } from "./slotsCuraConfig.js";
 
 const ESPERA = 0.11;
 const ESTOURO = 0.16;
 const PULSO = 0.55;
 const RECOLHER = 0.32;
 const FOLGA = 0.14;
-const POR_RODADA = 6;
+const POR_RODADA = QTD_SLOTS_CURA;
 
-export const SLOTS_CURA = Object.freeze([
-  Object.freeze({ x: -0.27, y: -0.23 }),
-  Object.freeze({ x: 0.21, y: -0.25 }),
-  Object.freeze({ x: -0.28, y: 0.04 }),
-  Object.freeze({ x: 0.22, y: 0.01 }),
-  Object.freeze({ x: -0.29, y: 0.3 }),
-  Object.freeze({ x: 0.22, y: 0.28 }),
-]);
+/** Compat: 6 vagas (índices). Posições vêm do JSON. */
+export const SLOTS_CURA = Object.freeze(
+  Array.from({ length: QTD_SLOTS_CURA }, (_, i) => Object.freeze({ slot: i })),
+);
 
 const quadro = [null, null, null, null, null, null];
 
@@ -27,15 +25,25 @@ export function curaOcupada() {
   return !!sessao;
 }
 
-export function iniciarCuraMaquina(qtd) {
+/**
+ * @param {number | string[]} qtdOuKeys quantidade ou lista de ballKeys do time
+ */
+export function iniciarCuraMaquina(qtdOuKeys) {
   if (sessao) return false;
-  const n = Math.max(0, qtd | 0);
+  let keys = [];
+  if (Array.isArray(qtdOuKeys)) {
+    keys = qtdOuKeys.map((k) => (typeof k === "string" && k ? k : "pokeball"));
+  } else {
+    const n = Math.max(0, qtdOuKeys | 0);
+    keys = Array.from({ length: n }, () => "pokeball");
+  }
   sessao = {
     fase: "por",
     t: 0,
-    qtd: n,
+    keys,
+    qtd: keys.length,
     rodada: 0,
-    rodadas: Math.max(1, Math.ceil(Math.max(1, n) / POR_RODADA)),
+    rodadas: Math.max(1, Math.ceil(Math.max(1, keys.length) / POR_RODADA)),
     indice: 0,
     bolas: [],
   };
@@ -52,6 +60,7 @@ function bolasDaRodada() {
 function comecarRodada() {
   if (!sessao) return;
   const n = bolasDaRodada();
+  const inicio = sessao.rodada * POR_RODADA;
   sessao.indice = 0;
   sessao.fase = n > 0 ? "por" : "cura";
   sessao.t = 0;
@@ -59,6 +68,7 @@ function comecarRodada() {
   for (let i = 0; i < n; i++) {
     sessao.bolas.push({
       slot: i,
+      ballKey: sessao.keys[inicio + i] || "pokeball",
       visivel: false,
       escala: 0,
       brilho: 0,

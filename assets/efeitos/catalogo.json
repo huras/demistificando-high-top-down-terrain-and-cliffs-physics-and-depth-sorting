@@ -196,7 +196,8 @@
       "visual": "orbe",
       "folha": null,
       "disparo": { "tipo": "unico", "vel": 12.797 },
-      "orbe": { "escala": 0.32, "rastro": true }
+      "orbe": { "escala": 0.38, "rastro": true, "elf": "Stream_01", "rastroElf": "Water_01" },
+      "elf": { "orbe": "Stream_01", "rastro": "Water_01", "impacto": "Water_01" }
     },
     "swift": {
       "id": "swift",
@@ -206,7 +207,8 @@
       "visual": "estrela",
       "folha": null,
       "disparo": { "tipo": "leque", "n": 5, "graus": 18, "vel": 13.406 },
-      "orbe": { "escala": 0.28, "estrela": true }
+      "orbe": { "escala": 0.32, "estrela": true, "elf": "Sparkle_01" },
+      "elf": { "orbe": "Sparkle_01", "rastro": "Glow_01", "impacto": "Burst_01" }
     },
     "spark": {
       "id": "spark",
@@ -216,7 +218,8 @@
       "visual": "faisca",
       "folha": null,
       "disparo": { "tipo": "unico", "vel": 12.797 },
-      "orbe": { "escala": 0.26, "faisca": true }
+      "orbe": { "escala": 0.3, "faisca": true, "elf": "Sparkle_02" },
+      "elf": { "orbe": "Sparkle_02", "rastro": "Thunder_01", "impacto": "Thunder_02" }
     },
     "solar-beam": {
       "id": "solar-beam",
@@ -229,6 +232,9 @@
         "carga": 0.65,
         "sobrecarga": 1.25,
         "grossuraExtra": true,
+        "modo": "stretch",
+        "textura": "Ray_02",
+        "lengthScale": 3,
         "primaria": "#78c850",
         "secundaria": "#a8e060",
         "nucleo": "#e0ffc0"
@@ -246,6 +252,9 @@
         "sobrecarga": 1.25,
         "fadiga": 1,
         "grossuraExtra": true,
+        "modo": "stretch",
+        "textura": "Ray_01",
+        "lengthScale": 3.2,
         "primaria": "#a8a878",
         "secundaria": "#f0f0e8",
         "nucleo": "#ffffff"
@@ -261,6 +270,9 @@
         "alcance": 10,
         "carga": 0.2,
         "pulso": true,
+        "modo": "stretch",
+        "textura": "Stream_01",
+        "lengthScale": 2.5,
         "primaria": "#6890f0",
         "secundaria": "#98d8d8",
         "nucleo": "#d0f0ff"
@@ -276,6 +288,9 @@
         "alcance": 11,
         "duracao": 2,
         "intervalo": 0.33,
+        "modo": "stretch",
+        "textura": "Stream_01",
+        "lengthScale": 2.8,
         "primaria": "#6890f0",
         "secundaria": "#98d8d8",
         "nucleo": "#ffffff"
@@ -323,6 +338,9 @@
         "largura": 0.28,
         "alcance": 10,
         "duracao": 0.68,
+        "modo": "stretch",
+        "textura": "Thunder_01",
+        "lengthScale": 3,
         "primaria": "#f8d030",
         "secundaria": "#fff080",
         "nucleo": "#ffffc0"
@@ -338,6 +356,9 @@
         "largura": 0.45,
         "alcance": 8,
         "duracao": 0.55,
+        "modo": "stretch",
+        "textura": "Thunder_02",
+        "lengthScale": 3.2,
         "primaria": "#f8d030",
         "secundaria": "#fff080",
         "nucleo": "#ffffff"

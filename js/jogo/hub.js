@@ -33,7 +33,7 @@ export function executarAlvoHub(alvo) {
     if (curaOcupada()) return;
     curarParty();
     marcarQuest("centro");
-    iniciarCuraMaquina(listaParty().length);
+    iniciarCuraMaquina(listaParty().map((m) => m.ballKey || "pokeball"));
     tocarCuraCentro();
     estado.itemGet = "A enfermeira curou o time.";
     avisar();

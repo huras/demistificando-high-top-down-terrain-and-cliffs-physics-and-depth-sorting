@@ -14,6 +14,7 @@ import { impactoFx, tickFx } from "./combate/fx/index.js";
 import { tickParticulas } from "./combate/particulas.js";
 import { atualizarProjeteis } from "./combate/projeteis.js";
 import { dadosProntos } from "./dados.js";
+import { tocarLevelUp } from "../jogo/som/mundoSfx.js";
 import { atualizarDrops, soltarDrop } from "./drops.js";
 import { carregarEmocoes, tickEmocoes } from "./emocoes.js";
 import { ganhoAoDerrotar, NIVEL_MAX, totalParaNivel } from "./experiencia.js";
@@ -86,6 +87,7 @@ const efeitos = {
       while (p.nivel < NIVEL_MAX && p.exp >= totalParaNivel(p.nivel + 1, p.crescimento)) {
         aplicarNivel(p, p.nivel + 1);
         flutuar(p, `Nv ${p.nivel}`, "#fde68a");
+        tocarLevelUp(p);
       }
     }
   },

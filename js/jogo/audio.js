@@ -4,6 +4,7 @@ import {
   anexarContexto,
   definirMudoBarramento,
   destravarBarramento,
+  tocar as tocarBarramento,
 } from "./som/barramento.js";
 import { criarBgm } from "./som/bgm.js";
 import { resolverChaveBgm } from "./som/resolverBgm.js";
@@ -325,7 +326,24 @@ export function tocarCuraCentro() {
   else soltar();
 }
 
+/** Samples do barramento; bip só como fallback. */
 export function sfx(tipo) {
+  if (tipo === "item" || tipo === "colher") {
+    tocarBarramento(tipo);
+    return;
+  }
+  if (tipo === "porta") {
+    tocarBarramento("porta");
+    return;
+  }
+  if (tipo === "cura") {
+    tocarBarramento("cura");
+    return;
+  }
+  if (tipo === "cavar") {
+    tocarBarramento("chopHit");
+    return;
+  }
   const ac = audio();
   if (!ac || mudo) return;
   const o = ac.createOscillator();
@@ -333,15 +351,16 @@ export function sfx(tipo) {
   o.connect(g);
   g.connect(ac.destination);
   const agora = ac.currentTime;
-  if (tipo === "porta") o.frequency.setValueAtTime(520, agora);
-  else if (tipo === "cura") o.frequency.setValueAtTime(660, agora);
-  else if (tipo === "cavar") o.frequency.setValueAtTime(140, agora);
-  else if (tipo === "colher") o.frequency.setValueAtTime(780, agora);
-  else o.frequency.setValueAtTime(440, agora);
+  o.frequency.setValueAtTime(440, agora);
   g.gain.setValueAtTime(0.04, agora);
   g.gain.exponentialRampToValueAtTime(0.001, agora + 0.12);
   o.start(agora);
   o.stop(agora + 0.14);
+}
+
+/** Obteve item / berry (carta ou toast). */
+export function tocarPegarItem() {
+  sfx("item");
 }
 
 export function estaMudo() {

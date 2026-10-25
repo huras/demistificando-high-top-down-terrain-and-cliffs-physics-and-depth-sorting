@@ -3,6 +3,7 @@ import { alturaSobPes } from "../fisica/colisao.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
 import { dropsDaEspecie, fallbackDoTipo } from "./dados.js";
 import { nomeDoItem } from "../jogo/nomeItem.js";
+import { tocarItemDrop } from "../jogo/som/mundoSfx.js";
 import { guardarItem, pokemonDeployado } from "./party.js";
 
 const itens = [];
@@ -28,6 +29,7 @@ export function soltarDrop(ator) {
   rolarLista(tabela.berries, chaves);
   rolarLista(tabela.materials, chaves);
   if (!chaves.length) rolarLista(fallbackDoTipo(ator.tipos?.[0]), chaves);
+  if (chaves.length) tocarItemDrop(ator);
   for (let i = 0; i < chaves.length; i++) {
     if (itens.length >= POKEMON.DROPS_MAX) itens.shift();
     const jx = (Math.random() - 0.5) * 0.7;

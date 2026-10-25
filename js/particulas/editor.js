@@ -5,6 +5,11 @@ import {
   defaultsEfeitos,
   listaEfeitos,
 } from "../efeitos/catalogo.js";
+import {
+  carregarCatalogoElemental,
+  catalogoElemental,
+  listaTexturasElemental,
+} from "../efeitos/elemental.js";
 import { carregarFolhasGolpe, sincronizarFolhasDoCatalogo } from "../pokemon/combate/folhasGolpe.js";
 import {
   aplicarCatalogoParticulas,
@@ -13,6 +18,9 @@ import {
   idsElemento,
 } from "./catalogo.js";
 import { criarPreviewParticulas } from "./preview.js";
+
+/** @type {"orbe"|"rastro"|"impacto"} */
+let papelElf = "rastro";
 
 const statusEl = document.getElementById("status");
 const abasEl = document.getElementById("abas");
@@ -195,6 +203,7 @@ const CAMPOS = {
   efeitoFeixe: [
     { path: "feixe.largura", tipo: "range", min: 0.1, max: 1.5, step: 0.01, rotulo: "Largura" },
     { path: "feixe.alcance", tipo: "range", min: 4, max: 20, step: 0.5, rotulo: "Alcance" },
+    { path: "feixe.lengthScale", tipo: "range", min: 1, max: 5, step: 0.1, rotulo: "LengthScale" },
     { path: "feixe.primaria", tipo: "cor", rotulo: "Primária" },
     { path: "feixe.secundaria", tipo: "cor", rotulo: "Secundária" },
     { path: "feixe.nucleo", tipo: "cor", rotulo: "Núcleo" },
@@ -384,6 +393,123 @@ function formatarValor(n, step) {
   return n.toFixed(2);
 }
 
+function vincularElf(ef, papel, idTex) {
+  if (!ef.elf || typeof ef.elf !== "object") ef.elf = {};
+  ef.elf[papel] = idTex || "";
+  if (papel === "orbe") {
+    if (!ef.orbe || typeof ef.orbe !== "object") ef.orbe = { escala: 0.32 };
+    ef.orbe.elf = idTex || "";
+  }
+  if (papel === "rastro") {
+    if (ef.orbe && typeof ef.orbe === "object") ef.orbe.rastroElf = idTex || "";
+  }
+  if ((ef.kind === "feixe" || ef.kind === "raio") && papel === "orbe") {
+    if (!ef.feixe || typeof ef.feixe !== "object") ef.feixe = {};
+    ef.feixe.modo = "stretch";
+    ef.feixe.textura = idTex || "";
+    if (!ef.feixe.lengthScale) ef.feixe.lengthScale = 3;
+  }
+}
+
+function pintarBrowserElf(alvo) {
+  const bloco = document.createElement("div");
+  bloco.className = "elf-browser";
+
+  const titulo = document.createElement("h3");
+  titulo.className = "elf-browser__titulo";
+  titulo.textContent = "Elemental Free";
+  bloco.appendChild(titulo);
+
+  const binds = document.createElement("p");
+  binds.className = "nota elf-browser__binds";
+  const e = alvo.elf || {};
+  binds.textContent = `orbe: ${e.orbe || alvo.orbe?.elf || "—"}${
+    alvo.feixe?.textura ? ` · feixe: ${alvo.feixe.textura}` : ""
+  } · rastro: ${e.rastro || alvo.orbe?.rastroElf || "—"} · impacto: ${e.impacto || "—"}`;
+  bloco.appendChild(binds);
+
+  const papeis = document.createElement("div");
+  papeis.className = "elf-browser__papeis";
+  for (const p of [
+    { id: "orbe", rotulo: "Orbe/feixe" },
+    { id: "rastro", rotulo: "Rastro" },
+    { id: "impacto", rotulo: "Impacto" },
+  ]) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = p.rotulo;
+    if (papelElf === p.id) btn.classList.add("ativo");
+    btn.addEventListener("click", () => {
+      papelElf = /** @type {"orbe"|"rastro"|"impacto"} */ (p.id);
+      pintarInspector();
+    });
+    papeis.appendChild(btn);
+  }
+  bloco.appendChild(papeis);
+
+  const limpar = document.createElement("button");
+  limpar.type = "button";
+  limpar.className = "elf-browser__limpar";
+  limpar.textContent = `Limpar ${papelElf}`;
+  limpar.addEventListener("click", () => {
+    vincularElf(alvo, papelElf, "");
+    marcarSujo();
+    sincronizarRuntime();
+    pintarInspector();
+    preview.disparar();
+  });
+  bloco.appendChild(limpar);
+
+  const grade = document.createElement("div");
+  grade.className = "elf-browser__grade";
+  const quentes = catalogoElemental().quentes || [];
+  let itens = listaTexturasElemental();
+  if (quentes.length) {
+    const ordem = new Map(quentes.map((id, i) => [id, i]));
+    itens = [...itens].sort((a, b) => (ordem.get(a.id) ?? 999) - (ordem.get(b.id) ?? 999));
+  }
+  const ativoId =
+    papelElf === "orbe"
+      ? alvo.elf?.orbe || alvo.orbe?.elf || alvo.feixe?.textura || ""
+      : papelElf === "rastro"
+        ? alvo.elf?.rastro || alvo.orbe?.rastroElf || ""
+        : alvo.elf?.impacto || "";
+
+  for (const tex of itens) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "elf-browser__item";
+    if (tex.id === ativoId) btn.classList.add("ativo");
+    const cols = tex.cols || 1;
+    const rows = tex.rows || 1;
+    const lay = cols * rows > 1 ? `${cols}×${rows}` : "1×1";
+    btn.title = `${tex.id} · ${tex.blend || "additive"} · folha ${lay} · ${tex.anim || "estatico"}`;
+    btn.style.backgroundImage = `url(${tex.path})`;
+    if (tex.blend === "additive") btn.classList.add("is-additive");
+    const cap = document.createElement("span");
+    cap.textContent = `${tex.id.replace(/_/g, " ")} ${lay}`;
+    btn.appendChild(cap);
+    btn.addEventListener("click", () => {
+      vincularElf(alvo, papelElf, tex.id);
+      marcarSujo();
+      sincronizarRuntime();
+      pintarInspector();
+      preview.disparar();
+      dizer(`${tex.id} → ${presetId}.${papelElf}`);
+    });
+    grade.appendChild(btn);
+  }
+  if (!itens.length) {
+    const vazio = document.createElement("p");
+    vazio.className = "nota";
+    vazio.textContent = "Catálogo Elemental vazio — rode o script de import.";
+    bloco.appendChild(vazio);
+  } else {
+    bloco.appendChild(grade);
+  }
+  inspectorEl.appendChild(bloco);
+}
+
 function pintarInspector() {
   inspectorEl.innerHTML = "";
   const alvo = objetoPreset();
@@ -443,6 +569,7 @@ function pintarInspector() {
     label.appendChild(input);
     inspectorEl.appendChild(label);
   }
+  if (categoria === "efeitos") pintarBrowserElf(alvo);
 }
 
 function resetPreset() {
@@ -529,7 +656,7 @@ document.getElementById("salvar").addEventListener("click", async () => {
 });
 
 async function iniciar() {
-  await carregarCatalogoEfeitos();
+  await Promise.all([carregarCatalogoEfeitos(), carregarCatalogoElemental()]);
   catalogoFx = structuredClone(catalogoEfeitos());
   sincronizarFolhasDoCatalogo();
   carregarFolhasGolpe();
@@ -550,7 +677,8 @@ async function iniciar() {
   pintarInspector();
   sincronizarRuntime();
   preview.disparar();
-  dizer(`Pronto — ${listaEfeitos().length} efeitos + partículas.`);
+  const nElf = listaTexturasElemental().length;
+  dizer(`Pronto — ${listaEfeitos().length} efeitos · ${nElf} texturas Elemental.`);
 }
 
 iniciar().catch((erro) => {

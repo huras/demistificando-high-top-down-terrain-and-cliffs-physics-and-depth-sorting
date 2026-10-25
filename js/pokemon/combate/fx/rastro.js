@@ -1,7 +1,7 @@
 import { emitir, folhaParticula } from "./poolParticulas3d.js";
 
 /**
- * Emite rastro elemental ao longo do movimento.
+ * Emite rastro elemental (Elemental Free + chama BP no fogo).
  * @param {import('./elementos.js').ConfigElemento} el
  * @param {number} x
  * @param {number} y
@@ -10,10 +10,12 @@ import { emitir, folhaParticula } from "./poolParticulas3d.js";
  * @param {number} vy
  * @param {number} dt
  * @param {number} [escala]
+ * @param {{ rastro?: string, faisca?: string }} [opts]
  */
-export function emitirRastro(el, x, y, z, vx, vy, dt, escala = 1) {
+export function emitirRastro(el, x, y, z, vx, vy, dt, escala = 1, opts = {}) {
   if (!el) return;
-  const folha = folhaParticula(el);
+  const folha = opts.rastro || folhaParticula(el, "rastro");
+  const faisca = opts.faisca || folhaParticula(el, "faisca");
   const taxa = (el.rastro.taxa || 20) * Math.max(0.35, escala);
   const n = Math.max(1, Math.min(6, Math.round(taxa * dt)));
   const vel = Math.hypot(vx, vy) || 1;
@@ -22,6 +24,7 @@ export function emitirRastro(el, x, y, z, vx, vy, dt, escala = 1) {
   const disp = el.rastro.dispersao || 0.8;
   for (let i = 0; i < n; i++) {
     const j = (Math.random() - 0.5) * disp * 0.35;
+    const usarFaisca = Math.random() < 0.35;
     emitir({
       x: x + nx * j,
       y: y + ny * j,
@@ -31,9 +34,9 @@ export function emitirRastro(el, x, y, z, vx, vy, dt, escala = 1) {
       vz: 0.4 + Math.random() * 0.8,
       cor: Math.random() < 0.35 ? el.nucleo : el.primaria,
       vida: el.rastro.vida * (0.7 + Math.random() * 0.5),
-      tam: (0.1 + Math.random() * 0.1) * escala,
+      tam: (usarFaisca ? 0.1 : 0.16) * (0.9 + Math.random() * 0.3) * escala,
       modo: "faisca",
-      folha,
+      folha: usarFaisca ? faisca : folha,
       drag: 0.88,
     });
   }

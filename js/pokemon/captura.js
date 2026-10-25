@@ -23,6 +23,12 @@ import {
   parametrosArremessoBola,
 } from "../jogo/rangedFisica.js";
 import { selvagensAtivos } from "./populacao.js";
+import {
+  tocarBallDrop,
+  tocarBallShake,
+  tocarObtido,
+  tocarThrow,
+} from "../jogo/som/mundoSfx.js";
 import { ajustarItem, partyCheia, pokemonDeployado, receberCaptura } from "./party.js";
 
 /** @deprecated use BOLA_PICKUP / alcance via rangedFisica — mantido p/ HUD legado */
@@ -248,6 +254,7 @@ export function arremessarBola(corpo, opts = {}) {
   if (!def || semLugarParaCaptura()) return false;
   if (!gastar(item.tipo, item.key, 1)) return false;
   avisar();
+  tocarThrow(corpo);
 
   const camera3d = opts.camera3d || cameraMira;
   const cargaTiro = Math.min(1, Math.max(0, Number(opts.carga) || 0));
@@ -328,6 +335,7 @@ function aterrissarMiss(bola) {
   bola.vx = 0;
   bola.vy = 0;
   bola.vz = 0;
+  tocarBallDrop(bola);
   if (podeRetornar(bola, true)) {
     iniciarRetorno(bola);
     return;
@@ -351,6 +359,7 @@ function selar(bola, alvo) {
   bola.x = alvo.x;
   bola.y = alvo.y;
   bola.z = alvo.z + 0.9;
+  tocarBallDrop(bola);
 }
 
 function tickBola(bola, corpo, dt, efeitos) {
@@ -410,16 +419,18 @@ function tickBola(bola, corpo, dt, efeitos) {
     const passo = Math.floor(bola.faseT / 0.55);
     if (passo > bola.tremor) {
       bola.tremor = passo;
+      tocarBallShake(bola);
       estourar(bola.x, bola.y, bola.z, "#fde68a", 8, true);
     }
     const some = bola.faseT < 0.4 ? 1 - bola.faseT / 0.4 : 0;
     if (bola.alvo) bola.alvo._sumindo = some;
     if (bola.tremor >= bola.tremores && bola.faseT >= bola.tremores * 0.55) {
       if (bola.sucesso) {
-        let ok = !partyCheia() && !!receberCaptura(bola.alvo);
+        const ballKey = bola.ballKey || "pokeball";
+        let ok = !partyCheia() && !!receberCaptura(bola.alvo, ballKey);
         let texto = "pego!";
         if (!ok) {
-          ok = guardarCapturaNaCaixa(bola.alvo);
+          ok = guardarCapturaNaCaixa(bola.alvo, ballKey);
           texto = ok ? "enviado ao PC" : "PC cheio";
         }
         bola.alvo.capturado = true;
@@ -428,6 +439,7 @@ function tickBola(bola, corpo, dt, efeitos) {
         estourar(bola.x, bola.y, bola.z, "#facc15", 18, true);
         estourar(bola.x, bola.y, bola.z, "#4ade80", 10, true);
         efeitos.flutuar(bola.alvo, texto, ok ? "#4ade80" : "#fca5a5");
+        if (ok) tocarObtido(bola);
         if (!ok) {
           bola.alvo.capturado = false;
           bola.alvo.preso = false;

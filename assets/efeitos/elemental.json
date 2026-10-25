@@ -1,0 +1,524 @@
+{
+  "versao": 2,
+  "origem": "Elemental Free 1.2.6 Desktop",
+  "quentes": [
+    "Fire_01",
+    "Fire_02",
+    "Flame_01",
+    "Heat_01",
+    "Explode_01",
+    "Explode_02",
+    "Burst_01",
+    "Burst_02",
+    "Ray_01",
+    "Ray_02",
+    "Ray_03",
+    "Ring_01",
+    "Ring_02",
+    "Sparkle_01",
+    "Sparkle_02",
+    "Thunder_01",
+    "Thunder_02",
+    "Thunder_03",
+    "Glow_01",
+    "Smoke_01",
+    "Smoke_02",
+    "Stream_01",
+    "Water_01",
+    "Water_02",
+    "Ice_01",
+    "Wind_01"
+  ],
+  "porTipo": {
+    "fire": {
+      "rastro": "Flame_01",
+      "impacto": "Explode_01",
+      "anel": "Ring_01",
+      "faisca": "Sparkle_01"
+    },
+    "water": {
+      "rastro": "Stream_01",
+      "impacto": "Water_01",
+      "anel": "Ring_02",
+      "faisca": "Sparkle_02"
+    },
+    "electric": {
+      "rastro": "Thunder_01",
+      "impacto": "Thunder_02",
+      "anel": "Ring_01",
+      "faisca": "Sparkle_01"
+    },
+    "ice": {
+      "rastro": "Ice_01",
+      "impacto": "Ice_01",
+      "anel": "Ring_03",
+      "faisca": "SnowFlake_01"
+    },
+    "grass": {
+      "rastro": "Glow_01",
+      "impacto": "Burst_01",
+      "anel": "Ring_02",
+      "faisca": "Sparkle_02"
+    },
+    "normal": {
+      "rastro": "Glow_01",
+      "impacto": "Burst_01",
+      "anel": "Ring_01",
+      "faisca": "Sparkle_01"
+    },
+    "psychic": {
+      "rastro": "Ray_02",
+      "impacto": "Glow_01",
+      "anel": "Ring_02",
+      "faisca": "Sparkle_03"
+    },
+    "flying": {
+      "rastro": "Wind_01",
+      "impacto": "Burst_02",
+      "anel": "Ring_01",
+      "faisca": "Sparkle_01"
+    }
+  },
+  "texturas": {
+    "Burst_01": {
+      "id": "Burst_01",
+      "path": "assets/effects/elemental/additive/Burst_01.png",
+      "blend": "additive",
+      "tam": 0.45,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Burst_02": {
+      "id": "Burst_02",
+      "path": "assets/effects/elemental/additive/Burst_02.png",
+      "blend": "additive",
+      "tam": 0.45,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Crack_01": {
+      "id": "Crack_01",
+      "path": "assets/effects/elemental/additive/Crack_01.png",
+      "blend": "additive",
+      "tam": 0.3,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Explode_01": {
+      "id": "Explode_01",
+      "path": "assets/effects/elemental/additive/Explode_01.png",
+      "blend": "additive",
+      "tam": 0.45,
+      "cols": 2,
+      "rows": 2,
+      "frames": 4,
+      "anim": "flipbook"
+    },
+    "Explode_02": {
+      "id": "Explode_02",
+      "path": "assets/effects/elemental/additive/Explode_02.png",
+      "blend": "additive",
+      "tam": 0.45,
+      "cols": 2,
+      "rows": 2,
+      "frames": 4,
+      "anim": "flipbook"
+    },
+    "Fire_01": {
+      "id": "Fire_01",
+      "path": "assets/effects/elemental/additive/Fire_01.png",
+      "blend": "additive",
+      "tam": 0.32,
+      "cols": 2,
+      "rows": 2,
+      "frames": 4,
+      "anim": "flipbook"
+    },
+    "Fire_02": {
+      "id": "Fire_02",
+      "path": "assets/effects/elemental/additive/Fire_02.png",
+      "blend": "additive",
+      "tam": 0.32,
+      "cols": 2,
+      "rows": 2,
+      "frames": 4,
+      "anim": "flipbook"
+    },
+    "Flagment_01": {
+      "id": "Flagment_01",
+      "path": "assets/effects/elemental/additive/Flagment_01.png",
+      "blend": "additive",
+      "tam": 0.3,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Flame_01": {
+      "id": "Flame_01",
+      "path": "assets/effects/elemental/additive/Flame_01.png",
+      "blend": "additive",
+      "tam": 0.32,
+      "cols": 2,
+      "rows": 2,
+      "frames": 4,
+      "anim": "flipbook"
+    },
+    "Fog_01": {
+      "id": "Fog_01",
+      "path": "assets/effects/elemental/additive/Fog_01.png",
+      "blend": "additive",
+      "tam": 0.4,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Glow_01": {
+      "id": "Glow_01",
+      "path": "assets/effects/elemental/additive/Glow_01.png",
+      "blend": "additive",
+      "tam": 0.32,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Heat_01": {
+      "id": "Heat_01",
+      "path": "assets/effects/elemental/additive/Heat_01.png",
+      "blend": "additive",
+      "tam": 0.32,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Lava_01": {
+      "id": "Lava_01",
+      "path": "assets/effects/elemental/additive/Lava_01.png",
+      "blend": "additive",
+      "tam": 0.45,
+      "cols": 2,
+      "rows": 2,
+      "frames": 4,
+      "anim": "flipbook"
+    },
+    "Ray_01": {
+      "id": "Ray_01",
+      "path": "assets/effects/elemental/additive/Ray_01.png",
+      "blend": "additive",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Ray_02": {
+      "id": "Ray_02",
+      "path": "assets/effects/elemental/additive/Ray_02.png",
+      "blend": "additive",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Ray_03": {
+      "id": "Ray_03",
+      "path": "assets/effects/elemental/additive/Ray_03.png",
+      "blend": "additive",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Ray_04": {
+      "id": "Ray_04",
+      "path": "assets/effects/elemental/additive/Ray_04.png",
+      "blend": "additive",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Ring_01": {
+      "id": "Ring_01",
+      "path": "assets/effects/elemental/additive/Ring_01.png",
+      "blend": "additive",
+      "tam": 0.45,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Ring_02": {
+      "id": "Ring_02",
+      "path": "assets/effects/elemental/additive/Ring_02.png",
+      "blend": "additive",
+      "tam": 0.45,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Ring_03": {
+      "id": "Ring_03",
+      "path": "assets/effects/elemental/additive/Ring_03.png",
+      "blend": "additive",
+      "tam": 0.45,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "SnowFlake_01": {
+      "id": "SnowFlake_01",
+      "path": "assets/effects/elemental/additive/SnowFlake_01.png",
+      "blend": "additive",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Sparkle_01": {
+      "id": "Sparkle_01",
+      "path": "assets/effects/elemental/additive/Sparkle_01.png",
+      "blend": "additive",
+      "tam": 0.32,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Sparkle_02": {
+      "id": "Sparkle_02",
+      "path": "assets/effects/elemental/additive/Sparkle_02.png",
+      "blend": "additive",
+      "tam": 0.32,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Sparkle_03": {
+      "id": "Sparkle_03",
+      "path": "assets/effects/elemental/additive/Sparkle_03.png",
+      "blend": "additive",
+      "tam": 0.32,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Thunder_01": {
+      "id": "Thunder_01",
+      "path": "assets/effects/elemental/additive/Thunder_01.png",
+      "blend": "additive",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 4,
+      "frames": 4,
+      "anim": "variacao"
+    },
+    "Thunder_02": {
+      "id": "Thunder_02",
+      "path": "assets/effects/elemental/additive/Thunder_02.png",
+      "blend": "additive",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 4,
+      "frames": 4,
+      "anim": "variacao"
+    },
+    "Thunder_03": {
+      "id": "Thunder_03",
+      "path": "assets/effects/elemental/additive/Thunder_03.png",
+      "blend": "additive",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 4,
+      "frames": 4,
+      "anim": "variacao"
+    },
+    "Wind_01": {
+      "id": "Wind_01",
+      "path": "assets/effects/elemental/additive/Wind_01.png",
+      "blend": "additive",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Cloud_01": {
+      "id": "Cloud_01",
+      "path": "assets/effects/elemental/alpha/Cloud_01.png",
+      "blend": "alpha",
+      "tam": 0.4,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "DarkGlow_01": {
+      "id": "DarkGlow_01",
+      "path": "assets/effects/elemental/alpha/DarkGlow_01.png",
+      "blend": "alpha",
+      "tam": 0.32,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Dust_01": {
+      "id": "Dust_01",
+      "path": "assets/effects/elemental/alpha/Dust_01.png",
+      "blend": "alpha",
+      "tam": 0.4,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Ice_01": {
+      "id": "Ice_01",
+      "path": "assets/effects/elemental/alpha/Ice_01.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "MudRipple_01": {
+      "id": "MudRipple_01",
+      "path": "assets/effects/elemental/alpha/MudRipple_01.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Mud_01": {
+      "id": "Mud_01",
+      "path": "assets/effects/elemental/alpha/Mud_01.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Raindrop_01": {
+      "id": "Raindrop_01",
+      "path": "assets/effects/elemental/alpha/Raindrop_01.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "RainRipple_01": {
+      "id": "RainRipple_01",
+      "path": "assets/effects/elemental/alpha/RainRipple_01.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "RainSplash_01": {
+      "id": "RainSplash_01",
+      "path": "assets/effects/elemental/alpha/RainSplash_01.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Rock_01": {
+      "id": "Rock_01",
+      "path": "assets/effects/elemental/alpha/Rock_01.png",
+      "blend": "alpha",
+      "tam": 0.3,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Smoke_01": {
+      "id": "Smoke_01",
+      "path": "assets/effects/elemental/alpha/Smoke_01.png",
+      "blend": "alpha",
+      "tam": 0.4,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Smoke_02": {
+      "id": "Smoke_02",
+      "path": "assets/effects/elemental/alpha/Smoke_02.png",
+      "blend": "alpha",
+      "tam": 0.4,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "SnowFloor_01": {
+      "id": "SnowFloor_01",
+      "path": "assets/effects/elemental/alpha/SnowFloor_01.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Stream_01": {
+      "id": "Stream_01",
+      "path": "assets/effects/elemental/alpha/Stream_01.png",
+      "blend": "alpha",
+      "tam": 0.55,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Water_01": {
+      "id": "Water_01",
+      "path": "assets/effects/elemental/alpha/Water_01.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    },
+    "Water_02": {
+      "id": "Water_02",
+      "path": "assets/effects/elemental/alpha/Water_02.png",
+      "blend": "alpha",
+      "tam": 0.35,
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "anim": "estatico"
+    }
+  }
+}

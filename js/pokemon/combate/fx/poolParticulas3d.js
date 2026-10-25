@@ -1,14 +1,23 @@
 /**
  * Pool fixo de partículas de combate (CPU) + GPU:
  * - Points (círculo suave) no geral
- * - InstancedMesh (atlas flamethrower) só no fogo
+ * - InstancedMesh (atlas flamethrower) no fogo BP
+ * - InstancedMesh por textura Elemental Free (`elf:Fire_01` …)
  */
 import * as THREE from "three";
 import { ALTURA_BLOCO } from "../../../config.js";
+import {
+  carregarCatalogoElemental,
+  folhaElfDoTipo,
+  frameElemental,
+  layoutElemental,
+  texturaElemental,
+} from "../../../efeitos/elemental.js";
 import { carregarFolhasGolpe, FOLHAS, texturaFolha } from "../folhasGolpe.js";
 
 export const CAP_FX = 512;
 export const CAP_ARCOS = 48;
+export const CAP_ELF_PAGINA = 128;
 
 function framesChama() {
   return FOLHAS.flamethrower?.frames || FOLHAS["flamethrower"]?.frames || 4;
@@ -34,11 +43,23 @@ for (let i = 0; i < CAP_FX; i++) {
     b: 1,
     tam: 0.18,
     modo: "faisca", // faisca | poeira | estrela | po
-    folha: "", // "" | "chama"
+    folha: "", // "" | "chama" | "elf:Fire_01"
+    frame: 0,
     drag: 0.92,
     grav: 0,
   };
 }
+
+/**
+ * @typedef {{
+ *   mesh: THREE.InstancedMesh,
+ *   mat: THREE.ShaderMaterial,
+ *   col: Float32Array,
+ *   alpha: Float32Array,
+ *   frame: Float32Array,
+ *   chave: string
+ * }} PaginaElf
+ */
 
 /**
  * @type {{
@@ -49,11 +70,73 @@ for (let i = 0; i < CAP_FX; i++) {
  *   colC: Float32Array,
  *   frame: Float32Array,
  *   matChama: THREE.ShaderMaterial,
+ *   elf: Map<string, PaginaElf>,
  *   dummy: THREE.Object3D,
  *   cena: THREE.Scene
  * } | null}
  */
 let gpu = null;
+
+/** @type {Map<string, THREE.Texture>} */
+const texElf = new Map();
+/** @type {Set<string>} */
+const pedindoElf = new Set();
+
+const FRAG_ELF = /* glsl */ `
+uniform sampler2D map;
+uniform float uCols;
+uniform float uRows;
+varying vec2 vUv;
+varying vec3 vColor;
+varying float vAlpha;
+varying float vFrame;
+
+void main() {
+  float cols = max(1.0, uCols);
+  float rows = max(1.0, uRows);
+  float frames = cols * rows;
+  float f = clamp(floor(vFrame + 1e-4), 0.0, frames - 1.0);
+  float col = mod(f, cols);
+  float row = floor(f / cols);
+  // Unity / folha: linha 0 = topo
+  float rowUv = (rows - 1.0) - row;
+  vec2 uv = vec2((col + vUv.x) / cols, (rowUv + vUv.y) / rows);
+  vec4 tex = texture2D(map, uv);
+  float a = max(tex.a, max(tex.r, max(tex.g, tex.b))) * vAlpha;
+  if (a < 0.04) discard;
+  gl_FragColor = vec4(tex.rgb * vColor, a);
+}
+`;
+
+const VERT_ELF = /* glsl */ `
+attribute vec3 aColor;
+attribute float aAlpha;
+attribute float aFrame;
+varying vec2 vUv;
+varying vec3 vColor;
+varying float vAlpha;
+varying float vFrame;
+
+void main() {
+  vUv = uv;
+  vColor = aColor;
+  vAlpha = aAlpha;
+  vFrame = aFrame;
+  #ifdef USE_INSTANCING
+  vec3 mundo = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  float sx = length(vec3(instanceMatrix[0][0], instanceMatrix[1][0], instanceMatrix[2][0]));
+  float sy = length(vec3(instanceMatrix[0][1], instanceMatrix[1][1], instanceMatrix[2][1]));
+  #else
+  vec3 mundo = vec3(0.0);
+  float sx = 1.0;
+  float sy = 1.0;
+  #endif
+  vec3 direita = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+  vec3 cima = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+  vec3 pos = mundo + direita * (position.x * sx) + cima * (position.y * sy);
+  gl_Position = projectionMatrix * viewMatrix * vec4(pos, 1.0);
+}
+`;
 
 /** @type {THREE.Sprite[]} */
 const arcos = [];
@@ -108,10 +191,95 @@ void main() {
 }
 `;
 
-/** @param {string|{id?:string}|null|undefined} elOuId */
-export function folhaParticula(elOuId) {
+/**
+ * Folha GPU para partículas do elemento.
+ * Fire mantém atlas BP `chama`; demais tipos usam Elemental Free.
+ * @param {string|{id?:string}|null|undefined} elOuId
+ * @param {"rastro"|"impacto"|"anel"|"faisca"} [papel]
+ */
+export function folhaParticula(elOuId, papel = "faisca") {
   const id = typeof elOuId === "string" ? elOuId : elOuId?.id;
-  return id === "fire" ? "chama" : "";
+  if (!id) return "";
+  if (id === "fire" && (papel === "faisca" || papel === "rastro")) return "chama";
+  return folhaElfDoTipo(id, papel);
+}
+
+function chaveElf(folha) {
+  if (!folha || typeof folha !== "string") return "";
+  if (folha.startsWith("elf:")) return folha.slice(4);
+  return "";
+}
+
+function pedirTexElf(id) {
+  if (texElf.has(id)) return texElf.get(id);
+  const meta = texturaElemental(id);
+  if (!meta?.path || pedindoElf.has(id) || typeof Image === "undefined") return null;
+  pedindoElf.add(id);
+  const img = new Image();
+  img.onload = () => {
+    const tex = new THREE.Texture(img);
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.generateMipmaps = true;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    texElf.set(id, tex);
+    if (gpu?.elf?.has(id)) {
+      const pag = gpu.elf.get(id);
+      pag.mat.uniforms.map.value = tex;
+      pag.mat.needsUpdate = true;
+    }
+  };
+  img.src = meta.path;
+  return null;
+}
+
+/**
+ * @param {string} id
+ * @returns {PaginaElf | null}
+ */
+function garantirPaginaElf(id) {
+  if (!gpu || !id) return null;
+  let pag = gpu.elf.get(id);
+  if (pag) {
+    pedirTexElf(id);
+    return pag;
+  }
+  const meta = texturaElemental(id);
+  if (!meta) return null;
+  const tex = pedirTexElf(id) || texturaSuave();
+  const lay = layoutElemental(id);
+  const geo = new THREE.PlaneGeometry(1, 1);
+  const col = new Float32Array(CAP_ELF_PAGINA * 3);
+  const alpha = new Float32Array(CAP_ELF_PAGINA);
+  const frame = new Float32Array(CAP_ELF_PAGINA);
+  geo.setAttribute("aColor", new THREE.InstancedBufferAttribute(col, 3));
+  geo.setAttribute("aAlpha", new THREE.InstancedBufferAttribute(alpha, 1));
+  geo.setAttribute("aFrame", new THREE.InstancedBufferAttribute(frame, 1));
+  const additive = meta.blend !== "alpha";
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: tex },
+      uCols: { value: lay.cols },
+      uRows: { value: lay.rows },
+    },
+    vertexShader: VERT_ELF,
+    fragmentShader: FRAG_ELF,
+    transparent: true,
+    depthWrite: false,
+    blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  });
+  const mesh = new THREE.InstancedMesh(geo, mat, CAP_ELF_PAGINA);
+  mesh.count = 0;
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 8;
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  gpu.cena.add(mesh);
+  pag = { mesh, mat, col, alpha, frame, chave: id };
+  gpu.elf.set(id, pag);
+  return pag;
 }
 
 function hexParaRgb(hex) {
@@ -232,7 +400,7 @@ function ocupar() {
  * @param {number} [o.vida]
  * @param {number} [o.tam]
  * @param {string} [o.modo]
- * @param {string} [o.folha] "" | "chama"
+ * @param {string} [o.folha] "" | "chama" | "elf:Fire_01"
  * @param {number} [o.grav]
  * @param {number} [o.drag]
  */
@@ -253,7 +421,21 @@ export function emitir(o) {
   p.b = rgb.b;
   p.tam = o.tam > 0 ? o.tam : 0.16;
   p.modo = o.modo || "faisca";
-  p.folha = o.folha === "chama" ? "chama" : "";
+  const f = o.folha || "";
+  if (f === "chama" || f.startsWith("elf:")) p.folha = f;
+  else p.folha = "";
+  if (p.folha.startsWith("elf:")) {
+    const id = p.folha.slice(4);
+    const lay = layoutElemental(id);
+    p.frame =
+      o.frame != null
+        ? o.frame
+        : lay.anim === "variacao"
+          ? Math.floor(Math.random() * lay.frames)
+          : 0;
+  } else {
+    p.frame = o.frame || 0;
+  }
   p.grav = o.grav || 0;
   p.drag = o.drag > 0 ? o.drag : 0.92;
   return p;
@@ -302,11 +484,17 @@ function liberarGpu() {
   /** @type {THREE.Material} */ (gpu.pontos.material).dispose();
   gpu.chamas.geometry.dispose();
   gpu.matChama.dispose();
+  for (const pag of gpu.elf.values()) {
+    gpu.cena.remove(pag.mesh);
+    pag.mesh.geometry.dispose();
+    pag.mat.dispose();
+  }
   gpu = null;
 }
 
 /** @param {THREE.Scene} cena */
 export function ligarPoolGpu(cena) {
+  carregarCatalogoElemental();
   carregarFolhasGolpe();
   garantirTexturaChama();
   if (gpu?.cena === cena && gpu.pontos?.parent === cena) {
@@ -359,6 +547,7 @@ export function ligarPoolGpu(cena) {
     colC,
     frame,
     matChama,
+    elf: new Map(),
     dummy: new THREE.Object3D(),
     cena,
   };
@@ -399,12 +588,16 @@ export function desligarPoolGpu() {
 export function sincronizarPoolGpu(distMax = 0, foco = null) {
   if (!gpu) return;
   atualizarMapaChama();
-  const { pontos, pos, colP, chamas, colC, frame, dummy, matChama } = gpu;
+  const { pontos, pos, colP, chamas, colC, frame, dummy, matChama, elf } = gpu;
   const frames = matChama.uniforms.uFrames.value || 1;
   const d2max = distMax > 0 ? distMax * distMax : 0;
   let nP = 0;
   let nC = 0;
   let tamMedio = 0;
+  /** @type {Map<string, number>} */
+  const contElf = new Map();
+
+  for (const pag of elf.values()) pag.mesh.count = 0;
 
   for (let i = 0; i < CAP_FX; i++) {
     const p = pool[i];
@@ -437,6 +630,31 @@ export function sincronizarPoolGpu(distMax = 0, foco = null) {
       continue;
     }
 
+    const elfId = chaveElf(p.folha);
+    if (elfId) {
+      const pag = garantirPaginaElf(elfId);
+      if (pag) {
+        const idx = contElf.get(elfId) || 0;
+        if (idx < CAP_ELF_PAGINA) {
+          const meta = texturaElemental(elfId);
+          const lado = Math.max(0.12, p.tam * (meta?.tam ? 1.4 : 1.2) * (0.85 + t * 0.5));
+          dummy.position.set(p.x, y, p.y);
+          dummy.quaternion.identity();
+          dummy.scale.set(lado, lado, 1);
+          dummy.updateMatrix();
+          pag.mesh.setMatrixAt(idx, dummy.matrix);
+          const o = idx * 3;
+          pag.col[o] = p.r * fade;
+          pag.col[o + 1] = p.g * fade;
+          pag.col[o + 2] = p.b * fade;
+          pag.alpha[idx] = fade;
+          pag.frame[idx] = frameElemental(elfId, p.idade, p.vida, p.frame);
+          contElf.set(elfId, idx + 1);
+          continue;
+        }
+      }
+    }
+
     const o = nP * 3;
     pos[o] = p.x;
     pos[o + 1] = y;
@@ -461,6 +679,19 @@ export function sincronizarPoolGpu(distMax = 0, foco = null) {
     true;
   /** @type {THREE.InstancedBufferAttribute} */ (chamas.geometry.getAttribute("aFrame")).needsUpdate =
     true;
+
+  for (const [id, n] of contElf) {
+    const pag = elf.get(id);
+    if (!pag) continue;
+    pag.mesh.count = n;
+    pag.mesh.instanceMatrix.needsUpdate = true;
+    /** @type {THREE.InstancedBufferAttribute} */ (pag.mesh.geometry.getAttribute("aColor")).needsUpdate =
+      true;
+    /** @type {THREE.InstancedBufferAttribute} */ (pag.mesh.geometry.getAttribute("aAlpha")).needsUpdate =
+      true;
+    /** @type {THREE.InstancedBufferAttribute} */ (pag.mesh.geometry.getAttribute("aFrame")).needsUpdate =
+      true;
+  }
 }
 
 export function spritesArco() {

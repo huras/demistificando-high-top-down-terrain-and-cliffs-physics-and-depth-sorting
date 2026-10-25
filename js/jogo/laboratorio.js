@@ -20,7 +20,7 @@ export function executarAlvoLaboratorio(alvo) {
     if (curaOcupada()) return;
     curarParty();
     marcarQuest("centro");
-    iniciarCuraMaquina(listaParty().length);
+    iniciarCuraMaquina(listaParty().map((m) => m.ballKey || "pokeball"));
     tocarCuraCentro();
     estado.itemGet = "A máquina do Centro curou o time.";
     avisar();

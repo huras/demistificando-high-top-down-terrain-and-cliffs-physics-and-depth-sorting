@@ -9,8 +9,20 @@ import { BASE_PROPS, defDoProp, tintDaCama } from "../../mundo/cidade/catalogoPr
 import { aplicarLuzCidade } from "./luzes/mapaChao.js";
 import { aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
 import { aplicarTintCorreio } from "./props/tintCorreio.js";
-import { SLOTS_CURA } from "../../jogo/maquinaCura.js";
+import {
+  carregarSlotsCura,
+  posicaoSlotCura,
+  QTD_SLOTS_CURA,
+  slotsCuraAtuais,
+} from "../../jogo/slotsCuraConfig.js";
+import { BOLA_DIAMETRO } from "../../config.js";
+import { devolverInstanciaBola, obterInstanciaBola } from "../../pokemon/malhaBola.js";
 import { aplicarEscalaProp } from "./escalaVertical.js";
+
+/** Fração do menor eixo XZ (mundo) → diâmetro da bola no slot. */
+const FRACAO_BOLA_CURA = 0.28;
+const DIAMETRO_BOLA_CURA_MIN = 0.35;
+const DIAMETRO_BOLA_CURA_MAX = 0.85;
 
 const cache = new Map();
 const pedidos = new Map();
@@ -19,6 +31,37 @@ const _pos = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 const _esc = new THREE.Vector3(1, 1, 1);
 const _cor = new THREE.Color();
+const _caixaBola = new THREE.Box3();
+const _tamBola = new THREE.Vector3();
+const _escalaMundo = new THREE.Vector3();
+
+/** Diâmetro das bolas a partir do AABB em espaço de mundo. */
+export function diametroBolaCuraPara(raiz) {
+  if (!raiz) return DIAMETRO_BOLA_CURA_MIN;
+  raiz.updateMatrixWorld(true);
+  _caixaBola.setFromObject(raiz);
+  if (_caixaBola.isEmpty()) return DIAMETRO_BOLA_CURA_MIN;
+  _caixaBola.getSize(_tamBola);
+  const base = Math.min(
+    Number.isFinite(_tamBola.x) ? _tamBola.x : 1,
+    Number.isFinite(_tamBola.z) ? _tamBola.z : 1,
+  );
+  const d = Math.max(0.25, base) * FRACAO_BOLA_CURA;
+  return Math.max(DIAMETRO_BOLA_CURA_MIN, Math.min(DIAMETRO_BOLA_CURA_MAX, d));
+}
+
+/**
+ * O prop já tem scale no grupo; sem isso, offsets/bolas ficam em unidades
+ * do OBJ cru e parecem formigas na máquina.
+ */
+function compensarEscalaDoProp(suporte, raiz) {
+  raiz.updateMatrixWorld(true);
+  raiz.getWorldScale(_escalaMundo);
+  const ix = Math.abs(_escalaMundo.x) > 1e-8 ? 1 / _escalaMundo.x : 1;
+  const iy = Math.abs(_escalaMundo.y) > 1e-8 ? 1 / _escalaMundo.y : 1;
+  const iz = Math.abs(_escalaMundo.z) > 1e-8 ? 1 / _escalaMundo.z : 1;
+  suporte.scale.set(ix, iy, iz);
+}
 
 function consertarNormais(geo) {
   const normal = geo.getAttribute("normal");
@@ -245,7 +288,9 @@ export function carregarMoldesProps(ids) {
     visto.add(id);
     unicos.push(id);
   }
-  return Promise.all(unicos.map((id) => carregarMoldeProp(id))).then(() => cache);
+  return Promise.all([carregarSlotsCura(), ...unicos.map((id) => carregarMoldeProp(id))]).then(
+    () => cache,
+  );
 }
 
 /**
@@ -324,37 +369,108 @@ export function anexarCorreiosInstanced(grupo, pontos) {
   return raiz;
 }
 
-/** Bolas da máquina de cura grudadas no topo da malha 3D. */
-export function criarBolasCuraNaMalha(raiz) {
-  const bolas = [];
-  const geo = new THREE.SphereGeometry(0.16, 10, 8);
-  const faixaGeo = new THREE.CylinderGeometry(0.165, 0.165, 0.045, 10);
+function placeholderBolaCura(diametro) {
+  const r = Math.max(0.08, diametro * 0.5);
+  const geo = new THREE.SphereGeometry(r, 10, 8);
+  const faixaGeo = new THREE.CylinderGeometry(r * 1.03, r * 1.03, r * 0.28, 10);
   const faixa = new THREE.MeshLambertMaterial({ color: 0xef4444 });
   aplicarLuzCidade(faixa);
+  const mat = new THREE.MeshLambertMaterial({
+    color: 0xf8fafc,
+    emissive: 0xb8fff0,
+    emissiveIntensity: 0,
+  });
+  aplicarLuzCidade(mat);
+  const grupo = new THREE.Group();
+  grupo.add(new THREE.Mesh(geo, mat));
+  const cinto = new THREE.Mesh(faixaGeo, faixa);
+  cinto.rotation.z = Math.PI / 2;
+  grupo.add(cinto);
+  grupo.userData.mat = mat;
+  grupo.userData.placeholder = true;
+  return grupo;
+}
+
+/**
+ * Troca o visual do slot pela malha Collada da ballKey (async).
+ * A instância já vem em BOLA_DIAMETRO; multiplicamos até o diâmetro-alvo da máquina.
+ * @param {THREE.Object3D} bola
+ * @param {string} ballKey
+ */
+export function garantirVisualBolaCura(bola, ballKey) {
+  const chave = ballKey || "pokeball";
+  if (!bola || (bola.userData.ballKey === chave && bola.userData.malha)) return;
+  if (bola.userData.pedidoKey === chave) return;
+  bola.userData.pedidoKey = chave;
+  const alvo = bola.userData.diametroAlvo || DIAMETRO_BOLA_CURA_MIN;
+  obterInstanciaBola(chave).then((malha) => {
+    if (!malha || bola.userData.pedidoKey !== chave) {
+      if (malha) devolverInstanciaBola(malha);
+      return;
+    }
+    if (bola.userData.malha) {
+      devolverInstanciaBola(bola.userData.malha);
+      bola.userData.malha = null;
+    }
+    while (bola.children.length) bola.remove(bola.children[0]);
+    bola.userData.placeholderMesh = null;
+    // Clone/pool já vem em BOLA_DIAMETRO; guarda a base pra não acumular no reuso.
+    if (malha.userData.escalaBase == null) malha.userData.escalaBase = malha.scale.x || 1;
+    malha.scale.setScalar(malha.userData.escalaBase * (alvo / BOLA_DIAMETRO));
+    bola.add(malha);
+    bola.userData.malha = malha;
+    bola.userData.ballKey = chave;
+    bola.userData.mat = null;
+    bola.userData.placeholder = false;
+  });
+}
+
+/**
+ * Layout em unidades de mundo (alturaAlvo ≈ metros do prop).
+ * Compensa a scale do grupo do OBJ pra slider 1.0 ≈ 1 unidade visível.
+ */
+export function aplicarPoseBolasCura(suporte, layout, bolas) {
+  if (!suporte) return;
+  const raiz = suporte.parent;
+  if (raiz) compensarEscalaDoProp(suporte, raiz);
+  const sx = suporte.scale.x;
+  const sy = suporte.scale.y;
+  const sz = suporte.scale.z;
+  const sp = layout?.suporte || { x: 0, y: 1.35, z: 0.15 };
+  // position do suporte ainda é espaço local do prop → divide pela scale do pai.
+  suporte.position.set(sp.x * sx, sp.y * sy, sp.z * sz);
+  if (!bolas?.length) return;
+  const slots = layout?.slots || [];
+  for (let i = 0; i < bolas.length; i++) {
+    const pos = posicaoSlotCura(slots[i]);
+    const bola = bolas[i];
+    bola.userData.baseY = pos.y;
+    bola.position.set(pos.x, pos.y, pos.z);
+  }
+}
+
+/** Bolas da máquina de cura grudadas no topo da malha 3D. */
+export function criarBolasCuraNaMalha(raiz) {
+  const layout = slotsCuraAtuais();
+  const diametro = diametroBolaCuraPara(raiz);
+  const bolas = [];
   const suporte = new THREE.Group();
   suporte.name = "bolas-cura";
-  suporte.position.set(0, 1.17, 0.08);
   raiz.add(suporte);
-  for (let i = 0; i < SLOTS_CURA.length; i++) {
-    const slot = SLOTS_CURA[i];
-    const mat = new THREE.MeshLambertMaterial({
-      color: 0xf8fafc,
-      emissive: 0xb8fff0,
-      emissiveIntensity: 0,
-    });
-    aplicarLuzCidade(mat);
+  for (let i = 0; i < QTD_SLOTS_CURA; i++) {
     const bola = new THREE.Group();
-    bola.add(new THREE.Mesh(geo, mat));
-    const cinto = new THREE.Mesh(faixaGeo, faixa);
-    cinto.rotation.z = Math.PI / 2;
-    bola.add(cinto);
-    const baseY = -slot.y;
-    bola.position.set(slot.x, baseY, 0);
-    bola.userData.baseY = baseY;
-    bola.userData.mat = mat;
+    const ph = placeholderBolaCura(diametro);
+    bola.add(ph);
+    bola.userData.placeholderMesh = ph;
+    bola.userData.mat = ph.userData.mat;
+    bola.userData.placeholder = true;
+    bola.userData.diametroAlvo = diametro;
+    bola.userData.ballKey = null;
     bola.visible = false;
     suporte.add(bola);
     bolas.push(bola);
+    garantirVisualBolaCura(bola, "pokeball");
   }
+  aplicarPoseBolasCura(suporte, layout, bolas);
   return bolas;
 }

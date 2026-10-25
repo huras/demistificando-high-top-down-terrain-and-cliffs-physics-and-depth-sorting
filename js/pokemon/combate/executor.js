@@ -33,6 +33,7 @@ import { agendarDesmaio, marcarPose, tempoClipGolpe } from "../sprites.js";
 import { bloqueioNoTrecho, cortaVisada } from "../../combate/arenas.js";
 import { RAIO_PROJETIL } from "../ia/constantes.js";
 import { tocarGrito } from "../../jogo/som/gritos.js";
+import { tocarAcerto, tocarErro, tocarNocaute } from "../../jogo/som/combateSfx.js";
 import { acertaClassico } from "./acertoClassico.js";
 import { marcarEstagioAte } from "./estagios.js";
 import { gastarPp, podeGastarPp } from "../pp.js";
@@ -136,6 +137,7 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
   }
   if (!travado.acertou) {
     efeitos.flutuar(alvo, "errou", "#cbd5e1");
+    tocarErro(alvo);
     notar(efeitos, { tipo: "erro", ator: atacante, alvo });
     return;
   }
@@ -153,6 +155,10 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
   marcarPose(alvo, "Hurt", agora);
   const recuo = iniciarRecuo(alvo, atacante, dano, agora);
   efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
+  tocarAcerto(alvo, efet, {
+    dano,
+    basico: golpeEhBasico(atacante, defGolpe),
+  });
   if (efeitos.aoImpacto) efeitos.aoImpacto(alvo, "", efet);
   notar(efeitos, {
     tipo: "dano",
@@ -212,6 +218,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
   }
   if (errouGolpe(acerto)) {
     efeitos.flutuar(alvo, "errou", "#cbd5e1");
+    tocarErro(alvo);
     notar(efeitos, { tipo: "erro", ator: atacante, alvo });
     return;
   }
@@ -235,6 +242,11 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
   marcarPose(alvo, "Hurt", agora);
   const recuo = iniciarRecuo(alvo, atacante, dano, agora);
   efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
+  const def = defGolpe || atacante?.golpeSlot?.def;
+  tocarAcerto(alvo, efet, {
+    dano,
+    basico: golpeEhBasico(atacante, def),
+  });
   if (efeitos.aoImpacto) efeitos.aoImpacto(alvo, tipo, efet);
   notar(efeitos, {
     tipo: "dano",
@@ -244,7 +256,6 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     recuo: recuo.tempo,
     dist: recuo.dist,
   });
-  const def = defGolpe || atacante?.golpeSlot?.def;
   if (alvo.hp > 0 && def?.ailment) {
     aplicarAilmentGolpe(def, alvo, efeitos, {
       secundario: true,
@@ -308,9 +319,19 @@ function subirFuria(alvo, efeitos, agora) {
   notar(efeitos, { tipo: "ataque", alvo, estagio: alvo.estagioAtk });
 }
 
+function golpeEhBasico(atacante, def) {
+  const key = def?.key || "";
+  return (
+    !!atacante?.golpeSlot?.basico ||
+    key === "basico" ||
+    key === "basicAttack"
+  );
+}
+
 /** HP a zero: Hurt na folha, depois morto / Sleep / faint. */
 function derrubar(alvo, atacante, agora, efeitos) {
   alvo.hp = 0;
+  tocarNocaute(alvo);
   if (alvo.faccao === "treinador") {
     alvo.morto = true;
     efeitos.aoDerrotar(alvo, atacante);

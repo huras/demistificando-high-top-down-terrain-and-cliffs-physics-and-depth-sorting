@@ -144,7 +144,7 @@ export function partyCheia() {
   return party.length >= POKEMON.PARTY_MAX;
 }
 
-export function receberCaptura(selvagem) {
+export function receberCaptura(selvagem, ballKey = "pokeball") {
   if (party.length >= POKEMON.PARTY_MAX) return null;
   const copia = criarAtor({
     id: `party-${party.length}`,
@@ -152,6 +152,7 @@ export function receberCaptura(selvagem) {
     nivel: selvagem.nivel,
     shiny: selvagem.shiny,
     hp: Math.max(1, selvagem.hp),
+    ballKey: typeof ballKey === "string" && ballKey ? ballKey : "pokeball",
     faccao: "party",
     x: selvagem.x,
     y: selvagem.y,

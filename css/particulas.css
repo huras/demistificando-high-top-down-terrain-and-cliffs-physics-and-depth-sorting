@@ -87,7 +87,7 @@ button, input, select {
 }
 
 .coluna {
-  width: 300px;
+  width: 340px;
   overflow: auto;
   padding: 12px 14px 24px;
   border-right: 1px solid var(--borda);
@@ -243,4 +243,102 @@ button, input, select {
 .hud-perf b {
   color: var(--texto);
   font-weight: 600;
+}
+
+.elf-browser {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--borda);
+}
+
+.elf-browser__titulo {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--suave);
+  font-weight: 650;
+}
+
+.elf-browser__binds {
+  margin: 0 0 8px;
+}
+
+.elf-browser__papeis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.elf-browser__papeis button {
+  flex: 1 1 auto;
+  min-width: 72px;
+  border-color: var(--borda);
+  color: var(--texto);
+  font-weight: 500;
+  background: #243028;
+  padding: 5px 6px;
+  font-size: 0.76rem;
+}
+
+.elf-browser__papeis button.ativo {
+  border-color: var(--destaque);
+  color: var(--destaque);
+}
+
+.elf-browser__limpar {
+  width: 100%;
+  margin-bottom: 8px;
+  border-color: var(--borda);
+  color: var(--suave);
+  font-weight: 500;
+  background: #1a221e;
+  font-size: 0.78rem;
+}
+
+.elf-browser__grade {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-height: 280px;
+  overflow: auto;
+  padding-bottom: 8px;
+}
+
+.elf-browser__item {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  background-color: #0c100e;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+}
+
+.elf-browser__item.is-additive {
+  background-color: #050806;
+}
+
+.elf-browser__item.ativo {
+  border-color: var(--destaque);
+  box-shadow: inset 0 0 0 1px var(--destaque);
+}
+
+.elf-browser__item span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 3px;
+  font-size: 0.58rem;
+  line-height: 1.2;
+  color: var(--texto);
+  background: rgba(8, 12, 10, 0.78);
+  text-align: center;
+  pointer-events: none;
 }

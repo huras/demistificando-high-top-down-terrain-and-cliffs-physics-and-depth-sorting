@@ -1,8 +1,19 @@
 import { ALTURA_BLOCO } from "../../../../config.js";
+import { efeitoDe } from "../../../../efeitos/catalogo.js";
+import { folhaElfDoEfeito } from "../../../../efeitos/elemental.js";
 import { emitirImpacto } from "../impacto.js";
 import { PadraoBase } from "../padraoBase.js";
 import { emitir, folhaParticula, spritesArco } from "../poolParticulas3d.js";
 import { emitirRastro } from "../rastro.js";
+
+function elfDoPadrao(def) {
+  const ef = efeitoDe(def?.key) || efeitoDe(def?.id);
+  return {
+    rastro: folhaElfDoEfeito(ef, "rastro"),
+    impacto: folhaElfDoEfeito(ef, "impacto"),
+    faisca: folhaElfDoEfeito(ef, "faisca"),
+  };
+}
 
 /** Cast ranged — ki burst + trail hint (projéteis já levam folha). */
 export class PadraoCastRanged extends PadraoBase {
@@ -10,31 +21,65 @@ export class PadraoCastRanged extends PadraoBase {
     super.iniciar(origem, alvo, def, elemento, opts);
     this.duracao = opts.jato ? 0.55 : 0.32;
     this.jato = !!opts.jato;
+    this.elf = elfDoPadrao(def);
+    const chave = def?.key || def?.id || "";
+    this.ciclone = chave === "gust" || chave === "wingAttack" || chave === "wing-attack";
+    if (this.ciclone) this.duracao = 0.55;
     const z = this.peito(origem);
     const dx = this.mx - origem.x;
     const dy = this.my - origem.y;
     const len = Math.hypot(dx, dy) || 1;
     this.dirX = dx / len;
     this.dirY = dy / len;
-    emitirImpacto(elemento, origem.x + this.dirX * 0.4, origem.y + this.dirY * 0.4, z, 0.45 * this.escala);
+    emitirImpacto(elemento, origem.x + this.dirX * 0.4, origem.y + this.dirY * 0.4, z, 0.45 * this.escala, {
+      impacto: this.elf.impacto,
+      faisca: this.elf.faisca,
+    });
+    if (this.ciclone) this.emitirCiclone(origem.x + this.dirX, origem.y + this.dirY, z);
+  }
+
+  /** Empilha 3–4 Wind_01 (anel de ciclone) além do furacão BP do projétil. */
+  emitirCiclone(x, y, z) {
+    const el = this.elemento;
+    for (let i = 0; i < 4; i++) {
+      emitir({
+        x: x + (Math.random() - 0.5) * 0.15,
+        y: y + (Math.random() - 0.5) * 0.15,
+        z: z + i * 0.18,
+        vx: this.dirX * (2 + i * 0.4) + (Math.random() - 0.5) * 0.6,
+        vy: this.dirY * (2 + i * 0.4) + (Math.random() - 0.5) * 0.6,
+        vz: 0.15 + Math.random() * 0.25,
+        cor: i % 2 ? el.secundaria : el.primaria,
+        vida: 0.45 + i * 0.08,
+        tam: (0.42 + i * 0.1) * this.escala,
+        modo: "poeira",
+        folha: "elf:Wind_01",
+        drag: 0.94,
+      });
+    }
   }
 
   atualizar(dt) {
     if (!this.ativo || !this.origem || !this.elemento) return;
     this.tempo += dt;
-    if (this.jato) {
+    if (this.jato || this.ciclone) {
       const a = this.origem;
       const z = this.peito(a);
+      const avanco = 0.6 + this.tempo * (this.ciclone ? 6 : 0);
       emitirRastro(
         this.elemento,
-        a.x + this.dirX * 0.6,
-        a.y + this.dirY * 0.6,
+        a.x + this.dirX * avanco,
+        a.y + this.dirY * avanco,
         z,
         this.dirX * 10,
         this.dirY * 10,
         dt,
         this.escala * 0.85,
+        { rastro: this.elf?.rastro || (this.ciclone ? "elf:Wind_01" : ""), faisca: this.elf?.faisca },
       );
+      if (this.ciclone && Math.random() < dt * 8) {
+        this.emitirCiclone(a.x + this.dirX * avanco, a.y + this.dirY * avanco, z);
+      }
     }
     if (this.tempo >= this.duracao) this.encerrar();
   }
@@ -80,6 +125,7 @@ export class PadraoSwift extends PadraoBase {
   iniciar(origem, alvo, def, elemento, opts = {}) {
     super.iniciar(origem, alvo, def, elemento, opts);
     this.duracao = 0.7;
+    this.elf = elfDoPadrao(def);
     this.estrelas = [];
     const dx = this.mx - origem.x;
     const dy = this.my - origem.y;
@@ -114,7 +160,10 @@ export class PadraoSwift extends PadraoBase {
       e.idade += dt;
       e.x += e.vx * dt;
       e.y += e.vy * dt;
-      emitirRastro(this.elemento, e.x, e.y, e.z, e.vx, e.vy, dt, 0.55);
+      emitirRastro(this.elemento, e.x, e.y, e.z, e.vx, e.vy, dt, 0.55, {
+        rastro: this.elf?.rastro,
+        faisca: this.elf?.faisca,
+      });
       if (slot < lista.length && e.idade < e.vida) {
         const spr = lista[slot++];
         const t = 1 - e.idade / e.vida;
