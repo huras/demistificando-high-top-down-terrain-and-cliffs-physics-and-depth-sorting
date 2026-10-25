@@ -318,7 +318,7 @@ export function pontoSlot(lider, slot, packCfg = cfgPack()) {
 }
 
 /**
- * Acorda mates no mesmo alvo de combate.
+ * Trava mates acordados no mesmo alvo. Dormindo fica passivo até hit/amanhecer.
  * @param {object[]} itens
  * @param {object} fonte
  * @param {object} alvo
@@ -335,8 +335,7 @@ export function alertarPackAgro(itens, fonte, alvo, travarAgro) {
     if (mate === fonte) continue;
     if (mate.packId !== fonte.packId) continue;
     if (!vivoPack(mate)) continue;
-    mate.dormindo = 0;
-    mate.sonoNatural = false;
+    if (mate.sonoNatural || (mate.dormindo || 0) > 0 || mate.status === "sleep") continue;
     travarAgro(mate, alvo);
   }
   fonte._packAlertando = false;

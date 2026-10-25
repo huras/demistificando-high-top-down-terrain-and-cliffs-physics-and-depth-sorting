@@ -16,7 +16,7 @@ import { atualizarProjeteis } from "./combate/projeteis.js";
 import { dadosProntos } from "./dados.js";
 import { tocarLevelUp } from "../jogo/som/mundoSfx.js";
 import { atualizarDrops, soltarDrop } from "./drops.js";
-import { carregarEmocoes, tickEmocoes } from "./emocoes.js";
+import { carregarEmocoes, sincronizarEmocaoEstado, tickEmocoes } from "./emocoes.js";
 import { ganhoAoDerrotar, NIVEL_MAX, totalParaNivel } from "./experiencia.js";
 import { flutuar, tickFlutuantes } from "./flutuantes.js";
 import { atoresPerto, montarGrade } from "./grade.js";
@@ -211,6 +211,10 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     if (a?.faccao === "selvagem" && a.especie?.key && !a.morto && !a.capturado) {
       markSpeciesSeen(a.especie.key);
     }
+  }
+  for (let i = 0; i < visiveis.length; i++) {
+    const a = visiveis[i];
+    if (a && !a.morto && !a.capturado) sincronizarEmocaoEstado(a);
   }
   tickEmocoes(visiveis, passo);
   for (let i = 0; i < visiveis.length; i++) tickVisual(visiveis[i], passo, agora);

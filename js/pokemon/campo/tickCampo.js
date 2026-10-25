@@ -171,12 +171,8 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     acordarSonoNatural(ator);
   }
 
-  const alvoCedo = escolherAlvoWild(ator, partyMon, jogador);
-  if (alvoCedo && (ator.sonoNatural || ator.dormindo > 0)) {
-    acordarSonoNatural(ator);
-  }
-
-  if (ator.dormindo > 0) {
+  // Dormindo (natural ou status): congela e não agroa passantes.
+  if (ator.dormindo > 0 || ator.sonoNatural) {
     if (ator.status !== "sleep" && !ator.sonoNatural) {
       ator.dormindo = Math.max(0, ator.dormindo - dt);
     }
@@ -186,12 +182,13 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
         ator.vx = 0;
         ator.vy = 0;
         ator.andando = false;
+        ator.correndo = false;
       }
-      if (!alvoCedo) return;
+      return;
     }
   }
 
-  const alvo = alvoCedo;
+  const alvo = escolherAlvoWild(ator, partyMon, jogador);
   if (alvo) {
     const mudou = ator.modo !== "agro" || ator.alvo !== alvo;
     ator.modo = "agro";
@@ -200,7 +197,6 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
       alertarPackAgro(selvagensAtivos(), ator, alvo, (mate, t) => {
         mate.modo = "agro";
         mate.alvo = t;
-        acordarSonoNatural(mate);
       });
     }
     if (ocupadoCast(ator)) {

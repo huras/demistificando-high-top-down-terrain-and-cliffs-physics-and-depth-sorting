@@ -119,6 +119,7 @@ export function escolherAlvoParty(mon, selvagens, jogador) {
 /** Alvo do selvagem: party / treinador. */
 export function escolherAlvoWild(ator, partyMon, jogador) {
   if (!vivo(ator)) return null;
+  if (ator.sonoNatural || (ator.dormindo || 0) > 0 || ator.status === "sleep") return null;
   if (vivo(ator.pendenteAtacante)) {
     const p = ator.pendenteAtacante;
     ator.pendenteAtacante = null;

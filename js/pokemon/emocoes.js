@@ -43,6 +43,42 @@ export function limparEmocao(ator) {
   ator.emocaoIdade = 0;
 }
 
+function estaDormindo(ator) {
+  return !!(ator.sonoNatural || (ator.dormindo || 0) > 0 || ator.status === "sleep");
+}
+
+function ehAgroEstado(ator) {
+  return ator.faccao === "selvagem" && !!(ator.hostil || ator.modo === "agro");
+}
+
+/** Mantém ZZZ/RAIVA em loop conforme estado; não sobrescreve one-shot ativo. */
+export function sincronizarEmocaoEstado(ator) {
+  if (!ator || ator.morto || ator.capturado) return;
+  // One-shot (EXCLAMACAO, SUOR, etc.): deixa expirar; no próximo tick volta o estado.
+  if (ator.emocao != null && !ator.emocaoPresa) return;
+
+  if (estaDormindo(ator)) {
+    if (ator.emocao !== EMOCAO.ZZZ || !ator.emocaoPresa) {
+      definirEmocao(ator, EMOCAO.ZZZ, { presa: true });
+    }
+    return;
+  }
+
+  if (ehAgroEstado(ator)) {
+    if (ator.emocao !== EMOCAO.RAIVA || !ator.emocaoPresa) {
+      definirEmocao(ator, EMOCAO.RAIVA, { presa: true });
+    }
+    return;
+  }
+
+  if (
+    ator.emocaoPresa &&
+    (ator.emocao === EMOCAO.ZZZ || ator.emocao === EMOCAO.RAIVA)
+  ) {
+    limparEmocao(ator);
+  }
+}
+
 export function tickEmocoes(atores, dt) {
   for (let i = 0; i < atores.length; i++) {
     const a = atores[i];
@@ -60,7 +96,11 @@ export function tickEmocoes(atores, dt) {
 export function colunaEmocao(ator) {
   if (ator.emocao == null) return 0;
   const t = ator.emocaoIdade;
-  // Uma passada só: presa/vivo não loopa frame (morte usava presa e ficava infinito).
+  // Loop só com presa (estado ZZZ/RAIVA); one-shot congela no último frame.
+  if (ator.emocaoPresa) {
+    const u = (t % EMOCAO_ANIM) / EMOCAO_ANIM;
+    return Math.min(7, Math.floor(u * 8));
+  }
   if (t >= EMOCAO_ANIM) return 7;
   const u = t / EMOCAO_ANIM;
   return Math.min(7, Math.floor(u * 8));

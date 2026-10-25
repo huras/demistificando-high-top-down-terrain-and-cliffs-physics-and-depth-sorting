@@ -286,6 +286,9 @@ function voa(ator, passo) {
 
 function escolherFaixa(ator, pack, agora, passo) {
   if (ator.morto) return pack.anims?.Sleep ? "Sleep" : "Idle";
+  if ((ator.dormindo || 0) > 0 || ator.sonoNatural) {
+    return pack.anims?.Sleep ? "Sleep" : "Idle";
+  }
   if ((ator.desmaioEm || 0) > agora && pack.anims?.Hurt) return "Hurt";
   if ((ator.recuoRestante || 0) > 0 && pack.anims?.Hurt) return "Hurt";
   const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0;

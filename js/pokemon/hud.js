@@ -461,7 +461,11 @@ export function desenharHoverPokemon(ctx, ator, projetar, projetarPes, comAnel =
 
   ctx.font = "700 14px Segoe UI, sans-serif";
   ctx.textAlign = "left";
-  ctx.fillStyle = ator.morto ? "#a8a29e" : "#f8fafc";
+  const hostilHud =
+    !ator.morto &&
+    ator.faccao === "selvagem" &&
+    !!(ator.hostil || ator.modo === "agro");
+  ctx.fillStyle = ator.morto ? "#a8a29e" : hostilHud ? "#f87171" : "#f8fafc";
   const nomeY = y + 14;
   let nomeX = x + 10;
   if (comBola) {
