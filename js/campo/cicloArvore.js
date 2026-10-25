@@ -34,16 +34,14 @@ function ladoDe(id) {
   return h & 1 ? 1 : -1;
 }
 
-function danoNoAr(prop, dano, alto) {
+function danoNoAr(prop, dano, alto, cor) {
   const chao = Number.isFinite(prop.z) ? prop.z : alturaEm(prop.x | 0, prop.y | 0);
+  // Mesma ideia do Pokémon AI (yBias no tronco): número nasce no miolo da árvore.
   flutuar(
-    {
-      x: prop.x + (Math.random() - 0.5) * 0.35,
-      y: prop.y,
-      z: chao + (alto ? 2.4 : 0.15),
-    },
+    { x: prop.x, y: prop.y, z: chao },
     String(dano),
-    "#fff4d6",
+    cor || "#fff4d6",
+    { altura: alto ? 2.4 : 0.55 },
   );
 }
 
@@ -129,6 +127,8 @@ export function queimarArvore(prop) {
   if (prop.fase !== FASE.EM_PE) return "nao";
   prop.queimadas = (prop.queimadas || 0) + 1;
   emitirFagulha(prop.x, prop.y, true, 4, false);
+  danoNoAr(prop, 1, true, "#fb923c");
+  sacudir(prop, 0.07);
   if (prop.queimadas >= ACERTOS_FOGO) {
     acenderArvore(prop);
     return "fogo";

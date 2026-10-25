@@ -155,6 +155,20 @@ export default {
     "vazio": "からっぽ。",
     "idioma": "言語"
   },
+  "morte": {
+    "eyebrow": "たびのおわり",
+    "titulo": "めがまわった",
+    "causaCombate": "げんいん：{golpe}",
+    "causaDesconhecida": "げんいん：ふめい",
+    "matador": "{nome}にたおされた",
+    "matadorDesconhecido": "だれかにたおされた",
+    "dano": "さいごのダメージ：{n}",
+    "hora": "じかん {hora}",
+    "renascer": "さいせい",
+    "dicaOlhar": "がめんをドラッグしてあたりをみる",
+    "golpeDesconhecido": "ふめいなわざ",
+    "desconhecido": "ふめい"
+  },
   "keys": {
     "elementalShrineDevice": "エレメンタルのほこらデバイス"
   },

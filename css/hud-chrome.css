@@ -201,6 +201,93 @@
   text-align: right;
 }
 
+.party-combat__buffs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.party-combat__buff {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+}
+
+.party-combat__buff-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.party-combat__buff-track,
+.party-combat__buff-arc {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.party-combat__buff-track {
+  stroke: rgba(40, 32, 24, 0.14);
+}
+
+.party-combat__buff-arc {
+  stroke-linecap: round;
+  transition: stroke-dashoffset 80ms linear;
+}
+
+.party-combat__buff.is-buff .party-combat__buff-arc {
+  stroke: #16a34a;
+}
+
+.party-combat__buff.is-debuff .party-combat__buff-arc {
+  stroke: #dc2626;
+}
+
+.party-combat__buff-tag {
+  position: relative;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.party-combat__buff.is-buff .party-combat__buff-tag {
+  color: #15803d;
+}
+
+.party-combat__buff.is-debuff .party-combat__buff-tag {
+  color: #b91c1c;
+}
+
+.party-combat__buff-pct {
+  position: relative;
+  z-index: 1;
+  font-size: 8px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-top: 2px;
+  opacity: 0.9;
+}
+
+.party-combat__buff.is-buff .party-combat__buff-pct {
+  color: #166534;
+}
+
+.party-combat__buff.is-debuff .party-combat__buff-pct {
+  color: #991b1b;
+}
+
 .party-combat__actions {
   display: flex;
   align-items: center;

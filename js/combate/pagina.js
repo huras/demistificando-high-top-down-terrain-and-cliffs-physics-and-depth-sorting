@@ -620,16 +620,23 @@ function pintarDanos() {
       el.hidden = true;
       continue;
     }
+    const t = Math.max(0, f.life / (f.maxLife || 0.9));
+    if (t <= 0) {
+      el.hidden = true;
+      continue;
+    }
     const p = projetarArena(f.x, f.z * ALTURA_BLOCO + 1.35, f.y);
     if (!p) {
       el.hidden = true;
       continue;
     }
+    const alpha = t > 0.35 ? 1 : Math.max(0, t / 0.35);
+    const escala = (f.escala ?? 1) * (f.pop ?? 1);
     el.hidden = false;
     el.textContent = f.texto;
     el.style.color = f.cor || "#fff";
-    el.style.opacity = String(Math.max(0, 1 - f.idade / 0.85));
-    el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
+    el.style.opacity = String(alpha);
+    el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) scale(${escala})`;
   }
 }
 

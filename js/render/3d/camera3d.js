@@ -313,6 +313,11 @@ export function yawDeCameraThree(cam) {
 /** Facing do sprite acompanha a mira, mesmo em strafe. */
 export function aplicarFacingMira(corpo, camera3d) {
   if (!corpo) return;
+  // Escalando: peito na parede — mira não gira o sprite.
+  if (corpo.escalando && corpo.escalada) {
+    corpo.mirando = false;
+    return;
+  }
   if (camera3d.modo !== "mira" && camera3d.blend < 0.35) {
     corpo.mirando = false;
     return;
@@ -339,9 +344,23 @@ function alinharCostas(camera3d, corpo, dt) {
 }
 
 function poseOrbita(camera3d, tx, tyBase, tz) {
-  const folga = camera3d.folgaTeleporte || 0;
-  const distDesejada = camera3d.distancia + folga * 22;
-  const pitch = Math.min(CAMERA3D_PITCH_MAX, camera3d.pitchOrbita + folga * 0.38);
+  const t = camera3d.folgaTeleporte || 0;
+  let distDesejada = camera3d.distancia;
+  let pitch = camera3d.pitchOrbita;
+  if (t > 0) {
+    const distBase =
+      Number.isFinite(camera3d.teleporteDistBase) ? camera3d.teleporteDistBase : camera3d.distancia;
+    const distAlvo =
+      Number.isFinite(camera3d.teleporteDistAlvo) ? camera3d.teleporteDistAlvo : distBase;
+    const pitchIni =
+      Number.isFinite(camera3d.teleportePitchIni) ? camera3d.teleportePitchIni : camera3d.pitchOrbita;
+    const pitchFim =
+      Number.isFinite(camera3d.teleportePitchFim) ? camera3d.teleportePitchFim : camera3d.pitchOrbita;
+    distDesejada = distBase + (distAlvo - distBase) * t;
+    pitch = pitchIni + (pitchFim - pitchIni) * t;
+  }
+  pitch = clamp(pitch, CAMERA3D_PITCH_MIN, CAMERA3D_PITCH_MAX);
+  distDesejada = clamp(distDesejada, CAMERA3D_DIST_MIN, CAMERA3D_DIST_MAX);
   const cosP = Math.cos(pitch);
   const sinP = Math.sin(pitch);
   const sinY = Math.sin(camera3d.yaw);

@@ -64,7 +64,8 @@ function yawInclinacao() {
   if (cam && pe) {
     yaw = Math.atan2(cam.position.x - pe.x, cam.position.z - pe.z);
   }
-  const blend = cenario?.camera3d?.blend ?? 0;
+  const cam3d = cenario?.camera3d;
+  const blend = Math.max(cam3d?.blend ?? 0, cam3d?.folgaTeleporte ?? 0);
   const inclinacao = BILLBOARD_INCLINACAO * (1 - blend);
   return { yaw, inclinacao };
 }

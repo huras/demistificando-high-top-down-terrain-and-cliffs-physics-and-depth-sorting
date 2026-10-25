@@ -3,7 +3,7 @@ import { ALCANCE_TIRO_MAX, FOLGA_PROJETIL, RAIO_PROJETIL } from "../ia/constante
 import { alturaCorpo, alturaPe } from "../ator.js";
 import { faccoesAliadas } from "../faccao.js";
 import { COR_TIPO } from "../tipos.js";
-import { FOLHAS } from "./folhasGolpe.js";
+import { FOLHAS, folhaGolpe } from "./folhasGolpe.js";
 import { rajada } from "./particulas.js";
 import { bloqueioNoTrecho } from "../../combate/arenas.js";
 
@@ -82,7 +82,7 @@ export function impactosVivos() {
 }
 
 function nascerImpacto(p) {
-  const cfg = FOLHAS[p.folha];
+  const cfg = folhaGolpe(p.folha) || FOLHAS[p.folha];
   if (!cfg?.impacto) return;
   let frame = 0;
   if (cfg.animar && cfg.frames > 1) frame = Math.floor((p.t || 0) / cfg.duracao) % cfg.frames;
@@ -105,7 +105,7 @@ function atualizarImpactos(dt) {
   for (let i = impactos.length - 1; i >= 0; i--) {
     const imp = impactos[i];
     imp.t += dt;
-    const cfg = FOLHAS[imp.folha];
+    const cfg = folhaGolpe(imp.folha) || FOLHAS[imp.folha];
     const dur = cfg?.impacto === "folha"
       ? (cfg.duracao || 0.07) * Math.max(1, cfg.frames - (cfg.frameImpacto || 0))
       : cfg?.duracaoImpacto || 0.9;
@@ -122,6 +122,35 @@ export function atualizarProjeteis(dt, candidatos, aoAtingir) {
     p.viajouAntes = p.viajou;
     const passo = Math.hypot(p.vx, p.vy) * dt;
     p.t += dt;
+    // #region agent log
+    if (p.dono?.morto && p.t > 0.4) {
+      const agora = Date.now();
+      if (!atualizarProjeteis._dbgUlt || agora - atualizarProjeteis._dbgUlt > 700) {
+        atualizarProjeteis._dbgUlt = agora;
+        fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
+          body: JSON.stringify({
+            sessionId: "b822fd",
+            hypothesisId: "C",
+            location: "projeteis.js:atualizarProjeteis",
+            message: "projétil vivo com dono morto",
+            data: {
+              tipo: p.tipo,
+              folha: p.folha || "",
+              t: +p.t.toFixed(2),
+              viajou: +p.viajou.toFixed(2),
+              max: p.max,
+              vel: +Math.hypot(p.vx, p.vy).toFixed(2),
+              donoEsp: p.dono?.especie?.key || "",
+            },
+            timestamp: agora,
+          }),
+        }).catch(() => {});
+      }
+    }
+    // #endregion
+
     if (p.amp > 0) {
       p.baseX += p.vx * dt;
       p.baseY += p.vy * dt;

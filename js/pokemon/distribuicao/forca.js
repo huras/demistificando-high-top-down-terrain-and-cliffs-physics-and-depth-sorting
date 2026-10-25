@@ -19,7 +19,7 @@ import {
 } from "../../mundo/regiao/grafoKanto.js";
 
 const INF = 65535;
-export const TILES_POR_NIVEL = 12;
+export const TILES_POR_NIVEL = 48;
 const NIVEL_MIN = 2;
 
 /** Célula do heatmap / labels (= área Kanto, 128 blocos). */

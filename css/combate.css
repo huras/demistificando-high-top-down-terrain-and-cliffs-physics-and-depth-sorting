@@ -559,10 +559,17 @@ button, input, select {
   position: absolute;
   left: 0;
   top: 0;
-  font-weight: 750;
-  font-size: 1.84rem;
-  text-shadow: 0 1px 2px #000;
+  font-weight: 800;
+  font-size: 1.85rem;
+  text-shadow:
+    0 0 2px #020610,
+    1px 0 0 #020610,
+    -1px 0 0 #020610,
+    0 1px 0 #020610,
+    0 -1px 0 #020610;
   pointer-events: none;
+  transform-origin: center center;
+  white-space: nowrap;
 }
 
 .luta {

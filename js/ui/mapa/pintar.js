@@ -315,13 +315,13 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     if (marca.tipo === "santuario") {
       santuarioVisto = true;
       desenharPinSantuario(ctx, marca, sx, sy, { mini: !!vista.mini, dpr });
-      if (!vista.mini && marca.nome) {
+      if (!vista.mini && marca.nome && vista.hoverMarcaId === marca.id) {
         nomes.push({
           texto: marca.nome,
           x: sx + 10 * dpr,
           y: sy + alturaFonte * 0.3,
           altura: alturaFonte,
-          prio: 1,
+          prio: 4,
           dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
         });
       }
@@ -337,13 +337,13 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       if (!wildPinVisivelNoZoom(vista)) continue;
       wildVisto = true;
       desenharPinWild(ctx, marca, sx, sy, { mini: !!vista.mini, dpr });
-      if (!vista.mini && marca.nome) {
+      if (!vista.mini && marca.nome && vista.hoverMarcaId === marca.id) {
         nomes.push({
           texto: marca.nome,
           x: sx + 10 * dpr,
           y: sy + alturaFonte * 0.3,
           altura: alturaFonte,
-          prio: 0,
+          prio: 4,
           dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
         });
       }

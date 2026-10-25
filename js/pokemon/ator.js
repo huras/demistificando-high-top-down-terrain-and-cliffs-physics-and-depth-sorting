@@ -1,5 +1,6 @@
 import { POKEMON, RAIO_POKEMON } from "../config.js";
 import { ESQUIVA_ATIVA, ESQUIVA_DIST, ESQUIVA_DUR, ESQUIVA_PREP, ESQUIVA_REC } from "./ia/constantes.js";
+import { limparEstagiosAte, tickEstagios } from "./combate/estagios.js";
 import { golpe } from "./dados.js";
 import { totalParaNivel } from "./experiencia.js";
 import { encherPp, sincronizarPpTipos, tickPp } from "./pp.js";
@@ -128,6 +129,7 @@ export function criarAtor(opts) {
     estagioSpe: 0,
     estagioPrecisao: 0,
     estagioEvasao: 0,
+    estagioAte: Object.create(null),
     status: null,
     statusTurnos: 0,
     venenoAte: 0,
@@ -293,6 +295,12 @@ export function reviverAtor(ator, x, y, z) {
   ator.estagioSpe = 0;
   ator.estagioPrecisao = 0;
   ator.estagioEvasao = 0;
+  limparEstagiosAte(ator);
+  ator.cdBasico = 0;
+  const golpes = ator.golpes;
+  if (golpes) {
+    for (let i = 0; i < golpes.length; i++) golpes[i].cd = 0;
+  }
 }
 
 /** Aço e Venenoso não ficam envenenados. */
@@ -571,6 +579,7 @@ export function tickPassivo(ator, dt, agora) {
     ator.dormindo = Math.max(0, ator.dormindo - dt);
   }
   if ((ator.paraTrava || 0) > 0) ator.paraTrava = Math.max(0, ator.paraTrava - dt);
+  tickEstagios(ator, agora);
   if (ator.morto || ator.capturado) {
     ator.andando = false;
     return;
@@ -578,6 +587,13 @@ export function tickPassivo(ator, dt, agora) {
   tickPp(ator, dt, emMovimento(ator));
   recarregarBarraEsquiva(ator, dt);
   if (ator.cdBasico > 0) ator.cdBasico = Math.max(0, ator.cdBasico - dt);
+  const golpes = ator.golpes;
+  if (golpes) {
+    for (let i = 0; i < golpes.length; i++) {
+      const g = golpes[i];
+      if ((g.cd || 0) > 0) g.cd = Math.max(0, g.cd - dt);
+    }
+  }
   ator.animT += dt;
 }
 

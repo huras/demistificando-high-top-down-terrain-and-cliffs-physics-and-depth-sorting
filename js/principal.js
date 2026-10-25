@@ -1,6 +1,7 @@
 import {
   CAMINHOS,
   CHUNK_XZ,
+  CHUNK_Y,
   PASSO_HORIZONTE,
   PASSO_MALHA_SUAVE,
   RAIO_HORIZONTE,
@@ -15,6 +16,7 @@ import {
   ZOOM_PASSO,
   USAR_PATCH_DEMO,
 } from "./config.js";
+import { alturaSobPes } from "./fisica/colisao.js";
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
 import {
@@ -34,7 +36,11 @@ import { avancarHora, obterClima, alternarClima } from "./render/3d/ceu/controle
 import { forcarClimaPreset } from "./clima/amostra.js";
 import { atualizarAgente, criarAgente, resetarNav } from "./fisica/agente.js";
 import { atualizarMovimento, criarCorpo } from "./fisica/movimento.js";
-import { definirCorposAtores, definirCorposFixos } from "./fisica/obstaculos.js";
+import {
+  definirCorposAtores,
+  definirCorposFixos,
+  resolverForaDeObstaculo,
+} from "./fisica/obstaculos.js";
 import { iniciarStamina } from "./fisica/stamina.js";
 import { AGENTE_DIST_SEGUIR, OFFSET_NPC } from "./navegacao/espacoSeguir.js";
 import { tickFilaPath } from "./navegacao/filaPath.js";
@@ -65,6 +71,7 @@ import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
 import { tickPoeiraPasso } from "./fx/poeiraPasso.js";
 import { tickFxAgua } from "./fx/fxAgua.js";
+import { carregarCatalogoParticulas } from "./particulas/catalogo.js";
 import { tickAguaPulo } from "./jogo/som/aguaPulo.js";
 import { tickPassos } from "./jogo/som/passos.js";
 import { ligarAjudaAtalhos } from "./ui/ajudaAtalhos.js";
@@ -114,6 +121,7 @@ import {
 import { ensureShrineArtLoaded } from "./santuario/arte.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
+import { jogadorMorto } from "./jogo/hud/morte.js";
 import {
   focoStreaming,
   teleporteNaOrigem,
@@ -187,6 +195,7 @@ async function iniciarInterno() {
   marcarFase("kits", 1);
 
   definirStatus("Carregando texturas e sprites…");
+  const cargaParticulas = carregarCatalogoParticulas();
   let visuaisFeitos = 0;
   const marcarVisual = () => {
     visuaisFeitos += 1;
@@ -209,6 +218,7 @@ async function iniciarInterno() {
       marcarVisual();
       return r;
     }),
+    cargaParticulas,
   ]);
   atlas = visuaisKits[0];
   atlas.sprites = visuaisKits[1].sprites;
@@ -238,6 +248,8 @@ async function iniciarInterno() {
     y: SPAWN.y + OFFSET_NPC.y,
     z: SPAWN.z,
   });
+  // Poste/pedra no offset de spawn — não nasce enfiado.
+  resolverForaDeObstaculo(agente);
   definirCorposFixos([corpo, agente]);
   camera = criarCamera(canvas.width, canvas.height);
   redimensionarCena();
@@ -581,29 +593,39 @@ function loop(agora) {
       if (estaEmCena() && teclaAgora("Escape")) definirModoCena(false);
       if (estaEmCena() && teclaAgora("KeyF")) enquadrarSelecaoCena();
     }
-    if (!estaEmCena() && !trava) {
+    const morto = jogadorMorto();
+    if (!estaEmCena() && (!trava || morto)) {
       const mouse = consumirMovimentoMouse();
-      // RMB só mira — soltura não dispara; consome a flag pra não acumular.
-      consumirSolturaDireita();
-      const soltouEsq = consumirSolturaEsquerda();
-      const mirando = !!rangedNaMao() && botaoDireitoSegurado();
-      const carregando = !!rangedNaMao() && botaoEsquerdoSegurado();
       olharCamera3d(mouse.dx, mouse.dy);
-      // Carga (LMB) / mira (RMB) antes de soltar o lock.
-      tickRanged({
-        dt,
-        corpo,
-        camera3d: obterCenario3d()?.camera3d ?? null,
-        mirando,
-        carregando,
-        soltouEsquerdo: soltouEsq,
-      });
-      const aindaMirando = !!rangedNaMao() && botaoDireitoSegurado();
-      definirMira3d(aindaMirando);
-      if (!aindaMirando) soltarTravaMira();
-      if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
-      if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
-        ajustarZoom3d(1 / ZOOM_PASSO);
+      if (morto || trava) {
+        definirMira3d(false);
+        cancelarRanged();
+        consumirSolturaEsquerda();
+        consumirSolturaDireita();
+      } else {
+        // RMB só mira — soltura não dispara; consome a flag pra não acumular.
+        consumirSolturaDireita();
+        const soltouEsq = consumirSolturaEsquerda();
+        const mirando = !!rangedNaMao() && botaoDireitoSegurado();
+        const carregando = !!rangedNaMao() && botaoEsquerdoSegurado();
+        // Carga (LMB) / mira (RMB) antes de soltar o lock.
+        tickRanged({
+          dt,
+          corpo,
+          camera3d: obterCenario3d()?.camera3d ?? null,
+          mirando,
+          carregando,
+          soltouEsquerdo: soltouEsq,
+        });
+        const aindaMirando = !!rangedNaMao() && botaoDireitoSegurado();
+        definirMira3d(aindaMirando);
+        if (!aindaMirando) soltarTravaMira();
+      }
+      if (!trava || morto) {
+        if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
+        if (teclaAgora("Minus") || teclaAgora("NumpadSubtract")) {
+          ajustarZoom3d(1 / ZOOM_PASSO);
+        }
       }
     } else {
       definirMira3d(false);
@@ -627,9 +649,10 @@ function loop(agora) {
     definirMira3d(false);
   }
 
-  if (!passeioAtivo() && !trava) atualizarMovimento(corpo, dt);
+  const morto = jogadorMorto();
+  if (!passeioAtivo() && !trava && !morto) atualizarMovimento(corpo, dt);
   tickFilaPath();
-  if (passeioAtivo() && !trava) atualizarPasseio(corpo, dt);
+  if (passeioAtivo() && !trava && !morto) atualizarPasseio(corpo, dt);
   atualizarAgente(agente, corpo, dt, 0, AGENTE_DIST_SEGUIR);
 
   tickHistorico(corpo, dt);
@@ -679,10 +702,17 @@ function loop(agora) {
   if (!trava) tickFxAgua(dt, corpo, agente);
   if (corpo._renasceu) {
     corpo._renasceu = false;
+    // Cinto: garante topo do terreno se o pouso ainda trouxe Z stale.
+    const zSnap = alturaSobPes(corpo.x, corpo.y, CHUNK_Y);
+    if (zSnap > 0) {
+      corpo.z = zSnap;
+      corpo.elevacao = zSnap;
+    }
+    const zAg = alturaSobPes(corpo.x + OFFSET_NPC.x, corpo.y + OFFSET_NPC.y, CHUNK_Y) || corpo.z;
     agente.x = corpo.x + OFFSET_NPC.x;
     agente.y = corpo.y + OFFSET_NPC.y;
-    agente.z = corpo.z;
-    agente.elevacao = corpo.z;
+    agente.z = zAg;
+    agente.elevacao = zAg;
     agente.vx = 0;
     agente.vy = 0;
     agente.vz = 0;

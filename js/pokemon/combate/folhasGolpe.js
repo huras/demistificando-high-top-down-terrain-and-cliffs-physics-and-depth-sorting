@@ -1,73 +1,55 @@
-/** Folhas dos quatro golpes, iguais às do BattleParticles. 1 tile de lá = 1 unidade. */
+/** Folhas de golpe via catálogo de efeitos. 1 tile BP = 96px = 1 unidade. */
 
 import * as THREE from "three";
+import {
+  carregarCatalogoEfeitos,
+  catalogoEfeitos,
+  efeitoDe,
+  folhaDoEfeito,
+  idEfeito,
+} from "../../efeitos/catalogo.js";
 
-const TILE_BP = 96;
-
-function tamanho(frame, escalaPx) {
-  return (frame * escalaPx) / TILE_BP;
-}
-
-export const FOLHAS = {
-  ember: {
-    url: "assets/effects/golpes/ember.png",
-    frames: 5,
-    duracao: 0.08,
-    animar: false,
-    escalaVoo: tamanho(32, 6.6),
-    escalaImpacto: tamanho(32, 2.2),
-    aponta: "cima",
-    offsetAngulo: Math.PI,
-    vertical: false,
-    impacto: "folha",
-    frameImpacto: 0,
-  },
-  razorLeaf: {
-    url: "assets/effects/golpes/razor-leaf.png",
-    frames: 9,
-    duracao: 0.06,
-    animar: true,
-    giro: 4.8,
-    aponta: "direita",
-    escalaVoo: tamanho(16, 4.5),
-    vertical: false,
-    impacto: "cravar",
-    duracaoImpacto: 0.95,
-  },
-  bubble: {
-    url: "assets/effects/golpes/bubble.png",
-    frames: 5,
-    duracao: 0.07,
-    animar: false,
-    escalaVoo: tamanho(32, 2.2),
-    escalaImpacto: tamanho(32, 2.6),
-    vertical: true,
-    impacto: "folha",
-    frameImpacto: 1,
-  },
-  flamethrower: {
-    url: "assets/effects/golpes/flamethrower.png",
-    frames: 4,
-    duracao: 0.07,
-    animar: true,
-    escalaVoo: tamanho(32, 0.85),
-    escalaImpacto: tamanho(32, 2.8),
-    vertical: true,
-    impacto: "folha",
-    frameImpacto: 0,
-  },
-};
+/** @type {Record<string, object>} */
+export const FOLHAS = {};
 
 const telas = new Map();
 const texturas = new Map();
-let pedido = false;
+/** @type {Set<string>} */
+const urlsPedidas = new Set();
+
+export function sincronizarFolhasDoCatalogo() {
+  const cat = catalogoEfeitos();
+  for (const k of Object.keys(FOLHAS)) delete FOLHAS[k];
+  for (const id of Object.keys(cat.efeitos)) {
+    const cfg = folhaDoEfeito(id);
+    if (!cfg) continue;
+    FOLHAS[id] = cfg;
+  }
+  for (const [alias, id] of Object.entries(cat.aliases)) {
+    if (FOLHAS[id] && !FOLHAS[alias]) FOLHAS[alias] = FOLHAS[id];
+  }
+}
 
 export function folhaGolpe(chave) {
-  return FOLHAS[chave] || null;
+  if (!chave) return null;
+  if (FOLHAS[chave]) return FOLHAS[chave];
+  const cfg = folhaDoEfeito(chave);
+  if (cfg) {
+    FOLHAS[chave] = cfg;
+    const id = idEfeito(chave);
+    if (id && !FOLHAS[id]) FOLHAS[id] = cfg;
+  }
+  return cfg;
 }
 
 export function telaFolha(chave) {
-  return telas.get(chave) || null;
+  const id = idEfeito(chave) || chave;
+  return telas.get(id) || telas.get(chave) || null;
+}
+
+export function texturaFolha(chave) {
+  const id = idEfeito(chave) || chave;
+  return texturas.get(id) || texturas.get(chave) || null;
 }
 
 function soltarPreto(img, chave) {
@@ -99,15 +81,37 @@ function soltarPreto(img, chave) {
   texturas.set(chave, tex);
 }
 
+function pedirUrl(chave, url) {
+  if (!url || urlsPedidas.has(chave) || typeof Image === "undefined") return;
+  urlsPedidas.add(chave);
+  const img = new Image();
+  img.onload = () => soltarPreto(img, chave);
+  img.src = url;
+}
+
 export function carregarFolhasGolpe() {
-  if (pedido || typeof Image === "undefined") return;
-  pedido = true;
-  const chaves = Object.keys(FOLHAS);
-  for (let i = 0; i < chaves.length; i++) {
-    const chave = chaves[i];
-    const img = new Image();
-    img.onload = () => soltarPreto(img, chave);
-    img.src = FOLHAS[chave].url;
+  carregarCatalogoEfeitos().then(() => {
+    sincronizarFolhasDoCatalogo();
+    const cat = catalogoEfeitos();
+    const vistas = new Map();
+    for (const id of Object.keys(cat.efeitos)) {
+      const ef = cat.efeitos[id];
+      if (!ef?.folha?.url) continue;
+      if (!vistas.has(ef.folha.url)) vistas.set(ef.folha.url, id);
+      pedirUrl(id, ef.folha.url);
+    }
+    // aliases compartilham textura do canônico
+    for (const [alias, id] of Object.entries(cat.aliases)) {
+      if (texturas.has(id) && !texturas.has(alias)) {
+        // será preenchido no onload do canônico — espelhar depois
+      }
+      const cfg = FOLHAS[id];
+      if (cfg) pedirUrl(id, cfg.url);
+    }
+  });
+  sincronizarFolhasDoCatalogo();
+  for (const chave of Object.keys(FOLHAS)) {
+    pedirUrl(idEfeito(chave) || chave, FOLHAS[chave].url);
   }
 }
 
@@ -135,26 +139,38 @@ export function anguloDoMovimento(camera, vx, vy, aponta, giro, tela) {
   return Math.atan2(sy, sx) + extra;
 }
 
+function chaveTextura(folha) {
+  return idEfeito(folha) || folha;
+}
+
 export function poseTiro(p, camera, tela) {
-  const cfg = FOLHAS[p?.folha];
+  const cfg = folhaGolpe(p?.folha);
   if (!cfg) return null;
   let frame = 0;
   if (cfg.animar && cfg.frames > 1) {
     frame = Math.floor((p.t || 0) / cfg.duracao) % cfg.frames;
   }
   const giro = (cfg.giro || 0) * (p.t || 0) * Math.PI * 2;
+  let angulo = 0;
+  if (!cfg.vertical) {
+    angulo = anguloDoMovimento(camera, p.vx, p.vy, cfg.aponta, giro, tela) + (cfg.offsetAngulo || 0);
+  }
+  if (cfg.flipIntervalo > 0) {
+    const flip = Math.floor((p.t || 0) / cfg.flipIntervalo) % 2 === 1;
+    if (flip) angulo += Math.PI;
+  }
   return {
-    chave: p.folha,
+    chave: chaveTextura(p.folha),
     frame,
     frames: cfg.frames,
-    angulo: cfg.vertical ? 0 : anguloDoMovimento(camera, p.vx, p.vy, cfg.aponta, giro, tela) + (cfg.offsetAngulo || 0),
+    angulo,
     escala: p.escala || cfg.escalaVoo,
     alpha: 1,
   };
 }
 
 export function poseImpacto(imp, camera, tela) {
-  const cfg = FOLHAS[imp?.folha];
+  const cfg = folhaGolpe(imp?.folha);
   if (!cfg) return null;
   const inicio = cfg.frameImpacto || 0;
   let frame = imp.frame || 0;
@@ -162,6 +178,11 @@ export function poseImpacto(imp, camera, tela) {
   let angulo = 0;
   if (cfg.impacto === "folha") {
     frame = Math.min(cfg.frames - 1, inicio + Math.floor((imp.t || 0) / cfg.duracao));
+  } else if (cfg.impacto === "flipFade") {
+    const dur = cfg.duracaoImpacto || 0.32;
+    const u = Math.min(1, (imp.t || 0) / dur);
+    alpha = 1 - u;
+    if (Math.floor((imp.t || 0) / (cfg.flipIntervalo || 0.14)) % 2 === 1) angulo = Math.PI;
   } else {
     const dur = cfg.duracaoImpacto || 0.9;
     const u = Math.min(1, (imp.t || 0) / dur);
@@ -169,7 +190,7 @@ export function poseImpacto(imp, camera, tela) {
     angulo = anguloDoMovimento(camera, imp.vx, imp.vy, cfg.aponta, imp.giro || 0, tela);
   }
   return {
-    chave: imp.folha,
+    chave: chaveTextura(imp.folha),
     frame,
     frames: cfg.frames,
     angulo,
@@ -179,7 +200,7 @@ export function poseImpacto(imp, camera, tela) {
 }
 
 function corteDe(mesh, chave) {
-  const base = texturas.get(chave);
+  const base = texturaFolha(chave);
   if (!base) return null;
   if (!mesh.userData.cortes) mesh.userData.cortes = {};
   let tex = mesh.userData.cortes[chave];
@@ -212,3 +233,17 @@ export function aplicarPose(mesh, pose) {
   mesh.scale.set(s, s, 1);
   return true;
 }
+
+/** Há folha de spritesheet para esta chave? */
+export function temFolhaSprite(chave) {
+  return !!folhaGolpe(chave);
+}
+
+/** Efeito com visual procedural (orbe/estrela) — não é bola genérica. */
+export function visualProcedural(chave) {
+  const ef = efeitoDe(chave);
+  return ef?.visual || ef?.orbe || null;
+}
+
+// Seed sync: FOLHAS disponível antes do fetch.
+sincronizarFolhasDoCatalogo();

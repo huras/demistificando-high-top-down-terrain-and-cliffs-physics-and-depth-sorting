@@ -126,6 +126,11 @@ export function cancelarPath(entidadeId) {
   filaOrdem = filaOrdem.filter((id) => id !== entidadeId);
 }
 
+/** Apaga cache de path — stuck em poste/pedra reusava a mesma rota na hora. */
+export function limparCachePath() {
+  cacheResultado.clear();
+}
+
 /**
  * Processa orçamento global de expansões neste frame.
  */
@@ -145,17 +150,24 @@ export function tickFilaPath(orcamento = PATH_EXPAND_POR_FRAME) {
       continue;
     }
 
-    // fatia justa: pelo menos 32, até restam
-    const fatia = Math.max(32, Math.min(restam, Math.ceil(restam / filaOrdem.length)));
-    const pronto = expandirBusca(p.busca, fatia);
+    // Fatia justa + teto por entidade (evita um mon comer o orçamento inteiro no frame).
+    const MAX_FATIA = 192;
+    const fatia = Math.max(
+      32,
+      Math.min(restam, MAX_FATIA, Math.ceil(restam / filaOrdem.length)),
+    );
+    const prontoOk = expandirBusca(p.busca, fatia);
     restam -= fatia;
 
-    if (pronto) {
+    if (prontoOk) {
       const path = reconstruirCaminho(p.busca);
       p.path = path;
       p.estado = "pronto";
       cacheResultado.set(p.coalesce, { path, t: performance.now() });
       filaOrdem.shift();
+    } else {
+      // Round-robin: sem isso o mesmo id fica em [0] e gasta o frame inteiro.
+      filaOrdem.push(filaOrdem.shift());
     }
   }
 }

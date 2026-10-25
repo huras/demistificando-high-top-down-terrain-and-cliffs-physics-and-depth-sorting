@@ -35,6 +35,24 @@ export const PERFIL_A_PE = Object.freeze({
   quedaMax: 1,
 });
 
+/**
+ * OW padrão (paridade Pokemon AI `somenteAndar` + nado):
+ * andar, nadar, pular degrau — sem climb/glide/fly.
+ */
+export const PERFIL_CAMPO = Object.freeze({
+  id: "campo-andar",
+  podePular: true,
+  podeEscalar: false,
+  podePlanar: false,
+  podeCorrer: true,
+  podeVoar: false,
+  podeVadear: true,
+  podeNadar: true,
+  podeCachoeira: false,
+  quedaMaxAndar: 1,
+  quedaMax: 1,
+});
+
 /** Exemplo futuro: NPC que planeja rotas de escalada. */
 export const PERFIL_ESCALADOR = Object.freeze({
   id: "escalador",

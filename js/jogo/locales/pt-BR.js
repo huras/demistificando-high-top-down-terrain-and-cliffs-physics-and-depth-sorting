@@ -155,6 +155,20 @@ export default {
     "vazio": "Vazio.",
     "idioma": "Idioma"
   },
+  "morte": {
+    "eyebrow": "Fim de jornada",
+    "titulo": "Você desmaiou",
+    "causaCombate": "Causa: {golpe}",
+    "causaDesconhecida": "Causa: desconhecida",
+    "matador": "Derrotado por {nome}",
+    "matadorDesconhecido": "Derrotado por alguém",
+    "dano": "Dano final: {n}",
+    "hora": "Hora {hora}",
+    "renascer": "Renascer",
+    "dicaOlhar": "Arraste na tela para olhar a cena",
+    "golpeDesconhecido": "golpe desconhecido",
+    "desconhecido": "desconhecido"
+  },
   "keys": {
     "elementalShrineDevice": "Dispositivo de Santuário"
   },

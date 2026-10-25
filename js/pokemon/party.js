@@ -2,7 +2,8 @@ import { POKEMON } from "../config.js";
 import { AGENTE_DIST_SEGUIR, OFFSET_MON } from "../navegacao/espacoSeguir.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
 import { resetarNav } from "../navegacao/seguirCaminho.js";
-import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
+import { resolverForaDeObstaculo } from "../fisica/obstaculos.js";
+import { PERFIL_CAMPO } from "../navegacao/perfilMovimento.js";
 import { AI_MODE } from "./aiModes.js";
 import {
   aplicarModoParty,
@@ -351,6 +352,8 @@ export function atualizarParty(corpo, dt, agora, perfil) {
     vivo.y = corpo.y + OFFSET_MON.y;
     vivo.z = z;
     vivo.elevacao = z;
+    // Não nasce em cima de poste/pedra (Horse no começo).
+    resolverForaDeObstaculo(vivo);
     vivo._colocado = true;
     if (vivo._pedidoEnvio) {
       vivo._pedidoEnvio = false;
@@ -362,7 +365,7 @@ export function atualizarParty(corpo, dt, agora, perfil) {
   // Combate OW (tickPartyCampo) marca _emLutaCampo quando não deve follow.
   if (mon._emLutaCampo) return;
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;
-  const usar = perfil || PERFIL_COMPANHEIRO;
+  const usar = perfil || PERFIL_CAMPO;
   if (mon.perfil !== usar) {
     mon.perfil = usar;
     resetarNav(mon);

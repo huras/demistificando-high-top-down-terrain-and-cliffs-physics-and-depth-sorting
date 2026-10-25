@@ -13,12 +13,13 @@ import {
 } from "../ator.js";
 import { acertoCorpo, alcanceCorpo, alcanceTiro } from "../ia/espaco.js";
 import { ALCANCE_TIRO_MAX } from "../ia/constantes.js";
-import { definirEmocao, EMOCAO } from "../emocoes.js";
+import { definirEmocao, EMOCAO, EMOCAO_ANIM } from "../emocoes.js";
 import { calcularDano, COR_TIPO } from "../tipos.js";
-import { abrirKi, fecharKi, pulsarKi } from "./ki.js";
+import { abrirKi, auraDe, fecharKi, pulsarKi } from "./ki.js";
 import { puloNoGolpe } from "./pulo.js";
 import { soltarProjetil } from "./projeteis.js";
 import { angulosLeque, desvioJato, receitaRajada } from "./rajadas.js";
+import { efeitoDe } from "../../efeitos/catalogo.js";
 import { folhaGolpe } from "./folhasGolpe.js";
 import { dispararGolpeFx } from "./fx/index.js";
 import {
@@ -33,11 +34,15 @@ import { bloqueioNoTrecho, cortaVisada } from "../../combate/arenas.js";
 import { RAIO_PROJETIL } from "../ia/constantes.js";
 import { tocarGrito } from "../../jogo/som/gritos.js";
 import { acertaClassico } from "./acertoClassico.js";
+import { marcarEstagioAte } from "./estagios.js";
 import { gastarPp, podeGastarPp } from "../pp.js";
 import { beginMeleeApproach, isCombatMotionLocked } from "./meleeApproach.js";
 import { marcarAtacante, marcarTiroRanged } from "../campo/retaliacao.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
+
+/** CD extra dos golpes equipados (Investida/básico fica de fora). */
+const CD_GOLPE_S = 2;
 
 const CAMPO_ESTAGIO = {
   atk: "estagioAtk",
@@ -141,7 +146,7 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
   alvo.hp -= dano;
   alvo.iframe = 0.15;
   alvo.iframeRajada = 0;
-  if (alvo.hp > 0) subirFuria(alvo, efeitos);
+  if (alvo.hp > 0) subirFuria(alvo, efeitos, agora);
   if (alvo.hp > 0 && defGolpe?.ailment && dano > 0) {
     aplicarAilmentGolpe(defGolpe, alvo, efeitos, { secundario: true, modoTurnos: true });
   }
@@ -226,7 +231,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     alvo.iframe = 0.15;
     alvo.iframeRajada = 0;
   }
-  if (alvo.hp > 0) subirFuria(alvo, efeitos);
+  if (alvo.hp > 0) subirFuria(alvo, efeitos, agora);
   marcarPose(alvo, "Hurt", agora);
   const recuo = iniciarRecuo(alvo, atacante, dano, agora);
   efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
@@ -252,9 +257,40 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     if (atacante.faccao === "party") alvo.participantes.add(atacante.id);
   } else if (alvo.faccao === "party") {
     marcarAtacante(alvo, atacante);
+  } else if (alvo.faccao === "treinador") {
+    anotarHitTreinador(alvo, atacante, def, dano);
   }
   if (alvo.hp > 0) return;
   derrubar(alvo, atacante, agora, efeitos);
+}
+
+function anotarHitTreinador(alvo, atacante, def, dano) {
+  if (!alvo || alvo.morto) return;
+  const agora = new Date();
+  const hh = String(agora.getHours()).padStart(2, "0");
+  const mm = String(agora.getMinutes()).padStart(2, "0");
+  const snap = {
+    causa: "combate",
+    dano: Math.max(0, dano | 0),
+    golpeKey: def?.key || "",
+    golpeNome: def?.nome || "",
+    matadorNome:
+      atacante?.especie?.nome ||
+      atacante?.especie?.name ||
+      atacante?.especie?.key ||
+      "",
+    matadorDex: atacante?.especie?.dex | 0,
+    matadorShiny: !!atacante?.shiny,
+    x: alvo.x || 0,
+    y: alvo.y || 0,
+    z: alvo.elevacao ?? alvo.z ?? 0,
+    horaIso: agora.toISOString(),
+    horaRotulo: `${hh}:${mm}`,
+  };
+  alvo.relatorioMorte = snap;
+  alvo.ultimoDano = snap.dano;
+  alvo.ultimoGolpe = snap.golpeKey;
+  alvo.ultimoAtacanteId = atacante?.id ?? null;
 }
 
 function marcarFuria(ator, def) {
@@ -262,11 +298,12 @@ function marcarFuria(ator, def) {
 }
 
 /** Rage: cada golpe que acerta enche um tubo de ataque, até +6. */
-function subirFuria(alvo, efeitos) {
+function subirFuria(alvo, efeitos, agora) {
   if (!alvo?.furia) return;
   const atual = alvo.estagioAtk || 0;
   if (atual >= 6) return;
   alvo.estagioAtk = atual + 1;
+  marcarEstagioAte(alvo, "estagioAtk", agora);
   efeitos.flutuar(alvo, `Ataque +${alvo.estagioAtk}`, "#f87171");
   notar(efeitos, { tipo: "ataque", alvo, estagio: alvo.estagioAtk });
 }
@@ -274,6 +311,12 @@ function subirFuria(alvo, efeitos) {
 /** HP a zero: Hurt na folha, depois morto / Sleep / faint. */
 function derrubar(alvo, atacante, agora, efeitos) {
   alvo.hp = 0;
+  if (alvo.faccao === "treinador") {
+    alvo.morto = true;
+    efeitos.aoDerrotar(alvo, atacante);
+    notar(efeitos, { tipo: "queda", alvo });
+    return;
+  }
   if (!agendarDesmaio(alvo, agora)) {
     alvo.morto = true;
     atorMorreu(alvo, agora);
@@ -292,14 +335,42 @@ function atorMorreu(alvo, agora) {
   alvo.alvo = null;
   alvo.pose = "Idle";
   alvo.poseSeguinte = "";
-  definirEmocao(alvo, EMOCAO.SUOR, { presa: true });
+  cancelarGolpe(alvo);
+  // Um ciclo de suor (sem presa): presa + loop em colunaEmocao deixava a emoção infinita no cadáver.
+  definirEmocao(alvo, EMOCAO.SUOR, { duracao: EMOCAO_ANIM });
+  // #region agent log
+  {
+    const aura = auraDe(alvo);
+    fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
+      body: JSON.stringify({
+        sessionId: "b822fd",
+        runId: "post-fix",
+        hypothesisId: "D",
+        location: "executor.js:atorMorreu",
+        message: "morte — emoção com duracao (sem presa)",
+        data: {
+          especie: alvo.especie?.key || alvo.especie?.nome || "",
+          emocao: alvo.emocao,
+          emocaoPresa: !!alvo.emocaoPresa,
+          emocaoAte: alvo.emocaoAte,
+          kiViva: !!(aura && aura.viva),
+          conjuro: +(alvo.conjuroRestante || 0),
+          jato: +(alvo.jatoDur || 0),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
 }
 
 function campoEstagio(stat) {
   return CAMPO_ESTAGIO[stat] || "";
 }
 
-function aplicarDebuff(def, ator, alvo, efeitos) {
+function aplicarDebuff(def, ator, alvo, efeitos, agora) {
   const d = def?.debuff;
   if (!d?.stat) return false;
   const campo = campoEstagio(d.stat);
@@ -313,6 +384,7 @@ function aplicarDebuff(def, ator, alvo, efeitos) {
     return true;
   }
   quem[campo] = novo;
+  marcarEstagioAte(quem, campo, agora);
   const delta = novo - atual;
   const sinal = delta > 0 ? "+" : "−";
   const rotulo = ROTULO_ESTAGIO[d.stat] || d.stat;
@@ -373,6 +445,7 @@ function gastar(ator, slot, agora) {
     return;
   }
   gastarPp(ator, slot.def);
+  slot.cd = CD_GOLPE_S;
   slot.usadoEm = agora;
 }
 
@@ -406,6 +479,7 @@ function escolher(ator, alvo, d) {
   const prontos = [];
   for (let i = 0; i < ator.golpes.length; i++) {
     const g = ator.golpes[i];
+    if ((g.cd || 0) > 0) continue;
     if (!podeGastarPp(ator, g.def)) continue;
     prontos.push(g);
   }
@@ -471,6 +545,32 @@ function pararNoLugar(ator) {
 
 export function cancelarGolpe(ator) {
   if (!ator) return;
+  // #region agent log
+  {
+    const auraAntes = auraDe(ator);
+    if (auraAntes?.viva || (ator.conjuroRestante || 0) > 0 || (ator.jatoDur || 0) > 0) {
+      fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
+        body: JSON.stringify({
+          sessionId: "b822fd",
+          hypothesisId: "B",
+          location: "executor.js:cancelarGolpe",
+          message: "cancelar golpe / fechar ki",
+          data: {
+            especie: ator.especie?.key || "",
+            morto: !!ator.morto,
+            hp: ator.hp,
+            kiAntes: !!auraAntes?.viva,
+            conjuro: +(ator.conjuroRestante || 0),
+            jato: +(ator.jatoDur || 0),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+  }
+  // #endregion
   ator.conjuroRestante = 0;
   ator.conjuroDur = 0;
   ator.conjuroSlot = null;
@@ -621,7 +721,7 @@ function soltarLeque(ator, slot, receita) {
       amp: receita.amp || 0,
       freq: receita.freq || 0,
       fase: (i / Math.max(1, receita.n)) * Math.PI * 2,
-      escala: folhaGolpe(slot.def.key)?.escalaVoo || 0.4,
+      escala: folhaGolpe(slot.def.key)?.escalaVoo || efeitoDe(slot.def.key)?.orbe?.escala || 0.4,
       folha: slot.def.key,
       raio: receita.amp ? 0.36 : 0.32,
     });
@@ -641,7 +741,7 @@ function dispararJato(ator, slot) {
     rajada: ator.jatoId,
     cresce: receita.cresce,
     distCresce: receita.distCresce,
-    escala: folhaGolpe(slot.def.key)?.escalaVoo || 0.28,
+    escala: folhaGolpe(slot.def.key)?.escalaVoo || efeitoDe(slot.def.key)?.orbe?.escala || 0.28,
     folha: slot.def.key,
     raio: 0.34,
   });
@@ -725,7 +825,7 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
       notar(efeitos, { tipo: "cura", ator, ganho: ator.hp - antes });
     } else {
       let feito = false;
-      if (def.debuff) feito = aplicarDebuff(def, ator, alvo, efeitos) || feito;
+      if (def.debuff) feito = aplicarDebuff(def, ator, alvo, efeitos, agora) || feito;
       if (def.ailment) {
         aplicarAilment(def, alvo, efeitos, { modoTurnos: !!ator.resultadoTurno });
         feito = true;
@@ -754,11 +854,13 @@ function soltarGolpe(ator, slot, alvo, agora, efeitos) {
     else {
       const vel = receita?.vel || def.vel || 14;
       const folha = folhaGolpe(def.key);
+      const ef = efeitoDe(def.key);
+      const temVisual = !!(folha || ef?.visual || ef?.orbe);
       soltarTiro(ator, slot, Math.atan2(ator.dirY, ator.dirX), {
         vel,
         arco: def.forma === "arc",
-        folha: folha ? def.key : "",
-        escala: folha?.escalaVoo || 0,
+        folha: temVisual ? def.key : "",
+        escala: folha?.escalaVoo || ef?.orbe?.escala || 0,
       });
     }
     abrirRecuperacao(ator, slot);
@@ -1010,6 +1112,7 @@ export function ensaiarGolpe(ator, agora, efeitos) {
 
 export function dispararGolpeTurno(ator, slot, agora, efeitos) {
   if (!ator || !slot) return false;
+  if ((slot.cd || 0) > 0 && !(slot.basico || slot.def?.key === "basico")) return false;
   if (emConjuracao(ator) || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0) return false;
   const alvo = ator.alvo;
   if (!alvo || alvo.morto) return false;

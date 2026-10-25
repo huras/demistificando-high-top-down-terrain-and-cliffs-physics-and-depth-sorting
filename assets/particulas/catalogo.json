@@ -1,0 +1,441 @@
+{
+  "versao": 1,
+  "combate": {
+    "elementos": {
+      "normal": {
+        "primaria": "#a8a878",
+        "secundaria": "#c6c6a7",
+        "nucleo": "#f0f0e8",
+        "rastro": {
+          "taxa": 20,
+          "vida": 0.3,
+          "dispersao": 0.8
+        },
+        "impacto": {
+          "particulas": 24,
+          "raio": 0.42,
+          "duracao": 0.35,
+          "gravidade": 0
+        }
+      },
+      "fire": {
+        "primaria": "#f08030",
+        "secundaria": "#f8d030",
+        "nucleo": "#fff4c8",
+        "rastro": {
+          "taxa": 21,
+          "vida": 0.53,
+          "dispersao": 2.1
+        },
+        "impacto": {
+          "particulas": 36,
+          "raio": 0.89,
+          "duracao": 0.49,
+          "gravidade": 2.2
+        }
+      },
+      "water": {
+        "primaria": "#6890f0",
+        "secundaria": "#98d8d8",
+        "nucleo": "#d0f0ff",
+        "rastro": {
+          "taxa": 22,
+          "vida": 0.35,
+          "dispersao": 0.6
+        },
+        "impacto": {
+          "particulas": 30,
+          "raio": 0.46,
+          "duracao": 0.4,
+          "gravidade": 3.2
+        }
+      },
+      "electric": {
+        "primaria": "#f8d030",
+        "secundaria": "#fff080",
+        "nucleo": "#ffffc0",
+        "rastro": {
+          "taxa": 32,
+          "vida": 0.2,
+          "dispersao": 2
+        },
+        "impacto": {
+          "particulas": 40,
+          "raio": 0.5,
+          "duracao": 0.3,
+          "gravidade": 0
+        }
+      },
+      "grass": {
+        "primaria": "#78c850",
+        "secundaria": "#a8e060",
+        "nucleo": "#e0ffc0",
+        "rastro": {
+          "taxa": 18,
+          "vida": 0.45,
+          "dispersao": 1
+        },
+        "impacto": {
+          "particulas": 28,
+          "raio": 0.44,
+          "duracao": 0.5,
+          "gravidade": 1.6
+        }
+      },
+      "ice": {
+        "primaria": "#98d8d8",
+        "secundaria": "#c0f0f0",
+        "nucleo": "#e8ffff",
+        "rastro": {
+          "taxa": 16,
+          "vida": 0.5,
+          "dispersao": 0.5
+        },
+        "impacto": {
+          "particulas": 32,
+          "raio": 0.48,
+          "duracao": 0.55,
+          "gravidade": 0
+        }
+      },
+      "fighting": {
+        "primaria": "#c03028",
+        "secundaria": "#e85850",
+        "nucleo": "#ffc8c0",
+        "rastro": {
+          "taxa": 24,
+          "vida": 0.25,
+          "dispersao": 1.6
+        },
+        "impacto": {
+          "particulas": 34,
+          "raio": 0.52,
+          "duracao": 0.35,
+          "gravidade": 1.1
+        }
+      },
+      "poison": {
+        "primaria": "#a040a0",
+        "secundaria": "#c060c0",
+        "nucleo": "#f0c0f0",
+        "rastro": {
+          "taxa": 20,
+          "vida": 0.55,
+          "dispersao": 0.9
+        },
+        "impacto": {
+          "particulas": 30,
+          "raio": 0.46,
+          "duracao": 0.6,
+          "gravidade": -0.8
+        }
+      },
+      "ground": {
+        "primaria": "#e0c068",
+        "secundaria": "#c8a848",
+        "nucleo": "#fff0c0",
+        "rastro": {
+          "taxa": 14,
+          "vida": 0.4,
+          "dispersao": 1.2
+        },
+        "impacto": {
+          "particulas": 36,
+          "raio": 0.56,
+          "duracao": 0.5,
+          "gravidade": 2.8
+        }
+      },
+      "flying": {
+        "primaria": "#a890f0",
+        "secundaria": "#c8b0f8",
+        "nucleo": "#f0e8ff",
+        "rastro": {
+          "taxa": 26,
+          "vida": 0.3,
+          "dispersao": 1.8
+        },
+        "impacto": {
+          "particulas": 26,
+          "raio": 0.4,
+          "duracao": 0.35,
+          "gravidade": -0.55
+        }
+      },
+      "psychic": {
+        "primaria": "#f85888",
+        "secundaria": "#f898a8",
+        "nucleo": "#ffe0e8",
+        "rastro": {
+          "taxa": 24,
+          "vida": 0.45,
+          "dispersao": 1.5
+        },
+        "impacto": {
+          "particulas": 32,
+          "raio": 0.48,
+          "duracao": 0.45,
+          "gravidade": 0
+        }
+      },
+      "bug": {
+        "primaria": "#a8b820",
+        "secundaria": "#c8d830",
+        "nucleo": "#f0ffc0",
+        "rastro": {
+          "taxa": 22,
+          "vida": 0.35,
+          "dispersao": 1.1
+        },
+        "impacto": {
+          "particulas": 28,
+          "raio": 0.42,
+          "duracao": 0.4,
+          "gravidade": 1.4
+        }
+      },
+      "rock": {
+        "primaria": "#b8a038",
+        "secundaria": "#d0c060",
+        "nucleo": "#fff8d0",
+        "rastro": {
+          "taxa": 12,
+          "vida": 0.35,
+          "dispersao": 0.7
+        },
+        "impacto": {
+          "particulas": 38,
+          "raio": 0.52,
+          "duracao": 0.4,
+          "gravidade": 3.8
+        }
+      },
+      "ghost": {
+        "primaria": "#705898",
+        "secundaria": "#9070b8",
+        "nucleo": "#e0d0f8",
+        "rastro": {
+          "taxa": 18,
+          "vida": 0.6,
+          "dispersao": 1.3
+        },
+        "impacto": {
+          "particulas": 26,
+          "raio": 0.44,
+          "duracao": 0.55,
+          "gravidade": -0.4
+        }
+      },
+      "dragon": {
+        "primaria": "#7038f8",
+        "secundaria": "#9070ff",
+        "nucleo": "#e0d0ff",
+        "rastro": {
+          "taxa": 26,
+          "vida": 0.4,
+          "dispersao": 1.6
+        },
+        "impacto": {
+          "particulas": 40,
+          "raio": 0.58,
+          "duracao": 0.5,
+          "gravidade": 0
+        }
+      },
+      "dark": {
+        "primaria": "#705848",
+        "secundaria": "#907868",
+        "nucleo": "#d0c0b0",
+        "rastro": {
+          "taxa": 16,
+          "vida": 0.45,
+          "dispersao": 0.8
+        },
+        "impacto": {
+          "particulas": 30,
+          "raio": 0.46,
+          "duracao": 0.45,
+          "gravidade": 0.8
+        }
+      },
+      "steel": {
+        "primaria": "#b8b8d0",
+        "secundaria": "#d8d8e8",
+        "nucleo": "#ffffff",
+        "rastro": {
+          "taxa": 14,
+          "vida": 0.3,
+          "dispersao": 0.4
+        },
+        "impacto": {
+          "particulas": 34,
+          "raio": 0.44,
+          "duracao": 0.35,
+          "gravidade": 0
+        }
+      },
+      "fairy": {
+        "primaria": "#ee99ac",
+        "secundaria": "#ffb8c8",
+        "nucleo": "#fff0f4",
+        "rastro": {
+          "taxa": 28,
+          "vida": 0.5,
+          "dispersao": 1.4
+        },
+        "impacto": {
+          "particulas": 32,
+          "raio": 0.46,
+          "duracao": 0.5,
+          "gravidade": -0.3
+        }
+      }
+    }
+  },
+  "passo": {
+    "andar": {
+      "intervalo": 0.4,
+      "bolas": 1,
+      "tam0": 0.36,
+      "tam1": 0.86,
+      "espalha": 0.16,
+      "dur": 0.58,
+      "atras": 0.14,
+      "alfa": 0.55
+    },
+    "correr": {
+      "intervalo": 0.12,
+      "bolas": 2,
+      "tam0": 0.42,
+      "tam1": 1.12,
+      "espalha": 0.36,
+      "dur": 0.7,
+      "atras": 0.22,
+      "alfa": 0.68
+    }
+  },
+  "campo": {
+    "fagulha": {
+      "baseBaixa": 0.28,
+      "baseAlta": 1.05,
+      "espalha": 0.25,
+      "alturaExtraBaixa": 0.35,
+      "alturaExtraAlta": 1.3,
+      "velMin": 0.15,
+      "velExtra": 0.35,
+      "vzMin": 0.4,
+      "vzExtra": 0.7,
+      "vidaMin": 0.4,
+      "vidaExtra": 0.3,
+      "chanceFuma": 0.4,
+      "chanceQuente": 0.7,
+      "corFumaR": 0.32,
+      "corFumaG": 0.28,
+      "corFumaB": 0.24,
+      "corQuenteR": 1,
+      "corQuenteG": 0.42,
+      "corQuenteB": 0.08,
+      "corMornaR": 0.95,
+      "corMornaG": 0.72,
+      "corMornaB": 0.2
+    },
+    "fagulhaForte": {
+      "vzExtra": 1.4,
+      "vidaMin": 0.55,
+      "vidaExtra": 0.35
+    },
+    "lasca": {
+      "zMin": 0.35,
+      "zExtra": 0.2,
+      "velMin": 0.8,
+      "velExtra": 1.6,
+      "vzMin": 1.4,
+      "vzExtra": 1.6,
+      "vidaMin": 0.32,
+      "vidaExtra": 0.22,
+      "corR": 0.62,
+      "corG": 0.56,
+      "corB": 0.48,
+      "grav": 5
+    }
+  },
+  "agua": {
+    "onda": {
+      "intervalo": 0.12,
+      "intervaloParado": 0.55,
+      "vida": 0.9,
+      "rx": 0.7,
+      "cresce": 2.6,
+      "ry": 0.38,
+      "atras": 0.25,
+      "passo": 0.022,
+      "imersaoMin": 0.12,
+      "offsetLamina": 0.18
+    },
+    "gota": {
+      "vida": 0.35,
+      "grav": 14,
+      "rajada": 5,
+      "pinga": 0.4,
+      "molhaSeg": 5
+    },
+    "pegada": {
+      "carga": 6,
+      "dist": 0.62,
+      "intervalo": 0.14,
+      "vel": 0.2,
+      "vida": 6.2,
+      "tam": 0.28,
+      "lateral": 0.14,
+      "cheio": 0.55
+    },
+    "nado": {
+      "bobA": 0.05,
+      "bobB": 0.03,
+      "bobParado": 0.62
+    }
+  },
+  "bola": {
+    "envio": {
+      "raio": 0.4,
+      "vidaAnel": 0.45,
+      "vidaFlash": 0.4,
+      "brancoR": 255,
+      "brancoG": 252,
+      "brancoB": 240,
+      "vermelhoR": 248,
+      "vermelhoG": 113,
+      "vermelhoB": 113,
+      "faiscaConta": 18,
+      "faiscaVida": 0.48,
+      "faiscaVelMin": 2.8,
+      "faiscaVelMax": 7.2,
+      "faiscaTamMin": 0.05,
+      "faiscaTamMax": 0.13
+    },
+    "recolher": {
+      "raio": 0.4,
+      "vidaAnel": 0.42,
+      "vidaFlash": 0.35,
+      "brancoR": 255,
+      "brancoG": 248,
+      "brancoB": 230,
+      "vermelhoR": 239,
+      "vermelhoG": 68,
+      "vermelhoB": 68,
+      "faiscaConta": 20,
+      "faiscaVida": 0.5,
+      "faiscaVelMin": 1.8,
+      "faiscaVelMax": 4.6,
+      "faiscaTamMin": 0.04,
+      "faiscaTamMax": 0.11,
+      "puxa": 14
+    },
+    "shiny": {
+      "douradoR": 250,
+      "douradoG": 204,
+      "douradoB": 21,
+      "arrasto": 3.8
+    }
+  }
+}

@@ -7,7 +7,7 @@ import {
 import { dentroDoMapa } from "../mundo/altura.js";
 import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { ehSolido } from "../mundo/voxel/tiposBloco.js";
-import { invadeDisco } from "./obstaculos.js";
+import { discoInvasor, invadeDisco } from "./obstaculos.js";
 
 /**
  * Walk height (= face acima do sólido) sob elevRef na coluna.
@@ -192,7 +192,21 @@ function podeAvancar(x, y, x0, y0, z, r, modo, elev, zMin) {
   if (cantosLivres(x, y, z, r, modo, elev, zMin) && (!noChao || !invadeDisco(x, y, elev, r))) {
     return true;
   }
-  if (noChao && invadeDisco(x, y, elev, r)) return false;
+  if (noChao) {
+    const inv1 = discoInvasor(x, y, elev, r);
+    if (inv1) {
+      const inv0 = discoInvasor(x0, y0, elev, r);
+      // Já dentro da pedra/árvore: só permite passo que AFROUXA a penetração.
+      if (inv0) {
+        const d0 = Math.hypot(x0 - inv0.x, y0 - inv0.y);
+        const d1 = Math.hypot(x - inv1.x, y - inv1.y);
+        if (d1 > d0 + 1e-4 && cantosLivres(x, y, z, r, modo, elev, zMin)) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
   if (modo !== "andar" && modo !== "aereo") return false;
   if (!jaPenetra(x0, y0, elev, r, zMin)) return false;
   if (bloqueioSemSolido(x, y, r, modo, elev, zMin)) return false;

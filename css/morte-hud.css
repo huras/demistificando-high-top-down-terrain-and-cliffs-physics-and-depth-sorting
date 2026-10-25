@@ -1,0 +1,159 @@
+/* Overlay de morte — card inferior, cena ainda visível pra olhar. */
+
+.morte-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 7600;
+  display: grid;
+  place-items: end center;
+  padding: 0 24px 48px;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.morte-hud[hidden] {
+  display: none !important;
+}
+
+.morte-hud.is-visible {
+  opacity: 1;
+}
+
+.morte-hud__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(12, 10, 14, 0.15) 0%, rgba(12, 10, 14, 0.55) 55%, rgba(12, 10, 14, 0.78) 100%);
+  pointer-events: none;
+}
+
+.morte-hud__card {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 16px 22px;
+  width: min(480px, calc(100vw - 48px));
+  padding: 22px 26px 20px;
+  border-radius: 16px;
+  background:
+    linear-gradient(165deg, rgba(48, 40, 38, 0.94) 0%, rgba(28, 24, 26, 0.96) 100%);
+  border: 1px solid rgba(255, 220, 180, 0.14);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(14px);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.morte-hud.is-visible .morte-hud__card {
+  transform: none;
+}
+
+.morte-hud__face {
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(252, 165, 165, 0.18) 0%, rgba(252, 165, 165, 0) 72%);
+  grid-row: 1;
+}
+
+.morte-hud__sprite {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5));
+}
+
+.morte-hud__copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.morte-hud__eyebrow {
+  margin: 0;
+  color: rgba(252, 165, 165, 0.85);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.morte-hud__titulo {
+  margin: 0 0 6px;
+  color: #f8e9d8;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+
+.morte-hud__linha {
+  margin: 0;
+  color: rgba(232, 220, 204, 0.82);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.morte-hud__linha--hora {
+  margin-top: 4px;
+  color: rgba(232, 220, 204, 0.55);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.morte-hud__dica {
+  margin: 8px 0 0;
+  color: rgba(232, 220, 204, 0.42);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+
+.morte-hud__btn {
+  grid-column: 1 / -1;
+  justify-self: end;
+  margin-top: 6px;
+  padding: 10px 22px;
+  border: 1px solid rgba(252, 165, 165, 0.35);
+  border-radius: 999px;
+  background: rgba(185, 70, 70, 0.35);
+  color: #ffe8e0;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.morte-hud__btn:hover {
+  background: rgba(210, 80, 80, 0.5);
+  border-color: rgba(252, 165, 165, 0.55);
+}
+
+.morte-hud__btn:active {
+  transform: scale(0.98);
+}
+
+.morte-hud__btn:focus-visible {
+  outline: 2px solid rgba(252, 165, 165, 0.7);
+  outline-offset: 2px;
+}
+
+body.is-morte .action-prompt-hud,
+body.is-morte .hud-toast-dock,
+body.is-morte .zone-banner,
+body.is-morte .party-moves-combat,
+body.is-morte .hud-utility-cluster {
+  visibility: hidden;
+}

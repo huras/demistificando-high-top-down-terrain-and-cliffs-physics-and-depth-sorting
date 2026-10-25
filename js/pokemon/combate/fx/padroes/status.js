@@ -1,9 +1,11 @@
 import { ALTURA_BLOCO } from "../../../../config.js";
+import { texturaFolha } from "../../folhasGolpe.js";
 import { PadraoBase } from "../padraoBase.js";
 import { emitir, spritesArco } from "../poolParticulas3d.js";
+import * as THREE from "three";
 
-const QTD_ARCOS = 8;
-const DENTES = 7;
+const QTD_ARCOS = 12;
+const DENTES = 11;
 
 const NUVEM = Object.freeze({
   poison: true,
@@ -13,25 +15,60 @@ const NUVEM = Object.freeze({
   freeze: true,
 });
 
+/** @type {THREE.Sprite | null} */
+let geloSprite = null;
+/** @type {THREE.Scene | null} */
+let geloCena = null;
+
+function garantirGelo(cena) {
+  if (geloSprite && geloCena === cena) return geloSprite;
+  if (geloSprite && geloSprite.parent) geloSprite.parent.remove(geloSprite);
+  const mat = new THREE.SpriteMaterial({
+    map: null,
+    color: 0xffffff,
+    transparent: true,
+    depthWrite: false,
+    opacity: 0.85,
+  });
+  geloSprite = new THREE.Sprite(mat);
+  geloSprite.visible = false;
+  geloSprite.renderOrder = 9;
+  if (cena) {
+    cena.add(geloSprite);
+    geloCena = cena;
+  }
+  return geloSprite;
+}
+
 /**
- * Growl / Tail Whip — arcos sonoros (sawtooth) em sprites, scroll radial.
+ * Growl / Tail Whip — arcos sonoros densos (paridade BattleParticles).
  * Status major — nuvem / faíscas / brasas / gelo no alvo.
  */
 export class PadraoStatus extends PadraoBase {
   iniciar(origem, alvo, def, elemento, opts = {}) {
     super.iniciar(origem, alvo, def, elemento, opts);
     this.variante = opts.variante || "growl";
-    this.duracao = NUVEM[this.variante] ? 0.85 : 0.72;
+    this.duracao = opts.duracao > 0 ? opts.duracao : NUVEM[this.variante] ? 0.85 : 0.72;
     this.alcance = opts.alcance > 0 ? opts.alcance : 6;
     const dx = this.mx - origem.x;
     const dy = this.my - origem.y;
     this.angulo = Math.atan2(dy, dx);
-    this.abertura = this.variante === "tail" ? 0.95 : 1.15;
+    this.abertura = this.variante === "tail" ? 0.95 : 1.35;
     this.arcos = [];
     for (let i = 0; i < QTD_ARCOS; i++) {
-      this.arcos.push({ raio: 0.4 + i * 0.35, alpha: 1 - i * 0.08 });
+      this.arcos.push({ raio: 0.35 + i * 0.28, alpha: 1 - i * 0.05 });
     }
+    this.geloT = 0;
     if (NUVEM[this.variante] && alvo) this.estourarNuvem(alvo, elemento);
+    if (this.variante === "absorb" && alvo) this.iniciarAbsorb(origem, alvo, elemento);
+  }
+
+  iniciarAbsorb(origem, alvo, elemento) {
+    this.absorbParticulas = 24;
+    this.ox = origem.x;
+    this.oy = origem.y;
+    this.ax = alvo.x;
+    this.ay = alvo.y;
   }
 
   estourarNuvem(alvo, elemento) {
@@ -77,6 +114,7 @@ export class PadraoStatus extends PadraoBase {
           vy: (Math.random() - 0.5) * 0.9,
           vz: 0.8 + Math.random() * 1.4,
           modo: "faisca",
+          folha: "chama",
           grav: -0.8,
           drag: 0.88,
         });
@@ -91,6 +129,7 @@ export class PadraoStatus extends PadraoBase {
           drag: 0.9,
           tam: 0.12 + Math.random() * 0.1,
         });
+        this.mostrarGelo(alvo);
       } else {
         emitir({
           ...base,
@@ -105,6 +144,23 @@ export class PadraoStatus extends PadraoBase {
     }
   }
 
+  mostrarGelo(alvo) {
+    const lista = spritesArco();
+    const cena = lista[0]?.parent || null;
+    const spr = garantirGelo(cena);
+    const tex = texturaFolha("ice-block");
+    if (tex && spr) {
+      spr.material.map = tex;
+      spr.material.needsUpdate = true;
+      spr.position.set(alvo.x, this.peito(alvo) * ALTURA_BLOCO * 0.55, alvo.y);
+      spr.scale.set(1.1, 1.1, 1);
+      spr.material.opacity = 0.9;
+      spr.visible = true;
+      this.geloT = 0.9;
+      this.geloAlvo = alvo;
+    }
+  }
+
   atualizar(dt) {
     if (!this.ativo || !this.origem || !this.elemento) return;
     this.tempo += dt;
@@ -112,34 +168,55 @@ export class PadraoStatus extends PadraoBase {
     const lista = spritesArco();
     let slot = 0;
 
+    if (this.variante === "absorb" && this.alvo) {
+      const u = Math.min(1, this.tempo / this.duracao);
+      for (let i = 0; i < 4; i++) {
+        const p = Math.random();
+        emitir({
+          x: this.ax + (this.ox - this.ax) * p + (Math.random() - 0.5) * 0.2,
+          y: this.ay + (this.oy - this.ay) * p + (Math.random() - 0.5) * 0.2,
+          z: this.peito(this.alvo) * (1 - p) + this.peito(this.origem) * p,
+          vx: (this.ox - this.ax) * 0.8,
+          vy: (this.oy - this.ay) * 0.8,
+          vz: 0.2,
+          cor: this.elemento.primaria,
+          vida: 0.35,
+          tam: 0.1,
+          modo: "faisca",
+        });
+      }
+      if (u >= 1) this.encerrar();
+      return;
+    }
+
     if (!NUVEM[this.variante]) {
       const ox = this.origem.x;
       const oy = this.origem.y;
       const oz = this.peito(this.origem);
-      const scroll = this.tempo * 5.4;
-      const fade = t < 0.15 ? t / 0.15 : t > 0.7 ? (1 - t) / 0.3 : 1;
+      const scroll = this.tempo * 6.2;
+      const fade = t < 0.12 ? t / 0.12 : t > 0.65 ? (1 - t) / 0.35 : 1;
 
       for (let a = 0; a < this.arcos.length; a++) {
         const arco = this.arcos[a];
-        const raio = ((arco.raio + scroll) % (this.alcance * 0.85)) + 0.45;
-        if (raio < 0.55) continue;
-        const alpha = arco.alpha * fade * (1 - raio / (this.alcance + 0.5));
-        if (alpha <= 0.04) continue;
+        const raio = ((arco.raio + scroll) % (this.alcance * 0.9)) + 0.4;
+        if (raio < 0.5) continue;
+        const alpha = arco.alpha * fade * (1 - raio / (this.alcance + 0.6));
+        if (alpha <= 0.03) continue;
         for (let d = 0; d < DENTES; d++) {
           if (slot >= lista.length) break;
           const u = d / (DENTES - 1);
           const ang = this.angulo - this.abertura / 2 + this.abertura * u;
-          const serra = ((d % 2) * 2 - 1) * 0.12 * raio;
+          const serra = ((d % 2) * 2 - 1) * 0.14 * raio;
           const r = raio + serra;
           const spr = lista[slot++];
           spr.visible = true;
           spr.material.color.set(this.variante === "tail" ? this.elemento.secundaria : this.elemento.nucleo);
-          spr.material.opacity = Math.max(0, alpha * 0.85);
-          const s = 0.16 + (1 - u * 0.3) * 0.08;
-          spr.scale.set(s, s * 0.7, 1);
+          spr.material.opacity = Math.max(0, alpha * 0.95);
+          const s = 0.14 + (1 - u * 0.25) * 0.1;
+          spr.scale.set(s * 1.15, s * 0.55, 1);
           spr.position.set(
             ox + Math.cos(ang) * r,
-            Math.max(0.12, oz * ALTURA_BLOCO + Math.sin(u * Math.PI) * 0.15),
+            Math.max(0.12, oz * ALTURA_BLOCO + Math.sin(u * Math.PI) * 0.18),
             oy + Math.sin(ang) * r,
           );
         }
@@ -168,9 +245,23 @@ export class PadraoStatus extends PadraoBase {
           vida: 0.4,
           tam: 0.12,
           modo: this.variante === "paralysis" || this.variante === "burn" ? "faisca" : "poeira",
+          folha: this.variante === "burn" ? "chama" : "",
           grav: this.variante === "burn" ? -0.6 : this.variante === "freeze" ? 0.2 : -0.2,
         });
       }
+    }
+
+    if (this.geloT > 0 && geloSprite) {
+      this.geloT -= dt;
+      geloSprite.material.opacity = Math.max(0, this.geloT / 0.9) * 0.9;
+      if (this.geloAlvo) {
+        geloSprite.position.set(
+          this.geloAlvo.x,
+          this.peito(this.geloAlvo) * ALTURA_BLOCO * 0.55,
+          this.geloAlvo.y,
+        );
+      }
+      if (this.geloT <= 0) geloSprite.visible = false;
     }
 
     for (let i = slot; i < lista.length; i++) {
@@ -178,5 +269,10 @@ export class PadraoStatus extends PadraoBase {
       lista[i].material.opacity = 0;
     }
     if (this.tempo >= this.duracao) this.encerrar();
+  }
+
+  encerrar() {
+    if (geloSprite) geloSprite.visible = false;
+    super.encerrar();
   }
 }

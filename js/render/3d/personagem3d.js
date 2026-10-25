@@ -187,42 +187,44 @@ export function criarPersonagem3d(opts = {}) {
       pintarFrame(corpoEstado, yaw);
 
       const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
+      // Queda: billboard em pé + roll 90°.
+      // 1) lift = meio-lado * cos(tilt) — só o bastante pra borda tocar o chão
+      //    (lift cheio flutuava por causa da inclinação top-down).
+      // 2) desloca o pivô no eixo local X pra o centro do corpo ficar
+      //    em cima da sombra (pés), não offset pra o lado.
+      let roll = 0;
+      if (corpoEstado.morteDesde != null) {
+        const DUR = 0.62;
+        const u = Math.min(1, (performance.now() - corpoEstado.morteDesde) / 1000 / DUR);
+        const e = 1 - (1 - u) * (1 - u) * (1 - u);
+        const sinal = corpoEstado.morteRollSinal === -1 ? -1 : 1;
+        roll = sinal * (Math.PI * 0.5) * e;
+      }
       const lado = ALTURA_SPRITE_JOGADOR;
-      poseAtorCartao(cartao, {
-        x: 0,
-        y: folgaPe,
-        z: 0,
+      const sinR = Math.sin(roll);
+      const absR = Math.abs(sinR);
+      const liftMorte = absR * (lado * 0.5) * Math.cos(Math.abs(tilt));
+      // right na face do cartão após yaw: (cos yaw, −sin yaw) em (x, z)
+      const localX = sinR * (lado * 0.5);
+      const ox = Math.cos(yaw) * localX;
+      const oz = -Math.sin(yaw) * localX;
+      const poseOpts = {
+        x: ox,
+        y: folgaPe + liftMorte,
+        z: oz,
         largura: lado,
         altura: lado,
         yaw,
         inclinacao: tilt,
+        roll,
         pivotX,
         pivotY,
-      });
-      poseAtorCartao(silhueta, {
-        x: 0,
-        y: folgaPe,
-        z: 0,
-        largura: lado,
-        altura: lado,
-        yaw,
-        inclinacao: tilt,
-        pivotX,
-        pivotY,
-      });
-      poseAtorCartao(veu, {
-        x: 0,
-        y: folgaPe,
-        z: 0,
-        largura: lado,
-        altura: lado,
-        yaw,
-        inclinacao: tilt,
-        pivotX,
-        pivotY,
-      });
+      };
+      poseAtorCartao(cartao, poseOpts);
+      poseAtorCartao(silhueta, poseOpts);
+      poseAtorCartao(veu, poseOpts);
 
-      const naParede = !!(corpoEstado.escalando && corpoEstado.escalada);
+      const naParede = !!(corpoEstado.escalando && corpoEstado.escalada) && corpoEstado.morteDesde == null;
       if (naParede) {
         const e = corpoEstado.escalada;
         const nx = e.normalX || 0;

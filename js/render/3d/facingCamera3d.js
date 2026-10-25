@@ -31,15 +31,43 @@ export function linhaFacingCamera(dirX, dirY, yawCam) {
 }
 
 /**
- * Preferência: velocidade se andando; senão dirX/dirY do corpo.
+ * Rumo visual no mundo. Na parede, sempre olha pra face (−normal).
+ * Não usar `dirY || 1`: dirY=0 (leste/oeste) é válido.
+ */
+export function rumoVisualCorpo(corpo) {
+  const e = corpo?.escalando && corpo.escalada;
+  if (e) {
+    const nx = e.normalX ?? 0;
+    const ny = e.normalY ?? 0;
+    if (nx || ny) return { x: -nx, y: -ny };
+  }
+  const dx = corpo?.dirX ?? 0;
+  const dy = corpo?.dirY ?? 0;
+  if (dx !== 0 || dy !== 0) return { x: dx, y: dy };
+  return { x: 0, y: 1 };
+}
+
+/**
+ * Preferência: facing forçado (morte) > parede > mira > velocidade > dirX/dirY.
+ * Sheet: 0 frente, 1 oeste, 2 leste, 3 costas.
  */
 export function linhaFacingDoCorpo(corpo, yawCam) {
+  if (corpo?.facingForcado != null) {
+    const f = corpo.facingForcado | 0;
+    return f < 0 ? 0 : f > 3 ? 3 : f;
+  }
+  if (corpo?.escalando && corpo.escalada) {
+    const r = rumoVisualCorpo(corpo);
+    return linhaFacingCamera(r.x, r.y, yawCam);
+  }
   if (corpo.mirando) {
-    return linhaFacingCamera(corpo.dirX || 0, corpo.dirY || 1, yawCam);
+    const r = rumoVisualCorpo(corpo);
+    return linhaFacingCamera(r.x, r.y, yawCam);
   }
   const vx = corpo.vx ?? 0;
   const vy = corpo.vy ?? 0;
   const spd = Math.hypot(vx, vy);
   if (spd > 0.35) return linhaFacingCamera(vx, vy, yawCam);
-  return linhaFacingCamera(corpo.dirX || 0, corpo.dirY || 1, yawCam);
+  const r = rumoVisualCorpo(corpo);
+  return linhaFacingCamera(r.x, r.y, yawCam);
 }

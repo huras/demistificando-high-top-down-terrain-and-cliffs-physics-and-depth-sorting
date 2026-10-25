@@ -8,3 +8,5 @@ __pycache__/
 # Fontes brutas de modelo — não entram no git nem no deploy
 assets/models/**/*.zip
 *.zip
+# Banco BP regenerável: node scripts/importar-efeitos-bp.mjs
+assets/effects/banco/

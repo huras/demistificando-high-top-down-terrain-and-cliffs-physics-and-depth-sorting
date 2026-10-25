@@ -1,0 +1,442 @@
+import {
+  aplicarCatalogoParticulas,
+  catalogoParticulas,
+  defaultsParticulas,
+  idsElemento,
+} from "./catalogo.js";
+import { criarPreviewParticulas } from "./preview.js";
+
+const statusEl = document.getElementById("status");
+const abasEl = document.getElementById("abas");
+const listaEl = document.getElementById("lista");
+const buscaEl = document.getElementById("busca");
+const inspectorEl = document.getElementById("inspector");
+const canvas = document.getElementById("vista");
+const hudEl = document.getElementById("hud-perf");
+const btnLoop = document.getElementById("loop");
+
+const CATEGORIAS = [
+  { id: "combate", rotulo: "Combate" },
+  { id: "passo", rotulo: "Passo" },
+  { id: "campo", rotulo: "Campo" },
+  { id: "agua", rotulo: "Água" },
+  { id: "bola", rotulo: "Bola" },
+];
+
+const ROTULOS = {
+  normal: "Normal",
+  fire: "Fogo",
+  water: "Água",
+  electric: "Elétrico",
+  grass: "Planta",
+  ice: "Gelo",
+  fighting: "Lutador",
+  poison: "Veneno",
+  ground: "Terra",
+  flying: "Voador",
+  psychic: "Psíquico",
+  bug: "Inseto",
+  rock: "Pedra",
+  ghost: "Fantasma",
+  dragon: "Dragão",
+  dark: "Sombrio",
+  steel: "Aço",
+  fairy: "Fada",
+  andar: "Andar",
+  correr: "Correr",
+  fagulha: "Fagulha",
+  fagulhaForte: "Fagulha forte",
+  lasca: "Lasca",
+  onda: "Onda",
+  gota: "Gota",
+  pegada: "Pegada",
+  nado: "Nado (bob)",
+  envio: "Envio",
+  recolher: "Recolher",
+  shiny: "Shiny / arrasto",
+};
+
+/** @type {Record<string, { path: string, tipo: string, min?: number, max?: number, step?: number, rotulo: string }[]>} */
+const CAMPOS = {
+  combate: [
+    { path: "primaria", tipo: "cor", rotulo: "Primária" },
+    { path: "secundaria", tipo: "cor", rotulo: "Secundária" },
+    { path: "nucleo", tipo: "cor", rotulo: "Núcleo" },
+    { path: "rastro.taxa", tipo: "range", min: 0, max: 60, step: 1, rotulo: "Rastro taxa" },
+    { path: "rastro.vida", tipo: "range", min: 0.05, max: 1.5, step: 0.01, rotulo: "Rastro vida" },
+    { path: "rastro.dispersao", tipo: "range", min: 0, max: 4, step: 0.05, rotulo: "Rastro dispersão" },
+    { path: "impacto.particulas", tipo: "range", min: 4, max: 64, step: 1, rotulo: "Impacto qtd" },
+    { path: "impacto.raio", tipo: "range", min: 0.1, max: 1.5, step: 0.01, rotulo: "Impacto raio" },
+    { path: "impacto.duracao", tipo: "range", min: 0.05, max: 1.5, step: 0.01, rotulo: "Impacto duração" },
+    { path: "impacto.gravidade", tipo: "range", min: -4, max: 8, step: 0.05, rotulo: "Impacto gravidade" },
+  ],
+  passo: [
+    { path: "intervalo", tipo: "range", min: 0.04, max: 1.2, step: 0.01, rotulo: "Intervalo" },
+    { path: "bolas", tipo: "range", min: 1, max: 6, step: 1, rotulo: "Bolas" },
+    { path: "tam0", tipo: "range", min: 0.1, max: 1.5, step: 0.01, rotulo: "Tam inicial" },
+    { path: "tam1", tipo: "range", min: 0.2, max: 2.5, step: 0.01, rotulo: "Tam final" },
+    { path: "espalha", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Espalha" },
+    { path: "dur", tipo: "range", min: 0.1, max: 2, step: 0.01, rotulo: "Duração" },
+    { path: "atras", tipo: "range", min: 0, max: 0.8, step: 0.01, rotulo: "Atraso" },
+    { path: "alfa", tipo: "range", min: 0.05, max: 1, step: 0.01, rotulo: "Alfa" },
+  ],
+  campoFagulha: [
+    { path: "baseBaixa", tipo: "range", min: 0, max: 2, step: 0.01, rotulo: "Base baixa" },
+    { path: "baseAlta", tipo: "range", min: 0, max: 3, step: 0.01, rotulo: "Base alta" },
+    { path: "espalha", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Espalha" },
+    { path: "velMin", tipo: "range", min: 0, max: 2, step: 0.01, rotulo: "Vel mín" },
+    { path: "velExtra", tipo: "range", min: 0, max: 2, step: 0.01, rotulo: "Vel extra" },
+    { path: "vzMin", tipo: "range", min: 0, max: 3, step: 0.01, rotulo: "Vz mín" },
+    { path: "vzExtra", tipo: "range", min: 0, max: 3, step: 0.01, rotulo: "Vz extra" },
+    { path: "vidaMin", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Vida mín" },
+    { path: "vidaExtra", tipo: "range", min: 0, max: 1.5, step: 0.01, rotulo: "Vida extra" },
+    { path: "chanceFuma", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Chance fumaça" },
+    { path: "chanceQuente", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Chance quente" },
+  ],
+  campoFagulhaForte: [
+    { path: "vzExtra", tipo: "range", min: 0, max: 4, step: 0.01, rotulo: "Vz extra" },
+    { path: "vidaMin", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Vida mín" },
+    { path: "vidaExtra", tipo: "range", min: 0, max: 1.5, step: 0.01, rotulo: "Vida extra" },
+  ],
+  campoLasca: [
+    { path: "zMin", tipo: "range", min: 0, max: 2, step: 0.01, rotulo: "Z mín" },
+    { path: "zExtra", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Z extra" },
+    { path: "velMin", tipo: "range", min: 0, max: 4, step: 0.01, rotulo: "Vel mín" },
+    { path: "velExtra", tipo: "range", min: 0, max: 4, step: 0.01, rotulo: "Vel extra" },
+    { path: "vzMin", tipo: "range", min: 0, max: 4, step: 0.01, rotulo: "Vz mín" },
+    { path: "vzExtra", tipo: "range", min: 0, max: 4, step: 0.01, rotulo: "Vz extra" },
+    { path: "vidaMin", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Vida mín" },
+    { path: "vidaExtra", tipo: "range", min: 0, max: 1.5, step: 0.01, rotulo: "Vida extra" },
+    { path: "corR", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Cor R" },
+    { path: "corG", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Cor G" },
+    { path: "corB", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Cor B" },
+    { path: "grav", tipo: "range", min: 0, max: 20, step: 0.1, rotulo: "Gravidade" },
+  ],
+  aguaOnda: [
+    { path: "intervalo", tipo: "range", min: 0.02, max: 1, step: 0.01, rotulo: "Intervalo" },
+    { path: "intervaloParado", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Intervalo parado" },
+    { path: "vida", tipo: "range", min: 0.1, max: 3, step: 0.01, rotulo: "Vida" },
+    { path: "rx", tipo: "range", min: 0.1, max: 3, step: 0.01, rotulo: "Raio X" },
+    { path: "cresce", tipo: "range", min: 1, max: 6, step: 0.05, rotulo: "Cresce" },
+    { path: "ry", tipo: "range", min: 0.05, max: 1.5, step: 0.01, rotulo: "Escala Y" },
+    { path: "atras", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Atraso" },
+    { path: "passo", tipo: "range", min: 0.001, max: 0.2, step: 0.001, rotulo: "Passo mín" },
+    { path: "imersaoMin", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Imersão mín" },
+    { path: "offsetLamina", tipo: "range", min: 0, max: 1, step: 0.01, rotulo: "Offset lâmina" },
+  ],
+  aguaGota: [
+    { path: "vida", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Vida" },
+    { path: "grav", tipo: "range", min: 1, max: 40, step: 0.1, rotulo: "Gravidade" },
+    { path: "rajada", tipo: "range", min: 1, max: 20, step: 1, rotulo: "Rajada" },
+    { path: "pinga", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Pinga" },
+    { path: "molhaSeg", tipo: "range", min: 0.5, max: 20, step: 0.1, rotulo: "Molha (s)" },
+  ],
+  aguaPegada: [
+    { path: "carga", tipo: "range", min: 1, max: 20, step: 1, rotulo: "Carga" },
+    { path: "dist", tipo: "range", min: 0.1, max: 2, step: 0.01, rotulo: "Distância" },
+    { path: "intervalo", tipo: "range", min: 0.02, max: 1, step: 0.01, rotulo: "Intervalo" },
+    { path: "vel", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Vel mín" },
+    { path: "vida", tipo: "range", min: 0.5, max: 20, step: 0.1, rotulo: "Vida" },
+    { path: "tam", tipo: "range", min: 0.05, max: 1, step: 0.01, rotulo: "Tamanho" },
+    { path: "lateral", tipo: "range", min: 0, max: 0.6, step: 0.01, rotulo: "Lateral" },
+    { path: "cheio", tipo: "range", min: 0.1, max: 0.95, step: 0.01, rotulo: "Cheio" },
+  ],
+  aguaNado: [
+    { path: "bobA", tipo: "range", min: 0, max: 0.3, step: 0.005, rotulo: "Bob A" },
+    { path: "bobB", tipo: "range", min: 0, max: 0.3, step: 0.005, rotulo: "Bob B" },
+    { path: "bobParado", tipo: "range", min: 0.1, max: 2, step: 0.01, rotulo: "Bob parado" },
+  ],
+  bolaBurst: [
+    { path: "raio", tipo: "range", min: 0.1, max: 2, step: 0.01, rotulo: "Raio" },
+    { path: "vidaAnel", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Vida anel" },
+    { path: "vidaFlash", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Vida flash" },
+    { path: "brancoR", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Branco R" },
+    { path: "brancoG", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Branco G" },
+    { path: "brancoB", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Branco B" },
+    { path: "vermelhoR", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Vermelho R" },
+    { path: "vermelhoG", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Vermelho G" },
+    { path: "vermelhoB", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Vermelho B" },
+    { path: "faiscaConta", tipo: "range", min: 2, max: 48, step: 1, rotulo: "Faiscas" },
+    { path: "faiscaVida", tipo: "range", min: 0.05, max: 2, step: 0.01, rotulo: "Faisca vida" },
+    { path: "faiscaVelMin", tipo: "range", min: 0.2, max: 12, step: 0.1, rotulo: "Vel mín" },
+    { path: "faiscaVelMax", tipo: "range", min: 0.5, max: 16, step: 0.1, rotulo: "Vel máx" },
+    { path: "faiscaTamMin", tipo: "range", min: 0.01, max: 0.4, step: 0.005, rotulo: "Tam mín" },
+    { path: "faiscaTamMax", tipo: "range", min: 0.02, max: 0.5, step: 0.005, rotulo: "Tam máx" },
+    { path: "puxa", tipo: "range", min: 0, max: 40, step: 0.5, rotulo: "Puxa" },
+  ],
+  bolaShiny: [
+    { path: "douradoR", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Dourado R" },
+    { path: "douradoG", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Dourado G" },
+    { path: "douradoB", tipo: "range", min: 0, max: 255, step: 1, rotulo: "Dourado B" },
+    { path: "arrasto", tipo: "range", min: 0.5, max: 12, step: 0.1, rotulo: "Arrasto" },
+  ],
+};
+
+/** @type {object} */
+let catalogo = defaultsParticulas();
+let sujo = false;
+let categoria = "combate";
+let presetId = "fire";
+const preview = criarPreviewParticulas(canvas, hudEl);
+
+function dizer(texto) {
+  statusEl.textContent = texto;
+}
+
+function marcarSujo() {
+  if (!sujo) {
+    sujo = true;
+    dizer("Alterado — não salvo.");
+  }
+}
+
+function lerPath(obj, path) {
+  const partes = path.split(".");
+  let cur = obj;
+  for (let i = 0; i < partes.length; i++) {
+    if (cur == null) return undefined;
+    cur = cur[partes[i]];
+  }
+  return cur;
+}
+
+function escreverPath(obj, path, valor) {
+  const partes = path.split(".");
+  let cur = obj;
+  for (let i = 0; i < partes.length - 1; i++) {
+    if (!cur[partes[i]] || typeof cur[partes[i]] !== "object") cur[partes[i]] = {};
+    cur = cur[partes[i]];
+  }
+  cur[partes[partes.length - 1]] = valor;
+}
+
+function objetoPreset() {
+  if (categoria === "combate") return catalogo.combate.elementos[presetId];
+  if (categoria === "passo") return catalogo.passo[presetId];
+  if (categoria === "campo") return catalogo.campo[presetId];
+  if (categoria === "agua") return catalogo.agua[presetId];
+  if (categoria === "bola") return catalogo.bola[presetId];
+  return null;
+}
+
+function schemaCampos() {
+  if (categoria === "combate") return CAMPOS.combate;
+  if (categoria === "passo") return CAMPOS.passo;
+  if (categoria === "campo") {
+    if (presetId === "fagulhaForte") return CAMPOS.campoFagulhaForte;
+    if (presetId === "lasca") return CAMPOS.campoLasca;
+    return CAMPOS.campoFagulha;
+  }
+  if (categoria === "agua") {
+    if (presetId === "gota") return CAMPOS.aguaGota;
+    if (presetId === "pegada") return CAMPOS.aguaPegada;
+    if (presetId === "nado") return CAMPOS.aguaNado;
+    return CAMPOS.aguaOnda;
+  }
+  if (categoria === "bola") {
+    if (presetId === "shiny") return CAMPOS.bolaShiny;
+    return CAMPOS.bolaBurst;
+  }
+  return [];
+}
+
+function idsDaCategoria() {
+  if (categoria === "combate") return idsElemento();
+  if (categoria === "passo") return ["andar", "correr"];
+  if (categoria === "campo") return ["fagulha", "fagulhaForte", "lasca"];
+  if (categoria === "agua") return ["onda", "gota", "pegada", "nado"];
+  if (categoria === "bola") return ["envio", "recolher", "shiny"];
+  return [];
+}
+
+function sincronizarRuntime() {
+  aplicarCatalogoParticulas(catalogo);
+  preview.definirSelecao(categoria, presetId);
+}
+
+function pintarAbas() {
+  abasEl.innerHTML = "";
+  for (let i = 0; i < CATEGORIAS.length; i++) {
+    const c = CATEGORIAS[i];
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = c.rotulo;
+    if (c.id === categoria) btn.classList.add("ativo");
+    btn.addEventListener("click", () => {
+      categoria = c.id;
+      const ids = idsDaCategoria();
+      presetId = ids[0];
+      pintarAbas();
+      pintarLista();
+      pintarInspector();
+      sincronizarRuntime();
+    });
+    abasEl.appendChild(btn);
+  }
+}
+
+function pintarLista() {
+  const filtro = (buscaEl.value || "").trim().toLowerCase();
+  listaEl.innerHTML = "";
+  const ids = idsDaCategoria();
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const nome = ROTULOS[id] || id;
+    if (filtro && !nome.toLowerCase().includes(filtro) && !id.includes(filtro)) continue;
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = nome;
+    if (id === presetId) btn.classList.add("ativo");
+    btn.addEventListener("click", () => {
+      presetId = id;
+      pintarLista();
+      pintarInspector();
+      sincronizarRuntime();
+      preview.disparar();
+    });
+    li.appendChild(btn);
+    listaEl.appendChild(li);
+  }
+}
+
+function formatarValor(n, step) {
+  if (!Number.isFinite(n)) return "—";
+  if (step >= 1) return String(Math.round(n));
+  if (step <= 0.005) return n.toFixed(3);
+  if (step <= 0.05) return n.toFixed(2);
+  return n.toFixed(2);
+}
+
+function pintarInspector() {
+  inspectorEl.innerHTML = "";
+  const alvo = objetoPreset();
+  if (!alvo) {
+    inspectorEl.textContent = "Preset não encontrado.";
+    return;
+  }
+  const campos = schemaCampos();
+  for (let i = 0; i < campos.length; i++) {
+    const def = campos[i];
+    if (def.path === "puxa" && presetId !== "recolher") continue;
+    const label = document.createElement("label");
+    label.className = "campo";
+    const valorAtual = lerPath(alvo, def.path);
+    const valorEl = document.createElement("strong");
+    valorEl.textContent = def.tipo === "cor" ? "" : formatarValor(Number(valorAtual), def.step || 0.01);
+    label.appendChild(document.createTextNode(def.rotulo + " "));
+    if (def.tipo !== "cor") label.appendChild(valorEl);
+
+    let input;
+    if (def.tipo === "cor") {
+      input = document.createElement("input");
+      input.type = "color";
+      input.value = typeof valorAtual === "string" ? valorAtual : "#ffffff";
+      input.addEventListener("input", () => {
+        escreverPath(alvo, def.path, input.value);
+        marcarSujo();
+        sincronizarRuntime();
+      });
+    } else {
+      input = document.createElement("input");
+      input.type = "range";
+      input.min = String(def.min);
+      input.max = String(def.max);
+      input.step = String(def.step);
+      input.value = String(valorAtual ?? def.min);
+      input.addEventListener("input", () => {
+        const n = Number(input.value);
+        escreverPath(alvo, def.path, n);
+        valorEl.textContent = formatarValor(n, def.step);
+        marcarSujo();
+        sincronizarRuntime();
+      });
+    }
+    label.appendChild(input);
+    inspectorEl.appendChild(label);
+  }
+}
+
+function resetPreset() {
+  const base = defaultsParticulas();
+  if (categoria === "combate") {
+    catalogo.combate.elementos[presetId] = structuredClone(base.combate.elementos[presetId]);
+  } else if (categoria === "passo") {
+    catalogo.passo[presetId] = structuredClone(base.passo[presetId]);
+  } else if (categoria === "campo") {
+    catalogo.campo[presetId] = structuredClone(base.campo[presetId]);
+  } else if (categoria === "agua") {
+    catalogo.agua[presetId] = structuredClone(base.agua[presetId]);
+  } else if (categoria === "bola") {
+    catalogo.bola[presetId] = structuredClone(base.bola[presetId]);
+  }
+  marcarSujo();
+  pintarInspector();
+  sincronizarRuntime();
+  preview.disparar();
+  dizer(`Reset: ${ROTULOS[presetId] || presetId}`);
+}
+
+document.getElementById("disparar").addEventListener("click", () => {
+  sincronizarRuntime();
+  preview.disparar();
+});
+
+btnLoop.addEventListener("click", () => {
+  const on = preview.alternarLoop();
+  btnLoop.textContent = on ? "Loop on" : "Loop";
+  btnLoop.classList.toggle("ativo", on);
+});
+
+document.getElementById("limpar").addEventListener("click", () => preview.limpar());
+document.getElementById("reset-preset").addEventListener("click", resetPreset);
+buscaEl.addEventListener("input", pintarLista);
+
+function payloadSalvar() {
+  const out = structuredClone(catalogo);
+  const els = out.combate?.elementos || {};
+  for (const id of Object.keys(els)) {
+    if (els[id] && typeof els[id] === "object") delete els[id].id;
+  }
+  return out;
+}
+
+document.getElementById("salvar").addEventListener("click", async () => {
+  dizer("Salvando…");
+  sincronizarRuntime();
+  const res = await fetch("/api/particulas", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payloadSalvar()),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    dizer(json.erro || "Não salvou.");
+    return;
+  }
+  sujo = false;
+  dizer("Catálogo salvo.");
+});
+
+async function iniciar() {
+  const res = await fetch("/assets/particulas/catalogo.json");
+  if (res.ok) {
+    const json = await res.json();
+    aplicarCatalogoParticulas(json);
+    catalogo = structuredClone(catalogoParticulas());
+  } else {
+    catalogo = defaultsParticulas();
+    aplicarCatalogoParticulas(catalogo);
+  }
+  pintarAbas();
+  pintarLista();
+  pintarInspector();
+  sincronizarRuntime();
+  preview.disparar();
+  dizer("Pronto.");
+}
+
+iniciar().catch((erro) => {
+  console.error(erro);
+  dizer(String(erro.message || erro));
+});

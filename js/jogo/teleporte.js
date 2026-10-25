@@ -1,14 +1,16 @@
 /**
- * Relógio da viagem entre cidades. A câmera aproxima, o grupo some,
- * pousa na praça e a câmera afasta de volta.
- * Enquanto sobe, o streaming já aquece o destino (disco duplo).
+ * Relógio da viagem entre cidades. Na ida a câmera vai a dist 8.2
+ * com pitch 45°→-35° (acompanha as partículas); na chegada o reverso.
+ * Só corta quando stream + malha + piso caminhável do destino estão prontos.
  */
-import { ZOOM_MAX, ZOOM_MIN } from "../config.js";
+import { CHUNK_Y, ZOOM_MAX, ZOOM_MIN } from "../config.js";
+import { alturaSobPes } from "../fisica/colisao.js";
 import { deLocalKanto } from "../mundo/bounds.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { AREA_KANTO, CENTRO_AREA } from "../mundo/regiao/grafoKanto.js";
 import {
   atualizarStreaming,
+  chunkCarregadoEm,
   obterRaioStream,
   streamDiscoPronto,
 } from "../mundo/voxel/storeMundo.js";
@@ -22,13 +24,16 @@ import {
   registrarTeleporte,
 } from "./jornada.js";
 
-const SUBIDA = 1.7;
-const DESCIDA = 1.3;
-const ESPERA_MAX = 1.2;
-const FOLGA_DIST = 22;
+const SUBIDA = 3.2;
+const DESCIDA = 2.6;
 const SUBIDA_BLOCOS = 17;
 const POR_ATOR = 26;
 const RAIO_MIOLO = 2;
+/** Distância de órbita durante o teleporte. */
+const DIST_TELEPORTE = 8.2;
+/** Pitch na saída (acompanha partículas subindo): 45° → -35°. */
+const PITCH_TELEPORTE_INI = Math.PI / 4;
+const PITCH_TELEPORTE_FIM = (-35 * Math.PI) / 180;
 
 const sementes = [];
 for (let i = 0; i < POR_ATOR * 3; i++) {
@@ -60,6 +65,8 @@ let pecasN = 0;
 let origemViagem = null;
 /** @type {null | ((x: number, y: number) => boolean)} */
 let checarMalhaDestino = null;
+/** @type {null | ((ctx: object) => void)} */
+let aoPousarCb = null;
 
 export function teleporteOcupado() {
   return fase !== "ocioso";
@@ -91,10 +98,22 @@ export function definirChecagemMalhaTeleporte(fn) {
   checarMalhaDestino = typeof fn === "function" ? fn : null;
 }
 
+/**
+ * Face caminhável no destino (voxels carregados). 0 = ainda não pronto.
+ * Nunca usa Z congelado do clique / ALTURA_PRACA.
+ */
+export function amostrarPisoTeleporte(x, y) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return 0;
+  if (!chunkCarregadoEm(x, y)) return 0;
+  const z = alturaSobPes(x, y, CHUNK_Y);
+  return z > 0 ? z : 0;
+}
+
 export function destinoProntoParaCortar() {
   if (!destino) return false;
   if (!streamDiscoPronto(destino.x, destino.y, RAIO_MIOLO)) return false;
   if (checarMalhaDestino && !checarMalhaDestino(destino.x, destino.y)) return false;
+  if (!(amostrarPisoTeleporte(destino.x, destino.y) > 0)) return false;
   return true;
 }
 
@@ -127,7 +146,11 @@ export function prepararViagem(alvo) {
   return true;
 }
 
-export function comecarSubida(alvo) {
+/**
+ * @param {object} [alvo]
+ * @param {{ aoPousar?: (ctx: object) => void }} [opts]
+ */
+export function comecarSubida(alvo, opts) {
   if (fase !== "ocioso") return;
   if (alvo) {
     const p = resolverDestino(alvo);
@@ -136,6 +159,7 @@ export function comecarSubida(alvo) {
   } else if (!destino) {
     return;
   }
+  aoPousarCb = typeof opts?.aoPousar === "function" ? opts.aoPousar : null;
   ancoras = null;
   fase = "subida";
   faseT = 0;
@@ -209,19 +233,33 @@ function cortar(ctx) {
   const oy = origemViagem?.y ?? ctx.corpo.y;
   registrarTeleporte(ox, oy, destino.x, destino.y);
   origemViagem = null;
-  pousarCorpo(ctx.corpo, destino.x, destino.y, destino.z);
+
+  const zPiso = amostrarPisoTeleporte(destino.x, destino.y);
+  const z = zPiso > 0 ? zPiso : destino.z;
+  destino.z = z;
+
+  pousarCorpo(ctx.corpo, destino.x, destino.y, z);
   const mon = pokemonDeployado();
+  const zNpc = amostrarPisoTeleporte(destino.x + OFFSET_NPC.x, destino.y + OFFSET_NPC.y) || z;
   ancoras = [
-    { x: destino.x, y: destino.y, z: destino.z },
-    { x: destino.x + OFFSET_NPC.x, y: destino.y + OFFSET_NPC.y, z: destino.z },
+    { x: destino.x, y: destino.y, z },
+    { x: destino.x + OFFSET_NPC.x, y: destino.y + OFFSET_NPC.y, z: zNpc },
   ];
   if (mon) {
-    pousarMon(mon, destino.x + OFFSET_MON.x, destino.y + OFFSET_MON.y, destino.z);
-    ancoras.push({
-      x: destino.x + OFFSET_MON.x,
-      y: destino.y + OFFSET_MON.y,
-      z: destino.z,
-    });
+    const mx = destino.x + OFFSET_MON.x;
+    const my = destino.y + OFFSET_MON.y;
+    const zMon = amostrarPisoTeleporte(mx, my) || z;
+    pousarMon(mon, mx, my, zMon);
+    ancoras.push({ x: mx, y: my, z: zMon });
+  }
+  if (aoPousarCb) {
+    const cb = aoPousarCb;
+    aoPousarCb = null;
+    try {
+      cb(ctx);
+    } catch (err) {
+      console.error(err);
+    }
   }
 }
 
@@ -277,12 +315,22 @@ function montarPecas(origens, u, subindo) {
   }
 }
 
+/**
+ * @param {object} ctx
+ * @param {number} extra progresso 0→1 na ida, 1→0 na chegada (mesmo easing das peças)
+ */
 function aplicarCamera(ctx, extra) {
   if (ctx.camera3d) {
-    // Negativo aproxima na saída e afasta na chegada (extra 0→1→0).
-    ctx.camera3d.folgaTeleporte = -extra;
-    ctx.camera3d.folgaDist = -extra * FOLGA_DIST;
-    ctx.camera3d.folgaPitch = -extra * 0.38;
+    const cam = ctx.camera3d;
+    if (cam._teleporteDistBase == null) {
+      cam._teleporteDistBase = cam.distancia;
+    }
+    // Progresso 0..1: dist → 28, pitch 45° → -35° (reverso na descida via extra).
+    cam.folgaTeleporte = extra;
+    cam.teleporteDistBase = cam._teleporteDistBase;
+    cam.teleporteDistAlvo = DIST_TELEPORTE;
+    cam.teleportePitchIni = PITCH_TELEPORTE_INI;
+    cam.teleportePitchFim = PITCH_TELEPORTE_FIM;
   }
   if (ctx.modo === "2d" && ctx.camera) {
     if (zoomBase == null) zoomBase = ctx.camera.zoom;
@@ -293,9 +341,13 @@ function aplicarCamera(ctx, extra) {
 
 function soltarCamera(ctx) {
   if (ctx.camera3d) {
-    ctx.camera3d.folgaTeleporte = 0;
-    ctx.camera3d.folgaDist = 0;
-    ctx.camera3d.folgaPitch = 0;
+    const cam = ctx.camera3d;
+    cam.folgaTeleporte = 0;
+    cam.teleporteDistBase = null;
+    cam.teleporteDistAlvo = null;
+    cam.teleportePitchIni = null;
+    cam.teleportePitchFim = null;
+    cam._teleporteDistBase = null;
   }
   if (ctx.camera && zoomBase != null) ctx.camera.zoom = zoomBase;
   zoomBase = null;
@@ -331,6 +383,7 @@ function encerrar(ctx) {
   ancoras = null;
   destino = null;
   origemViagem = null;
+  aoPousarCb = null;
   pausarJornada(false);
   soltarCamera(ctx);
   marcarMon(null);
@@ -344,10 +397,13 @@ export function tickTeleporte(dt, ctx) {
   }
   faseT += Math.min(0.05, dt || 0);
   if (fase === "subida" && faseT >= SUBIDA) {
-    if (destinoProntoParaCortar() || faseT >= SUBIDA + ESPERA_MAX) {
+    // Sem timeout forçado: pousar com Z errado enterra o jogador até o chunk subir.
+    if (destinoProntoParaCortar()) {
       cortar(ctx);
       fase = "descida";
       faseT = 0;
+    } else if (destino) {
+      atualizarStreaming(destino.x, destino.y, undefined, true);
     }
   }
   if (fase === "descida" && faseT >= DESCIDA) {

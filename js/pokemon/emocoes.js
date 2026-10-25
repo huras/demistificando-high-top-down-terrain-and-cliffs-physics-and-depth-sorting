@@ -48,6 +48,30 @@ export function tickEmocoes(atores, dt) {
     const a = atores[i];
     if (a.emocao == null) continue;
     a.emocaoIdade += dt;
+    // Morto: suor não fica preso animando — limpa após um ciclo.
+    if (a.morto && a.emocaoIdade >= EMOCAO_ANIM) {
+      // #region agent log
+      fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
+        body: JSON.stringify({
+          sessionId: "b822fd",
+          runId: "post-fix",
+          hypothesisId: "D",
+          location: "emocoes.js:tickEmocoes",
+          message: "limpando emoção de morto após ciclo",
+          data: {
+            especie: a.especie?.key || "",
+            idade: +a.emocaoIdade.toFixed(2),
+            presa: !!a.emocaoPresa,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      limparEmocao(a);
+      continue;
+    }
     if (!a.emocaoPresa && a.emocaoIdade >= a.emocaoAte) limparEmocao(a);
   }
 }
@@ -55,7 +79,8 @@ export function tickEmocoes(atores, dt) {
 export function colunaEmocao(ator) {
   if (ator.emocao == null) return 0;
   const t = ator.emocaoIdade;
-  if (!ator.emocaoPresa && t >= EMOCAO_ANIM) return 7;
-  const u = (t % EMOCAO_ANIM) / EMOCAO_ANIM;
+  // Uma passada só: presa/vivo não loopa frame (morte usava presa e ficava infinito).
+  if (t >= EMOCAO_ANIM) return 7;
+  const u = t / EMOCAO_ANIM;
   return Math.min(7, Math.floor(u * 8));
 }

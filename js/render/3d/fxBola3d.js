@@ -96,6 +96,30 @@ function sprite(mapa, ordem) {
   return s;
 }
 
+const _vel = new THREE.Vector3();
+const _direita = new THREE.Vector3();
+const _cima = new THREE.Vector3();
+
+/**
+ * Ângulo do SpriteMaterial: textura alongada em X local deve seguir a velocidade
+ * projetada no plano da câmera (não atan2 do mundo).
+ * @param {THREE.Camera | null | undefined} camera
+ * @param {number} vx
+ * @param {number} vy
+ */
+function rotacaoTraco(camera, vx, vy) {
+  // Mundo do jogo: (x,y) horizontal → Three (x, z).
+  _vel.set(vx, 0, vy);
+  if (_vel.lengthSq() < 1e-8) return 0;
+  if (!camera) return Math.atan2(vy, vx);
+  camera.updateMatrixWorld();
+  _direita.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+  _cima.setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+  const aoLado = _vel.dot(_direita);
+  const aoAlto = _vel.dot(_cima);
+  return Math.atan2(aoAlto, aoLado);
+}
+
 export function criarFxBola3d() {
   const grupo = new THREE.Group();
   grupo.name = "fx-bola";
@@ -136,7 +160,8 @@ export function criarFxBola3d() {
     mat.color.setRGB(r / 255, g / 255, b / 255);
   }
 
-  function atualizar() {
+  /** @param {THREE.Camera | null | undefined} [camera] */
+  function atualizar(camera) {
     for (let i = 0; i < malhaAnel.length; i++) {
       const an = aneis[i];
       const malha = malhaAnel[i];
@@ -196,13 +221,17 @@ export function criarFxBola3d() {
           malha.material.map = mapaTraco;
           malha.material.needsUpdate = true;
         }
-        malha.material.rotation = Math.atan2(p.vy, p.vx);
+        malha.material.rotation = rotacaoTraco(camera, p.vx, p.vy);
+        // Alongar o traço na direção do movimento; centro um pouco atrás.
+        const atras = Math.min(0.35, 0.12 + vel * 0.02);
+        malha.center.set(0.5 - atras * 0.35, 0.5);
         malha.scale.set(Math.max(len, p.tam), Math.max(0.04, p.tam * 0.55), 1);
       } else if (p.estrela) {
         if (malha.material.map !== mapaEstrela) {
           malha.material.map = mapaEstrela;
           malha.material.needsUpdate = true;
         }
+        malha.center.set(0.5, 0.5);
         malha.material.rotation = 0;
         const s = p.tam * 2.4;
         malha.scale.set(s, s, 1);
@@ -211,6 +240,7 @@ export function criarFxBola3d() {
           malha.material.map = mapaMiolo;
           malha.material.needsUpdate = true;
         }
+        malha.center.set(0.5, 0.5);
         malha.material.rotation = 0;
         const s = p.tam * 2;
         malha.scale.set(s, s, 1);

@@ -137,8 +137,10 @@ function painel(_ctx) {
 }
 
 function marcador(ctx, ator, p, pes) {
-  const hp = ator.morto ? 0 : ator.hp / ator.hpMax;
-  if (!ator.morto) {
+  const hpMax = ator.hpMax > 0 ? ator.hpMax : 1;
+  const hp = ator.morto ? 0 : ator.hp / hpMax;
+  const selvagemCheio = ator.faccao === "selvagem" && !ator.morto && ator.hp >= hpMax - 1e-3;
+  if (!ator.morto && !selvagemCheio) {
     const base = pes || p;
     barra(ctx, base.x - 16, base.y + 6, 32, 4, hp, ator.faccao === "party" ? "#4ade80" : "#f87171", "rgba(0,0,0,0.55)");
   }
@@ -149,8 +151,38 @@ function marcador(ctx, ator, p, pes) {
       desenharRetrato(ctx, p.x, p.y - 8, face);
       return;
     }
+    // Cadáver sem retrato: não fica o suor loopando no marcador.
+    return;
   }
   if (ator.emocao == null || !folhaEmocoes()) return;
+  // #region agent log
+  if (ator.morto || ator.emocaoPresa) {
+    const agora = Date.now();
+    if (!marcador._dbgUlt || agora - marcador._dbgUlt > 900) {
+      marcador._dbgUlt = agora;
+      fetch("http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b822fd" },
+        body: JSON.stringify({
+          sessionId: "b822fd",
+          runId: "post-fix",
+          hypothesisId: "D",
+          location: "hud.js:marcador",
+          message: "desenhando emoção em morto/presa",
+          data: {
+            especie: ator.especie?.key || "",
+            morto: !!ator.morto,
+            presa: !!ator.emocaoPresa,
+            idade: +(ator.emocaoIdade || 0).toFixed(2),
+            revelar,
+            temFace: !!(ator.especie?.dex && pedirRetrato(ator.especie.dex, ator.shiny)),
+          },
+          timestamp: agora,
+        }),
+      }).catch(() => {});
+    }
+  }
+  // #endregion
   desenharEmocao(ctx, p.x, p.y - 10, ator);
 }
 
@@ -199,20 +231,31 @@ function desenharEmocao(ctx, x, y, ator) {
 
 function textos(ctx, projetar) {
   const lista = flutuantes();
+  if (!lista.length) return;
   ctx.save();
-  ctx.font = "700 16px Segoe UI, sans-serif";
+  ctx.font = "800 26px Segoe UI, system-ui, sans-serif";
   ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   ctx.lineJoin = "round";
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "rgba(20, 16, 12, 0.88)";
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "rgba(2, 6, 16, 0.92)";
   for (let i = 0; i < lista.length; i++) {
     const f = lista[i];
+    const t = Math.max(0, f.life / (f.maxLife || 0.9));
+    if (t <= 0) continue;
     const p = projetar(f.x, f.y, f.z, 0);
     if (!p) continue;
-    ctx.globalAlpha = Math.max(0, 1 - f.idade / 0.85);
-    ctx.strokeText(f.texto, p.x, p.y);
-    ctx.fillStyle = f.cor;
-    ctx.fillText(f.texto, p.x, p.y);
+    // Opaco na maior parte; some só no terço final (RO / Pokémon AI).
+    const alpha = t > 0.35 ? 1 : Math.max(0, t / 0.35);
+    const escala = (f.escala ?? 1) * (f.pop ?? 1);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(escala, escala);
+    ctx.globalAlpha = alpha;
+    ctx.strokeText(f.texto, 0, 0);
+    ctx.fillStyle = f.cor || "#f8fafc";
+    ctx.fillText(f.texto, 0, 0);
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -331,7 +374,7 @@ function desenharPlacaAlvo(ctx, x, y, nome) {
  * A placa some se o cursor já está em cima — o hover mostra o nome.
  * Devolve o ator marcado, ou null.
  */
-export function desenharAlvoOrdem(ctx, projetar, projetarPes, sobCursor) {
+export function desenharAlvoOrdem(ctx, projetar, projetarPes, sobCursor, comAnel = true) {
   const alvo = alvoDeOrdem();
   if (!ctx || !alvo || !projetar) return null;
   const z = alvo.elevacao ?? alvo.z ?? 0;
@@ -340,7 +383,7 @@ export function desenharAlvoOrdem(ctx, projetar, projetarPes, sobCursor) {
   if (!corpo) return alvo;
   const pes = projetarPes ? projetarPes(alvo.x, alvo.y, z, hop) : null;
   const pulso = Math.sin(relogioPokemon() * 4.2) * 0.5;
-  if (pes) desenharAnel(ctx, pes, ANEL_ALVO, pulso);
+  if (pes && comAnel) desenharAnel(ctx, pes, ANEL_ALVO, pulso);
   if (sobCursor !== alvo) desenharPlacaAlvo(ctx, corpo.x, corpo.y, alvo.especie?.nome);
   return alvo;
 }
@@ -422,6 +465,8 @@ export function desenharHoverPokemon(ctx, ator, projetar, projetarPes, comAnel =
  */
 export function desenharHudPokemon(ctx, projetar, corpo, projetarPes) {
   painel(ctx);
+  // Dano de árvore / XP / status precisa desenhar mesmo sem party em campo.
+  if (projetar) textos(ctx, projetar);
   if (!pokemonLigado() || !projetar) return;
   desenharMira(ctx, projetarPes || projetar, corpo);
   const atores = atoresVisiveis();
@@ -434,6 +479,5 @@ export function desenharHudPokemon(ctx, projetar, corpo, projetarPes) {
     const pes = projetarPes ? projetarPes(a.x, a.y, z, hop) : null;
     marcador(ctx, a, p, pes);
   }
-  textos(ctx, projetar);
   carga(ctx, projetar, corpo);
 }

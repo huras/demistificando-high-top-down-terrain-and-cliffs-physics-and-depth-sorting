@@ -324,7 +324,15 @@ function atualizarFase(v, spec) {
 export function tickVisual(ator, dt, agora) {
   if (!ator.visual) ator.visual = { anim: "Idle", dir: 0, frame: 0, t: 0, fase: 0 };
   const v = ator.visual;
-  const d = direcao8(ator.dirX, ator.dirY);
+  let dx = ator.dirX;
+  let dy = ator.dirY;
+  if (ator.escalando && ator.escalada) {
+    dx = -(ator.escalada.normalX ?? 0);
+    dy = -(ator.escalada.normalY ?? 0);
+    ator.dirX = dx;
+    ator.dirY = dy;
+  }
+  const d = direcao8(dx, dy);
   if (d != null) v.dir = d;
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
   const passo = marcarPasso(ator);

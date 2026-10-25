@@ -10,8 +10,15 @@ import {
 } from "../../pokemon/party.js";
 import { AI_MODE, rotuloModo } from "../../pokemon/aiModes.js";
 import { modoEfetivo } from "../../pokemon/campo/modos.js";
+import {
+  ANEL_CIRC,
+  assinaturaEstagios,
+  listaEstagiosAtivos,
+  progressoEstagio,
+} from "../../pokemon/combate/estagios.js";
 import { rideSlot, slotPodeMontar } from "../apiHud.js";
 import { progressoExp } from "../../pokemon/experiencia.js";
+import { relogioPokemon } from "../../pokemon/sistema.js";
 import { MODE_ICONS } from "./iconesModo.js";
 import { createModePicker, createTeamModePicker } from "./modePicker.js";
 
@@ -220,6 +227,39 @@ function pintarStrip() {
   }
 }
 
+function htmlBuffs(ator, agora) {
+  const lista = listaEstagiosAtivos(ator);
+  if (!lista.length) return "";
+  return `<div class="party-combat__buffs" role="list" aria-label="Modificadores de status">${lista
+    .map((b) => {
+      const frac = progressoEstagio(ator, b.campo, agora);
+      const offset = ANEL_CIRC * (1 - frac);
+      const cls = b.buff ? "is-buff" : "is-debuff";
+      return `<div class="party-combat__buff ${cls}" role="listitem" data-buff-campo="${b.campo}" title="${escHtml(b.curto)} ${escHtml(b.pctTxt)}">
+        <svg class="party-combat__buff-ring" viewBox="0 0 28 28" aria-hidden="true">
+          <circle class="party-combat__buff-track" cx="14" cy="14" r="11" />
+          <circle class="party-combat__buff-arc" data-buff-ring="${b.campo}" cx="14" cy="14" r="11"
+            stroke-dasharray="${ANEL_CIRC}" stroke-dashoffset="${offset}" />
+        </svg>
+        <span class="party-combat__buff-tag">${escHtml(b.curto)}</span>
+        <span class="party-combat__buff-pct">${escHtml(b.pctTxt)}</span>
+      </div>`;
+    })
+    .join("")}</div>`;
+}
+
+function atualizarAneisBuff(ator) {
+  if (!detailHost || !ator) return;
+  const agora = relogioPokemon();
+  const aneis = detailHost.querySelectorAll("[data-buff-ring]");
+  for (let i = 0; i < aneis.length; i++) {
+    const el = aneis[i];
+    const campo = el.getAttribute("data-buff-ring");
+    const frac = progressoEstagio(ator, campo, agora);
+    el.setAttribute("stroke-dashoffset", String(ANEL_CIRC * (1 - frac)));
+  }
+}
+
 function pintarDetail() {
   if (!detailHost) return;
   const ator = pokemonDeployado() || pokemonNoCampo();
@@ -244,13 +284,15 @@ function pintarDetail() {
   const tipModo = pref === AI_MODE.DEFAULT
     ? `Padrão (${rotuloModo(modoEfetivo(ator))})`
     : rotuloModo(pref);
+  const sigEst = assinaturaEstagios(ator);
 
-  const sig = `${ator.id}:${hp}:${pctExp}:${montado ? 1 : 0}:${ator.nivel}:${pref}:${modoEfetivo(ator)}`;
+  const sig = `${ator.id}:${hp}:${pctExp}:${montado ? 1 : 0}:${ator.nivel}:${pref}:${modoEfetivo(ator)}:${sigEst}`;
   if (sig === assinaturaDetail) {
     const barHp = detailHost.querySelector("[data-combat-hp]");
     const barExp = detailHost.querySelector("[data-combat-exp]");
     if (barHp) barHp.style.width = `${pctHp}%`;
     if (barExp) barExp.style.width = `${pctExp}%`;
+    atualizarAneisBuff(ator);
     return;
   }
   assinaturaDetail = sig;
@@ -260,6 +302,8 @@ function pintarDetail() {
   const face = url
     ? `<img class="party-combat__face" src="${url}" alt="" draggable="false" />`
     : `<span class="party-combat__face party-combat__face--fallback">${escHtml(nomeEspecie(ator).slice(0, 1))}</span>`;
+  const agora = relogioPokemon();
+  const buffs = htmlBuffs(ator, agora);
 
   detailHost.innerHTML = `
     <div class="party-combat__detail is-visible">
@@ -280,6 +324,7 @@ function pintarDetail() {
             <span class="party-combat__bar-tag">EXP</span>
             <div class="party-combat__exp"><i data-combat-exp style="width:${pctExp}%"></i></div>
           </div>
+          ${buffs}
         </div>
       </div>
       <div class="party-combat__actions">

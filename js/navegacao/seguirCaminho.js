@@ -7,11 +7,35 @@ import {
 import { alturaSobPes } from "../fisica/colisao.js";
 import { encontrarFacePerto } from "../mundo/facesCliff.js";
 import {
+  arestaCortaBase,
+  resolverForaDeObstaculo,
+} from "../fisica/obstaculos.js";
+import {
   cancelarPath,
+  limparCachePath,
   obterResultadoPath,
   solicitarPath,
 } from "./filaPath.js";
 import { TIPO_CLIMB, TIPO_GLIDE, TIPO_JUMP, TIPO_NADO, TIPO_VOO, TIPO_WALK, pisoMaisProximo } from "./navGrade.js";
+
+const BLOQUEIO_WP_MS = 2800;
+
+function marcarWpBloqueado(nav, cx, cy) {
+  if (!nav.wpBloqueados) nav.wpBloqueados = new Map();
+  nav.wpBloqueados.set(`${cx | 0},${cy | 0}`, performance.now() + BLOQUEIO_WP_MS);
+}
+
+function wpBloqueado(nav, cx, cy) {
+  if (!nav.wpBloqueados) return false;
+  const k = `${cx | 0},${cy | 0}`;
+  const ate = nav.wpBloqueados.get(k);
+  if (ate == null) return false;
+  if (performance.now() > ate) {
+    nav.wpBloqueados.delete(k);
+    return false;
+  }
+  return true;
+}
 
 function lembrarRumo(nav, ix, iy) {
   if (!ix && !iy) return;
@@ -252,7 +276,7 @@ function decidirClimbNoAr(agente, lider, liderZ) {
 }
 
 /** Escolhe o 1º waypoint à frente (não atrás) do agente. */
-function indiceWaypointInicial(cells, ax, ay, elev = null) {
+function indiceWaypointInicial(cells, ax, ay, elev = null, nav = null) {
   if (!cells?.length) return 0;
   const cx = Math.floor(ax);
   const cy = Math.floor(ay);
@@ -265,7 +289,10 @@ function indiceWaypointInicial(cells, ax, ay, elev = null) {
     const perto = Math.hypot(tx - ax, ty - ay) < 0.55;
     const mesmoPiso =
       elev == null || c.z == null || Math.abs(c.z - elev) < 1.1;
-    if ((naCelula || perto) && mesmoPiso) {
+    const bloqueado =
+      wpBloqueado(nav, c.cx, c.cy) ||
+      arestaCortaBase(cx, cy, c.cx, c.cy, c.z ?? elev ?? 0);
+    if (((naCelula || perto) && mesmoPiso) || bloqueado) {
       idx++;
       continue;
     }
@@ -554,17 +581,43 @@ export function atualizarSeguirCaminho(agente, lider, dt, distSeguir = 0) {
     res.versao === nav.versao &&
     nav.pathAplicadoVersao !== nav.versao
   ) {
-    nav.path = res.path;
-    nav.pathAplicadoVersao = nav.versao;
-    nav.idx = indiceWaypointInicial(
-      nav.path.cells,
-      agente.x,
-      agente.y,
-      elevAgPath,
-    );
-    nav.estado = res.path.achou ? "seguindo" : "semCaminho";
-    if (!res.path.achou) nav.retryT = PATH_RETRY_SEM_CAMINHO;
-    nav.stuckT = 0;
+    const cellsPath = res.path.cells || [];
+    const fim = cellsPath[cellsPath.length - 1];
+    const startCx = agente.x | 0;
+    const startCy = agente.y | 0;
+    const gCx = nav.goalCx | 0;
+    const gCy = nav.goalCy | 0;
+    const d0 = Math.hypot(startCx - gCx, startCy - gCy);
+    const d1 = fim ? Math.hypot((fim.cx | 0) - gCx, (fim.cy | 0) - gCy) : d0;
+    const quaseNoGoal =
+      !!res.path.achou ||
+      (fim && Math.abs((fim.cx | 0) - gCx) <= 1 && Math.abs((fim.cy | 0) - gCy) <= 1);
+    // Parcial só é útil se avança de verdade (não o stub n=1 no peito).
+    const parcialUtil =
+      !quaseNoGoal && cellsPath.length >= 2 && d1 < d0 - 1.5;
+    // Path inútil (melhorKey sem progresso) — evita "vai pra estrada e volta".
+    if (!quaseNoGoal && !parcialUtil) {
+      nav.path = null;
+      nav.estado = "semCaminho";
+      nav.retryT = Math.min(PATH_RETRY_SEM_CAMINHO, 0.35);
+      nav.pathAplicadoVersao = nav.versao;
+      nav.stuckT = 0;
+    } else {
+      nav.path = res.path;
+      nav.pathAplicadoVersao = nav.versao;
+      nav.idx = indiceWaypointInicial(
+        nav.path.cells,
+        agente.x,
+        agente.y,
+        elevAgPath,
+        nav,
+      );
+      // Parcial com progresso: segue e repatha ao esgotar waypoints (não marca semCaminho).
+      nav.estado = res.path.achou || parcialUtil ? "seguindo" : "semCaminho";
+      if (!res.path.achou && !parcialUtil) nav.retryT = PATH_RETRY_SEM_CAMINHO;
+      // NÃO zerar stuckT: alvo em movimento repatha todo frame e o mon
+      // ficava eternamente enfiado na árvore (stuckT nunca batia o limiar).
+    }
   } else if (
     nav.estado === "buscando" &&
     !nav.path &&
@@ -572,6 +625,11 @@ export function atualizarSeguirCaminho(agente, lider, dt, distSeguir = 0) {
     !voando &&
     !naParede
   ) {
+    // Não congelar enquanto A*/grade sobe — Electrike “agarrava” aqui.
+    const dxB = lider.x - agente.x;
+    const dyB = lider.y - agente.y;
+    const dB = Math.hypot(dxB, dyB);
+    if (dB > parar * 1.05) return idleNav({ ix: dxB / dB, iy: dyB / dB });
     if ((nav.rumoX || nav.rumoY) && nav.pathAplicadoVersao >= 0) {
       return idleNav({ ix: nav.rumoX, iy: nav.rumoY });
     }
@@ -580,6 +638,13 @@ export function atualizarSeguirCaminho(agente, lider, dt, distSeguir = 0) {
 
   if (nav.estado === "semCaminho") {
     if (!nav.path || nav.idx >= (nav.path.cells?.length ?? 0)) {
+      // Enquanto repath: anda em linha pro líder (combate/item) em vez de girar parado.
+      const dx = lider.x - agente.x;
+      const dy = lider.y - agente.y;
+      const d = Math.hypot(dx, dy);
+      if (d > parar * 1.05) {
+        return idleNav({ ix: dx / d, iy: dy / d });
+      }
       return idleNav();
     }
   }
@@ -637,6 +702,10 @@ export function atualizarSeguirCaminho(agente, lider, dt, distSeguir = 0) {
     nav.climbAlvo = null;
     nav.vooAlvo = null;
     if (nav.estado === "semCaminho") {
+      const dxS = lider.x - agente.x;
+      const dyS = lider.y - agente.y;
+      const dS = Math.hypot(dxS, dyS);
+      if (dS > parar * 1.05) return idleNav({ ix: dxS / dS, iy: dyS / dS });
       return idleNav();
     }
     if (!ocupadoAr) {
@@ -651,6 +720,11 @@ export function atualizarSeguirCaminho(agente, lider, dt, distSeguir = 0) {
         zGoal,
       );
     }
+    // Repath enfileirado: continua em linha (senão fica parado no fim do path).
+    const dxF = lider.x - agente.x;
+    const dyF = lider.y - agente.y;
+    const dF = Math.hypot(dxF, dyF);
+    if (dF > parar * 1.05) return idleNav({ ix: dxF / dF, iy: dyF / dF });
     return idleNav();
   }
 
@@ -786,19 +860,28 @@ export function atualizarSeguirCaminho(agente, lider, dt, distSeguir = 0) {
     nav.stuckT >= PATH_STUCK_SEG
   ) {
     nav.stuckT = 0;
+    const wpStuck = nav.path?.cells?.[nav.idx];
+    if (wpStuck) marcarWpBloqueado(nav, wpStuck.cx, wpStuck.cy);
+    // Sai do poste/pedra; cache antigo devolvia a mesma rota na hora.
+    resolverForaDeObstaculo(agente);
+    limparCachePath();
+    cancelarPath(agente.id);
     nav.path = null;
     pedirPath(
       agente,
       nav,
-      startCx,
-      startCy,
+      agente.x | 0,
+      agente.y | 0,
       goalCx,
       goalCy,
-      elevAg,
+      agente.elevacao ?? elevAg,
       zGoal,
     );
-    lembrarRumo(nav, ax / ad, ay / ad);
-    return idleNav({ ix: ax / ad, iy: ay / ad });
+    // Desvia lateral se ainda empurrado pro obstáculo.
+    const latX = -ay / ad;
+    const latY = ax / ad;
+    lembrarRumo(nav, latX, latY);
+    return idleNav({ ix: latX, iy: latY });
   }
 
   let querPulo = false;

@@ -5,7 +5,8 @@
 import { AGENTE_DIST_PARAR, POKEMON } from "../../config.js";
 import { alturaSobPes } from "../../fisica/colisao.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../../fisica/agente.js";
-import { PERFIL_COMPANHEIRO, PERFIL_ESCALADOR } from "../../navegacao/perfilMovimento.js";
+import { sincronizarFacingParede } from "../../fisica/escalada.js";
+import { PERFIL_CAMPO } from "../../navegacao/perfilMovimento.js";
 import { emAvanco, emEsquiva, emRecuo, presoNoGolpe, velocidadeDe } from "../ator.js";
 import { FOLGA_PARADA } from "./constantes.js";
 import { regua, sentidoParada } from "./espaco.js";
@@ -26,18 +27,10 @@ function pararCorpo(ator) {
   ator.andando = false;
 }
 
-function tipoVoador(ator) {
-  const tipos = ator.tipos || ator.especie?.tipos;
-  if (!tipos) return false;
-  for (let i = 0; i < tipos.length; i++) {
-    if (tipos[i] === "flying") return true;
-  }
-  return false;
-}
-
 function perfilCampo(ator) {
   if (ator.faccao === "party" && ator.perfil) return ator.perfil;
-  return tipoVoador(ator) ? PERFIL_COMPANHEIRO : PERFIL_ESCALADOR;
+  // OW: um grafo só (andar/nadar/pular). Evita companheiro-8dir bloquear a grade.
+  return PERFIL_CAMPO;
 }
 
 /** Quem não voa persegue o chão embaixo de quem está no ar. */
@@ -156,6 +149,14 @@ export function integrarCombateCampo(ator, alvo, dt, opts = {}) {
   const vel = velocidadeDe(ator, true);
   const barato = opts.barato === true || lutaBarata(ator, alvo);
   const q = quadroDe(ator, alvo);
+
+  // Na parede: sobe/desce pelo path e mantém o peito pra face (não pro alvo).
+  if (ator.escalando || ator.mantle) {
+    irPara(ator, alvo.x, alvo.y, m.z, vel, dt, distPararDe(m.parada));
+    if (ator.escalando && ator.escalada) sincronizarFacingParede(ator, ator.escalada);
+    return;
+  }
+
   ator.dirX = q.fx;
   ator.dirY = q.fy;
 

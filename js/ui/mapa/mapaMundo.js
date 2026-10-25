@@ -10,6 +10,8 @@ import { comecarSubida, prepararViagem, teleporteOcupado } from "../../jogo/tele
 import { marcasSantuario } from "../../santuario/mapaMarcas.js";
 import { getWorldShrinePlan, shrineOutdoorStand } from "../../santuario/colocacao.js";
 import { revelarSantuarios } from "../../santuario/estadoSantuario.js";
+import { filtrarWildParaVista, marcasWild } from "../../mapa/marcasWild.js";
+import { wildPinVisivelNoZoom } from "../../mapa/pinWild.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
 import { LADO_MUNDO } from "./grade.js";
 import { tickIntimo } from "./intimo.js";
@@ -40,9 +42,12 @@ let botaoCalor = null;
 let jornadaVisivel = true;
 let botaoJornada = null;
 let botaoRevelarSantuarios = null;
+/** Id da marca (santuario/wild) sob o cursor — título só no hover. */
+let hoverMarcaId = null;
 
 const RAIO_CIDADE = 22;
 const RAIO_SANTUARIO = 18;
+const RAIO_WILD = 16;
 const ZOOM_VIAGEM = 1.15;
 
 function sincronizarBotaoCalor() {
@@ -165,8 +170,27 @@ function destinoNoPonto(clientX, clientY) {
   return destinoSantuario(marca);
 }
 
+/** Santuário ou wild sob o cursor (só para título no hover). */
+function marcaRotuloNoPonto(clientX, clientY) {
+  if (!tela || !aberto) return null;
+  const rect = tela.getBoundingClientRect();
+  const sx = clientX - rect.left;
+  const sy = clientY - rect.top;
+  const shrine = hitNoPonto(marcasSantuario(), sx, sy, rect, RAIO_SANTUARIO);
+  if (shrine) return shrine;
+  const vista = { cx, cy, zoom, mini: false };
+  if (!wildPinVisivelNoZoom(vista)) return null;
+  const wilds = filtrarWildParaVista(marcasWild(), vista);
+  return hitNoPonto(wilds, sx, sy, rect, RAIO_WILD);
+}
+
 function apontarCidade(ev) {
-  if (!tela || viagem || pendente) return;
+  if (!tela || viagem || pendente) {
+    hoverMarcaId = null;
+    return;
+  }
+  const rotulo = marcaRotuloNoPonto(ev.clientX, ev.clientY);
+  hoverMarcaId = rotulo?.id ?? null;
   const dest = destinoNoPonto(ev.clientX, ev.clientY);
   const viaja = dest && !mesmoDestino(dest);
   tela.classList.toggle("mapa-mundo__tela--cidade", !!viaja);
@@ -275,6 +299,7 @@ export function fecharMapa() {
   aberto = false;
   ancora = null;
   arraste = null;
+  hoverMarcaId = null;
   ocultarConfirmacao();
   tela?.classList.remove("mapa-mundo__tela--arraste");
   tela?.classList.remove("mapa-mundo__tela--cidade");
@@ -350,6 +375,7 @@ export function ligarMapaMundo() {
       apontarCidade(ev);
       return;
     }
+    hoverMarcaId = null;
     cx = arraste.cx - (ev.clientX - arraste.x) / zoom;
     cy = arraste.cy - (ev.clientY - arraste.y) / zoom;
     travar();
@@ -360,6 +386,10 @@ export function ligarMapaMundo() {
   };
   tela.addEventListener("pointerup", soltar);
   tela.addEventListener("pointercancel", soltar);
+  tela.addEventListener("pointerleave", () => {
+    hoverMarcaId = null;
+    tela.classList.remove("mapa-mundo__tela--cidade");
+  });
   tela.addEventListener("contextmenu", (ev) => ev.preventDefault());
   tela.addEventListener(
     "wheel",
@@ -436,6 +466,7 @@ export function tickMapaMundo(px, py, dt = 1 / 60) {
     agora: performance.now(),
     calorForca,
     jornada: jornadaVisivel,
+    hoverMarcaId,
   });
   if (titulo) {
     const zona = zonaNoMundo(px, py);

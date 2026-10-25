@@ -760,6 +760,8 @@
 .area-minimap {
   position: relative;
   flex: 0 0 auto;
+  /* Espaço pro nome do lugar acima do círculo (não colidir com o clima). */
+  margin-top: 24px;
   width: var(--area-minimap-size);
   height: var(--area-minimap-size);
   pointer-events: none;

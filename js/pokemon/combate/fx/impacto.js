@@ -1,4 +1,4 @@
-import { emitir } from "./poolParticulas3d.js";
+import { emitir, folhaParticula } from "./poolParticulas3d.js";
 
 /**
  * Rajada de impacto elemental.
@@ -11,6 +11,7 @@ import { emitir } from "./poolParticulas3d.js";
 export function emitirImpacto(el, x, y, z, escala = 1) {
   if (!el) return;
   const cfg = el.impacto;
+  const folha = folhaParticula(el);
   const n = Math.max(4, Math.min(48, Math.round((cfg.particulas || 24) * escala)));
   const raio = (cfg.raio || 0.45) * escala;
   const grav = cfg.gravidade || 0;
@@ -29,11 +30,12 @@ export function emitirImpacto(el, x, y, z, escala = 1) {
       vida: cfg.duracao * (0.65 + Math.random() * 0.5),
       tam: (0.12 + Math.random() * 0.14) * escala,
       modo: grav < 0 ? "poeira" : "faisca",
+      folha,
       grav: grav,
       drag: 0.9,
     });
   }
-  // Anel expansivo (poeira no chão).
+  // Anel expansivo (poeira no chão) — sempre círculo, mesmo no fogo.
   const anel = Math.max(6, Math.min(16, Math.round(10 * escala)));
   for (let i = 0; i < anel; i++) {
     const ang = (i / anel) * Math.PI * 2;

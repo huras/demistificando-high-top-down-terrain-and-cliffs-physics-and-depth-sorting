@@ -219,7 +219,12 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
     podeCorrer && lider.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
   let velMax = velPedido > 0 ? velPedido : velLider * AGENTE_VEL_MUL;
 
-  const redeCmd = pensarSeguir(agente, lider, dt, distSeguir);
+  // Meta sintética (irPara combate/item) não tem facing/acao — NN de follow
+  // tratava o inimigo como treinador e o mon andava doidão.
+  const liderReal = lider.facing != null || lider.acao != null;
+  const redeCmd = liderReal
+    ? pensarSeguir(agente, lider, dt, distSeguir)
+    : null;
   const navCmd = redeCmd || atualizarSeguirCaminho(agente, lider, dt, distSeguir);
   let ix = navCmd.ix;
   let iy = navCmd.iy;
@@ -230,7 +235,16 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
   const soltarAsa = navCmd.soltarAsa;
   const soltarParede = navCmd.soltarParede;
   const nav = agente.nav;
-  const passo = aplicarEspacoSeguir(agente, lider, ix, iy, velMax, distSeguir);
+  // Anel de follow só com líder real. Em combate distSeguir=stop de melee
+  // não deve frear/empurrar como “seguir treinador” (trava o chase).
+  const passo = aplicarEspacoSeguir(
+    agente,
+    lider,
+    ix,
+    iy,
+    velMax,
+    liderReal ? distSeguir : 0,
+  );
   ix = passo.ix;
   iy = passo.iy;
   velMax = passo.velMax;

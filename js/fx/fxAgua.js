@@ -2,36 +2,9 @@
  * Ondulação, gota e pegada molhada.
  * Piscinas fixas, sem alocação no quadro. O balanço do nado é só visual.
  */
-import {
-  AGUA_GOTA_GRAV,
-  AGUA_GOTA_PINGA,
-  AGUA_GOTA_RAJADA,
-  AGUA_GOTA_VIDA,
-  AGUA_IMERSAO_MIN,
-  AGUA_MOLHA_SEG,
-  AGUA_NADO_BOB_A,
-  AGUA_NADO_BOB_B,
-  AGUA_NADO_BOB_PARADO,
-  AGUA_ONDA_ATRAS,
-  AGUA_ONDA_CRESCE,
-  AGUA_ONDA_INTERVALO,
-  AGUA_ONDA_INTERVALO_PARADO,
-  AGUA_ONDA_PASSO,
-  AGUA_ONDA_RX,
-  AGUA_ONDA_RY,
-  AGUA_OFFSET_LAMINA,
-  AGUA_ONDA_VIDA,
-  AGUA_PEGADA_CARGA,
-  AGUA_PEGADA_CHEIO,
-  AGUA_PEGADA_DIST,
-  AGUA_PEGADA_INTERVALO,
-  AGUA_PEGADA_LATERAL,
-  AGUA_PEGADA_TAM,
-  AGUA_PEGADA_VEL,
-  AGUA_PEGADA_VIDA,
-} from "../config.js";
 import { estado } from "../jogo/estado.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
+import { presetAgua } from "../particulas/catalogo.js";
 import { atoresVisiveis } from "../pokemon/sistema.js";
 
 const CAP_ONDA = 96;
@@ -119,31 +92,34 @@ export function pegadasAgua() {
 /** Offset em blocos. Zero fora do nado na superfície. */
 export function oscilacaoNado(corpo) {
   if (!corpo || corpo.acao !== "nadando") return 0;
-  const t = tempo * (corpo.andando ? 1 : AGUA_NADO_BOB_PARADO);
+  const nado = presetAgua("nado");
+  const t = tempo * (corpo.andando ? 1 : nado.bobParado);
   const x = corpo.x || 0;
   return (
-    Math.sin(x * 1.4 + t * 4.2) * AGUA_NADO_BOB_A +
-    Math.cos(x * 0.8 - t * 2.8) * AGUA_NADO_BOB_B
+    Math.sin(x * 1.4 + t * 4.2) * nado.bobA +
+    Math.cos(x * 0.8 - t * 2.8) * nado.bobB
   );
 }
 
 export function amostraOnda(o) {
+  const onda = presetAgua("onda");
   const t = o.dur > 0 ? o.idade / o.dur : 1;
   const u = t < 0 ? 0 : t > 1 ? 1 : t;
   const fade = (1 - u) * (1 - u);
-  const cresce = 1 + u * (AGUA_ONDA_CRESCE - 1);
-  amoOnda.rx = AGUA_ONDA_RX * cresce;
-  amoOnda.ry = amoOnda.rx * AGUA_ONDA_RY;
+  const cresce = 1 + u * (onda.cresce - 1);
+  amoOnda.rx = onda.rx * cresce;
+  amoOnda.ry = amoOnda.rx * onda.ry;
   amoOnda.alfa = fade * 0.42;
   return amoOnda;
 }
 
 export function amostraPegada(p) {
+  const pegada = presetAgua("pegada");
   const t = p.dur > 0 ? p.idade / p.dur : 1;
   const u = t < 0 ? 0 : t > 1 ? 1 : t;
   let k = 1;
-  if (u > AGUA_PEGADA_CHEIO) {
-    const w = (u - AGUA_PEGADA_CHEIO) / (1 - AGUA_PEGADA_CHEIO);
+  if (u > pegada.cheio) {
+    const w = (u - pegada.cheio) / (1 - pegada.cheio);
     const ease = 1 - (1 - w) * (1 - w) * (1 - w);
     k = 1 - ease;
   }
@@ -246,10 +222,11 @@ function emitirOnda(trilha, x, y, z) {
   o.y = y;
   o.z = z;
   o.idade = 0;
-  o.dur = AGUA_ONDA_VIDA;
+  o.dur = presetAgua("onda").vida;
 }
 
 function soltarGota(e, forte) {
+  const gota = presetAgua("gota");
   const g = pegarVaga(gotas, cursorGota);
   const elev = e.elevacao ?? e.z ?? 0;
   g.viva = true;
@@ -261,24 +238,26 @@ function soltarGota(e, forte) {
   g.vy = (Math.random() - 0.5) * (forte ? 1.6 : 0.35);
   g.vz = (forte ? 2.4 : 1.15) * (0.85 + Math.random() * 0.3);
   g.idade = 0;
-  g.dur = AGUA_GOTA_VIDA * (0.82 + Math.random() * 0.35);
+  g.dur = gota.vida * (0.82 + Math.random() * 0.35);
   g.tam = forte ? 0.22 : 0.14;
 }
 
 function soltarRajada(e, vel) {
-  const n = vel >= VEL_CORRIDA ? AGUA_GOTA_RAJADA + 2 : AGUA_GOTA_RAJADA;
+  const rajada = presetAgua("gota").rajada;
+  const n = vel >= VEL_CORRIDA ? rajada + 2 : rajada;
   for (let i = 0; i < n; i++) soltarGota(e, true);
 }
 
 function soltarPegada(e, trilha, dx, dy, dist, vel) {
+  const pegada = presetAgua("pegada");
   const p = pegarVaga(pegadas, cursorPegada);
   const len = dist > 1e-5 ? dist : 1;
   const nx = -dy / len;
   const ny = dx / len;
   const lado = trilha.esq ? 1 : -1;
-  const off = AGUA_PEGADA_LATERAL * lado;
+  const off = pegada.lateral * lado;
   const corre = vel >= VEL_CORRIDA;
-  const tam = AGUA_PEGADA_TAM * (corre ? 1.18 : 1);
+  const tam = pegada.tam * (corre ? 1.18 : 1);
   p.viva = true;
   p.x = e.x + nx * off;
   p.y = e.y + ny * off;
@@ -287,34 +266,36 @@ function soltarPegada(e, trilha, dx, dy, dist, vel) {
   p.sx = tam * 1.15;
   p.sy = tam * 0.55;
   p.idade = 0;
-  p.dur = AGUA_PEGADA_VIDA;
-  p.alfa0 = (corre ? 0.56 : 0.5);
+  p.dur = pegada.vida;
+  p.alfa0 = corre ? 0.56 : 0.5;
 }
 
 function emitirOndaSe(trilha, e, dx, dy, dist, col, elev, dt) {
+  const onda = presetAgua("onda");
   trilha.cdOnda -= dt;
-  const anda = dist >= AGUA_ONDA_PASSO;
+  const anda = dist >= onda.passo;
   if (trilha.cdOnda > 0) return;
-  trilha.cdOnda = anda ? AGUA_ONDA_INTERVALO : AGUA_ONDA_INTERVALO_PARADO;
+  trilha.cdOnda = anda ? onda.intervalo : onda.intervaloParado;
   let x = e.x;
   let y = e.y;
   if (anda && dist > 1e-5) {
-    x -= (dx / dist) * AGUA_ONDA_ATRAS;
-    y -= (dy / dist) * AGUA_ONDA_ATRAS;
+    x -= (dx / dist) * onda.atras;
+    y -= (dy / dist) * onda.atras;
   }
-  const z = col.caindo ? elev : col.superficie - AGUA_OFFSET_LAMINA;
+  const z = col.caindo ? elev : col.superficie - onda.offsetLamina;
   emitirOnda(trilha, x, y, z > 0 ? z : elev);
 }
 
 function tentarPegada(trilha, e, dx, dy, dist, vel, dt) {
+  const pegada = presetAgua("pegada");
   if (trilha.carga <= 0) return;
   if (e.pulando || e.nadando || e.noChao === false) return;
   trilha.cdPasso -= dt;
-  if (vel < AGUA_PEGADA_VEL) return;
+  if (vel < pegada.vel) return;
   trilha.acum += dist;
-  if (trilha.acum < AGUA_PEGADA_DIST || trilha.cdPasso > 0) return;
+  if (trilha.acum < pegada.dist || trilha.cdPasso > 0) return;
   trilha.acum = 0;
-  trilha.cdPasso = AGUA_PEGADA_INTERVALO;
+  trilha.cdPasso = pegada.intervalo;
   trilha.carga -= 1;
   trilha.esq = trilha.esq ? 0 : 1;
   soltarPegada(e, trilha, dx, dy, dist, vel);
@@ -322,11 +303,14 @@ function tentarPegada(trilha, e, dx, dy, dist, vel, dt) {
 
 function tentar(e, dt) {
   if (!e || e.morto || e.capturado) return;
+  const onda = presetAgua("onda");
+  const gota = presetAgua("gota");
+  const pegada = presetAgua("pegada");
   const elev = e.elevacao ?? e.z ?? 0;
   const col = colunaAgua(e.x, e.y);
   const imersao = col.superficie > 0 ? Math.max(0, col.superficie - elev) : 0;
   const fora = e.voando || e.planando || e.escalando;
-  const naAgua = !fora && (!!e.nadando || imersao >= AGUA_IMERSAO_MIN);
+  const naAgua = !fora && (!!e.nadando || imersao >= onda.imersaoMin);
 
   let trilha = rastros.get(e);
   if (!trilha) {
@@ -334,7 +318,7 @@ function tentar(e, dt) {
     trilha.x = e.x;
     trilha.y = e.y;
     trilha.imerso = naAgua;
-    trilha.carga = naAgua ? AGUA_PEGADA_CARGA : 0;
+    trilha.carga = naAgua ? pegada.carga : 0;
     rastros.set(e, trilha);
     return;
   }
@@ -355,12 +339,12 @@ function tentar(e, dt) {
   if (trilha.imerso && !naAgua) {
     matarOndas(trilha);
     soltarRajada(e, vel);
-    trilha.molha = AGUA_MOLHA_SEG;
-    trilha.pinga = AGUA_GOTA_PINGA * 0.5;
+    trilha.molha = gota.molhaSeg;
+    trilha.pinga = gota.pinga * 0.5;
   }
 
   if (naAgua) {
-    trilha.carga = AGUA_PEGADA_CARGA;
+    trilha.carga = pegada.carga;
     trilha.molha = 0;
     trilha.acum = 0;
     emitirOndaSe(trilha, e, dx, dy, dist, col, elev, dt);
@@ -369,7 +353,7 @@ function tentar(e, dt) {
       trilha.molha -= dt;
       trilha.pinga -= dt;
       if (trilha.pinga <= 0 && trilha.molha > 0) {
-        trilha.pinga = AGUA_GOTA_PINGA;
+        trilha.pinga = gota.pinga;
         soltarGota(e, false);
       }
     }
@@ -393,7 +377,7 @@ function envelhecer(dt) {
     const g = gotas[i];
     if (!g.viva) continue;
     g.idade += dt;
-    g.vz -= AGUA_GOTA_GRAV * dt;
+    g.vz -= presetAgua("gota").grav * dt;
     g.x += g.vx * dt;
     g.y += g.vy * dt;
     g.z += g.vz * dt;
@@ -403,6 +387,79 @@ function envelhecer(dt) {
     const p = pegadas[i];
     if (!p.viva) continue;
     p.idade += dt;
+    if (p.idade >= p.dur) p.viva = false;
+  }
+}
+
+/** Disparos isolados para o editor de partículas. */
+export function emitirOndaPreview(x, y, z) {
+  const o = pegarOnda();
+  o.viva = true;
+  o.trilha = null;
+  o.x = x;
+  o.y = y;
+  o.z = z;
+  o.idade = 0;
+  o.dur = presetAgua("onda").vida;
+}
+
+export function emitirGotaPreview(x, y, z, forte) {
+  const gota = presetAgua("gota");
+  const g = pegarVaga(gotas, cursorGota);
+  g.viva = true;
+  g.x = x + (Math.random() - 0.5) * (forte ? 0.4 : 0.18);
+  g.y = y + (Math.random() - 0.5) * (forte ? 0.4 : 0.18);
+  g.chao = z;
+  g.z = z + (forte ? 0.2 : 0.85);
+  g.vx = (Math.random() - 0.5) * (forte ? 1.6 : 0.35);
+  g.vy = (Math.random() - 0.5) * (forte ? 1.6 : 0.35);
+  g.vz = (forte ? 2.4 : 1.15) * (0.85 + Math.random() * 0.3);
+  g.idade = 0;
+  g.dur = gota.vida * (0.82 + Math.random() * 0.35);
+  g.tam = forte ? 0.22 : 0.14;
+}
+
+export function emitirPegadaPreview(x, y, z) {
+  const pegada = presetAgua("pegada");
+  const p = pegarVaga(pegadas, cursorPegada);
+  p.viva = true;
+  p.x = x;
+  p.y = y;
+  p.z = z;
+  p.ang = 0;
+  p.sx = pegada.tam * 1.15;
+  p.sy = pegada.tam * 0.55;
+  p.idade = 0;
+  p.dur = pegada.vida;
+  p.alfa0 = 0.5;
+}
+
+export function tickFxAguaPreview(dt) {
+  const passo = dt > 0 ? dt : 0;
+  tempo += passo;
+  for (let i = 0; i < CAP_ONDA; i++) {
+    const o = ondas[i];
+    if (!o.viva) continue;
+    o.idade += passo;
+    if (o.idade >= o.dur) {
+      o.viva = false;
+      o.trilha = null;
+    }
+  }
+  for (let i = 0; i < CAP_GOTA; i++) {
+    const g = gotas[i];
+    if (!g.viva) continue;
+    g.idade += passo;
+    g.vz -= presetAgua("gota").grav * passo;
+    g.x += g.vx * passo;
+    g.y += g.vy * passo;
+    g.z += g.vz * passo;
+    if (g.z <= g.chao || g.idade >= g.dur) g.viva = false;
+  }
+  for (let i = 0; i < CAP_PEGADA; i++) {
+    const p = pegadas[i];
+    if (!p.viva) continue;
+    p.idade += passo;
     if (p.idade >= p.dur) p.viva = false;
   }
 }

@@ -3,6 +3,7 @@
  * Folha de 3 quadros, piscina fixa, sem alocação no quadro.
  */
 import { estado } from "../jogo/estado.js";
+import { presetPasso } from "../particulas/catalogo.js";
 import { atoresVisiveis } from "../pokemon/sistema.js";
 
 const CAP = 80;
@@ -10,28 +11,6 @@ const PERTO2 = 18 * 18;
 const VEL_MIN = 0.4;
 const VEL_CORRIDA = 3.05;
 const EXPANDIR = 0.28;
-
-const ANDAR = Object.freeze({
-  intervalo: 0.4,
-  bolas: 1,
-  tam0: 0.36,
-  tam1: 0.86,
-  espalha: 0.16,
-  dur: 0.58,
-  atras: 0.14,
-  alfa: 0.55,
-});
-
-const CORRER = Object.freeze({
-  intervalo: 0.12,
-  bolas: 2,
-  tam0: 0.42,
-  tam1: 1.12,
-  espalha: 0.36,
-  dur: 0.7,
-  atras: 0.22,
-  alfa: 0.68,
-});
 
 const FOLHA = new URL("../../assets/effects/gas-cloud-fx.png", import.meta.url);
 
@@ -173,7 +152,7 @@ function tentar(e, dt) {
     return;
   }
   const corre = typeof e.correndo === "boolean" ? e.correndo : vel >= VEL_CORRIDA;
-  const perfil = corre ? CORRER : ANDAR;
+  const perfil = corre ? presetPasso("correr") : presetPasso("andar");
   if (rec.parado) {
     rec.parado = false;
     rec.acum = perfil.intervalo;
@@ -183,6 +162,24 @@ function tentar(e, dt) {
   rec.acum -= perfil.intervalo;
   if (rec.acum > perfil.intervalo) rec.acum = 0;
   soltar(e, dx, dy, perfil);
+}
+
+/** Disparo isolado para o editor de partículas. */
+export function emitirPoeiraEm(x, y, z, modo) {
+  garantirPoeira();
+  const perfil = modo === "correr" ? presetPasso("correr") : presetPasso("andar");
+  for (let i = 0; i < perfil.bolas; i++) {
+    const p = pegarSlot();
+    p.viva = true;
+    p.x = x + (Math.random() - 0.5) * perfil.espalha;
+    p.y = y + (Math.random() - 0.5) * perfil.espalha;
+    p.z = z || 0;
+    p.idade = 0;
+    p.dur = perfil.dur;
+    p.tam0 = perfil.tam0;
+    p.tam1 = perfil.tam1;
+    p.alfa = perfil.alfa;
+  }
 }
 
 export function tickPoeiraPasso(dt, corpo, agente) {

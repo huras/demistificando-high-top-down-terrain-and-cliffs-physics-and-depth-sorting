@@ -353,9 +353,11 @@ export function cancelarMantle(corpo) {
   corpo.pulando = false;
 }
 
-function sincronizarFacingParede(corpo, e) {
-  const fx = -e.normalX;
-  const fy = -e.normalY;
+/** Olha pra face (−normal). Exportado pra combate não sobrescrever com o alvo. */
+export function sincronizarFacingParede(corpo, e) {
+  if (!corpo || !e) return;
+  const fx = -(e.normalX ?? 0);
+  const fy = -(e.normalY ?? 0);
   corpo.dirX = fx;
   corpo.dirY = fy;
   if (Math.abs(fx) > Math.abs(fy)) {

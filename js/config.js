@@ -29,6 +29,8 @@ export const RAIO_POKEMON = 0.34;
 /** Base do tronco e da pedra. A copa continua só visual. */
 export const RAIO_BASE_ARVORE = 0.36;
 export const RAIO_BASE_PEDRA = 0.44;
+/** Folga extra no A* além do raio do mon (aresta corta pedra/árvore). */
+export const NAV_FOLGA_DISCO = 0.2;
 /** Altura do corpo em células (pés → topo da cabeça) pra AABB voxel. */
 export const ALTURA_CORPO = 1.7;
 

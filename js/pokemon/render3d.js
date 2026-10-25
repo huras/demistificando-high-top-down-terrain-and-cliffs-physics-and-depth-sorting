@@ -6,15 +6,17 @@ import { alturaPe } from "./ator.js";
 import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { bolasAtivas, particulasCaptura } from "./captura.js";
-import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
-import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "./combate/folhasGolpe.js";
+import { carregarFolhasGolpe } from "./combate/folhasGolpe.js";
 import { ligarFxCena, sincronizarFx } from "./combate/fx/index.js";
 import { aurasVivas, ORBES_KI } from "./combate/ki.js";
 import { dropsNoChao } from "./drops.js";
 import { imagemIcone } from "../jogo/icones.js";
 import { oscilacaoAndar, squashAndar } from "./bounceAndar.js";
+import { rumoVisualCorpo } from "../render/3d/facingCamera3d.js";
 import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
+import { carregarCatalogoEfeitos } from "../efeitos/catalogo.js";
+import { carregarCatalogoParticulas } from "../particulas/catalogo.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
 import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
 import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
@@ -47,7 +49,6 @@ const PE_Y = LADO - 8;
 const PIVO_X = PE_X / LADO;
 const PIVO_Y = PE_Y / LADO;
 const CAP_ATOR = 20;
-const CAP_TIRO = 64;
 const CAP_DROP = 48;
 const CAP_FAISCA = 36;
 const CAP_KI = 8;
@@ -60,7 +61,6 @@ const _desloc = { x: 0, z: 0 };
 let cena = null;
 let atores = [];
 const porId = new Map();
-let tiros = [];
 let drops = [];
 const CAP_BOLA = 12;
 /** @type {{ grupo: THREE.Group, placeholder: THREE.Sprite, mesh3d: THREE.Object3D | null, key: string, carregando: string }[]} */
@@ -276,32 +276,15 @@ function criarPonto(cor) {
   return sprite;
 }
 
-function pintarTiro(mesh, p, camera) {
-  mesh.visible = true;
-  const pose = p.impacto ? poseImpacto(p, camera) : poseTiro(p, camera);
-  if (!pose || !aplicarPose(mesh, pose)) {
-    if (mesh.material.map !== mesh.userData.mapa) {
-      mesh.material.map = mesh.userData.mapa;
-      mesh.material.needsUpdate = true;
-    }
-    mesh.material.color.set(p.cor || "#ffffff");
-    mesh.material.opacity = 1;
-    mesh.material.rotation = p.ang || 0;
-    mesh.material.alphaTest = 0.1;
-    const s = p.escala || 0.22;
-    mesh.scale.set(s, p.giro ? s * 0.42 : s, 1);
-  }
-  mesh.position.set(p.x, p.z * ALTURA_BLOCO, p.y);
-}
-
 export function ligarPokemon3d(scene) {
   if (cena) return;
+  carregarCatalogoEfeitos();
   carregarFolhasGolpe();
   cena = scene;
   carregarCatalogoLuzes();
+  carregarCatalogoParticulas();
   ligarFxCena(cena);
   for (let i = 0; i < CAP_ATOR; i++) atores.push(criarAtorSlot());
-  for (let i = 0; i < CAP_TIRO; i++) tiros.push(criarPonto("#ffffff"));
   for (let i = 0; i < CAP_DROP; i++) drops.push(criarPonto("#fbbf24"));
   for (let i = 0; i < CAP_FAISCA; i++) faiscas.push(criarPonto("#fde68a"));
   for (let i = 0; i < CAP_KI; i++) {
@@ -514,7 +497,8 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     const visual = ator.visual;
     const dirMundo = visual?.dir;
     if (visual) {
-      const rel = direcao8Camera(ator.dirX || 0, ator.dirY || 0, yawCam);
+      const rumo = rumoVisualCorpo(ator);
+      const rel = direcao8Camera(rumo.x, rumo.y, yawCam);
       if (rel != null) visual.dir = rel;
     }
     const fr = quadroDe(ator, pack);
@@ -584,17 +568,6 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     if (slot.veu) slot.veu.visible = false;
     porId.delete(id);
   }
-
-  const tirosVivos = projeteisVivos();
-  const impactos = impactosVivos();
-  let slot = 0;
-  for (let k = 0; k < tirosVivos.length && slot < tiros.length; k++, slot++) {
-    pintarTiro(tiros[slot], tirosVivos[k], camera);
-  }
-  for (let k = 0; k < impactos.length && slot < tiros.length; k++, slot++) {
-    pintarTiro(tiros[slot], impactos[k], camera);
-  }
-  for (; slot < tiros.length; slot++) tiros[slot].visible = false;
 
   const auras = aurasVivas();
   for (let i = 0; i < CAP_KI; i++) {
@@ -725,5 +698,5 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
   } else if (lista[0]) {
     foco = { x: lista[0].x, y: lista[0].y };
   }
-  sincronizarFx(28, foco);
+  sincronizarFx(28, foco, camera);
 }

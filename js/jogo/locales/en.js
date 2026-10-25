@@ -155,6 +155,20 @@ export default {
     "vazio": "Empty.",
     "idioma": "Language"
   },
+  "morte": {
+    "eyebrow": "Journey's end",
+    "titulo": "You fainted",
+    "causaCombate": "Cause: {golpe}",
+    "causaDesconhecida": "Cause: unknown",
+    "matador": "Defeated by {nome}",
+    "matadorDesconhecido": "Defeated by someone",
+    "dano": "Final damage: {n}",
+    "hora": "Time {hora}",
+    "renascer": "Respawn",
+    "dicaOlhar": "Drag on the screen to look around",
+    "golpeDesconhecido": "unknown move",
+    "desconhecido": "unknown"
+  },
   "keys": {
     "elementalShrineDevice": "Elemental Shrine Device"
   },

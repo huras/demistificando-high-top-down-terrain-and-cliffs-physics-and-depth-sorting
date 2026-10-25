@@ -2,17 +2,16 @@
 
 import { tocarEnvioBola, tocarRecolherBola, tocarShiny } from "../jogo/audio.js";
 import { tocarGrito } from "../jogo/som/gritos.js";
+import { presetBola } from "../particulas/catalogo.js";
 
 const CAP_FAISCA = 72;
 const CAP_ANEL = 8;
 const CAP_FLASH = 4;
-const RAIO = 0.4;
-const ARRASTO = 3.8;
-const DOURADO = [250, 204, 21];
-const BRANCO_ENVIO = [255, 252, 240];
-const VERMELHO_ENVIO = [248, 113, 113];
-const BRANCO_RECOLHER = [255, 248, 230];
-const VERMELHO_RECOLHER = [239, 68, 68];
+
+function dourado() {
+  const s = presetBola("shiny");
+  return [s.douradoR, s.douradoG, s.douradoB];
+}
 
 const faiscas = [];
 const aneis = [];
@@ -67,7 +66,7 @@ for (let i = 0; i < CAP_FLASH; i++) {
     x: 0,
     y: 0,
     z: 0,
-    raio: RAIO,
+    raio: 0.4,
     tipo: "envio",
     vida: 0,
     vidaMax: 0.4,
@@ -93,9 +92,9 @@ function ocupar(lista) {
 }
 
 function rgbDe(cor) {
-  if (typeof cor !== "string") return DOURADO;
+  if (typeof cor !== "string") return dourado();
   const m = /^#?([0-9a-f]{6})$/i.exec(cor.trim());
-  if (!m) return DOURADO;
+  if (!m) return dourado();
   const n = parseInt(m[1], 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
@@ -202,22 +201,32 @@ function flashMundo(x, y, z, raio, tipo, vida) {
   slot.vidaMax = vida;
 }
 
-export function soltarFxEnvio(ator) {
-  tocarEnvioBola();
-  if (ator?.shiny) tocarShiny();
-  tocarGrito(ator, { x: ator?.x, y: ator?.y, importante: true });
+/**
+ * @param {object} ator
+ * @param {{ silencio?: boolean }} [opts]
+ */
+export function soltarFxEnvio(ator, opts = {}) {
+  if (!opts.silencio) {
+    tocarEnvioBola();
+    if (ator?.shiny) tocarShiny();
+    tocarGrito(ator, { x: ator?.x, y: ator?.y, importante: true });
+  }
   if (!pode(ator)) return;
+  const cfg = presetBola("envio");
   const acento = acentoDe(ator);
   const z = ator.elevacao ?? ator.z ?? 0;
   const x = ator.x;
   const y = ator.y;
-  const vidaAnel = 0.45;
+  const raio = cfg.raio;
+  const vidaAnel = cfg.vidaAnel;
+  const branco = [cfg.brancoR, cfg.brancoG, cfg.brancoB];
+  const vermelho = [cfg.vermelhoR, cfg.vermelhoG, cfg.vermelhoB];
 
   anel(x, y, z, {
     idade: 0,
     vida: 0.32,
-    inicio: RAIO * 0.2,
-    fim: RAIO * 1.6,
+    inicio: raio * 0.2,
+    fim: raio * 1.6,
     espessura: 0.16,
     r: 255,
     g: 255,
@@ -229,46 +238,46 @@ export function soltarFxEnvio(ator) {
   anel(x, y, z, {
     idade: 0,
     vida: vidaAnel,
-    inicio: RAIO * 0.35,
-    fim: RAIO * 2.8,
+    inicio: raio * 0.35,
+    fim: raio * 2.8,
     espessura: 0.07,
-    r: BRANCO_ENVIO[0],
-    g: BRANCO_ENVIO[1],
-    b: BRANCO_ENVIO[2],
+    r: branco[0],
+    g: branco[1],
+    b: branco[2],
     branco: true,
   });
   anel(x, y, z, {
     idade: -0.06,
     vida: vidaAnel + 0.08,
-    inicio: RAIO * 0.45,
-    fim: RAIO * 2.8 * 1.15,
+    inicio: raio * 0.45,
+    fim: raio * 2.8 * 1.15,
     espessura: 0.07 * 0.85,
-    r: VERMELHO_ENVIO[0],
-    g: VERMELHO_ENVIO[1],
-    b: VERMELHO_ENVIO[2],
+    r: vermelho[0],
+    g: vermelho[1],
+    b: vermelho[2],
     branco: false,
   });
 
   faiscaSolta(x, y, z, {
-    conta: 18,
-    vida: 0.48,
-    velMin: 2.8,
-    velMax: 7.2,
-    tamMin: 0.05,
-    tamMax: 0.13,
-    rgb: BRANCO_ENVIO,
+    conta: cfg.faiscaConta,
+    vida: cfg.faiscaVida,
+    velMin: cfg.faiscaVelMin,
+    velMax: cfg.faiscaVelMax,
+    tamMin: cfg.faiscaTamMin,
+    tamMax: cfg.faiscaTamMax,
+    rgb: branco,
     chanceBranco: 0.35,
     sobe: 0.15,
     chanceTraco: 0.55,
     chanceEstrela: 0.7,
   });
   faiscaSolta(x, y, z, {
-    conta: 10,
-    vida: 0.48,
-    velMin: 2,
-    velMax: 5.4,
-    tamMin: 0.04,
-    tamMax: 0.1,
+    conta: Math.max(4, (cfg.faiscaConta * 0.55) | 0),
+    vida: cfg.faiscaVida,
+    velMin: cfg.faiscaVelMin * 0.7,
+    velMax: cfg.faiscaVelMax * 0.75,
+    tamMin: cfg.faiscaTamMin * 0.8,
+    tamMax: cfg.faiscaTamMax * 0.77,
     rgb: acento,
     chanceBranco: 0.2,
     sobe: 0.2,
@@ -276,13 +285,13 @@ export function soltarFxEnvio(ator) {
     chanceEstrela: 0.45,
   });
   faiscaSolta(x, y, z, {
-    conta: 8,
-    vida: 0.48 * 0.85,
-    velMin: 1.6,
-    velMax: 4.2,
-    tamMin: 0.035,
-    tamMax: 0.09,
-    rgb: VERMELHO_ENVIO,
+    conta: Math.max(4, (cfg.faiscaConta * 0.45) | 0),
+    vida: cfg.faiscaVida * 0.85,
+    velMin: cfg.faiscaVelMin * 0.57,
+    velMax: cfg.faiscaVelMax * 0.58,
+    tamMin: cfg.faiscaTamMin * 0.7,
+    tamMax: cfg.faiscaTamMax * 0.69,
+    rgb: vermelho,
     chanceBranco: 0.1,
     sobe: 0.1,
     chanceTraco: 0.5,
@@ -291,45 +300,53 @@ export function soltarFxEnvio(ator) {
 
   ator.brilhoBola = Math.max(ator.brilhoBola || 0, 0.4);
   ator.brilhoBolaTipo = "envio";
-  flashMundo(x, y, z, RAIO, "envio", 0.4);
+  flashMundo(x, y, z, raio, "envio", cfg.vidaFlash);
 }
 
-export function soltarFxRecolher(ator) {
-  tocarRecolherBola();
+/**
+ * @param {object} ator
+ * @param {{ silencio?: boolean }} [opts]
+ */
+export function soltarFxRecolher(ator, opts = {}) {
+  if (!opts.silencio) tocarRecolherBola();
   if (!pode(ator)) return;
+  const cfg = presetBola("recolher");
   const acento = acentoDe(ator);
   const z = ator.elevacao ?? ator.z ?? 0;
   const x = ator.x;
   const y = ator.y;
-  const vidaAnel = 0.42;
+  const raio = cfg.raio;
+  const vidaAnel = cfg.vidaAnel;
+  const branco = [cfg.brancoR, cfg.brancoG, cfg.brancoB];
+  const vermelho = [cfg.vermelhoR, cfg.vermelhoG, cfg.vermelhoB];
 
   anel(x, y, z, {
     idade: 0,
     vida: vidaAnel,
-    inicio: RAIO * 2.6,
-    fim: RAIO * 0.25,
+    inicio: raio * 2.6,
+    fim: raio * 0.25,
     espessura: 0.08,
-    r: VERMELHO_RECOLHER[0],
-    g: VERMELHO_RECOLHER[1],
-    b: VERMELHO_RECOLHER[2],
+    r: vermelho[0],
+    g: vermelho[1],
+    b: vermelho[2],
     branco: false,
   });
   anel(x, y, z, {
     idade: -0.07,
     vida: vidaAnel + 0.06,
-    inicio: RAIO * 2.6 * 1.2,
-    fim: RAIO * 0.15,
+    inicio: raio * 2.6 * 1.2,
+    fim: raio * 0.15,
     espessura: 0.08 * 0.9,
-    r: BRANCO_RECOLHER[0],
-    g: BRANCO_RECOLHER[1],
-    b: BRANCO_RECOLHER[2],
+    r: branco[0],
+    g: branco[1],
+    b: branco[2],
     branco: true,
   });
   anel(x, y, z, {
     idade: 0.05,
     vida: 0.28,
-    inicio: RAIO * 0.15,
-    fim: RAIO * 1.35,
+    inicio: raio * 0.15,
+    fim: raio * 1.35,
     espessura: 0.14,
     r: 255,
     g: 255,
@@ -340,42 +357,42 @@ export function soltarFxRecolher(ator) {
   });
 
   faiscaPuxa(x, y, z, {
-    conta: 20,
-    vida: 0.5,
-    raioMin: RAIO * 0.7,
-    raioMax: RAIO * 2.4,
-    velMin: 1.8,
-    velMax: 4.6,
-    tamMin: 0.04,
-    tamMax: 0.11,
-    rgb: VERMELHO_RECOLHER,
+    conta: cfg.faiscaConta,
+    vida: cfg.faiscaVida,
+    raioMin: raio * 0.7,
+    raioMax: raio * 2.4,
+    velMin: cfg.faiscaVelMin,
+    velMax: cfg.faiscaVelMax,
+    tamMin: cfg.faiscaTamMin,
+    tamMax: cfg.faiscaTamMax,
+    rgb: vermelho,
     chanceBranco: 0.25,
     chanceEstrela: 0.65,
-    puxa: 14,
+    puxa: cfg.puxa,
   });
   faiscaPuxa(x, y, z, {
-    conta: 10,
-    vida: 0.5,
-    raioMin: RAIO * 0.55,
-    raioMax: RAIO * 2.4 * 0.85,
-    velMin: 1.2,
-    velMax: 3.4,
-    tamMin: 0.035,
-    tamMax: 0.09,
+    conta: Math.max(4, (cfg.faiscaConta * 0.5) | 0),
+    vida: cfg.faiscaVida,
+    raioMin: raio * 0.55,
+    raioMax: raio * 2.4 * 0.85,
+    velMin: cfg.faiscaVelMin * 0.67,
+    velMax: cfg.faiscaVelMax * 0.74,
+    tamMin: cfg.faiscaTamMin * 0.875,
+    tamMax: cfg.faiscaTamMax * 0.82,
     rgb: acento,
     chanceBranco: 0.35,
     chanceEstrela: 0.4,
-    puxa: 14 * 0.9,
+    puxa: cfg.puxa * 0.9,
   });
 
   ator.brilhoBola = Math.max(ator.brilhoBola || 0, 0.35);
   ator.brilhoBolaTipo = "recolher";
-  flashMundo(x, y, z, RAIO, "recolher", 0.35);
+  flashMundo(x, y, z, raio, "recolher", cfg.vidaFlash);
 }
 
 export function tickFxBola(dt) {
   if (dt <= 0) return;
-  const amortece = Math.max(0, 1 - ARRASTO * dt);
+  const amortece = Math.max(0, 1 - presetBola("shiny").arrasto * dt);
   const amortecePuxa = Math.max(0, 1 - 2.2 * dt);
 
   for (let i = 0; i < faiscas.length; i++) {

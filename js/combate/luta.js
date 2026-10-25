@@ -11,18 +11,17 @@ import {
 import { cancelarConjuracao, ensaiarGolpe, impactoProjetil, tentarGolpe, tickConjuracao, tickDesmaio } from "../pokemon/combate/executor.js";
 import { isCombatMotionLocked, tickMeleeApproach } from "../pokemon/combate/meleeApproach.js";
 import { rotuloStatus, tickStatus } from "../pokemon/combate/status.js";
-import { limparKi } from "../pokemon/combate/ki.js";
-import { limparParticulas, poeiraDash, rajada, tickParticulas } from "../pokemon/combate/particulas.js";
+import { poeiraDash, rajada, tickParticulas } from "../pokemon/combate/particulas.js";
 import {
   elementoDe,
   impactoFx,
-  limparFx,
   emitirRastro,
   tickFx,
 } from "../pokemon/combate/fx/index.js";
+import { limparCampoCombate } from "../pokemon/combate/limparCampo.js";
 import { atualizarProjeteis, limparProjeteis, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { tickEmocoes } from "../pokemon/emocoes.js";
-import { flutuar, limparFlutuantes, tickFlutuantes } from "../pokemon/flutuantes.js";
+import { flutuar, tickFlutuantes } from "../pokemon/flutuantes.js";
 import { montarGrade } from "../pokemon/grade.js";
 import { tickVisual } from "../pokemon/sprites.js";
 import { faccoesAliadas } from "../pokemon/faccao.js";
@@ -366,11 +365,7 @@ function montar(lado, entrada) {
 }
 
 function limparCampo() {
-  limparProjeteis();
-  limparParticulas();
-  limparFx();
-  limparFlutuantes();
-  limparKi();
+  limparCampoCombate([esquerda, direita]);
 }
 
 function soltarPoeiraDash(ator, dt) {

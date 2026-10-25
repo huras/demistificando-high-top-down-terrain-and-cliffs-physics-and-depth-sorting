@@ -20,6 +20,8 @@ let lockDesde = 0;
 let elementoAlvo = null;
 /** @type {(() => boolean) | null} */
 let predicadoTravaMira = null;
+/** Olhar livre sem pointer lock (ex.: tela de morte). */
+let olharLivre = false;
 
 const ENGOLIR_SOLTURA_MS = 120;
 
@@ -30,9 +32,16 @@ function noViewport(ev) {
 }
 
 function aoMover(ev) {
-  if (document.pointerLockElement !== elementoAlvo) return;
+  const travado = document.pointerLockElement === elementoAlvo;
+  if (!travado && !(olharLivre && (direito || esquerdo))) return;
   acumuladoX += ev.movementX || 0;
   acumuladoY += ev.movementY || 0;
+}
+
+export function definirOlharLivre(ativo) {
+  olharLivre = !!ativo;
+  if (!olharLivre) return;
+  miraIntent = false;
 }
 
 function aoBotaoBaixo(ev) {

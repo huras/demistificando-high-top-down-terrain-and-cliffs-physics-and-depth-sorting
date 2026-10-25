@@ -113,6 +113,7 @@ export const estado = {
   roda: false,
   itemGet: "",
   ganhoAberto: false,
+  morteAberta: false,
   vistosItens: {},
   interior: null,
   construir: false,

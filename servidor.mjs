@@ -247,6 +247,83 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/particulas") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 1_000_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarCatalogoParticulas(obj);
+        const dest = path.join(raiz, "assets", "particulas", "catalogo.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/efeitos") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 2_000_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarCatalogoEfeitos(obj);
+        const dest = path.join(raiz, "assets", "efeitos", "catalogo.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
+  if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/api/efeitos/banco") {
+    try {
+      const lista = listarBancoEfeitos();
+      const corpo = JSON.stringify(lista);
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      if (req.method === "HEAD") res.end();
+      else res.end(corpo);
+    } catch (erro) {
+      res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+    }
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/pivos") {
     const pedacos = [];
     let total = 0;
@@ -474,6 +551,173 @@ function validarCatalogoLuzes(obj) {
       if (ponto.intensidade < 0 || ponto.intensidade > 4) throw new Error(`${id} intensidade fora`);
     }
   }
+}
+
+function numFinito(v, rotulo) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) throw new Error(rotulo);
+  return n;
+}
+
+function corHex(v, rotulo) {
+  if (typeof v !== "string" || !/^#[0-9a-fA-F]{6}$/.test(v)) throw new Error(rotulo);
+  return v;
+}
+
+function validarObjNumeros(obj, rotulo, maxAbs = 1e6) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error(rotulo);
+  const chaves = Object.keys(obj);
+  if (chaves.length > 64) throw new Error(`${rotulo} grande`);
+  for (let i = 0; i < chaves.length; i++) {
+    const k = chaves[i];
+    if (!/^[a-zA-Z0-9_]{1,40}$/.test(k)) throw new Error(`${rotulo}.${k}`);
+    const n = numFinito(obj[k], `${rotulo}.${k}`);
+    if (Math.abs(n) > maxAbs) throw new Error(`${rotulo}.${k} fora`);
+    obj[k] = n;
+  }
+}
+
+function listarBancoEfeitos() {
+  const dirLocal = path.join(raiz, "assets", "effects", "banco");
+  const dirBp = path.resolve(
+    raiz,
+    "..",
+    "..",
+    "Boardgame Projects",
+    "BattleParticles",
+    "assets",
+    "sprites",
+    "effects",
+  );
+  const dirs = [];
+  if (fs.existsSync(dirLocal)) dirs.push({ dir: dirLocal, base: "/assets/effects/banco/" });
+  if (fs.existsSync(dirBp)) dirs.push({ dir: dirBp, base: null });
+  /** @type {{ id: string, url: string, frames: number, fw: number, fh: number }[]} */
+  const out = [];
+  const visto = new Set();
+  for (const { dir, base } of dirs) {
+    const nomes = fs.readdirSync(dir).filter((n) => n.endsWith(".png"));
+    for (const nome of nomes) {
+      const m = /^(\d{3})_x\d+_y\d+_w(\d+)_h(\d+)\.png$/i.exec(nome);
+      if (!m) continue;
+      const id = m[1];
+      if (visto.has(id)) continue;
+      visto.add(id);
+      const fw = Number(m[2]) || 32;
+      const h = Number(m[3]) || fw;
+      const frames = fw > 0 ? Math.max(1, Math.round(h / fw)) : 1;
+      let url;
+      if (base) url = base + nome;
+      else {
+        // Espelha sob demanda para o editor servir via pasta local se existir cópia
+        const local = path.join(dirLocal, nome);
+        if (!fs.existsSync(dirLocal)) fs.mkdirSync(dirLocal, { recursive: true });
+        if (!fs.existsSync(local)) {
+          try {
+            fs.copyFileSync(path.join(dir, nome), local);
+          } catch {
+            continue;
+          }
+        }
+        url = "/assets/effects/banco/" + nome;
+      }
+      out.push({ id, url, frames, fw, fh: fw });
+    }
+  }
+  out.sort((a, b) => a.id.localeCompare(b.id));
+  return out;
+}
+
+function validarCatalogoEfeitos(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("catálogo inválido");
+  obj.versao = (numFinito(obj.versao ?? 1, "versao") | 0) || 1;
+  if (obj.versao < 1 || obj.versao > 99) throw new Error("versão fora");
+  if (!obj.efeitos || typeof obj.efeitos !== "object" || Array.isArray(obj.efeitos)) {
+    throw new Error("sem efeitos");
+  }
+  const ids = Object.keys(obj.efeitos);
+  if (ids.length < 1 || ids.length > 200) throw new Error("qtd efeitos fora");
+  const kinds = new Set(["projetil", "jato", "feixe", "raio", "status", "melee", "overlay"]);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^[a-z0-9-]{2,40}$/.test(id)) throw new Error(`id inválido: ${id}`);
+    const ef = obj.efeitos[id];
+    if (!ef || typeof ef !== "object") throw new Error(`${id} vazio`);
+    ef.id = id;
+    if (!kinds.has(ef.kind)) throw new Error(`${id}.kind`);
+    if (ef.folha && typeof ef.folha === "object") {
+      if (ef.folha.url && typeof ef.folha.url === "string") {
+        if (!/^assets\/effects\/[a-z0-9_./-]+\.png$/i.test(ef.folha.url)) {
+          throw new Error(`${id}.folha.url`);
+        }
+      }
+      if (ef.folha.frames != null) ef.folha.frames = numFinito(ef.folha.frames, `${id}.frames`);
+      if (ef.folha.escalaVoo != null) ef.folha.escalaVoo = numFinito(ef.folha.escalaVoo, `${id}.escalaVoo`);
+    }
+  }
+  if (obj.aliases && typeof obj.aliases === "object") {
+    for (const k of Object.keys(obj.aliases)) {
+      if (!/^[a-zA-Z0-9-]{2,40}$/.test(k)) throw new Error(`alias ${k}`);
+      const v = obj.aliases[k];
+      if (typeof v !== "string" || !obj.efeitos[v]) throw new Error(`alias → ${v}`);
+    }
+  }
+}
+
+function validarCatalogoParticulas(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("catálogo inválido");
+  }
+  obj.versao = (numFinito(obj.versao ?? 1, "versao") | 0) || 1;
+  if (obj.versao < 1 || obj.versao > 99) throw new Error("versão fora");
+
+  if (!obj.combate || typeof obj.combate !== "object") throw new Error("sem combate");
+  const elementos = obj.combate.elementos;
+  if (!elementos || typeof elementos !== "object" || Array.isArray(elementos)) {
+    throw new Error("sem elementos");
+  }
+  const ids = Object.keys(elementos);
+  if (ids.length > 32) throw new Error("muitos elementos");
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^[a-z]{2,16}$/.test(id)) throw new Error(`elemento inválido: ${id}`);
+    const el = elementos[id];
+    if (!el || typeof el !== "object") throw new Error(`${id} vazio`);
+    el.primaria = corHex(el.primaria, `${id}.primaria`);
+    el.secundaria = corHex(el.secundaria, `${id}.secundaria`);
+    el.nucleo = corHex(el.nucleo, `${id}.nucleo`);
+    if (!el.rastro || typeof el.rastro !== "object") throw new Error(`${id}.rastro`);
+    el.rastro.taxa = numFinito(el.rastro.taxa, `${id}.rastro.taxa`);
+    el.rastro.vida = numFinito(el.rastro.vida, `${id}.rastro.vida`);
+    el.rastro.dispersao = numFinito(el.rastro.dispersao, `${id}.rastro.dispersao`);
+    if (!el.impacto || typeof el.impacto !== "object") throw new Error(`${id}.impacto`);
+    el.impacto.particulas = numFinito(el.impacto.particulas, `${id}.impacto.particulas`);
+    el.impacto.raio = numFinito(el.impacto.raio, `${id}.impacto.raio`);
+    el.impacto.duracao = numFinito(el.impacto.duracao, `${id}.impacto.duracao`);
+    el.impacto.gravidade = numFinito(el.impacto.gravidade ?? 0, `${id}.impacto.gravidade`);
+    if (el.rastro.taxa < 0 || el.rastro.taxa > 120) throw new Error(`${id} taxa fora`);
+    if (el.impacto.particulas < 0 || el.impacto.particulas > 96) throw new Error(`${id} particulas fora`);
+  }
+
+  if (!obj.passo || typeof obj.passo !== "object") throw new Error("sem passo");
+  validarObjNumeros(obj.passo.andar, "passo.andar", 64);
+  validarObjNumeros(obj.passo.correr, "passo.correr", 64);
+
+  if (!obj.campo || typeof obj.campo !== "object") throw new Error("sem campo");
+  validarObjNumeros(obj.campo.fagulha, "campo.fagulha", 64);
+  validarObjNumeros(obj.campo.fagulhaForte, "campo.fagulhaForte", 64);
+  validarObjNumeros(obj.campo.lasca, "campo.lasca", 64);
+
+  if (!obj.agua || typeof obj.agua !== "object") throw new Error("sem agua");
+  validarObjNumeros(obj.agua.onda, "agua.onda", 64);
+  validarObjNumeros(obj.agua.gota, "agua.gota", 64);
+  validarObjNumeros(obj.agua.pegada, "agua.pegada", 64);
+  validarObjNumeros(obj.agua.nado, "agua.nado", 64);
+
+  if (!obj.bola || typeof obj.bola !== "object") throw new Error("sem bola");
+  validarObjNumeros(obj.bola.envio, "bola.envio", 1024);
+  validarObjNumeros(obj.bola.recolher, "bola.recolher", 1024);
+  validarObjNumeros(obj.bola.shiny, "bola.shiny", 1024);
 }
 
 function validarPartes(obj) {

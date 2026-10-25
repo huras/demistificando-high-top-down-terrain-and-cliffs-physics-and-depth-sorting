@@ -1,5 +1,4 @@
 import { ALTURA_BLOCO, USAR_PATCH_DEMO } from "../config.js";
-import { registrarMorte } from "../jogo/jornada.js";
 import { SPAWN as SPAWN_DEMO } from "../mundo/mapaDemo.js";
 import { SPAWN_PALLET } from "../mundo/regiao/spawnKanto.js";
 import { tickPassivo, aplicarNivel } from "./ator.js";
@@ -40,6 +39,7 @@ import { tickFxBola } from "../fx/fxBola.js";
 import { aoLiberarSom } from "../jogo/audio.js";
 import { aquecerGrito, tickGritosAmbiente } from "../jogo/som/gritos.js";
 import { markSpeciesSeen } from "../jogo/pokedex/progresso.js";
+import { entrarMorte, jogadorMorto } from "../jogo/hud/morte.js";
 
 aoLiberarSom(() => {
   aquecerGrito(pokemonNoCampo());
@@ -96,6 +96,7 @@ export function definirInvulneravel(ativo) {
   if (!ativo) return;
   treinador.morto = false;
   if (treinador.hp <= 0) treinador.hp = treinador.hpMax;
+  treinador.relatorioMorte = null;
 }
 
 export function pokemonLigado() {
@@ -108,6 +109,10 @@ export function relogioPokemon() {
 
 export function obterTreinador() {
   return treinador;
+}
+
+export function pontoRespawn() {
+  return RESPAWN;
 }
 
 /**
@@ -158,6 +163,8 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   treinador.planando = !!corpo.planando;
   if (treinador.iframe > 0) treinador.iframe = Math.max(0, treinador.iframe - passo);
 
+  const morto = jogadorMorto() || (treinador.morto && treinador.hp <= 0);
+
   atualizarPopulacao(corpo, passo, agora);
   definirCorposAtores(listarSolidosPokemon());
   const mon = pokemonDeployado();
@@ -165,14 +172,16 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   aquecerGrito(pokemonNoCampo());
   tickGritosAmbiente(passo, corpo, selvagens);
 
-  // Combate OW: wilds agroam antes do party (DEFEND enxerga no mesmo frame).
-  for (let i = 0; i < selvagens.length; i++) {
-    tickWildCampo(selvagens[i], mon, treinador, passo);
+  if (!morto) {
+    // Combate OW: wilds agroam antes do party (DEFEND enxerga no mesmo frame).
+    for (let i = 0; i < selvagens.length; i++) {
+      tickWildCampo(selvagens[i], mon, treinador, passo);
+    }
+    if (mon) {
+      mon._emLutaCampo = tickPartyCampo(mon, selvagens, treinador, passo);
+    }
+    atualizarRoamSelvagens(selvagens, mon, treinador, passo);
   }
-  if (mon) {
-    mon._emLutaCampo = tickPartyCampo(mon, selvagens, treinador, passo);
-  }
-  atualizarRoamSelvagens(selvagens, mon, treinador, passo);
   atualizarParty(corpo, passo, agora, perfilSeguidor);
 
   const atores = mon ? selvagens.concat(mon) : selvagens;
@@ -180,12 +189,14 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   for (let i = 0; i < atores.length; i++) tickStatus(atores[i], agora, efeitos, "real");
   for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
   montarGrade(atores.concat(treinador));
-  for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
-  tickGolpesCampo(atores, agora, efeitos);
-  atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
-    impactoProjetil(p, alvo, agora, efeitos);
-  });
-  atualizarCaptura(corpo, passo, agora, efeitos);
+  if (!morto) {
+    for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
+    tickGolpesCampo(atores, agora, efeitos);
+    atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
+      impactoProjetil(p, alvo, agora, efeitos);
+    });
+    atualizarCaptura(corpo, passo, agora, efeitos);
+  }
   tickFxBola(passo);
   atualizarDrops(corpo, passo, flutuar);
   const visiveis = atoresVisiveis();
@@ -201,43 +212,8 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   tickParticulas(passo);
   tickFx(passo);
 
-  if (treinador.hp <= 0 && !treinador.invulneravel) {
-    registrarMorte(
-      corpo.x,
-      corpo.y,
-      corpo.elevacao ?? corpo.z ?? 0,
-    );
-    corpo.x = RESPAWN.x;
-    corpo.y = RESPAWN.y;
-    corpo.z = RESPAWN.z;
-    corpo.elevacao = RESPAWN.z;
-    corpo.vx = 0;
-    corpo.vy = 0;
-    corpo.vz = 0;
-    corpo.pulando = false;
-    corpo.planando = false;
-    corpo.escalando = false;
-    corpo.voando = false;
-    corpo.nadando = false;
-    corpo.afogandoT = 0;
-    corpo.noChao = true;
-    corpo.hopLift = 0;
-    corpo.pulo = null;
-    corpo.escalada = null;
-    corpo.mantle = null;
-    corpo.puloCortado = false;
-    corpo.coyoteT = 0;
-    corpo.puloBufferT = 0;
-    corpo.tempoAr = 0;
-    corpo._renasceu = true;
-    treinador.x = RESPAWN.x;
-    treinador.y = RESPAWN.y;
-    treinador.z = RESPAWN.z;
-    treinador.elevacao = RESPAWN.z;
-    treinador.hp = treinador.hpMax;
-    treinador.morto = false;
-    treinador.iframe = 2.5;
-    flutuar(treinador, "desmaiou", "#fca5a5");
+  if (treinador.hp <= 0 && !treinador.invulneravel && !jogadorMorto()) {
+    entrarMorte(corpo, treinador);
   }
 }
 

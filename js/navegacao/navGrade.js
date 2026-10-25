@@ -19,7 +19,7 @@ import {
   VELOCIDADE_MAX,
 } from "../config.js";
 import { listarPisosWalkable } from "../fisica/colisao.js";
-import { centroNaBase } from "../fisica/obstaculos.js";
+import { arestaCortaBase } from "../fisica/obstaculos.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import {
   alturasLocomocao,
@@ -59,7 +59,7 @@ let navCentro = { cx: 0, cy: 0 };
 let navRaioAtivo = 28;
 /** Construção fatiada — uma grade por vez, sem travar o frame. */
 let trabalhoNav = null;
-const ORCAMENTO_NAV_MS = 2;
+const ORCAMENTO_NAV_MS = 4;
 
 /** Chave 3D: (cx, cy, zFloor). */
 export function chaveCelula(cx, cy, z = 0) {
@@ -260,7 +260,7 @@ function* construirGrade(perfil, centroX, centroY, raio) {
           for (const zB of pisosB) {
             const edge = classificarAresta(zA, zB, perfil, diag);
             if (!edge) continue;
-            if (edge.tipo === TIPO_WALK && centroNaBase(nx, ny, zB)) continue;
+            if (edge.tipo === TIPO_WALK && arestaCortaBase(cx, cy, nx, ny, zB)) continue;
             const mult = multiplicadorAgua(
               aguaDe(cx, cy),
               aguaDe(nx, ny),

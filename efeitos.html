@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Efeitos de combate</title>
+  <link rel="stylesheet" href="css/particulas.css" />
+  <link rel="stylesheet" href="css/efeitos.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Efeitos de combate</h1>
+    <p class="topo__nota" id="status">Carregando catálogo…</p>
+    <div class="topo__acoes">
+      <button type="button" id="reset-preset">Reset preset</button>
+      <button type="button" id="salvar">Salvar</button>
+    </div>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna">
+      <h2>Kind</h2>
+      <div class="abas" id="abas" role="tablist" aria-label="Kinds"></div>
+
+      <h2>Efeitos</h2>
+      <input id="busca" type="search" placeholder="Filtrar…" />
+      <ul class="lista" id="lista"></ul>
+
+      <h2>Parâmetros</h2>
+      <div id="inspector"></div>
+
+      <h2>Banco BP</h2>
+      <div class="banco" id="banco"></div>
+      <p class="nota">Clique numa folha do banco para atribuir ao efeito selecionado (projétil/jato).</p>
+
+      <h2>Preview</h2>
+      <div class="acoes-preview">
+        <button type="button" id="disparar">Disparar</button>
+        <button type="button" id="loop">Loop</button>
+        <button type="button" id="limpar">Limpar</button>
+      </div>
+    </aside>
+    <div class="palco">
+      <canvas id="vista"></canvas>
+      <div class="hud-perf" id="hud-perf"></div>
+    </div>
+  </div>
+  <script type="module" src="js/efeitos/editor.js"></script>
+</body>
+</html>

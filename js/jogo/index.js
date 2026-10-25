@@ -56,6 +56,7 @@ import {
 import { teleporteOcupado } from "./teleporte.js";
 import { toggleMenu, semearDexParty } from "./apiHud.js";
 import { bootHudCompleto, tickHudCampo } from "./hud/bootHud.js";
+import { jogadorMorto } from "./hud/morte.js";
 import { tickRide } from "./ride.js";
 
 let viewport = null;
@@ -172,12 +173,26 @@ export function tickJogo(dt, corpo) {
     papelHub,
     interior: estado.interior,
   });
-  estado.promptEntrar = !!acao;
-  estado.promptRotulo = acao?.rotulo || "Entrar";
-  estado.promptAncora = acao?.ancora || null;
-  const livreDeMenu = !estado.painel && !estado.roda && !estado.construir && !estado.craft && !estado.ganhoAberto;
-  if (!mapaAberto() && !campoFocado() && estado.dialogo && teclaAgora("KeyE")) avancarDialogo();
-  else if (
+  if (jogadorMorto()) {
+    estado.promptEntrar = false;
+    estado.promptRotulo = "";
+    estado.promptAncora = null;
+    estado.prompt = "";
+  } else {
+    estado.promptEntrar = !!acao;
+    estado.promptRotulo = acao?.rotulo || "Entrar";
+    estado.promptAncora = acao?.ancora || null;
+  }
+  const livreDeMenu =
+    !estado.painel &&
+    !estado.roda &&
+    !estado.construir &&
+    !estado.craft &&
+    !estado.ganhoAberto &&
+    !jogadorMorto();
+  if (!mapaAberto() && !campoFocado() && !jogadorMorto() && estado.dialogo && teclaAgora("KeyE")) {
+    avancarDialogo();
+  } else if (
     !mapaAberto() &&
     !campoFocado() &&
     !puzzleSantuarioAberto() &&
@@ -190,9 +205,11 @@ export function tickJogo(dt, corpo) {
   }
   tickFeixe(dt);
   atualizarBussolaSantuario(corpo, !!estado.interior);
-  const texto =
-    alvoLab ? promptDoLaboratorio(alvoLab) : alvoHub ? promptDoHub(papelHub, alvoHub) : promptDe(alvo, ferramenta);
-  estado.prompt = acaoConsomeE(acao) ? "" : texto;
+  if (!jogadorMorto()) {
+    const texto =
+      alvoLab ? promptDoLaboratorio(alvoLab) : alvoHub ? promptDoHub(papelHub, alvoHub) : promptDe(alvo, ferramenta);
+    estado.prompt = acaoConsomeE(acao) ? "" : texto;
+  }
   const zona = zonaNoMundo(corpo.x, corpo.y);
   definirBgm(
     chaveBgm(
@@ -246,6 +263,7 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
 }
 
 function lerTeclas(corpo) {
+  if (jogadorMorto()) return;
   if (mapaAberto()) {
     if (mapaViajando()) {
       teclaAgora("Escape");

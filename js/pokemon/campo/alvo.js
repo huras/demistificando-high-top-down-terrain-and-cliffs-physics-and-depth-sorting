@@ -142,7 +142,7 @@ export function escolherAlvoWild(ator, partyMon, jogador) {
       melhorD = d;
     }
   }
-  if (jogador && jogador.hp > 0) {
+  if (jogador && !jogador.morto && jogador.hp > 0) {
     const d = dist2(ator, jogador);
     const prefere = ator.prefereParty && vivo(partyMon);
     if (!prefere && d < raio && d < melhorD) melhor = jogador;

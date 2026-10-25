@@ -1,3 +1,4 @@
+import { sincronizarFacingParede } from "../../fisica/escalada.js";
 import { velocidadeDe } from "../ator.js";
 import { irPara, zDePerseguicao } from "../ia/locomocaoCampo.js";
 import {
@@ -8,6 +9,18 @@ import {
 
 /** Parada curta no strafe / meta local — NÃO empilhar com o anel de melee. */
 const DIST_PARAR_CURTO = 0.28;
+
+function encararAlvo(ator, alvo) {
+  if (ator.escalando && ator.escalada) {
+    sincronizarFacingParede(ator, ator.escalada);
+    return;
+  }
+  const dx = alvo.x - ator.x;
+  const dy = alvo.y - ator.y;
+  const d = Math.hypot(dx, dy) || 1;
+  ator.dirX = dx / d;
+  ator.dirY = dy / d;
+}
 
 /**
  * Move até o anel de engajamento (path 3D) ou strafe no bolso.
@@ -26,11 +39,7 @@ export function integrarEngajar(ator, alvo, dt) {
   if (aiShouldKeepClosing(ator, alvo)) {
     // Meta = alvo; freio = anel de contato (uma só distância).
     irPara(ator, alvo.x, alvo.y, z, vel, dt, stop);
-    const dx = alvo.x - ator.x;
-    const dy = alvo.y - ator.y;
-    const d = Math.hypot(dx, dy) || 1;
-    ator.dirX = dx / d;
-    ator.dirY = dy / d;
+    encararAlvo(ator, alvo);
     return;
   }
 
@@ -42,19 +51,11 @@ export function integrarEngajar(ator, alvo, dt) {
     ator.vy = 0;
     ator.andando = false;
     ator.correndo = false;
-    const dx = alvo.x - ator.x;
-    const dy = alvo.y - ator.y;
-    const d = Math.hypot(dx, dy) || 1;
-    ator.dirX = dx / d;
-    ator.dirY = dy / d;
+    encararAlvo(ator, alvo);
     return;
   }
   const gx = ator.x + (steer.x / mag) * 1.6;
   const gy = ator.y + (steer.y / mag) * 1.6;
   irPara(ator, gx, gy, z, vel * 0.85, dt, DIST_PARAR_CURTO);
-  const dx = alvo.x - ator.x;
-  const dy = alvo.y - ator.y;
-  const d = Math.hypot(dx, dy) || 1;
-  ator.dirX = dx / d;
-  ator.dirY = dy / d;
+  encararAlvo(ator, alvo);
 }

@@ -1,5 +1,6 @@
 import { RAIO_POKEMON } from "../../config.js";
 import { cortaVisada, desviarRumo, sondarCobertura } from "../../combate/arenas.js";
+import { sincronizarFacingParede } from "../../fisica/escalada.js";
 import { comecarEsquiva, emAvanco, emEsquiva, emRecuo, presoNoGolpe, velocidadeDe } from "../ator.js";
 import { deslizarNoAr, lembrarEmbalo, quererPulo } from "../combate/pulo.js";
 import { LEAD_MAX } from "./constantes.js";
@@ -7,6 +8,16 @@ import { limitarArena, regua, sentidoParada } from "./espaco.js";
 import { entrada, quadroDe, saida } from "./observacao.js";
 import { FATIA, PESOS } from "./pesos.js";
 import { propagar } from "./rede.js";
+
+function encararAlvoOuParede(ator, q) {
+  if (ator.escalando && ator.escalada) {
+    sincronizarFacingParede(ator, ator.escalada);
+    return;
+  }
+  if (!q) return;
+  ator.dirX = q.fx;
+  ator.dirY = q.fy;
+}
 
 const perfil = { portao: 0.05, mira: 1, passo: 0.1 };
 
@@ -35,8 +46,7 @@ function aplicarEsquiva(ator, alvo) {
 
 function gravarComando(ator, alvo, comMira) {
   const q = quadroDe(ator, alvo);
-  ator.dirX = q.fx;
-  ator.dirY = q.fy;
+  encararAlvoOuParede(ator, q);
   let ax = Math.tanh(saida[0]);
   let ay = Math.tanh(saida[1]);
   if (Math.abs(ax) < 0.2) ax = 0;
@@ -90,10 +100,7 @@ export function integrarComando(ator, alvo, dt) {
     return;
   }
   const q = alvo ? quadroDe(ator, alvo) : null;
-  if (q) {
-    ator.dirX = q.fx;
-    ator.dirY = q.fy;
-  }
+  encararAlvoOuParede(ator, q);
   if (emRecuo(ator) || emAvanco(ator) || emEsquiva(ator)) {
     ator.andando = false;
     return;

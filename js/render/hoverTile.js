@@ -1,9 +1,12 @@
 /**
- * Highlight do tile sob o cursor — 2D outline + marcador 3D reutilizado.
+ * Highlight do tile sob o cursor.
+ * 2D: outline no canvas clássico.
+ * 3D: plano no chão com depth; pedaço atrás de cliff vira silhueta tracejada.
  */
 import { ALTURA_BLOCO, ESCALA, FACE_H, TILE } from "../config.js";
 import { hoverEmAlcanceEdicao, obterHoverBloco } from "../entrada/hoverBloco.js";
 import { mundoParaTelaX, mundoParaTelaY } from "./camera.js";
+import { STENCIL_SOLIDO } from "./3d/silhuetaSprite.js";
 
 const COR = Object.freeze({
   ok: {
@@ -170,23 +173,44 @@ export function desenharLabelHoverHud(ctx, canvasW, canvasH, mira3d = false) {
 }
 
 /**
- * Cria marcador 3D (EdgesGeometry) — 1 mesh, só move quando a célula muda.
+ * Cria marcador 3D no chão: frente com depth normal; atrás de sólido = silhueta.
  * @param {typeof import("three")} THREE
  */
-function texturaCursorTile(THREE) {
+function texturaCanvasTile(THREE, { fill, strokeEscuro, strokeClaro, soContorno = false }) {
   const c = document.createElement("canvas");
   c.width = 128;
   c.height = 128;
   const g = c.getContext("2d");
   g.clearRect(0, 0, 128, 128);
-  g.fillStyle = "rgba(45, 212, 191, 0.72)";
-  g.fillRect(14, 14, 100, 100);
-  g.strokeStyle = "rgba(6, 18, 22, 0.95)";
-  g.lineWidth = 18;
+  if (!soContorno) {
+    g.fillStyle = fill;
+    g.fillRect(14, 14, 100, 100);
+  }
+  g.strokeStyle = strokeEscuro;
+  g.lineWidth = soContorno ? 14 : 18;
   g.strokeRect(8, 8, 112, 112);
-  g.strokeStyle = "#ecfeff";
-  g.lineWidth = 7;
+  g.strokeStyle = strokeClaro;
+  g.lineWidth = soContorno ? 5 : 7;
+  if (soContorno) g.setLineDash([10, 8]);
   g.strokeRect(14, 14, 100, 100);
+  g.setLineDash([]);
+  // Cantos — reforça leitura mesmo ocluso.
+  g.lineCap = "round";
+  g.lineWidth = soContorno ? 6 : 5;
+  g.strokeStyle = strokeClaro;
+  const cantos = [
+    [14, 38, 14, 14, 38, 14],
+    [114, 38, 114, 14, 90, 14],
+    [114, 90, 114, 114, 90, 114],
+    [14, 90, 14, 114, 38, 114],
+  ];
+  for (const [ax, ay, bx, by, cx, cy] of cantos) {
+    g.beginPath();
+    g.moveTo(ax, ay);
+    g.lineTo(bx, by);
+    g.lineTo(cx, cy);
+    g.stroke();
+  }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.magFilter = THREE.LinearFilter;
@@ -195,23 +219,79 @@ function texturaCursorTile(THREE) {
   return tex;
 }
 
-export function criarMarcadorHover3d(THREE) {
-  const geo = new THREE.PlaneGeometry(1, 1);
-  geo.rotateX(-Math.PI / 2);
-  const mat = new THREE.MeshBasicMaterial({
-    map: texturaCursorTile(THREE),
+function texturaCursorTile(THREE) {
+  return texturaCanvasTile(THREE, {
+    fill: "rgba(45, 212, 191, 0.72)",
+    strokeEscuro: "rgba(6, 18, 22, 0.95)",
+    strokeClaro: "#ecfeff",
+  });
+}
+
+/** Contorno tracejado — só aparece onde o cliff/sólido cobre o tile. */
+function texturaCursorTileOcluso(THREE) {
+  return texturaCanvasTile(THREE, {
+    fill: "rgba(45, 212, 191, 0.2)",
+    strokeEscuro: "rgba(6, 18, 22, 0.55)",
+    strokeClaro: "rgba(236, 254, 255, 0.85)",
+    soContorno: true,
+  });
+}
+
+function materialFrente(THREE, map) {
+  return new THREE.MeshBasicMaterial({
+    map,
     transparent: true,
     depthWrite: false,
     depthTest: true,
+    depthFunc: THREE.LessEqualDepth,
     polygonOffset: true,
-    polygonOffsetFactor: -4,
-    polygonOffsetUnits: -4,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
     fog: false,
+    toneMapped: false,
   });
+}
+
+/** GreaterDepth + stencil de sólido = só o pedaço escondido atrás do terreno. */
+function materialOcluso(THREE, map) {
+  const mat = new THREE.MeshBasicMaterial({
+    map,
+    transparent: true,
+    opacity: 0.88,
+    depthWrite: false,
+    depthTest: true,
+    depthFunc: THREE.GreaterDepth,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    fog: false,
+    toneMapped: false,
+  });
+  mat.stencilWrite = true;
+  mat.stencilRef = STENCIL_SOLIDO;
+  mat.stencilFunc = THREE.EqualStencilFunc;
+  mat.stencilFail = THREE.KeepStencilOp;
+  mat.stencilZFail = THREE.KeepStencilOp;
+  mat.stencilZPass = THREE.KeepStencilOp;
+  return mat;
+}
+
+export function criarMarcadorHover3d(THREE) {
+  const geo = new THREE.PlaneGeometry(1, 1);
+  geo.rotateX(-Math.PI / 2);
+  const mat = materialFrente(THREE, texturaCursorTile(THREE));
   const malha = new THREE.Mesh(geo, mat);
   malha.visible = false;
   malha.renderOrder = 8;
   malha.frustumCulled = false;
+
+  const matSil = materialOcluso(THREE, texturaCursorTileOcluso(THREE));
+  const silhueta = new THREE.Mesh(geo, matSil);
+  silhueta.name = "hover-bloco-ocluso";
+  silhueta.renderOrder = 9;
+  silhueta.frustumCulled = false;
+  silhueta.raycast = () => {};
+  malha.add(silhueta);
 
   let lastKey = "";
   let lastAlcance = true;
@@ -234,7 +314,9 @@ export function criarMarcadorHover3d(THREE) {
         lastKey = k;
       }
       if (ok !== lastAlcance) {
-        mat.color.setHex(ok ? COR.ok.mat : COR.longe.mat);
+        const hex = ok ? COR.ok.mat : COR.longe.mat;
+        mat.color.setHex(hex);
+        matSil.color.setHex(hex);
         lastAlcance = ok;
       }
       malha.visible = true;

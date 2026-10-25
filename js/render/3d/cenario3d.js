@@ -47,6 +47,7 @@ import { criarFxBola3d } from "./fxBola3d.js";
 import { criarFxAgua3d } from "./fxAgua3d.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
+import { criarElipsesSelecaoPokemon } from "./elipseSelecaoPokemon.js";
 import { criarCeu } from "./ceu/ceu.js";
 import { tickClima } from "../../clima/amostra.js";
 import { ligarRendererSombra } from "./ceu/sombraEstavel.js";
@@ -385,6 +386,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
   hoverTile.mesh.name = "hover-bloco";
   scene.add(hoverTile.mesh);
 
+  const elipsePokemon = criarElipsesSelecaoPokemon(scene, { canvas });
+
   const ceu = criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim });
   const luzSala = criarLuzSala(scene);
   verCamadaAuxiliar(sol.shadow.camera);
@@ -425,6 +428,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     ventoAsa,
     alvoEscalada,
     hoverTile,
+    elipsePokemon,
     ceu,
     rig,
     flechas,
@@ -726,14 +730,16 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   });
   ligarLuzSala(interior, corpo);
 
-  const inclinacao = BILLBOARD_INCLINACAO * (1 - (estado.camera3d.blend ?? 0));
+  // Mira e teleporte: sprites em pé (blend→1), como no arco.
+  const blendBb = Math.max(estado.camera3d.blend ?? 0, estado.camera3d.folgaTeleporte ?? 0);
+  const inclinacao = BILLBOARD_INCLINACAO * (1 - blendBb);
   estado.edificios?.atualizar?.(mx, my, yaw, inclinacao);
   estado.vegetacao?.atualizar?.(yaw, inclinacao);
   estado.vegetacaoDistante?.tick?.(mx, my, yaw, inclinacao);
   estado.vegetacaoHorizonte?.tick?.(mx, my, yaw, inclinacao);
   estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   estado.poeiraPasso?.atualizar?.();
-  estado.fxBola?.atualizar?.();
+  estado.fxBola?.atualizar?.(camRender);
   estado.fxAgua?.atualizar?.(camRender);
   anotarEstadoSim(estado.personagem.grupo, corpo);
   estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
@@ -747,6 +753,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   atualizarTeleporte3d(camRender);
   estado.alvoEscalada.atualizar(corpo, dt);
   estado.hoverTile?.atualizar();
+  estado.elipsePokemon?.atualizar(camRender);
 
   const planando = !!corpo.planando;
   const voando = !!corpo.voando;

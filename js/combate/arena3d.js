@@ -1127,10 +1127,10 @@ export function desenharArena(atores, dt = 0.016) {
   aplicarOmbro();
   atualizarFadeCobertura(atores, dt);
   for (let i = 0; i < slots.length; i++) pintarAtor(slots[i], atores?.[i] || null);
-  pintarTiros();
+  for (let i = 0; i < tiros.length; i++) tiros[i].visible = false;
   pintarFaiscas();
   pintarKi();
-  sincronizarFx(0, null);
+  sincronizarFx(0, null, camera);
   renderer.render(cena, camera);
 }
 

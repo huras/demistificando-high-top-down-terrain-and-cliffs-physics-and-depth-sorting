@@ -1,4 +1,4 @@
-import { emitir } from "./poolParticulas3d.js";
+import { emitir, folhaParticula } from "./poolParticulas3d.js";
 
 /**
  * Emite rastro elemental ao longo do movimento.
@@ -13,6 +13,7 @@ import { emitir } from "./poolParticulas3d.js";
  */
 export function emitirRastro(el, x, y, z, vx, vy, dt, escala = 1) {
   if (!el) return;
+  const folha = folhaParticula(el);
   const taxa = (el.rastro.taxa || 20) * Math.max(0.35, escala);
   const n = Math.max(1, Math.min(6, Math.round(taxa * dt)));
   const vel = Math.hypot(vx, vy) || 1;
@@ -32,6 +33,7 @@ export function emitirRastro(el, x, y, z, vx, vy, dt, escala = 1) {
       vida: el.rastro.vida * (0.7 + Math.random() * 0.5),
       tam: (0.1 + Math.random() * 0.1) * escala,
       modo: "faisca",
+      folha,
       drag: 0.88,
     });
   }

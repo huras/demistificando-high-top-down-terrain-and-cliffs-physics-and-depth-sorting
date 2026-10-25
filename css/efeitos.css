@@ -1,0 +1,34 @@
+.banco {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.banco__item {
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: #1a1f2a center / contain no-repeat;
+  cursor: pointer;
+  padding: 0;
+}
+
+.banco__item:hover,
+.banco__item:focus-visible {
+  border-color: #7dd3fc;
+  outline: none;
+}
+
+.banco__item.is-ativo {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px #38bdf8;
+}
+
+.banco__meta {
+  font-size: 10px;
+  opacity: 0.65;
+  margin-top: 4px;
+}

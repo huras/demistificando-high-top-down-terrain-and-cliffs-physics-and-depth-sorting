@@ -1,21 +1,130 @@
 /**
  * Queda da copa, fagulhas e lascas. Pools curtos, sem simular o chão inteiro.
+ * Fagulha/fagulha forte → atlas flamethrower; lascas → Points.
  */
 
 import * as THREE from "three";
 import { ALTURA_BLOCO, TILE, VEG_ALPHA_TEST, VEG_ARVORE_ESCALA } from "../config.js";
 import { alturaEm } from "../mundo/altura.js";
+import { presetCampo } from "../particulas/catalogo.js";
+import { carregarFolhasGolpe, FOLHAS, texturaFolha } from "../pokemon/combate/folhasGolpe.js";
 import { geometriaNoPe, poseCartao, pivoDoProp } from "../render/3d/billboard/indice.js";
 import { FASE, listarFase } from "./estadoProps.js";
 
 const CAP_QUEDA = 8;
 const CAP_PARTICULA = 96;
 const QUEDA_MS = 720;
+const FRAMES_CHAMA = FOLHAS.flamethrower?.frames || 4;
+const TAM_CHAMA = 0.42;
 
 const caindo = [];
 const particulas = [];
 let atlas = null;
 let cursor = 0;
+
+/** @type {THREE.Texture | null} */
+let texChamaLocal = null;
+let pedidoChama = false;
+
+const VERT_CHAMA = /* glsl */ `
+attribute float aFrame;
+attribute vec3 aColor;
+varying vec2 vUv;
+varying vec3 vColor;
+varying float vFrame;
+
+void main() {
+  vUv = uv;
+  vColor = aColor;
+  vFrame = aFrame;
+  #ifdef USE_INSTANCING
+  vec3 mundo = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  float sx = length(vec3(instanceMatrix[0][0], instanceMatrix[1][0], instanceMatrix[2][0]));
+  float sy = length(vec3(instanceMatrix[0][1], instanceMatrix[1][1], instanceMatrix[2][1]));
+  #else
+  vec3 mundo = vec3(0.0);
+  float sx = 1.0;
+  float sy = 1.0;
+  #endif
+  vec3 direita = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+  vec3 cima = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+  vec3 pos = mundo + direita * (position.x * sx) + cima * (position.y * sy);
+  vec4 mv = viewMatrix * vec4(pos, 1.0);
+  gl_Position = projectionMatrix * mv;
+}
+`;
+
+const FRAG_CHAMA = /* glsl */ `
+uniform sampler2D map;
+uniform float uFrames;
+varying vec2 vUv;
+varying vec3 vColor;
+varying float vFrame;
+
+void main() {
+  float frames = max(1.0, uFrames);
+  float f = clamp(floor(vFrame + 1e-4), 0.0, frames - 1.0);
+  vec2 uv = vec2(vUv.x, 1.0 - (f + (1.0 - vUv.y)) / frames);
+  vec4 tex = texture2D(map, uv);
+  if (tex.a < 0.05) discard;
+  gl_FragColor = vec4(tex.rgb * vColor, tex.a);
+}
+`;
+
+function texturaSuave() {
+  const c = document.createElement("canvas");
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext("2d");
+  const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.35, "rgba(255,255,255,0.85)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function soltarPretoCanvas(img) {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const px = data.data;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i] < 12 && px[i + 1] < 12 && px[i + 2] < 12) px[i + 3] = 0;
+  }
+  ctx.putImageData(data, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function garantirTexturaChama() {
+  const compartilhada = texturaFolha("flamethrower");
+  if (compartilhada) return compartilhada;
+  if (texChamaLocal) return texChamaLocal;
+  if (pedidoChama || typeof Image === "undefined") return null;
+  pedidoChama = true;
+  const img = new Image();
+  img.onload = () => {
+    texChamaLocal = soltarPretoCanvas(img);
+  };
+  img.src = FOLHAS.flamethrower?.url || "assets/effects/golpes/flamethrower.png";
+  return null;
+}
 
 function nascer(parcial) {
   const p = {
@@ -30,6 +139,7 @@ function nascer(parcial) {
     r: 1,
     g: 0.5,
     b: 0.1,
+    folha: "",
     ...parcial,
   };
   p.max = p.vida;
@@ -42,42 +152,50 @@ function nascer(parcial) {
 
 export function emitirFagulha(x, y, alto, n, forte) {
   const qtd = n | 0;
-  const base = alto ? 1.05 : 0.28;
+  const cfg = presetCampo("fagulha");
+  const forteCfg = presetCampo("fagulhaForte");
+  const base = alto ? cfg.baseAlta : cfg.baseBaixa;
+  const vzExtra = forte ? forteCfg.vzExtra : cfg.vzExtra;
+  const vidaMin = forte ? forteCfg.vidaMin : cfg.vidaMin;
+  const vidaExtra = forte ? forteCfg.vidaExtra : cfg.vidaExtra;
   for (let i = 0; i < qtd; i++) {
     const ang = Math.random() * Math.PI * 2;
-    const fuma = !forte && Math.random() < 0.4;
-    const quente = !fuma && Math.random() < 0.7;
+    const fuma = !forte && Math.random() < cfg.chanceFuma;
+    const quente = !fuma && Math.random() < cfg.chanceQuente;
     nascer({
-      x: x + (Math.random() - 0.5) * 0.25,
-      y: y + (Math.random() - 0.5) * 0.25,
-      z: base + Math.random() * (alto ? 1.3 : 0.35),
-      vx: Math.cos(ang) * (0.15 + Math.random() * 0.35),
-      vy: Math.sin(ang) * (0.15 + Math.random() * 0.35),
-      vz: 0.4 + Math.random() * (forte ? 1.4 : 0.7),
-      vida: forte ? 0.55 + Math.random() * 0.35 : 0.4 + Math.random() * 0.3,
-      r: fuma ? 0.32 : quente ? 1 : 0.95,
-      g: fuma ? 0.28 : quente ? 0.42 : 0.72,
-      b: fuma ? 0.24 : quente ? 0.08 : 0.2,
+      x: x + (Math.random() - 0.5) * cfg.espalha,
+      y: y + (Math.random() - 0.5) * cfg.espalha,
+      z: base + Math.random() * (alto ? cfg.alturaExtraAlta : cfg.alturaExtraBaixa),
+      vx: Math.cos(ang) * (cfg.velMin + Math.random() * cfg.velExtra),
+      vy: Math.sin(ang) * (cfg.velMin + Math.random() * cfg.velExtra),
+      vz: cfg.vzMin + Math.random() * vzExtra,
+      vida: vidaMin + Math.random() * vidaExtra,
+      r: fuma ? cfg.corFumaR : quente ? cfg.corQuenteR : cfg.corMornaR,
+      g: fuma ? cfg.corFumaG : quente ? cfg.corQuenteG : cfg.corMornaG,
+      b: fuma ? cfg.corFumaB : quente ? cfg.corQuenteB : cfg.corMornaB,
+      folha: "chama",
     });
   }
 }
 
 export function emitirLascas(x, y, n) {
   const qtd = n | 0;
+  const cfg = presetCampo("lasca");
   for (let i = 0; i < qtd; i++) {
     const ang = Math.random() * Math.PI * 2;
-    const v = 0.8 + Math.random() * 1.6;
+    const v = cfg.velMin + Math.random() * cfg.velExtra;
     nascer({
       x,
       y,
-      z: 0.35 + Math.random() * 0.2,
+      z: cfg.zMin + Math.random() * cfg.zExtra,
       vx: Math.cos(ang) * v,
       vy: Math.sin(ang) * v,
-      vz: 1.4 + Math.random() * 1.6,
-      vida: 0.32 + Math.random() * 0.22,
-      r: 0.62,
-      g: 0.56,
-      b: 0.48,
+      vz: cfg.vzMin + Math.random() * cfg.vzExtra,
+      vida: cfg.vidaMin + Math.random() * cfg.vidaExtra,
+      r: cfg.corR,
+      g: cfg.corG,
+      b: cfg.corB,
+      folha: "",
     });
   }
 }
@@ -92,7 +210,7 @@ function avancarParticulas(dt) {
       if (i < particulas.length) particulas[i] = ultimo;
       continue;
     }
-    p.vz -= passo * 5;
+    p.vz -= passo * (presetCampo("lasca").grav || 5);
     p.x += p.vx * passo;
     p.y += p.vy * passo;
     p.z += p.vz * passo;
@@ -107,11 +225,15 @@ function avancarParticulas(dt) {
 }
 
 export function criarFxCampo() {
+  carregarFolhasGolpe();
+  garantirTexturaChama();
+
   const grupo = new THREE.Group();
   grupo.name = "fx-campo";
   const malhas = [];
   const materiais = [];
   const geosPivo = new Map();
+  const dummy = new THREE.Object3D();
 
   for (let i = 0; i < CAP_QUEDA; i++) {
     const mat = new THREE.MeshBasicMaterial({
@@ -130,6 +252,7 @@ export function criarFxCampo() {
     materiais.push(mat);
   }
 
+  // Lascas → Points
   const geoPonto = new THREE.BufferGeometry();
   const pos = new Float32Array(CAP_PARTICULA * 3);
   const cor = new Float32Array(CAP_PARTICULA * 3);
@@ -148,6 +271,44 @@ export function criarFxCampo() {
   );
   pontos.frustumCulled = false;
   grupo.add(pontos);
+
+  // Fagulhas → InstancedMesh flamethrower
+  const geoChama = new THREE.PlaneGeometry(1, 1);
+  const colChama = new Float32Array(CAP_PARTICULA * 3);
+  const frameChama = new Float32Array(CAP_PARTICULA);
+  geoChama.setAttribute("aColor", new THREE.InstancedBufferAttribute(colChama, 3));
+  geoChama.setAttribute("aFrame", new THREE.InstancedBufferAttribute(frameChama, 1));
+  const matChama = new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: garantirTexturaChama() || texturaSuave() },
+      uFrames: { value: 1 },
+    },
+    vertexShader: VERT_CHAMA,
+    fragmentShader: FRAG_CHAMA,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  });
+  const chamas = new THREE.InstancedMesh(geoChama, matChama, CAP_PARTICULA);
+  chamas.count = 0;
+  chamas.frustumCulled = false;
+  chamas.renderOrder = 7;
+  chamas.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  grupo.add(chamas);
+
+  function atualizarMapaChama() {
+    const tex = texturaFolha("flamethrower") || texChamaLocal || garantirTexturaChama();
+    if (!tex) return;
+    if (matChama.uniforms.map.value !== tex) {
+      matChama.uniforms.map.value = tex;
+      matChama.uniforms.uFrames.value = FRAMES_CHAMA;
+      matChama.needsUpdate = true;
+    } else if (matChama.uniforms.uFrames.value !== FRAMES_CHAMA) {
+      matChama.uniforms.uFrames.value = FRAMES_CHAMA;
+    }
+  }
 
   function texturaDe(img) {
     const tex = new THREE.Texture(img);
@@ -227,21 +388,50 @@ export function criarFxCampo() {
     }
   }
 
-  function desenharPontos() {
+  function desenharParticulas() {
+    atualizarMapaChama();
     const attrP = geoPonto.getAttribute("position");
     const attrC = geoPonto.getAttribute("color");
+    const frames = matChama.uniforms.uFrames.value || 1;
+    let nP = 0;
+    let nC = 0;
     const n = Math.min(particulas.length, CAP_PARTICULA);
     for (let i = 0; i < n; i++) {
       const p = particulas[i];
       const chao = alturaEm(Math.floor(p.x), Math.floor(p.y)) * ALTURA_BLOCO;
       const a = p.max > 0 ? p.vida / p.max : 1;
-      attrP.setXYZ(i, p.x, chao + p.z, p.y);
-      attrC.setXYZ(i, p.r * a, p.g * a, p.b * a);
+      const y = chao + p.z;
+
+      if (p.folha === "chama") {
+        const u = 1 - a;
+        const lado = Math.max(0.28, TAM_CHAMA * (0.75 + a * 0.55));
+        dummy.position.set(p.x, y, p.y);
+        dummy.quaternion.identity();
+        dummy.scale.set(lado, lado, 1);
+        dummy.updateMatrix();
+        chamas.setMatrixAt(nC, dummy.matrix);
+        const o = nC * 3;
+        colChama[o] = p.r * a;
+        colChama[o + 1] = p.g * a;
+        colChama[o + 2] = p.b * a;
+        frameChama[nC] = Math.min(frames - 1, Math.floor(u * frames));
+        nC += 1;
+        continue;
+      }
+
+      attrP.setXYZ(nP, p.x, y, p.y);
+      attrC.setXYZ(nP, p.r * a, p.g * a, p.b * a);
+      nP += 1;
     }
     attrP.needsUpdate = true;
     attrC.needsUpdate = true;
-    geoPonto.setDrawRange(0, n);
-    pontos.visible = n > 0;
+    geoPonto.setDrawRange(0, nP);
+    pontos.visible = nP > 0;
+
+    chamas.count = nC;
+    chamas.instanceMatrix.needsUpdate = true;
+    /** @type {THREE.InstancedBufferAttribute} */ (geoChama.getAttribute("aColor")).needsUpdate = true;
+    /** @type {THREE.InstancedBufferAttribute} */ (geoChama.getAttribute("aFrame")).needsUpdate = true;
   }
 
   return {
@@ -252,7 +442,7 @@ export function criarFxCampo() {
     atualizar(yaw, inclinacao, dt) {
       avancarParticulas(dt);
       desenharQueda(yaw || 0, inclinacao || 0);
-      desenharPontos();
+      desenharParticulas();
     },
     liberar() {
       const vistos = new Set();
@@ -272,6 +462,8 @@ export function criarFxCampo() {
       geosPivo.clear();
       geoPonto.dispose();
       pontos.material.dispose();
+      geoChama.dispose();
+      matChama.dispose();
     },
   };
 }

@@ -1,4 +1,5 @@
 import { elementoDe } from "./elementos.js";
+import { desligarFeixes, limparFeixes, ligarFeixes, sincronizarFeixes, tickFeixes } from "./feixe3d.js";
 import { emitirImpacto } from "./impacto.js";
 import {
   desligarPoolGpu,
@@ -8,6 +9,7 @@ import {
   sincronizarPoolGpu,
   tickPoolFx,
 } from "./poolParticulas3d.js";
+import { desligarPoolTiros, ligarPoolTiros, sincronizarPoolTiros } from "./poolTiros3d.js";
 import { receitaFx } from "./receitas.js";
 
 const CAP_PADROES = 8;
@@ -60,12 +62,14 @@ export function tickFx(dt) {
     if (!p.vivo()) ativos.splice(i, 1);
   }
   tickPoolFx(passo);
+  tickFeixes(passo);
 }
 
 export function limparFx() {
   for (let i = 0; i < ativos.length; i++) ativos[i].encerrar();
   ativos.length = 0;
   limparPoolFx();
+  limparFeixes();
   esconderArcos();
 }
 
@@ -73,17 +77,22 @@ export function limparFx() {
 export function ligarFxCena(cena) {
   if (!cena) return;
   ligarPoolGpu(cena);
+  ligarPoolTiros(cena);
+  ligarFeixes(cena);
 }
 
 export function desligarFxCena() {
   desligarPoolGpu();
+  desligarPoolTiros();
+  desligarFeixes();
 }
 
 /**
  * @param {number} [distMax]
  * @param {{x:number,y:number}|null} [foco]
+ * @param {import('three').Camera} [camera]
  */
-export function sincronizarFx(distMax = 0, foco = null) {
+export function sincronizarFx(distMax = 0, foco = null, camera = null) {
   let usaArcos = false;
   for (let i = 0; i < ativos.length; i++) {
     const p = ativos[i];
@@ -94,6 +103,10 @@ export function sincronizarFx(distMax = 0, foco = null) {
   }
   if (!usaArcos) esconderArcos();
   sincronizarPoolGpu(distMax, foco);
+  if (camera) {
+    sincronizarPoolTiros(camera);
+    sincronizarFeixes(camera);
+  }
 }
 
 export function padroesAtivos() {

@@ -11,7 +11,7 @@ import { desenharPivosSort } from "./debugPivos.js";
 import { atualizarFadeCobertura } from "./fadeCobertura.js";
 import { atualizarPainel, desenharOverlayAjuda } from "./hudDebug.js";
 import { desenharHudStamina } from "./hudStamina.js";
-import { desenharHoverTile2d, desenharLabelHoverHud, desenharMarcadorTileTela } from "./hoverTile.js";
+import { desenharHoverTile2d, desenharLabelHoverHud } from "./hoverTile.js";
 import { obterPonteiroCanvas } from "../entrada/hoverBloco.js";
 import { atorSobPonteiro } from "../pokemon/clique.js";
 import {
@@ -215,8 +215,8 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
   if (emCena) {
     desenharTagCena(ctx, canvas.width);
   } else {
-    desenharMarcadorTileTela(ctx, projetarChao);
-    desenharPokemonSobCursor(ctx, canvas, projetar, projetarChao);
+    // Tile e elipse do mon ficam no 3D (depth); HUD só placa/nome.
+    desenharPokemonSobCursor(ctx, canvas, projetar, projetarChao, false);
     desenharLabelHoverHud(ctx, canvas.width, canvas.height, false);
     if ((camera3d?.camera3d?.blend ?? 0) > 0.35) {
       desenharMira(ctx, canvas.width, canvas.height, camera3d?.flechas?.carga?.() ?? 0);
@@ -226,11 +226,11 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
   return { ocl, modoVisual };
 }
 
-function desenharPokemonSobCursor(ctx, canvas, projetar, projetarPes) {
+function desenharPokemonSobCursor(ctx, canvas, projetar, projetarPes, comAnel = true) {
   const ponteiro = obterPonteiroCanvas(canvas);
   const sob = ponteiro ? atorSobPonteiro(ponteiro.x, ponteiro.y, projetar, projetarPes) : null;
-  const ordem = desenharAlvoOrdem(ctx, projetar, projetarPes, sob);
-  if (sob) desenharHoverPokemon(ctx, sob, projetar, projetarPes, sob !== ordem);
+  const ordem = desenharAlvoOrdem(ctx, projetar, projetarPes, sob, comAnel);
+  if (sob) desenharHoverPokemon(ctx, sob, projetar, projetarPes, comAnel && sob !== ordem);
 }
 
 function desenharTagCena(ctx, largura) {

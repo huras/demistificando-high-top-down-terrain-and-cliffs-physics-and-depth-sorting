@@ -1,7 +1,9 @@
 import {
+  NAV_FOLGA_DISCO,
   RAIO_BASE_ARVORE,
   RAIO_BASE_PEDRA,
   RAIO_CORPO,
+  RAIO_POKEMON,
 } from "../config.js";
 import { ALTURAS, PROPS } from "../mundo/mapaDemo.js";
 import { RAIO_SANTUARIO } from "../santuario/catalogo.js";
@@ -97,9 +99,76 @@ export function discoInvasor(x, y, elev, raio) {
   return discoQueInvade(x, y, elev, raio);
 }
 
-/** Centro da célula dentro do disco, no piso da aresta. */
-export function centroNaBase(cx, cy, z) {
-  return discoQueInvade(cx + 0.5, cy + 0.5, z, 0) != null;
+/** Folga padrão do path = corpo do mon + margem (pedra 0.44 precisa disso). */
+export function folgaNavDisco() {
+  return RAIO_POKEMON + NAV_FOLGA_DISCO;
+}
+
+/**
+ * Célula intransitável pro path: centro + folga do corpo (como Pokemon AI
+ * inflate). Sem isso o A* entra em célula “livre” e a física gruda na base.
+ */
+export function centroNaBase(cx, cy, z, folga = folgaNavDisco()) {
+  const pad = folga > 0 ? folga : folgaNavDisco();
+  return discoQueInvade(cx + 0.5, cy + 0.5, z, pad) != null;
+}
+
+/** Aresta walk corta disco? (centro destino + meio do segmento). */
+export function arestaCortaBase(ax, ay, bx, by, z, folga = folgaNavDisco()) {
+  const pad = folga > 0 ? folga : folgaNavDisco();
+  if (discoQueInvade(bx + 0.5, by + 0.5, z, pad)) return true;
+  const mx = (ax + bx) * 0.5 + 0.5;
+  const my = (ay + by) * 0.5 + 0.5;
+  return discoQueInvade(mx, my, z, pad) != null;
+}
+
+/** Empurra o corpo pra fora do disco (escape quando já penetrou). */
+export function empurrarForaDoDisco(corpo) {
+  if (!corpo) return false;
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const r = corpo.raioCorpo > 0 ? corpo.raioCorpo : RAIO_CORPO;
+  const disco = discoQueInvade(corpo.x, corpo.y, elev, r);
+  if (!disco) return false;
+  let dx = corpo.x - disco.x;
+  let dy = corpo.y - disco.y;
+  let d = Math.hypot(dx, dy);
+  const falta = r + disco.r - d + 0.06;
+  if (!(falta > 0)) return false;
+  if (d < 1e-4) {
+    dx = 0;
+    dy = 1;
+    d = 1;
+  }
+  corpo.x += (dx / d) * falta;
+  corpo.y += (dy / d) * falta;
+  return true;
+}
+
+/**
+ * Garante posição livre de disco (spawn / stuck em poste).
+ * Empurra e, se ainda invade, busca em espiral.
+ */
+export function resolverForaDeObstaculo(corpo) {
+  if (!corpo) return false;
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const r = (corpo.raioCorpo > 0 ? corpo.raioCorpo : RAIO_CORPO) + 0.04;
+  empurrarForaDoDisco(corpo);
+  if (!discoQueInvade(corpo.x, corpo.y, elev, r)) return true;
+  const ox = corpo.x;
+  const oy = corpo.y;
+  for (let ring = 1; ring <= 8; ring++) {
+    const dist = ring * 0.4;
+    for (let k = 0; k < 12; k++) {
+      const ang = (k / 12) * Math.PI * 2 + ring * 0.2;
+      const nx = ox + Math.cos(ang) * dist;
+      const ny = oy + Math.sin(ang) * dist;
+      if (discoQueInvade(nx, ny, elev, r)) continue;
+      corpo.x = nx;
+      corpo.y = ny;
+      return true;
+    }
+  }
+  return false;
 }
 
 const CAP_DISCOS = 48;

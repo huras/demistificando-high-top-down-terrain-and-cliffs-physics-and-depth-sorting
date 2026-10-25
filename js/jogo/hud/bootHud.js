@@ -29,6 +29,7 @@ import { aoFecharMapa } from "../../ui/mapa/mapaMundo.js";
 import { ligarFecharMapaMenu, notificarMapaFechou, sincronizarMapaMenu } from "./mapaNoMenu.js";
 import { montarSkillLoadout } from "./skillLoadout.js";
 import { montarMovesCampo } from "./movesCampo.js";
+import { montarMorteHud } from "./morte.js";
 
 let menu = null;
 let partyApi = null;
@@ -99,6 +100,7 @@ export function bootHudCompleto() {
   objetivoApi = montarObjetivoMissao(document.getElementById("quest-objective-hud"));
   movesApi = montarMovesCampo(document.getElementById("party-moves-combat"));
   skillApi = montarSkillLoadout();
+  montarMorteHud();
 
   ligarIdiomaMenu();
   return { menu, dexApi, radarApi, statusApi, skillApi, movesApi };

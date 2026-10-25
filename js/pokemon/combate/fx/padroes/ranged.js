@@ -1,7 +1,7 @@
 import { ALTURA_BLOCO } from "../../../../config.js";
 import { emitirImpacto } from "../impacto.js";
 import { PadraoBase } from "../padraoBase.js";
-import { emitir, spritesArco } from "../poolParticulas3d.js";
+import { emitir, folhaParticula, spritesArco } from "../poolParticulas3d.js";
 import { emitirRastro } from "../rastro.js";
 
 /** Cast ranged — ki burst + trail hint (projéteis já levam folha). */
@@ -63,6 +63,7 @@ export class PadraoPistola extends PadraoBase {
         vida: 0.28,
         tam: 0.16,
         modo: "faisca",
+        folha: folhaParticula(elemento),
       });
     }
   }
