@@ -601,7 +601,9 @@ export function tickPassivo(ator, dt, agora) {
 export function velocidadeDe(ator, correndo) {
   const base = correndo ? POKEMON.VEL_AGRO : POKEMON.VEL_ROAM;
   const para = ator?.status === "paralysis" ? 0.5 : 1;
-  return base * escalaVelocidade(ator.stats.velocidade) * (ator.velMul || 1) * para;
+  const forca =
+    Number.isFinite(ator?.forcaVelMul) && ator.forcaVelMul > 0 ? ator.forcaVelMul : 1;
+  return base * escalaVelocidade(ator.stats.velocidade) * (ator.velMul || 1) * para * forca;
 }
 
 export function recargaDe(ator, segundos) {

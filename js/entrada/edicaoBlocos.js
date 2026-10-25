@@ -20,6 +20,8 @@ import {
 import { usarNoClique } from "../jogo/campo.js";
 import { estado, uiAberta } from "../jogo/estado.js";
 import { atualizarLeve, pintar } from "../jogo/ui.js";
+import { estaCarregandoForca } from "../forca/sistemaForca.js";
+import { definirPonteiroForca } from "../forca/tickForca.js";
 
 let canvas2d = null;
 let canvas3d = null;
@@ -58,6 +60,7 @@ function pontoNoChao(raio, z) {
 
 function dispararItem(corpo, celula, alvo, mira) {
   if (uiAberta()) return;
+  if (estaCarregandoForca()) return;
   // Arco/bola: carga e disparo ficam no tick (LMB segurar/soltar), não no mousedown.
   if (rangedNaMao()) return;
   const msg = usarNoClique(corpo, celula, alvo);
@@ -73,6 +76,7 @@ function aoMove2d(ev) {
   if (!camera) return;
   const { mx, my } = telaParaMundo2d(ev.clientX, ev.clientY, camera, canvas2d);
   definirMiraCursor(mx, my);
+  definirPonteiroForca({ x: mx, y: my });
 }
 
 function aoMove3d(ev) {
@@ -85,6 +89,7 @@ function aoMove3d(ev) {
   const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
   const chao = pontoNoChao(raio, corpo.z ?? 0);
   definirMiraCursor(chao.x, chao.y);
+  definirPonteiroForca({ x: chao.x, y: chao.y });
 }
 
 function aoMouseDown2d(ev) {
@@ -92,6 +97,10 @@ function aoMouseDown2d(ev) {
   const corpo = obterCorpo();
   const camera = obterCamera2d();
   if (!corpo || !camera || !canvas2d || uiAberta()) return;
+  if (estaCarregandoForca()) {
+    ev.preventDefault();
+    return;
+  }
   if (rangedNaMao()) {
     ev.preventDefault();
     iniciarCargaRanged();
@@ -113,6 +122,10 @@ function aoMouseDown3d(ev) {
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d || !canvas3d || uiAberta()) return;
+  if (estaCarregandoForca()) {
+    ev.preventDefault();
+    return;
+  }
   // Arco/bola: LMB inicia carga (disparo no mouseup/tick). Não edita o mundo.
   if (rangedNaMao()) {
     ev.preventDefault();

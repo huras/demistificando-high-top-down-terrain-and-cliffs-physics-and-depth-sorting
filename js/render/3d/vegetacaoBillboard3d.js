@@ -44,7 +44,7 @@ function estiloDe(prop) {
 }
 
 function chaveDe(prop) {
-  if (!prop || prop.oculto || prop.tipo === "placa") return null;
+  if (!prop || prop.oculto || prop.forcaCarregado || prop.tipo === "placa") return null;
   if (prop.fase === FASE.REMOVIDO) return null;
   if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return `toco:${prop.sprite || "arvore"}`;
   if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return `tocoq:${prop.sprite || "arvore"}`;
@@ -468,7 +468,7 @@ export function criarVegetacaoBillboard3d() {
 
   function aplicarVinculo(v, p, yaw, yawSol, inclinacao, amostra) {
     if (!v || v.geracao !== geracaoLote || v.i < 0 || !v.mesh || v.itens?.[v.i] !== p) return;
-    if (p.fase === FASE.CAINDO || p.fase === FASE.REMOVIDO || p.oculto) return;
+    if (p.fase === FASE.CAINDO || p.fase === FASE.REMOVIDO || p.oculto || p.forcaCarregado) return;
     const pe = Number.isFinite(v.opacoY) ? v.opacoY : 1;
     pose(p, v.largura, v.altura, yaw, inclinacao, amostra, v.pivotY, v.dz, pe);
     v.mesh.setMatrixAt(v.i, dummy.matrix);

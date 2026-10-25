@@ -58,6 +58,14 @@ import { toggleMenu, semearDexParty } from "./apiHud.js";
 import { bootHudCompleto, tickHudCampo } from "./hud/bootHud.js";
 import { jogadorMorto } from "./hud/morte.js";
 import { tickRide } from "./ride.js";
+import { FORCA } from "../config.js";
+import {
+  iniciarForca,
+  tickForca,
+  promptForca,
+  definirPonteiroForca,
+} from "../forca/tickForca.js";
+import { t } from "./i18n.js";
 
 let viewport = null;
 let toastAte = 0;
@@ -105,6 +113,7 @@ export function montarJogo(opts) {
   bootHudCompleto();
   carregar();
   semearDexParty();
+  iniciarForca(FORCA);
   aoMudar(pintar);
   pintar();
   ligarBotaoSom();
@@ -124,6 +133,9 @@ export function tickJogo(dt, corpo) {
   registrarParty();
   soltarSlotVazio();
   tickCampo(dt);
+  if (!campoFocado() && !jogadorMorto()) {
+    tickForca(dt, corpo, { trava: jogoTravaMundo() || !!estado.interior });
+  }
   tickDescobertaMapa(corpo, { interior: !!estado.interior });
   tickBlocos(corpo, dt);
   if (!campoFocado()) {
@@ -206,9 +218,20 @@ export function tickJogo(dt, corpo) {
   tickFeixe(dt);
   atualizarBussolaSantuario(corpo, !!estado.interior);
   if (!jogadorMorto()) {
+    const pf = promptForca(corpo);
+    let textoForca = "";
+    if (pf?.kind === "grab") textoForca = t("forca.promptPegar");
+    else if (pf?.kind === "place") {
+      textoForca = t("forca.promptSoltar");
+      if (pf.mobility?.kind === "heavy") textoForca += ` · ${t("forca.pesado")}`;
+      textoForca += ` · ${t("forca.promptArremessar")}`;
+    } else if (pf?.kind === "grabbing") {
+      textoForca = `${Math.round((pf.progress || 0) * 100)}%`;
+    }
     const texto =
-      alvoLab ? promptDoLaboratorio(alvoLab) : alvoHub ? promptDoHub(papelHub, alvoHub) : promptDe(alvo, ferramenta);
-    estado.prompt = acaoConsomeE(acao) ? "" : texto;
+      textoForca ||
+      (alvoLab ? promptDoLaboratorio(alvoLab) : alvoHub ? promptDoHub(papelHub, alvoHub) : promptDe(alvo, ferramenta));
+    estado.prompt = acaoConsomeE(acao) && !textoForca ? "" : texto;
   }
   const zona = zonaNoMundo(corpo.x, corpo.y);
   definirBgm(

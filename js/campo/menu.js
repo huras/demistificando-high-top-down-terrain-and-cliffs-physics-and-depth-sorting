@@ -1,18 +1,32 @@
 /**
- * Botão direito no mundo: o Pokémon e só a habilidade que aquele alvo aceita.
+ * Botão direito no mundo: action-first (paridade Pokemon AI).
+ * Uma linha por ação com retrato do assignee (ou stub travado).
  */
 
-import { vegetacaoNaArea, propPorId } from "../mundo/bioma/propsBioma.js";
-import { listaParty } from "../pokemon/party.js";
+import { propPorId } from "../mundo/bioma/propsBioma.js";
+import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
+import { listaParty, pokemonDeployado } from "../pokemon/party.js";
+import { estaMontado } from "../jogo/ride.js";
 import { acoesDoPokemon } from "./capacidades.js";
 import { ordenarCampo } from "./ordem.js";
 import { FASE } from "./estadoProps.js";
-
-const RAIO_MIRA = 1.45;
-const ALCANCE = 13.5;
+import {
+  ACAO_FORCA,
+  ALCANCE_COMANDO,
+  RAIO_MIRA,
+  montarOpcoesMenuForca,
+} from "../forca/ordemCompanheiro.js";
+import { snapshotSistemaForca, obterCfgForca } from "../forca/sistemaForca.js";
+import { ordenarForca } from "../forca/tickOrdensForca.js";
+import { definirDeployado } from "../pokemon/party.js";
+import { t } from "../jogo/i18n.js";
 
 let host = null;
 let alvoId = "";
+/** @type {object[]} */
+let opcoesAtivas = [];
+let miraX = 0;
+let miraY = 0;
 let escuta = false;
 
 function esc(valor) {
@@ -22,9 +36,14 @@ function esc(valor) {
     .replace(/"/g, "&quot;");
 }
 
-function interagivel(prop) {
-  if (!prop || prop.oculto || prop.fase === FASE.REMOVIDO) return false;
-  return prop.tipo === "arvore" || prop.tipo === "grama" || prop.tipo === "pedra" || prop.tipo === "cristal";
+function interagivelFarm(prop) {
+  if (!prop || prop.oculto || prop.fase === FASE.REMOVIDO || prop.forcaCarregado) return false;
+  return (
+    prop.tipo === "arvore" ||
+    prop.tipo === "grama" ||
+    prop.tipo === "pedra" ||
+    prop.tipo === "cristal"
+  );
 }
 
 export function buscarAlvoCampo(x, y) {
@@ -33,7 +52,7 @@ export function buscarAlvoCampo(x, y) {
   let dist = RAIO_MIRA;
   for (let i = 0; i < props.length; i++) {
     const p = props[i];
-    if (!interagivel(p)) continue;
+    if (!interagivelFarm(p)) continue;
     const d = Math.hypot(p.x - x, p.y - y);
     if (d >= dist) continue;
     dist = d;
@@ -43,46 +62,129 @@ export function buscarAlvoCampo(x, y) {
 }
 
 function retratoDe(mon) {
-  const dex = mon.especie?.dex | 0;
+  const dex = mon?.especie?.dex | 0;
   if (!dex) return "";
   const pasta = mon.shiny ? "shiny/" : "";
   return `/ref/sprites/pokemon-portraits/${pasta}${dex}.png`;
 }
 
-function htmlDoTime(alvo) {
+function indiceDoMon(mon) {
+  if (!mon) return -1;
   const party = listaParty();
+  return party.indexOf(mon);
+}
+
+/**
+ * Action-first: cada opção é uma linha.
+ * @param {object[]} forcaOpts
+ * @param {object | null} propFarm
+ */
+function htmlAcoes(forcaOpts, propFarm) {
   let html = "";
   let algum = false;
-  for (let i = 0; i < party.length; i++) {
-    const mon = party[i];
-    if (!mon || mon.morto) continue;
-    const acoes = acoesDoPokemon(mon.tipos, alvo);
-    if (!acoes.length) continue;
+
+  for (let i = 0; i < forcaOpts.length; i++) {
+    const op = forcaOpts[i];
     algum = true;
-    const nome = esc(mon.especie?.nome || "Pokémon");
-    const src = retratoDe(mon);
-    const face = src ? `<img class="campo-menu__face" alt="" src="${esc(src)}" />` : "";
-    let botoes = "";
-    for (let a = 0; a < acoes.length; a++) {
-      const acao = acoes[a];
-      botoes += `<button type="button" data-i="${i}" data-acao="${esc(acao.id)}">${esc(acao.nome)}</button>`;
-    }
-    html += `<article class="campo-menu__mon">${face}<div><p class="campo-menu__nome">${nome}</p><div class="campo-menu__acoes">${botoes}</div></div></article>`;
+    const src = op.locked ? "" : retratoDe(op.mon);
+    const face = src
+      ? `<img class="campo-menu__face" alt="" src="${esc(src)}" />`
+      : `<span class="campo-menu__face campo-menu__face--lock">?</span>`;
+    const nome = op.locked
+      ? esc(op.lockHint || t("forca.precisaSolto"))
+      : esc(op.mon?.especie?.nome || "Pokémon");
+    const lockedCls = op.locked ? " is-locked" : "";
+    html += `<button type="button" class="campo-menu__row${lockedCls}" data-kind="forca" data-i="${i}" ${
+      op.locked ? "disabled" : ""
+    }>${face}<span class="campo-menu__row-txt"><strong>${esc(
+      op.rotulo,
+    )}</strong><small>${nome}</small></span></button>`;
   }
+
+  // Farm: uma linha por ação, assignee = deployado se pode, senão primeiro do party que pode (sem auto-deploy do menu antigo — só deployado)
+  if (propFarm) {
+    const deployado = pokemonDeployado();
+    const party = listaParty();
+    const candidatos = [];
+    if (deployado && !deployado.morto) candidatos.push(deployado);
+    // Se ninguém deployado, mostra locked farm com hint
+    const acoesVistas = new Set();
+    for (let c = 0; c < candidatos.length; c++) {
+      const mon = candidatos[c];
+      const acoes = acoesDoPokemon(mon.tipos, propFarm);
+      for (let a = 0; a < acoes.length; a++) {
+        const acao = acoes[a];
+        if (acoesVistas.has(acao.id)) continue;
+        acoesVistas.add(acao.id);
+        algum = true;
+        const src = retratoDe(mon);
+        const face = src
+          ? `<img class="campo-menu__face" alt="" src="${esc(src)}" />`
+          : "";
+        const idx = indiceDoMon(mon);
+        html += `<button type="button" class="campo-menu__row" data-kind="farm" data-i="${idx}" data-acao="${esc(
+          acao.id,
+        )}">${face}<span class="campo-menu__row-txt"><strong>${esc(
+          acao.nome,
+        )}</strong><small>${esc(mon.especie?.nome || "Pokémon")}</small></span></button>`;
+      }
+    }
+    // Sem deployado: stub das farm actions possíveis por alguém do party
+    if (!candidatos.length) {
+      for (let i = 0; i < party.length; i++) {
+        const mon = party[i];
+        if (!mon || mon.morto) continue;
+        const acoes = acoesDoPokemon(mon.tipos, propFarm);
+        for (let a = 0; a < acoes.length; a++) {
+          const acao = acoes[a];
+          if (acoesVistas.has(acao.id)) continue;
+          acoesVistas.add(acao.id);
+          algum = true;
+          html += `<button type="button" class="campo-menu__row is-locked" data-kind="farm" disabled><span class="campo-menu__face campo-menu__face--lock">?</span><span class="campo-menu__row-txt"><strong>${esc(
+            acao.nome,
+          )}</strong><small>${esc(t("forca.precisaSolto"))}</small></span></button>`;
+        }
+      }
+    }
+  }
+
   if (!algum) {
-    return `<p class="campo-menu__vazio">Nenhum Pokémon do time pode usar uma habilidade aqui.</p>`;
+    return `<p class="campo-menu__vazio">${esc(t("forca.menuVazio"))}</p>`;
   }
   return html;
 }
 
 function aoClique(ev) {
   const btn = ev.target.closest?.("button");
-  if (!btn || !host?.contains(btn)) return;
-  const prop = propPorId(alvoId);
-  const indice = btn.dataset.i | 0;
-  const acao = btn.dataset.acao || "";
+  if (!btn || !host?.contains(btn) || btn.disabled) return;
+  const kind = btn.dataset.kind || "";
   fecharMenuCampo();
-  if (prop) ordenarCampo(indice, acao, prop);
+  if (kind === "forca") {
+    const i = btn.dataset.i | 0;
+    const op = opcoesAtivas[i];
+    if (!op || op.locked || !op.mon) return;
+    if (op.id === ACAO_FORCA.LEVANTAR) {
+      const alvo =
+        op.kind === "faintedWild" || op.enemy
+          ? { kind: "faintedWild", enemy: op.enemy, weightTier: op.weightTier, x: op.enemy.x, y: op.enemy.y, z: op.enemy.z }
+          : { kind: "rock", id: op.prop?.id, prop: op.prop, weightTier: op.weightTier, x: op.prop.x, y: op.prop.y, z: op.prop.z, tipo: op.prop?.tipo };
+      // Garante deploy do assignee
+      const idx = indiceDoMon(op.mon);
+      if (idx >= 0) definirDeployado(idx);
+      ordenarForca(op.mon, ACAO_FORCA.LEVANTAR, alvo, miraX, miraY);
+    } else if (op.id === ACAO_FORCA.SOLTAR) {
+      ordenarForca(op.mon, ACAO_FORCA.SOLTAR, null, miraX, miraY);
+    } else if (op.id === ACAO_FORCA.ARREMESSAR) {
+      ordenarForca(op.mon, ACAO_FORCA.ARREMESSAR, null, miraX, miraY);
+    }
+    return;
+  }
+  if (kind === "farm") {
+    const prop = propPorId(alvoId);
+    const indice = btn.dataset.i | 0;
+    const acao = btn.dataset.acao || "";
+    if (prop) ordenarCampo(indice, acao, prop);
+  }
 }
 
 function aoFora(ev) {
@@ -115,6 +217,7 @@ function ligar() {
 
 export function fecharMenuCampo() {
   alvoId = "";
+  opcoesAtivas = [];
   if (!host) return;
   host.hidden = true;
   host.innerHTML = "";
@@ -125,13 +228,29 @@ export function menuCampoAberto() {
 }
 
 export function abrirMenuCampo(clientX, clientY, mundoX, mundoY, corpo) {
-  const alvo = buscarAlvoCampo(mundoX, mundoY);
-  if (!alvo || !corpo) return false;
-  if (Math.hypot(alvo.x - corpo.x, alvo.y - corpo.y) > ALCANCE) return false;
+  if (!corpo || estaMontado()) return false;
+
+  miraX = mundoX;
+  miraY = mundoY;
+  const sys = snapshotSistemaForca();
+  const forcaOpts = montarOpcoesMenuForca(mundoX, mundoY, corpo, sys, obterCfgForca());
+  const propFarm = buscarAlvoCampo(mundoX, mundoY);
+
+  // Sem opções de força nem farm
+  if (!forcaOpts.length && !propFarm) return false;
+  if (
+    !forcaOpts.length &&
+    propFarm &&
+    Math.hypot(propFarm.x - corpo.x, propFarm.y - corpo.y) > ALCANCE_COMANDO
+  ) {
+    return false;
+  }
+
   const painel = garantir();
   ligar();
-  alvoId = alvo.id;
-  painel.innerHTML = htmlDoTime(alvo);
+  alvoId = propFarm?.id || "";
+  opcoesAtivas = forcaOpts;
+  painel.innerHTML = htmlAcoes(forcaOpts, propFarm);
   painel.hidden = false;
   const margem = 8;
   const largura = painel.offsetWidth || 220;

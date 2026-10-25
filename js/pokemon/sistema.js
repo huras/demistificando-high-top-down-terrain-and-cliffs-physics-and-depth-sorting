@@ -175,9 +175,11 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   if (!morto) {
     // Combate OW: wilds agroam antes do party (DEFEND enxerga no mesmo frame).
     for (let i = 0; i < selvagens.length; i++) {
-      tickWildCampo(selvagens[i], mon, treinador, passo);
+      const w = selvagens[i];
+      if (w.forcaCarregado || w._forcaSendoLevantado) continue;
+      tickWildCampo(w, mon, treinador, passo);
     }
-    if (mon) {
+    if (mon && !mon.forcaCarregado && !mon._forcaCanalLock) {
       mon._emLutaCampo = tickPartyCampo(mon, selvagens, treinador, passo);
     }
     atualizarRoamSelvagens(selvagens, mon, treinador, passo);
@@ -223,10 +225,10 @@ export function listarSolidosPokemon() {
   const selvagens = selvagensAtivos();
   for (let i = 0; i < selvagens.length; i++) {
     const a = selvagens[i];
-    if (!a.morto && !a.capturado) saida.push(a);
+    if (!a.morto && !a.capturado && !a.forcaCarregado) saida.push(a);
   }
   const mon = pokemonNoCampo();
-  if (mon && !mon.morto && !mon.capturado) saida.push(mon);
+  if (mon && !mon.morto && !mon.capturado && !mon.forcaCarregado) saida.push(mon);
   return saida;
 }
 
@@ -235,9 +237,10 @@ export function atoresVisiveis() {
   const lista = [];
   const selvagens = selvagensAtivos();
   for (let i = 0; i < selvagens.length; i++) {
-    if (!selvagens[i].capturado) lista.push(selvagens[i]);
+    const a = selvagens[i];
+    if (!a.capturado && !a.forcaCarregado) lista.push(a);
   }
   const mon = pokemonNoCampo();
-  if (mon && !mon.capturado) lista.push(mon);
+  if (mon && !mon.capturado && !mon.forcaCarregado) lista.push(mon);
   return lista;
 }

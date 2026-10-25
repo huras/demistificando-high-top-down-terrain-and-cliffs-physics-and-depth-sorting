@@ -261,6 +261,13 @@ export const BOLA_ARCO_AMOSTRAS = 48;
 /** Carga compartilhada arco/bola no LMB (segure para carregar). */
 export const RANGED_CARGA_TEMPO = 0.7;
 
+/** Sistema Força (Strength): pegar / soltar / arremessar. */
+export const FORCA = Object.freeze({
+  humanoTier: 1,
+  poderArremesso: 35,
+  cargaArremessoMs: 950,
+});
+
 export const CAMINHOS = {
   jogador: "assets/people/gold.png",
   asaDelta: "assets/items/asa_delta.png",

@@ -23,6 +23,7 @@ export function iniciarTeclado() {
         "KeyQ",
         "KeyE",
         "KeyF",
+        "KeyR",
         "ShiftLeft",
         "ShiftRight",
         "ControlLeft",

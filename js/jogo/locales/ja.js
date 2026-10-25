@@ -238,5 +238,20 @@ export default {
       "growthErratic": "バラバラ",
       "growthFluctuating": "ふめい"
     }
+  },
+  "forca": {
+    "muitoPesado": "おもすぎる…",
+    "pesado": "おもい…",
+    "soltou": "にげられた！",
+    "pegar": "もつ",
+    "soltar": "おろす",
+    "arremessar": "なげる",
+    "levantar": "もちあげる",
+    "precisaSolto": "ポケモンがひつよう",
+    "precisaForca": "かいりきがひつよう",
+    "menuVazio": "できることがない。",
+    "promptPegar": "R もつ",
+    "promptSoltar": "R おろす",
+    "promptArremessar": "LMB なげる"
   }
 };

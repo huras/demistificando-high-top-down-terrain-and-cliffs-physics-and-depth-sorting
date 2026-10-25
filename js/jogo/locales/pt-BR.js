@@ -238,5 +238,20 @@ export default {
       "growthErratic": "Errático",
       "growthFluctuating": "Flutuante"
     }
+  },
+  "forca": {
+    "muitoPesado": "Muito pesado…",
+    "pesado": "É pesado…",
+    "soltou": "Escapou!",
+    "pegar": "Pegar",
+    "soltar": "Soltar",
+    "arremessar": "Arremessar",
+    "levantar": "Levantar",
+    "precisaSolto": "Precisa de Pokémon solto",
+    "precisaForca": "Precisa de Força",
+    "menuVazio": "Nenhuma ação disponível aqui.",
+    "promptPegar": "R Pegar",
+    "promptSoltar": "R Soltar",
+    "promptArremessar": "LMB Arremessar"
   }
 };

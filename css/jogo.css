@@ -786,6 +786,59 @@
   font-weight: 600;
 }
 
+.campo-menu__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 6px 8px;
+  margin: 0 0 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.campo-menu__row:hover:not(:disabled) {
+  background: rgba(180, 83, 9, 0.55);
+}
+
+.campo-menu__row.is-locked,
+.campo-menu__row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.campo-menu__row-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.campo-menu__row-txt strong {
+  font-size: 13px;
+}
+
+.campo-menu__row-txt small {
+  font-size: 11px;
+  opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campo-menu__face--lock {
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
 .ganho-carta {
   position: fixed;
   inset: 0;

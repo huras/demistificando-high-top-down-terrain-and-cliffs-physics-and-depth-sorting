@@ -123,17 +123,17 @@ function sairDaBase(corpo) {
 export function despenetrarCorpos() {
   const lista = corposSolidos();
   for (let i = 0; i < lista.length; i++) {
-    if (lista[i].morto || lista[i].capturado) continue;
+    if (lista[i].morto || lista[i].capturado || lista[i].forcaCarregado) continue;
     sairDaBase(lista[i]);
   }
   for (let passo = 0; passo < PASSOS_SEPARAR; passo++) {
     let mexeu = false;
     for (let i = 0; i < lista.length; i++) {
       const a = lista[i];
-      if (a.morto || a.capturado) continue;
+      if (a.morto || a.capturado || a.forcaCarregado) continue;
       for (let j = i + 1; j < lista.length; j++) {
         const b = lista[j];
-        if (b.morto || b.capturado) continue;
+        if (b.morto || b.capturado || b.forcaCarregado) continue;
         const ea = a.elevacao ?? a.z ?? 0;
         const eb = b.elevacao ?? b.z ?? 0;
         if (Math.abs(ea - eb) > FOLGA_PISO) continue;

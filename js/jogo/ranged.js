@@ -126,6 +126,12 @@ export function tickRanged(opts) {
   const tipo = rangedNaMao();
   const { dt, corpo, camera3d, mirando, carregando, soltouEsquerdo } = opts;
 
+  // Enquanto carrega um objeto de Força, LMB é do arremesso — não da bola/arco.
+  if (opts.bloqueadoPorForca) {
+    if (estavaMirando || estavaCarregando || carga > 0) cancelarRanged();
+    return;
+  }
+
   if (!tipo || !corpo) {
     if (estavaMirando || estavaCarregando || carga > 0) cancelarRanged();
     else {

@@ -289,7 +289,9 @@ function simularSemInput(corpo, dt) {
 function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
   corpo.planando = false;
   corpo.tempoAr = 0;
-  const velMax = corpo.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
+  const mulForca = Number(corpo.forcaVelMul);
+  const velBase = corpo.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
+  const velMax = velBase * (Number.isFinite(mulForca) && mulForca > 0 ? mulForca : 1);
   const fase = inicioPassoChao(corpo, velMax);
   if (fase === "nado") {
     atualizarNado(corpo, dx, dy, dt);

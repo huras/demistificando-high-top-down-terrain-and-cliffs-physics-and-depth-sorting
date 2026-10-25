@@ -31,6 +31,8 @@ import {
   soltarTravaMira,
 } from "./entrada/ponteiro3d.js";
 import { cancelarRanged, rangedNaMao, tickRanged } from "./jogo/ranged.js";
+import { estaCarregandoForca } from "./forca/sistemaForca.js";
+import { atualizarVisualForca } from "./forca/visualForca.js";
 import { iniciarTeclado, teclaAgora } from "./entrada/teclado.js";
 import { avancarHora, obterClima, alternarClima } from "./render/3d/ceu/controleCeu.js";
 import { forcarClimaPreset } from "./clima/amostra.js";
@@ -616,6 +618,7 @@ function loop(agora) {
           mirando,
           carregando,
           soltouEsquerdo: soltouEsq,
+          bloqueadoPorForca: estaCarregandoForca(),
         });
         const aindaMirando = !!rangedNaMao() && botaoDireitoSegurado();
         definirMira3d(aindaMirando);
@@ -750,6 +753,7 @@ function loop(agora) {
     if (modo === "3d") {
       garantir3d();
       const cen = atualizarEDesenhar3d(corpo, dt, atlas, agente);
+      atualizarVisualForca(corpo);
       const modoVisual = usarTiles(atlas) ? "real" : "cubos";
       desenharHudSobre3d(ctx, canvas, {
         corpo,

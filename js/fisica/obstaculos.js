@@ -40,7 +40,7 @@ export function indexarBases(cx, cy, lista) {
   const itens = lista || [];
   for (let i = 0; i < itens.length; i++) {
     const p = itens[i];
-    if (p.oculto || p.r < 0 || p.fase === "caindo" || p.fase === "removido") continue;
+    if (p.oculto || p.forcaCarregado || p.r < 0 || p.fase === "caindo" || p.fase === "removido") continue;
     const r = p.r > 0 ? p.r : raioBase(p.tipo);
     if (!(r > 0) || p.z == null) continue;
     const disco = { x: p.x, y: p.y, z: p.z, r };

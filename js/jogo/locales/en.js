@@ -238,5 +238,20 @@ export default {
       "growthErratic": "Erratic",
       "growthFluctuating": "Fluctuating"
     }
+  },
+  "forca": {
+    "muitoPesado": "Too heavy…",
+    "pesado": "It's heavy…",
+    "soltou": "Broke free!",
+    "pegar": "Grab",
+    "soltar": "Place",
+    "arremessar": "Throw",
+    "levantar": "Lift",
+    "precisaSolto": "Needs a Pokémon out",
+    "precisaForca": "Needs Strength",
+    "menuVazio": "No actions available here.",
+    "promptPegar": "R Grab",
+    "promptSoltar": "R Place",
+    "promptArremessar": "LMB Throw"
   }
 };
