@@ -336,6 +336,7 @@ export function alertarPackAgro(itens, fonte, alvo, travarAgro) {
     if (mate.packId !== fonte.packId) continue;
     if (!vivoPack(mate)) continue;
     mate.dormindo = 0;
+    mate.sonoNatural = false;
     travarAgro(mate, alvo);
   }
   fonte._packAlertando = false;

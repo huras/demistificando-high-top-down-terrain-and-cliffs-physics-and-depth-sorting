@@ -22,8 +22,37 @@ import {
 } from "./retaliacao.js";
 import { alertarPackAgro } from "../pack.js";
 import { selvagensAtivos } from "../populacao.js";
+import { ehDiurno } from "../distribuicao/noturno.js";
+import { obterHora } from "../../render/3d/ceu/controleCeu.js";
 
 const DIST_ITEM = 0.35;
+
+export function ehNoiteOverworld(h = obterHora()) {
+  return h >= 20.5 || h < 5;
+}
+
+export function acordarSonoNatural(ator) {
+  if (!ator) return;
+  if (ator.sonoNatural) ator.sonoNatural = false;
+  if (ator.status !== "sleep") ator.dormindo = 0;
+}
+
+function deitarNoLar(ator) {
+  if (ator.casaX != null) ator.x = ator.casaX;
+  if (ator.casaY != null) ator.y = ator.casaY;
+  if (ator.casaZ != null) {
+    ator.z = ator.casaZ;
+    ator.elevacao = ator.casaZ;
+  }
+  ator.vx = 0;
+  ator.vy = 0;
+  ator.andando = false;
+  ator.correndo = false;
+  ator.modo = "roam";
+  ator.alvo = null;
+  ator.sonoNatural = true;
+  ator.dormindo = 1;
+}
 
 /** Drop de batalha ou bola grounded — o mais perto do mon. */
 function coletavelMaisPerto(mon, jogador) {
@@ -138,13 +167,31 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
 
   if (tickMeleeApproach(ator, dt)) return;
 
-  if (ator.dormindo > 0) {
-    if (ator.status !== "sleep") ator.dormindo = Math.max(0, ator.dormindo - dt);
-    ator.andando = false;
-    return;
+  if (ator.sonoNatural && !ehNoiteOverworld()) {
+    acordarSonoNatural(ator);
   }
 
-  const alvo = escolherAlvoWild(ator, partyMon, jogador);
+  const alvoCedo = escolherAlvoWild(ator, partyMon, jogador);
+  if (alvoCedo && (ator.sonoNatural || ator.dormindo > 0)) {
+    acordarSonoNatural(ator);
+  }
+
+  if (ator.dormindo > 0) {
+    if (ator.status !== "sleep" && !ator.sonoNatural) {
+      ator.dormindo = Math.max(0, ator.dormindo - dt);
+    }
+    if (ator.sonoNatural || ator.dormindo > 0) {
+      if (ator.sonoNatural) deitarNoLar(ator);
+      else {
+        ator.vx = 0;
+        ator.vy = 0;
+        ator.andando = false;
+      }
+      if (!alvoCedo) return;
+    }
+  }
+
+  const alvo = alvoCedo;
   if (alvo) {
     const mudou = ator.modo !== "agro" || ator.alvo !== alvo;
     ator.modo = "agro";
@@ -153,7 +200,7 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
       alertarPackAgro(selvagensAtivos(), ator, alvo, (mate, t) => {
         mate.modo = "agro";
         mate.alvo = t;
-        mate.dormindo = 0;
+        acordarSonoNatural(mate);
       });
     }
     if (ocupadoCast(ator)) {
@@ -169,6 +216,17 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     ator.modo = "roam";
     ator.alvo = null;
     clearMeleeApproach(ator);
+  }
+
+  // Diurnos de lar dormem na palha à noite (sem decay até amanhecer/agro).
+  if (
+    ehNoiteOverworld() &&
+    ator.larId &&
+    ator.faccao === "selvagem" &&
+    !ator.efemero &&
+    ehDiurno(ator.especie || ator)
+  ) {
+    deitarNoLar(ator);
   }
 }
 

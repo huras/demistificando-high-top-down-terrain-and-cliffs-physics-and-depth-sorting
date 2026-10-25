@@ -178,6 +178,7 @@ export function criarAtor(opts) {
     alvo: null,
     avisou: false,
     dormindo: opts.dormindo ?? 0,
+    sonoNatural: !!opts.sonoNatural,
     iframe: 0,
     recuoRestante: 0,
     recuoDur: 0,
@@ -254,6 +255,7 @@ export function reviverAtor(ator, x, y, z) {
   ator.desmaioEm = 0;
   ator.iframe = 0.4;
   ator.dormindo = 0.6;
+  ator.sonoNatural = false;
   ator.recuoRestante = 0;
   ator.recuoDur = 0;
   ator.recuoDist = 0;
@@ -289,6 +291,7 @@ export function reviverAtor(ator, x, y, z) {
   ator.geloAte = 0;
   ator.paraTrava = 0;
   ator.dormindo = 0;
+  ator.sonoNatural = false;
   ator.estagioAtk = 0;
   ator.estagioDef = 0;
   ator.estagioSpa = 0;

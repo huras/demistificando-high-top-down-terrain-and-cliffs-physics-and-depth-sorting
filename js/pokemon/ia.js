@@ -160,6 +160,7 @@ export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
     const ator = selvagens[i];
     if (!ator || ator.morto || ator.capturado || ator.preso) continue;
     if (ator.forcaCarregado || ator._forcaSendoLevantado) continue;
+    if ((ator.dormindo || 0) > 0 || ator.sonoNatural) continue;
     if (ator.modo === "agro" && ator.alvo && !ator.alvo.morto) continue;
 
     const foco = mon && !mon.morto ? mon : jogador;

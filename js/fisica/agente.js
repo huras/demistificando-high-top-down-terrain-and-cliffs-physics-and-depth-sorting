@@ -30,6 +30,7 @@ import {
   fimPassoChao,
   inicioPassoChao,
 } from "./agua.js";
+import { aplicarMulPalha } from "./palha.js";
 import { alturaSobPes, moverAereo, moverComColisao } from "./colisao.js";
 import { atualizarCorrida } from "./corrida.js";
 import { ritmoAndar } from "./ritmoAndar.js";
@@ -400,6 +401,7 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
       return;
     }
 
+    aplicarMulPalha(agente);
     const vel = agente._velAgua ?? velMax;
     const comCorrente = aplicarCorrenteChao(agente, ix, iy, dt);
     const movendo =

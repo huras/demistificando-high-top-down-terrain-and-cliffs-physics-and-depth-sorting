@@ -82,7 +82,10 @@ export function limparStatus(alvo) {
   alvo.queimaAte = 0;
   alvo.geloAte = 0;
   alvo.paraTrava = 0;
-  if (eraSleep || (alvo.dormindo || 0) > 0.5) alvo.dormindo = 0;
+  if (eraSleep || (alvo.dormindo || 0) > 0.5) {
+    alvo.dormindo = 0;
+    alvo.sonoNatural = false;
+  }
 }
 
 /**

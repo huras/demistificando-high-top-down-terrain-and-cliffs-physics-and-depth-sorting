@@ -20,9 +20,9 @@ import { devolverInstanciaBola, obterInstanciaBola } from "../../pokemon/malhaBo
 import { aplicarEscalaProp } from "./escalaVertical.js";
 
 /** Fração do menor eixo XZ (mundo) → diâmetro da bola no slot. */
-const FRACAO_BOLA_CURA = 0.28;
-const DIAMETRO_BOLA_CURA_MIN = 0.35;
-const DIAMETRO_BOLA_CURA_MAX = 0.85;
+const FRACAO_BOLA_CURA = 0.14;
+const DIAMETRO_BOLA_CURA_MIN = 0.175;
+const DIAMETRO_BOLA_CURA_MAX = 0.425;
 
 const cache = new Map();
 const pedidos = new Map();
@@ -46,7 +46,7 @@ export function diametroBolaCuraPara(raiz) {
     Number.isFinite(_tamBola.x) ? _tamBola.x : 1,
     Number.isFinite(_tamBola.z) ? _tamBola.z : 1,
   );
-  const d = Math.max(0.25, base) * FRACAO_BOLA_CURA;
+  const d = Math.max(0.125, base) * FRACAO_BOLA_CURA;
   return Math.max(DIAMETRO_BOLA_CURA_MIN, Math.min(DIAMETRO_BOLA_CURA_MAX, d));
 }
 

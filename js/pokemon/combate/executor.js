@@ -146,6 +146,8 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
   const dano = travado.dano | 0;
   const efet = travado.efet || 1;
   alvo.hp -= dano;
+  if (alvo.sonoNatural) alvo.sonoNatural = false;
+  if ((alvo.dormindo || 0) > 0 && alvo.status !== "sleep") alvo.dormindo = 0;
   alvo.iframe = 0.15;
   alvo.iframeRajada = 0;
   if (alvo.hp > 0) subirFuria(alvo, efeitos, agora);
@@ -231,6 +233,8 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     return;
   }
   alvo.hp -= dano;
+  if (alvo.sonoNatural) alvo.sonoNatural = false;
+  if ((alvo.dormindo || 0) > 0 && alvo.status !== "sleep") alvo.dormindo = 0;
   if (rajada) {
     alvo.iframe = 0.02;
     alvo.iframeRajada = rajada;

@@ -31,6 +31,7 @@ import {
 } from "../../jogo/teleporte.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { atualizarTeleporte3d, criarTeleporte3d } from "./teleporte3d.js";
+import { criarPalhaLar3d } from "./palhaLar3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarEdificiosCidade } from "./edificiosCidade.js";
 import { criarDebugVaosPorta } from "./debugVaosPorta.js";
@@ -374,6 +375,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   });
   scene.add(agente3d.grupo);
   criarTeleporte3d(scene);
+  const palhaLares = criarPalhaLar3d(scene);
 
   const ventoAsa = criarVentoAsa3d();
   scene.add(ventoAsa.objeto);
@@ -423,6 +425,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     poeiraPasso,
     fxBola,
     fxAgua,
+    palhaLares,
     personagem,
     agente3d,
     ventoAsa,
@@ -487,6 +490,7 @@ export async function aquecerProgramas3d(px = 0, py = 0) {
     estado.vegetacao?.atualizar?.(0, 0);
     estado.vegetacaoDistante?.tick?.(px, py, 0, 0);
     estado.vegetacaoHorizonte?.tick?.(px, py, 0, 0);
+    estado.palhaLares?.atualizar?.(px, py);
     estado.ceu?.atualizar?.(0, {
       camera: estado.camera3d.cam,
       alvo: estado._alvoCeu?.set(px, 0, py) || undefined,
@@ -737,6 +741,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.vegetacao?.atualizar?.(yaw, inclinacao);
   estado.vegetacaoDistante?.tick?.(mx, my, yaw, inclinacao);
   estado.vegetacaoHorizonte?.tick?.(mx, my, yaw, inclinacao);
+  estado.palhaLares?.atualizar?.(mx, my);
   estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   estado.poeiraPasso?.atualizar?.();
   estado.fxBola?.atualizar?.(camRender);

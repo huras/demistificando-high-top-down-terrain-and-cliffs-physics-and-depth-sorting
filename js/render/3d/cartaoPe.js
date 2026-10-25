@@ -139,7 +139,7 @@ export function facesParedeInterior(lateral, topo) {
 export function criarBolasCura(cartao) {
   const layout = slotsCuraAtuais();
   const bolas = [];
-  const diametro = 0.35;
+  const diametro = 0.175;
   const r = diametro * 0.5;
   const geo = new THREE.SphereGeometry(r, 10, 8);
   const faixaGeo = new THREE.CylinderGeometry(r * 1.03, r * 1.03, r * 0.28, 10);

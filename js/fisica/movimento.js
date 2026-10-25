@@ -20,6 +20,7 @@ import {
   tentarBracada,
   tickFluido,
 } from "./agua.js";
+import { aplicarMulPalha } from "./palha.js";
 import { atualizarCorrida } from "./corrida.js";
 import { ritmoAndar } from "./ritmoAndar.js";
 import {
@@ -305,6 +306,7 @@ function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
     return;
   }
 
+  aplicarMulPalha(corpo);
   const vel = corpo._velAgua ?? velMax;
   const comCorrente = aplicarCorrenteChao(corpo, dx, dy, dt);
   const movendo =
