@@ -1,10 +1,11 @@
 /** Fachada que o loop chama. Trava o mundo quando a interface ou a sala está aberta. */
 
 import { teclaAgora, teclaBaixa } from "../entrada/teclado.js";
+import { obterClimaJogo } from "../clima/amostra.js";
 import { lerMixClima } from "../render/3d/ceu/clima.js";
-import { obterClima } from "../render/3d/ceu/controleCeu.js";
+import { obterHora } from "../render/3d/ceu/controleCeu.js";
 import { zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
-import { alternarMudo, atualizarAudio, chaveBgm, definirBgm, destravarAudio, estaMudo } from "./audio.js";
+import { alternarMudo, atualizarAudio, destravarAudio, estaMudo, sincronizarBgm } from "./audio.js";
 import { tickBlocos } from "./blocos.js";
 import { atualizarBillboardsBerry } from "./billboards.js";
 import {
@@ -63,7 +64,7 @@ import {
   iniciarForca,
   tickForca,
   promptForca,
-  definirPonteiroForca,
+  tentarPegarComE,
 } from "../forca/tickForca.js";
 import { t } from "./i18n.js";
 
@@ -223,10 +224,14 @@ export function tickJogo(dt, corpo) {
     !puzzleSantuarioAberto() &&
     !feixeAtivo() &&
     livreDeMenu &&
-    acaoConsomeE(acao) &&
     teclaAgora("KeyE")
   ) {
-    executarAcaoE(acao, corpo, porta, alvoLab, alvoHub);
+    if (acaoConsomeE(acao)) {
+      executarAcaoE(acao, corpo, porta, alvoLab, alvoHub);
+    } else if (!acao && (pf?.kind === "grab" || pf?.kind === "place")) {
+      // Mesmo chip do Escalar: E pega / solta (escalar não consome E aqui).
+      tentarPegarComE(corpo);
+    }
   }
   tickFeixe(dt);
   atualizarBussolaSantuario(corpo, !!estado.interior);
@@ -245,16 +250,15 @@ export function tickJogo(dt, corpo) {
     }
     estado.prompt = acaoConsomeE(acao) ? "" : texto;
   }
-  const zona = zonaNoMundo(corpo.x, corpo.y);
-  definirBgm(
-    chaveBgm(
-      zona,
-      obterClima(),
-      estado.interior?.papel === "santuario"
-        ? "santuario"
-        : estado.interior?.sala?.kind
-    )
-  );
+  sincronizarBgm({
+    dt,
+    x: corpo.x,
+    y: corpo.y,
+    interior: estado.interior,
+    zona: zonaNoMundo(corpo.x, corpo.y),
+    hora: obterHora(),
+    climaJogo: obterClimaJogo(),
+  });
   atualizarAudio(dt, lerMixClima(), !!estado.interior);
   atualizarBillboardsBerry();
   if (estado.itemGet) {

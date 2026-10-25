@@ -509,7 +509,12 @@ export function atorDoSnapshot(snap) {
     hostil: false,
   });
   ator.exp = snap.exp ?? ator.exp;
-  if (snap.hp != null) ator.hp = Math.min(ator.hpMax, snap.hp);
+  if (snap.hp != null) ator.hp = Math.min(ator.hpMax, Math.max(0, snap.hp));
+  if (ator.hp <= 0) {
+    ator.hp = 0;
+    ator.morto = true;
+    ator.mortoAte = 0;
+  }
   return ator;
 }
 

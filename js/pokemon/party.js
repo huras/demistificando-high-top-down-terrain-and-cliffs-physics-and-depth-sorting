@@ -11,7 +11,7 @@ import {
   obterDefaultFollowerMode,
   sincronizarModosParty,
 } from "./campo/modos.js";
-import { criarAtor, reviverAtor } from "./ator.js";
+import { criarAtor } from "./ator.js";
 import { especie } from "./dados.js";
 import { encherPp } from "./pp.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
@@ -75,7 +75,11 @@ export function pokemonNoCampo() {
 
 export function pokemonDeployado() {
   const p = party[deployado];
-  return p && !p.morto && !p.capturado ? p : null;
+  return p && !p.morto && !p.capturado && p.hp > 0 ? p : null;
+}
+
+function monVivo(ator) {
+  return !!(ator && !ator.morto && ator.hp > 0);
 }
 
 function recolher(ator) {
@@ -83,12 +87,18 @@ function recolher(ator) {
   soltarFxRecolher(ator);
   ator.capturado = true;
   ator._colocado = false;
+  ator.mortoAte = 0;
   ator.ordemCampo = null;
   ator.ordemForca = null;
   ator.ordemAlvo = null;
   ator.alvo = null;
   if (ator.modo === "agro") ator.modo = "roam";
   return true;
+}
+
+/** Recolhe mon do campo pra bola (desmaio / troca). */
+export function recolherDoCampo(ator) {
+  return recolher(ator);
 }
 
 function pedirEnvio(ator) {
@@ -198,8 +208,9 @@ export function curarParty() {
 
 export function definirDeployado(indice) {
   if (indice < 0 || indice >= party.length) return false;
-  const atual = party[deployado];
   const prox = party[indice];
+  if (!monVivo(prox)) return false;
+  const atual = party[deployado];
   if (atual && atual !== prox) recolher(atual);
   deployado = indice;
   const jaNoMundo = atual === prox && !prox.capturado && prox._colocado;
@@ -327,11 +338,32 @@ export function montarTime(chaves, nivel) {
 
 export function substituirParty(atores) {
   party.length = 0;
-  for (let i = 0; i < atores.length && i < POKEMON.PARTY_MAX; i++) party.push(atores[i]);
-  deployado = 0;
-  if (party[0]) {
-    party[0].capturado = false;
-    party[0]._colocado = false;
+  for (let i = 0; i < atores.length && i < POKEMON.PARTY_MAX; i++) {
+    const a = atores[i];
+    if (!a) continue;
+    if (a.hp <= 0 || a.morto) {
+      a.hp = 0;
+      a.morto = true;
+      a.capturado = true;
+      a.mortoAte = 0;
+    } else {
+      a.capturado = true;
+    }
+    a._colocado = false;
+    hidratarModo(a);
+    party.push(a);
+  }
+  let primeiroVivo = -1;
+  for (let i = 0; i < party.length; i++) {
+    if (monVivo(party[i])) {
+      primeiroVivo = i;
+      break;
+    }
+  }
+  deployado = primeiroVivo >= 0 ? primeiroVivo : 0;
+  if (primeiroVivo >= 0) {
+    party[primeiroVivo].capturado = false;
+    party[primeiroVivo]._colocado = false;
   }
 }
 
@@ -339,11 +371,14 @@ export function itensBolsa() {
   return bolsa;
 }
 
+const DELAY_RECOLHER_DESMAIO = 0.7;
+
 export function atualizarParty(corpo, dt, agora, perfil) {
   const mon = pokemonNoCampo();
-  if (mon && !mon.capturado && mon.morto && mon.mortoAte > 0 && agora >= mon.mortoAte) {
-    const z = corpo.elevacao ?? corpo.z ?? mon.z;
-    reviverAtor(mon, corpo.x + OFFSET_MON.x, corpo.y + OFFSET_MON.y, z);
+  // Desmaiou: após Hurt (morreuEm), volta pra bola — sem revive no campo.
+  if (mon && !mon.capturado && mon.morto) {
+    const desde = mon.morreuEm > 0 ? mon.morreuEm : agora;
+    if (agora >= desde + DELAY_RECOLHER_DESMAIO) recolher(mon);
   }
   const vivo = pokemonDeployado();
   if (!vivo) return;
@@ -362,7 +397,8 @@ export function atualizarParty(corpo, dt, agora, perfil) {
     }
   }
   if (vivo.brilhoBola > 0) vivo.brilhoBola = Math.max(0, vivo.brilhoBola - dt);
-  if (mon.ordemCampo || mon.ordemForca) return;
+  // Ordem farm/Força ou canal/carry de lift: não puxar de volta pro follow.
+  if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) return;
   // Combate OW (tickPartyCampo) marca _emLutaCampo quando não deve follow.
   if (mon._emLutaCampo) return;
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;

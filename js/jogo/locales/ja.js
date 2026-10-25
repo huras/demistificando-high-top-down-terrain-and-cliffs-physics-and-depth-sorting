@@ -250,8 +250,8 @@ export default {
     "precisaSolto": "ポケモンがひつよう",
     "precisaForca": "かいりきがひつよう",
     "menuVazio": "できることがない。",
-    "promptPegar": "R もつ",
-    "promptSoltar": "R おろす",
+    "promptPegar": "E もつ",
+    "promptSoltar": "E おろす",
     "promptArremessar": "LMB なげる"
   }
 };

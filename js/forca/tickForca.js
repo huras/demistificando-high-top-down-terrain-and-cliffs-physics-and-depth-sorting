@@ -1,7 +1,7 @@
 /**
- * Input R + LMB throw + tick do sistema Força no carrier do jogador.
+ * Input E (pegar/soltar) + LMB throw + tick do sistema Força no carrier do jogador.
+ * A tecla E é consumida em tickJogo quando o chip mostra Pegar/Soltar.
  */
-import { teclaAgora } from "../entrada/teclado.js";
 import { botaoEsquerdoSegurado } from "../entrada/ponteiro3d.js";
 import { estaMontado, indiceMontado } from "../jogo/ride.js";
 import { estado, avisar } from "../jogo/estado.js";
@@ -22,8 +22,6 @@ import {
   obterOrderCarrier,
   tentarInteragir,
 } from "./sistemaForca.js";
-import { tickOrdensForca } from "./tickOrdensForca.js";
-
 let ponteiroMundo = null;
 let boot = false;
 let lmbAntes = false;
@@ -69,15 +67,10 @@ export function prepararCarrierJogador(corpo) {
 export function tickForca(dt, corpo, opts = {}) {
   if (!corpo || opts.trava) {
     lmbAntes = false;
-    tickOrdensForca(dt);
     return;
   }
 
   const carrier = prepararCarrierJogador(corpo);
-
-  if (teclaAgora("KeyR")) {
-    tentarInteragir(carrier);
-  }
 
   if (corpo.voando || corpo.escalando || (corpo.planando && !corpo.noChao)) {
     if (estaCarregandoForca()) forcarSoltarPerto(carrier);
@@ -109,7 +102,6 @@ export function tickForca(dt, corpo, opts = {}) {
     avisar();
   }
 
-  tickOrdensForca(dt);
 }
 
 /**
@@ -117,4 +109,13 @@ export function tickForca(dt, corpo, opts = {}) {
  */
 export function promptForca(corpo) {
   return infoPromptForca(prepararCarrierJogador(corpo));
+}
+
+/**
+ * Chamado pelo chip de ação (E) quando o rotulo é Pegar/Soltar.
+ * @param {object} corpo
+ */
+export function tentarPegarComE(corpo) {
+  if (!corpo) return false;
+  return tentarInteragir(prepararCarrierJogador(corpo));
 }

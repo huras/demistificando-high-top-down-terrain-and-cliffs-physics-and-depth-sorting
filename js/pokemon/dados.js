@@ -102,6 +102,10 @@ export async function carregarDados() {
   if (!catRes.ok) throw new Error("catálogo de pokémon indisponível");
   const cat = await catRes.json();
   especies = cat.especies || {};
+  // Garante chave estável pra Força / lookups (catálogo às vezes omite `key`).
+  for (const k of Object.keys(especies)) {
+    if (especies[k] && !especies[k].key) especies[k].key = k;
+  }
   golpes = cat.golpes || {};
   dobrarCustoPp(golpes);
   if (dropRes.ok) {

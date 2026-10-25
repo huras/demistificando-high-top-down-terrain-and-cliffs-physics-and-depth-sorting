@@ -5,37 +5,13 @@ import {
   definirMudoBarramento,
   destravarBarramento,
 } from "./som/barramento.js";
+import { criarBgm } from "./som/bgm.js";
+import { resolverChaveBgm } from "./som/resolverBgm.js";
+import { TRILHAS_BGM } from "./som/trilhasBgm.js";
 
 const REF = "/ref/music/";
 const VOL_BGM = 0.34;
 const VOL_CAMADA = 0.28;
-
-const TRILHAS = {
-  campo: [
-    "BGM/pool/Pokemon HeartGold and SoulSilver - Route 29.mp3",
-    "BGM/pool/Pokemon Diamond and Pearl - Route 201 (Day).mp3",
-    "BGM/pool/Green Plains Journey - Plains Day A.mp3",
-  ],
-  cidade: [
-    "BGM/pool/Pokemon Diamond and Pearl - Canalave City (Day).mp3",
-    "BGM/pool/Pokemon Diamond and Pearl - Twinleaf Town (Day).mp3",
-    "BGM/1-06. Pallet Town.mp3",
-  ],
-  chuva: [
-    "BGM/generated/Heavy Rain.mp3",
-    "BGM/pool/Pokemon Omega Ruby and Alpha Sapphire - Heavy Rain.mp3",
-  ],
-  "hub.center": [
-    "BGM/pool/Pokemon Red Green Blue Yellow - Pokémon Center.mp3",
-    "BGM/pool/Pokemon HeartGold and SoulSilver - Pokémon Center.mp3",
-    "BGM/pool/Pokemon Black and White - Pokemon Center.mp3",
-  ],
-  "hub.mart": [
-    "BGM/pool/Pokemon HeartGold and SoulSilver - Poké Mart.mp3",
-    "BGM/pool/Pokemon Omega Ruby and Alpha Sapphire - Poke Mart.mp3",
-  ],
-  "hub.house": ["BGM/1-06. Pallet Town.mp3"],
-};
 
 const CAMADAS = {
   drips: "BGS/drips.ogg",
@@ -70,6 +46,11 @@ function gravarMudo(valor) {
     /* navegador sem armazenamento */
   }
 }
+
+const bgm = criarBgm({
+  tracks: TRILHAS_BGM,
+  masterVolume: VOL_BGM,
+});
 
 let ctx = null;
 let mudo = lerMudoSalvo();
@@ -117,15 +98,9 @@ const NOTAS_CURA = Object.freeze([
   [480, 13, 88, 90],
   [510, 13, 88, 25],
 ]);
-let chaveAtual = "";
-/** @type {{ el: HTMLAudioElement, vol: number, alvo: number, chave: string } | null} */
-let voz = null;
-/** @type {{ el: HTMLAudioElement, vol: number, alvo: number } | null} */
-let saindo = null;
+
 /** @type {Map<string, { el: HTMLAudioElement, vol: number, alvo: number }>} */
 const camadas = new Map();
-/** @type {Map<string, number>} */
-const cursor = new Map();
 
 function audio() {
   if (ctx) return ctx;
@@ -155,15 +130,6 @@ function criarEl(rel, loop) {
   el.loop = loop;
   el.volume = 0;
   return el;
-}
-
-function escolher(chave) {
-  const pool = TRILHAS[chave];
-  if (!pool?.length) return null;
-  const i = cursor.has(chave) ? cursor.get(chave) : -1;
-  const n = (i + 1) % pool.length;
-  cursor.set(chave, n);
-  return pool[n];
 }
 
 function garantirToco(el) {
@@ -250,7 +216,8 @@ export function destravarAudio() {
   anexarContexto(ac);
   definirMudoBarramento(mudo);
   destravarBarramento();
-  if (voz) garantirToco(voz.el);
+  bgm.unlock();
+  bgm.setMuted(mudo);
   for (const slot of camadas.values()) {
     if (slot.alvo > 0.012) garantirToco(slot.el);
   }
@@ -275,36 +242,23 @@ export function tocarShiny() {
   tocarCurto(elementoDe(stings, SOM_SHINY), 0.95);
 }
 
+/** null = silêncio (fade-out). */
 export function definirBgm(chave) {
-  const proxima = TRILHAS[chave] ? chave : "campo";
-  if (proxima === chaveAtual && voz) return;
-  chaveAtual = proxima;
-  if (saindo && saindo !== voz) {
-    saindo.el.pause();
-    saindo.el.src = "";
-  }
-  if (voz) {
-    voz.alvo = 0;
-    saindo = voz;
-  }
-  const arquivo = escolher(proxima);
-  if (!arquivo) {
-    voz = null;
-    return;
-  }
-  const el = criarEl(arquivo, true);
-  voz = { el, vol: 0, alvo: VOL_BGM, chave: proxima };
-  if (liberado) garantirToco(el);
+  bgm.setTrack(chave == null || chave === "" ? null : chave);
 }
 
-export function chaveBgm(zona, clima, interiorKind) {
-  if (interiorKind === "heal") return "hub.center";
-  if (interiorKind === "mart") return "hub.mart";
-  if (interiorKind === "house") return "hub.house";
-  if (interiorKind === "shrine" || interiorKind === "santuario") return "hub.house";
-  if (clima && clima !== "limpo") return "chuva";
-  if (zona?.tipo === "cidade") return "cidade";
-  return "campo";
+export function temTrilha(chave) {
+  return bgm.hasTrack(chave);
+}
+
+/**
+ * Resolve + aplica a trilha do frame.
+ * @param {object} ctx
+ */
+export function sincronizarBgm(ctx) {
+  const chave = resolverChaveBgm({ ...ctx, bgm });
+  definirBgm(chave);
+  return chave;
 }
 
 /** Segue a chuva já misturada no céu. Dentro de casa o leito some. */
@@ -317,19 +271,8 @@ export function atualizarAudio(dt, mix, dentro) {
     aplicarVolume(slot, passo, 0.9);
   }
   if (abaixaBgm > 0) abaixaBgm = Math.max(0, abaixaBgm - passo);
-  if (voz) {
-    voz.alvo = mudo ? 0 : VOL_BGM * (abaixaBgm > 0 ? 0.22 : 1);
-    aplicarVolume(voz, passo, 0.7);
-  }
-  if (saindo) {
-    saindo.alvo = 0;
-    aplicarVolume(saindo, passo, 1.6);
-    if (saindo.vol <= 0.012) {
-      saindo.el.pause();
-      saindo.el.src = "";
-      if (saindo !== voz) saindo = null;
-    }
-  }
+  bgm.setDuck(abaixaBgm > 0 ? 0.22 : 1);
+  bgm.update(passo);
 }
 
 /** perto = raio no chão. longe = o eco. */
@@ -373,7 +316,9 @@ export function tocarCuraCentro() {
   if (!ac || mudo) return;
   const soltar = () => {
     const t0 = ac.currentTime + 0.02;
-    for (let i = 0; i < NOTAS_CURA.length; i++) notaCura(ac, t0 + tickCura(NOTAS_CURA[i][0]), NOTAS_CURA[i]);
+    for (let i = 0; i < NOTAS_CURA.length; i++) {
+      notaCura(ac, t0 + tickCura(NOTAS_CURA[i][0]), NOTAS_CURA[i]);
+    }
     abaixaBgm = Math.max(abaixaBgm, tickCura(523) + 0.35);
   };
   if (ac.state === "suspended") ac.resume().then(soltar).catch(() => {});
@@ -407,9 +352,8 @@ export function alternarMudo() {
   mudo = !mudo;
   gravarMudo(mudo);
   definirMudoBarramento(mudo);
+  bgm.setMuted(mudo);
   if (mudo) {
-    voz?.el.pause();
-    saindo?.el.pause();
     for (const slot of camadas.values()) slot.el.pause();
     calarCurtos();
   } else {

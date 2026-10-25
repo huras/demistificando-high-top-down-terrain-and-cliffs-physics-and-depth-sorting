@@ -79,4 +79,5 @@ export {
   promptForca,
   definirPonteiroForca,
   prepararCarrierJogador,
+  tentarPegarComE,
 } from "./tickForca.js";

@@ -250,8 +250,8 @@ export default {
     "precisaSolto": "Needs a Pokémon out",
     "precisaForca": "Needs Strength",
     "menuVazio": "No actions available here.",
-    "promptPegar": "R Grab",
-    "promptSoltar": "R Place",
+    "promptPegar": "E Grab",
+    "promptSoltar": "E Place",
     "promptArremessar": "LMB Throw"
   }
 };

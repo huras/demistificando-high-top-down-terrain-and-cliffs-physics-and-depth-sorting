@@ -20,6 +20,7 @@ import { tickArvores } from "../campo/cicloArvore.js";
 import { tickGrama } from "../campo/grama.js";
 import { arbustoMaduroPerto, colherArbusto, tickBerries } from "../campo/colherBerry.js";
 import { tickOrdens } from "../campo/ordem.js";
+import { tickOrdensForca } from "../forca/tickOrdensForca.js";
 import { yawCamera } from "../render/3d/camera3d.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
 import { BERRIES, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
@@ -326,7 +327,10 @@ export function tickCampo(dt) {
   tickArvores(dt, agora);
   tickGrama(dt, agora);
   tickBerries(agora);
-  if (!estado.ganhoAberto) tickOrdens(dt);
+  if (!estado.ganhoAberto) {
+    tickOrdens(dt);
+    tickOrdensForca(dt);
+  }
 }
 
 function propPerto(x, y, tipos) {

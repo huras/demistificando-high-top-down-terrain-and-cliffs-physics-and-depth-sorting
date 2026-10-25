@@ -250,8 +250,8 @@ export default {
     "precisaSolto": "Precisa de Pokémon solto",
     "precisaForca": "Precisa de Força",
     "menuVazio": "Nenhuma ação disponível aqui.",
-    "promptPegar": "R Pegar",
-    "promptSoltar": "R Soltar",
+    "promptPegar": "E Pegar",
+    "promptSoltar": "E Soltar",
     "promptArremessar": "LMB Arremessar"
   }
 };

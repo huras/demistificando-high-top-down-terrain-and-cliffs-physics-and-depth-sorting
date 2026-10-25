@@ -129,7 +129,10 @@ export function mirandoArremesso() {
 
 function liberarGrabActor() {
   soltarVivoDoLift(grabAction?.enemy);
-  if (grabActor) grabActor._forcaCanalLock = false;
+  // Companion sob ordem: lock permanece até limparOrderCarrier (canal + carry).
+  if (grabActor && grabActor !== orderCarrier) {
+    grabActor._forcaCanalLock = false;
+  }
   grabAction = null;
   grabActor = null;
 }
@@ -146,6 +149,10 @@ export function limparOrderCarrier() {
 export function definirOrderCarrier(follower) {
   if (orderCarrier && orderCarrier !== follower) limparOrderCarrier();
   orderCarrier = follower ?? null;
+  if (orderCarrier) {
+    orderCarrier._forcaCanalLock = true;
+    orderCarrier.ordemCampo = null;
+  }
 }
 
 export function carrierAtivo(gameCarrier = null) {
@@ -179,7 +186,7 @@ export function infoPromptForca(carrier) {
     return {
       kind: "place",
       rotulo: "Soltar",
-      tecla: "R",
+      tecla: "E",
       mobility: mobilidadeDe(carrier),
     };
   }
@@ -191,17 +198,17 @@ export function infoPromptForca(carrier) {
         1,
         grabAction.elapsedSec / Math.max(0.01, grabAction.durationSec),
       ),
-      tecla: "R",
+      tecla: "E",
     };
   }
   if (orderCarrier && carrier === orderCarrier) return null;
   const target = resolverAlvo(carrier);
   if (!target) return null;
-  return { kind: "grab", rotulo: "Pegar", tecla: "R", target };
+  return { kind: "grab", rotulo: "Pegar", tecla: "E", target };
 }
 
 /**
- * Rising edge de R.
+ * Rising edge de E (pegar / soltar).
  * @param {object} carrier
  */
 export function tentarInteragir(carrier) {
@@ -241,7 +248,8 @@ export function tentarInteragir(carrier) {
  */
 export function iniciarGrabOrdenado(follower, target) {
   if (!follower || !target || carry || grabAction) return false;
-  if (follower.voando) return false;
+  // Voadores (ex. Mewtwo) ainda levantam no chão — só aborta se estiver planando/escalando de verdade.
+  if (follower.escalando || follower.planando) return false;
   if (target.kind === "faintedWild") {
     if (!ehPokemonLevantavel(target.enemy)) return false;
     if (target.weightTier == null) {
@@ -254,6 +262,8 @@ export function iniciarGrabOrdenado(follower, target) {
   follower._forcaCanalLock = true;
   follower.vx = 0;
   follower.vy = 0;
+  follower.andando = false;
+  follower.correndo = false;
   grabAction = action;
   grabActor = follower;
   follower.ordemForca = null;
@@ -340,7 +350,8 @@ export function atualizarCanal(dt, carrier, opts = {}) {
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
     return;
   }
-  if (carrier.voando || carrier.escalando || carrier.planando) {
+  // Companion: não aborta por flag de voo idle (lendários flutuam).
+  if (carrier.escalando || carrier.planando || (!ordered && carrier.voando)) {
     abort();
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
     return;
@@ -377,8 +388,10 @@ export function atualizarCanal(dt, carrier, opts = {}) {
     return;
   }
 
+  // Ordens de companion: tolera drift do path; player aborta se andar.
+  const limiarMove = ordered ? 1.35 : 0.55;
   const moved =
-    Math.hypot(carrier.x - action.startX, carrier.y - action.startY) > 0.55;
+    Math.hypot(carrier.x - action.startX, carrier.y - action.startY) > limiarMove;
   if (moved && !failed) {
     abort();
     atualizarArremessos(thrown, dt, cfg.poderArremesso);

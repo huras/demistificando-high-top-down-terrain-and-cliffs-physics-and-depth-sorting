@@ -70,7 +70,7 @@ const efeitos = {
   },
   aoDerrotar(alvo) {
     if (alvo.faccao === "party") {
-      alvo.mortoAte = agora + 15;
+      // Hurt → atorMorreu; atualizarParty recolhe pela bola via morreuEm (não revive).
       return;
     }
     if (alvo.faccao !== "selvagem" || alvo.dropou) return;

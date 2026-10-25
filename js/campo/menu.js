@@ -169,11 +169,15 @@ function aoClique(ev) {
           ? { kind: "faintedWild", enemy: op.enemy, weightTier: op.weightTier, x: op.enemy.x, y: op.enemy.y, z: op.enemy.z }
           : { kind: "rock", id: op.prop?.id, prop: op.prop, weightTier: op.weightTier, x: op.prop.x, y: op.prop.y, z: op.prop.z, tipo: op.prop?.tipo };
       const idx = indiceDoMon(op.mon);
+      const monAntes = idx >= 0 ? listaParty()[idx] : op.mon;
+      const jaEmCampo =
+        !!monAntes && !monAntes.capturado && !!monAntes._colocado;
       if (idx >= 0) definirDeployado(idx);
       // Usa o mon da party pós-deploy (referência viva).
       const mon = idx >= 0 ? listaParty()[idx] : op.mon;
       if (mon) {
         mon.capturado = false;
+        if (jaEmCampo) mon._colocado = true;
         ordenarForca(mon, ACAO_FORCA.LEVANTAR, alvo, miraX, miraY);
       }
     } else if (op.id === ACAO_FORCA.SOLTAR) {

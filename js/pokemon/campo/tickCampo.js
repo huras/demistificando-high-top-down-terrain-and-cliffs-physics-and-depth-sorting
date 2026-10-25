@@ -74,7 +74,7 @@ function perseguirItem(mon, jogador, dt) {
  */
 export function tickPartyCampo(mon, selvagens, jogador, dt) {
   if (!mon || mon.morto || mon.capturado || mon.preso) return false;
-  if (mon.ordemCampo || mon.ordemForca) return false;
+  if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) return false;
 
   if (tickMeleeApproach(mon, dt)) return true;
   tickInvestigacao(mon, dt);
