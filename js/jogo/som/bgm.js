@@ -62,6 +62,14 @@ export function criarBgm(cfg = {}) {
   let disposed = false;
   let duckMul = 1;
 
+  /** Pausa cinemática (evolução): congela o bus e retoma no mesmo ponto. */
+  let suspended = false;
+  let suspendMul = 1;
+  let suspendMulTarget = 1;
+  let suspendFadeSpeed = 2.5;
+  /** @type {Set<object>} */
+  const pausedBySuspend = new Set();
+
   const silMinRaw = Number(cfg.rotationSilenceMinSec);
   const silMaxRaw = Number(cfg.rotationSilenceMaxSec);
   const silMin = Number.isFinite(silMinRaw) ? Math.max(0, silMinRaw) : 4;
@@ -169,12 +177,13 @@ export function criarBgm(cfg = {}) {
   }
 
   function aplicarVolumeVoz(voice) {
-    const base = muted || !enabled ? 0 : masterVol * duckMul;
+    const base = muted || !enabled ? 0 : masterVol * duckMul * suspendMul;
     voice.el.volume = limitar01(voice.level * base);
   }
 
   function tentarTocar(voice) {
     if (!unlocked || muted || !enabled) return;
+    if (suspended && suspendMulTarget <= 0) return;
     const p = voice.el.play();
     if (p && typeof p.catch === "function") p.catch(() => {});
   }
@@ -339,9 +348,74 @@ export function criarBgm(cfg = {}) {
     for (const v of voices) aplicarVolumeVoz(v);
   }
 
+  /**
+   * Congela BGM no ponto (fade out → pause). Usado por cinemáticas.
+   * @param {{ fadeOutSec?: number }} [opts]
+   */
+  function suspend(opts = {}) {
+    if (disposed || suspended) return;
+    suspended = true;
+    const fadeSec = Number(opts.fadeOutSec);
+    suspendFadeSpeed =
+      Number.isFinite(fadeSec) && fadeSec > 0 ? 1 / fadeSec : 8;
+    suspendMulTarget = 0;
+  }
+
+  /**
+   * Retoma do ponto pausado com fade in.
+   * @param {{ fadeInSec?: number }} [opts]
+   */
+  function resume(opts = {}) {
+    if (disposed || !suspended) return;
+    suspended = false;
+    for (const v of pausedBySuspend) {
+      if (voices.includes(v) && v.target > 0) tentarTocar(v);
+    }
+    pausedBySuspend.clear();
+    for (const v of voices) {
+      if (v.target > 0 && v.el.paused) tentarTocar(v);
+    }
+    const fadeSec = Number(opts.fadeInSec);
+    suspendFadeSpeed =
+      Number.isFinite(fadeSec) && fadeSec > 0 ? 1 / fadeSec : 1.15;
+    suspendMul = 0;
+    suspendMulTarget = 1;
+    for (const v of voices) aplicarVolumeVoz(v);
+  }
+
+  function updateSuspendMul(dtClamped) {
+    if (suspendMul === suspendMulTarget) return;
+    const step = dtClamped * suspendFadeSpeed;
+    if (suspendMul < suspendMulTarget) {
+      suspendMul = Math.min(suspendMulTarget, suspendMul + step);
+    } else {
+      suspendMul = Math.max(suspendMulTarget, suspendMul - step);
+    }
+    if (Math.abs(suspendMul - suspendMulTarget) < 0.004) {
+      suspendMul = suspendMulTarget;
+    }
+    for (const v of voices) aplicarVolumeVoz(v);
+
+    if (suspended && suspendMulTarget <= 0 && suspendMul <= 0.005) {
+      suspendMul = 0;
+      for (const v of voices) {
+        if (!v.el.paused) {
+          pausedBySuspend.add(v);
+          try {
+            v.el.pause();
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    }
+  }
+
   function update(dt) {
     if (disposed) return;
     const dtClamped = Math.max(0, dt ?? 0);
+    updateSuspendMul(dtClamped);
+    if (suspended) return;
 
     if (silencioRestante > 0) {
       silencioRestante -= dtClamped;
@@ -396,6 +470,8 @@ export function criarBgm(cfg = {}) {
     setMuted,
     setMasterVolume,
     setDuck,
+    suspend,
+    resume,
     update,
     dispose,
     get unlocked() {
@@ -403,6 +479,9 @@ export function criarBgm(cfg = {}) {
     },
     get masterVolume() {
       return masterVol;
+    },
+    get suspended() {
+      return suspended;
     },
     get currentKey() {
       return desiredKey;

@@ -7,6 +7,7 @@ import {
   tocar as tocarBarramento,
 } from "./som/barramento.js";
 import { criarBgm } from "./som/bgm.js";
+import { criarEvolucaoAudio } from "./som/evolucaoAudio.js";
 import { resolverChaveBgm } from "./som/resolverBgm.js";
 import { TRILHAS_BGM } from "./som/trilhasBgm.js";
 
@@ -52,6 +53,26 @@ const bgm = criarBgm({
   tracks: TRILHAS_BGM,
   masterVolume: VOL_BGM,
 });
+
+/** @type {{ mul: number, alvo: number, vel: number }} */
+const bgsSuspend = { mul: 1, alvo: 1, vel: 2.5 };
+
+const evolucaoAudio = criarEvolucaoAudio(
+  {},
+  {
+    bgm,
+    suspendBgs({ fadeOutSec } = {}) {
+      bgsSuspend.alvo = 0;
+      bgsSuspend.vel =
+        Number.isFinite(fadeOutSec) && fadeOutSec > 0 ? 1 / fadeOutSec : 3;
+    },
+    resumeBgs({ fadeInSec } = {}) {
+      bgsSuspend.alvo = 1;
+      bgsSuspend.vel =
+        Number.isFinite(fadeInSec) && fadeInSec > 0 ? 1 / fadeInSec : 1.2;
+    },
+  }
+);
 
 let ctx = null;
 let mudo = lerMudoSalvo();
@@ -265,15 +286,36 @@ export function sincronizarBgm(ctx) {
 /** Segue a chuva já misturada no céu. Dentro de casa o leito some. */
 export function atualizarAudio(dt, mix, dentro) {
   const passo = Math.min(Math.max(dt || 0, 0), 0.05);
+  if (bgsSuspend.mul !== bgsSuspend.alvo) {
+    const step = passo * bgsSuspend.vel;
+    if (bgsSuspend.mul < bgsSuspend.alvo) {
+      bgsSuspend.mul = Math.min(bgsSuspend.alvo, bgsSuspend.mul + step);
+    } else {
+      bgsSuspend.mul = Math.max(bgsSuspend.alvo, bgsSuspend.mul - step);
+    }
+  }
   const alvos = alvosChuva(mix?.chuva, dentro);
   for (const id of Object.keys(CAMADAS)) {
     const slot = cama(id);
-    slot.alvo = alvos[id] || 0;
+    slot.alvo = (alvos[id] || 0) * bgsSuspend.mul;
     aplicarVolume(slot, passo, 0.9);
   }
   if (abaixaBgm > 0) abaixaBgm = Math.max(0, abaixaBgm - passo);
   bgm.setDuck(abaixaBgm > 0 ? 0.22 : 1);
   bgm.update(passo);
+}
+
+export function iniciarAudioEvolucao() {
+  evolucaoAudio.begin();
+}
+
+/** @param {{ cancelled?: boolean }} [opts] */
+export function encerrarAudioEvolucao(opts = {}) {
+  evolucaoAudio.end(opts);
+}
+
+export function audioEvolucaoAtivo() {
+  return !!evolucaoAudio.active;
 }
 
 /** perto = raio no chão. longe = o eco. */

@@ -55,12 +55,17 @@ function tocarCue(id, alvo, volume, gapMs) {
 /**
  * @param {{ x?: number, y?: number } | null} alvo
  * @param {number} efet
- * @param {{ dano?: number, basico?: boolean }} [hit]
+ * @param {{ dano?: number, basico?: boolean, crit?: boolean }} [hit]
  */
 export function tocarAcerto(alvo, efet, hit = {}) {
   if (!(hit.dano > 0)) return;
   const eff = Number(efet);
   if (!Number.isFinite(eff) || eff <= 0) return;
+
+  if (hit.crit) {
+    tocarCue("hitSuper", alvo, 1.12, 90);
+    return;
+  }
 
   const basico = !!hit.basico;
   const superEff = !basico && eff > 1;

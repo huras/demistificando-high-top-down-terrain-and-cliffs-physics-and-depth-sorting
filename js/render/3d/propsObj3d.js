@@ -34,6 +34,17 @@ const _cor = new THREE.Color();
 const _caixaBola = new THREE.Box3();
 const _tamBola = new THREE.Vector3();
 const _escalaMundo = new THREE.Vector3();
+const _quatTip = new THREE.Quaternion();
+const _quatYaw = new THREE.Quaternion();
+const _eixoX = new THREE.Vector3(1, 0, 0);
+const _eixoY = new THREE.Vector3(0, 1, 0);
+
+/** Em pé (topo +Y) e frente pro sul — yaw no eixo Y do mundo, não no Euler local. */
+function orientacaoBolaCura(malha) {
+  _quatTip.setFromAxisAngle(_eixoX, -Math.PI / 2);
+  _quatYaw.setFromAxisAngle(_eixoY, Math.PI);
+  malha.quaternion.copy(_quatYaw).multiply(_quatTip);
+}
 
 /** Diâmetro das bolas a partir do AABB em espaço de mundo. */
 export function diametroBolaCuraPara(raiz) {
@@ -417,6 +428,7 @@ export function garantirVisualBolaCura(bola, ballKey) {
     // Clone/pool já vem em BOLA_DIAMETRO; guarda a base pra não acumular no reuso.
     if (malha.userData.escalaBase == null) malha.userData.escalaBase = malha.scale.x || 1;
     malha.scale.setScalar(malha.userData.escalaBase * (alvo / BOLA_DIAMETRO));
+    orientacaoBolaCura(malha);
     bola.add(malha);
     bola.userData.malha = malha;
     bola.userData.ballKey = chave;

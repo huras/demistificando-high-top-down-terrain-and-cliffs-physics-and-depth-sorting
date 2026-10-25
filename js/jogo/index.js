@@ -5,6 +5,11 @@ import { obterClimaJogo } from "../clima/amostra.js";
 import { lerMixClima } from "../render/3d/ceu/clima.js";
 import { obterHora } from "../render/3d/ceu/controleCeu.js";
 import { zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
+import {
+  definirGateEvolucao,
+  evolucaoAberta,
+  tratarTeclaEvolucao,
+} from "../pokemon/evolucaoCinema.js";
 import { alternarMudo, atualizarAudio, destravarAudio, estaMudo, sincronizarBgm } from "./audio.js";
 import { tickBlocos } from "./blocos.js";
 import { atualizarBillboardsBerry } from "./billboards.js";
@@ -81,7 +86,7 @@ function campoFocado() {
 
 export function jogoTravaMundo() {
   // uiAberta() já inclui menu/dex/status
-  return uiAberta() || mapaAberto() || teleporteOcupado();
+  return uiAberta() || mapaAberto() || teleporteOcupado() || evolucaoAberta();
 }
 
 function pintarBotaoSom(botao) {
@@ -112,6 +117,7 @@ export function montarJogo(opts) {
   ligarRoda();
   ligarSala(document.getElementById("jogo-sala"));
   bootHudCompleto();
+  definirGateEvolucao(() => !uiAberta() && !jogadorMorto() && !mapaAberto());
   carregar();
   semearDexParty();
   iniciarForca(FORCA);
@@ -303,6 +309,21 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
 
 function lerTeclas(corpo) {
   if (jogadorMorto()) return;
+  if (evolucaoAberta()) {
+    const codes = [
+      "Escape",
+      "Enter",
+      "Space",
+      "KeyZ",
+      "KeyX",
+      "KeyN",
+      "KeyB",
+    ];
+    for (let i = 0; i < codes.length; i++) {
+      if (teclaAgora(codes[i]) && tratarTeclaEvolucao(codes[i])) return;
+    }
+    return;
+  }
   if (mapaAberto()) {
     if (mapaViajando()) {
       teclaAgora("Escape");

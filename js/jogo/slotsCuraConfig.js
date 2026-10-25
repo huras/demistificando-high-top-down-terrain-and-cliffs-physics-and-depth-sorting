@@ -1,7 +1,7 @@
 /**
  * Layout 3D das bolas na máquina de cura (suporte + 6 slots).
  * Coordenadas em unidades de mundo (mesmo espaço da alturaAlvo do prop).
- * y do slot: posição local Y = -slot.y (convenção antiga do carimbo).
+ * Grid horizontal no topo: X/Z; y do slot → local Y = -slot.y (0 = plano).
  */
 
 export const URL_SLOTS_CURA = "assets/models/cidade/props/cura/slots.json";
@@ -10,12 +10,12 @@ export const QTD_SLOTS_CURA = 6;
 const PADRAO = Object.freeze({
   suporte: Object.freeze({ x: 0, y: 1.35, z: 0.2 }),
   slots: Object.freeze([
-    Object.freeze({ x: -0.35, y: -0.28, z: 0.05 }),
-    Object.freeze({ x: 0.35, y: -0.28, z: 0.05 }),
-    Object.freeze({ x: -0.35, y: 0.02, z: 0.05 }),
-    Object.freeze({ x: 0.35, y: 0.02, z: 0.05 }),
-    Object.freeze({ x: -0.35, y: 0.32, z: 0.05 }),
-    Object.freeze({ x: 0.35, y: 0.32, z: 0.05 }),
+    Object.freeze({ x: -0.28, y: 0, z: -0.22 }),
+    Object.freeze({ x: 0.28, y: 0, z: -0.22 }),
+    Object.freeze({ x: -0.28, y: 0, z: 0 }),
+    Object.freeze({ x: 0.28, y: 0, z: 0 }),
+    Object.freeze({ x: -0.28, y: 0, z: 0.22 }),
+    Object.freeze({ x: 0.28, y: 0, z: 0.22 }),
   ]),
 });
 

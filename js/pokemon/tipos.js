@@ -145,15 +145,25 @@ export function multiplicadorEstagio(estagio) {
   return 2 / (2 - e);
 }
 
-function danoGen(atacante, alvo, poder, categoria) {
+/**
+ * Gen 5: estágio de Def no crit usa no máximo 0 (buffs de defesa não contam).
+ * @param {object} atacante
+ * @param {object} alvo
+ * @param {number} poder
+ * @param {string} categoria
+ * @param {boolean} crit
+ */
+function danoGen(atacante, alvo, poder, categoria, crit = false) {
   const nivel = Math.max(1, atacante.nivel | 0);
   const especial = categoria === "special";
   const brutoAtk = Math.max(1, especial ? atacante.stats.ataqueEsp : atacante.stats.ataque);
-  const estagioAtk = especial ? atacante.estagioSpa || 0 : atacante.estagioAtk || 0;
+  let estagioAtk = especial ? atacante.estagioSpa || 0 : atacante.estagioAtk || 0;
+  if (crit) estagioAtk = Math.max(0, estagioAtk);
   let atk = Math.max(1, Math.floor(brutoAtk * multiplicadorEstagio(estagioAtk)));
   if (!especial && atacante.status === "burn") atk = Math.max(1, Math.floor(atk * 0.5));
   const brutoDef = Math.max(1, especial ? alvo.stats.defesaEsp : alvo.stats.defesa);
-  const estagioDef = especial ? alvo.estagioSpd || 0 : alvo.estagioDef || 0;
+  let estagioDef = especial ? alvo.estagioSpd || 0 : alvo.estagioDef || 0;
+  if (crit) estagioDef = Math.min(0, estagioDef);
   const def = Math.max(1, Math.floor(brutoDef * multiplicadorEstagio(estagioDef)));
   return (
     Math.floor(Math.floor((Math.floor((2 * nivel) / 5 + 2) * poder * atk) / def) / 50) + 2
@@ -162,16 +172,24 @@ function danoGen(atacante, alvo, poder, categoria) {
 
 /**
  * Mon×mon usa a fórmula Gen. Alvo sem stats (treinador) leva o poder cru.
+ * Crit Gen 5: 1/16, ×1.5.
+ * @returns {{ dano: number, efet: number, crit: boolean }}
  */
 export function calcularDano(atacante, alvo, poder, tipo, categoria) {
-  if (poder <= 0) return { dano: 0, efet: 0 };
+  if (poder <= 0) return { dano: 0, efet: 0, crit: false };
   const tiposDef = alvo.tipos || [];
   const efet = efetividade(tipo, tiposDef);
   const mult = stab(tipo, atacante.tipos) * efet;
-  if (mult === 0) return { dano: 0, efet: 0 };
+  if (mult === 0) return { dano: 0, efet: 0, crit: false };
+  const crit = Math.random() < 1 / 16;
   const mon = !!(atacante.stats && alvo.stats);
-  const base = mon ? danoGen(atacante, alvo, poder, categoria) : poder;
-  return { dano: Math.max(1, Math.floor(base * mult)), efet };
+  const base = mon ? danoGen(atacante, alvo, poder, categoria, crit) : poder;
+  const multCrit = crit ? 1.5 : 1;
+  return {
+    dano: Math.max(1, Math.floor(base * mult * multCrit)),
+    efet,
+    crit,
+  };
 }
 
 export { T };

@@ -39,6 +39,12 @@ import {
   devolverInstanciaBola,
   obterInstanciaBola,
 } from "./malhaBola.js";
+import {
+  brilhoEvolucao,
+  especieVisualEvolucao,
+} from "./evolucaoCinema.js";
+
+const _evoBranco = new THREE.Color(1, 1, 1);
 
 /** 1 px do quadro = 1/TILE voxel, igual à árvore e ao tile do Pokémon AI. */
 const PX_MUNDO = 1 / TILE;
@@ -415,6 +421,16 @@ function fallback(slot, ator) {
 function aplicarFlashCorpo(slot, ator) {
   const flash = slot.flash;
   if (!flash) return;
+  const evo = brilhoEvolucao(ator);
+  if (evo > 0.02) {
+    const pulso = 0.75 + 0.25 * Math.sin(performance.now() * 0.012);
+    flash.visible = true;
+    flash.material.color.setHex(0xffffff);
+    flash.position.set(0, 0.95, 0.04);
+    flash.scale.set(1.1 + evo * 0.85, 1.1 + evo * 0.85, 1);
+    flash.material.opacity = Math.min(1, 0.35 + evo * 0.55 * pulso);
+    return;
+  }
   const resto = ator.brilhoBola;
   if (!(resto > 0) || ator.brilhoBolaTipo !== "envio") {
     if (flash.visible) flash.visible = false;
@@ -424,6 +440,7 @@ function aplicarFlashCorpo(slot, ator) {
   const pulso = 0.6 + 0.4 * Math.sin((1 - t) * Math.PI * 5);
   const externo = 0.4 * (1.25 + (1 - t) * 0.55);
   flash.visible = true;
+  flash.material.color.setHex(0xffffff);
   flash.position.set(0, 0.9, 0.02);
   flash.scale.set(externo * 2.2, externo * 2.2, 1);
   flash.material.opacity = Math.min(1, 0.35 + 0.5 * t * pulso);
@@ -493,6 +510,9 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     slot.grupo.visible = true;
     const elev = alturaPe(ator) + oscilacaoNado(ator) + oscilacaoAndar(ator);
     slot.grupo.position.set(ator.x, elev * ALTURA_BLOCO, ator.y);
+    const espEvo = especieVisualEvolucao(ator);
+    const espBackup = ator.especie;
+    if (espEvo) ator.especie = espEvo;
     const pack = garantirAtlas(ator.especie.dex, ator.shiny);
     const visual = ator.visual;
     const dirMundo = visual?.dir;
@@ -505,11 +525,14 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     if (fr && pack.img && pack.estado === "pronto") pintar(slot, ator, fr, pack);
     else fallback(slot, ator);
     const offsetY = aplicarMedida(slot, ator);
+    if (espEvo) ator.especie = espBackup;
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
     const { sx, sy } = squashAndar(ator);
+    const evoBrilho = brilhoEvolucao(ator);
+    const evoEscala = evoBrilho > 0 ? 1 + evoBrilho * 0.12 : 1;
     slot.sprite.visible = true;
-    slot.sprite.scale.x *= some * sx;
-    slot.sprite.scale.y *= some * sy;
+    slot.sprite.scale.x *= some * sx * evoEscala;
+    slot.sprite.scale.y *= some * sy * evoEscala;
     poseAtorCartao(slot.sprite, {
       x: 0,
       y: -offsetY,
@@ -556,7 +579,14 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
     aplicarFlashCorpo(slot, ator);
     const py = slot.grupo.position.y;
     amostrarLuzCidade(ator.x, py + 0.6, ator.y, _luzCidade);
-    aplicarCorSprite(slot.mat, _branco, fatorSombraMundo(ator.x, py, ator.y), _luzCidade);
+    const evo = brilhoEvolucao(ator);
+    if (evo > 0.02) {
+      _evoBranco.setRGB(1, 1, 1);
+      aplicarCorSprite(slot.mat, _evoBranco, 1, null);
+      slot.mat.color.lerp(_evoBranco, Math.min(1, evo * 0.92));
+    } else {
+      aplicarCorSprite(slot.mat, _branco, fatorSombraMundo(ator.x, py, ator.y), _luzCidade);
+    }
   }
   for (const [id, slot] of porId) {
     if (vistos.has(id)) continue;

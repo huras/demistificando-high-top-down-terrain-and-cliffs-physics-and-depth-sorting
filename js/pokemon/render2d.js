@@ -14,6 +14,10 @@ import { auraDe, ORBES_KI } from "./combate/ki.js";
 import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
 import { atoresVisiveis } from "./sistema.js";
 import { COR_TIPO } from "./tipos.js";
+import {
+  brilhoEvolucao,
+  especieVisualEvolucao,
+} from "./evolucaoCinema.js";
 
 /** Na tela, 1 px de arte vira ESCALA px: o voxel mede TILE×ESCALA, então o mundo fica px/TILE. */
 const PX = ESCALA;
@@ -29,6 +33,9 @@ function desenharSombra(ctx, x, y, escala) {
 
 function desenharCorpo(ctx, ator) {
   const alfa = ator.faccao === "party" ? alfaSprites() : 1;
+  const espEvo = especieVisualEvolucao(ator);
+  const espBackup = ator.especie;
+  if (espEvo) ator.especie = espEvo;
   const medida = medidaSprite(ator);
   const { escala, offsetY, dx, dy } = medida;
   const chaoX = mundoParaTelaX(ator.x);
@@ -42,15 +49,18 @@ function desenharCorpo(ctx, ator) {
   const pronto = !!(fr && pack.img && pack.estado === "pronto");
   const centro = centroDoQuadro(fr, medida);
   const { sx, sy } = squashAndar(ator);
+  const evo = brilhoEvolucao(ator);
+  const evoEscala = evo > 0 ? 1 + evo * 0.12 : 1;
   if (alfa > 0.04) desenharSombra(ctx, chaoX + centro.x * PX * escala, chaoY, escala * alfa * sx);
   ctx.save();
   ctx.globalAlpha = alfa;
   ctx.imageSmoothingEnabled = false;
-  if (sx !== 1 || sy !== 1) {
+  if (sx !== 1 || sy !== 1 || evoEscala !== 1) {
     ctx.translate(footX, footY);
-    ctx.scale(sx, sy);
+    ctx.scale(sx * evoEscala, sy * evoEscala);
     ctx.translate(-footX, -footY);
   }
+  if (evo > 0.02) ctx.filter = `brightness(${1 + evo * 1.8}) saturate(${1 - evo * 0.85})`;
   if (pronto) {
     blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala, { dx, dy });
   } else {
@@ -60,10 +70,21 @@ function desenharCorpo(ctx, ator) {
     ctx.arc(footX, footY - 16 * escala, 12 * escala, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.filter = "none";
   ctx.restore();
+  if (espEvo) ator.especie = espBackup;
   cobrirPernasAgua(ctx, ator, retanguloAgua(pronto ? fr : null, medida, footX, footY));
   desenharKi(ctx, ator, footX, footY, escala);
   desenharFlashCorpo(ctx, ator, footX, footY, escala);
+  if (evo > 0.02) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.75, 0.2 + evo * 0.45);
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(footX, footY - 18 * escala, 22 * escala * (0.9 + evo * 0.35), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 /** Caixa do sprite, do mesmo jeito que o blit, para o véu da água. */

@@ -4,17 +4,20 @@
 import * as THREE from "three";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
-import { ALTURA_BLOCO } from "../../config.js";
+import { ALTURA_BLOCO, POKEMON } from "../../config.js";
 import {
   BASE_PALHA,
   PALHA_ALTURA_ALVO,
   PALHA_RAIO_SYNC,
 } from "../../mundo/overworld/catalogoPalha.js";
+import { alturaEm } from "../../mundo/altura.js";
 import { listarLaresProximos } from "../../pokemon/laresMapa.js";
 import { sincronizarPalha } from "../../fisica/palha.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
 
 const CAP = 128;
+/** Folga pra não z-fightar com o chão voxel. */
+const LIFT_Y = 0.04;
 const _pos = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 const _esc = new THREE.Vector3(1, 1, 1);
@@ -27,8 +30,15 @@ let grupo = null;
 let malhas = null;
 /** @type {Promise<void> | null} */
 let pedido = null;
+/** @type {THREE.Scene | null} */
+let cenaRef = null;
 let escala = 1;
 let pronto = false;
+
+function raioSync() {
+  const r = Number(POKEMON?.RAIO_LARES);
+  return Number.isFinite(r) && r > 0 ? Math.max(r, PALHA_RAIO_SYNC) : PALHA_RAIO_SYNC;
+}
 
 function consertarNormais(geo) {
   const normal = geo.getAttribute("normal");
@@ -50,11 +60,12 @@ function ajustarMaterial(mat) {
     const m = lista[i];
     if (!m) continue;
     const novo = new THREE.MeshLambertMaterial({
-      name: m.name || "",
+      name: m.name || "palha",
       map: m.map || null,
       color: 0xffffff,
-      alphaTest: 0.15,
+      alphaTest: 0.05,
       side: THREE.DoubleSide,
+      depthWrite: true,
     });
     if (novo.map) {
       novo.map.colorSpace = THREE.SRGBColorSpace;
@@ -83,6 +94,48 @@ function carregarObj() {
       },
       undefined,
       reject,
+    );
+  });
+}
+
+/** Se o MTL não trouxe mapa (nome wara.png às vezes falha), aplica a textura na mão. */
+function garantirTextura(raiz) {
+  return new Promise((resolve) => {
+    let precisa = false;
+    raiz.traverse((filho) => {
+      if (!filho.isMesh) return;
+      const mats = Array.isArray(filho.material) ? filho.material : [filho.material];
+      for (let i = 0; i < mats.length; i++) {
+        if (mats[i] && !mats[i].map) precisa = true;
+      }
+    });
+    if (!precisa) {
+      resolve(raiz);
+      return;
+    }
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      `${BASE_PALHA}wara.png`,
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
+        tex.needsUpdate = true;
+        raiz.traverse((filho) => {
+          if (!filho.isMesh) return;
+          const mats = Array.isArray(filho.material) ? filho.material : [filho.material];
+          for (let i = 0; i < mats.length; i++) {
+            if (mats[i] && !mats[i].map) {
+              mats[i].map = tex;
+              mats[i].needsUpdate = true;
+            }
+          }
+        });
+        resolve(raiz);
+      },
+      undefined,
+      () => resolve(raiz),
     );
   });
 }
@@ -116,13 +169,10 @@ function prepararPartes(raiz) {
     const geo = filho.geometry.clone();
     filho.updateWorldMatrix(true, false);
     geo.applyMatrix4(filho.matrixWorld);
-    // Origem no centro XZ / base Y
     geo.translate(-cx, -cy, -cz);
     geo.computeBoundingSphere();
     geo.computeBoundingBox();
-    const mat = Array.isArray(filho.material)
-      ? filho.material[0]
-      : filho.material;
+    const mat = Array.isArray(filho.material) ? filho.material[0] : filho.material;
     if (!mat || mat.visible === false) return;
     partes.push({ geo, mat: mat.clone() });
   });
@@ -130,32 +180,42 @@ function prepararPartes(raiz) {
   return partes;
 }
 
+function montarMalhas(raiz) {
+  const partes = prepararPartes(raiz);
+  grupo = new THREE.Group();
+  grupo.name = "palha-lares";
+  malhas = [];
+  for (let i = 0; i < partes.length; i++) {
+    const { geo, mat } = partes[i];
+    const mesh = new THREE.InstancedMesh(geo, mat, CAP);
+    mesh.name = `palha-parte-${i}`;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    // Instâncias espalhadas: BS do molde na origem culla tudo longe do (0,0).
+    mesh.frustumCulled = false;
+    mesh.count = 0;
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    grupo.add(mesh);
+    malhas.push(mesh);
+  }
+  if (cenaRef) cenaRef.add(grupo);
+  pronto = true;
+}
+
 function garantirMalhas(scene) {
+  cenaRef = scene;
   if (malhas || pedido) return;
   pedido = carregarObj()
+    .then((raiz) => garantirTextura(raiz))
     .then((raiz) => {
-      const partes = prepararPartes(raiz);
-      grupo = new THREE.Group();
-      grupo.name = "palha-lares";
-      malhas = [];
-      for (let i = 0; i < partes.length; i++) {
-        const { geo, mat } = partes[i];
-        const mesh = new THREE.InstancedMesh(geo, mat, CAP);
-        mesh.name = `palha-parte-${i}`;
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.frustumCulled = true;
-        mesh.count = 0;
-        mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        grupo.add(mesh);
-        malhas.push(mesh);
-      }
-      scene.add(grupo);
-      pronto = true;
+      montarMalhas(raiz);
     })
     .catch((err) => {
       console.error("palha 3d", err);
       pedido = null;
+      pronto = false;
+      malhas = null;
+      grupo = null;
     });
 }
 
@@ -166,6 +226,9 @@ export function criarPalhaLar3d(scene) {
   garantirMalhas(scene);
   return {
     atualizar: atualizarPalhaLares,
+    get grupo() {
+      return grupo;
+    },
   };
 }
 
@@ -175,20 +238,25 @@ export function criarPalhaLar3d(scene) {
  * @param {number} py
  */
 export function atualizarPalhaLares(px, py) {
-  if (!pronto || !malhas || !grupo) return;
+  if (!pronto || !malhas || !grupo) {
+    if (cenaRef && !malhas && !pedido) garantirMalhas(cenaRef);
+    return;
+  }
   if (estadoJogo.interior?.sala3d) {
     grupo.visible = false;
     for (let m = 0; m < malhas.length; m++) malhas[m].count = 0;
     return;
   }
   grupo.visible = true;
-  const lista = listarLaresProximos(px, py, PALHA_RAIO_SYNC);
+  const lista = listarLaresProximos(px, py, raioSync());
   sincronizarPalha(px, py, lista);
   const n = Math.min(lista.length, CAP);
   _esc.set(escala, escala, escala);
   for (let i = 0; i < n; i++) {
     const lar = lista[i];
-    _pos.set(lar.x, (lar.z || 0) * ALTURA_BLOCO, lar.y);
+    const hz = alturaEm(Math.floor(lar.x), Math.floor(lar.y));
+    const y = (Number.isFinite(hz) && hz > 0 ? hz : lar.z || 0) * ALTURA_BLOCO + LIFT_Y;
+    _pos.set(lar.x, y, lar.y);
     _eul.set(0, yawDoLar(lar), 0);
     _quat.setFromEuler(_eul);
     _mat4.compose(_pos, _quat, _esc);
@@ -199,5 +267,8 @@ export function atualizarPalhaLares(px, py) {
   for (let m = 0; m < malhas.length; m++) {
     malhas[m].count = n;
     malhas[m].instanceMatrix.needsUpdate = true;
+    if (n > 0) {
+      malhas[m].computeBoundingSphere();
+    }
   }
 }

@@ -145,6 +145,7 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
   if (defGolpe?.tipo) tentarDerreter(alvo, defGolpe.tipo, efeitos);
   const dano = travado.dano | 0;
   const efet = travado.efet || 1;
+  const crit = !!travado.crit;
   alvo.hp -= dano;
   if (alvo.sonoNatural) alvo.sonoNatural = false;
   if ((alvo.dormindo || 0) > 0 && alvo.status !== "sleep") alvo.dormindo = 0;
@@ -156,10 +157,17 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
   }
   marcarPose(alvo, "Hurt", agora);
   const recuo = iniciarRecuo(alvo, atacante, dano, agora);
-  efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
+  const destaque = crit || efet > 1;
+  efeitos.flutuar(
+    alvo,
+    String(dano) + (crit ? "!" : ""),
+    destaque ? "#fbbf24" : "#f8fafc",
+    destaque ? { efeito: "super" } : {}
+  );
   tocarAcerto(alvo, efet, {
     dano,
     basico: golpeEhBasico(atacante, defGolpe),
+    crit,
   });
   if (efeitos.aoImpacto) efeitos.aoImpacto(alvo, "", efet);
   notar(efeitos, {
@@ -167,6 +175,7 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
     alvo,
     dano,
     efet,
+    crit,
     recuo: recuo.tempo,
     dist: recuo.dist,
   });
@@ -225,7 +234,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     return;
   }
   tentarDerreter(alvo, tipo, efeitos);
-  const { dano, efet } = calcularDano(atacante, alvo, poder, tipo, categoria);
+  const { dano, efet, crit } = calcularDano(atacante, alvo, poder, tipo, categoria);
   if (efet === 0 || dano <= 0) {
     efeitos.flutuar(alvo, "imune", "#94a3b8");
     alvo.iframe = 0.2;
@@ -245,11 +254,18 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
   if (alvo.hp > 0) subirFuria(alvo, efeitos, agora);
   marcarPose(alvo, "Hurt", agora);
   const recuo = iniciarRecuo(alvo, atacante, dano, agora);
-  efeitos.flutuar(alvo, String(dano), efet > 1 ? "#fbbf24" : "#f8fafc");
+  const destaque = crit || efet > 1;
+  efeitos.flutuar(
+    alvo,
+    String(dano) + (crit ? "!" : ""),
+    destaque ? "#fbbf24" : "#f8fafc",
+    destaque ? { efeito: "super" } : {}
+  );
   const def = defGolpe || atacante?.golpeSlot?.def;
   tocarAcerto(alvo, efet, {
     dano,
     basico: golpeEhBasico(atacante, def),
+    crit: !!crit,
   });
   if (efeitos.aoImpacto) efeitos.aoImpacto(alvo, tipo, efet);
   notar(efeitos, {
@@ -257,6 +273,7 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     alvo,
     dano,
     efet,
+    crit: !!crit,
     recuo: recuo.tempo,
     dist: recuo.dist,
   });

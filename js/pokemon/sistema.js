@@ -41,6 +41,7 @@ import { aoLiberarSom } from "../jogo/audio.js";
 import { aquecerGrito, tickGritosAmbiente } from "../jogo/som/gritos.js";
 import { markSpeciesSeen } from "../jogo/pokedex/progresso.js";
 import { entrarMorte, jogadorMorto } from "../jogo/hud/morte.js";
+import { enfileirarEvolucao, tickEvolucaoCinema } from "./evolucaoCinema.js";
 
 aoLiberarSom(() => {
   aquecerGrito(pokemonNoCampo());
@@ -88,6 +89,7 @@ const efeitos = {
         aplicarNivel(p, p.nivel + 1);
         flutuar(p, `Nv ${p.nivel}`, "#fde68a");
         tocarLevelUp(p);
+        enfileirarEvolucao(p);
       }
     }
   },
@@ -212,6 +214,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   }
   tickEmocoes(visiveis, passo);
   for (let i = 0; i < visiveis.length; i++) tickVisual(visiveis[i], passo, agora);
+  tickEvolucaoCinema();
   tickFlutuantes(passo);
   tickParticulas(passo);
   tickFx(passo);

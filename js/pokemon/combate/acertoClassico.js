@@ -29,14 +29,20 @@ export function acertaClassico(atacante, alvo, def, rng = Math.random) {
 
 /** Tira acerto e dano antes da cena. A animação só mostra isto. */
 export function resolverTurno(atacante, alvo, def, rng = Math.random) {
-  const comum = { alvo, dano: 0, efet: 0 };
+  const comum = { alvo, dano: 0, efet: 0, crit: false };
   if (!acertaClassico(atacante, alvo, def, rng)) {
     return { ...comum, acertou: false, imune: false };
   }
   if ((def?.poder || 0) <= 0) return { ...comum, acertou: true, imune: false };
-  const { dano, efet } = calcularDano(atacante, alvo, def.poder || 0, def.tipo, def.categoria);
+  const { dano, efet, crit } = calcularDano(
+    atacante,
+    alvo,
+    def.poder || 0,
+    def.tipo,
+    def.categoria
+  );
   if (efet === 0 || dano <= 0) return { ...comum, acertou: false, imune: true };
-  return { ...comum, acertou: true, imune: false, dano, efet };
+  return { ...comum, acertou: true, imune: false, dano, efet, crit: !!crit };
 }
 
 const CAMPO_ESTAGIO = {
