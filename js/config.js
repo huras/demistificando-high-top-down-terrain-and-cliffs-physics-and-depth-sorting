@@ -495,6 +495,8 @@ export const POKEMON = Object.freeze({
   RAIO_AVISO: 7,
   RAIO_AGRO: 9,
   RAIO_SOLTA: 13.5,
+  /** Selvagem só mira o jogador se o party estiver a mais que isto × a dist. do jogador. */
+  MULT_ALVO_JOGADOR: 2,
   ESPERA_MIN: 1.2,
   ESPERA_MAX: 3.8,
   RESPAWN: 60,

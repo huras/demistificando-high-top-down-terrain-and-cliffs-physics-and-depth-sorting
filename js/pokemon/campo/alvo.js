@@ -132,21 +132,21 @@ export function escolherAlvoWild(ator, partyMon, jogador) {
   }
   if (!ator.hostil && ator.modo !== "agro") return null;
 
-  let melhor = null;
-  let melhorD = Infinity;
   const raio = (ator.hostil ? POKEMON.RAIO_AGRO : POKEMON.RAIO_AGRO * 2) ** 2;
-  if (vivo(partyMon)) {
-    const d = dist2(ator, partyMon);
-    if (d < raio && d < melhorD) {
-      melhor = partyMon;
-      melhorD = d;
-    }
+  const partyVivo = vivo(partyMon);
+  const dParty = partyVivo ? dist2(ator, partyMon) : Infinity;
+  const partyNoRaio = partyVivo && dParty < raio;
+
+  const jogOk = jogador && !jogador.morto && jogador.hp > 0;
+  const dJog = jogOk ? dist2(ator, jogador) : Infinity;
+  const jogNoRaio = jogOk && dJog < raio;
+
+  if (jogNoRaio) {
+    const prefere = ator.prefereParty && partyVivo;
+    const mult = POKEMON.MULT_ALVO_JOGADOR;
+    const partyLonge = !partyVivo || dParty > mult * mult * dJog;
+    if (!prefere && partyLonge) return jogador;
   }
-  if (jogador && !jogador.morto && jogador.hp > 0) {
-    const d = dist2(ator, jogador);
-    const prefere = ator.prefereParty && vivo(partyMon);
-    if (!prefere && d < raio && d < melhorD) melhor = jogador;
-    if (!vivo(partyMon) && d < raio) melhor = d < melhorD ? jogador : melhor;
-  }
-  return melhor;
+  if (partyNoRaio) return partyMon;
+  return null;
 }

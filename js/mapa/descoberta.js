@@ -1,6 +1,7 @@
 /**
  * Discovery de berries e wild homes para pins de mapa.
- * Espécie do pin sempre reconcilia com o sorteio atual (nível / portões).
+ * Espécie só muda com snapshot canônico (resolver do lar); evita flicker
+ * quando o terreno ainda não streamou ou o ator diverge do sorteio.
  */
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { selvagensAtivos } from "../pokemon/populacao.js";
@@ -37,15 +38,24 @@ export function wildsDescobertos() {
   return wilds;
 }
 
+/** Extrai "cx,cy,i" de id de ator (`lar-1,2,0` ou `lar-1,2,0-1`). */
+function larIdDeAtor(atorId) {
+  const raw = String(atorId || "");
+  if (!raw.startsWith("lar-")) return "";
+  const m = raw.slice(4).match(/^(-?\d+),(-?\d+),(\d+)/);
+  return m ? `${m[1]},${m[2]},${m[3]}` : "";
+}
+
 /**
- * Snapshot canônico do lar (sorteio + portão de nível), com fallback do info.
  * @param {string} larId
  * @param {{ x?: number, y?: number, speciesKey?: string, dex?: number, shiny?: boolean } | null} [info]
+ * @returns {{ canonico: boolean, x: number, y: number, speciesKey: string, dex: number, shiny: boolean }}
  */
 function snapshotDoLar(larId, info = null) {
   const lar = resolverLarPorId(larId);
   if (lar) {
     return {
+      canonico: true,
       x: lar.x,
       y: lar.y,
       speciesKey: lar.speciesKey,
@@ -54,6 +64,7 @@ function snapshotDoLar(larId, info = null) {
     };
   }
   return {
+    canonico: false,
     x: Number(info?.x) || 0,
     y: Number(info?.y) || 0,
     speciesKey: String(info?.speciesKey || "pidgey"),
@@ -63,7 +74,6 @@ function snapshotDoLar(larId, info = null) {
 }
 
 /**
- * Atualiza espécie/dex se o portão de spawn mudou (não recria o pin).
  * @param {string} id
  * @param {ReturnType<typeof snapshotDoLar>} snap
  */
@@ -80,14 +90,23 @@ function aplicarSnap(id, snap) {
     bump();
     return true;
   }
+
   let mudou = false;
-  if (prev.speciesKey !== snap.speciesKey) {
-    prev.speciesKey = snap.speciesKey;
-    mudou = true;
-  }
-  if ((prev.dex | 0) !== (snap.dex | 0)) {
-    prev.dex = snap.dex | 0;
-    mudou = true;
+  // Posição só do resolver (estável); fallback não empurra coords.
+  if (snap.canonico) {
+    if (prev.x !== snap.x || prev.y !== snap.y) {
+      prev.x = snap.x;
+      prev.y = snap.y;
+      mudou = true;
+    }
+    if (prev.speciesKey !== snap.speciesKey) {
+      prev.speciesKey = snap.speciesKey;
+      mudou = true;
+    }
+    if ((prev.dex | 0) !== (snap.dex | 0)) {
+      prev.dex = snap.dex | 0;
+      mudou = true;
+    }
   }
   if (snap.shiny && !prev.shiny) {
     prev.shiny = true;
@@ -124,7 +143,7 @@ export function descobrirWild(larId, info) {
   return aplicarSnap(id, snapshotDoLar(id, info));
 }
 
-/** Reaplica portões de nível em todos os wilds já descobertos (save / hotfix). */
+/** Reaplica portões de nível quando o resolver consegue (save / hotfix). */
 export function reconciliarWildsDescobertos() {
   let mudou = false;
   for (const id of wilds.keys()) {
@@ -157,12 +176,28 @@ export function tickDescobertaMapa(corpo, opts = {}) {
   for (let i = 0; i < ativos.length; i++) {
     const a = ativos[i];
     if (!a?.id?.startsWith("lar-") || a.capturado) continue;
-    const larId = a.id.slice(4);
+    const larId = larIdDeAtor(a.id);
+    if (!larId) continue;
     const hx = a.casaX ?? a.x;
     const hy = a.casaY ?? a.y;
     const dx = hx - px;
     const dy = hy - py;
     if (dx * dx + dy * dy > r * r) continue;
+    // Já conhecido: só reconcilia via resolver (candidatos / snapshot canônico).
+    if (wilds.has(larId)) {
+      const lar = resolverLarPorId(larId);
+      if (lar) {
+        aplicarSnap(larId, {
+          canonico: true,
+          x: lar.x,
+          y: lar.y,
+          speciesKey: lar.speciesKey,
+          dex: lar.dex | 0,
+          shiny: !!a.shiny || !!lar.shiny,
+        });
+      }
+      continue;
+    }
     descobrirWild(larId, {
       x: hx,
       y: hy,

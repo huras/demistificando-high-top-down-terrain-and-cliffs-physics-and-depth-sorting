@@ -1,12 +1,14 @@
 /**
  * Cascas de interior em par: reta (mira) + inclinada −45° (órbita top-down).
- * Lean fixo no eixo da parede — sem yaw pra câmera.
+ * Lean fixo pro norte da casa (−Z) — igual ao eixo do billboard, sem yaw pra câmera.
  */
 import * as THREE from "three";
 import { BILLBOARD_INCLINACAO } from "../../config.js";
 
 const LIMIAR_INCLINADA = 0.15;
 const LIMIAR_RETA = 0.08;
+/** Topo deita pro norte (−Z). Oposto do sinal do cartão que deita no +Z da face. */
+const LEAN_NORTE = -BILLBOARD_INCLINACAO;
 
 /** @type {{ reta: THREE.Object3D, inclinada: THREE.Object3D }[]} */
 const faixas = [];
@@ -36,9 +38,7 @@ function materialFace(materiais, aoLongoX, paraDentroPositivo) {
 export function criarFaixaParede(opts) {
   const { x, y, z, w, d, h, materiais, cxSala, czSala } = opts;
   const aoLongoX = w >= d;
-  const dx = cxSala - x;
-  const dz = czSala - z;
-  const paraDentroPositivo = aoLongoX ? dz >= 0 : dx >= 0;
+  const paraDentroPositivo = aoLongoX ? czSala - z >= 0 : cxSala - x >= 0;
 
   const grupo = new THREE.Group();
   grupo.position.set(x, y, z);
@@ -52,25 +52,30 @@ export function criarFaixaParede(opts) {
 
   const comprimento = aoLongoX ? w : d;
   const mat = materialFace(materiais, aoLongoX, paraDentroPositivo);
-  const inclinada = new THREE.Mesh(new THREE.PlaneGeometry(comprimento, h), mat);
-  inclinada.name = "parede-inclinada";
-  inclinada.geometry.translate(0, h * 0.5, 0);
-  inclinada.position.set(
-    aoLongoX ? 0 : paraDentroPositivo ? w * 0.5 : -w * 0.5,
-    -h * 0.5,
-    aoLongoX ? (paraDentroPositivo ? d * 0.5 : -d * 0.5) : 0,
-  );
-  inclinada.rotation.order = "YXZ";
-  if (aoLongoX) inclinada.rotation.y = paraDentroPositivo ? 0 : Math.PI;
-  else inclinada.rotation.y = paraDentroPositivo ? -Math.PI / 2 : Math.PI / 2;
-  inclinada.rotation.x = BILLBOARD_INCLINACAO;
-  inclinada.castShadow = false;
-  inclinada.receiveShadow = true;
-  inclinada.visible = modoAtual === "inclinada";
+
+  // Pivot no pé: lean world-X pro norte; filho só orienta a face da parede.
+  const pivot = new THREE.Group();
+  pivot.name = "parede-inclinada";
+  pivot.position.set(0, -h * 0.5, 0);
+  pivot.rotation.x = LEAN_NORTE;
+
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(comprimento, h), mat);
+  face.geometry.translate(0, h * 0.5, 0);
+  if (aoLongoX) {
+    face.rotation.y = paraDentroPositivo ? 0 : Math.PI;
+    face.position.z = paraDentroPositivo ? d * 0.5 : -d * 0.5;
+  } else {
+    face.rotation.y = paraDentroPositivo ? -Math.PI / 2 : Math.PI / 2;
+    face.position.x = paraDentroPositivo ? w * 0.5 : -w * 0.5;
+  }
+  face.castShadow = false;
+  face.receiveShadow = true;
+  pivot.add(face);
+  pivot.visible = modoAtual === "inclinada";
 
   grupo.add(reta);
-  grupo.add(inclinada);
-  faixas.push({ reta, inclinada });
+  grupo.add(pivot);
+  faixas.push({ reta, inclinada: pivot });
   return grupo;
 }
 

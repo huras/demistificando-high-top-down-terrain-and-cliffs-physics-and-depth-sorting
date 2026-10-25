@@ -3,11 +3,13 @@ import { flutuantes } from "./flutuantes.js";
 import { bolaEmMira, cargaAtual } from "./captura.js";
 import { alvoDeOrdem } from "./party.js";
 import { pedirRetrato } from "./retrato.js";
+import { PACK_ROLE } from "./pack.js";
 import { atoresVisiveis, pokemonLigado, relogioPokemon } from "./sistema.js";
 import { ALTURA_BLOCO } from "../config.js";
 import { COR_TIPO, nomeTipo } from "./tipos.js";
 import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { hotbarAtivo, contar, uiAberta } from "../jogo/estado.js";
+import { getSpeciesDexStatus } from "../jogo/pokedex/progresso.js";
 import { TIPO_ITEM } from "../wild/catalogo.js";
 import * as THREE from "three";
 
@@ -360,6 +362,52 @@ export function desenharAlvoOrdem(ctx, projetar, projetarPes, sobCursor, comAnel
   return alvo;
 }
 
+function desenharBolaCaptura(ctx, cx, cy, size) {
+  const r = size / 2;
+  if (![cx, cy, r].every(Number.isFinite) || r <= 0) return;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = "#f5f5f5";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, Math.PI, 0, false);
+  ctx.closePath();
+  ctx.fillStyle = "#c62828";
+  ctx.fill();
+  const faixa = Math.max(1, r * 0.2);
+  ctx.fillStyle = "#111";
+  ctx.fillRect(-r, -faixa / 2, r * 2, faixa);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = Math.max(0.8, r * 0.12);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.28, 0, Math.PI * 2);
+  ctx.fillStyle = "#f5f5f5";
+  ctx.fill();
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = Math.max(0.7, r * 0.1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function rotuloHoverPokemon(ator) {
+  let nome = ator.especie?.nome || "Pokémon";
+  if (ator.shiny) nome = `✨ ${nome}`;
+  if (ator.packRole === PACK_ROLE.LEADER) nome = `👑 ${nome}`;
+  return nome;
+}
+
+function mostrarBolaPego(ator) {
+  if (!ator || ator.faccao !== "selvagem") return false;
+  const key = ator.especie?.key;
+  if (!key) return false;
+  return getSpeciesDexStatus(key) === "caught";
+}
+
 /**
  * Placa com nome, nível e tipos do Pokémon sob o cursor.
  */
@@ -373,8 +421,12 @@ export function desenharHoverPokemon(ctx, ator, projetar, projetarPes, comAnel =
   if (pes && comAnel) desenharAnel(ctx, pes, ANEL_HOVER, 0);
 
   const tipos = ator.tipos || ator.especie?.tipos || [];
-  const nome = `${ator.shiny ? "★ " : ""}${ator.especie?.nome || "Pokémon"}`;
+  const nome = rotuloHoverPokemon(ator);
   const nivel = `Nv ${ator.nivel | 0}`;
+  const comBola = mostrarBolaPego(ator);
+  const ballSize = 12;
+  const ballGap = 4;
+  const ballW = comBola ? ballSize + ballGap : 0;
   ctx.save();
   ctx.font = "700 14px Segoe UI, sans-serif";
   ctx.textBaseline = "middle";
@@ -390,7 +442,7 @@ export function desenharHoverPokemon(ctx, ator, projetar, projetarPes, comAnel =
     chipsW += w;
     if (i) chipsW += 4;
   }
-  const miolo = Math.max(nomeW + 10 + nivelW, chipsW);
+  const miolo = Math.max(ballW + nomeW + 10 + nivelW, chipsW);
   const largura = miolo + 20;
   const altura = chips.length ? 46 : 28;
   const canvas = ctx.canvas;
@@ -410,10 +462,16 @@ export function desenharHoverPokemon(ctx, ator, projetar, projetarPes, comAnel =
   ctx.font = "700 14px Segoe UI, sans-serif";
   ctx.textAlign = "left";
   ctx.fillStyle = ator.morto ? "#a8a29e" : "#f8fafc";
-  ctx.fillText(nome, x + 10, y + 14);
+  const nomeY = y + 14;
+  let nomeX = x + 10;
+  if (comBola) {
+    desenharBolaCaptura(ctx, nomeX + ballSize * 0.5, nomeY, ballSize);
+    nomeX += ballW;
+  }
+  ctx.fillText(nome, nomeX, nomeY);
   ctx.fillStyle = "rgba(255, 236, 180, 0.95)";
   ctx.textAlign = "right";
-  ctx.fillText(nivel, x + largura - 10, y + 14);
+  ctx.fillText(nivel, x + largura - 10, nomeY);
 
   ctx.font = "700 11px Segoe UI, sans-serif";
   ctx.textAlign = "center";
