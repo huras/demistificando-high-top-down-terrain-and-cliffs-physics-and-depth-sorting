@@ -52,10 +52,13 @@ export const INICIAIS_LAB = Object.freeze([
 const NPCS = Object.freeze([
   Object.freeze({
     id: "oak",
+    peopleId: "pt-prof-oak",
     nome: "Professor Carvalho",
     papel: "professor",
+    sexo: "male",
+    origem: "platinum",
     coluna: 93,
-    retrato: "/ref/imgs/characters/dp-prof-oak/frontal-shot.png",
+    retrato: "/assets/people/retratos/dp-prof-oak/frontal-shot.png",
     alcance: 1.55,
     fala: Object.freeze([
       "Bem-vindo ao laboratório.",
@@ -65,9 +68,12 @@ const NPCS = Object.freeze([
   }),
   Object.freeze({
     id: "elena",
+    peopleId: "pt-scientist",
     nome: "Elena",
+    sexo: "female",
+    origem: "platinum",
     coluna: 43,
-    retrato: "/ref/imgs/characters/prof-aide-elena/frontal-shot.png",
+    retrato: "/assets/people/retratos/prof-aide-elena/frontal-shot.png",
     alcance: 1.2,
     fala: Object.freeze([
       "Estou passando a limpo as anotações de campo.",
@@ -76,9 +82,12 @@ const NPCS = Object.freeze([
   }),
   Object.freeze({
     id: "maya",
+    peopleId: "pt-scientist",
     nome: "Maya",
+    sexo: "female",
+    origem: "platinum",
     coluna: 43,
-    retrato: "/ref/imgs/characters/prof-aide-maya/frontal-shot.png",
+    retrato: "/assets/people/retratos/prof-aide-maya/frontal-shot.png",
     alcance: 1.2,
     presente: "lab-bolas-maya",
     fala: Object.freeze([
@@ -92,9 +101,12 @@ const NPCS = Object.freeze([
   }),
   Object.freeze({
     id: "rina",
+    peopleId: "pt-scientist",
     nome: "Rina",
+    sexo: "female",
+    origem: "platinum",
     coluna: 43,
-    retrato: "/ref/imgs/characters/prof-aide-rina/frontal-shot.png",
+    retrato: "/assets/people/retratos/prof-aide-rina/frontal-shot.png",
     alcance: 1.2,
     fala: Object.freeze([
       "Esses computadores cruzam os dados de captura.",

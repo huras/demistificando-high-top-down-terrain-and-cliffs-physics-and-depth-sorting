@@ -814,6 +814,18 @@ export function lerPlaca(placa) {
   avisar();
 }
 
+/** Abre diálogo a partir de um NPC do runtime (cidade / viajante / casa). */
+export function falarNpcMundo(npc) {
+  if (!npc) return;
+  estado.dialogo = {
+    nome: npc.nome,
+    linhas: (npc.fala || ["…"]).slice(),
+    i: 0,
+    retrato: npc.retrato || "",
+  };
+  avisar();
+}
+
 export function falarCom(alvo) {
   if (!alvo) return;
   const ref = alvo.ref;
@@ -824,6 +836,7 @@ export function falarCom(alvo) {
       i: 0,
       acao: ref.acao || "",
       escolhas: ref.escolhas || null,
+      retrato: ref.retrato || "",
     };
     avisar();
     return;

@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "masculino": ["Alex", "Bruno", "Carlos", "Diego", "Edu", "Felipe", "Hugo", "Igor", "João", "Leo", "Marco", "Nico"],
+  "feminino": ["Ana", "Bia", "Clara", "Duda", "Elena", "Fran", "Gabi", "Helena", "Iris", "Julia", "Kaia", "Lia"],
+  "neutro": ["Alex", "Chris", "Sam", "Robin", "Kai", "Ari"]
+}

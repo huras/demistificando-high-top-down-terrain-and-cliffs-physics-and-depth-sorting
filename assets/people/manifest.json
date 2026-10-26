@@ -1,0 +1,605 @@
+{
+  "sheetCols": 4,
+  "sheetRows": 4,
+  "displayScale": 0.5,
+  "walkDurationsMs": [
+    280,
+    140,
+    280,
+    140
+  ],
+  "people": [
+    {
+      "id": "nurse-joy",
+      "name": "Nurse Joy",
+      "file": "logic 1/pokemon_melanite___stranger__npc_41__bw_sprite_by_0nadina0_da8oe2r.png"
+    },
+    {
+      "id": "jenny",
+      "name": "Officer Jenny",
+      "file": "logic 1/agente_mara__officer_jenny_ow_4th_gen_style__by_pandaindagame_ddy8gs7.png"
+    },
+    {
+      "id": "jenny-blonde",
+      "name": "Officer Jenny (Blonde)",
+      "file": "logic 1/officer-jenny-blonde-hair.png"
+    },
+    {
+      "id": "jenny-purple",
+      "name": "Officer Jenny (Purple)",
+      "file": "logic 1/officer-jenny-purple-hair.png"
+    },
+    {
+      "id": "grunt",
+      "name": "Team Flare Grunt",
+      "file": "logic 1/bw_flare_grunt_m_by_rocklicker42_dk9rbz4.png"
+    },
+    {
+      "id": "dawn",
+      "name": "Dawn Legends Arceus",
+      "file": "logic 1/defzq4z-fed95d2c-abe9-43db-8407-38671815536e.png"
+    },
+    {
+      "id": "gold",
+      "name": "Gold",
+      "file": "logic 1/gold_by_5ergi0mar_de30nyi.png"
+    },
+    {
+      "id": "erika",
+      "name": "Erika",
+      "file": "logic 1/gym_leader_erika_bw2_by_rocklicker42_dkk3bnn.png"
+    },
+    {
+      "id": "kimono",
+      "name": "Kimono Girl",
+      "file": "logic 1/kimono_girl_hgss_in_gen_5_ow_style_by_rocklicker42_dkk3bnj.png"
+    },
+    {
+      "id": "kris",
+      "name": "Kris",
+      "file": "logic 1/kris_by_5ergi0mar_de3i7r1.png"
+    },
+    {
+      "id": "silver",
+      "name": "Silver",
+      "file": "logic 1/silver_overworld_bw_style_gen_5_sprite_by_rocklicker42_dk9r9ue.png"
+    },
+    {
+      "id": "red",
+      "name": "Red",
+      "file": "logic 1/kanto___red_by_wergan_dm1wxre.png"
+    },
+    {
+      "id": "blue",
+      "name": "Blue",
+      "file": "logic 1/kanto___blue_by_wergan_dm15jld.png"
+    },
+    {
+      "id": "leaf",
+      "name": "Leaf",
+      "file": "logic 1/kanto___leaf_by_wergan_dm15lch.png"
+    },
+    {
+      "id": "kanto-erika-wergan",
+      "name": "Erika",
+      "file": "logic 1/kanto___erika_by_wergan_dm1y1q2.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-major-bob",
+      "name": "Lt. Surge",
+      "file": "logic 1/kanto___majorbob_by_wergan_dm1xxb0.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-misty-lets-go",
+      "name": "Misty (Let's Go)",
+      "file": "logic 1/kanto___ondine__let_s_go__by_wergan_dm1wgqd.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-misty",
+      "name": "Misty",
+      "file": "logic 1/kanto___ondine_by_wergan_dm1wgqo.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-agatha",
+      "name": "Agatha",
+      "file": "logic 1/KANTO-Agatha-1333451784.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-referee",
+      "name": "Referee",
+      "file": "logic 1/KANTO-Arbitre-1333384204.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-aroma-lady",
+      "name": "Aroma Lady",
+      "file": "logic 1/KANTO-Aroma-1333384199.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-artist",
+      "name": "Artist",
+      "file": "logic 1/KANTO-Artiste-1333384194.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-baoba",
+      "name": "Baoba",
+      "file": "logic 1/KANTO-Baoba-1333384189.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-blaine",
+      "name": "Blaine",
+      "file": "logic 1/KANTO-Blaine-1333452970.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-blaine-2",
+      "name": "Blaine",
+      "file": "logic 1/KANTO-Blaine-1333452978.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-blaine-hgss",
+      "name": "Blaine (HGSS)",
+      "file": "logic 1/KANTO-Blaine-HG-SS-1333452965.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-bruno",
+      "name": "Bruno",
+      "file": "logic 1/KANTO-Bruno-1333451757.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-bruno-hgss",
+      "name": "Bruno (HGSS)",
+      "file": "logic 1/KANTO-Bruno-HG-SS-1333451771.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-bruno-lets-go",
+      "name": "Bruno (Let's Go)",
+      "file": "logic 1/KANTO-Bruno-Let-s-Go-1333451745.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-camper",
+      "name": "Camper",
+      "file": "logic 1/KANTO-Camping-1333452955.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-picnicker",
+      "name": "Picnicker",
+      "file": "logic 1/KANTO-Camping-female-1333452946.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-beauty",
+      "name": "Beauty",
+      "file": "logic 1/KANTO-Canon-1333471482.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-captain",
+      "name": "Captain",
+      "file": "logic 1/KANTO-Capitaine-1333471471.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-battle-girl",
+      "name": "Battle Girl",
+      "file": "logic 1/KANTO-Combattante-1333524033.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-copycat",
+      "name": "Copycat",
+      "file": "logic 1/KANTO-Copieuse-1332198274.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-delia",
+      "name": "Delia",
+      "file": "logic 1/KANTO-Delia-1333471464.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-tamer",
+      "name": "Tamer",
+      "file": "logic 1/KANTO-Dompteur-1333384182.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-tamer-2",
+      "name": "Tamer",
+      "file": "logic 1/KANTO-Dompteur-1333518404.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-breeder",
+      "name": "Breeder",
+      "file": "logic 1/KANTO-Eleveuse-1333384174.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-breeder-2",
+      "name": "Breeder",
+      "file": "logic 1/KANTO-Eleveuse-1333518394.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-clerk",
+      "name": "Clerk",
+      "file": "logic 1/KANTO-Employe-1333384169.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-erika-lets-go",
+      "name": "Erika (Let's Go)",
+      "file": "logic 1/KANTO-Erika-Let-s-Go-1333524016.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-channeler-b",
+      "name": "Channeler (B)",
+      "file": "logic 1/KANTO-Exorciste-2-variants-1333465077-b.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-channeler",
+      "name": "Channeler",
+      "file": "logic 1/KANTO-Exorciste-2-variants-1333465077.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-little-girl",
+      "name": "Little Girl",
+      "file": "logic 1/KANTO-Fillette-1333465070.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-little-girl-lets-go",
+      "name": "Little Girl (Let's Go)",
+      "file": "logic 1/KANTO-Fillette-Let-s-Go-1333465064.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-youngster",
+      "name": "Youngster",
+      "file": "logic 1/KANTO-Gamin-1333466647.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-youngster-lets-go",
+      "name": "Youngster (Let's Go)",
+      "file": "logic 1/KANTO-Gamin-Let-s-Go-1333466641.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-guard",
+      "name": "Guard",
+      "file": "logic 1/KANTO-Garde-1333466629.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-ranger",
+      "name": "Ranger",
+      "file": "logic 1/KANTO-Garde-Forestier-1333384161.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-gentleman",
+      "name": "Gentleman",
+      "file": "logic 1/KANTO-Gentleman-1333466625.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-gentleman-lets-go",
+      "name": "Gentleman (Let's Go)",
+      "file": "logic 1/KANTO-Gentleman-Let-s-Go-1333524007.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-man-lets-go-b",
+      "name": "Man (Let's Go) (B)",
+      "file": "logic 1/KANTO-Homme-Let-s-Go-3-variants-1333518384-b.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-man-lets-go-c",
+      "name": "Man (Let's Go) (C)",
+      "file": "logic 1/KANTO-Homme-Let-s-Go-3-variants-1333518384-c.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-man-lets-go",
+      "name": "Man (Let's Go)",
+      "file": "logic 1/KANTO-Homme-Let-s-Go-3-variants-1333518384.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-super-nerd",
+      "name": "Super Nerd",
+      "file": "logic 1/KANTO-Intello-1332208146.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-young-couple",
+      "name": "Young Couple",
+      "file": "logic 1/KANTO-Jeune-Couple-1333518336.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-young-couple-2",
+      "name": "Young Couple",
+      "file": "logic 1/KANTO-Jeune-Couple-1333518347.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-lass",
+      "name": "Lass",
+      "file": "logic 1/KANTO-Jeune-Fille-1333518357.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-cooltrainer-b",
+      "name": "Cooltrainer (Female)",
+      "file": "logic 1/KANTO-Jeune-Homme-3-variants-1333518375-b.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-cooltrainer-c",
+      "name": "Cooltrainer (C)",
+      "file": "logic 1/KANTO-Jeune-Homme-3-variants-1333518375-c.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-cooltrainer",
+      "name": "Cooltrainer",
+      "file": "logic 1/KANTO-Jeune-Homme-3-variants-1333518375.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-cooltrainer-lets-go-b",
+      "name": "Cooltrainer (Let's Go) (B)",
+      "file": "logic 1/KANTO-Jeune-Homme-Let-s-Go-3-variants-1333518366-b.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-cooltrainer-lets-go-c",
+      "name": "Cooltrainer (Let's Go) (C)",
+      "file": "logic 1/KANTO-Jeune-Homme-Let-s-Go-3-variants-1333518366-c.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-cooltrainer-lets-go",
+      "name": "Cooltrainer (Let's Go)",
+      "file": "logic 1/KANTO-Jeune-Homme-Let-s-Go-3-variants-1333518366.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-juggler-lets-go",
+      "name": "Juggler (Let's Go)",
+      "file": "logic 1/KANTO-Jongleur-Let-s-Go-1333465814.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-gamer-b",
+      "name": "Gamer (B)",
+      "file": "logic 1/KANTO-Joueur-2-variants-1333465805-b.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-gamer",
+      "name": "Gamer",
+      "file": "logic 1/KANTO-Joueur-2-variants-1333465805.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-black-belt",
+      "name": "Black Belt",
+      "file": "logic 1/KANTO-Karateka-1333465797.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-psychic-lets-go",
+      "name": "Psychic (Let's Go)",
+      "file": "logic 1/KANTO-Kinesiste-Let-s-Go-1333465784.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-koga",
+      "name": "Koga",
+      "file": "logic 1/KANTO-Koga-1333471453.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-koga-lets-go",
+      "name": "Koga (Let's Go)",
+      "file": "logic 1/KANTO-Koga-Let-s-Go-1333471446.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-blue",
+      "name": "Blue",
+      "file": "logic 1/KANTO-Leo-1332197192.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-blue-lets-go",
+      "name": "Blue (Let's Go)",
+      "file": "logic 1/KANTO-Leo-Let-s-Go-1332197185.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-lorelei",
+      "name": "Lorelei",
+      "file": "logic 1/KANTO-Lorelei-1333450191.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-roughneck-lets-go",
+      "name": "Roughneck (Let's Go)",
+      "file": "logic 1/KANTO-Loubard-Let-s-Go-1333469454.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-roughneck-lets-go-2",
+      "name": "Roughneck (Let's Go)",
+      "file": "logic 1/KANTO-Loubard-Let-s-Go-1333469464.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-lady-b",
+      "name": "Lady (B)",
+      "file": "logic 1/KANTO-Madame-1333518314-b.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-lady-c",
+      "name": "Lady (C)",
+      "file": "logic 1/KANTO-Madame-1333518314-c.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-lady",
+      "name": "Lady",
+      "file": "logic 1/KANTO-Madame-1333518314.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-lady-b-2",
+      "name": "Lady (B)",
+      "file": "logic 1/KANTO-Madame-1333518324-b.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-lady-c-2",
+      "name": "Lady (C)",
+      "file": "logic 1/KANTO-Madame-1333518324-c.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-lady-2",
+      "name": "Lady",
+      "file": "logic 1/KANTO-Madame-1333518324.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-beauty-2",
+      "name": "Beauty",
+      "file": "logic 1/KANTO-Mademoiselle-1332197181.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-sailor",
+      "name": "Sailor",
+      "file": "logic 1/KANTO-Marin-1333469447.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-sailor-lets-go",
+      "name": "Sailor (Let's Go)",
+      "file": "logic 1/KANTO-Marin-Let-s-Go-1333469441.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-engineer",
+      "name": "Engineer",
+      "file": "logic 1/KANTO-Mecano-1333469433.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-engineer-lets-go",
+      "name": "Engineer (Let's Go)",
+      "file": "logic 1/KANTO-Mecano-Let-s-Go-1333469423.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-hiker",
+      "name": "Hiker",
+      "file": "logic 1/KANTO-Montagnard-1333469415.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-hiker-lets-go",
+      "name": "Hiker (Let's Go)",
+      "file": "logic 1/KANTO-Montagnard-Let-s-Go-1333469407.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-nina",
+      "name": "Nina",
+      "file": "logic 1/KANTO-Nina-1333450201.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-bird-keeper-lets-go",
+      "name": "Bird Keeper (Let's Go)",
+      "file": "logic 1/KANTO-Ornithologue-Lets-Go-1333469386.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-fisherman",
+      "name": "Fisherman",
+      "file": "logic 1/KANTO-Pecheur-1333523995.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-fisherman-lets-go",
+      "name": "Fisherman (Let's Go)",
+      "file": "logic 1/KANTO-Pecheur-Let-s-Go-1333469377.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-pokemaniac-charizard",
+      "name": "Pokémaniac (Charizard)",
+      "file": "logic 1/KANTO-Pokemaniac-charizard-1333472250.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-pokemaniac-slowpoke-lets-go",
+      "name": "Pokémaniac (Slowpoke) (Let's Go)",
+      "file": "logic 1/KANTO-Pokemaniac-Let-s-Go-slowpoke-1333472244.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-policeman",
+      "name": "Policeman",
+      "file": "logic 1/KANTO-Policier-1333472238.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-ruin-maniac",
+      "name": "Ruin Maniac",
+      "file": "logic 1/KANTO-Ruinophile-1333472225.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-sabrina",
+      "name": "Sabrina",
+      "file": "logic 1/KANTO-Sabrina-1333469399.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-oak",
+      "name": "Professor Oak",
+      "file": "logic 1/kanto___professeur_chen_by_wergan_dm1xxed.png",
+      "pool": "kanto"
+    },
+    {
+      "id": "kanto-oak-b",
+      "name": "Professor Oak (B)",
+      "file": "logic 1/kanto___professeur_chen_by_wergan_dm1xxem.png",
+      "pool": "kanto"
+    }
+  ]
+}

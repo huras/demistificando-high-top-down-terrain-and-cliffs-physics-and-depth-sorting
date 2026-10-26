@@ -117,6 +117,12 @@ import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.j
 import { carregarDados } from "./pokemon/dados.js";
 import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
 import {
+  iniciarNpc,
+  listarCivisCidade,
+  listarSolidosNpc,
+  tickNpc,
+} from "./npc/index.js";
+import {
   getWorldShrinePlan,
   sincronizarSantuarioPosCatalogo,
 } from "./santuario/colocacao.js";
@@ -297,6 +303,13 @@ async function iniciarInterno() {
     console.error("Pokémon não carregou", erro);
     marcarFase("pokemon", 1);
     marcarFase("santuarios", 1);
+  }
+  try {
+    definirStatus("Carregando NPCs…");
+    await iniciarNpc();
+    console.info(`NPCs: ${listarCivisCidade().length} civis de cidade`);
+  } catch (erroNpc) {
+    console.error("NPCs não carregaram", erroNpc);
   }
   ligarControleModo(document.getElementById("btn-modo-3d"));
   ligarBotaoPasseio(document.getElementById("btn-passeio"), corpo);
@@ -690,10 +703,11 @@ function loop(agora) {
     atualizarStreaming(corpo.x, corpo.y);
   }
   tickJornada(corpo.x, corpo.y, dt);
-  definirCorposAtores(listarSolidosPokemon());
+  definirCorposAtores([...listarSolidosPokemon(), ...listarSolidosNpc()]);
   atualizarMapaKanto(corpo.x, corpo.y);
   tickMapaMundo(corpo.x, corpo.y, dt);
   tickPokemon(corpo, dt, agente.perfil);
+  if (!trava) tickNpc(corpo, dt);
   tickTeleporte(dt, {
     corpo,
     agente,

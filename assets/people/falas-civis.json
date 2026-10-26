@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "cumprimentos": [
+    "Oi! Bonito dia pra passear, né?",
+    "Ei! Cuidado com os selvagens na rota.",
+    "Olá. Os ginásios desta região são duros.",
+    "Ei, treinador! Já visitou o Centro Pokémon?",
+    "Bom te ver. Eu moro bem aqui."
+  ],
+  "casa": [
+    "Minha casa é simples, mas aconchegante.",
+    "Entre, entre… só não bagunce os móveis.",
+    "Às vezes o barulho da praça chega até aqui."
+  ],
+  "viajante": [
+    "Estou explorando as rotas. Meu time tá pronto!",
+    "Viajo de cidade em cidade. Conhece algum atalho?",
+    "Treino meu time no caminho. Quer ver quem eu levo?"
+  ]
+}

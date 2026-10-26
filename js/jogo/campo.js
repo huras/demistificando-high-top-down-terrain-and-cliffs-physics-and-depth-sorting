@@ -43,6 +43,7 @@ import {
   usarNoPokemon,
 } from "./estado.js";
 import { checarSaidaSantuario, sairSantuario } from "../santuario/entrar.js";
+import { aoEntrarCasa, aoSairInterior } from "../npc/index.js";
 
 const PAPEIS = new Set(["casa", "loja", "centro", "lab"]);
 /**
@@ -209,14 +210,16 @@ function entrarHub(corpo, info, spawn, papel) {
 
 function entrarSala3d(corpo, info) {
   const spawn = spawnSala();
+  const casaId = idCasa(info);
   estado.interior = {
     sala3d: true,
     papel: "casa",
-    casaId: idCasa(info),
+    casaId,
     ax: info.ax,
     ay: info.ay,
     predio: info.predio,
   };
+  aoEntrarCasa(casaId);
   corpo.x = spawn.x;
   corpo.y = spawn.y;
   corpo.z = ALTURA_PRACA;
@@ -315,6 +318,7 @@ export function sairInterior(corpo) {
     corpo._renasceu = true;
   }
   estado.interior = null;
+  aoSairInterior();
   portaSegura = "";
   estado.construir = false;
   estado.craft = false;

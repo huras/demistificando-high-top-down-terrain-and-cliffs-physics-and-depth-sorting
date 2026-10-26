@@ -85,7 +85,7 @@ export function emPe(grupo) {
   return aplicarEscalaCartao(grupo);
 }
 
-export function porBillboard(molde, x, z) {
+export function porBillboard(molde, x, z, opts = {}) {
   if (!molde) return null;
   const mesh = new THREE.Mesh(molde.geo, molde.material);
   mesh.rotation.order = "YXZ";
@@ -95,8 +95,16 @@ export function porBillboard(molde, x, z) {
   raiz.add(mesh);
   raiz.position.set(x, ALTURA_PRACA, z);
   raiz.userData.cartao = mesh;
-  cartoes.push(mesh);
+  // NPCs overworld giram sozinhos — não poluir o pool global de cartões.
+  if (opts.noCartoes !== true) cartoes.push(mesh);
   return raiz;
+}
+
+/** Remove mesh do pool de giro (ex.: NPC despawn). */
+export function soltarCartao(mesh) {
+  if (!mesh) return;
+  const i = cartoes.indexOf(mesh);
+  if (i >= 0) cartoes.splice(i, 1);
 }
 
 export function porChao(molde, x, z) {

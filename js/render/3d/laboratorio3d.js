@@ -36,7 +36,7 @@ const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07
 const FOLHA_VASO = "/ref/sprites/interiors/Safari-Zone-Inner-Room-Hospital-Tileset-629434880.png";
 const FOLHA_PISO = "/ref/sprites/buildings/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png";
 const FOLHA_GENTE =
-  "/ref/sprites/people/logic 2/DS _ DSi - Pokemon Platinum - Non-Playable Characters - NPCs.png";
+  "/assets/people/logic 2/DS _ DSi - Pokemon Platinum - Non-Playable Characters - NPCs.png";
 
 const RECORTE = Object.freeze({
   tank: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-incubator-tank-empty-feet.png" }),

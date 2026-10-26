@@ -75,6 +75,7 @@ import { atualizarPokemon3d, ligarPokemon3d } from "../../pokemon/render3d.js";
 import { atoresVisiveis } from "../../pokemon/sistema.js";
 import { marcarCorposCrista } from "./texturasAgua3d.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
+import { ligarNpc3d, listarNpcsVisiveis, sincronizarNpc3d } from "../../npc/index.js";
 
 let estado = null;
 let domoNoVazio = false;
@@ -285,6 +286,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.background = new THREE.Color(0x1a1512);
   scene.fog = new THREE.Fog(0x2a221c, 36, 85);
   ligarPokemon3d(scene);
+  ligarNpc3d(scene);
   criarPoolLuzes(scene);
 
   const camera3d = criarCamera3d(largura / altura);
@@ -759,6 +761,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.alvoEscalada.atualizar(corpo, dt);
   estado.hoverTile?.atualizar();
   estado.elipsePokemon?.atualizar(camRender);
+  sincronizarNpc3d(listarNpcsVisiveis(), yaw, inclinacao);
 
   const planando = !!corpo.planando;
   const voando = !!corpo.voando;

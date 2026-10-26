@@ -23,7 +23,7 @@ const FOLHA = "/ref/sprites/interiors/pokecenter-emerald-bg.png";
 const FOLHA_FRENTE = "/ref/sprites/interiors/pokecenter-emerald-fg.png";
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
 const FOLHA_GENTE =
-  "/ref/sprites/people/logic 2/DS _ DSi - Pokemon Platinum - Non-Playable Characters - NPCs.png";
+  "/assets/people/logic 2/DS _ DSi - Pokemon Platinum - Non-Playable Characters - NPCs.png";
 const RECORTE_PC = Object.freeze({ col: 5, row: 42, cols: 1, rows: 2, tile: 16 });
 const DECOR = Object.freeze({
   vaso: Object.freeze({ url: FOLHA_MOVEIS, col: 5, row: 40, cols: 1, rows: 2, tile: 16 }),

@@ -20,7 +20,7 @@ import { carregarSlotsCura } from "../../jogo/slotsCuraConfig.js";
 
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
 const FOLHA_GENTE =
-  "/ref/sprites/people/logic 2/DS _ DSi - Pokemon Platinum - Non-Playable Characters - NPCs.png";
+  "/assets/people/logic 2/DS _ DSi - Pokemon Platinum - Non-Playable Characters - NPCs.png";
 const COLUNAS_TILE = 32;
 const TILE = 16;
 

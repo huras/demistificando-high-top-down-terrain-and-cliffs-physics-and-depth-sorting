@@ -14,6 +14,8 @@ import { TRILHAS_BGM } from "./som/trilhasBgm.js";
 const REF = "/ref/music/";
 const VOL_BGM = 0.34;
 const VOL_CAMADA = 0.28;
+/** Sobreposição (s) entre duas vozes — clips de chuva não são seamless. */
+const SOBREPOR_BGS = 2.4;
 
 const CAMADAS = {
   drips: "BGS/drips.ogg",
@@ -121,7 +123,17 @@ const NOTAS_CURA = Object.freeze([
   [510, 13, 88, 25],
 ]);
 
-/** @type {Map<string, { el: HTMLAudioElement, vol: number, alvo: number }>} */
+/**
+ * @typedef {{
+ *   els: [HTMLAudioElement, HTMLAudioElement],
+ *   pesos: [number, number],
+ *   lead: 0 | 1,
+ *   cruzando: boolean,
+ *   vol: number,
+ *   alvo: number,
+ * }} SlotBgs
+ */
+/** @type {Map<string, SlotBgs>} */
 const camadas = new Map();
 
 function audio() {
@@ -146,10 +158,10 @@ function aproximar(atual, alvo, dt, vel) {
   return atual + Math.sign(alvo - atual) * d;
 }
 
-function criarEl(rel, loop) {
+function criarEl(rel) {
   const el = new Audio(urlRef(rel));
   el.preload = "auto";
-  el.loop = loop;
+  el.loop = false;
   el.volume = 0;
   return el;
 }
@@ -159,12 +171,110 @@ function garantirToco(el) {
   el.play().catch(() => {});
 }
 
+function restanteAudio(el) {
+  const d = el.duration;
+  if (!Number.isFinite(d) || d <= 0) return Infinity;
+  return Math.max(0, d - (el.currentTime || 0));
+}
+
+function janelaSobrepor(el) {
+  const d = el.duration;
+  if (!Number.isFinite(d) || d <= 0) return SOBREPOR_BGS;
+  return Math.min(SOBREPOR_BGS, Math.max(0.35, d * 0.4));
+}
+
+function reiniciarVoz(el) {
+  if (!liberado || mudo) return;
+  try {
+    el.currentTime = 0;
+  } catch {
+    /* ainda sem duração */
+  }
+  el.play().catch(() => {});
+}
+
+function pausarVoz(el) {
+  if (!el.paused) el.pause();
+  try {
+    el.currentTime = 0;
+  } catch {
+    /* ignore */
+  }
+}
+
+function resetarCamada(slot) {
+  slot.cruzando = false;
+  slot.pesos[0] = 1;
+  slot.pesos[1] = 0;
+  slot.lead = 0;
+  pausarVoz(slot.els[0]);
+  pausarVoz(slot.els[1]);
+}
+
+function finalizarCruzamento(slot) {
+  const lead = slot.lead;
+  const outro = /** @type {0 | 1} */ (1 - lead);
+  slot.pesos[lead] = 0;
+  slot.pesos[outro] = 1;
+  pausarVoz(slot.els[lead]);
+  slot.lead = outro;
+  slot.cruzando = false;
+}
+
 function aplicarVolume(slot, dt, entra) {
   const vel = slot.alvo > slot.vol ? entra : 1.8;
   slot.vol = aproximar(slot.vol, mudo ? 0 : slot.alvo, dt, vel);
-  slot.el.volume = Math.max(0, Math.min(1, slot.vol));
-  if (slot.vol > 0.012) garantirToco(slot.el);
-  else if (slot.alvo <= 0 && !slot.el.paused) slot.el.pause();
+
+  if (slot.alvo <= 0 && slot.vol <= 0.012) {
+    if (slot.els[0].paused && slot.els[1].paused && !slot.cruzando) {
+      /* já quieto */
+    } else {
+      resetarCamada(slot);
+    }
+    slot.els[0].volume = 0;
+    slot.els[1].volume = 0;
+    return;
+  }
+
+  const lead = slot.lead;
+  const outro = /** @type {0 | 1} */ (1 - lead);
+  const elLead = slot.els[lead];
+  const elOutro = slot.els[outro];
+
+  if (slot.vol > 0.012 && elLead.paused && !slot.cruzando) {
+    slot.pesos[lead] = 1;
+    slot.pesos[outro] = 0;
+    reiniciarVoz(elLead);
+  }
+
+  if (slot.vol > 0.012 && !slot.cruzando && !elLead.paused) {
+    const rem = restanteAudio(elLead);
+    const janela = janelaSobrepor(elLead);
+    if (rem <= janela) {
+      slot.cruzando = true;
+      slot.pesos[outro] = 0;
+      reiniciarVoz(elOutro);
+    }
+  }
+
+  if (slot.cruzando) {
+    const rem = restanteAudio(elLead);
+    const janela = janelaSobrepor(elLead);
+    let t = 1;
+    if (janela > 0.05 && Number.isFinite(rem) && rem < Infinity) {
+      t = 1 - Math.max(0, Math.min(1, rem / janela));
+    }
+    if (elLead.paused || elLead.ended) t = 1;
+    slot.pesos[lead] = 1 - t;
+    slot.pesos[outro] = t;
+    if (t >= 0.999) finalizarCruzamento(slot);
+  }
+
+  for (let i = 0; i < 2; i++) {
+    const v = Math.max(0, Math.min(1, slot.vol * slot.pesos[i]));
+    slot.els[i].volume = v;
+    if (v > 0.012) garantirToco(slot.els[i]);
+  }
 }
 
 function alvosChuva(chuva, dentro) {
@@ -183,7 +293,32 @@ function alvosChuva(chuva, dentro) {
 function cama(id) {
   let slot = camadas.get(id);
   if (slot) return slot;
-  slot = { el: criarEl(CAMADAS[id], true), vol: 0, alvo: 0 };
+  const rel = CAMADAS[id];
+  const a = criarEl(rel);
+  const b = criarEl(rel);
+  slot = {
+    els: [a, b],
+    pesos: [1, 0],
+    lead: 0,
+    cruzando: false,
+    vol: 0,
+    alvo: 0,
+  };
+  const aoAcabar = (qual) => () => {
+    if (slot.lead !== qual) return;
+    if (slot.cruzando) {
+      finalizarCruzamento(slot);
+      return;
+    }
+    if (slot.vol <= 0.012 && slot.alvo <= 0) return;
+    const outro = /** @type {0 | 1} */ (1 - qual);
+    slot.pesos[qual] = 0;
+    slot.pesos[outro] = 1;
+    slot.lead = outro;
+    reiniciarVoz(slot.els[outro]);
+  };
+  a.addEventListener("ended", aoAcabar(0));
+  b.addEventListener("ended", aoAcabar(1));
   camadas.set(id, slot);
   return slot;
 }
@@ -241,7 +376,11 @@ export function destravarAudio() {
   bgm.unlock();
   bgm.setMuted(mudo);
   for (const slot of camadas.values()) {
-    if (slot.alvo > 0.012) garantirToco(slot.el);
+    if (slot.alvo <= 0.012) continue;
+    const lead = slot.els[slot.lead];
+    if (slot.pesos[slot.lead] > 0.012) garantirToco(lead);
+    const outro = /** @type {0 | 1} */ (1 - slot.lead);
+    if (slot.cruzando && slot.pesos[outro] > 0.012) garantirToco(slot.els[outro]);
   }
   elementoDe(stings, SOM_ENVIO);
   elementoDe(stings, SOM_RECOLHER);
@@ -415,7 +554,9 @@ export function alternarMudo() {
   definirMudoBarramento(mudo);
   bgm.setMuted(mudo);
   if (mudo) {
-    for (const slot of camadas.values()) slot.el.pause();
+    for (const slot of camadas.values()) {
+      for (const el of slot.els) el.pause();
+    }
     calarCurtos();
   } else {
     destravarAudio();

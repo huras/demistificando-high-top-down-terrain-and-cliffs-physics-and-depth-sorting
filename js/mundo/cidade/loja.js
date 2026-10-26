@@ -141,7 +141,18 @@ const PLANTA = criarPlantaHub({
     { tx: doorTx1, ty: ROWS - 1 },
   ],
   props: [
-    { id: "npc", coluna: 2, x: clerk.x, y: clerk.y - 0.1, nome: "Balconista", disco: true, raio: 0.36 },
+    {
+      id: "npc",
+      peopleId: "pt-shopkeeper-m",
+      coluna: 2,
+      x: clerk.x,
+      y: clerk.y - 0.1,
+      nome: "Balconista",
+      sexo: "male",
+      origem: "platinum",
+      disco: true,
+      raio: 0.36,
+    },
     ...prateleiras(),
   ],
   alvos: [

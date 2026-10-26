@@ -19,7 +19,15 @@ const CAMADA = Object.freeze([
   Object.freeze([32, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 30, 39, 40]),
 ]);
 
-const enfermeira = { x: 14.5, y: 2.55, coluna: 64 };
+const enfermeira = {
+  x: 14.5,
+  y: 2.55,
+  coluna: 64,
+  peopleId: "pt-nurse",
+  nome: "Enfermeira",
+  sexo: "female",
+  origem: "platinum",
+};
 const pc = { x: 17.5, y: 3 };
 const maquina = { x: 13, y: 2.55 };
 const base = 1.55;
@@ -61,7 +69,18 @@ const PLANTA = criarPlantaHub({
   props: [
     { id: "cura", x: maquina.x, y: maquina.y, disco: true, raio: 0.62 },
     { id: "pc", x: pc.x, y: pc.y, disco: true, raio: 0.42 },
-    { id: "npc", coluna: enfermeira.coluna, x: enfermeira.x, y: enfermeira.y, disco: true, raio: 0.36 },
+    {
+      id: "npc",
+      peopleId: enfermeira.peopleId,
+      nome: enfermeira.nome,
+      sexo: enfermeira.sexo,
+      origem: enfermeira.origem,
+      coluna: enfermeira.coluna,
+      x: enfermeira.x,
+      y: enfermeira.y,
+      disco: true,
+      raio: 0.36,
+    },
     { id: "vaso", x: vaso.x, y: vaso.y, disco: true, raio: 0.36 },
     { id: "vaso", x: vasoDireito.x, y: vasoDireito.y, disco: true, raio: 0.36 },
     { id: "estante", x: estantes[0].x, y: estantes[0].y, disco: true, raio: 0.72 },

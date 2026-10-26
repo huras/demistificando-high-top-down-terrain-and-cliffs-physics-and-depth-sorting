@@ -50,7 +50,8 @@ import { tickFeixe, feixeAtivo } from "../santuario/feixe.js";
 import { atualizarBussolaSantuario } from "../santuario/bussolaHud.js";
 import { puzzleSantuarioAberto } from "../santuario/puzzleModal.js";
 import { tickDescobertaMapa } from "../mapa/descoberta.js";
-import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
+import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, falarNpcMundo, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
+import { npcPertoDe } from "../npc/index.js";
 import {
   abrirMapa,
   cancelarConfirmacaoMapa,
@@ -251,11 +252,14 @@ export function tickJogo(dt, corpo) {
     if (pf?.kind === "place" && pf.mobility?.kind === "heavy") {
       texto = t("forca.pesado");
     } else if (!estado.promptEntrar) {
+      const npcPrompt = !alvoLab && !alvoHub ? npcPertoDe(corpo.x, corpo.y) : null;
       texto = alvoLab
         ? promptDoLaboratorio(alvoLab)
         : alvoHub
           ? promptDoHub(papelHub, alvoHub)
-          : promptDe(alvo, ferramenta);
+          : npcPrompt
+            ? `${npcPrompt.nome} — R`
+            : promptDe(alvo, ferramenta);
     }
     estado.prompt = acaoConsomeE(acao) ? "" : texto;
   }
@@ -410,12 +414,24 @@ function interagir(corpo) {
     if (perto) executarAlvoHub(perto);
     return;
   }
+  if (estado.interior?.sala3d && estado.interior.papel === "casa") {
+    const npcCasa = npcPertoDe(corpo.x, corpo.y);
+    if (npcCasa) {
+      falarNpcMundo(npcCasa);
+      return;
+    }
+  }
   if (estado.interior) {
     const perto = pertoDe(estado.interior);
     if (perto) {
       falarCom(perto);
       return;
     }
+    return;
+  }
+  const npc = npcPertoDe(corpo.x, corpo.y);
+  if (npc) {
+    falarNpcMundo(npc);
     return;
   }
   const madura = plantarOuColher(celulaAlvo(corpo), null);

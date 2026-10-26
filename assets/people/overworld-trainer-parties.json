@@ -1,0 +1,2098 @@
+{
+  "version": 1,
+  "templates": {
+    "youngster": {
+      "label": "Youngster",
+      "partySizeWeights": {
+        "1": 55,
+        "2": 45
+      },
+      "species": [
+        {
+          "key": "rattata",
+          "w": 40
+        },
+        {
+          "key": "pidgey",
+          "w": 30
+        },
+        {
+          "key": "spearow",
+          "w": 20
+        },
+        {
+          "key": "ekans",
+          "w": 10
+        }
+      ]
+    },
+    "lass": {
+      "label": "Lass",
+      "partySizeWeights": {
+        "1": 40,
+        "2": 50,
+        "3": 10
+      },
+      "species": [
+        {
+          "key": "pidgey",
+          "w": 25
+        },
+        {
+          "key": "nidoranf",
+          "w": 25
+        },
+        {
+          "key": "oddish",
+          "w": 25
+        },
+        {
+          "key": "jigglypuff",
+          "w": 15
+        },
+        {
+          "key": "clefairy",
+          "w": 10
+        }
+      ]
+    },
+    "little-girl": {
+      "label": "Little Girl",
+      "partySizeWeights": {
+        "1": 70,
+        "2": 30
+      },
+      "species": [
+        {
+          "key": "jigglypuff",
+          "w": 35
+        },
+        {
+          "key": "clefairy",
+          "w": 30
+        },
+        {
+          "key": "meowth",
+          "w": 20
+        },
+        {
+          "key": "eevee",
+          "w": 15
+        }
+      ]
+    },
+    "bug": {
+      "label": "Bug Catcher",
+      "partySizeWeights": {
+        "2": 50,
+        "3": 50
+      },
+      "species": [
+        {
+          "key": "caterpie",
+          "w": 25
+        },
+        {
+          "key": "weedle",
+          "w": 25
+        },
+        {
+          "key": "kakuna",
+          "w": 15
+        },
+        {
+          "key": "metapod",
+          "w": 15
+        },
+        {
+          "key": "paras",
+          "w": 20
+        }
+      ]
+    },
+    "camper": {
+      "label": "Camper",
+      "partySizeWeights": {
+        "2": 60,
+        "3": 40
+      },
+      "species": [
+        {
+          "key": "spearow",
+          "w": 25
+        },
+        {
+          "key": "rattata",
+          "w": 25
+        },
+        {
+          "key": "ekans",
+          "w": 20
+        },
+        {
+          "key": "diglett",
+          "w": 15
+        },
+        {
+          "key": "sandshrew",
+          "w": 15
+        }
+      ]
+    },
+    "picnicker": {
+      "label": "Picnicker",
+      "partySizeWeights": {
+        "2": 55,
+        "3": 45
+      },
+      "species": [
+        {
+          "key": "pidgey",
+          "w": 25
+        },
+        {
+          "key": "nidoranf",
+          "w": 25
+        },
+        {
+          "key": "oddish",
+          "w": 20
+        },
+        {
+          "key": "goldeen",
+          "w": 15
+        },
+        {
+          "key": "meowth",
+          "w": 15
+        }
+      ]
+    },
+    "hiker": {
+      "label": "Hiker",
+      "partySizeWeights": {
+        "2": 45,
+        "3": 55
+      },
+      "species": [
+        {
+          "key": "geodude",
+          "w": 35
+        },
+        {
+          "key": "onix",
+          "w": 25
+        },
+        {
+          "key": "machop",
+          "w": 20
+        },
+        {
+          "key": "sandshrew",
+          "w": 20
+        }
+      ]
+    },
+    "sailor": {
+      "label": "Sailor",
+      "partySizeWeights": {
+        "2": 50,
+        "3": 50
+      },
+      "species": [
+        {
+          "key": "machop",
+          "w": 30
+        },
+        {
+          "key": "tentacool",
+          "w": 25
+        },
+        {
+          "key": "shellder",
+          "w": 20
+        },
+        {
+          "key": "horsea",
+          "w": 15
+        },
+        {
+          "key": "krabby",
+          "w": 10
+        }
+      ]
+    },
+    "fisherman": {
+      "label": "Fisherman",
+      "partySizeWeights": {
+        "2": 40,
+        "3": 40,
+        "4": 20
+      },
+      "species": [
+        {
+          "key": "magikarp",
+          "w": 35
+        },
+        {
+          "key": "goldeen",
+          "w": 25
+        },
+        {
+          "key": "tentacool",
+          "w": 20
+        },
+        {
+          "key": "poliwag",
+          "w": 20
+        }
+      ]
+    },
+    "super-nerd": {
+      "label": "Super Nerd",
+      "partySizeWeights": {
+        "2": 50,
+        "3": 50
+      },
+      "species": [
+        {
+          "key": "grimer",
+          "w": 25
+        },
+        {
+          "key": "voltorb",
+          "w": 25
+        },
+        {
+          "key": "koffing",
+          "w": 25
+        },
+        {
+          "key": "magnemite",
+          "w": 25
+        }
+      ]
+    },
+    "black-belt": {
+      "label": "Black Belt",
+      "partySizeWeights": {
+        "2": 40,
+        "3": 60
+      },
+      "species": [
+        {
+          "key": "machop",
+          "w": 35
+        },
+        {
+          "key": "mankey",
+          "w": 30
+        },
+        {
+          "key": "hitmonlee",
+          "w": 20
+        },
+        {
+          "key": "hitmonchan",
+          "w": 15
+        }
+      ]
+    },
+    "beauty": {
+      "label": "Beauty",
+      "partySizeWeights": {
+        "2": 55,
+        "3": 45
+      },
+      "species": [
+        {
+          "key": "oddish",
+          "w": 25
+        },
+        {
+          "key": "gloom",
+          "w": 20
+        },
+        {
+          "key": "exeggcute",
+          "w": 20
+        },
+        {
+          "key": "meowth",
+          "w": 20
+        },
+        {
+          "key": "clefable",
+          "w": 15
+        }
+      ]
+    },
+    "gentleman": {
+      "label": "Gentleman",
+      "partySizeWeights": {
+        "1": 40,
+        "2": 60
+      },
+      "species": [
+        {
+          "key": "growlithe",
+          "w": 40
+        },
+        {
+          "key": "ponyta",
+          "w": 30
+        },
+        {
+          "key": "eevee",
+          "w": 30
+        }
+      ]
+    },
+    "channeler": {
+      "label": "Channeler",
+      "partySizeWeights": {
+        "2": 50,
+        "3": 50
+      },
+      "species": [
+        {
+          "key": "gastly",
+          "w": 45
+        },
+        {
+          "key": "haunter",
+          "w": 35
+        },
+        {
+          "key": "cubone",
+          "w": 20
+        }
+      ]
+    },
+    "psychic": {
+      "label": "Psychic",
+      "partySizeWeights": {
+        "2": 45,
+        "3": 55
+      },
+      "species": [
+        {
+          "key": "abra",
+          "w": 30
+        },
+        {
+          "key": "kadabra",
+          "w": 25
+        },
+        {
+          "key": "drowzee",
+          "w": 25
+        },
+        {
+          "key": "slowpoke",
+          "w": 20
+        }
+      ]
+    },
+    "bird-keeper": {
+      "label": "Bird Keeper",
+      "partySizeWeights": {
+        "2": 40,
+        "3": 40,
+        "4": 20
+      },
+      "species": [
+        {
+          "key": "pidgey",
+          "w": 25
+        },
+        {
+          "key": "spearow",
+          "w": 25
+        },
+        {
+          "key": "pidgeotto",
+          "w": 20
+        },
+        {
+          "key": "fearow",
+          "w": 15
+        },
+        {
+          "key": "doduo",
+          "w": 15
+        }
+      ]
+    },
+    "engineer": {
+      "label": "Engineer",
+      "partySizeWeights": {
+        "2": 60,
+        "3": 40
+      },
+      "species": [
+        {
+          "key": "magnemite",
+          "w": 40
+        },
+        {
+          "key": "voltorb",
+          "w": 35
+        },
+        {
+          "key": "electabuzz",
+          "w": 25
+        }
+      ]
+    },
+    "gamer": {
+      "label": "Gamer",
+      "partySizeWeights": {
+        "2": 55,
+        "3": 45
+      },
+      "species": [
+        {
+          "key": "rhyhorn",
+          "w": 30
+        },
+        {
+          "key": "nidorino",
+          "w": 25
+        },
+        {
+          "key": "nidorina",
+          "w": 25
+        },
+        {
+          "key": "rattata",
+          "w": 20
+        }
+      ]
+    },
+    "juggler": {
+      "label": "Juggler",
+      "partySizeWeights": {
+        "3": 50,
+        "4": 50
+      },
+      "species": [
+        {
+          "key": "drowzee",
+          "w": 30
+        },
+        {
+          "key": "kadabra",
+          "w": 25
+        },
+        {
+          "key": "voltorb",
+          "w": 25
+        },
+        {
+          "key": "hypno",
+          "w": 20
+        }
+      ]
+    },
+    "tamer": {
+      "label": "Tamer",
+      "partySizeWeights": {
+        "2": 50,
+        "3": 50
+      },
+      "species": [
+        {
+          "key": "sandslash",
+          "w": 30
+        },
+        {
+          "key": "arbok",
+          "w": 30
+        },
+        {
+          "key": "rhyhorn",
+          "w": 25
+        },
+        {
+          "key": "nidoqueen",
+          "w": 15
+        }
+      ]
+    },
+    "pokemaniac": {
+      "label": "Pokémaniac",
+      "partySizeWeights": {
+        "2": 45,
+        "3": 55
+      },
+      "species": [
+        {
+          "key": "slowpoke",
+          "w": 30
+        },
+        {
+          "key": "lickitung",
+          "w": 25
+        },
+        {
+          "key": "cubone",
+          "w": 25
+        },
+        {
+          "key": "rhyhorn",
+          "w": 20
+        }
+      ]
+    },
+    "ruin-maniac": {
+      "label": "Ruin Maniac",
+      "partySizeWeights": {
+        "2": 50,
+        "3": 50
+      },
+      "species": [
+        {
+          "key": "geodude",
+          "w": 30
+        },
+        {
+          "key": "onix",
+          "w": 25
+        },
+        {
+          "key": "cubone",
+          "w": 25
+        },
+        {
+          "key": "sandshrew",
+          "w": 20
+        }
+      ]
+    },
+    "battle-girl": {
+      "label": "Battle Girl",
+      "partySizeWeights": {
+        "2": 50,
+        "3": 50
+      },
+      "species": [
+        {
+          "key": "mankey",
+          "w": 35
+        },
+        {
+          "key": "machop",
+          "w": 35
+        },
+        {
+          "key": "primeape",
+          "w": 30
+        }
+      ]
+    },
+    "aroma-lady": {
+      "label": "Aroma Lady",
+      "partySizeWeights": {
+        "2": 55,
+        "3": 45
+      },
+      "species": [
+        {
+          "key": "oddish",
+          "w": 30
+        },
+        {
+          "key": "gloom",
+          "w": 25
+        },
+        {
+          "key": "bellsprout",
+          "w": 25
+        },
+        {
+          "key": "tangela",
+          "w": 20
+        }
+      ]
+    },
+    "artist": {
+      "label": "Artist",
+      "partySizeWeights": {
+        "1": 40,
+        "2": 60
+      },
+      "species": [
+        {
+          "key": "smeargle",
+          "w": 50
+        },
+        {
+          "key": "mrmime",
+          "w": 30
+        },
+        {
+          "key": "ditto",
+          "w": 20
+        }
+      ]
+    },
+    "cooltrainer": {
+      "label": "Cooltrainer",
+      "partySizeWeights": {
+        "3": 55,
+        "4": 45
+      },
+      "species": [
+        {
+          "key": "eevee",
+          "w": 15
+        },
+        {
+          "key": "growlithe",
+          "w": 15
+        },
+        {
+          "key": "ponyta",
+          "w": 15
+        },
+        {
+          "key": "nidorino",
+          "w": 15
+        },
+        {
+          "key": "nidorina",
+          "w": 15
+        },
+        {
+          "key": "exeggcute",
+          "w": 15
+        },
+        {
+          "key": "horsea",
+          "w": 10
+        }
+      ]
+    },
+    "policeman": {
+      "label": "Policeman",
+      "partySizeWeights": {
+        "1": 50,
+        "2": 50
+      },
+      "species": [
+        {
+          "key": "growlithe",
+          "w": 60
+        },
+        {
+          "key": "arcanine",
+          "w": 20
+        },
+        {
+          "key": "machop",
+          "w": 20
+        }
+      ]
+    },
+    "ranger": {
+      "label": "Ranger",
+      "partySizeWeights": {
+        "2": 50,
+        "3": 50
+      },
+      "species": [
+        {
+          "key": "spearow",
+          "w": 25
+        },
+        {
+          "key": "oddish",
+          "w": 25
+        },
+        {
+          "key": "bellsprout",
+          "w": 25
+        },
+        {
+          "key": "exeggcute",
+          "w": 25
+        }
+      ]
+    },
+    "roughneck": {
+      "label": "Roughneck",
+      "partySizeWeights": {
+        "2": 55,
+        "3": 45
+      },
+      "species": [
+        {
+          "key": "machop",
+          "w": 30
+        },
+        {
+          "key": "mankey",
+          "w": 30
+        },
+        {
+          "key": "koffing",
+          "w": 20
+        },
+        {
+          "key": "grimer",
+          "w": 20
+        }
+      ]
+    },
+    "lady": {
+      "label": "Lady",
+      "partySizeWeights": {
+        "1": 45,
+        "2": 55
+      },
+      "species": [
+        {
+          "key": "clefairy",
+          "w": 30
+        },
+        {
+          "key": "jigglypuff",
+          "w": 30
+        },
+        {
+          "key": "meowth",
+          "w": 25
+        },
+        {
+          "key": "eevee",
+          "w": 15
+        }
+      ]
+    },
+    "clerk": {
+      "label": "Clerk",
+      "partySizeWeights": {
+        "1": 60,
+        "2": 40
+      },
+      "species": [
+        {
+          "key": "rattata",
+          "w": 40
+        },
+        {
+          "key": "meowth",
+          "w": 30
+        },
+        {
+          "key": "ditto",
+          "w": 30
+        }
+      ]
+    },
+    "breeder": {
+      "label": "Breeder",
+      "partySizeWeights": {
+        "3": 50,
+        "4": 50
+      },
+      "species": [
+        {
+          "key": "eevee",
+          "w": 25
+        },
+        {
+          "key": "chansey",
+          "w": 20
+        },
+        {
+          "key": "clefairy",
+          "w": 20
+        },
+        {
+          "key": "jigglypuff",
+          "w": 20
+        },
+        {
+          "key": "ponyta",
+          "w": 15
+        }
+      ]
+    },
+    "man": {
+      "label": "Man",
+      "partySizeWeights": {
+        "1": 50,
+        "2": 50
+      },
+      "species": [
+        {
+          "key": "rattata",
+          "w": 30
+        },
+        {
+          "key": "pidgey",
+          "w": 30
+        },
+        {
+          "key": "meowth",
+          "w": 20
+        },
+        {
+          "key": "spearow",
+          "w": 20
+        }
+      ]
+    },
+    "young-couple": {
+      "label": "Young Couple",
+      "partySizeWeights": {
+        "2": 60,
+        "3": 40
+      },
+      "species": [
+        {
+          "key": "nidoranm",
+          "w": 25
+        },
+        {
+          "key": "nidoranf",
+          "w": 25
+        },
+        {
+          "key": "eevee",
+          "w": 25
+        },
+        {
+          "key": "meowth",
+          "w": 25
+        }
+      ]
+    },
+    "referee": {
+      "label": "Referee",
+      "partySizeWeights": {
+        "1": 100
+      },
+      "species": [
+        {
+          "key": "machop",
+          "w": 50
+        },
+        {
+          "key": "hitmonchan",
+          "w": 50
+        }
+      ]
+    },
+    "captain": {
+      "label": "Captain",
+      "partySizeWeights": {
+        "2": 40,
+        "3": 60
+      },
+      "species": [
+        {
+          "key": "machoke",
+          "w": 30
+        },
+        {
+          "key": "tentacruel",
+          "w": 25
+        },
+        {
+          "key": "staryu",
+          "w": 25
+        },
+        {
+          "key": "kingler",
+          "w": 20
+        }
+      ]
+    },
+    "guard": {
+      "label": "Guard",
+      "partySizeWeights": {
+        "1": 55,
+        "2": 45
+      },
+      "species": [
+        {
+          "key": "growlithe",
+          "w": 40
+        },
+        {
+          "key": "machop",
+          "w": 35
+        },
+        {
+          "key": "mankey",
+          "w": 25
+        }
+      ]
+    },
+    "copycat": {
+      "label": "Copycat",
+      "partySizeWeights": {
+        "1": 40,
+        "2": 60
+      },
+      "species": [
+        {
+          "key": "clefairy",
+          "w": 30
+        },
+        {
+          "key": "jigglypuff",
+          "w": 30
+        },
+        {
+          "key": "ditto",
+          "w": 40
+        }
+      ]
+    },
+    "gym-brock": {
+      "label": "Ginásio · Brock",
+      "partySizeWeights": {
+        "2": 100
+      },
+      "species": [
+        {
+          "key": "geodude",
+          "w": 1
+        },
+        {
+          "key": "onix",
+          "w": 1
+        }
+      ]
+    },
+    "gym-misty": {
+      "label": "Ginásio · Misty",
+      "partySizeWeights": {
+        "2": 100
+      },
+      "species": [
+        {
+          "key": "staryu",
+          "w": 1
+        },
+        {
+          "key": "starmie",
+          "w": 1
+        }
+      ]
+    },
+    "gym-surge": {
+      "label": "Ginásio · Surge",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "voltorb",
+          "w": 1
+        },
+        {
+          "key": "pikachu",
+          "w": 1
+        },
+        {
+          "key": "raichu",
+          "w": 1
+        }
+      ]
+    },
+    "gym-erika": {
+      "label": "Ginásio · Erika",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "victreebel",
+          "w": 1
+        },
+        {
+          "key": "tangela",
+          "w": 1
+        },
+        {
+          "key": "vileplume",
+          "w": 1
+        }
+      ]
+    },
+    "gym-koga": {
+      "label": "Ginásio · Koga",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "koffing",
+          "w": 2
+        },
+        {
+          "key": "muk",
+          "w": 1
+        },
+        {
+          "key": "weezing",
+          "w": 1
+        }
+      ]
+    },
+    "gym-sabrina": {
+      "label": "Ginásio · Sabrina",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "kadabra",
+          "w": 1
+        },
+        {
+          "key": "mrmime",
+          "w": 1
+        },
+        {
+          "key": "venomoth",
+          "w": 1
+        },
+        {
+          "key": "alakazam",
+          "w": 1
+        }
+      ]
+    },
+    "gym-blaine": {
+      "label": "Ginásio · Blaine",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "growlithe",
+          "w": 1
+        },
+        {
+          "key": "ponyta",
+          "w": 1
+        },
+        {
+          "key": "rapidash",
+          "w": 1
+        },
+        {
+          "key": "arcanine",
+          "w": 1
+        }
+      ]
+    },
+    "gym-giovanni": {
+      "label": "Ginásio · Giovanni",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "rhyhorn",
+          "w": 1
+        },
+        {
+          "key": "dugtrio",
+          "w": 1
+        },
+        {
+          "key": "nidoqueen",
+          "w": 1
+        },
+        {
+          "key": "nidoking",
+          "w": 1
+        },
+        {
+          "key": "rhydon",
+          "w": 1
+        }
+      ]
+    },
+    "gym-falkner": {
+      "label": "Ginásio · Falkner",
+      "partySizeWeights": {
+        "2": 100
+      },
+      "species": [
+        {
+          "key": "pidgey",
+          "w": 1
+        },
+        {
+          "key": "pidgeotto",
+          "w": 1
+        }
+      ]
+    },
+    "gym-bugsy": {
+      "label": "Ginásio · Bugsy",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "metapod",
+          "w": 1
+        },
+        {
+          "key": "kakuna",
+          "w": 1
+        },
+        {
+          "key": "scyther",
+          "w": 1
+        }
+      ]
+    },
+    "gym-whitney": {
+      "label": "Ginásio · Whitney",
+      "partySizeWeights": {
+        "2": 100
+      },
+      "species": [
+        {
+          "key": "clefairy",
+          "w": 1
+        },
+        {
+          "key": "miltank",
+          "w": 1
+        }
+      ]
+    },
+    "gym-morty": {
+      "label": "Ginásio · Morty",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "gastly",
+          "w": 1
+        },
+        {
+          "key": "haunter",
+          "w": 2
+        },
+        {
+          "key": "gengar",
+          "w": 1
+        }
+      ]
+    },
+    "gym-jasmine": {
+      "label": "Ginásio · Jasmine",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "magnemite",
+          "w": 2
+        },
+        {
+          "key": "steelix",
+          "w": 1
+        }
+      ]
+    },
+    "gym-chuck": {
+      "label": "Ginásio · Chuck",
+      "partySizeWeights": {
+        "2": 100
+      },
+      "species": [
+        {
+          "key": "primeape",
+          "w": 1
+        },
+        {
+          "key": "poliwrath",
+          "w": 1
+        }
+      ]
+    },
+    "gym-pryce": {
+      "label": "Ginásio · Pryce",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "seel",
+          "w": 1
+        },
+        {
+          "key": "dewgong",
+          "w": 1
+        },
+        {
+          "key": "piloswine",
+          "w": 1
+        }
+      ]
+    },
+    "gym-clair": {
+      "label": "Ginásio · Clair",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "dragonair",
+          "w": 3
+        },
+        {
+          "key": "kingdra",
+          "w": 1
+        }
+      ]
+    },
+    "gym-norman": {
+      "label": "Ginásio · Norman",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "spinda",
+          "w": 1
+        },
+        {
+          "key": "vigoroth",
+          "w": 1
+        },
+        {
+          "key": "linoone",
+          "w": 1
+        },
+        {
+          "key": "slaking",
+          "w": 1
+        }
+      ]
+    },
+    "gym-roxanne": {
+      "label": "Ginásio · Roxanne",
+      "partySizeWeights": {
+        "2": 100
+      },
+      "species": [
+        {
+          "key": "geodude",
+          "w": 1
+        },
+        {
+          "key": "nosepass",
+          "w": 1
+        }
+      ]
+    },
+    "gym-brawly": {
+      "label": "Ginásio · Brawly",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "machop",
+          "w": 1
+        },
+        {
+          "key": "meditite",
+          "w": 1
+        },
+        {
+          "key": "makuhita",
+          "w": 1
+        }
+      ]
+    },
+    "gym-wattson": {
+      "label": "Ginásio · Wattson",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "magnemite",
+          "w": 1
+        },
+        {
+          "key": "voltorb",
+          "w": 1
+        },
+        {
+          "key": "magneton",
+          "w": 1
+        },
+        {
+          "key": "manectric",
+          "w": 1
+        }
+      ]
+    },
+    "gym-flannery": {
+      "label": "Ginásio · Flannery",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "numel",
+          "w": 1
+        },
+        {
+          "key": "slugma",
+          "w": 1
+        },
+        {
+          "key": "torkoal",
+          "w": 1
+        }
+      ]
+    },
+    "gym-winona": {
+      "label": "Ginásio · Winona",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "swellow",
+          "w": 1
+        },
+        {
+          "key": "pelipper",
+          "w": 1
+        },
+        {
+          "key": "skarmory",
+          "w": 1
+        },
+        {
+          "key": "altaria",
+          "w": 1
+        }
+      ]
+    },
+    "gym-tate": {
+      "label": "Ginásio · Tate",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "solrock",
+          "w": 1
+        },
+        {
+          "key": "lunatone",
+          "w": 1
+        },
+        {
+          "key": "xatu",
+          "w": 1
+        },
+        {
+          "key": "claydol",
+          "w": 1
+        }
+      ]
+    },
+    "gym-juan": {
+      "label": "Ginásio · Juan",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "luvdisc",
+          "w": 1
+        },
+        {
+          "key": "sealeo",
+          "w": 1
+        },
+        {
+          "key": "whiscash",
+          "w": 1
+        },
+        {
+          "key": "crawdaunt",
+          "w": 1
+        },
+        {
+          "key": "kingdra",
+          "w": 1
+        }
+      ]
+    },
+    "gym-roark": {
+      "label": "Ginásio · Roark",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "geodude",
+          "w": 1
+        },
+        {
+          "key": "onix",
+          "w": 1
+        },
+        {
+          "key": "cranidos",
+          "w": 1
+        }
+      ]
+    },
+    "gym-gardenia": {
+      "label": "Ginásio · Gardenia",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "turtwig",
+          "w": 1
+        },
+        {
+          "key": "cherrim",
+          "w": 1
+        },
+        {
+          "key": "roserade",
+          "w": 1
+        }
+      ]
+    },
+    "gym-fantina": {
+      "label": "Ginásio · Fantina",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "drifblim",
+          "w": 1
+        },
+        {
+          "key": "gengar",
+          "w": 1
+        },
+        {
+          "key": "mismagius",
+          "w": 1
+        }
+      ]
+    },
+    "gym-maylene": {
+      "label": "Ginásio · Maylene",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "meditite",
+          "w": 1
+        },
+        {
+          "key": "machoke",
+          "w": 1
+        },
+        {
+          "key": "lucario",
+          "w": 1
+        }
+      ]
+    },
+    "gym-crasher-wake": {
+      "label": "Ginásio · Crasher Wake",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "gyarados",
+          "w": 1
+        },
+        {
+          "key": "quagsire",
+          "w": 1
+        },
+        {
+          "key": "floatzel",
+          "w": 1
+        }
+      ]
+    },
+    "gym-byron": {
+      "label": "Ginásio · Byron",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "bronzor",
+          "w": 1
+        },
+        {
+          "key": "steelix",
+          "w": 1
+        },
+        {
+          "key": "bastiodon",
+          "w": 1
+        }
+      ]
+    },
+    "gym-candice": {
+      "label": "Ginásio · Candice",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "sneasel",
+          "w": 1
+        },
+        {
+          "key": "piloswine",
+          "w": 1
+        },
+        {
+          "key": "abomasnow",
+          "w": 1
+        },
+        {
+          "key": "froslass",
+          "w": 1
+        }
+      ]
+    },
+    "gym-volkner": {
+      "label": "Ginásio · Volkner",
+      "partySizeWeights": {
+        "4": 100
+      },
+      "species": [
+        {
+          "key": "jolteon",
+          "w": 1
+        },
+        {
+          "key": "raichu",
+          "w": 1
+        },
+        {
+          "key": "luxray",
+          "w": 1
+        },
+        {
+          "key": "electivire",
+          "w": 1
+        }
+      ]
+    },
+    "gym-lorelei": {
+      "label": "Elite Four · Lorelei",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "dewgong",
+          "w": 1
+        },
+        {
+          "key": "cloyster",
+          "w": 1
+        },
+        {
+          "key": "slowbro",
+          "w": 1
+        },
+        {
+          "key": "jynx",
+          "w": 1
+        },
+        {
+          "key": "lapras",
+          "w": 1
+        }
+      ]
+    },
+    "gym-bruno": {
+      "label": "Elite Four · Bruno",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "onix",
+          "w": 2
+        },
+        {
+          "key": "hitmonchan",
+          "w": 1
+        },
+        {
+          "key": "hitmonlee",
+          "w": 1
+        },
+        {
+          "key": "machamp",
+          "w": 1
+        }
+      ]
+    },
+    "gym-agatha": {
+      "label": "Elite Four · Agatha",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "gengar",
+          "w": 2
+        },
+        {
+          "key": "golbat",
+          "w": 1
+        },
+        {
+          "key": "haunter",
+          "w": 1
+        },
+        {
+          "key": "arbok",
+          "w": 1
+        }
+      ]
+    },
+    "gym-lance": {
+      "label": "Elite Four · Lance",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "gyarados",
+          "w": 1
+        },
+        {
+          "key": "dragonair",
+          "w": 2
+        },
+        {
+          "key": "aerodactyl",
+          "w": 1
+        },
+        {
+          "key": "dragonite",
+          "w": 1
+        }
+      ]
+    },
+    "gym-blue": {
+      "label": "Champion · Blue",
+      "partySizeWeights": {
+        "6": 100
+      },
+      "species": [
+        {
+          "key": "pidgeot",
+          "w": 1
+        },
+        {
+          "key": "alakazam",
+          "w": 1
+        },
+        {
+          "key": "rhydon",
+          "w": 1
+        },
+        {
+          "key": "gyarados",
+          "w": 1
+        },
+        {
+          "key": "arcanine",
+          "w": 1
+        },
+        {
+          "key": "exeggutor",
+          "w": 1
+        }
+      ]
+    },
+    "gym-aaron": {
+      "label": "Elite Four · Aaron",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "dustox",
+          "w": 1
+        },
+        {
+          "key": "beautifly",
+          "w": 1
+        },
+        {
+          "key": "vespiquen",
+          "w": 1
+        },
+        {
+          "key": "heracross",
+          "w": 1
+        },
+        {
+          "key": "drapion",
+          "w": 1
+        }
+      ]
+    },
+    "gym-bertha": {
+      "label": "Elite Four · Bertha",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "quagsire",
+          "w": 1
+        },
+        {
+          "key": "whiscash",
+          "w": 1
+        },
+        {
+          "key": "hippowdon",
+          "w": 1
+        },
+        {
+          "key": "golem",
+          "w": 1
+        },
+        {
+          "key": "rhyperior",
+          "w": 1
+        }
+      ]
+    },
+    "gym-flint": {
+      "label": "Elite Four · Flint",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "rapidash",
+          "w": 1
+        },
+        {
+          "key": "steelix",
+          "w": 1
+        },
+        {
+          "key": "drifblim",
+          "w": 1
+        },
+        {
+          "key": "lopunny",
+          "w": 1
+        },
+        {
+          "key": "infernape",
+          "w": 1
+        }
+      ]
+    },
+    "gym-lucian": {
+      "label": "Elite Four · Lucian",
+      "partySizeWeights": {
+        "5": 100
+      },
+      "species": [
+        {
+          "key": "mrmime",
+          "w": 1
+        },
+        {
+          "key": "girafarig",
+          "w": 1
+        },
+        {
+          "key": "medicham",
+          "w": 1
+        },
+        {
+          "key": "alakazam",
+          "w": 1
+        },
+        {
+          "key": "gallade",
+          "w": 1
+        }
+      ]
+    },
+    "gym-cynthia": {
+      "label": "Champion · Cynthia",
+      "partySizeWeights": {
+        "6": 100
+      },
+      "species": [
+        {
+          "key": "spiritomb",
+          "w": 1
+        },
+        {
+          "key": "roserade",
+          "w": 1
+        },
+        {
+          "key": "gastrodon",
+          "w": 1
+        },
+        {
+          "key": "lucario",
+          "w": 1
+        },
+        {
+          "key": "milotic",
+          "w": 1
+        },
+        {
+          "key": "garchomp",
+          "w": 1
+        }
+      ]
+    },
+    "gym-palmer": {
+      "label": "Tower Tycoon · Palmer",
+      "partySizeWeights": {
+        "3": 100
+      },
+      "species": [
+        {
+          "key": "milotic",
+          "w": 1
+        },
+        {
+          "key": "rhyperior",
+          "w": 1
+        },
+        {
+          "key": "dragonite",
+          "w": 1
+        }
+      ]
+    }
+  },
+  "byPeopleId": {
+    "jenny": "policeman",
+    "jenny-blonde": "policeman",
+    "jenny-purple": "policeman",
+    "kanto-referee": "referee",
+    "kanto-aroma-lady": "aroma-lady",
+    "kanto-artist": "artist",
+    "kanto-camper": "camper",
+    "kanto-picnicker": "picnicker",
+    "kanto-beauty": "beauty",
+    "kanto-captain": "captain",
+    "kanto-battle-girl": "battle-girl",
+    "kanto-copycat": "copycat",
+    "kanto-tamer": "tamer",
+    "kanto-tamer-2": "tamer",
+    "kanto-breeder": "breeder",
+    "kanto-breeder-2": "breeder",
+    "kanto-clerk": "clerk",
+    "kanto-channeler-b": "channeler",
+    "kanto-channeler": "channeler",
+    "kanto-little-girl": "little-girl",
+    "kanto-little-girl-lets-go": "little-girl",
+    "kanto-youngster": "youngster",
+    "kanto-youngster-lets-go": "youngster",
+    "kanto-guard": "guard",
+    "kanto-ranger": "ranger",
+    "kanto-gentleman": "gentleman",
+    "kanto-gentleman-lets-go": "gentleman",
+    "kanto-man-lets-go-b": "man",
+    "kanto-man-lets-go-c": "man",
+    "kanto-man-lets-go": "man",
+    "kanto-super-nerd": "super-nerd",
+    "kanto-young-couple": "young-couple",
+    "kanto-young-couple-2": "young-couple",
+    "kanto-lass": "lass",
+    "kanto-cooltrainer-b": "cooltrainer",
+    "kanto-cooltrainer-c": "cooltrainer",
+    "kanto-cooltrainer": "cooltrainer",
+    "kanto-cooltrainer-lets-go-b": "cooltrainer",
+    "kanto-cooltrainer-lets-go-c": "cooltrainer",
+    "kanto-cooltrainer-lets-go": "cooltrainer",
+    "kanto-juggler-lets-go": "juggler",
+    "kanto-gamer-b": "gamer",
+    "kanto-gamer": "gamer",
+    "kanto-black-belt": "black-belt",
+    "kanto-psychic-lets-go": "psychic",
+    "kanto-roughneck-lets-go": "roughneck",
+    "kanto-roughneck-lets-go-2": "roughneck",
+    "kanto-lady-b": "lady",
+    "kanto-lady-c": "lady",
+    "kanto-lady": "lady",
+    "kanto-lady-b-2": "lady",
+    "kanto-lady-c-2": "lady",
+    "kanto-lady-2": "lady",
+    "kanto-beauty-2": "beauty",
+    "kanto-sailor": "sailor",
+    "kanto-sailor-lets-go": "sailor",
+    "kanto-engineer": "engineer",
+    "kanto-engineer-lets-go": "engineer",
+    "kanto-hiker": "hiker",
+    "kanto-hiker-lets-go": "hiker",
+    "kanto-bird-keeper-lets-go": "bird-keeper",
+    "kanto-fisherman": "fisherman",
+    "kanto-fisherman-lets-go": "fisherman",
+    "kanto-pokemaniac-charizard": "pokemaniac",
+    "kanto-pokemaniac-slowpoke-lets-go": "pokemaniac",
+    "kanto-policeman": "policeman",
+    "kanto-ruin-maniac": "ruin-maniac",
+    "pt-bug-catcher": "bug",
+    "pt-bug-maniac-m": "bug",
+    "pt-black-belt": "black-belt",
+    "pt-psychic-m": "psychic",
+    "pt-psychic-m-2": "psychic",
+    "pt-beauty": "beauty",
+    "pt-bug-maniac-f": "bug",
+    "pt-aroma-lady": "aroma-lady",
+    "pt-youngster": "youngster",
+    "pt-lass": "lass",
+    "pt-picnicker-m": "picnicker",
+    "pt-picnicker-f": "picnicker",
+    "pt-gentleman": "gentleman",
+    "pt-battle-girl": "battle-girl",
+    "pt-man-a": "man",
+    "pt-man-d": "man",
+    "pt-fisherman": "fisherman",
+    "pt-sailor": "sailor",
+    "pt-hiker": "hiker",
+    "pt-rich-old-man": "gentleman",
+    "pt-engineer": "engineer",
+    "pt-rich-old-man-2": "gentleman",
+    "pt-rich-old-woman": "lady",
+    "pt-clerk-m": "clerk",
+    "pt-clerk-f": "clerk",
+    "pt-rich-aunt": "lady",
+    "gbc-youngster": "youngster",
+    "gbc-cooltrainer-f": "cooltrainer",
+    "gbc-cooltrainer-m": "cooltrainer",
+    "gbc-little-girl": "little-girl",
+    "gbc-super-nerd": "super-nerd",
+    "gbc-hiker": "hiker",
+    "gbc-beauty": "beauty",
+    "gbc-gentleman": "gentleman",
+    "gbc-sailor": "sailor",
+    "gbc-channeler": "channeler",
+    "hgss-youngster": "youngster",
+    "hgss-bug-catcher": "bug",
+    "hgss-male-psychic-trainner": "psychic",
+    "hgss-char-16": "beauty",
+    "hgss-female-psychic-trainner": "psychic",
+    "hgss-female-psychic-trainner-pink": "psychic",
+    "hgss-female-psychic-trainner-orange": "psychic",
+    "hgss-female-psychic-trainner-aqua-green": "psychic",
+    "hgss-gentleman": "gentleman",
+    "hgss-ship-captain": "captain",
+    "dp-char-12": "youngster",
+    "dp-char-13": "lass",
+    "dp-char-30": "lass",
+    "dp-char-31": "lass",
+    "dp-char-33": "lass",
+    "dp-char-39": "lady",
+    "dp-char-41": "lady",
+    "dp-char-53": "hiker",
+    "dp-char-54": "psychic",
+    "dp-char-61": "policeman",
+    "dp-char-63": "sailor",
+    "hgss-brock": "gym-brock",
+    "hgss-misty": "gym-misty",
+    "hgss-lt-surge": "gym-surge",
+    "hgss-erika": "gym-erika",
+    "hgss-koga": "gym-koga",
+    "hgss-sabrina": "gym-sabrina",
+    "hgss-blaine": "gym-blaine",
+    "hgss-male-gangster": "gym-giovanni",
+    "hgss-falkner": "gym-falkner",
+    "hgss-bugsy": "gym-bugsy",
+    "hgss-whitney": "gym-whitney",
+    "hgss-morty": "gym-morty",
+    "hgss-chuck": "gym-chuck",
+    "hgss-jasmine": "gym-jasmine",
+    "hgss-pryce": "gym-pryce",
+    "hgss-claire": "gym-clair",
+    "brock": "gym-brock",
+    "misty": "gym-misty",
+    "lt-surge": "gym-surge",
+    "erika": "gym-erika",
+    "koga": "gym-koga",
+    "sabrina": "gym-sabrina",
+    "blaine": "gym-blaine",
+    "falkner": "gym-falkner",
+    "bugsy": "gym-bugsy",
+    "whitney": "gym-whitney",
+    "morty": "gym-morty",
+    "chuck": "gym-chuck",
+    "jasmine": "gym-jasmine",
+    "pryce": "gym-pryce",
+    "claire": "gym-clair",
+    "clair": "gym-clair",
+    "kanto-misty": "gym-misty",
+    "kanto-misty-lets-go": "gym-misty",
+    "kanto-erika-lets-go": "gym-erika",
+    "kanto-erika-wergan": "gym-erika",
+    "kanto-blaine": "gym-blaine",
+    "kanto-blaine-2": "gym-blaine",
+    "kanto-blaine-hgss": "gym-blaine",
+    "kanto-koga": "gym-koga",
+    "kanto-koga-lets-go": "gym-koga",
+    "kanto-sabrina": "gym-sabrina",
+    "kanto-lorelei": "gym-lorelei",
+    "kanto-bruno": "gym-bruno",
+    "kanto-bruno-hgss": "gym-bruno",
+    "kanto-bruno-lets-go": "gym-bruno",
+    "kanto-agatha": "gym-agatha",
+    "kanto-blue": "gym-blue",
+    "kanto-blue-lets-go": "gym-blue",
+    "dp-gym-roark": "gym-roark",
+    "dp-gym-gardenia": "gym-gardenia",
+    "dp-gym-maylene": "gym-maylene",
+    "dp-gym-crasher-wake": "gym-crasher-wake",
+    "dp-gym-fantina": "gym-fantina",
+    "dp-gym-byron": "gym-byron",
+    "dp-gym-candice": "gym-candice",
+    "dp-gym-volkner": "gym-volkner",
+    "dp-gym-aaron": "gym-aaron",
+    "dp-gym-bertha": "gym-bertha",
+    "dp-gym-flint": "gym-flint",
+    "dp-gym-lucian": "gym-lucian",
+    "dp-gym-cynthia": "gym-cynthia",
+    "dp-gym-palmer": "gym-palmer"
+  }
+}
