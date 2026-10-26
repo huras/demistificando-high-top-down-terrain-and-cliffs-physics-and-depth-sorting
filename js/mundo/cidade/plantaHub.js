@@ -138,7 +138,7 @@ function ehSaida(saidas, tx, ty) {
 }
 
 export function criarPlantaHub(def) {
-  const escala = ESCALA_HUB;
+  const escala = Math.max(1, (def.escala | 0) || ESCALA_HUB);
   const tilesX = def.tilesX;
   const tilesY = def.tilesY;
   const cols = tilesX * escala;
@@ -225,7 +225,7 @@ export function criarPlantaHub(def) {
     alvos: def.alvos || [],
     spawn: {
       x: def.origemX + (doorX0 + doorX1) * 0.5,
-      y: def.origemY + rows - 2.8,
+      y: def.origemY + rows - 1.45,
       z: ALTURA_PRACA,
     },
   };

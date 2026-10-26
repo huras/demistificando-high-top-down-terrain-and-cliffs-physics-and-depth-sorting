@@ -27,6 +27,7 @@ import { BERRIES, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
 import { ESTAGIO } from "../wild/estagios.js";
 import { colher, criarSolo, plantar, regar, simularPlot } from "../wild/plots.js";
 import { sfx } from "./audio.js";
+import { iniciarPortaTransicao, portaOcupada } from "./portaTransicao.js";
 import { emAlcanceEdicao } from "../mundo/voxel/editar.js";
 import { tentarColocar, tentarQuebrar } from "./blocos.js";
 import {
@@ -180,14 +181,17 @@ export function entradaPerto(x, y) {
 }
 
 export function tentarEntrar(corpo, infoPronto) {
-  if (estado.interior || estado.saidaGrace > 0) return false;
+  if (estado.interior || estado.saidaGrace > 0 || portaOcupada()) return false;
   const info = infoPronto || entradaPerto(corpo.x, corpo.y);
   if (!info || info.predio.porta === false) return false;
-  if (info.predio.papel === "casa") return entrarSala3d(corpo, info);
-  if (info.predio.papel === "lab") return entrarLaboratorio(corpo, info);
-  if (info.predio.papel === "centro") return entrarHub(corpo, info, spawnCentro(), "centro");
-  if (info.predio.papel === "loja") return entrarHub(corpo, info, spawnLoja(), "loja");
-  return false;
+  const papel = info.predio.papel;
+  if (papel !== "casa" && papel !== "lab" && papel !== "centro" && papel !== "loja") return false;
+  return iniciarPortaTransicao(corpo, "enter", () => {
+    if (papel === "casa") entrarSala3d(corpo, info);
+    else if (papel === "lab") entrarLaboratorio(corpo, info);
+    else if (papel === "centro") entrarHub(corpo, info, spawnCentro(), "centro");
+    else entrarHub(corpo, info, spawnLoja(), "loja");
+  });
 }
 
 function entrarHub(corpo, info, spawn, papel) {
@@ -264,7 +268,7 @@ function pousar(corpo, x, y) {
 }
 
 export function checarSaidaSala(corpo) {
-  if (!estado.interior?.sala3d) return false;
+  if (!estado.interior?.sala3d || portaOcupada()) return false;
   const papel = estado.interior.papel;
   if (papel === "santuario") {
     return checarSaidaSantuario(corpo);
@@ -278,8 +282,7 @@ export function checarSaidaSala(corpo) {
           ? naSaidaLoja(corpo.x, corpo.y)
           : naSaidaSala(corpo.x, corpo.y);
   if (!naSaida) return false;
-  sairInterior(corpo);
-  return true;
+  return iniciarPortaTransicao(corpo, "exit", () => sairInterior(corpo));
 }
 
 function saidaDoPredio(interior) {

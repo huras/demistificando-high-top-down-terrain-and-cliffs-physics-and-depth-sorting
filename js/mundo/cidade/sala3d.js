@@ -62,12 +62,12 @@ function ehParede(wx, wy) {
   return true;
 }
 
-/** Um passo pra dentro da porta sul. */
+/** Logo dentro da porta sul, olhando pro fundo. */
 export function spawnSala() {
   const c = caixa();
   return {
     x: (c.portaX0 + c.portaX1) * 0.5,
-    y: c.portaY - 3.2,
+    y: c.portaY - 1.35,
     z: ALTURA_PRACA,
   };
 }

@@ -14,7 +14,7 @@ import {
   plantaLaboratorio,
 } from "../../mundo/cidade/laboratorio.js";
 import { cascasDaParede } from "../../mundo/cidade/plantaHub.js";
-import { MESAS_LAB, propDoSprite } from "../../mundo/cidade/catalogoProps.js";
+import { MESA_ESCRIVANINHA, MESAS_LAB, propDoSprite } from "../../mundo/cidade/catalogoProps.js";
 import {
   atualizarBolasCura,
   emPe,
@@ -44,7 +44,6 @@ const RECORTE = Object.freeze({
   pc: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-computer-blank.png" }),
   pcGrafico: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-computer-graph.png" }),
   estante: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 45, cols: 2, rows: 2, tile: 16 }),
-  escrivaninha: Object.freeze({ url: FOLHA_MOVEIS, col: 4, row: 44, cols: 2, rows: 2, tile: 16 }),
   tapete: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 54, cols: 2, rows: 1, tile: 16 }),
   livros: Object.freeze({ url: FOLHA_MOVEIS, col: 3, row: 45, cols: 1, rows: 1, tile: 16 }),
   vasoA: Object.freeze({ url: FOLHA_VASO, col: 15, row: 41, cols: 3, rows: 6, tile: 16, escala: 0.5 }),
@@ -249,6 +248,14 @@ export function montarLaboratorio3d(grupo) {
         const idMesa = MESAS_LAB[mesaI % MESAS_LAB.length];
         mesaI += 1;
         const inst = instanciarProp(idMesa, x, peZ);
+        if (inst) {
+          sala.add(inst);
+          continue;
+        }
+      }
+      if (item.id === "escrivaninha") {
+        const idMesa = propDoSprite("escrivaninha") || MESA_ESCRIVANINHA;
+        const inst = instanciarProp(idMesa, x, peZ, { yaw: item.yaw || 0 });
         if (inst) {
           sala.add(inst);
           continue;

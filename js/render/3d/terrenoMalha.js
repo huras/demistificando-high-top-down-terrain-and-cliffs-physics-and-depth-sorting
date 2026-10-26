@@ -1670,23 +1670,24 @@ function* construirGeosChunk(chunk) {
       if (supAgua > 0) {
         const caindo = chunk.aguaCaindo[ia] === 1;
         const fam = chunk.fluido[ia] | 0;
-        // Coluna caindo: só cortina — lâmina/espuma no ar vira água voando.
-        if (!caindo) {
-          const prof = chunk.aguaProf[ia] | 0;
-          const listaAgua = fam === FLUIDO.LAVA ? aguasLava : fam === FLUIDO.PANTANO ? aguasPantano : aguas;
-          const corAgua = fam === FLUIDO.LAVA || fam === FLUIDO.PANTANO ? "#ffffff" : tintaLago(prof || 1);
-          listaAgua.push(
-            geoSuperficieAgua(
-              wx,
-              wy,
-              supAgua - 0.04,
-              chunk.fluxoX[ia] | 0,
-              chunk.fluxoY[ia] | 0,
-              corAgua,
-            ),
-          );
-          empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
-        }
+        // Lip de cachoeira também precisa da lâmina (bloco no topo);
+        // só a cortina deixava o tile sem superfície.
+        const prof = caindo
+          ? Math.max(1, supAgua - (chunk.aguaPiso[ia] | 0))
+          : chunk.aguaProf[ia] | 0;
+        const listaAgua = fam === FLUIDO.LAVA ? aguasLava : fam === FLUIDO.PANTANO ? aguasPantano : aguas;
+        const corAgua = fam === FLUIDO.LAVA || fam === FLUIDO.PANTANO ? "#ffffff" : tintaLago(prof || 1);
+        listaAgua.push(
+          geoSuperficieAgua(
+            wx,
+            wy,
+            supAgua - 0.04,
+            chunk.fluxoX[ia] | 0,
+            chunk.fluxoY[ia] | 0,
+            corAgua,
+          ),
+        );
+        empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
         // Cortina em qualquer fluido (água, pântano, lava) com vizinho
         // molhado/nível mais baixo — dois níveis diferentes adjacentes.
         {

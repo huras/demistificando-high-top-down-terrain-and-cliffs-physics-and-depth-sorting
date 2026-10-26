@@ -27,6 +27,8 @@ const TILE = 16;
 const RECORTE = Object.freeze({
   cura: Object.freeze({ url: FOLHA_MOVEIS, col: 6, row: 43, cols: 2, rows: 3, tile: 16 }),
   pc: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-computer-blank.png" }),
+  /** Fallback visual da prateleira (mesma estante do centro/lab). */
+  estante: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 45, cols: 2, rows: 2, tile: 16 }),
 });
 
 function materialCaixa(cor) {
@@ -159,6 +161,26 @@ function recorteArea(img, camada, area) {
   return tela;
 }
 
+/** Grade fixa de ids do tileset (não depende da camada do chão). */
+function recorteTiles(img, grade) {
+  const rows = grade.length;
+  const cols = grade[0].length;
+  const tela = document.createElement("canvas");
+  tela.width = cols * TILE;
+  tela.height = rows * TILE;
+  const ctx = tela.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const id = grade[row][col] | 0;
+      const sx = (id % COLUNAS_TILE) * TILE;
+      const sy = Math.floor(id / COLUNAS_TILE) * TILE;
+      ctx.drawImage(img, sx, sy, TILE, TILE, col * TILE, row * TILE, TILE, TILE);
+    }
+  }
+  return tela;
+}
+
 export function montarHub3d(grupo, planta, bolas) {
   const sala = new THREE.Group();
   sala.name = planta.papel;
@@ -180,13 +202,15 @@ export function montarHub3d(grupo, planta, bolas) {
     imagem(FOLHA_GENTE).catch(() => null),
     imagem(RECORTE.cura.url).catch(() => null),
     imagem(RECORTE.pc.url).catch(() => null),
+    imagem(RECORTE.estante.url).catch(() => null),
     carregarSlotsCura(),
   ]).then((imagens) => {
-    const [bg, fg, gente, curaImg, pcImg] = imagens;
+    const [bg, fg, gente, curaImg, pcImg, estanteImg] = imagens;
     if (bg) anexarChao(sala, planta, texturaChao(bg, planta.camada));
     const moldeNpc = new Map();
     let moldeCura = null;
     let moldePc = null;
+    let moldePrateleira = null;
     if (curaImg) moldeCura = moldePe(recortar(curaImg, RECORTE.cura));
     if (pcImg) moldePc = moldePe(pcImg);
     for (let i = 0; i < planta.props.length; i++) {
@@ -209,8 +233,16 @@ export function montarHub3d(grupo, planta, bolas) {
       } else if (prop.id === "pc" && moldePc) {
         const inst = porBillboard(moldePc, x, z);
         if (inst) sala.add(inst);
-      } else if (prop.id === "prateleira" && fg && prop.area) {
-        const inst = porBillboard(moldePe(recorteArea(fg, planta.camada, prop.area)), x, z);
+      } else if (prop.id === "prateleira") {
+        if (!moldePrateleira) {
+          let tela = null;
+          if (fg && prop.tiles) tela = recorteTiles(fg, prop.tiles);
+          else if (fg && prop.area) tela = recorteArea(fg, planta.camada, prop.area);
+          if (tela) moldePrateleira = moldePe(tela);
+          else if (estanteImg) moldePrateleira = moldePe(recortar(estanteImg, RECORTE.estante));
+        }
+        if (!moldePrateleira) continue;
+        const inst = porBillboard(moldePrateleira, x, z);
         if (inst) sala.add(inst);
       }
     }

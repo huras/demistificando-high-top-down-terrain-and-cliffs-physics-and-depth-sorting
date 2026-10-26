@@ -131,8 +131,9 @@ function emPe(lista, sprite, x, footY, extra) {
   return carimbar(lista, sprite, x - sprite.w * 0.5, footY - sprite.h, extra);
 }
 
-function escrivaninhaComLivros(lista, esquerda, topo) {
-  const mesa = carimbar(lista, SPRITE.escrivaninha, esquerda, topo);
+/** yaw: 0 = frente sul; π/2 = frente leste (encostada na parede oeste). */
+function escrivaninhaComLivros(lista, esquerda, topo, yaw = 0) {
+  const mesa = carimbar(lista, SPRITE.escrivaninha, esquerda, topo, { yaw });
   carimbar(lista, SPRITE.livros, mesa.x - 0.35, mesa.y - mesa.halfH + 0.12, {
     chao: true,
     pe: false,
@@ -272,10 +273,10 @@ function montar() {
     }
   }
   carimbar(moveis, SPRITE.estante, a.x0 + 0.45, a.y0 + 0.35);
-  escrivaninhaComLivros(moveis, a.x0 + 0.55, a.y1 - 2.45);
+  escrivaninhaComLivros(moveis, a.x0 + 0.55, a.y1 - 2.45, Math.PI / 2);
   const cura = carimbar(moveis, SPRITE.cura, a.x1 - 2.65, a.y1 - 4.35, { acao: "cura" });
 
-  escrivaninhaComLivros(moveis, bMeio.x - 1, b.y0 + 0.4);
+  escrivaninhaComLivros(moveis, bMeio.x - 1, b.y0 + 0.4, 0);
   const mesa = SPRITE.mesa;
   const corredor = 2.4;
   const xsMesa = [bMeio.x - corredor / 2 - mesa.w / 2, bMeio.x + corredor / 2 + mesa.w / 2];
@@ -301,7 +302,7 @@ function montar() {
     }
   }
   carimbar(moveis, SPRITE.estante, c.x1 - 0.45 - SPRITE.estante.w, c.y0 + 0.35);
-  escrivaninhaComLivros(moveis, c.x0 + 0.55, cMeio.y + 0.25);
+  escrivaninhaComLivros(moveis, c.x0 + 0.55, cMeio.y + 0.25, Math.PI / 2);
 
   const est = SPRITE.estante;
   const topos = [d.y0 + 0.45, d.y0 + est.h + 1.1];
@@ -395,7 +396,10 @@ function montar() {
       empurrarDiscosCura(discos, item);
       continue;
     }
-    const r = item.id === "mesa" ? Math.min(0.82, item.halfW * 0.7) : Math.min(0.52, Math.max(0.36, item.halfW * 0.42));
+    const r =
+      item.id === "mesa" || item.id === "escrivaninha"
+        ? Math.min(0.82, item.halfW * 0.7)
+        : Math.min(0.52, Math.max(0.36, item.halfW * 0.42));
     discos.push({ x: ORIGEM_LAB_X + item.x, y: ORIGEM_LAB_Y + item.footY - 0.3, z: ALTURA_PRACA, r });
   }
   for (let i = 0; i < npcs.length; i++) {
@@ -423,7 +427,7 @@ function montar() {
     bolas,
     npcs,
     discos,
-    spawn: { x: ORIGEM_LAB_X + dMeio.x, y: ORIGEM_LAB_Y + rows - 2.35, z: ALTURA_PRACA },
+    spawn: { x: ORIGEM_LAB_X + dMeio.x, y: ORIGEM_LAB_Y + rows - 1.45, z: ALTURA_PRACA },
   };
 }
 

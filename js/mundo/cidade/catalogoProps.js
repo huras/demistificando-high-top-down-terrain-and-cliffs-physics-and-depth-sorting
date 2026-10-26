@@ -87,6 +87,8 @@ export const CATALOGO_PROPS = Object.freeze({
 export const PROP_POR_SPRITE = Object.freeze({
   cura: "cura",
   mesa: "mesa-1",
+  /** Escrivaninha 2×2 → mesa lateral 32×16. */
+  escrivaninha: "mesa-2",
   "cama-azul": "cama",
   "cama-vermelha": "cama",
   "cama-verde": "cama",
@@ -94,6 +96,9 @@ export const PROP_POR_SPRITE = Object.freeze({
 
 /** Lab: sprite ~3.06×1.44 → mesa-3 / mesa-2 (48×16 / 32×16). */
 export const MESAS_LAB = Object.freeze(["mesa-3", "mesa-2"]);
+
+/** Escrivaninha do lab → mesa lateral. */
+export const MESA_ESCRIVANINHA = "mesa-2";
 
 /** Centro: disco r≈0.85, área de espera → mesa-6 (32×32). */
 export const MESA_CENTRO = "mesa-6";

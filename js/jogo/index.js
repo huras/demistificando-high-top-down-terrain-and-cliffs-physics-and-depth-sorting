@@ -60,6 +60,7 @@ import {
   zoomMapa,
 } from "../ui/mapa/mapaMundo.js";
 import { teleporteOcupado } from "./teleporte.js";
+import { portaOcupada, tickPortaTransicao } from "./portaTransicao.js";
 import { toggleMenu, semearDexParty } from "./apiHud.js";
 import { bootHudCompleto, tickHudCampo } from "./hud/bootHud.js";
 import { jogadorMorto } from "./hud/morte.js";
@@ -86,7 +87,7 @@ function campoFocado() {
 
 export function jogoTravaMundo() {
   // uiAberta() já inclui menu/dex/status
-  return uiAberta() || mapaAberto() || teleporteOcupado() || evolucaoAberta();
+  return uiAberta() || mapaAberto() || teleporteOcupado() || portaOcupada() || evolucaoAberta();
 }
 
 function pintarBotaoSom(botao) {
@@ -229,6 +230,7 @@ export function tickJogo(dt, corpo) {
     !campoFocado() &&
     !puzzleSantuarioAberto() &&
     !feixeAtivo() &&
+    !portaOcupada() &&
     livreDeMenu &&
     teclaAgora("KeyE")
   ) {
@@ -240,6 +242,7 @@ export function tickJogo(dt, corpo) {
     }
   }
   tickFeixe(dt);
+  tickPortaTransicao(dt);
   atualizarBussolaSantuario(corpo, !!estado.interior);
   if (!jogadorMorto()) {
     // Chip de ação (Pegar/Soltar) já cuida do feedback principal.
