@@ -28,6 +28,8 @@ import {
   FORCA_CARGA_MS,
 } from "./arremessar.js";
 import { aplicarDanoLivre } from "../pokemon/combate/executor.js";
+import { reindexarEm } from "../mundo/bioma/propsBioma.js";
+import { alturaCorpo } from "../pokemon/ator.js";
 
 /** @type {{
  *   humanoTier: number,
@@ -146,11 +148,15 @@ export function limparOrderCarrier() {
   orderCarrier = null;
 }
 
-export function definirOrderCarrier(follower) {
+/**
+ * @param {object | null} follower
+ * @param {{ lock?: boolean }} [opts] lock=true congela follow (só no canal de lift)
+ */
+export function definirOrderCarrier(follower, opts = {}) {
   if (orderCarrier && orderCarrier !== follower) limparOrderCarrier();
   orderCarrier = follower ?? null;
   if (orderCarrier) {
-    orderCarrier._forcaCanalLock = true;
+    orderCarrier._forcaCanalLock = opts.lock !== false;
     orderCarrier.ordemCampo = null;
   }
 }
@@ -229,9 +235,6 @@ export function tentarInteragir(carrier) {
   if (grabAction) return true;
   if (orderCarrier && carrier === orderCarrier) return false;
   const target = resolverAlvo(carrier);
-  // #region agent log
-  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'E',location:'sistemaForca.js:tentarInteragir',message:'player E grab',data:{hasTarget:!!target,kind:target?.kind||null,peso:target?.weightTier??null,enemyKey:target?.enemy?.especie?.key||null,propId:target?.prop?.id||null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (!target) return false;
   const action = iniciarGrabNoAlvo(carrier, target, nowSec, cfg);
   if (!action) return false;
@@ -250,11 +253,6 @@ export function tentarInteragir(carrier) {
  * @param {{ kind: string, prop?: object, enemy?: object, weightTier: number }} target
  */
 export function iniciarGrabOrdenado(follower, target) {
-  const bloqueado = !follower || !target || !!carry || !!grabAction;
-  const locoBloq = !!(follower && (follower.escalando || follower.planando));
-  // #region agent log
-  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'D',location:'sistemaForca.js:iniciarGrabOrdenado',message:'entrada grab ordenado',data:{bloqueado,locoBloq,hasCarry:!!carry,hasGrab:!!grabAction,kind:target?.kind,peso:target?.weightTier,monKey:follower?.especie?.key||null,voando:!!follower?.voando},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (!follower || !target || carry || grabAction) return false;
   // Voadores (ex. Mewtwo) ainda levantam no chão — só aborta se estiver planando/escalando de verdade.
   if (follower.escalando || follower.planando) return false;
@@ -266,7 +264,7 @@ export function iniciarGrabOrdenado(follower, target) {
   }
   const action = iniciarGrabNoAlvo(follower, target, performance.now() * 0.001, cfg);
   if (!action) return false;
-  definirOrderCarrier(follower);
+  definirOrderCarrier(follower, { lock: true });
   follower._forcaCanalLock = true;
   follower.vx = 0;
   follower.vy = 0;
@@ -275,9 +273,6 @@ export function iniciarGrabOrdenado(follower, target) {
   grabAction = action;
   grabActor = follower;
   follower.ordemForca = null;
-  // #region agent log
-  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'D',location:'sistemaForca.js:iniciarGrabOrdenado:ok',message:'grab ordenado iniciado',data:{failed:!!action.failed,strength:action.strengthTier,peso:action.weightTier,kind:action.kind,dur:action.durationSec},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   return true;
 }
 
@@ -338,6 +333,7 @@ export function atualizarCanal(dt, carrier, opts = {}) {
     tickCarryMobility(carrier);
     tickThrowCharge(dt, carrier, opts);
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
+    sincronizarAnexoForca(carrier || carryOwner);
     return;
   }
   if (carry) {
@@ -345,6 +341,7 @@ export function atualizarCanal(dt, carrier, opts = {}) {
     tickCarryMobility(carrier);
     tickThrowCharge(dt, carrier, opts);
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
+    sincronizarAnexoForca(carrier || carryOwner);
     return;
   }
 
@@ -359,12 +356,14 @@ export function atualizarCanal(dt, carrier, opts = {}) {
   if (!ordered && carrier !== grabActor) {
     abort();
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
+    sincronizarAnexoForca(carrier || carryOwner);
     return;
   }
   // Companion: não aborta por flag de voo idle (lendários flutuam).
   if (carrier.escalando || carrier.planando || (!ordered && carrier.voando)) {
     abort();
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
+    sincronizarAnexoForca(carrier || carryOwner);
     return;
   }
 
@@ -385,6 +384,7 @@ export function atualizarCanal(dt, carrier, opts = {}) {
       }
     }
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
+    sincronizarAnexoForca(carrier || carryOwner);
     return;
   }
 
@@ -396,6 +396,7 @@ export function atualizarCanal(dt, carrier, opts = {}) {
   ) {
     marcarStruggle(action);
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
+    sincronizarAnexoForca(carrier || carryOwner);
     return;
   }
 
@@ -406,6 +407,7 @@ export function atualizarCanal(dt, carrier, opts = {}) {
   if (moved && !failed) {
     abort();
     atualizarArremessos(thrown, dt, cfg.poderArremesso);
+    sincronizarAnexoForca(carrier || carryOwner);
     return;
   }
 
@@ -428,7 +430,11 @@ export function atualizarCanal(dt, carrier, opts = {}) {
       if (held) {
         carry = held;
         carryOwner = carrier;
-        if (ordered) definirOrderCarrier(carrier);
+        if (ordered) {
+          // Carry: libera follow; lock só no canal de lift.
+          definirOrderCarrier(carrier, { lock: false });
+          carrier._forcaCanalLock = false;
+        }
       } else if (ordered) {
         limparOrderCarrier();
       }
@@ -438,6 +444,87 @@ export function atualizarCanal(dt, carrier, opts = {}) {
   tickCarryMobility(carrier);
   tickThrowCharge(dt, carrier, opts);
   atualizarArremessos(thrown, dt, cfg.poderArremesso);
+  sincronizarAnexoForca(carrier || carryOwner);
+}
+
+/**
+ * Altura (m) do peito→topo do carrier pra pousar o anexo na cabeça.
+ * @param {object} dono
+ * @param {{ halfH?: number } | null} [carga]
+ */
+function alturaCabecaAnexo(dono, carga = null) {
+  let h = alturaCorpo(dono);
+  const alt = Number(dono?.especie?.altura);
+  if (Number.isFinite(alt) && alt > 0) {
+    const metros = alt > 10 ? alt * 0.1 : alt;
+    h = Math.max(0.6, metros);
+  }
+  if (dono?.ehHumano || dono?.isPlayer) h = Math.max(h, 1.65);
+  const half = Math.max(0.25, Number(carga?.halfH) || 0.4);
+  // Pé do billboard da pedra fica no topo da cabeça (+ folga do sprite).
+  return h * 1.08 + half * 0.2;
+}
+
+/**
+ * Mantém pedra/Pokémon colados no carrier (ou no projétil) pra render 3D.
+ * @param {object | null} carrier
+ */
+function sincronizarAnexoForca(carrier) {
+  const dono = carryOwner || grabActor || carrier;
+  if (grabAction && !grabAction.failed && dono) {
+    const t = Math.min(
+      1,
+      grabAction.elapsedSec / Math.max(0.01, grabAction.durationSec),
+    );
+    const ox = grabAction.originX ?? dono.x;
+    const oy = grabAction.originY ?? dono.y;
+    const x = ox + (dono.x - ox) * t;
+    const y = oy + (dono.y - oy) * t;
+    const zBase = dono.elevacao ?? dono.z ?? 0;
+    const lift = alturaCabecaAnexo(dono, {
+      halfH: grabAction.prop?.r || grabAction.enemy?.r || 0.4,
+    });
+    const z = zBase + lift * t;
+    anexarEntidade(grabAction.prop || null, grabAction.enemy || null, x, y, z);
+  } else if (carry && dono) {
+    const zBase = dono.elevacao ?? dono.z ?? 0;
+    const z = zBase + alturaCabecaAnexo(dono, carry);
+    anexarEntidade(carry.prop || null, carry.enemy || null, dono.x, dono.y, z);
+  }
+  for (let i = 0; i < thrown.length; i++) {
+    const voo = thrown[i];
+    if (!voo?.carry) continue;
+    anexarEntidade(voo.carry.prop || null, voo.carry.enemy || null, voo.x, voo.y, voo.z ?? 0);
+  }
+}
+
+/**
+ * @param {object | null} prop
+ * @param {object | null} enemy
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ */
+function anexarEntidade(prop, enemy, x, y, z) {
+  if (prop) {
+    const ox = prop.x;
+    const oy = prop.y;
+    prop.x = x;
+    prop.y = y;
+    prop.z = z;
+    if (Math.hypot(ox - x, oy - y) > 0.35) {
+      reindexarEm(ox, oy);
+      reindexarEm(x, y);
+    }
+  }
+  if (enemy) {
+    enemy.x = x;
+    enemy.y = y;
+    enemy.z = z;
+    enemy.elevacao = z;
+    enemy.vx = 0;
+    enemy.vy = 0;
+  }
 }
 
 function tickCarryMobility(carrier) {

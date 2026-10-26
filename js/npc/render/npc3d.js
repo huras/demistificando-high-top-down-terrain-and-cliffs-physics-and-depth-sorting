@@ -1,8 +1,10 @@
 /**
  * Billboards 3D para NPCs overworld / indoor dinâmicos.
  * Crop + flip column9 = paridade Pokemon AI (`bakeColumn9PersonSheet`).
+ * Luz de poste/cidade: mesmo caminho do jogador (`amostrarLuzCidade` + `aplicarCorSprite`).
  */
 import * as THREE from "three";
+import { ALTURA_SPRITE_JOGADOR } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import {
   moldePe,
@@ -10,12 +12,25 @@ import {
   quadroGente,
   soltarCartao,
 } from "../../render/3d/cartaoPe.js";
+import {
+  aplicarCorSprite,
+  aplicarLuzBillboard,
+  FOLGA_ATOR,
+  FOLGA_CHAO,
+} from "../../render/3d/ceu/luzBillboard.js";
+import { fatorSombraMundo } from "../../render/3d/ceu/mapaNuvem.js";
+import { amostrarLuzCidade } from "../../render/3d/luzes/mapaChao.js";
 import { FOLHA_PLATINUM } from "../catalogo/carregar.js";
 import {
   facingToDirPeople,
   precisaEspelharDir,
   srcRowColumn9,
 } from "./peopleAnim.js";
+
+/** Mesma altura de amostra do jogador (`personagem3d`). */
+const LUZ_Y_PEITO = ALTURA_SPRITE_JOGADOR * 0.56;
+const _luzCidade = new THREE.Color();
+const _corBase = new THREE.Color(1, 1, 1);
 
 /** @type {THREE.Group|null} */
 let raiz = null;
@@ -130,26 +145,50 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
       tex.magFilter = THREE.NearestFilter;
       tex.minFilter = THREE.NearestFilter;
       tex.generateMipmaps = false;
-      const mat = cartao.material.clone();
-      mat.map = tex;
-      mat.needsUpdate = true;
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        alphaTest: 0.12,
+        depthWrite: true,
+        side: THREE.FrontSide,
+        color: 0xffffff,
+      });
+      aplicarLuzBillboard(mat, FOLGA_CHAO + FOLGA_ATOR);
       cartao.material = mat;
+      cartao.receiveShadow = false;
       entry = {
         grupo,
         cartao,
         tex,
         mat,
+        corBase: mat.color.clone(),
         canvas,
         ctx: canvas.getContext("2d"),
         frameKey: "",
       };
       inst.set(npc.id, entry);
     }
-    const z = Number.isFinite(npc.z) ? npc.z : ALTURA_PRACA;
+    const z = Number.isFinite(npc.elevacao)
+      ? npc.elevacao
+      : Number.isFinite(npc.z)
+        ? npc.z
+        : ALTURA_PRACA;
     entry.grupo.position.set(npc.x, z, npc.y);
     entry.cartao.rotation.x = inclinacao;
     entry.cartao.rotation.y = yawCam;
     entry.grupo.visible = true;
+
+    // Mesma iluminação do jogador: céu + mapa de postes da cidade.
+    const px = entry.grupo.position.x;
+    const py = entry.grupo.position.y;
+    const pz = entry.grupo.position.z;
+    amostrarLuzCidade(px, py + LUZ_Y_PEITO, pz, _luzCidade);
+    aplicarCorSprite(
+      entry.mat,
+      entry.corBase || _corBase,
+      fatorSombraMundo(px, py, pz),
+      _luzCidade,
+    );
 
     if (entry.ctx && folhaPronta) {
       const dir = facingToDirPeople(npc.facing, yawCam);

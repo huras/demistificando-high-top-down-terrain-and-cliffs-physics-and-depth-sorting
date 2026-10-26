@@ -26,7 +26,11 @@ import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "..
 import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto, quadroArbusto } from "./folhaBerry.js";
 import { ensureShrineArtLoaded, imagemSantuario } from "../../santuario/arte.js";
 import { SHRINE_DRAW_SCALE } from "../../santuario/catalogo.js";
-import { obterGrabAction } from "../../forca/sistemaForca.js";
+import {
+  obterCarry,
+  obterGrabAction,
+  obterThrown,
+} from "../../forca/sistemaForca.js";
 import { amostrarMotionFalha, ehFalhaGrab } from "../../forca/falhaLevantar.js";
 
 /**
@@ -46,7 +50,8 @@ function estiloDe(prop) {
 }
 
 function chaveDe(prop) {
-  if (!prop || prop.oculto || prop.forcaCarregado || prop.tipo === "placa") return null;
+  // forcaCarregado continua renderizando (anexo na cabeça / arremesso).
+  if (!prop || prop.oculto || prop.tipo === "placa") return null;
   if (prop.fase === FASE.REMOVIDO) return null;
   if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return `toco:${prop.sprite || "arvore"}`;
   if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return `tocoq:${prop.sprite || "arvore"}`;
@@ -389,14 +394,17 @@ export function criarVegetacaoBillboard3d() {
   }
 
   function pose(p, largura, altura, yaw, inclinacao, amostra, pivotY, dz, opacoY) {
-    const base = alturaEm(Math.floor(p.x), Math.floor(p.y));
+    const grab = obterGrabAction();
+    // Carry / lift / arremesso: usa z anexado (cabeça / voo), não o solo da célula.
+    const anexado =
+      !!(p.forcaCarregado || (grab && grab.prop === p)) && Number.isFinite(p.z);
+    const base = anexado ? p.z : alturaEm(Math.floor(p.x), Math.floor(p.y));
     const roll = amostra ? amostra.roll : 0;
     const esmaga = amostra ? amostra.esmaga : 0;
     let px = p.x;
     let pz = p.y;
     let lift = 0;
     let rollForca = 0;
-    const grab = obterGrabAction();
     if (ehFalhaGrab(grab) && grab.prop === p) {
       const m = amostrarMotionFalha(grab);
       px += m.shakeX;
@@ -459,16 +467,23 @@ export function criarVegetacaoBillboard3d() {
       sincronizarLotes(recolherGrupos());
       geracaoLote += 1;
     }
-    const sacode = temSacudida();
+    const grab = obterGrabAction();
+    const carry = obterCarry();
     for (const lote of lotes.values()) {
       const { mesh, sombra, itens, largura, altura, pivotY, dz, opacoY } = lote;
       const pe = Number.isFinite(opacoY) ? opacoY : 1;
       escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora, pivotY, dz, pe);
       escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora, pivotY, dz, pe);
-      if (!sacode) continue;
       for (let i = 0; i < itens.length; i++) {
         const p = itens[i];
-        if (p._sacode) lembrar(p, itens, mesh, sombra, i, largura, altura, pivotY, dz, pe);
+        if (
+          p._sacode ||
+          p.forcaCarregado ||
+          (grab && grab.prop === p) ||
+          (carry && carry.prop === p)
+        ) {
+          lembrar(p, itens, mesh, sombra, i, largura, altura, pivotY, dz, pe);
+        }
       }
     }
   }
@@ -482,7 +497,7 @@ export function criarVegetacaoBillboard3d() {
 
   function aplicarVinculo(v, p, yaw, yawSol, inclinacao, amostra) {
     if (!v || v.geracao !== geracaoLote || v.i < 0 || !v.mesh || v.itens?.[v.i] !== p) return;
-    if (p.fase === FASE.CAINDO || p.fase === FASE.REMOVIDO || p.oculto || p.forcaCarregado) return;
+    if (p.fase === FASE.CAINDO || p.fase === FASE.REMOVIDO || p.oculto) return;
     const pe = Number.isFinite(v.opacoY) ? v.opacoY : 1;
     pose(p, v.largura, v.altura, yaw, inclinacao, amostra, v.pivotY, v.dz, pe);
     v.mesh.setMatrixAt(v.i, dummy.matrix);
@@ -504,10 +519,19 @@ export function criarVegetacaoBillboard3d() {
       const p = acabaram[i];
       aplicarVinculo(p._veg, p, yaw, yawSol, inclinacao, null);
     }
-    // Strain de lift falho: atualiza a matriz todo frame (shake + lift).
+    // Força: lift / carry / arremesso — matriz todo frame (senão a pedra fica no chão).
     const grab = obterGrabAction();
-    if (ehFalhaGrab(grab) && grab.prop) {
+    if (grab?.prop) {
       aplicarVinculo(grab.prop._veg, grab.prop, yaw, yawSol, inclinacao, null);
+    }
+    const carry = obterCarry();
+    if (carry?.prop) {
+      aplicarVinculo(carry.prop._veg, carry.prop, yaw, yawSol, inclinacao, null);
+    }
+    const voos = obterThrown();
+    for (let i = 0; i < (voos?.length || 0); i++) {
+      const prop = voos[i]?.carry?.prop;
+      if (prop) aplicarVinculo(prop._veg, prop, yaw, yawSol, inclinacao, null);
     }
     for (let i = 0; i < malhasSujas.length; i++) malhasSujas[i].instanceMatrix.needsUpdate = true;
   }
@@ -550,9 +574,29 @@ export function criarVegetacaoBillboard3d() {
     const animou = sincronizarAnimBerry(agora);
     const acabaram = podarSacudidas(agora);
     const grab = obterGrabAction();
-    const falhaForca = ehFalhaGrab(grab) && !!grab.prop;
-    const sacode = temSacudida() || acabaram.length > 0 || falhaForca;
+    const carry = obterCarry();
+    const voos = obterThrown();
+    const anexoForca =
+      !!grab?.prop ||
+      !!carry?.prop ||
+      !!(voos && voos.some((v) => v?.carry?.prop));
+    const sacode = temSacudida() || acabaram.length > 0;
     const primeira = yawAplicado == null;
+    // Carry/lift/arremesso: reescreve matrizes todo frame (coords do prop mudam).
+    // Pulse sozinho falha: _veg só era lembrado em props com _sacode.
+    if (anexoForca) {
+      yawAplicado = yaw;
+      yawSolAplicado = yawSol;
+      inclinacaoAplicada = tilt;
+      const recalcular = alturasSujas || primeira;
+      alturasSujas = false;
+      escrever(yaw, yawSol, tilt, recalcular);
+      sincronizarVisivel();
+      if (sacode || acabaram.length > 0) {
+        pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
+      }
+      return;
+    }
     if (!mudouYaw && !mudouSol && !mudouTilt && !alturasSujas && !sacode && !primeira && !animou) return;
     yawAplicado = yaw;
     yawSolAplicado = yawSol;
@@ -562,7 +606,6 @@ export function criarVegetacaoBillboard3d() {
       alturasSujas = false;
       escrever(yaw, yawSol, tilt, recalcular);
       sincronizarVisivel();
-      // Após rebuild completo, ainda pulsa o strain se estiver ativo.
       if (sacode) pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
       return;
     }

@@ -66,9 +66,8 @@ export function mulVelocidadeCarry(carry, maxTier) {
  */
 export function ocultarProp(prop) {
   if (!prop) return;
-  prop._forcaPrevOculto = !!prop.oculto;
+  // Só marca carry — NÃO oculta o billboard (fica anexado na cabeça / voo).
   prop.forcaCarregado = true;
-  prop.oculto = true;
   reindexarEm(prop.x, prop.y);
 }
 
@@ -86,8 +85,6 @@ export function restaurarProp(prop, x, y) {
   prop.y = y;
   prop.z = z;
   prop.forcaCarregado = false;
-  prop.oculto = !!prop._forcaPrevOculto;
-  delete prop._forcaPrevOculto;
   reindexarEm(ox, oy);
   reindexarEm(x, y);
 }
@@ -213,9 +210,6 @@ export function finalizarGrab(action, carrier) {
     if (living && !ehVivoLevantavel(enemy)) return null;
     if (!living && !ehDesmaiadoOk(enemy)) return null;
     ocultarPokemon(enemy);
-    // #region agent log
-    fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'E',location:'carregar.js:finalizarGrab',message:'pokemon oculto no carry',data:{enemyId:enemy.id,enemyKey:enemy.especie?.key||null,forcaCarregado:!!enemy.forcaCarregado,living,carrierKey:carrier?.especie?.key||carrier?.id||null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return {
       kind: "faintedWild",
       enemy,

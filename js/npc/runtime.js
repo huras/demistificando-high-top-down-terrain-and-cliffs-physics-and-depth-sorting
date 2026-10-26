@@ -110,11 +110,12 @@ export function listarSolidosNpc() {
   const out = [];
   for (let i = 0; i < lista.length; i++) {
     const n = lista[i];
+    const elev = n.elevacao ?? n.z;
     out.push({
       x: n.x,
       y: n.y,
       z: n.z,
-      elevacao: n.z,
+      elevacao: elev,
       raioCorpo: n.raio || 0.38,
       npc: true,
       id: n.id,

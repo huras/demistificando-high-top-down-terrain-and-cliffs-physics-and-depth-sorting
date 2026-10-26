@@ -158,10 +158,13 @@ function aoClique(ev) {
   const btn = ev.target.closest?.("button");
   if (!btn || !host?.contains(btn) || btn.disabled) return;
   const kind = btn.dataset.kind || "";
+  const i = btn.dataset.i | 0;
+  // Captura ANTES de fechar — fecharMenuCampo zera opcoesAtivas/alvoId.
+  const op = kind === "forca" ? opcoesAtivas[i] : null;
+  const farmPropId = alvoId;
+  const farmAcao = btn.dataset.acao || "";
   fecharMenuCampo();
   if (kind === "forca") {
-    const i = btn.dataset.i | 0;
-    const op = opcoesAtivas[i];
     if (!op || op.locked || !op.mon) return;
     if (op.id === ACAO_FORCA.LEVANTAR) {
       const alvo =
@@ -175,9 +178,6 @@ function aoClique(ev) {
       if (idx >= 0) definirDeployado(idx);
       // Usa o mon da party pós-deploy (referência viva).
       const mon = idx >= 0 ? listaParty()[idx] : op.mon;
-      // #region agent log
-      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'A',location:'menu.js:Levantar',message:'clique Levantar',data:{idx,hasMon:!!mon,monKey:mon?.especie?.key||null,colocado:!!mon?._colocado,capturado:!!mon?.capturado,alvoKind:alvo?.kind,propId:alvo?.prop?.id||alvo?.id||null,peso:alvo?.weightTier,locked:!!op.locked},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (mon) {
         mon.capturado = false;
         if (jaEmCampo) mon._colocado = true;
@@ -195,10 +195,9 @@ function aoClique(ev) {
     return;
   }
   if (kind === "farm") {
-    const prop = propPorId(alvoId);
-    const indice = btn.dataset.i | 0;
-    const acao = btn.dataset.acao || "";
-    if (prop) ordenarCampo(indice, acao, prop);
+    const prop = propPorId(farmPropId);
+    const indice = i;
+    if (prop) ordenarCampo(indice, farmAcao, prop);
   }
 }
 

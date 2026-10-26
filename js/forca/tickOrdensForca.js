@@ -75,9 +75,6 @@ export function ordenarForca(mon, acao, alvo, aimX, aimY) {
     melhor: 99,
     preso: 0,
   };
-  // #region agent log
-  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'A',location:'tickOrdensForca.js:ordenarForca',message:'ordem criada',data:{acao,kind:mon.ordemForca.kind,propId:mon.ordemForca.propId,hasProp:!!prop,hasEnemy:!!enemy,monKey:mon.especie?.key||null,x:mon.ordemForca.x,y:mon.ordemForca.y,colocado:!!mon._colocado},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   return true;
 }
 
@@ -105,14 +102,7 @@ export function tickOrdensForca(dt) {
 function tickUm(mon, dt) {
   const ordem = mon.ordemForca;
   if (!ordem) return;
-  if (!mon._colocado && !obterCarry()) {
-    // #region agent log
-    if ((ordem._dbgSkip = (ordem._dbgSkip || 0) + 1) <= 3 || ordem._dbgSkip % 30 === 0) {
-      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'B',location:'tickOrdensForca.js:tickUm',message:'skip !_colocado',data:{n:ordem._dbgSkip,acao:ordem.acao,monKey:mon.especie?.key||null,capturado:!!mon.capturado},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion
-    return;
-  }
+  if (!mon._colocado && !obterCarry()) return;
   if (mon.capturado) return;
 
   // Já no canal de lift — sistemaForca conduz.
@@ -225,11 +215,6 @@ function tickLevantar(mon, ordem, dt) {
     if ((ordem.preso || 0) < TEMPO_PRESO) {
       const len = dist || 1;
       mon.correndo = true;
-      // #region agent log
-      if ((ordem._dbgApr = (ordem._dbgApr || 0) + 1) <= 2 || ordem._dbgApr % 45 === 0) {
-        fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'C',location:'tickOrdensForca.js:aproximar',message:'aproximando alvo',data:{dist,melhor:ordem.melhor,preso:ordem.preso,n:ordem._dbgApr,monX:mon.x,monY:mon.y,alvoX,alvoY},timestamp:Date.now()})}).catch(()=>{});
-      }
-      // #endregion
       aproximar(
         mon,
         alvoX + (dx / len) * RECUO,
@@ -251,11 +236,7 @@ function tickLevantar(mon, ordem, dt) {
   mon.dirX = -dx;
   mon.dirY = -dy;
 
-  const okGrab = iniciarGrabOrdenado(mon, target);
-  // #region agent log
-  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'C',location:'tickOrdensForca.js:tickLevantar',message:'tentativa grab',data:{okGrab,dist,kind:target.kind,peso:target.weightTier,falhas:ordem.falhasStart||0,monKey:mon.especie?.key||null,propId:target.prop?.id||null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
-  if (okGrab) {
+  if (iniciarGrabOrdenado(mon, target)) {
     mon.ordemForca = null;
     return;
   }

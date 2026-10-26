@@ -2,7 +2,6 @@
  * Spawn de viajantes além da câmera, preferindo eixo de estrada em rotas.
  */
 import { deLocalKanto, paraLocalKanto } from "../../mundo/bounds.js";
-import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import {
   AREA_KANTO,
   LADO_KANTO,
@@ -21,6 +20,7 @@ import {
 } from "../catalogo/carregar.js";
 import { falaCivil, nomeNpcUnico, resolverNpc } from "../catalogo/identidade.js";
 import { sortearParty } from "../catalogo/parties.js";
+import { alturaSpawnNpc } from "../locomocao.js";
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
 import { OW_CFG, OW_LOD, OW_MODO } from "./config.js";
 
@@ -183,6 +183,7 @@ export function tentarSpawnViajante(player, lista, cameraAabb, periodo = "day") 
         return n.charAt(0).toUpperCase() + n.slice(1) + ` (Nv.${p.nivel})`;
       })
       .join(", ");
+    const z0 = alturaSpawnNpc(mundo.x, mundo.y);
     return {
       id: seed,
       tipo: "viajante",
@@ -197,7 +198,8 @@ export function tentarSpawnViajante(player, lista, cameraAabb, periodo = "day") 
       peopleSeed: seed,
       x: mundo.x,
       y: mundo.y,
-      z: ALTURA_PRACA,
+      z: z0,
+      elevacao: z0,
       facing: { x: 0, y: 1 },
       raio: OW_CFG.RAIO,
       modo: "viajante",

@@ -2,7 +2,6 @@
  * Gera 1 residente outdoor por casa com porta.
  */
 import { deLocalKanto } from "../../mundo/bounds.js";
-import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import {
@@ -16,6 +15,7 @@ import {
   PERFIL_ANDAR,
   resolverNpc,
 } from "../catalogo/identidade.js";
+import { alturaSpawnNpc } from "../locomocao.js";
 
 const nomesUsadosPorSkin = new Map();
 
@@ -68,6 +68,9 @@ export function gerarNpcsCidade() {
         },
         portaLocal: portaMundo,
       };
+      const wx = ox + spawn.x;
+      const wy = oy + spawn.y;
+      const z0 = alturaSpawnNpc(wx, wy);
       lista.push({
         id: `${seed}-residente`,
         tipo: "civil",
@@ -81,9 +84,10 @@ export function gerarNpcsCidade() {
         coluna: id.coluna,
         perfilAndar: id.perfilAndar,
         peopleSeed: seed,
-        x: ox + spawn.x,
-        y: oy + spawn.y,
-        z: ALTURA_PRACA,
+        x: wx,
+        y: wy,
+        z: z0,
+        elevacao: z0,
         facing: { x: 0, y: 1 },
         raio: 0.4,
         modo: id.perfilAndar === PERFIL_ANDAR.STILL ? "parado" : "lote",

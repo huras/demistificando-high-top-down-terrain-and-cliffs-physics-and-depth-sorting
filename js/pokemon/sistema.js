@@ -247,9 +247,10 @@ export function atoresVisiveis() {
   const selvagens = selvagensAtivos();
   for (let i = 0; i < selvagens.length; i++) {
     const a = selvagens[i];
-    if (!a.capturado && !a.forcaCarregado) lista.push(a);
+    // forcaCarregado: ainda desenha (anexo na cabeça / arremesso); sólidos/IA já filtram.
+    if (!a.capturado) lista.push(a);
   }
   const mon = pokemonNoCampo();
-  if (mon && !mon.capturado && !mon.forcaCarregado) lista.push(mon);
+  if (mon && !mon.capturado) lista.push(mon);
   return lista;
 }

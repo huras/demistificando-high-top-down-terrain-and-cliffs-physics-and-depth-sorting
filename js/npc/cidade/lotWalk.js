@@ -1,7 +1,10 @@
 /**
  * Andar no lote — wait / burst / LOD por câmera.
+ * Z segue o voxel (`snapChaoNpc`); degraus >1 bloco são rejeitados.
  */
+import { alturaSobPes } from "../../fisica/colisao.js";
 import { PERFIL_ANDAR } from "../catalogo/identidade.js";
+import { snapChaoNpc } from "../locomocao.js";
 import { npcPerfCount } from "../perf.js";
 import { avancarAnimPeople } from "../render/peopleAnim.js";
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
@@ -12,6 +15,9 @@ import {
   tickIdleFace,
 } from "./idleFace.js";
 import { construirMascaraLote } from "./lotMask.js";
+
+/** Diferença máxima de altura (blocos) entre tiles do lote. */
+const LOT_DEGRAU_MAX = 1;
 
 export const LOT_WALK_CAMERA_PAD = 4;
 
@@ -77,7 +83,16 @@ function rollBurst(walk, t) {
   return (t.burstMin | 0) + pickIndex(rng, span + 1);
 }
 
-function pickStepDir(walk, tx, ty, mask, player) {
+function alturaTileOk(npc, nx, ny) {
+  const ref = npc.elevacao ?? npc.z;
+  const zAqui = Number.isFinite(ref) ? ref : 0;
+  const zLa = alturaSobPes(nx + 0.5, ny + 0.5, zAqui || undefined);
+  if (!(zLa > 0)) return false;
+  if (!(zAqui > 0)) return true;
+  return Math.abs(zLa - zAqui) <= LOT_DEGRAU_MAX;
+}
+
+function pickStepDir(walk, tx, ty, mask, player, npc) {
   walk.roll = (walk.roll | 0) + 1;
   const rng = mulberry32((walk.seed ^ Math.imul(walk.roll, 0xc2b2ae35)) >>> 0);
   const order = [0, 1, 2, 3];
@@ -99,6 +114,7 @@ function pickStepDir(walk, tx, ty, mask, player) {
     ) {
       continue;
     }
+    if (npc && !alturaTileOk(npc, nx, ny)) continue;
     return dir;
   }
   return null;
@@ -161,6 +177,7 @@ export function tickLotWalk(npc, player, dt, cameraAabb) {
       npc.vx = 0;
       npc.vy = 0;
       npc.andando = false;
+      snapChaoNpc(npc);
     }
     return;
   }
@@ -174,6 +191,7 @@ export function tickLotWalk(npc, player, dt, cameraAabb) {
       npc.y = near.ty + 0.5;
     }
     walk.snapped = true;
+    snapChaoNpc(npc);
   }
 
   if (walk.stepping) {
@@ -198,6 +216,7 @@ export function tickLotWalk(npc, player, dt, cameraAabb) {
       npc.facing.x = Math.sign(walk.toX - walk.fromX);
       npc.facing.y = Math.sign(walk.toY - walk.fromY);
     }
+    snapChaoNpc(npc);
     avancarAnim(npc, dt);
     return;
   }
@@ -214,7 +233,7 @@ export function tickLotWalk(npc, player, dt, cameraAabb) {
   if (walk.burst <= 0) walk.burst = rollBurst(walk, t);
   const tx = Math.floor(npc.x);
   const ty = Math.floor(npc.y);
-  const dir = pickStepDir(walk, tx, ty, mask, player);
+  const dir = pickStepDir(walk, tx, ty, mask, player, npc);
   if (!dir) {
     walk.wait = waitDelay(walk, t);
     walk.burst = 0;
@@ -249,6 +268,7 @@ function tickParado(npc, player, dt) {
   npc.andando = false;
   npc.vx = 0;
   npc.vy = 0;
+  snapChaoNpc(npc);
   avancarAnim(npc, dt);
 }
 

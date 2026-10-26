@@ -85,17 +85,13 @@ export function atualizarVisualForca(corpo, pointer = null) {
   const grab = obterGrabAction();
   const carry = obterCarry();
   const thrown = obterThrown();
-  // #region agent log
-  if (carry?.kind === "faintedWild" || grab?.kind === "faintedWild") {
-    if (!atualizarVisualForca._dbgN || atualizarVisualForca._dbgN++ % 20 === 0) {
-      atualizarVisualForca._dbgN = (atualizarVisualForca._dbgN || 1);
-      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'E',location:'visualForca.js:atualizar',message:'visual pokemon carry/grab',data:{hasCarry:!!carry,carryKind:carry?.kind||null,enemyHidden:!!carry?.enemy?.forcaCarregado,grabKind:grab?.kind||null,spriteCarryOn:!!spriteCarry?.visible,anchorPlayer:true,corpoId:corpo?.id||null},timestamp:Date.now()})}).catch(()=>{});
-    }
-  }
-  // #endregion
 
-  // Canal de viagem / carry overhead
-  if (carry || (grab && !grab.failed && !grab.struggle)) {
+  // Pedra/Pokémon reais já são sincronizados no mundo — placeholder só se não houver entidade.
+  const temEntidade =
+    !!(carry?.prop || carry?.enemy || grab?.prop || grab?.enemy || thrown[0]?.carry?.prop || thrown[0]?.carry?.enemy);
+  if (temEntidade || grab?.failed) {
+    spriteCarry.visible = false;
+  } else if (carry || (grab && !grab.failed && !grab.struggle)) {
     const progress = grab
       ? Math.min(1, grab.elapsedSec / Math.max(0.01, grab.durationSec))
       : 1;
@@ -111,21 +107,12 @@ export function atualizarVisualForca(corpo, pointer = null) {
     spriteCarry.position.set(x, z + 0.2, y);
     const w = (carry?.halfW ?? 0.45) * 1.6;
     spriteCarry.scale.set(w, w, 1);
-    if (grab?.failed) spriteCarry.visible = false;
   } else {
     spriteCarry.visible = false;
   }
 
-  // Thrown
-  const voo = thrown[0];
-  if (voo) {
-    spriteThrow.visible = true;
-    spriteThrow.position.set(voo.x, (voo.z ?? 0) * ALTURA_BLOCO + 0.15, voo.y);
-    const w = (voo.carry?.halfW ?? 0.45) * 1.5;
-    spriteThrow.scale.set(w, w, 1);
-  } else {
-    spriteThrow.visible = false;
-  }
+  // Thrown: entidade real acompanha o voo; sem placeholder.
+  spriteThrow.visible = false;
 
   // Arco de mira
   if (estaCarregandoForca() && mirandoArremesso() && carry) {

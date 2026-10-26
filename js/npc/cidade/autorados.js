@@ -2,11 +2,11 @@
  * Cast autorado mínimo (extensível). Lab/hub usam schemas próprios migrados.
  */
 import { deLocalKanto } from "../../mundo/bounds.js";
-import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
 import { PERFIL_ANDAR, resolverNpc } from "../catalogo/identidade.js";
+import { alturaSpawnNpc } from "../locomocao.js";
 
 /**
  * Oficial perto do centro da cidade (sprite police = masculino).
@@ -26,6 +26,9 @@ export function npcsAutoradosCidade() {
       nomeFixo: "Ken",
       forceStill: true,
     });
+    const wx = origem.x + (centro.x0 + centro.x1) * 0.5;
+    const wy = origem.y + centro.y1 + 1.2;
+    const z0 = alturaSpawnNpc(wx, wy);
     lista.push({
       id: `${def.key}-oficial`,
       tipo: "civil",
@@ -38,9 +41,10 @@ export function npcsAutoradosCidade() {
       coluna: id.coluna,
       perfilAndar: PERFIL_ANDAR.STILL,
       peopleSeed: `${def.key}:oficial`,
-      x: origem.x + (centro.x0 + centro.x1) * 0.5,
-      y: origem.y + centro.y1 + 1.2,
-      z: ALTURA_PRACA,
+      x: wx,
+      y: wy,
+      z: z0,
+      elevacao: z0,
       facing: { x: 0, y: 1 },
       raio: 0.4,
       modo: "parado",

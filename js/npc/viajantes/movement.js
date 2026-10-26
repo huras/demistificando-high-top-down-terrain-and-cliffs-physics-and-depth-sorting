@@ -13,6 +13,7 @@ import {
 } from "../../mundo/regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { linhasDaRota } from "../../mundo/regiao/linhasEstrada.js";
+import { irParaNpc, snapChaoNpc } from "../locomocao.js";
 import { avancarAnimPeople } from "../render/peopleAnim.js";
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
 import { OW_CFG, OW_LOD, OW_MODO } from "./config.js";
@@ -109,31 +110,11 @@ function rotaAreas(sax, say, tax, tay) {
   return path;
 }
 
+/** Persegue meta com path + pulo/climb; anima walk do people sheet. */
 function moverEmDirecao(trainer, gx, gy, dt) {
-  const dx = gx - trainer.x;
-  const dy = gy - trainer.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist < 0.35) {
-    trainer.vx = 0;
-    trainer.vy = 0;
-    trainer.andando = false;
-    avancarAnimPeople(trainer, 0);
-    return true;
-  }
-  const sp = OW_CFG.WALK_SPEED;
-  const ux = dx / dist;
-  const uy = dy / dist;
-  const step = Math.min(dist, sp * dt);
-  trainer.x += ux * step;
-  trainer.y += uy * step;
-  trainer.vx = ux * sp;
-  trainer.vy = uy * sp;
-  trainer.andando = true;
-  if (!trainer.facing) trainer.facing = { x: 0, y: 1 };
-  trainer.facing.x = Math.abs(ux) >= Math.abs(uy) ? Math.sign(ux) : 0;
-  trainer.facing.y = Math.abs(uy) > Math.abs(ux) ? Math.sign(uy) : 0;
-  avancarAnimPeople(trainer, dt);
-  return false;
+  const chegou = irParaNpc(trainer, gx, gy, dt, OW_CFG.WALK_SPEED);
+  avancarAnimPeople(trainer, chegou ? 0 : dt);
+  return chegou;
 }
 
 function syncArea(trainer) {
@@ -150,6 +131,7 @@ function tickWander(trainer, dt) {
       trainer.vx = 0;
       trainer.vy = 0;
       trainer.andando = false;
+      snapChaoNpc(trainer);
       avancarAnimPeople(trainer, 0);
       return;
     }
@@ -247,6 +229,7 @@ function tickDormente(trainer, dt) {
   );
   trainer.x = p.x;
   trainer.y = p.y;
+  snapChaoNpc(trainer);
   syncArea(trainer);
 }
 

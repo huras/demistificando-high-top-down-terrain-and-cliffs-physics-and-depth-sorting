@@ -266,14 +266,14 @@ export function tickJogo(dt, corpo) {
     !puzzleSantuarioAberto() &&
     !feixeAtivo() &&
     !portaOcupada() &&
-    livreDeMenu &&
-    teclaAgora("KeyE")
+    livreDeMenu
   ) {
+    // Escalar/soltar NÃO pode chamar teclaAgora aqui — senão o edge some
+    // antes de atualizarMovimento() e o climb nunca gruda.
     if (acaoConsomeE(acao)) {
-      executarAcaoE(acao, corpo, porta, alvoLab, alvoHub);
+      if (teclaAgora("KeyE")) executarAcaoE(acao, corpo, porta, alvoLab, alvoHub);
     } else if (!acao && (pf?.kind === "grab" || pf?.kind === "place")) {
-      // Mesmo chip do Escalar: E pega / solta (escalar não consome E aqui).
-      tentarPegarComE(corpo);
+      if (teclaAgora("KeyE")) tentarPegarComE(corpo);
     }
   }
   tickFeixe(dt);
