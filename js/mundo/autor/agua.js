@@ -54,7 +54,7 @@ export function celulaAguaDemo(wx, wy) {
 }
 
 function idPiso(lz, zTopo) {
-  if (lz === zTopo - 1) return zTopo <= 1 ? BLOCO.GRAMA : BLOCO.TERRA;
+  if (lz === zTopo - 1) return BLOCO.GRAMA;
   if (lz >= zTopo - 3 && zTopo > 1) return BLOCO.TERRA;
   return BLOCO.PEDRA;
 }

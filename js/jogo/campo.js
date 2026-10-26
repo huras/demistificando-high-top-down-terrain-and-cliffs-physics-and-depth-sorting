@@ -13,10 +13,12 @@ import { faixaDaPorta, predioNoLayout, saidaDaPorta } from "../mundo/regiao/volu
 import { alturaEm } from "../mundo/altura.js";
 import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
+import { superficieDoRelevo } from "../mundo/bioma/catalogo.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { ajustarItem, pokemonNoCampo } from "../pokemon/party.js";
 import { executarNoProp, textoDoAcerto } from "../campo/acoes.js";
 import { tickArvores } from "../campo/cicloArvore.js";
+import { confirmar, preparar, FASE } from "../campo/estadoProps.js";
 import { tickGrama } from "../campo/grama.js";
 import { arbustoMaduroPerto, colherArbusto, tickBerries } from "../campo/colherBerry.js";
 import { tickOrdens } from "../campo/ordem.js";
@@ -78,14 +80,36 @@ function gramaLivre(x, y) {
   const ix = x | 0;
   const iy = y | 0;
   if (loteSob(ix + 0.5, iy + 0.5)) return false;
-  const z = alturaEm(ix, iy);
-  if (obterBloco(ix, iy, z) !== BLOCO.GRAMA) return false;
+  // alturaEm = face caminhável (topo sólido + 1); o bloco cavável está em z-1.
+  const zBloco = (alturaEm(ix, iy) | 0) - 1;
+  if (zBloco < 0) return false;
+  const id = obterBloco(ix, iy, zBloco);
+  // Gen antigo deixava TERRA no topo de bioma de grama; aceita os dois.
+  if (id !== BLOCO.GRAMA && !(id === BLOCO.TERRA && superficieDoRelevo(ix, iy) === BLOCO.GRAMA)) {
+    return false;
+  }
   const props = vegetacaoNaArea(ix, iy, ix + 1, iy + 1);
   for (let i = 0; i < props.length; i++) {
-    if (props[i].oculto) continue;
-    if (Math.floor(props[i].x) === ix && Math.floor(props[i].y) === iy) return false;
+    const p = props[i];
+    if (p.oculto || p.fase === FASE.REMOVIDO) continue;
+    // Tufo de grama/mato some com a enxada; árvore/pedra/berry bloqueiam.
+    if (p.tipo === "grama" || p.tipo === "mata") continue;
+    if (Math.floor(p.x) === ix && Math.floor(p.y) === iy) return false;
   }
   return true;
+}
+
+function limparGramaNoCanteiro(ix, iy) {
+  const props = vegetacaoNaArea(ix, iy, ix + 1, iy + 1);
+  for (let i = 0; i < props.length; i++) {
+    const p = props[i];
+    if (p.oculto || (p.tipo !== "grama" && p.tipo !== "mata")) continue;
+    if (Math.floor(p.x) !== ix || Math.floor(p.y) !== iy) continue;
+    preparar(p);
+    p.fase = FASE.REMOVIDO;
+    p.hp = 0;
+    confirmar(p);
+  }
 }
 
 export function celulaAlvo(corpo) {
@@ -372,6 +396,7 @@ export function usarFerramenta(corpo) {
 function usarEnxada(alvo) {
   if (plotEm(alvo.x, alvo.y)) return "Aqui já tem canteiro.";
   if (!gramaLivre(alvo.x, alvo.y)) return "A enxada só cava grama livre, fora dos prédios.";
+  limparGramaNoCanteiro(alvo.x | 0, alvo.y | 0);
   estado.plots.push(criarSolo(alvo.x, alvo.y));
   sfx("cavar");
   darFibra();

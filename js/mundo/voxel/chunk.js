@@ -152,9 +152,7 @@ export function preencherColunaSolida(chunk, lx, ly, zTopo, superficie = BLOCO.G
   }
   for (let lz = 0; lz < z; lz++) {
     let id = BLOCO.PEDRA;
-    if (lz === z - 1) {
-      id = topo === BLOCO.GRAMA ? (z <= 1 ? BLOCO.GRAMA : BLOCO.TERRA) : topo;
-    }
+    if (lz === z - 1) id = topo;
     else if (topo !== BLOCO.PEDRA && lz >= z - 3 && z > 1) id = BLOCO.TERRA;
     chunk.blocos[indiceLocal(lx, ly, lz)] = id;
   }
