@@ -316,10 +316,8 @@ export function anexarCascaSala(grupo, piso) {
   const meioY = (m.y0 + m.y1) * 0.5;
   const largura = m.x1 - m.x0;
   const fundo = m.y1 - m.y0;
-  const cxSala = meioX;
-  const czSala = meioY;
   const faixa = (w, d, x, z) =>
-    criarFaixaParede({ x, y, z, w, d, h, materiais: parede, cxSala, czSala });
+    criarFaixaParede({ x, y, z, w, d, h, materiais: parede });
   grupo.add(faixa(largura, 1.05, meioX, m.y0 + 0.5));
   grupo.add(faixa(1.05, fundo, m.x0 + 0.5, meioY));
   grupo.add(faixa(1.05, fundo, m.x1 - 0.5, meioY));

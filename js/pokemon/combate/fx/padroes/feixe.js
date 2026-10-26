@@ -160,6 +160,7 @@ export class PadraoRaio extends PadraoBase {
     const textura = this.cfg.textura || (ceu ? "Thunder_02" : "Thunder_03");
     const n = Math.max(1, Math.min(3, this.raioCfg.camadas || 2 + Math.floor(Math.random() * 2)));
     const larguraBase = (this.cfg.largura || 0.32) * this.escala;
+    const brilhoBase = (this.cfg.brilho > 0 ? this.cfg.brilho : Math.min(0.4, this.cfg.largura || 0.32)) * this.escala;
 
     for (let i = 0; i < n; i++) {
       const meio = (n - 1) * 0.5;
@@ -174,6 +175,7 @@ export class PadraoRaio extends PadraoBase {
           y2,
           z2,
           largura: larguraBase * (0.75 + i * 0.2 + Math.random() * 0.1),
+          brilho: brilhoBase,
           primaria: this.cfg.primaria || this.elemento.primaria,
           secundaria: this.cfg.secundaria || this.elemento.secundaria,
           nucleo: this.cfg.nucleo || this.elemento.nucleo,

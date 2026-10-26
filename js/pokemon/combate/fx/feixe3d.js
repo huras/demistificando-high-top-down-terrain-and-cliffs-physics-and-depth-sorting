@@ -29,7 +29,8 @@ export const CAP_FEIXES = 8;
  *   textura: string,
  *   lengthScale: number,
  *   frame: number,
- *   roll: number
+ *   roll: number,
+ *   brilho: number
  * }} FeixeVivo
  */
 
@@ -200,6 +201,8 @@ export function soltarFeixe(opts) {
     y2: opts.y2,
     z2: opts.z2 ?? opts.z1 ?? 1.2,
     largura: opts.largura ?? 0.4,
+    /** Grossura só do glow/núcleo/ponta — se 0, segue `largura`. */
+    brilho: opts.brilho > 0 ? opts.brilho : 0,
     primaria: opts.primaria || "#ffffff",
     secundaria: opts.secundaria || "#ffffff",
     nucleo: opts.nucleo || "#ffffff",
@@ -342,9 +345,10 @@ function orientarRibbon(mesh, x1, y1, z1, x2, y2, z2, largura, lengthMul = 1, op
  * @param {THREE.MeshBasicMaterial} mat
  * @param {FeixeVivo} f
  * @param {boolean} nucleo
+ * @param {boolean} [soLuz] núcleo/glow sem textura Thunder (só o tronco carrega o raio)
  */
-function aplicarMaterialFeixe(mat, f, nucleo) {
-  const stretch = f.modo === "stretch" && f.textura;
+function aplicarMaterialFeixe(mat, f, nucleo, soLuz = false) {
+  const stretch = f.modo === "stretch" && f.textura && !soLuz;
   const tex = stretch
     ? texStretchDoFrame(f.textura, f.frame >= 0 ? f.frame : 0) ||
       pedirTexStretch(f.textura) ||
@@ -358,7 +362,7 @@ function aplicarMaterialFeixe(mat, f, nucleo) {
     mat.needsUpdate = true;
   }
   mat.color.copy(hex(nucleo ? f.nucleo : f.primaria));
-  mat.opacity = f.alpha * (nucleo ? 0.95 : stretch ? 0.85 : 0.55);
+  mat.opacity = f.alpha * (nucleo || soLuz ? 0.55 : stretch ? 0.9 : 0.55);
   mat.transparent = true;
 }
 
@@ -371,12 +375,18 @@ export function sincronizarFeixes(_camera) {
   for (let i = 0; i < vivos.length && slot < CAP_FEIXES; i++) {
     const f = vivos[i];
     if (!f.viva || f.alpha <= 0.01) continue;
-    const flicker = f.grossuraExtra ? 0 : Math.sin(f.pulso * 20) * Math.min(0.08, f.largura * 0.15);
-    const lw = f.largura + flicker;
     const stretch = f.modo === "stretch";
-    const lenMul = stretch ? Math.max(1, f.lengthScale || 3) / 3 : 1;
     const lay = stretch && f.textura ? layoutElemental(f.textura) : null;
     const alongX = !!(lay && lay.eixo === "horizontal");
+    // Raio (textura) vs luz (núcleo/ponta) — grossura do Thunder não escala o bloom
+    const lwRaio =
+      f.largura +
+      (f.grossuraExtra ? 0 : Math.sin(f.pulso * 20) * Math.min(0.08, f.largura * 0.15));
+    const lwLuzBase = f.brilho > 0 ? f.brilho : alongX ? Math.min(0.4, f.largura) : f.largura;
+    const lwLuz =
+      lwLuzBase +
+      (f.grossuraExtra ? 0 : Math.sin(f.pulso * 20) * Math.min(0.05, lwLuzBase * 0.12));
+    const lenMul = stretch ? Math.max(1, f.lengthScale || 3) / 3 : 1;
     const overhang = lay?.overhang || 0;
     const orientOpts = { alongX, overhang, roll: f.roll || 0 };
     const tronco = gpu.tronco[slot];
@@ -385,10 +395,11 @@ export function sincronizarFeixes(_camera) {
     tronco.visible = true;
     nucleo.visible = true;
     ponta.visible = true;
-    aplicarMaterialFeixe(/** @type {THREE.MeshBasicMaterial} */ (tronco.material), f, false);
-    aplicarMaterialFeixe(/** @type {THREE.MeshBasicMaterial} */ (nucleo.material), f, true);
+    aplicarMaterialFeixe(/** @type {THREE.MeshBasicMaterial} */ (tronco.material), f, false, false);
+    // Núcleo = luz fina, sem segunda cópia da textura Thunder
+    aplicarMaterialFeixe(/** @type {THREE.MeshBasicMaterial} */ (nucleo.material), f, true, alongX);
     ponta.material.color.copy(hex(f.nucleo));
-    ponta.material.opacity = f.alpha;
+    ponta.material.opacity = f.alpha * 0.85;
     orientarRibbon(
       tronco,
       f.x1,
@@ -397,7 +408,7 @@ export function sincronizarFeixes(_camera) {
       f.x2,
       f.y2,
       f.z2,
-      lw * (stretch ? 0.55 : f.grossuraExtra ? 1.35 : 1.8),
+      lwRaio * (stretch ? (alongX ? 1 : 0.55) : f.grossuraExtra ? 1.35 : 1.8),
       lenMul,
       orientOpts,
     );
@@ -409,11 +420,11 @@ export function sincronizarFeixes(_camera) {
       f.x2,
       f.y2,
       f.z2,
-      Math.max(0.06, lw * (stretch ? 0.18 : 0.28)),
+      Math.max(0.06, lwLuz * (stretch ? 0.2 : 0.28)),
       lenMul,
       orientOpts,
     );
-    const rPonta = lw * (f.grossuraExtra ? 1.4 : 1.9);
+    const rPonta = lwLuz * (f.grossuraExtra ? 1.4 : 1.6);
     ponta.position.set(f.x2, Math.max(0.1, f.z2 * ALTURA_BLOCO), f.y2);
     ponta.scale.set(rPonta * 2.2, rPonta * 2.2, 1);
     slot += 1;

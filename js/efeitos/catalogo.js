@@ -373,6 +373,8 @@ const DEFAULTS = {
       raio: { quantidade: 1, alcance: 8, ceu: true },
       feixe: {
         largura: 2.7,
+        // Glow/ponta ficam no tamanho “antigo”; só o sprite do raio engorda
+        brilho: 0.4,
         alcance: 8,
         duracao: 0.55,
         modo: "stretch",

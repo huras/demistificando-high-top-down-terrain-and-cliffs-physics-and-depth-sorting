@@ -66,7 +66,7 @@ function materialCaixa(cor) {
   return mat;
 }
 
-function anexarFaixas(grupo, lista, h, y, parede, cxSala, czSala) {
+function anexarFaixas(grupo, lista, h, y, parede) {
   for (let i = 0; i < lista.length; i++) {
     const r = lista[i];
     grupo.add(
@@ -78,8 +78,6 @@ function anexarFaixas(grupo, lista, h, y, parede, cxSala, czSala) {
         d: r.h,
         h,
         materiais: parede,
-        cxSala,
-        czSala,
       }),
     );
   }
@@ -90,10 +88,8 @@ function anexarCasca(grupo, piso) {
   const parede = facesParedeInterior(materialCaixa("#c4b8a8"));
   const h = ALTURA_PAREDE_LAB * fatorYCasa();
   const y = ALTURA_PRACA + h * 0.5;
-  const cxSala = ORIGEM_LAB_X + COLS_LAB * 0.5;
-  const czSala = ORIGEM_LAB_Y + ROWS_LAB * 0.5;
-  anexarFaixas(grupo, planta.muros, h, y, parede, cxSala, czSala);
-  anexarFaixas(grupo, planta.vedacoes, h, y, parede, cxSala, czSala);
+  anexarFaixas(grupo, planta.muros, h, y, parede);
+  anexarFaixas(grupo, planta.vedacoes, h, y, parede);
   if (!piso) return;
   for (let i = 0; i < planta.pisos.length; i++) {
     const r = planta.pisos[i];

@@ -252,8 +252,6 @@ function anexarSala(sala, planta, img) {
   const topo = texturaFaixa(img, SPRITE_PAREDE_CIMA, 1, 4);
   const hParede = ALTURA_PAREDE_HUB * fatorYCasa();
   const y = ALTURA_PRACA + hParede * 0.5;
-  const cxSala = planta.origemX + planta.cols * 0.5;
-  const czSala = planta.origemY + planta.rows * 0.5;
   const cascas = planta.cascas;
   for (let i = 0; i < cascas.length; i++) {
     const faixa = cascas[i];
@@ -267,8 +265,6 @@ function anexarSala(sala, planta, img) {
         d: faixa.h,
         h: hParede,
         materiais: materiaisDaCasca(lado, topo, aoLongoX, aoLongoX ? faixa.w : faixa.h),
-        cxSala,
-        czSala,
       }),
     );
   }

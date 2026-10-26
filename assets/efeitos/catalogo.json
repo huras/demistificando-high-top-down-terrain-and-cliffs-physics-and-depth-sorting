@@ -354,6 +354,7 @@
       "raio": { "quantidade": 1, "alcance": 8, "ceu": true },
       "feixe": {
         "largura": 2.7,
+        "brilho": 0.4,
         "alcance": 8,
         "duracao": 0.55,
         "modo": "stretch",

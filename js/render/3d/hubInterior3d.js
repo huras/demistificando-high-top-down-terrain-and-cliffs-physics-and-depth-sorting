@@ -53,8 +53,6 @@ function anexarCaixas(grupo, planta) {
   const balcao = materialCaixa(planta.corBalcao);
   const h = ALTURA_PAREDE_HUB * fatorYCasa();
   const y = ALTURA_PRACA + h * 0.5;
-  const cxSala = planta.origemX + planta.cols * 0.5;
-  const czSala = planta.origemY + planta.rows * 0.5;
   for (let i = 0; i < planta.cascas.length; i++) {
     const r = planta.cascas[i];
     grupo.add(
@@ -66,8 +64,6 @@ function anexarCaixas(grupo, planta) {
         d: r.h,
         h,
         materiais: parede,
-        cxSala,
-        czSala,
       }),
     );
   }
