@@ -46,6 +46,11 @@ export function executarAlvoLaboratorio(alvo) {
 }
 
 function falarNpc(npc) {
+  const ancora = {
+    x: Number.isFinite(npc.x) ? npc.x : 0,
+    y: Number.isFinite(npc.y) ? npc.y : 0,
+    z: Number.isFinite(npc.z) ? npc.z : 0,
+  };
   if (npc.id === "rina") {
     garantirQuestDevice();
     estado.dialogo = {
@@ -53,6 +58,8 @@ function falarNpc(npc) {
       linhas: falarRinaSantuario(),
       i: 0,
       retrato: npc.retrato || "",
+      npcRef: npc,
+      ancora,
     };
     avisar();
     return;
@@ -67,6 +74,8 @@ function falarNpc(npc) {
     linhas: (feita ? npc.falaFeita : npc.fala).slice(),
     i: 0,
     retrato: npc.retrato || "",
+    npcRef: npc,
+    ancora,
   };
   avisar();
 }

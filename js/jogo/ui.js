@@ -29,6 +29,7 @@ import {
 import { cancelarRanged } from "./ranged.js";
 import { npcPorId } from "../npc/runtime.js";
 import { iniciarBatalhaViajante } from "../npc/viajantes/batalha.js";
+import { ancoraDeFalante, sincronizarDialogoBalao } from "./dialogoBalao.js";
 import {
   abrirPainel,
   atribuirSlot,
@@ -244,6 +245,7 @@ function escolher(id) {
     estado.dialogo = { nome: "Enfermeira", linhas: ["Volte quando precisar."], i: 0 };
   } else if (dlg.acao === "desafioViajante") {
     const npc = dlg.npcRef || (dlg.npcId ? npcPorId(dlg.npcId) : null);
+    const ancora = dlg.ancora || ancoraDeFalante(npc);
     if (id === "batalhar" && npc) {
       estado.dialogo = null;
       if (!iniciarBatalhaViajante(npc)) {
@@ -252,6 +254,8 @@ function escolher(id) {
           nome: dlg.nome,
           linhas: ["Hmm… agora não vai dar. Depois a gente tenta!"],
           i: 0,
+          npcRef: npc,
+          ancora,
         };
       }
     } else {
@@ -260,6 +264,8 @@ function escolher(id) {
         nome: dlg.nome,
         linhas: ["Beleza, a gente se vê na estrada!"],
         i: 0,
+        npcRef: npc,
+        ancora,
       };
     }
   }
@@ -384,6 +390,7 @@ export function atualizarLeve(dt = 0.016) {
   pintarRelogio();
   tickHudPrevisao();
   tickHudVento(dt);
+  if (estado.dialogo) sincronizarDialogoBalao();
   // party strip / combat card: tickHudCampo em index.js
 }
 
@@ -466,22 +473,7 @@ function pintarToast() {
 }
 
 function pintarDialogo() {
-  const host = el("#jogo-dialogo");
-  if (!host) return;
-  const dlg = estado.dialogo;
-  host.hidden = !dlg;
-  if (!dlg) {
-    host.innerHTML = "";
-    return;
-  }
-  const linha = dlg.linhas[dlg.i] || "";
-  const escolhas = dlg.escolhas && dlg.i >= dlg.linhas.length - 1
-    ? dlg.escolhas.map((e) => `<button type="button" data-act="escolha" data-id="${e.id}">${e.rotulo}</button>`).join("")
-    : `<button type="button" data-act="seguir">Continuar</button>`;
-  const retrato = dlg.retrato
-    ? `<img class="jogo-dialogo__retrato" alt="" src="${escHtml(dlg.retrato)}" />`
-    : "";
-  host.innerHTML = `<div class="jogo-dialogo__corpo">${retrato}<div><p class="jogo-dialogo__nome">${escHtml(dlg.nome || "")}</p><p>${escHtml(linha)}</p><div class="jogo-dialogo__acoes">${escolhas}</div></div></div>`;
+  sincronizarDialogoBalao();
 }
 
 export function avancarDialogo() {
@@ -835,6 +827,7 @@ export function lerPlaca(placa) {
     nome: placa.nome,
     linhas: placa.linhas.slice(),
     i: 0,
+    ancora: ancoraDeFalante(placa),
   };
   avisar();
 }
@@ -842,6 +835,7 @@ export function lerPlaca(placa) {
 /** Abre diálogo a partir de um NPC do runtime (cidade / viajante / casa). */
 export function falarNpcMundo(npc) {
   if (!npc) return;
+  const ancora = ancoraDeFalante(npc);
   if (npc.owTrainer) {
     npc.combatHold = true;
     if (npc.defeatedByPlayer) {
@@ -852,6 +846,7 @@ export function falarNpcMundo(npc) {
         retrato: npc.retrato || "",
         npcId: npc.id,
         npcRef: npc,
+        ancora,
         acao: "viajantePos",
       };
     } else {
@@ -863,6 +858,7 @@ export function falarNpcMundo(npc) {
         retrato: npc.retrato || "",
         npcId: npc.id,
         npcRef: npc,
+        ancora,
         acao: "desafioViajante",
         escolhas: [
           { id: "batalhar", rotulo: "Batalhar" },
@@ -878,6 +874,8 @@ export function falarNpcMundo(npc) {
     linhas: (npc.fala || ["…"]).slice(),
     i: 0,
     retrato: npc.retrato || "",
+    npcRef: npc,
+    ancora,
   };
   avisar();
 }
@@ -893,12 +891,20 @@ export function falarCom(alvo) {
       acao: ref.acao || "",
       escolhas: ref.escolhas || null,
       retrato: ref.retrato || "",
+      npcRef: ref,
+      ancora: ancoraDeFalante(ref),
     };
     avisar();
     return;
   }
   if (ref.acao === "pc") {
-    estado.dialogo = { nome: "PC", linhas: ["O PC do Centro está ligado."], i: 0, acao: "pc" };
+    estado.dialogo = {
+      nome: "PC",
+      linhas: ["O PC do Centro está ligado."],
+      i: 0,
+      acao: "pc",
+      ancora: ancoraDeFalante(ref),
+    };
     avisar();
     return;
   }

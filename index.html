@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="css/entrance-puzzle.css" />
   <link rel="stylesheet" href="css/shrine-compass.css" />
   <link rel="stylesheet" href="css/batalha-treinador.css" />
+  <link rel="stylesheet" href="css/dialogo-balao.css" />
   <script type="importmap">
   {
     "imports": {
@@ -187,7 +188,6 @@
                 <span class="acao-prompt__rotulo">Entrar</span>
               </div>
             </div>
-            <div id="jogo-dialogo" class="jogo-dialogo" hidden></div>
             <section id="jogo-painel" class="jogo-painel" hidden></section>
             <section id="jogo-pc" class="pc-hud" hidden></section>
             <section id="jogo-loja" class="loja-hud" hidden></section>
@@ -409,6 +409,9 @@
 
             <!-- Bottom-center: golpes Z/X/C/V + PP -->
             <div id="party-moves-combat" class="party-moves-combat" hidden aria-label="Golpes"></div>
+
+            <!-- Diálogo HQ (acima da HUD de campo) -->
+            <div id="jogo-dialogo" class="dialogo-balao" hidden role="dialog" aria-live="polite"></div>
 
             <!-- Status do treinador (overlay) -->
             <div id="player-status-hud" class="player-status-hud" hidden></div>

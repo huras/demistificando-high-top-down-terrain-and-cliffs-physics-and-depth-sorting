@@ -1,0 +1,154 @@
+/* Balão de diálogo estilo HQ — acima da HUD de campo, ancorado no falante. */
+
+.dialogo-balao {
+  --balao-bg: #fffdf7;
+  --balao-ink: #1c1814;
+  --balao-line: rgba(40, 32, 28, 0.82);
+  --tail-x: 50%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 320;
+  width: max-content;
+  max-width: min(340px, 72vw);
+  pointer-events: none;
+  transform: translate3d(-50%, calc(-100% - 14px), 0);
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.38));
+  will-change: left, top;
+  contain: layout style;
+}
+
+.dialogo-balao[hidden] {
+  display: none !important;
+}
+
+.dialogo-balao.is-aberto {
+  animation: dialogo-balao-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dialogo-balao-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, calc(-100% - 6px), 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(-50%, calc(-100% - 14px), 0) scale(1);
+  }
+}
+
+.dialogo-balao__caixa {
+  position: relative;
+  padding: 12px 14px 10px;
+  border-radius: 14px;
+  background: var(--balao-bg);
+  color: var(--balao-ink);
+  border: 2px solid var(--balao-line);
+  font: 600 14px/1.35 "Segoe UI", system-ui, sans-serif;
+  pointer-events: auto;
+}
+
+.dialogo-balao__nome {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #5a4e3e;
+}
+
+.dialogo-balao__texto {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--balao-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dialogo-balao__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.dialogo-balao__acoes button {
+  appearance: none;
+  border: 1.5px solid var(--balao-line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: #f3eee4;
+  color: var(--balao-ink);
+  font: 700 12px/1.2 "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.dialogo-balao__acoes button:hover,
+.dialogo-balao__acoes button:focus-visible {
+  background: #e8dfcf;
+  outline: none;
+}
+
+.dialogo-balao__acoes button[data-id="batalhar"] {
+  background: #2d6a4f;
+  border-color: #1b4332;
+  color: #f8fff9;
+}
+
+.dialogo-balao__acoes button[data-id="batalhar"]:hover {
+  background: #40916c;
+}
+
+/* Cauda: triângulo do miolo da caixa até a cabeça do falante. */
+.dialogo-balao__cauda {
+  position: absolute;
+  left: var(--tail-x);
+  bottom: -13px;
+  width: 18px;
+  height: 14px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.dialogo-balao__cauda polygon {
+  fill: var(--balao-bg);
+  stroke: var(--balao-line);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* Tampão pra não aparecer stroke duplo na junção caixa↔cauda */
+.dialogo-balao__junta {
+  position: absolute;
+  left: var(--tail-x);
+  bottom: -2px;
+  width: 14px;
+  height: 5px;
+  transform: translateX(-50%);
+  background: var(--balao-bg);
+  pointer-events: none;
+}
+
+/* Durante diálogo: HUD de campo cede espaço visual ao balão */
+body.is-dialogo-open #party-combat-detail,
+body.is-dialogo-open .party-moves-combat,
+body.is-dialogo-open .hud-item-dock,
+body.is-dialogo-open .hud-utility-dock,
+body.is-dialogo-open .hud-map-dock {
+  opacity: 0.22;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+body.is-dialogo-open .hud-party {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+body.is-dialogo-open #jogo-prompt,
+body.is-dialogo-open #jogo-entrar {
+  visibility: hidden;
+}

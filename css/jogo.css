@@ -162,7 +162,6 @@
 
 /* toast: posicionado via .hud-toast-stack */
 
-.jogo-dialogo,
 .jogo-painel {
   pointer-events: auto;
   background: #f6efe2;
@@ -173,40 +172,7 @@
   font: 15px/1.4 "Segoe UI", sans-serif;
 }
 
-.jogo-dialogo {
-  position: absolute;
-  left: 24px;
-  right: 24px;
-  bottom: 88px;
-  padding: 16px 18px;
-}
-
-.jogo-dialogo__corpo {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.jogo-dialogo__retrato {
-  width: 72px;
-  height: 72px;
-  flex: 0 0 auto;
-  object-fit: contain;
-  image-rendering: pixelated;
-  background: #efe4d0;
-  border-radius: 10px;
-}
-
-.jogo-dialogo__nome {
-  margin: 0 0 6px;
-  font-weight: 700;
-}
-
-.jogo-dialogo__acoes {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
+/* Diálogo ativo: ver css/dialogo-balao.css */
 
 .jogo-painel {
   position: absolute;
@@ -320,7 +286,6 @@
 
 .jogo-abas,
 .jogo-cats,
-.jogo-dialogo__acoes,
 .jogo-topo {
   display: flex;
   flex-wrap: wrap;
