@@ -175,6 +175,9 @@ function aoClique(ev) {
       if (idx >= 0) definirDeployado(idx);
       // Usa o mon da party pós-deploy (referência viva).
       const mon = idx >= 0 ? listaParty()[idx] : op.mon;
+      // #region agent log
+      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'A',location:'menu.js:Levantar',message:'clique Levantar',data:{idx,hasMon:!!mon,monKey:mon?.especie?.key||null,colocado:!!mon?._colocado,capturado:!!mon?.capturado,alvoKind:alvo?.kind,propId:alvo?.prop?.id||alvo?.id||null,peso:alvo?.weightTier,locked:!!op.locked},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (mon) {
         mon.capturado = false;
         if (jaEmCampo) mon._colocado = true;

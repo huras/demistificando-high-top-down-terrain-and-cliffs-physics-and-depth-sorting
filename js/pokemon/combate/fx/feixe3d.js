@@ -28,7 +28,8 @@ export const CAP_FEIXES = 8;
  *   modo: string,
  *   textura: string,
  *   lengthScale: number,
- *   frame: number
+ *   frame: number,
+ *   roll: number
  * }} FeixeVivo
  */
 
@@ -210,6 +211,7 @@ export function soltarFeixe(opts) {
     textura: opts.textura || "",
     lengthScale: opts.lengthScale > 0 ? opts.lengthScale : 3,
     frame: opts.frame != null ? opts.frame : -1,
+    roll: opts.roll || 0,
   };
   if (f.textura) {
     pedirTexStretch(f.textura);
@@ -286,24 +288,54 @@ export function tickFeixes(dt) {
   }
 }
 
-const _de = new THREE.Vector3(0, 1, 0);
+const _deY = new THREE.Vector3(0, 1, 0);
+const _deX = new THREE.Vector3(1, 0, 0);
 const _para = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
+const _rollQ = new THREE.Quaternion();
 
-function orientarRibbon(mesh, x1, y1, z1, x2, y2, z2, largura, lengthMul = 1) {
-  const ax = x1;
-  const ay = Math.max(0.1, z1 * ALTURA_BLOCO);
-  const az = y1;
+/**
+ * Ribbon origem→ponta.
+ * Thunder (sprites horizontais): comprimento no eixo X local — U esquerda=origem, direita=impacto.
+ * @param {{ alongX?: boolean, overhang?: number, roll?: number }} [opts]
+ */
+function orientarRibbon(mesh, x1, y1, z1, x2, y2, z2, largura, lengthMul = 1, opts = {}) {
+  let ax = x1;
+  let ay = Math.max(0.1, z1 * ALTURA_BLOCO);
+  let az = y1;
   const bx = x2;
   const by = Math.max(0.1, z2 * ALTURA_BLOCO);
   const bz = y2;
   _para.set(bx - ax, by - ay, bz - az);
-  const len = (_para.length() || 0.001) * lengthMul;
+  let len = (_para.length() || 0.001) * lengthMul;
   _para.normalize();
+  const over = opts.overhang > 0 ? opts.overhang * len : 0;
+  if (over > 0) {
+    // Thunder_01: origem além da edge esquerda — estende atrás do caster
+    ax -= _para.x * over;
+    ay -= _para.y * over;
+    az -= _para.z * over;
+    len += over;
+  }
   mesh.position.set((ax + bx) * 0.5, (ay + by) * 0.5, (az + bz) * 0.5);
-  _quat.setFromUnitVectors(_de, _para);
-  mesh.quaternion.copy(_quat);
-  mesh.scale.set(largura, len, 1);
+  if (opts.alongX) {
+    // U (esquerda→direita da folha) alinhado à direção do raio
+    _quat.setFromUnitVectors(_deX, _para);
+    if (opts.roll) {
+      _rollQ.setFromAxisAngle(_para, opts.roll);
+      _quat.premultiply(_rollQ);
+    }
+    mesh.quaternion.copy(_quat);
+    mesh.scale.set(len, largura, 1);
+  } else {
+    _quat.setFromUnitVectors(_deY, _para);
+    if (opts.roll) {
+      _rollQ.setFromAxisAngle(_para, opts.roll);
+      _quat.premultiply(_rollQ);
+    }
+    mesh.quaternion.copy(_quat);
+    mesh.scale.set(largura, len, 1);
+  }
 }
 
 /**
@@ -343,6 +375,10 @@ export function sincronizarFeixes(_camera) {
     const lw = f.largura + flicker;
     const stretch = f.modo === "stretch";
     const lenMul = stretch ? Math.max(1, f.lengthScale || 3) / 3 : 1;
+    const lay = stretch && f.textura ? layoutElemental(f.textura) : null;
+    const alongX = !!(lay && lay.eixo === "horizontal");
+    const overhang = lay?.overhang || 0;
+    const orientOpts = { alongX, overhang, roll: f.roll || 0 };
     const tronco = gpu.tronco[slot];
     const nucleo = gpu.nucleo[slot];
     const ponta = gpu.ponta[slot];
@@ -363,8 +399,20 @@ export function sincronizarFeixes(_camera) {
       f.z2,
       lw * (stretch ? 0.55 : f.grossuraExtra ? 1.35 : 1.8),
       lenMul,
+      orientOpts,
     );
-    orientarRibbon(nucleo, f.x1, f.y1, f.z1, f.x2, f.y2, f.z2, Math.max(0.06, lw * (stretch ? 0.18 : 0.28)), lenMul);
+    orientarRibbon(
+      nucleo,
+      f.x1,
+      f.y1,
+      f.z1,
+      f.x2,
+      f.y2,
+      f.z2,
+      Math.max(0.06, lw * (stretch ? 0.18 : 0.28)),
+      lenMul,
+      orientOpts,
+    );
     const rPonta = lw * (f.grossuraExtra ? 1.4 : 1.9);
     ponta.position.set(f.x2, Math.max(0.1, f.z2 * ALTURA_BLOCO), f.y2);
     ponta.scale.set(rPonta * 2.2, rPonta * 2.2, 1);

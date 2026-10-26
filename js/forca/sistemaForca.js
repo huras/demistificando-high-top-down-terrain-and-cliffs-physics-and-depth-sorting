@@ -229,6 +229,9 @@ export function tentarInteragir(carrier) {
   if (grabAction) return true;
   if (orderCarrier && carrier === orderCarrier) return false;
   const target = resolverAlvo(carrier);
+  // #region agent log
+  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'E',location:'sistemaForca.js:tentarInteragir',message:'player E grab',data:{hasTarget:!!target,kind:target?.kind||null,peso:target?.weightTier??null,enemyKey:target?.enemy?.especie?.key||null,propId:target?.prop?.id||null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   if (!target) return false;
   const action = iniciarGrabNoAlvo(carrier, target, nowSec, cfg);
   if (!action) return false;
@@ -247,6 +250,11 @@ export function tentarInteragir(carrier) {
  * @param {{ kind: string, prop?: object, enemy?: object, weightTier: number }} target
  */
 export function iniciarGrabOrdenado(follower, target) {
+  const bloqueado = !follower || !target || !!carry || !!grabAction;
+  const locoBloq = !!(follower && (follower.escalando || follower.planando));
+  // #region agent log
+  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'D',location:'sistemaForca.js:iniciarGrabOrdenado',message:'entrada grab ordenado',data:{bloqueado,locoBloq,hasCarry:!!carry,hasGrab:!!grabAction,kind:target?.kind,peso:target?.weightTier,monKey:follower?.especie?.key||null,voando:!!follower?.voando},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   if (!follower || !target || carry || grabAction) return false;
   // Voadores (ex. Mewtwo) ainda levantam no chão — só aborta se estiver planando/escalando de verdade.
   if (follower.escalando || follower.planando) return false;
@@ -267,6 +275,9 @@ export function iniciarGrabOrdenado(follower, target) {
   grabAction = action;
   grabActor = follower;
   follower.ordemForca = null;
+  // #region agent log
+  fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'D',location:'sistemaForca.js:iniciarGrabOrdenado:ok',message:'grab ordenado iniciado',data:{failed:!!action.failed,strength:action.strengthTier,peso:action.weightTier,kind:action.kind,dur:action.durationSec},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   return true;
 }
 

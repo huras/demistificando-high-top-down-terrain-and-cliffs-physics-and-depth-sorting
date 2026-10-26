@@ -13,6 +13,7 @@ import { FLUIDO } from "../../mundo/agua/fluidos.js";
 import { colunaAgua, garantirFluxoChunk } from "../../mundo/agua/fluxo.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
 import { alturaEm, colunaTemArInterno, espessuraTopo } from "../../mundo/altura.js";
+import { chunkDentroDoMundo } from "../../mundo/bounds.js";
 import {
   baseTopoEm,
   chunkCarregadoEm,
@@ -2440,6 +2441,8 @@ export function criarTerrenoMalha(atlas = null) {
         if (dx * dx + dy * dy > lim) continue;
         const cx = pcx + dx;
         const cy = pcy + dy;
+        // Mesmo filtro do stream: chunks fora do overworld nunca carregam.
+        if (!chunkDentroDoMundo(cx, cy, CHUNK_XZ)) continue;
         const chunk = obterChunk(cx, cy);
         if (!chunk || chunk.sujo) return false;
         if (!meshesPorChunk.has(`${cx},${cy}`)) return false;

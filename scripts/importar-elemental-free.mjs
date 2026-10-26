@@ -35,9 +35,37 @@ const PASTAS = [
  *  - estatico  = 1x1
  */
 const FOLHAS = {
-  Thunder_01: { cols: 1, rows: 4, anim: "variacao" },
-  Thunder_02: { cols: 1, rows: 4, anim: "variacao" },
-  Thunder_03: { cols: 1, rows: 4, anim: "variacao" },
+  // Coluna de 4 sprites horizontais: U esquerda→direita = origem→impacto
+  Thunder_01: {
+    cols: 1,
+    rows: 4,
+    anim: "variacao",
+    eixo: "horizontal",
+    origem: "esquerda-alem",
+    ponta: "direita",
+    overhang: 0.14,
+    uso: "raio-generico",
+  },
+  Thunder_02: {
+    cols: 1,
+    rows: 4,
+    anim: "variacao",
+    eixo: "horizontal",
+    origem: "esquerda",
+    ponta: "direita",
+    overhang: 0,
+    uso: "thunder",
+  },
+  Thunder_03: {
+    cols: 1,
+    rows: 4,
+    anim: "variacao",
+    eixo: "horizontal",
+    origem: "esquerda",
+    ponta: "direita",
+    overhang: 0,
+    uso: "thunder-shock",
+  },
   Fire_01: { cols: 2, rows: 2, anim: "flipbook" },
   Fire_02: { cols: 2, rows: 2, anim: "flipbook" },
   Flame_01: { cols: 2, rows: 2, anim: "flipbook" },
@@ -126,6 +154,7 @@ for (const pasta of PASTAS) {
     const dest = path.join(dstRoot, pasta.para, destNome);
     fs.copyFileSync(path.join(dir, nome), dest);
     const lay = layoutDa(id);
+    const metaFolha = FOLHAS[id] || {};
     texturas[id] = {
       id,
       path: `assets/effects/elemental/${pasta.para}/${destNome}`,
@@ -135,6 +164,11 @@ for (const pasta of PASTAS) {
       rows: lay.rows,
       frames: lay.frames,
       anim: lay.anim,
+      eixo: metaFolha.eixo || "quad",
+      origem: metaFolha.origem || "",
+      ponta: metaFolha.ponta || "",
+      overhang: metaFolha.overhang || 0,
+      uso: metaFolha.uso || "",
     };
     console.log(
       nome,
@@ -180,7 +214,7 @@ const catalogo = {
   porTipo: {
     fire: { rastro: "Flame_01", impacto: "Explode_01", anel: "Ring_01", faisca: "Sparkle_01" },
     water: { rastro: "Stream_01", impacto: "Water_01", anel: "Ring_02", faisca: "Sparkle_02" },
-    electric: { rastro: "Thunder_01", impacto: "Thunder_02", anel: "Ring_01", faisca: "Sparkle_01" },
+    electric: { rastro: "Thunder_01", impacto: "Thunder_03", anel: "Ring_01", faisca: "Sparkle_01" },
     ice: { rastro: "Ice_01", impacto: "Ice_01", anel: "Ring_03", faisca: "SnowFlake_01" },
     grass: { rastro: "Glow_01", impacto: "Burst_01", anel: "Ring_02", faisca: "Sparkle_02" },
     normal: { rastro: "Glow_01", impacto: "Burst_01", anel: "Ring_01", faisca: "Sparkle_01" },

@@ -7,8 +7,8 @@ import { BILLBOARD_INCLINACAO } from "../../config.js";
 
 const LIMIAR_INCLINADA = 0.15;
 const LIMIAR_RETA = 0.08;
-/** Topo deita pro norte (−Z). Oposto do sinal do cartão que deita no +Z da face. */
-const LEAN_NORTE = -BILLBOARD_INCLINACAO;
+/** Topo deita pro norte da casa (mesmo sinal do billboard de órbita). */
+const LEAN_NORTE = BILLBOARD_INCLINACAO;
 
 /** @type {{ reta: THREE.Object3D, inclinada: THREE.Object3D }[]} */
 const faixas = [];

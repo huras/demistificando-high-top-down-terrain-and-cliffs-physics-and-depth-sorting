@@ -124,14 +124,18 @@ export class PadraoFeixe extends PadraoBase {
   }
 }
 
-/** Raios jagged (Thunder / Thunder Shock). */
+/**
+ * Thunder / Thunder Shock.
+ * Um sprite Thunder estica origem→alvo (folha 1×4 horizontal).
+ * Várias camadas = mesmo span, só roll em torno do eixo do golpe — nunca pedaços em série.
+ */
 export class PadraoRaio extends PadraoBase {
   iniciar(origem, alvo, def, elemento, opts = {}) {
     super.iniciar(origem, alvo, def, elemento, opts);
     this.cfg = opts.feixe || {};
     this.raioCfg = opts.raio || {};
     this.duracao = this.cfg.duracao || 0.55;
-    this.segmentos = [];
+    this.camadas = [];
     this.rebuild();
     emitirImpacto(elemento, this.mx, this.my, this.peito(alvo || origem), this.escala);
   }
@@ -141,45 +145,50 @@ export class PadraoRaio extends PadraoBase {
     if (!a) return;
     const z = this.peito(a);
     const ceu = !!this.raioCfg.ceu;
-    const x1 = ceu ? this.mx + (Math.random() - 0.5) * 0.4 : a.x;
-    const y1 = ceu ? this.my + (Math.random() - 0.5) * 0.4 : a.y;
+    const x1 = ceu ? this.mx + (Math.random() - 0.5) * 0.35 : a.x;
+    const y1 = ceu ? this.my + (Math.random() - 0.5) * 0.35 : a.y;
     const z1 = ceu ? z + 6 : z;
     const x2 = this.mx;
     const y2 = this.my;
     const z2 = this.alvo ? this.peito(this.alvo) : z;
-    const n = 6 + Math.floor(Math.random() * 4);
-    // Sem isso o rebuild órfão deixava feixe.viva=true pra sempre no chão.
-    for (let i = 0; i < this.segmentos.length; i++) {
-      if (this.segmentos[i]) this.segmentos[i].viva = false;
+
+    for (let i = 0; i < this.camadas.length; i++) {
+      if (this.camadas[i]) this.camadas[i].viva = false;
     }
-    this.segmentos.length = 0;
+    this.camadas.length = 0;
+
+    const textura = this.cfg.textura || (ceu ? "Thunder_02" : "Thunder_03");
+    const n = Math.max(1, Math.min(3, this.raioCfg.camadas || 2 + Math.floor(Math.random() * 2)));
+    const larguraBase = (this.cfg.largura || 0.32) * this.escala;
+
     for (let i = 0; i < n; i++) {
-      const t0 = i / n;
-      const t1 = (i + 1) / n;
-      const jx = (Math.random() - 0.5) * 0.55;
-      const jy = (Math.random() - 0.5) * 0.55;
-      const jz = (Math.random() - 0.5) * 0.3;
-      this.segmentos.push(
+      const meio = (n - 1) * 0.5;
+      // Roll em torno do eixo do raio — camadas “torcidas”, não enfileiradas
+      const roll = (i - meio) * 0.55 + (Math.random() - 0.5) * 0.25;
+      this.camadas.push(
         soltarFeixe({
-          x1: x1 + (x2 - x1) * t0 + (i === 0 ? 0 : jx),
-          y1: y1 + (y2 - y1) * t0 + (i === 0 ? 0 : jy),
-          z1: z1 + (z2 - z1) * t0 + (i === 0 ? 0 : jz),
-          x2: x1 + (x2 - x1) * t1 + (i === n - 1 ? 0 : (Math.random() - 0.5) * 0.55),
-          y2: y1 + (y2 - y1) * t1 + (i === n - 1 ? 0 : (Math.random() - 0.5) * 0.55),
-          z2: z1 + (z2 - z1) * t1,
-          largura: (this.cfg.largura || 0.28) * (0.7 + Math.random() * 0.5),
+          x1,
+          y1,
+          z1,
+          x2,
+          y2,
+          z2,
+          largura: larguraBase * (0.75 + i * 0.2 + Math.random() * 0.1),
           primaria: this.cfg.primaria || this.elemento.primaria,
           secundaria: this.cfg.secundaria || this.elemento.secundaria,
           nucleo: this.cfg.nucleo || this.elemento.nucleo,
-          alpha: 1,
+          alpha: i === 0 ? 1 : 0.55 + Math.random() * 0.25,
           grossuraExtra: false,
           modo: "stretch",
-          textura: this.cfg.textura || "Thunder_01",
-          lengthScale: this.cfg.lengthScale || 3,
+          textura,
+          // lengthScale 3 → mul 1 no feixe3d (span já é origem→alvo)
+          lengthScale: 3,
+          roll,
         }),
       );
     }
-    for (let i = 0; i < 16; i++) {
+
+    for (let i = 0; i < 14; i++) {
       emitir({
         x: x2 + (Math.random() - 0.5) * 0.5,
         y: y2 + (Math.random() - 0.5) * 0.5,
@@ -191,6 +200,7 @@ export class PadraoRaio extends PadraoBase {
         vida: 0.28,
         tam: 0.1,
         modo: "faisca",
+        folha: folhaParticula(this.elemento, "faisca"),
       });
     }
   }
@@ -198,21 +208,28 @@ export class PadraoRaio extends PadraoBase {
   atualizar(dt) {
     if (!this.ativo) return;
     this.tempo += dt;
-    const fade = this.tempo > this.duracao * 0.55 ? 1 - (this.tempo - this.duracao * 0.55) / (this.duracao * 0.45) : 1;
-    for (let i = 0; i < this.segmentos.length; i++) {
-      const s = this.segmentos[i];
-      if (s) s.alpha = Math.max(0, fade);
+    const fade =
+      this.tempo > this.duracao * 0.55
+        ? 1 - (this.tempo - this.duracao * 0.55) / (this.duracao * 0.45)
+        : 1;
+    for (let i = 0; i < this.camadas.length; i++) {
+      const s = this.camadas[i];
+      if (!s) continue;
+      s.alpha = Math.max(0, fade * (i === 0 ? 1 : 0.65));
+      // Flicker: troca o tile da folha, mantendo o mesmo span
+      if (Math.random() < dt * 14) s.frame = Math.floor(Math.random() * 4);
+      s.roll += dt * (i % 2 ? 2.2 : -1.6);
     }
-    if (this.tempo > 0.12 && this.tempo < 0.2 && Math.random() < 0.4) this.rebuild();
+    if (this.tempo > 0.1 && this.tempo < 0.18 && Math.random() < 0.35) this.rebuild();
     if (this.tempo >= this.duracao) {
-      for (let i = 0; i < this.segmentos.length; i++) if (this.segmentos[i]) this.segmentos[i].viva = false;
+      for (let i = 0; i < this.camadas.length; i++) if (this.camadas[i]) this.camadas[i].viva = false;
       this.encerrar();
     }
   }
 
   encerrar() {
-    for (let i = 0; i < this.segmentos.length; i++) if (this.segmentos[i]) this.segmentos[i].viva = false;
-    this.segmentos.length = 0;
+    for (let i = 0; i < this.camadas.length; i++) if (this.camadas[i]) this.camadas[i].viva = false;
+    this.camadas.length = 0;
     super.encerrar();
   }
 }

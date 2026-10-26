@@ -85,6 +85,14 @@ export function atualizarVisualForca(corpo, pointer = null) {
   const grab = obterGrabAction();
   const carry = obterCarry();
   const thrown = obterThrown();
+  // #region agent log
+  if (carry?.kind === "faintedWild" || grab?.kind === "faintedWild") {
+    if (!atualizarVisualForca._dbgN || atualizarVisualForca._dbgN++ % 20 === 0) {
+      atualizarVisualForca._dbgN = (atualizarVisualForca._dbgN || 1);
+      fetch('http://127.0.0.1:7578/ingest/2d17c26e-34d3-4e31-ad4f-513a36a051d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5811b2'},body:JSON.stringify({sessionId:'5811b2',runId:'pre',hypothesisId:'E',location:'visualForca.js:atualizar',message:'visual pokemon carry/grab',data:{hasCarry:!!carry,carryKind:carry?.kind||null,enemyHidden:!!carry?.enemy?.forcaCarregado,grabKind:grab?.kind||null,spriteCarryOn:!!spriteCarry?.visible,anchorPlayer:true,corpoId:corpo?.id||null},timestamp:Date.now()})}).catch(()=>{});
+    }
+  }
+  // #endregion
 
   // Canal de viagem / carry overhead
   if (carry || (grab && !grab.failed && !grab.struggle)) {

@@ -44,7 +44,7 @@
     },
     "electric": {
       "rastro": "Thunder_01",
-      "impacto": "Thunder_02",
+      "impacto": "Thunder_03",
       "anel": "Ring_01",
       "faisca": "Sparkle_01"
     },
@@ -88,7 +88,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Burst_02": {
       "id": "Burst_02",
@@ -98,7 +103,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Crack_01": {
       "id": "Crack_01",
@@ -108,7 +118,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Explode_01": {
       "id": "Explode_01",
@@ -118,7 +133,12 @@
       "cols": 2,
       "rows": 2,
       "frames": 4,
-      "anim": "flipbook"
+      "anim": "flipbook",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Explode_02": {
       "id": "Explode_02",
@@ -128,7 +148,12 @@
       "cols": 2,
       "rows": 2,
       "frames": 4,
-      "anim": "flipbook"
+      "anim": "flipbook",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Fire_01": {
       "id": "Fire_01",
@@ -138,7 +163,12 @@
       "cols": 2,
       "rows": 2,
       "frames": 4,
-      "anim": "flipbook"
+      "anim": "flipbook",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Fire_02": {
       "id": "Fire_02",
@@ -148,7 +178,12 @@
       "cols": 2,
       "rows": 2,
       "frames": 4,
-      "anim": "flipbook"
+      "anim": "flipbook",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Flagment_01": {
       "id": "Flagment_01",
@@ -158,7 +193,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Flame_01": {
       "id": "Flame_01",
@@ -168,7 +208,12 @@
       "cols": 2,
       "rows": 2,
       "frames": 4,
-      "anim": "flipbook"
+      "anim": "flipbook",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Fog_01": {
       "id": "Fog_01",
@@ -178,7 +223,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Glow_01": {
       "id": "Glow_01",
@@ -188,7 +238,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Heat_01": {
       "id": "Heat_01",
@@ -198,7 +253,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Lava_01": {
       "id": "Lava_01",
@@ -208,7 +268,12 @@
       "cols": 2,
       "rows": 2,
       "frames": 4,
-      "anim": "flipbook"
+      "anim": "flipbook",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Ray_01": {
       "id": "Ray_01",
@@ -218,7 +283,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Ray_02": {
       "id": "Ray_02",
@@ -228,7 +298,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Ray_03": {
       "id": "Ray_03",
@@ -238,7 +313,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Ray_04": {
       "id": "Ray_04",
@@ -248,7 +328,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Ring_01": {
       "id": "Ring_01",
@@ -258,7 +343,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Ring_02": {
       "id": "Ring_02",
@@ -268,7 +358,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Ring_03": {
       "id": "Ring_03",
@@ -278,7 +373,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "SnowFlake_01": {
       "id": "SnowFlake_01",
@@ -288,7 +388,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Sparkle_01": {
       "id": "Sparkle_01",
@@ -298,7 +403,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Sparkle_02": {
       "id": "Sparkle_02",
@@ -308,7 +418,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Sparkle_03": {
       "id": "Sparkle_03",
@@ -318,7 +433,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Thunder_01": {
       "id": "Thunder_01",
@@ -328,7 +448,12 @@
       "cols": 1,
       "rows": 4,
       "frames": 4,
-      "anim": "variacao"
+      "anim": "variacao",
+      "eixo": "horizontal",
+      "origem": "esquerda-alem",
+      "ponta": "direita",
+      "overhang": 0.14,
+      "uso": "raio-generico"
     },
     "Thunder_02": {
       "id": "Thunder_02",
@@ -338,7 +463,12 @@
       "cols": 1,
       "rows": 4,
       "frames": 4,
-      "anim": "variacao"
+      "anim": "variacao",
+      "eixo": "horizontal",
+      "origem": "esquerda",
+      "ponta": "direita",
+      "overhang": 0,
+      "uso": "thunder"
     },
     "Thunder_03": {
       "id": "Thunder_03",
@@ -348,7 +478,12 @@
       "cols": 1,
       "rows": 4,
       "frames": 4,
-      "anim": "variacao"
+      "anim": "variacao",
+      "eixo": "horizontal",
+      "origem": "esquerda",
+      "ponta": "direita",
+      "overhang": 0,
+      "uso": "thunder-shock"
     },
     "Wind_01": {
       "id": "Wind_01",
@@ -358,7 +493,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Cloud_01": {
       "id": "Cloud_01",
@@ -368,7 +508,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "DarkGlow_01": {
       "id": "DarkGlow_01",
@@ -378,7 +523,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Dust_01": {
       "id": "Dust_01",
@@ -388,7 +538,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Ice_01": {
       "id": "Ice_01",
@@ -398,7 +553,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "MudRipple_01": {
       "id": "MudRipple_01",
@@ -408,7 +568,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Mud_01": {
       "id": "Mud_01",
@@ -418,7 +583,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Raindrop_01": {
       "id": "Raindrop_01",
@@ -428,7 +598,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "RainRipple_01": {
       "id": "RainRipple_01",
@@ -438,7 +613,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "RainSplash_01": {
       "id": "RainSplash_01",
@@ -448,7 +628,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Rock_01": {
       "id": "Rock_01",
@@ -458,7 +643,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Smoke_01": {
       "id": "Smoke_01",
@@ -468,7 +658,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Smoke_02": {
       "id": "Smoke_02",
@@ -478,7 +673,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "SnowFloor_01": {
       "id": "SnowFloor_01",
@@ -488,7 +688,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Stream_01": {
       "id": "Stream_01",
@@ -498,7 +703,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Water_01": {
       "id": "Water_01",
@@ -508,7 +718,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     },
     "Water_02": {
       "id": "Water_02",
@@ -518,7 +733,12 @@
       "cols": 1,
       "rows": 1,
       "frames": 1,
-      "anim": "estatico"
+      "anim": "estatico",
+      "eixo": "quad",
+      "origem": "",
+      "ponta": "",
+      "overhang": 0,
+      "uso": ""
     }
   }
 }

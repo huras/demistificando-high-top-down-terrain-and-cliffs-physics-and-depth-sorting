@@ -13,7 +13,7 @@ const FALLBACK = {
   porTipo: {
     fire: { rastro: "Flame_01", impacto: "Explode_01", anel: "Ring_01", faisca: "Sparkle_01" },
     water: { rastro: "Stream_01", impacto: "Water_01", anel: "Ring_02", faisca: "Sparkle_02" },
-    electric: { rastro: "Thunder_01", impacto: "Thunder_02", anel: "Ring_01", faisca: "Sparkle_01" },
+    electric: { rastro: "Thunder_01", impacto: "Thunder_03", anel: "Ring_01", faisca: "Sparkle_01" },
     ice: { rastro: "Ice_01", impacto: "Ice_01", anel: "Ring_03", faisca: "SnowFlake_01" },
     grass: { rastro: "Glow_01", impacto: "Burst_01", anel: "Ring_02", faisca: "Sparkle_02" },
     normal: { rastro: "Glow_01", impacto: "Burst_01", anel: "Ring_01", faisca: "Sparkle_01" },
@@ -37,9 +37,19 @@ export function texturaElemental(id) {
 }
 
 /**
- * Layout da folha (cols × rows). Thunder=1×4, Fire=2×2, Burst=1×1…
+ * Layout da folha (cols × rows). Thunder=1×4 (sprites horizontais), Fire=2×2…
  * @param {string} id
- * @returns {{ cols: number, rows: number, frames: number, anim: string }}
+ * @returns {{
+ *   cols: number,
+ *   rows: number,
+ *   frames: number,
+ *   anim: string,
+ *   eixo: string,
+ *   origem: string,
+ *   ponta: string,
+ *   overhang: number,
+ *   uso: string
+ * }}
  */
 export function layoutElemental(id) {
   const meta = texturaElemental(id);
@@ -50,6 +60,11 @@ export function layoutElemental(id) {
     rows,
     frames: Math.max(1, meta?.frames || cols * rows),
     anim: meta?.anim || (cols * rows > 1 ? "flipbook" : "estatico"),
+    eixo: meta?.eixo || "quad",
+    origem: meta?.origem || "",
+    ponta: meta?.ponta || "",
+    overhang: meta?.overhang > 0 ? meta.overhang : 0,
+    uso: meta?.uso || "",
   };
 }
 

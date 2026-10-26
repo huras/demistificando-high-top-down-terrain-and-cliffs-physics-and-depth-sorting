@@ -357,7 +357,8 @@ const DEFAULTS = {
         alcance: 10,
         duracao: 0.68,
         modo: "stretch",
-        textura: "Thunder_01",
+        // Thunder_03: origem esquerda → impacto direita (sprite horizontal)
+        textura: "Thunder_03",
         lengthScale: 3,
         primaria: "#f8d030",
         secundaria: "#fff080",
@@ -371,10 +372,11 @@ const DEFAULTS = {
       elemento: "electric",
       raio: { quantidade: 1, alcance: 8, ceu: true },
       feixe: {
-        largura: 0.45,
+        largura: 2.7,
         alcance: 8,
         duracao: 0.55,
         modo: "stretch",
+        // Thunder_02: origem esquerda → impacto direita (trovão)
         textura: "Thunder_02",
         lengthScale: 3.5,
         primaria: "#f8d030",
