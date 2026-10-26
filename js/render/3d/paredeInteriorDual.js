@@ -1,28 +1,31 @@
 /**
  * Cascas de interior: uma BoxGeometry em pé com shear pro norte (−Z).
- * Órbita: yz = tan(inclinacao) ≈ −1 (topo 45° norte). Mira: yz = 0 (reta).
+ * Órbita: só a parede norte (skew); sul/leste/oeste ocultas.
+ * Mira: todas retas e visíveis.
  *
  * Three.js makeShear(xy, xz, yx, yz, zx, zy):
- *   yz → z' += yz * y  (topo anda no Z — o que queremos)
- *   zy → y' += zy * z  (altura muda com Z — “pra cima”, errado)
+ *   yz → z' += yz * y  (topo anda no Z)
  */
 import * as THREE from "three";
 
 /** @type {THREE.Mesh[]} */
 const faixas = [];
 const _shear = new THREE.Matrix4();
+const LIMIAR_ORBITA = 0.15;
 let yzAtual = NaN;
+/** @type {boolean | null} */
+let orbitaAtual = null;
 
 /**
  * @param {{
  *   x: number, y: number, z: number,
  *   w: number, d: number, h: number,
  *   materiais: THREE.Material | THREE.Material[],
+ *   face?: "norte" | "sul" | "leste" | "oeste",
  * }} opts
  */
 export function criarFaixaParede(opts) {
-  const { x, y, z, w, d, h: hCheia, materiais } = opts;
-  // Metade da altura antes do shear — com o lean 45° o topo visual cobre o mesmo vão.
+  const { x, y, z, w, d, h: hCheia, materiais, face = "norte" } = opts;
   const h = hCheia * 0.5;
   const yPe = y - hCheia * 0.5;
 
@@ -35,24 +38,33 @@ export function criarFaixaParede(opts) {
   mesh.castShadow = false;
   mesh.receiveShadow = true;
   mesh.matrixAutoUpdate = false;
+  // Só a parede norte da sala/corredor fica no top-down.
+  mesh.userData.ocultarNaOrbita = face !== "norte";
   aplicarShear(mesh, Number.isFinite(yzAtual) ? yzAtual : 0);
+  mesh.visible = !(mesh.userData.ocultarNaOrbita && orbitaAtual === true);
 
   faixas.push(mesh);
   return mesh;
 }
 
 function aplicarShear(mesh, yz) {
-  // 4º arg = yz: desloca Z conforme Y (topo → norte quando yz < 0)
   _shear.makeShear(0, 0, 0, yz, 0, 0);
   mesh.matrix.compose(mesh.position, mesh.quaternion, mesh.scale);
   mesh.matrix.multiply(_shear);
   mesh.matrixWorldNeedsUpdate = true;
 }
 
-/** Shear contínuo: tan(inclinacao). Órbita −π/4 → norte; mira 0 → reta. */
+/** Shear contínuo; na órbita só a parede norte fica visível. */
 export function atualizarParedesDual(inclinacao = 0) {
-  const yz = Math.tan(inclinacao || 0);
-  if (yz === yzAtual) return;
+  const ang = inclinacao || 0;
+  const yz = Math.tan(ang);
+  const orbita = Math.abs(ang) > LIMIAR_ORBITA;
+  if (yz === yzAtual && orbita === orbitaAtual) return;
   yzAtual = yz;
-  for (let i = 0; i < faixas.length; i++) aplicarShear(faixas[i], yz);
+  orbitaAtual = orbita;
+  for (let i = 0; i < faixas.length; i++) {
+    const mesh = faixas[i];
+    aplicarShear(mesh, yz);
+    mesh.visible = !(mesh.userData.ocultarNaOrbita && orbita);
+  }
 }

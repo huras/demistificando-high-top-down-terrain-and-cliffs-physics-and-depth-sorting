@@ -265,6 +265,7 @@ function anexarSala(sala, planta, img) {
         d: faixa.h,
         h: hParede,
         materiais: materiaisDaCasca(lado, topo, aoLongoX, aoLongoX ? faixa.w : faixa.h),
+        face: faixa.face,
       }),
     );
   }

@@ -64,6 +64,7 @@ function anexarCaixas(grupo, planta) {
         d: r.h,
         h,
         materiais: parede,
+        face: r.face,
       }),
     );
   }

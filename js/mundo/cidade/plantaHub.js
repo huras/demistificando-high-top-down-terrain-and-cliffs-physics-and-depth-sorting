@@ -58,7 +58,12 @@ function fundir(marca, cols, rows) {
   return saida;
 }
 
-function cascasDaParede(muro, anda, balcao, cols, rows) {
+/**
+ * Cascas finas viradas pra dentro do chão.
+ * `face` = lado da *sala* (norte = parede no fundo, visível no top-down).
+ * Corredor: parede com chão ao sul → face norte; com chão só ao norte → face sul.
+ */
+export function cascasDaParede(muro, anda, balcao, cols, rows) {
   const g = GROSSURA_PAREDE;
   const dentro = (x, y) =>
     x >= 0 && y >= 0 && x < cols && y < rows && (anda[y * cols + x] || balcao[y * cols + x]);
@@ -72,6 +77,7 @@ function cascasDaParede(muro, anda, balcao, cols, rows) {
         x += 1;
         continue;
       }
+      // Prefere chão ao sul → esta é a parede norte daquele vão (corredor/sala).
       const qual = sul ? "sul" : "norte";
       let w = 1;
       while (x + w < cols) {
@@ -87,6 +93,7 @@ function cascasDaParede(muro, anda, balcao, cols, rows) {
         y: qual === "sul" ? y + 1 - g : y,
         w,
         h: g,
+        face: qual === "sul" ? "norte" : "sul",
       });
       x += w;
     }
@@ -115,6 +122,7 @@ function cascasDaParede(muro, anda, balcao, cols, rows) {
         y,
         w: g,
         h,
+        face: qual === "leste" ? "oeste" : "leste",
       });
       y += h;
     }

@@ -273,7 +273,7 @@ function montar() {
   }
   carimbar(moveis, SPRITE.estante, a.x0 + 0.45, a.y0 + 0.35);
   escrivaninhaComLivros(moveis, a.x0 + 0.55, a.y1 - 2.45);
-  const cura = carimbar(moveis, SPRITE.cura, a.x1 - 2.65, a.y1 - 3.35, { acao: "cura" });
+  const cura = carimbar(moveis, SPRITE.cura, a.x1 - 2.65, a.y1 - 4.35, { acao: "cura" });
 
   escrivaninhaComLivros(moveis, bMeio.x - 1, b.y0 + 0.4);
   const mesa = SPRITE.mesa;

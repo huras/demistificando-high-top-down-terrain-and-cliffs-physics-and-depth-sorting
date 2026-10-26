@@ -8,7 +8,7 @@ import {
   PX_MOVEL,
   moveisDaSala,
 } from "../../mundo/cidade/interiorCasa.js";
-import { medidasSala } from "../../mundo/cidade/sala3d.js";
+import { medidasSala, PROF_PORTA_SALA } from "../../mundo/cidade/sala3d.js";
 import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
 import { aplicarLuzBillboard } from "./ceu/luzBillboard.js";
@@ -325,11 +325,18 @@ function materialSala(cor, mapa) {
   return mat;
 }
 
+const GROSSA_PAREDE = 1.05;
+const GROSSA_OMBREIRA = 0.55;
+
 /** Piso de azulejo e paredes por cima do voxel, pra não aparecer o mato. */
 export function anexarCascaSala(grupo, piso, saida) {
   const m = medidasSala();
   const chaoW = m.chaoX1 - m.chaoX0;
   const chaoD = m.chaoY1 - m.chaoY0;
+  const wPorta = Math.max(1, m.portaX1 - m.portaX0);
+  const meioPortaX = (m.portaX0 + m.portaX1) * 0.5;
+  const zVestibulo = m.portaY + PROF_PORTA_SALA * 0.5;
+
   if (piso) {
     piso.repeat.set(chaoW, chaoD);
     piso.needsUpdate = true;
@@ -339,10 +346,24 @@ export function anexarCascaSala(grupo, piso, saida) {
     mesh.position.set((m.chaoX0 + m.chaoX1) * 0.5, ALTURA_PRACA + 0.08, (m.chaoY0 + m.chaoY1) * 0.5);
     mesh.name = "piso-sala";
     grupo.add(mesh);
+
+    // Piso do vestíbulo (protuberância sul da porta).
+    const pisoPorta = piso.clone();
+    pisoPorta.repeat.set(wPorta, PROF_PORTA_SALA);
+    pisoPorta.needsUpdate = true;
+    const vestibulo = new THREE.Mesh(
+      new THREE.PlaneGeometry(wPorta, PROF_PORTA_SALA),
+      materialSala("#ffffff", pisoPorta),
+    );
+    vestibulo.rotation.x = -Math.PI / 2;
+    vestibulo.position.set(meioPortaX, ALTURA_PRACA + 0.08, zVestibulo);
+    vestibulo.name = "piso-porta";
+    vestibulo.receiveShadow = true;
+    grupo.add(vestibulo);
   }
-  // Tiles de saída (iguais ao Centro) na porta sul — marca visual pra o player.
+
+  // Tiles de saída (iguais ao Centro) no tapete do vestíbulo.
   if (saida) {
-    const wPorta = Math.max(1, m.portaX1 - m.portaX0);
     const mat = new THREE.MeshLambertMaterial({
       map: saida,
       polygonOffset: true,
@@ -350,17 +371,17 @@ export function anexarCascaSala(grupo, piso, saida) {
       polygonOffsetUnits: -3,
     });
     aplicarLuzCidade(mat);
-    const tapete = new THREE.Mesh(new THREE.PlaneGeometry(wPorta, 1), mat);
-    tapete.rotation.x = -Math.PI / 2;
-    tapete.position.set(
-      (m.portaX0 + m.portaX1) * 0.5,
-      ALTURA_PRACA + 0.1,
-      m.portaY - 0.5,
+    const tapete = new THREE.Mesh(
+      new THREE.PlaneGeometry(wPorta, Math.min(1, PROF_PORTA_SALA)),
+      mat,
     );
+    tapete.rotation.x = -Math.PI / 2;
+    tapete.position.set(meioPortaX, ALTURA_PRACA + 0.1, zVestibulo);
     tapete.name = "piso-saida";
     tapete.receiveShadow = true;
     grupo.add(tapete);
   }
+
   const parede = facesParedeInterior(materialSala("#f3e7cf"));
   const h = (m.alturaParede + 0.2) * fatorYCasa();
   const y = ALTURA_PRACA + h * 0.5;
@@ -368,19 +389,26 @@ export function anexarCascaSala(grupo, piso, saida) {
   const meioY = (m.y0 + m.y1) * 0.5;
   const largura = m.x1 - m.x0;
   const fundo = m.y1 - m.y0;
-  const faixa = (w, d, x, z) =>
-    criarFaixaParede({ x, y, z, w, d, h, materiais: parede });
-  grupo.add(faixa(largura, 1.05, meioX, m.y0 + 0.5));
-  grupo.add(faixa(1.05, fundo, m.x0 + 0.5, meioY));
-  grupo.add(faixa(1.05, fundo, m.x1 - 0.5, meioY));
+  const faixa = (w, d, x, z, face) =>
+    criarFaixaParede({ x, y, z, w, d, h, materiais: parede, face });
+  grupo.add(faixa(largura, GROSSA_PAREDE, meioX, m.y0 + 0.5, "norte"));
+  grupo.add(faixa(GROSSA_PAREDE, fundo, m.x0 + 0.5, meioY, "oeste"));
+  grupo.add(faixa(GROSSA_PAREDE, fundo, m.x1 - 0.5, meioY, "leste"));
   const esq = m.portaX0 - m.x0;
   const dir = m.x1 - m.portaX1;
   if (esq > 0.2) {
-    grupo.add(faixa(esq, 1.05, m.x0 + esq * 0.5, m.portaY + 0.5));
+    grupo.add(faixa(esq, GROSSA_PAREDE, m.x0 + esq * 0.5, m.portaY + 0.5, "sul"));
   }
   if (dir > 0.2) {
-    grupo.add(faixa(dir, 1.05, m.portaX1 + dir * 0.5, m.portaY + 0.5));
+    grupo.add(faixa(dir, GROSSA_PAREDE, m.portaX1 + dir * 0.5, m.portaY + 0.5, "sul"));
   }
+  // Ombreiras da porta — protuberância sul (leste/oeste do vão).
+  grupo.add(
+    faixa(GROSSA_OMBREIRA, PROF_PORTA_SALA, m.portaX0 - GROSSA_OMBREIRA * 0.5, zVestibulo, "oeste"),
+  );
+  grupo.add(
+    faixa(GROSSA_OMBREIRA, PROF_PORTA_SALA, m.portaX1 + GROSSA_OMBREIRA * 0.5, zVestibulo, "leste"),
+  );
 }
 
 const VASOS_CASA = Object.freeze(["flores-1", "vaso-1", "flores-3", "vaso-2"]);

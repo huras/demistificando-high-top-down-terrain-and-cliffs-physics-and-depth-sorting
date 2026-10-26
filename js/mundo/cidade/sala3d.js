@@ -18,6 +18,8 @@ export const ORIGEM_SALA_Y = 100000;
 
 const MARGEM = 28;
 const ALTURA_PAREDE = 4;
+/** Vestíbulo da porta sul (mesmo valor visual em decoracaoCidade). */
+export const PROF_PORTA_SALA = 1.35;
 
 function caixa() {
   const x0 = ORIGEM_SALA_X;
@@ -49,6 +51,10 @@ export function dentroDoTerrenoSala(wx, wy) {
 
 function ehParede(wx, wy) {
   const c = caixa();
+  // Ombreiras do vestíbulo (protuberância sul da porta).
+  if (wy > c.portaY && wy < c.portaY + PROF_PORTA_SALA) {
+    if (wx === c.portaX0 - 1 || wx === c.portaX1) return true;
+  }
   if (wx < c.x0 || wy < c.y0 || wx >= c.x1 || wy >= c.y1) return false;
   const borda = wx === c.x0 || wx === c.x1 - 1 || wy === c.y0 || wy === c.y1 - 1;
   if (!borda) return false;
@@ -93,7 +99,8 @@ export function medidasSala() {
 
 export function naSaidaSala(x, y) {
   const c = caixa();
-  if (y < c.portaY + 0.15) return false;
+  // Sai no fim sul do vestíbulo da porta.
+  if (y < c.portaY + PROF_PORTA_SALA - 0.35) return false;
   return x >= c.portaX0 - 0.35 && x < c.portaX1 + 0.35;
 }
 

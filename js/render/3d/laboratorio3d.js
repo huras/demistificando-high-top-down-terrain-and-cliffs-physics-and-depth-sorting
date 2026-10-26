@@ -13,6 +13,7 @@ import {
   ROWS_LAB,
   plantaLaboratorio,
 } from "../../mundo/cidade/laboratorio.js";
+import { cascasDaParede } from "../../mundo/cidade/plantaHub.js";
 import { MESAS_LAB, propDoSprite } from "../../mundo/cidade/catalogoProps.js";
 import {
   atualizarBolasCura,
@@ -66,9 +67,15 @@ function materialCaixa(cor) {
   return mat;
 }
 
-function anexarFaixas(grupo, lista, h, y, parede) {
-  for (let i = 0; i < lista.length; i++) {
-    const r = lista[i];
+function anexarCasca(grupo, piso) {
+  const planta = plantaLaboratorio();
+  const parede = facesParedeInterior(materialCaixa("#c4b8a8"));
+  const h = ALTURA_PAREDE_LAB * fatorYCasa();
+  const y = ALTURA_PRACA + h * 0.5;
+  const balcaoVazio = new Uint8Array(planta.cols * planta.rows);
+  const cascas = cascasDaParede(planta.muro, planta.anda, balcaoVazio, planta.cols, planta.rows);
+  for (let i = 0; i < cascas.length; i++) {
+    const r = cascas[i];
     grupo.add(
       criarFaixaParede({
         x: ORIGEM_LAB_X + r.x + r.w * 0.5,
@@ -78,18 +85,26 @@ function anexarFaixas(grupo, lista, h, y, parede) {
         d: r.h,
         h,
         materiais: parede,
+        face: r.face,
       }),
     );
   }
-}
-
-function anexarCasca(grupo, piso) {
-  const planta = plantaLaboratorio();
-  const parede = facesParedeInterior(materialCaixa("#c4b8a8"));
-  const h = ALTURA_PAREDE_LAB * fatorYCasa();
-  const y = ALTURA_PRACA + h * 0.5;
-  anexarFaixas(grupo, planta.muros, h, y, parede);
-  anexarFaixas(grupo, planta.vedacoes, h, y, parede);
+  // Vedações laterais externas — sempre lado, some na órbita.
+  for (let i = 0; i < planta.vedacoes.length; i++) {
+    const r = planta.vedacoes[i];
+    grupo.add(
+      criarFaixaParede({
+        x: ORIGEM_LAB_X + r.x + r.w * 0.5,
+        y,
+        z: ORIGEM_LAB_Y + r.y + r.h * 0.5,
+        w: r.w,
+        d: r.h,
+        h,
+        materiais: parede,
+        face: r.x < 0 ? "oeste" : "leste",
+      }),
+    );
+  }
   if (!piso) return;
   for (let i = 0; i < planta.pisos.length; i++) {
     const r = planta.pisos[i];
