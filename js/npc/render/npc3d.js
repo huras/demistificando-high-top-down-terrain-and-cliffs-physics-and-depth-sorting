@@ -1,5 +1,6 @@
 /**
  * Billboards 3D para NPCs overworld / indoor dinâmicos.
+ * Crop + flip column9 = paridade Pokemon AI (`bakeColumn9PersonSheet`).
  */
 import * as THREE from "three";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
@@ -10,7 +11,11 @@ import {
   soltarCartao,
 } from "../../render/3d/cartaoPe.js";
 import { FOLHA_PLATINUM } from "../catalogo/carregar.js";
-import { linhaFacing } from "../cidade/idleFace.js";
+import {
+  facingToDirPeople,
+  precisaEspelharDir,
+  srcRowColumn9,
+} from "./peopleAnim.js";
 
 /** @type {THREE.Group|null} */
 let raiz = null;
@@ -44,29 +49,28 @@ function moldeDaColuna(coluna) {
   return m;
 }
 
-/** Recorta frame (coluna, linha facing, frame walk). */
-function pintarFrame(coluna, linha, frame) {
+/** Recorta frame column9 (dir people + frame walk 0..3). */
+function pintarFrame(coluna, dir, frame, andando) {
   if (!folhaPronta || !folha) return null;
   const faixa = 17;
   const lado = 32;
   const quadros = 9;
   const col = coluna % faixa;
   const banda = Math.floor(coluna / faixa);
-  const base = linha === 0 ? 0 : linha === 1 ? 3 : 6;
-  const fr = base + (frame % 3);
+  const srcRow = srcRowColumn9(dir, frame, andando);
   const tela = document.createElement("canvas");
   tela.width = lado;
   tela.height = lado;
   const ctx = tela.getContext("2d");
   ctx.imageSmoothingEnabled = false;
-  if (linha === 3) {
+  if (precisaEspelharDir(dir)) {
     ctx.translate(lado, 0);
     ctx.scale(-1, 1);
   }
   ctx.drawImage(
     folha,
     col * lado,
-    (banda * quadros + fr) * lado,
+    (banda * quadros + srcRow) * lado,
     lado,
     lado,
     0,
@@ -148,12 +152,13 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
     entry.grupo.visible = true;
 
     if (entry.ctx && folhaPronta) {
-      const linha = linhaFacing(npc.facing);
-      const frame = npc.andando ? npc.frame | 0 : 0;
-      const key = `${npc.coluna}|${linha}|${frame}`;
+      const dir = facingToDirPeople(npc.facing, yawCam);
+      const andando = !!npc.andando;
+      const frame = andando ? npc.frame | 0 : 0;
+      const key = `${npc.coluna}|${dir}|${frame}|${andando ? 1 : 0}`;
       if (key !== entry.frameKey) {
         entry.frameKey = key;
-        const tela = pintarFrame(npc.coluna | 0, linha, frame);
+        const tela = pintarFrame(npc.coluna | 0, dir, frame, andando);
         if (tela) {
           entry.ctx.clearRect(0, 0, 32, 32);
           entry.ctx.drawImage(tela, 0, 0);

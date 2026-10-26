@@ -56,6 +56,21 @@ export function listarViajantes() {
   return viajantes;
 }
 
+/** Busca NPC por id (civis + viajantes + casa). */
+export function npcPorId(id) {
+  if (!id) return null;
+  for (let i = 0; i < viajantes.length; i++) {
+    if (viajantes[i].id === id) return viajantes[i];
+  }
+  for (let i = 0; i < civisCidade.length; i++) {
+    if (civisCidade[i].id === id) return civisCidade[i];
+  }
+  for (let i = 0; i < civisCasa.length; i++) {
+    if (civisCasa[i].id === id) return civisCasa[i];
+  }
+  return null;
+}
+
 export function listarCivisCasa() {
   return civisCasa;
 }
@@ -185,6 +200,12 @@ export function tickNpc(player, dt, ctx = {}) {
     for (let i = 0; i < viajantes.length; i++) {
       const t = viajantes[i];
       t.visivel = pertoDoPlayer(t, player.x, player.y);
+      if (t.combatHold || estadoJogo.batalhaTreinador) {
+        t.vx = 0;
+        t.vy = 0;
+        t.andando = false;
+        continue;
+      }
       tickMovimentoViajante(t, dt);
     }
   });

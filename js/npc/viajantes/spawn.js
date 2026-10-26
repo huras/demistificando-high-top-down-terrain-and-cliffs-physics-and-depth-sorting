@@ -207,7 +207,6 @@ export function tentarSpawnViajante(player, lista, cameraAabb, periodo = "day") 
       fala: [
         falaCivil(`${seed}:v`, "viajante"),
         `Eu sou ${nome}. Meu time: ${especieNomes}.`,
-        "Ainda não tô a fim de batalhar. Só passando por aqui!",
       ],
       retrato: null,
       ax: Math.floor(paraLocalKanto(mundo.x, mundo.y).x / AREA_KANTO),
@@ -223,6 +222,7 @@ export function tentarSpawnViajante(player, lista, cameraAabb, periodo = "day") 
       travelTarget: null,
       seenByPlayer: false,
       defeatedByPlayer: false,
+      combatHold: false,
       path: null,
       pathI: 0,
     };

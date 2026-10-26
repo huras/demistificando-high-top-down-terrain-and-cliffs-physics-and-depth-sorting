@@ -1,7 +1,12 @@
 /**
  * Soft-look + glance idle para NPCs parados.
+ * Paridade Pokemon AI (`npcIdleFacing.js`) + DIR people na câmera 3D.
  */
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
+import {
+  facingToDirPeople,
+  velocityToDir,
+} from "../render/peopleAnim.js";
 
 export const NPC_LOOK_REACH = 3.2;
 export const NPC_IDLE_FACE_MIN_SEC = 10;
@@ -11,6 +16,7 @@ export const NPC_IDLE_FACE_LOD_REACH = 28;
 const LOOK_REACH_SQ = NPC_LOOK_REACH * NPC_LOOK_REACH;
 const LOD_REACH_SQ = NPC_IDLE_FACE_LOD_REACH * NPC_IDLE_FACE_LOD_REACH;
 
+/** Cardinais: down / up / right / left (vetores mundo). */
 const CARDINAIS = Object.freeze([
   Object.freeze({ x: 0, y: 1 }),
   Object.freeze({ x: 0, y: -1 }),
@@ -65,6 +71,7 @@ export function garantirIdleFace(bag, seedKey) {
 }
 
 /**
+ * Soft-look perto; glance 10–20s longe. Mutates `facing`.
  * @returns {"look"|"idle"|"none"}
  */
 export function tickIdleFace({
@@ -83,6 +90,15 @@ export function tickIdleFace({
   const distSq = dx * dx + dy * dy;
   const reachSq = lookReach * lookReach;
 
+  if (distSq <= reachSq && distSq >= 1e-8) {
+    const dist = Math.sqrt(distSq);
+    facing.x = dx / dist;
+    facing.y = dy / dist;
+    idle.looking = true;
+    idle.lodOut = false;
+    return "look";
+  }
+
   if (distSq > LOD_REACH_SQ) {
     if (!idle.lodOut) {
       idle.lodOut = true;
@@ -91,26 +107,18 @@ export function tickIdleFace({
     idle.looking = false;
     return "none";
   }
+
   if (idle.lodOut) {
     idle.lodOut = false;
+    idle.nextAt = 0.5 + hashFrac(idle.seed ^ 0xc2b2ae35) * 4;
+  }
+
+  if (idle.looking) {
+    idle.looking = false;
     idle.nextAt = idleDelaySec(idle);
+    return "none";
   }
 
-  if (distSq <= reachSq) {
-    const ax = Math.abs(dx);
-    const ay = Math.abs(dy);
-    if (ay >= ax) {
-      facing.x = 0;
-      facing.y = dy >= 0 ? 1 : -1;
-    } else {
-      facing.x = dx >= 0 ? 1 : -1;
-      facing.y = 0;
-    }
-    idle.looking = true;
-    return "look";
-  }
-
-  idle.looking = false;
   idle.nextAt -= dt;
   if (idle.nextAt > 0) return "none";
   const next = pickIdleCardinal(idle, facing);
@@ -120,10 +128,11 @@ export function tickIdleFace({
   return "idle";
 }
 
-/** Índice de linha do sheet Platinum (down/up/right/left → 0..3 mapeado no crop). */
+/** @deprecated use facingToDirPeople — mantido pra imports antigos. */
 export function linhaFacing(facing) {
-  const fx = facing?.x ?? 0;
-  const fy = facing?.y ?? 1;
-  if (Math.abs(fy) >= Math.abs(fx)) return fy >= 0 ? 0 : 1;
-  return fx >= 0 ? 2 : 3;
+  return velocityToDir(facing?.x ?? 0, facing?.y ?? 1);
+}
+
+export function linhaFacingPlatinum(facing, yawCam = 0) {
+  return facingToDirPeople(facing, yawCam);
 }

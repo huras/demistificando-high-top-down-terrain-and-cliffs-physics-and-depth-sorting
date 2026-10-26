@@ -1,0 +1,141 @@
+/* Overlay de batalha treinador (arena por turnos no overworld). */
+
+.batalha-treinador {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  background: #0b100e;
+  color: #e8efe9;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.batalha-treinador[hidden] {
+  display: none !important;
+}
+
+.batalha-treinador__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgb(12 18 14 / 92%);
+  border-bottom: 1px solid #2a3830;
+}
+
+.batalha-treinador__nomes {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  gap: 16px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.batalha-treinador__status {
+  margin: 0;
+  color: #9fb0a6;
+  font-size: 0.82rem;
+  min-height: 1.2em;
+}
+
+.batalha-treinador__vista {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: block;
+  background: #141a17;
+}
+
+.batalha-treinador__vidas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgb(12 18 14 / 90%);
+}
+
+.batalha-treinador__vida {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+}
+
+.batalha-treinador__barra {
+  height: 8px;
+  border-radius: 999px;
+  background: #243028;
+  overflow: hidden;
+}
+
+.batalha-treinador__barra > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #3ecf8e, #7dffb2);
+  transform-origin: left center;
+  transform: scaleX(1);
+}
+
+.batalha-treinador__turno {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(440px, calc(100% - 28px));
+  transform: translateX(-50%);
+  padding: 12px;
+  border: 1px solid #2a3830;
+  border-radius: 12px;
+  background: rgb(16 22 18 / 94%);
+}
+
+.batalha-treinador__turno[hidden] {
+  display: none !important;
+}
+
+.batalha-treinador__turno-titulo {
+  margin: 0;
+  color: #9fb0a6;
+  font-size: 0.82rem;
+}
+
+.batalha-treinador__golpes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.batalha-treinador__golpes button {
+  flex: 1 1 40%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid #2a3830;
+  border-radius: 8px;
+  background: #243028;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.batalha-treinador__golpes button:hover {
+  border-color: #5ad69a;
+}
+
+.batalha-treinador__golpe-nome {
+  font-weight: 750;
+}
+
+.batalha-treinador__golpe-meta {
+  color: #9fb0a6;
+  font-size: 0.78rem;
+}

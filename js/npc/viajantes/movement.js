@@ -13,6 +13,7 @@ import {
 } from "../../mundo/regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { linhasDaRota } from "../../mundo/regiao/linhasEstrada.js";
+import { avancarAnimPeople } from "../render/peopleAnim.js";
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
 import { OW_CFG, OW_LOD, OW_MODO } from "./config.js";
 
@@ -116,6 +117,7 @@ function moverEmDirecao(trainer, gx, gy, dt) {
     trainer.vx = 0;
     trainer.vy = 0;
     trainer.andando = false;
+    avancarAnimPeople(trainer, 0);
     return true;
   }
   const sp = OW_CFG.WALK_SPEED;
@@ -130,9 +132,7 @@ function moverEmDirecao(trainer, gx, gy, dt) {
   if (!trainer.facing) trainer.facing = { x: 0, y: 1 };
   trainer.facing.x = Math.abs(ux) >= Math.abs(uy) ? Math.sign(ux) : 0;
   trainer.facing.y = Math.abs(uy) > Math.abs(ux) ? Math.sign(uy) : 0;
-  trainer.animT = (trainer.animT || 0) + dt;
-  const ciclo = [0, 1, 0, 3];
-  trainer.frame = ciclo[Math.floor(trainer.animT * 8) % 4];
+  avancarAnimPeople(trainer, dt);
   return false;
 }
 
@@ -150,6 +150,7 @@ function tickWander(trainer, dt) {
       trainer.vx = 0;
       trainer.vy = 0;
       trainer.andando = false;
+      avancarAnimPeople(trainer, 0);
       return;
     }
     trainer._seq = (trainer._seq | 0) + 1;

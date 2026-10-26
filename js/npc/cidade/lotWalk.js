@@ -3,6 +3,7 @@
  */
 import { PERFIL_ANDAR } from "../catalogo/identidade.js";
 import { npcPerfCount } from "../perf.js";
+import { avancarAnimPeople } from "../render/peopleAnim.js";
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
 import {
   NPC_IDLE_FACE_LOD_REACH,
@@ -252,14 +253,7 @@ function tickParado(npc, player, dt) {
 }
 
 function avancarAnim(npc, dt) {
-  if (!npc.andando) {
-    npc.animT = 0;
-    npc.frame = 0;
-    return;
-  }
-  npc.animT = (npc.animT || 0) + dt;
-  const ciclo = [0, 1, 0, 3];
-  npc.frame = ciclo[Math.floor(npc.animT * 8) % 4];
+  avancarAnimPeople(npc, dt);
 }
 
 export { NPC_IDLE_FACE_LOD_REACH };

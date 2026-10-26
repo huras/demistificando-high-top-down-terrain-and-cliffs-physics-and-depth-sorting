@@ -5,5 +5,6 @@ export {
   garantirIdleFace,
   tickIdleFace,
   linhaFacing,
+  linhaFacingPlatinum,
   NPC_LOOK_REACH,
 } from "./idleFace.js";

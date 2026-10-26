@@ -128,6 +128,8 @@ export const estado = {
   construir: false,
   craft: false,
   saidaGrace: 0,
+  /** Sessão de batalha treinador (overlay turnos). */
+  batalhaTreinador: null,
 };
 
 let ouvintes = [];
@@ -658,6 +660,8 @@ export function uiAberta() {
 
 export function fecharTopo() {
   if (estado.dialogo) {
+    const dlg = estado.dialogo;
+    if (dlg.npcRef && !estado.batalhaTreinador) dlg.npcRef.combatHold = false;
     estado.dialogo = null;
     avisar();
     return true;

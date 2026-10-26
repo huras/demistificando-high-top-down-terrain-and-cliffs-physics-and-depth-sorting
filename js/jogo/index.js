@@ -53,6 +53,10 @@ import { tickDescobertaMapa } from "../mapa/descoberta.js";
 import { avancarDialogo, atualizarLeve, definirCorpo, falarCom, falarNpcMundo, lerPlaca, ligarUi, pintar, promptDe } from "./ui.js";
 import { npcPertoDe } from "../npc/index.js";
 import {
+  batalhaTreinadorAtiva,
+  tickBatalhaViajante,
+} from "../npc/viajantes/batalha.js";
+import {
   abrirMapa,
   cancelarConfirmacaoMapa,
   fecharMapa,
@@ -88,7 +92,15 @@ function campoFocado() {
 
 export function jogoTravaMundo() {
   // uiAberta() já inclui menu/dex/status
-  return uiAberta() || mapaAberto() || teleporteOcupado() || portaOcupada() || evolucaoAberta();
+  return (
+    uiAberta() ||
+    mapaAberto() ||
+    teleporteOcupado() ||
+    portaOcupada() ||
+    evolucaoAberta() ||
+    batalhaTreinadorAtiva() ||
+    !!estado.batalhaTreinador
+  );
 }
 
 function pintarBotaoSom(botao) {
@@ -137,6 +149,10 @@ export function tickJogo(dt, corpo) {
   atualizarCuraMaquina(dt);
   tickGanho(dt);
   definirCorpo(corpo);
+  if (batalhaTreinadorAtiva() || estado.batalhaTreinador) {
+    tickBatalhaViajante(dt);
+    return;
+  }
   tickRide(dt);
   tickHudCampo(dt, corpo);
   registrarParty();

@@ -27,6 +27,8 @@ import {
   tirarDaParty,
 } from "../pokemon/party.js";
 import { cancelarRanged } from "./ranged.js";
+import { npcPorId } from "../npc/runtime.js";
+import { iniciarBatalhaViajante } from "../npc/viajantes/batalha.js";
 import {
   abrirPainel,
   atribuirSlot,
@@ -240,6 +242,26 @@ function escolher(id) {
     estado.dialogo = { nome: "Enfermeira", linhas: ["Pronto. Seu time está curado."], i: 0 };
   } else if (dlg.acao === "curar") {
     estado.dialogo = { nome: "Enfermeira", linhas: ["Volte quando precisar."], i: 0 };
+  } else if (dlg.acao === "desafioViajante") {
+    const npc = dlg.npcRef || (dlg.npcId ? npcPorId(dlg.npcId) : null);
+    if (id === "batalhar" && npc) {
+      estado.dialogo = null;
+      if (!iniciarBatalhaViajante(npc)) {
+        if (npc) npc.combatHold = false;
+        estado.dialogo = {
+          nome: dlg.nome,
+          linhas: ["Hmm… agora não vai dar. Depois a gente tenta!"],
+          i: 0,
+        };
+      }
+    } else {
+      if (npc) npc.combatHold = false;
+      estado.dialogo = {
+        nome: dlg.nome,
+        linhas: ["Beleza, a gente se vê na estrada!"],
+        i: 0,
+      };
+    }
   }
   avisar();
 }
@@ -478,6 +500,9 @@ export function avancarDialogo() {
       estado.dialogo = null;
       abrirPainel("pc");
       return;
+    }
+    if (dlg.npcRef && !estado.batalhaTreinador) {
+      dlg.npcRef.combatHold = false;
     }
     estado.dialogo = null;
   }
@@ -817,6 +842,37 @@ export function lerPlaca(placa) {
 /** Abre diálogo a partir de um NPC do runtime (cidade / viajante / casa). */
 export function falarNpcMundo(npc) {
   if (!npc) return;
+  if (npc.owTrainer) {
+    npc.combatHold = true;
+    if (npc.defeatedByPlayer) {
+      estado.dialogo = {
+        nome: npc.nome,
+        linhas: (npc.fala || ["Já treinamos bastante por hoje."]).slice(),
+        i: 0,
+        retrato: npc.retrato || "",
+        npcId: npc.id,
+        npcRef: npc,
+        acao: "viajantePos",
+      };
+    } else {
+      const base = (npc.fala || []).slice(0, 2);
+      estado.dialogo = {
+        nome: npc.nome,
+        linhas: [...base, "Que tal uma batalha Pokémon?"],
+        i: 0,
+        retrato: npc.retrato || "",
+        npcId: npc.id,
+        npcRef: npc,
+        acao: "desafioViajante",
+        escolhas: [
+          { id: "batalhar", rotulo: "Batalhar" },
+          { id: "recusar", rotulo: "Depois" },
+        ],
+      };
+    }
+    avisar();
+    return;
+  }
   estado.dialogo = {
     nome: npc.nome,
     linhas: (npc.fala || ["…"]).slice(),
