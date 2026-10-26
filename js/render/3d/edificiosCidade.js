@@ -485,7 +485,7 @@ export function criarEdificiosCidade() {
       }
       const sala = new THREE.Group();
       sala.name = "sala-interior";
-      anexarCascaSala(sala, sprites?.piso);
+      anexarCascaSala(sala, sprites?.piso, sprites?.saida);
       anexarInteriores(sala, sprites?.moveis);
       grupo.add(sala);
       grupo.userData.sala = sala;

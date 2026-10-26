@@ -25,10 +25,15 @@ import {
 
 const FOLHA_CORREIO = "/ref/sprites/buildings/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png";
 const FOLHA_AVISO = "/ref/sprites/buildings/the_public_pokemon_tileset_by_thatssowitty_d4ni56y.png";
+/** Mesmos tiles 2+3 do chão de saída do Centro Pokémon. */
+const FOLHA_SAIDA = "/ref/sprites/interiors/pokecenter-emerald-bg.png";
 const PX_CORREIO = 32;
 const PX_AVISO = 16;
 const PISO_COL = 4;
 const PISO_ROW = 144;
+const TILE_SAIDA = 16;
+const COLUNAS_SAIDA = 32;
+const IDS_TILE_SAIDA = Object.freeze([2, 3]);
 const CORREIOS = Object.freeze([
   Object.freeze({ cor: "#c23b3b", col: 5, row: 296 }),
   Object.freeze({ cor: "#2f6fbf", col: 7, row: 299 }),
@@ -136,6 +141,30 @@ function texturaRepetida(tela) {
   return tex;
 }
 
+/** Faixa 2×1 com os tiles de saída do Centro (ids 2 e 3). */
+function texturaSaidaCentro(img) {
+  if (!img) return null;
+  const n = IDS_TILE_SAIDA.length;
+  const tela = document.createElement("canvas");
+  tela.width = TILE_SAIDA * n;
+  tela.height = TILE_SAIDA;
+  const ctx = tela.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  for (let i = 0; i < n; i++) {
+    const id = IDS_TILE_SAIDA[i];
+    const sx = (id % COLUNAS_SAIDA) * TILE_SAIDA;
+    const sy = Math.floor(id / COLUNAS_SAIDA) * TILE_SAIDA;
+    ctx.drawImage(img, sx, sy, TILE_SAIDA, TILE_SAIDA, i * TILE_SAIDA, 0, TILE_SAIDA, TILE_SAIDA);
+  }
+  const tex = new THREE.CanvasTexture(tela);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 function folhaDe(tela, pxPorUnidade) {
   const tex = new THREE.CanvasTexture(tela);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -175,7 +204,8 @@ export function carregarSpritesPraca() {
     carregarImagem(FOLHA_CORREIO),
     carregarImagem(FOLHA_AVISO),
     carregarImagem(FOLHA_INTERIOR).catch(() => null),
-  ]).then(([correio, aviso, interior]) => {
+    carregarImagem(FOLHA_SAIDA).catch(() => null),
+  ]).then(([correio, aviso, interior, centroBg]) => {
     const correios = new Map();
     for (let i = 0; i < CORREIOS.length; i++) {
       const item = CORREIOS[i];
@@ -196,6 +226,7 @@ export function carregarSpritesPraca() {
       aviso: folhaDe(recortar(aviso, 2, 364, 2, 2, PX_AVISO), PX_AVISO),
       moveis,
       piso: texturaRepetida(recortar(correio, PISO_COL, PISO_ROW, 1, 1, PX_CORREIO)),
+      saida: texturaSaidaCentro(centroBg),
     };
   });
 }
@@ -295,7 +326,7 @@ function materialSala(cor, mapa) {
 }
 
 /** Piso de azulejo e paredes por cima do voxel, pra não aparecer o mato. */
-export function anexarCascaSala(grupo, piso) {
+export function anexarCascaSala(grupo, piso, saida) {
   const m = medidasSala();
   const chaoW = m.chaoX1 - m.chaoX0;
   const chaoD = m.chaoY1 - m.chaoY0;
@@ -308,6 +339,27 @@ export function anexarCascaSala(grupo, piso) {
     mesh.position.set((m.chaoX0 + m.chaoX1) * 0.5, ALTURA_PRACA + 0.08, (m.chaoY0 + m.chaoY1) * 0.5);
     mesh.name = "piso-sala";
     grupo.add(mesh);
+  }
+  // Tiles de saída (iguais ao Centro) na porta sul — marca visual pra o player.
+  if (saida) {
+    const wPorta = Math.max(1, m.portaX1 - m.portaX0);
+    const mat = new THREE.MeshLambertMaterial({
+      map: saida,
+      polygonOffset: true,
+      polygonOffsetFactor: -3,
+      polygonOffsetUnits: -3,
+    });
+    aplicarLuzCidade(mat);
+    const tapete = new THREE.Mesh(new THREE.PlaneGeometry(wPorta, 1), mat);
+    tapete.rotation.x = -Math.PI / 2;
+    tapete.position.set(
+      (m.portaX0 + m.portaX1) * 0.5,
+      ALTURA_PRACA + 0.1,
+      m.portaY - 0.5,
+    );
+    tapete.name = "piso-saida";
+    tapete.receiveShadow = true;
+    grupo.add(tapete);
   }
   const parede = facesParedeInterior(materialSala("#f3e7cf"));
   const h = (m.alturaParede + 0.2) * fatorYCasa();

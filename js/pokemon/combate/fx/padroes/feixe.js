@@ -125,6 +125,132 @@ export class PadraoFeixe extends PadraoBase {
 }
 
 /**
+ * Thunder Wave — cone elétrico.
+ * Ponta no atirador, base no alvo; vários Thunders stretch no leque (não em série).
+ */
+export class PadraoThunderWave extends PadraoBase {
+  iniciar(origem, alvo, def, elemento, opts = {}) {
+    super.iniciar(origem, alvo, def, elemento, opts);
+    this.cfg = opts.cone || opts.status || {};
+    this.duracao = this.cfg.duracao || 0.75;
+    this.raios = [];
+    this._refez = false;
+    this.rebuild();
+  }
+
+  rebuild() {
+    const a = this.origem;
+    if (!a) return;
+    for (let i = 0; i < this.raios.length; i++) {
+      if (this.raios[i]) this.raios[i].viva = false;
+    }
+    this.raios.length = 0;
+
+    const z1 = this.peito(a);
+    const mira = this.alvo ? { x: this.alvo.x, y: this.alvo.y } : { x: this.mx, y: this.my };
+    const z2 = this.alvo ? this.peito(this.alvo) : z1;
+    const dx = mira.x - a.x;
+    const dy = mira.y - a.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const alcance = Math.min(Math.max(dist, 2.5), this.cfg.alcance || 6);
+    const ux = dx / dist;
+    const uy = dy / dist;
+    const px = -uy;
+    const py = ux;
+    const meioAng = ((this.cfg.angulo || 52) * Math.PI) / 180 / 2;
+    const n = Math.max(3, Math.min(9, this.cfg.raios || 7));
+    const textura = this.cfg.textura || "Thunder_01";
+    const largura = (this.cfg.largura || 0.28) * this.escala;
+    const brilho = (this.cfg.brilho || 0.18) * this.escala;
+
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0.5 : i / (n - 1);
+      const ang = -meioAng + t * meioAng * 2;
+      const c = Math.cos(ang);
+      const s = Math.sin(ang);
+      const rx = ux * c - uy * s;
+      const ry = ux * s + uy * c;
+      // Ponta (fina) no atirador → base (aberta) no alvo
+      const x1 = a.x + rx * 0.2;
+      const y1 = a.y + ry * 0.2;
+      const x2 = a.x + rx * alcance + px * Math.sin(ang) * 0.05;
+      const y2 = a.y + ry * alcance + py * Math.sin(ang) * 0.05;
+      this.raios.push(
+        soltarFeixe({
+          x1,
+          y1,
+          z1: z1 + (Math.random() - 0.5) * 0.15,
+          x2,
+          y2,
+          z2: z2 + (t - 0.5) * 0.25,
+          largura: largura * (0.75 + Math.random() * 0.45),
+          brilho,
+          primaria: this.cfg.primaria || this.elemento.primaria,
+          secundaria: this.cfg.secundaria || this.elemento.secundaria,
+          nucleo: this.cfg.nucleo || this.elemento.nucleo,
+          alpha: 0.75 + Math.random() * 0.25,
+          modo: "stretch",
+          textura,
+          lengthScale: 3,
+          roll: (t - 0.5) * 0.9 + (Math.random() - 0.5) * 0.35,
+        }),
+      );
+    }
+
+    // Faíscas na base do cone (perto do alvo)
+    const bx = a.x + ux * alcance;
+    const by = a.y + uy * alcance;
+    for (let i = 0; i < 10; i++) {
+      const lat = (Math.random() - 0.5) * Math.tan(meioAng) * alcance * 1.2;
+      emitir({
+        x: bx + px * lat + (Math.random() - 0.5) * 0.3,
+        y: by + py * lat + (Math.random() - 0.5) * 0.3,
+        z: z2 + Math.random() * 0.4,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 2,
+        vz: 0.8 + Math.random(),
+        cor: this.elemento.nucleo,
+        vida: 0.3,
+        tam: 0.09,
+        modo: "faisca",
+        folha: folhaParticula(this.elemento, "faisca"),
+      });
+    }
+  }
+
+  atualizar(dt) {
+    if (!this.ativo) return;
+    this.tempo += dt;
+    const fade =
+      this.tempo > this.duracao * 0.6
+        ? 1 - (this.tempo - this.duracao * 0.6) / (this.duracao * 0.4)
+        : 1;
+    for (let i = 0; i < this.raios.length; i++) {
+      const r = this.raios[i];
+      if (!r) continue;
+      r.alpha = Math.max(0, fade * (0.7 + (i % 3) * 0.1));
+      if (Math.random() < dt * 18) r.frame = Math.floor(Math.random() * 4);
+      r.roll += dt * (i % 2 ? 1.8 : -2.1);
+    }
+    // Um refresh no meio pra trocar o padrão do leque (sem spam de rebuild)
+    if (!this._refez && this.tempo > 0.22) {
+      this._refez = true;
+      this.rebuild();
+    }
+    if (this.tempo >= this.duracao) {
+      for (let i = 0; i < this.raios.length; i++) if (this.raios[i]) this.raios[i].viva = false;
+      this.encerrar();
+    }
+  }
+
+  encerrar() {
+    for (let i = 0; i < this.raios.length; i++) if (this.raios[i]) this.raios[i].viva = false;
+    this.raios.length = 0;
+    super.encerrar();
+  }
+}
+
+/**
  * Thunder / Thunder Shock.
  * Um sprite Thunder estica origem→alvo (folha 1×4 horizontal).
  * Várias camadas = mesmo span, só roll em torno do eixo do golpe — nunca pedaços em série.

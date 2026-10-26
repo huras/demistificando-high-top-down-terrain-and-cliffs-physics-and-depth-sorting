@@ -459,9 +459,22 @@ const DEFAULTS = {
     "thunder-wave": {
       id: "thunder-wave",
       nome: "Thunder Wave",
-      kind: "status",
+      kind: "cone",
       elemento: "electric",
       status: { variante: "paralysis", alcance: 6 },
+      cone: {
+        alcance: 6,
+        angulo: 52,
+        raios: 7,
+        duracao: 0.75,
+        // Thunder_01: origem além da esquerda → vários no leque ponta→base
+        textura: "Thunder_01",
+        largura: 0.3,
+        brilho: 0.18,
+        primaria: "#f8d030",
+        secundaria: "#fff080",
+        nucleo: "#ffffc0",
+      },
     },
     "will-o-wisp": {
       id: "will-o-wisp",

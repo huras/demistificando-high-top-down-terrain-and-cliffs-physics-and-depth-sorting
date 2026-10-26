@@ -1,7 +1,7 @@
 /** Mapa golpe → fábrica de padrão visual (catálogo + fallbacks). */
 
 import { efeitoDe, idEfeito } from "../../../efeitos/catalogo.js";
-import { PadraoFeixe, PadraoRaio } from "./padroes/feixe.js";
+import { PadraoFeixe, PadraoRaio, PadraoThunderWave } from "./padroes/feixe.js";
 import { PadraoInvestida, PadraoScratch } from "./padroes/melee.js";
 import { PadraoCastRanged, PadraoPistola, PadraoSwift } from "./padroes/ranged.js";
 import { PadraoStatus } from "./padroes/status.js";
@@ -35,7 +35,20 @@ function receitaDoEfeito(ef) {
       return { criar: () => new PadraoFeixe(), opts: { feixe: ef.feixe }, folha: "" };
     case "raio":
       return { criar: () => new PadraoRaio(), opts: { feixe: ef.feixe, raio: ef.raio }, folha: "" };
+    case "cone":
+      return {
+        criar: () => new PadraoThunderWave(),
+        opts: { cone: ef.cone || ef.status, status: ef.status },
+        folha: "",
+      };
     case "status":
+      if (ef.id === "thunder-wave" || ef.status?.variante === "thunder-wave") {
+        return {
+          criar: () => new PadraoThunderWave(),
+          opts: { cone: ef.cone || ef.status },
+          folha: "",
+        };
+      }
       return {
         criar: () => new PadraoStatus(),
         opts: {
@@ -74,7 +87,19 @@ const POR_CHAVE = {
   sleepPowder: { criar: () => new PadraoStatus(), opts: { variante: "sleep", alcance: 5 } },
   stunSpore: { criar: () => new PadraoStatus(), opts: { variante: "paralysis", alcance: 5 } },
   spore: { criar: () => new PadraoStatus(), opts: { variante: "sleep", alcance: 5 } },
-  thunderWave: { criar: () => new PadraoStatus(), opts: { variante: "paralysis", alcance: 6 } },
+  thunderWave: {
+    criar: () => new PadraoThunderWave(),
+    opts: {
+      cone: {
+        alcance: 6,
+        angulo: 52,
+        raios: 7,
+        textura: "Thunder_01",
+        largura: 0.28,
+        brilho: 0.18,
+      },
+    },
+  },
   willOWisp: { criar: () => new PadraoStatus(), opts: { variante: "burn", alcance: 6 } },
   solarBeam: { criar: () => new PadraoFeixe(), opts: {} },
   hyperBeam: { criar: () => new PadraoFeixe(), opts: {} },

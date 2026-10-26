@@ -10,7 +10,7 @@ import {
   texturaElemental,
 } from "../../../efeitos/elemental.js";
 
-export const CAP_FEIXES = 8;
+export const CAP_FEIXES = 16;
 
 /**
  * @typedef {{
