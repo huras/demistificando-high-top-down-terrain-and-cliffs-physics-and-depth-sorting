@@ -122,9 +122,10 @@ export async function carregarCatalogoNpc() {
     for (let i = 0; i < chars.length; i++) {
       const c = chars[i];
       if (!c?.id) continue;
-      const pessoa = Object.freeze({
+      const pessoa = {
         id: c.id,
         nome: c.name || c.id,
+        label: c.name || c.id,
         coluna: c.column | 0,
         pool: c.pool || "civilian",
         origem: "platinum",
@@ -132,7 +133,9 @@ export async function carregarCatalogoNpc() {
         frameW: platinum.frameW | 32,
         frameH: platinum.frameH | 32,
         framesPerChar: platinum.framesPerChar | 9,
-      });
+        gender: null,
+        sexo: null,
+      };
       porId.set(c.id, pessoa);
       if (pessoa.pool === "civilian") civisIds.push(c.id);
     }
@@ -142,6 +145,15 @@ export async function carregarCatalogoNpc() {
     for (const id of Object.keys(byG)) {
       const g = byG[id];
       if (g === "male" || g === "female") generos.set(id, g);
+    }
+    // Espelha gênero no pack (paridade Pokemon AI syncPeopleGendersOntoPack).
+    for (const [id, pessoa] of porId) {
+      const g = generos.get(id);
+      if (g) {
+        pessoa.gender = g;
+        pessoa.sexo = g;
+      }
+      Object.freeze(pessoa);
     }
 
     walks.clear();

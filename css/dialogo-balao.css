@@ -39,11 +39,12 @@
 
 .dialogo-balao__caixa {
   position: relative;
+  z-index: 1;
   padding: 12px 14px 10px;
   border-radius: 14px;
   background: var(--balao-bg);
   color: var(--balao-ink);
-  border: 2px solid var(--balao-line);
+  border: none;
   font: 600 14px/1.35 "Segoe UI", system-ui, sans-serif;
   pointer-events: auto;
 }
@@ -101,11 +102,12 @@
   background: #40916c;
 }
 
-/* Cauda: triângulo do miolo da caixa até a cabeça do falante. */
+/* Cauda: mesma cor da caixa, sem stroke — funde com o painel. */
 .dialogo-balao__cauda {
   position: absolute;
   left: var(--tail-x);
-  bottom: -13px;
+  bottom: -12px;
+  z-index: 0;
   width: 18px;
   height: 14px;
   transform: translateX(-50%);
@@ -115,18 +117,17 @@
 
 .dialogo-balao__cauda polygon {
   fill: var(--balao-bg);
-  stroke: var(--balao-line);
-  stroke-width: 2;
-  stroke-linejoin: round;
+  stroke: none;
 }
 
-/* Tampão pra não aparecer stroke duplo na junção caixa↔cauda */
+/* Sobreposição caixa↔cauda pra não ficar fresta */
 .dialogo-balao__junta {
   position: absolute;
   left: var(--tail-x);
-  bottom: -2px;
-  width: 14px;
-  height: 5px;
+  bottom: -1px;
+  z-index: 2;
+  width: 16px;
+  height: 6px;
   transform: translateX(-50%);
   background: var(--balao-bg);
   pointer-events: none;

@@ -111,6 +111,8 @@ export const estado = {
   prompt: "",
   promptEntrar: false,
   promptRotulo: "Entrar",
+  /** Tecla destacada no chip: "e" (ação) ou "r" (falar/interagir). */
+  promptTecla: "e",
   promptAncora: null,
   painel: null,
   menuAberto: false,

@@ -416,8 +416,19 @@ function pintarPrompt() {
     if (mostraEntrar) {
       const rotulo = entrar.querySelector(".acao-prompt__rotulo");
       const texto = estado.promptRotulo || "Entrar";
-      const mudou = !!rotulo && rotulo.textContent !== texto;
+      const tecla = estado.promptTecla === "r" ? "r" : "e";
+      const teclaAntes = entrar.dataset.teclaAtiva || "e";
+      const mudou =
+        (!!rotulo && rotulo.textContent !== texto) || teclaAntes !== tecla;
       if (rotulo) rotulo.textContent = texto;
+      const teclas = entrar.querySelectorAll(".acao-prompt__tecla");
+      for (let i = 0; i < teclas.length; i++) {
+        teclas[i].classList.toggle(
+          "acao-prompt__tecla--ativa",
+          teclas[i].classList.contains(`acao-prompt__tecla--${tecla}`),
+        );
+      }
+      entrar.dataset.teclaAtiva = tecla;
       if (!estava || mudou) {
         entrar.classList.remove("acao-prompt--nova");
         void entrar.offsetWidth;
@@ -426,6 +437,7 @@ function pintarPrompt() {
       colocarEntrar(entrar, estado.promptAncora || corpoRef);
     } else if (estava) {
       entrar.classList.remove("acao-prompt--nova");
+      entrar.dataset.teclaAtiva = "";
     }
   }
   if (!host) return;

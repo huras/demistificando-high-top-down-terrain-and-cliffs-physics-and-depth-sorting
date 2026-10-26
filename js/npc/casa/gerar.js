@@ -8,8 +8,15 @@ import {
   ORIGEM_SALA_X,
   ORIGEM_SALA_Y,
 } from "../../mundo/cidade/sala3d.js";
-import { falaCivil, PERFIL_ANDAR, resolverNpc } from "../catalogo/identidade.js";
+import {
+  falaCivil,
+  nomeNpcUnico,
+  PERFIL_ANDAR,
+  resolverNpc,
+} from "../catalogo/identidade.js";
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
+
+const nomesUsadosPorSkin = new Map();
 
 /**
  * @param {string} predioId seed da casa / predio
@@ -29,6 +36,12 @@ export function gerarNpcsCasa(predioId = "casa") {
   for (let i = 0; i < qtd; i++) {
     const seed = `${predioId}:indoor:${i}`;
     const id = resolverNpc({ seed });
+    const usados =
+      nomesUsadosPorSkin.get(id.peopleId) ||
+      (nomesUsadosPorSkin.set(id.peopleId, new Set()),
+      nomesUsadosPorSkin.get(id.peopleId));
+    const nome = nomeNpcUnico(id.peopleId, seed, usados);
+    usados.add(nome);
     const spot = spots[i % spots.length];
     lista.push({
       id: seed,
@@ -36,7 +49,7 @@ export function gerarNpcsCasa(predioId = "casa") {
       escopo: "casa",
       predioId,
       peopleId: id.peopleId,
-      nome: id.nome,
+      nome,
       sexo: id.sexo,
       origem: id.origem,
       coluna: id.coluna,

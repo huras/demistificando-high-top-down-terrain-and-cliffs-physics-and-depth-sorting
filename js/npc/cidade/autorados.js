@@ -9,7 +9,7 @@ import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
 import { PERFIL_ANDAR, resolverNpc } from "../catalogo/identidade.js";
 
 /**
- * Jenny perto do centro da cidade (se houver volume centro).
+ * Oficial perto do centro da cidade (sprite police = masculino).
  */
 export function npcsAutoradosCidade() {
   const lista = [];
@@ -22,22 +22,22 @@ export function npcsAutoradosCidade() {
     const origem = deLocalKanto(def.ax * AREA_KANTO, def.ay * AREA_KANTO);
     const id = resolverNpc({
       peopleId: "pt-police",
-      seed: `${def.key}:jenny`,
-      nomeFixo: "Jenny",
+      seed: `${def.key}:oficial`,
+      nomeFixo: "Ken",
       forceStill: true,
     });
     lista.push({
-      id: `${def.key}-jenny`,
+      id: `${def.key}-oficial`,
       tipo: "civil",
       escopo: "cidade",
       cidadeKey: def.key,
       peopleId: id.peopleId,
-      nome: "Jenny",
-      sexo: "female",
+      nome: "Ken",
+      sexo: "male",
       origem: id.origem,
       coluna: id.coluna,
       perfilAndar: PERFIL_ANDAR.STILL,
-      peopleSeed: `${def.key}:jenny`,
+      peopleSeed: `${def.key}:oficial`,
       x: origem.x + (centro.x0 + centro.x1) * 0.5,
       y: origem.y + centro.y1 + 1.2,
       z: ALTURA_PRACA,
@@ -45,7 +45,7 @@ export function npcsAutoradosCidade() {
       raio: 0.4,
       modo: "parado",
       fala: [
-        "Sou a Jenny desta cidade.",
+        "Sou o oficial desta cidade.",
         "Se vir algo suspeito nas rotas, me avise.",
       ],
       retrato: null,

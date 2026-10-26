@@ -211,26 +211,44 @@ export function tickJogo(dt, corpo) {
     interior: estado.interior,
   });
   const pf = !jogadorMorto() ? promptForca(corpo) : null;
+  const npcFalar =
+    !jogadorMorto() && !alvoLab && !alvoHub
+      ? npcPertoDe(corpo.x, corpo.y)
+      : null;
   if (jogadorMorto()) {
     estado.promptEntrar = false;
     estado.promptRotulo = "";
+    estado.promptTecla = "e";
     estado.promptAncora = null;
     estado.prompt = "";
   } else if (acao) {
     // Mesmo chip do Escalar / Entrar / Colher.
     estado.promptEntrar = true;
     estado.promptRotulo = acao.rotulo || "Entrar";
+    estado.promptTecla = "e";
     estado.promptAncora = acao.ancora || null;
   } else if (pf?.kind === "grab" || pf?.kind === "place") {
     estado.promptEntrar = true;
     estado.promptRotulo = pf.kind === "place" ? "Soltar" : "Pegar";
+    estado.promptTecla = "e";
     const alvo = pf.target?.prop || pf.target?.enemy || null;
     estado.promptAncora = alvo
       ? { x: alvo.x, y: alvo.y, z: alvo.z ?? corpo.z ?? 0 }
       : null;
+  } else if (npcFalar) {
+    // Falar (R): mesmo chip visual do E, tecla R ativa.
+    estado.promptEntrar = true;
+    estado.promptRotulo = npcFalar.nome || "Falar";
+    estado.promptTecla = "r";
+    estado.promptAncora = {
+      x: npcFalar.x,
+      y: npcFalar.y,
+      z: Number.isFinite(npcFalar.z) ? npcFalar.z : corpo.z ?? 0,
+    };
   } else {
     estado.promptEntrar = false;
     estado.promptRotulo = "";
+    estado.promptTecla = "e";
     estado.promptAncora = null;
   }
   const livreDeMenu =
@@ -268,14 +286,11 @@ export function tickJogo(dt, corpo) {
     if (pf?.kind === "place" && pf.mobility?.kind === "heavy") {
       texto = t("forca.pesado");
     } else if (!estado.promptEntrar) {
-      const npcPrompt = !alvoLab && !alvoHub ? npcPertoDe(corpo.x, corpo.y) : null;
       texto = alvoLab
         ? promptDoLaboratorio(alvoLab)
         : alvoHub
           ? promptDoHub(papelHub, alvoHub)
-          : npcPrompt
-            ? `${npcPrompt.nome} — R`
-            : promptDe(alvo, ferramenta);
+          : promptDe(alvo, ferramenta);
     }
     estado.prompt = acaoConsomeE(acao) ? "" : texto;
   }

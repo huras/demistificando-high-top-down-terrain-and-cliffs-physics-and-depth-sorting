@@ -10,8 +10,14 @@ import {
   montarLayout,
   saidaDaPorta,
 } from "../../mundo/regiao/volumesCidade.js";
-import { falaCivil, resolverNpc } from "../catalogo/identidade.js";
-import { PERFIL_ANDAR } from "../catalogo/identidade.js";
+import {
+  falaCivil,
+  nomeNpcUnico,
+  PERFIL_ANDAR,
+  resolverNpc,
+} from "../catalogo/identidade.js";
+
+const nomesUsadosPorSkin = new Map();
 
 /**
  * @returns {object[]}
@@ -34,6 +40,12 @@ export function gerarNpcsCidade() {
       const spawn = saidaDaPorta(v, 0, 0, null);
       const seed = `${def.key}:casa:${casaIdx}`;
       const id = resolverNpc({ seed });
+      const usados =
+        nomesUsadosPorSkin.get(id.peopleId) ||
+        (nomesUsadosPorSkin.set(id.peopleId, new Set()),
+        nomesUsadosPorSkin.get(id.peopleId));
+      const nome = nomeNpcUnico(id.peopleId, seed, usados);
+      usados.add(nome);
       const portaMundo = porta
         ? {
             x0: ox + porta.x0,
@@ -63,7 +75,7 @@ export function gerarNpcsCidade() {
         cidadeKey: def.key,
         houseId: seed,
         peopleId: id.peopleId,
-        nome: id.nome,
+        nome,
         sexo: id.sexo,
         origem: id.origem,
         coluna: id.coluna,
