@@ -6,8 +6,8 @@ import { AGENTE_DIST_PARAR, POKEMON } from "../../config.js";
 import { alturaSobPes } from "../../fisica/colisao.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../../fisica/agente.js";
 import { sincronizarFacingParede } from "../../fisica/escalada.js";
-import { PERFIL_CAMPO } from "../../navegacao/perfilMovimento.js";
 import { emAvanco, emEsquiva, emRecuo, presoNoGolpe, velocidadeDe } from "../ator.js";
+import { perfilDoHabitat } from "../habitat/index.js";
 import { FOLGA_PARADA } from "./constantes.js";
 import { regua, sentidoParada } from "./espaco.js";
 import { quadroDe } from "./observacao.js";
@@ -29,8 +29,8 @@ function pararCorpo(ator) {
 
 function perfilCampo(ator) {
   if (ator.faccao === "party" && ator.perfil) return ator.perfil;
-  // OW: um grafo só (andar/nadar/pular). Evita companheiro-8dir bloquear a grade.
-  return PERFIL_CAMPO;
+  // Habitat kind → perfil (HIGH voa; água nada; resto campo).
+  return perfilDoHabitat(ator.habitatKind, ator);
 }
 
 /** Quem não voa persegue o chão embaixo de quem está no ar. */

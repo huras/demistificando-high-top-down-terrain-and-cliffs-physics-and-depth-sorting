@@ -61,6 +61,7 @@ function snapshotDoLar(larId, info = null) {
       speciesKey: lar.speciesKey,
       dex: lar.dex | 0,
       shiny: info?.shiny != null ? !!info.shiny : !!lar.shiny,
+      kind: lar.kind || "land",
     };
   }
   return {
@@ -70,6 +71,7 @@ function snapshotDoLar(larId, info = null) {
     speciesKey: String(info?.speciesKey || "pidgey"),
     dex: info?.dex | 0,
     shiny: !!info?.shiny,
+    kind: info?.kind || "land",
   };
 }
 
@@ -86,6 +88,7 @@ function aplicarSnap(id, snap) {
       speciesKey: snap.speciesKey,
       dex: snap.dex | 0,
       shiny: !!snap.shiny,
+      kind: snap.kind || "land",
     });
     bump();
     return true;
@@ -105,6 +108,10 @@ function aplicarSnap(id, snap) {
     }
     if ((prev.dex | 0) !== (snap.dex | 0)) {
       prev.dex = snap.dex | 0;
+      mudou = true;
+    }
+    if (snap.kind && prev.kind !== snap.kind) {
+      prev.kind = snap.kind;
       mudou = true;
     }
   }
@@ -194,6 +201,7 @@ export function tickDescobertaMapa(corpo, opts = {}) {
           speciesKey: lar.speciesKey,
           dex: lar.dex | 0,
           shiny: !!a.shiny || !!lar.shiny,
+          kind: lar.kind || a.habitatKind || "land",
         });
       }
       continue;
@@ -204,6 +212,7 @@ export function tickDescobertaMapa(corpo, opts = {}) {
       speciesKey: a.especie?.key || "pidgey",
       dex: a.especie?.dex | 0,
       shiny: !!a.shiny,
+      kind: a.habitatKind || "land",
     });
   }
 

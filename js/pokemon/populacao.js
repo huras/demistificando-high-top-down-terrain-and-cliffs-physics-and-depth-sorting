@@ -28,6 +28,19 @@ import { especie } from "./dados.js";
 import { nivelEm } from "./distribuicao/forca.js";
 import { sortearEspecie } from "./distribuicao/sorteio.js";
 import {
+  HABITAT,
+  ehHabitatAquatico,
+  infoTileHabitat,
+  kindAguaDoTile,
+  perfilDoHabitat,
+  skyPassersAtivos,
+  temFlapAround,
+  tickPatrolAguaLar,
+  tickPatrolVooLar,
+  tickSkyPassers,
+  zDoLarAquatico,
+} from "./habitat/index.js";
+import {
   amarrarPack,
   cfgPack,
   escolherMate,
@@ -190,16 +203,47 @@ function garantirLar(cx, cy, indice) {
     return null;
   }
   if (!dentroDoMapa(Math.floor(x), Math.floor(y))) return null;
-  const z = pisoSeco(Math.floor(x), Math.floor(y));
-  if (!z) {
-    lares.set(id, null);
-    return null;
-  }
+
+  const tile = infoTileHabitat(x, y);
   const hBioma = hash(cx, cy, 35 + indice);
   const biomaId = biomaIdEm(x, y, hBioma);
   const nivel = nivelEm(x, y);
-  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel);
-  const esp = especie(chave) || especie("pidgey");
+
+  /** @type {string} */
+  let kind;
+  /** @type {number} */
+  let z;
+  /** @type {string} */
+  let chaveEsp;
+
+  if (tile.molhado && !tile.caindo && tile.profundidade >= 1) {
+    kind = kindAguaDoTile(tile, hash(cx, cy, 55 + indice));
+    if (!kind) {
+      lares.set(id, null);
+      return null;
+    }
+    chaveEsp = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
+      habitat: kind,
+    });
+    z = zDoLarAquatico(kind, tile);
+  } else {
+    z = pisoSeco(Math.floor(x), Math.floor(y));
+    if (!z) {
+      lares.set(id, null);
+      return null;
+    }
+    chaveEsp = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
+      habitat: HABITAT.LAND,
+    });
+    const espProbe = especie(chaveEsp);
+    kind = temFlapAround(espProbe) ? HABITAT.HIGH : HABITAT.LAND;
+  }
+
+  const esp =
+    especie(chaveEsp) ||
+    (kind === HABITAT.SURFACE || kind === HABITAT.UNDERSEA
+      ? especie("magikarp") || especie("tentacool")
+      : especie("pidgey"));
   if (!esp) {
     lares.set(id, null);
     return null;
@@ -240,6 +284,7 @@ function garantirLar(cx, cy, indice) {
     x,
     y,
     z,
+    kind,
     chave: esp.key,
     nivel,
     shiny: membros[0].shiny,
@@ -287,6 +332,16 @@ function criarMoradorSlot(lar, mem) {
   });
   ator.larId = lar.id;
   ator.packSlot = mem.slot;
+  ator.habitatKind = lar.kind || HABITAT.LAND;
+  ator.perfil = perfilDoHabitat(ator.habitatKind, ator);
+  if (ator.habitatKind === HABITAT.HIGH) {
+    ator.elevacao = lar.z;
+    ator.hopLift = 0;
+  } else if (ator.habitatKind === HABITAT.SURFACE || ator.habitatKind === HABITAT.UNDERSEA) {
+    ator.elevacao = lar.z;
+    ator.nadando = true;
+    ator.hopLift = Math.max(0, lar.z - (ator.z || 0));
+  }
   if (mem.mortoGuardado) {
     ator.morto = true;
     ator.mortoAte = mem.mortoAte || 0;
@@ -320,6 +375,14 @@ function acordar(lar) {
     }
     return true;
   };
+  const pisoLar = (lx, ly) => {
+    if (ehHabitatAquatico(lar.kind)) {
+      const t = infoTileHabitat(lx, ly);
+      if (!t.molhado || t.caindo) return 0;
+      return zDoLarAquatico(lar.kind, t) || lar.z || 0;
+    }
+    return pisoSeco(lx, ly);
+  };
   for (let i = 1; i < membros.length; i++) {
     const mem = membros[i];
     if (mem.sumido) continue;
@@ -329,7 +392,7 @@ function acordar(lar) {
     if (px == null || py == null) {
       const pt = pontoMembro(
         { x: lider.x, y: lider.y, z: lider.z },
-        pisoSeco,
+        pisoLar,
         longeSpawn,
         rng,
       );
@@ -720,13 +783,21 @@ export function atualizarPopulacao(corpo, dt, relogio) {
   if (cooldownGrama > 0) cooldownGrama = Math.max(0, cooldownGrama - dt);
   sincronizarLares(corpo.x, corpo.y);
   tickMoradores();
+  for (let i = 0; i < ativos.length; i++) {
+    const a = ativos[i];
+    tickPatrolVooLar(a, dt, agora);
+    tickPatrolAguaLar(a, dt, agora);
+  }
+  tickSkyPassers(corpo.x, corpo.y, dt, agora, {
+    indoor: zonaSemSelvagem(corpo.x, corpo.y),
+  });
   tentarGrama(corpo);
   tickGrama();
   tickDefensoresSantuario();
 }
 
 export function selvagensAtivos() {
-  return ativos.concat(grama).concat(defensoresSantuario());
+  return ativos.concat(grama).concat(defensoresSantuario()).concat(skyPassersAtivos());
 }
 
 export function marcarCaptura(ator) {

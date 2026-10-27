@@ -159,6 +159,7 @@ export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
   for (let i = 0; i < selvagens.length; i++) {
     const ator = selvagens[i];
     if (!ator || ator.morto || ator.capturado || ator.preso) continue;
+    if (ator.skyPasser) continue; // cruise no tickSkyPassers
     if (ator.forcaCarregado || ator._forcaSendoLevantado) continue;
     if ((ator.dormindo || 0) > 0 || ator.sonoNatural) continue;
     if (ator.modo === "agro" && ator.alvo && !ator.alvo.morto) continue;

@@ -96,18 +96,31 @@ function xyPonto(p) {
   return Array.isArray(p) ? [p[0], p[1]] : [p.x, p.y];
 }
 
+function pontoNoMapa(x, y) {
+  return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < LADO_MUNDO && y < LADO_MUNDO;
+}
+
 function desenharSegmentoJornada(ctx, pontos, alfa) {
   if (!pontos || pontos.length < 2) return;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.strokeStyle = `rgba(246, 232, 180, ${alfa})`;
   ctx.lineWidth = 3.2;
+  // Quebra se algum ponto estiver fora do overworld (bolso de sala/santuário).
+  let aberto = false;
   ctx.beginPath();
-  const p0 = xyPonto(pontos[0]);
-  ctx.moveTo(p0[0], p0[1]);
-  for (let i = 1; i < pontos.length; i++) {
+  for (let i = 0; i < pontos.length; i++) {
     const p = xyPonto(pontos[i]);
-    ctx.lineTo(p[0], p[1]);
+    if (!pontoNoMapa(p[0], p[1])) {
+      aberto = false;
+      continue;
+    }
+    if (!aberto) {
+      ctx.moveTo(p[0], p[1]);
+      aberto = true;
+    } else {
+      ctx.lineTo(p[0], p[1]);
+    }
   }
   ctx.stroke();
   ctx.strokeStyle = `rgba(255, 248, 220, ${alfa * 0.55})`;

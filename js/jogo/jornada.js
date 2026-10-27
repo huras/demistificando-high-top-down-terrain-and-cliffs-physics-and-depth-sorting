@@ -3,7 +3,11 @@
  * Sem persistência em save nesta entrega.
  */
 
+import { dentroDoMundo } from "../mundo/bounds.js";
+
 const DIST_PONTO = 2.2;
+/** Salto maior que isso = teleporte/bolso; quebra a linha em vez de ligar. */
+const DIST_GAP = 48;
 const ANG_MIN = 0.22;
 const MAX_PONTOS_SEG = 400;
 const MAX_SEGMENTOS = 48;
@@ -68,6 +72,11 @@ function empurrarPonto(x, y) {
 export function tickJornada(x, y, dt) {
   tJogo += Math.max(0, dt || 0);
   if (pausado || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  // Salas/santuário vivem no bolso (~100000); não entram na trilha do mapa.
+  if (!dentroDoMundo(x, y)) {
+    gapJornada();
+    return;
+  }
   if (!segAtual) {
     novoSegmento();
     empurrarPonto(x, y);
@@ -79,6 +88,13 @@ export function tickJornada(x, y, dt) {
   }
   const dist = Math.hypot(x - ultimoX, y - ultimoY);
   if (dist < DIST_PONTO) return;
+  // Warp sem gapJornada (porta, debug, hitch): não desenha linha reta pelo oceano.
+  if (dist >= DIST_GAP) {
+    gapJornada();
+    novoSegmento();
+    empurrarPonto(x, y);
+    return;
+  }
   if (
     Number.isFinite(penultX) &&
     dist < DIST_PONTO * 2.2 &&

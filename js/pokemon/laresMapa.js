@@ -1,11 +1,11 @@
 /**
  * Enumeração determinística de lares (wild homes) para mapa — sem atores.
+ * Kinds: land / high (FlapAround) / surface / undersea.
  */
 import { CHUNK_XZ, POKEMON, SEED_MUNDO } from "../config.js";
-import { colunaAgua } from "../mundo/agua/fluxo.js";
-import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
+import { dentroDoMapa } from "../mundo/altura.js";
 import { areaLogicaNoMundo } from "../mundo/bioma/areasMundo.js";
-import { alturaDoRelevo, biomaDominante } from "../mundo/bioma/catalogo.js";
+import { biomaDominante } from "../mundo/bioma/catalogo.js";
 import { SPAWN } from "../mundo/mapaDemo.js";
 import {
   MIOL_X,
@@ -27,6 +27,14 @@ import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { especie } from "./dados.js";
 import { nivelEm } from "./distribuicao/forca.js";
 import { sortearEspecie } from "./distribuicao/sorteio.js";
+import {
+  HABITAT,
+  ehHabitatAquatico,
+  infoTileHabitat,
+  kindAguaDoTile,
+  temFlapAround,
+  zDoLarAquatico,
+} from "./habitat/index.js";
 
 const FOLGA_VAZIO = 56;
 
@@ -61,17 +69,6 @@ function zonaSemSelvagem(x, y) {
     naFaixa(x, y, ORIGEM_LAB_X, ORIGEM_LAB_Y, ORIGEM_LAB_X + COLS_LAB, ORIGEM_LAB_Y + ROWS_LAB, FOLGA_VAZIO) ||
     naFaixa(x, y, ORIGEM_SALA_X, ORIGEM_SALA_Y, ORIGEM_SALA_X + MIOL_X + 2, ORIGEM_SALA_Y + MIOL_Y + 2, FOLGA_VAZIO)
   );
-}
-
-function pisoSeco(x, y) {
-  // Chunk carregado: superfície real (já com terraço). Senão: relevo (carimbo se existir).
-  const z = dentroDoMapa(x, y) ? alturaEm(x, y) : alturaDoRelevo(x, y);
-  if (z <= 0) return 0;
-  if (dentroDoMapa(x, y)) {
-    const agua = colunaAgua(x, y);
-    if (agua.superficie > 0 && agua.superficie >= z - 0.05) return 0;
-  }
-  return z;
 }
 
 function biomaIdEm(x, y, hSorteio) {
@@ -135,7 +132,10 @@ function longeDeVizinhos(cx, cy, indice, x, y) {
  * @param {number} cx
  * @param {number} cy
  * @param {number} indice
- * @returns {{ id: string, x: number, y: number, z: number, speciesKey: string, dex: number, shiny: boolean, nivel: number } | null}
+ * @returns {{
+ *   id: string, x: number, y: number, z: number, kind: string,
+ *   speciesKey: string, dex: number, shiny: boolean, nivel: number
+ * } | null}
  */
 export function resolverLarSlot(cx, cy, indice) {
   const id = `${cx},${cy},${indice}`;
@@ -150,23 +150,53 @@ export function resolverLarSlot(cx, cy, indice) {
     return null;
   }
   if (!longeDeVizinhos(cx, cy, indice, x, y)) return null;
-  if (!dentroDoMapa(Math.floor(x), Math.floor(y))) return null;
-  const z = pisoSeco(Math.floor(x), Math.floor(y));
-  if (!z) return null;
+
+  const tile = infoTileHabitat(x, y);
   const hBioma = hash(cx, cy, 35 + indice);
   const biomaId = biomaIdEm(x, y, hBioma);
   const nivel = nivelEm(x, y);
-  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel);
+  const shiny = unidade(hash(cx, cy, 50 + indice)) < POKEMON.SHINY;
+
+  if (tile.molhado && !tile.caindo && tile.profundidade >= 1) {
+    const kind = kindAguaDoTile(tile, hash(cx, cy, 55 + indice));
+    if (!kind) return null;
+    const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
+      habitat: kind,
+    });
+    const esp = especie(chave) || especie("magikarp") || especie("tentacool");
+    if (!esp) return null;
+    return {
+      id,
+      x,
+      y,
+      z: zDoLarAquatico(kind, tile),
+      kind,
+      speciesKey: esp.key,
+      dex: esp.dex | 0,
+      shiny,
+      nivel,
+    };
+  }
+
+  if (tile.zSeco <= 0) return null;
+  // Preferir chunk carregado pra terraço HIGH; relevo ainda lista o pin.
+  if (!dentroDoMapa(Math.floor(x), Math.floor(y)) && tile.zSeco <= 0) return null;
+
+  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
+    habitat: HABITAT.LAND,
+  });
   const esp = especie(chave) || especie("pidgey");
   if (!esp) return null;
+  const kind = temFlapAround(esp) ? HABITAT.HIGH : HABITAT.LAND;
   return {
     id,
     x,
     y,
-    z,
+    z: tile.zSeco,
+    kind,
     speciesKey: esp.key,
     dex: esp.dex | 0,
-    shiny: unidade(hash(cx, cy, 50 + indice)) < POKEMON.SHINY,
+    shiny,
     nivel,
   };
 }
@@ -185,10 +215,12 @@ export function resolverLarPorId(larId) {
  * @param {number} px
  * @param {number} py
  * @param {number} raio
+ * @param {{ soTerrestre?: boolean }} [opts]
  */
-export function listarLaresProximos(px, py, raio = 10) {
+export function listarLaresProximos(px, py, raio = 10, opts = null) {
   const r = Math.max(1, raio);
   const r2 = r * r;
+  const soTerrestre = !!opts?.soTerrestre;
   const cx0 = Math.floor((px - r) / CHUNK_XZ);
   const cy0 = Math.floor((py - r) / CHUNK_XZ);
   const cx1 = Math.floor((px + r) / CHUNK_XZ);
@@ -201,6 +233,7 @@ export function listarLaresProximos(px, py, raio = 10) {
       for (let i = 0; i < maxSlot; i++) {
         const lar = resolverLarSlot(cx, cy, i);
         if (!lar) continue;
+        if (soTerrestre && ehHabitatAquatico(lar.kind)) continue;
         const dx = lar.x - px;
         const dy = lar.y - py;
         if (dx * dx + dy * dy > r2) continue;

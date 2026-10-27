@@ -39,6 +39,8 @@ import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { dadosProntos, especie } from "./dados.js";
 import { nivelEm } from "./distribuicao/forca.js";
 import { sortearEspecie } from "./distribuicao/sorteio.js";
+import { HABITAT, temFlapAround } from "./habitat/index.js";
+import { infoTileHabitat } from "./habitat/tile.js";
 import {
   carimbarPlanoLar,
   ehNucleoPlanoLar,
@@ -51,11 +53,13 @@ export const LAR_NUCLEO_RAIO = 2;
 export const LAR_AVENTAL = 2;
 /** Offset do terraço vs. natural (0 = achata no chão local). */
 export const LAR_ELEVACAO = 0;
-/** Lares de tipo Flying: mesa alta acima do chão local. */
+/** Lares FlapAround: mesa alta acima do chão local. */
 export const LAR_ELEVACAO_VOADOR_MIN = 10;
 export const LAR_ELEVACAO_VOADOR_MAX = 15;
 /** Desnível máximo no núcleo pra aceitar o carimbo. */
 export const LAR_DESNIVEL_MAX = 3;
+/** Vão de entrada/saída na borda de pedras (células de largura). */
+export const LAR_ABERTURA_LARGURA = 2;
 
 const FOLGA_VAZIO = 56;
 const FALLBACK_PEDRA = "stone-rock-a";
@@ -166,27 +170,23 @@ function biomaIdEm(x, y, hSorteio) {
   return biomaDominante(x, y)?.id || "light-grass";
 }
 
-/** Mesma espécie do lar (hash alinhado com laresMapa / populacao). */
+/** Mesma espécie do lar terrestre (hash alinhado com laresMapa / populacao). */
 function especieDoLar(cx, cy, indice, x, y) {
   if (!dadosProntos()) return null;
+  // Água: sem carimbo de terraço (lares aquáticos não passam daqui).
+  const tile = infoTileHabitat(x, y);
+  if (tile.molhado && tile.profundidade >= 1) return null;
   const biomaId = biomaIdEm(x, y, hash(cx, cy, 35 + indice));
   const nivel = nivelEm(x, y);
-  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel);
+  const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
+    habitat: HABITAT.LAND,
+  });
   return especie(chave) || especie("pidgey");
 }
 
-function ehVoador(esp) {
-  const tipos = esp?.tipos;
-  if (!Array.isArray(tipos)) return false;
-  for (let i = 0; i < tipos.length; i++) {
-    if (tipos[i] === "flying") return true;
-  }
-  return false;
-}
-
-/** Elevação determinística: voador 10..15, senão LAR_ELEVACAO. */
+/** Elevação determinística: FlapAround 10..15, senão LAR_ELEVACAO. */
 function elevacaoDoLar(cx, cy, indice, esp) {
-  if (!ehVoador(esp)) return LAR_ELEVACAO | 0;
+  if (!temFlapAround(esp)) return LAR_ELEVACAO | 0;
   const min = Math.max(0, LAR_ELEVACAO_VOADOR_MIN | 0);
   const max = Math.max(min, LAR_ELEVACAO_VOADOR_MAX | 0);
   return min + (hash(cx, cy, 60 + indice) % (max - min + 1));
@@ -260,10 +260,15 @@ export function garantirSitioLar(cx, cy, indice) {
   }
 
   const esp = especieDoLar(cx, cy, indice, x, y);
+  if (!esp) {
+    rejeitados.add(id);
+    return false;
+  }
   const elev = elevacaoDoLar(cx, cy, indice, esp);
   const h = Math.max(nivel + 1, minH + elev);
   carimbarPlanoLar(x0, y0, x1, y1, h, LAR_AVENTAL);
   carimbados.add(id);
+  const kind = elev >= LAR_ELEVACAO_VOADOR_MIN ? HABITAT.HIGH : HABITAT.LAND;
   sitios.set(id, {
     id,
     tx,
@@ -276,10 +281,15 @@ export function garantirSitioLar(cx, cy, indice) {
     cx,
     cy,
     indice,
-    voador: elev >= LAR_ELEVACAO_VOADOR_MIN,
+    kind,
     elev,
   });
   return true;
+}
+
+/** @returns {{ kind: string, elev: number, h: number } | null} */
+export function sitioLarPorId(larId) {
+  return sitios.get(String(larId || "")) || null;
 }
 
 /** Carimba lares cujo núcleo/avental toca este chunk (vizinhos inclusos). */
@@ -362,6 +372,74 @@ function propBase(id, x, y, tipo, sprite, r, extra) {
 }
 
 /**
+ * Face da abertura (0=N,1=E,2=S,3=W) + intervalo [a,b) no eixo da face.
+ * Largura = LAR_ABERTURA_LARGURA (2 tiles).
+ * @param {{ id: string, x0: number, y0: number, x1: number, y1: number, cx?: number, cy?: number, indice?: number }} sitio
+ */
+function specAberturaLar(sitio) {
+  const w = Math.max(1, (sitio.x1 | 0) - (sitio.x0 | 0));
+  const h = Math.max(1, (sitio.y1 | 0) - (sitio.y0 | 0));
+  const largura = Math.min(
+    Math.max(1, LAR_ABERTURA_LARGURA | 0),
+    Math.max(1, Math.min(w, h)),
+  );
+  const face = hash(sitio.cx | 0, sitio.cy | 0, 0x414245 + (sitio.indice | 0)) % 4;
+  if (face === 0 || face === 2) {
+    // Norte / Sul: vão em X
+    const maxStart = Math.max(0, w - largura);
+    const start = maxStart
+      ? hash(sitio.x0, sitio.y0, 0x4f5045 + face) % (maxStart + 1)
+      : 0;
+    return {
+      face,
+      a: (sitio.x0 | 0) + start,
+      b: (sitio.x0 | 0) + start + largura,
+    };
+  }
+  // Leste / Oeste: vão em Y
+  const maxStart = Math.max(0, h - largura);
+  const start = maxStart
+    ? hash(sitio.x0, sitio.y0, 0x4f5045 + face) % (maxStart + 1)
+    : 0;
+  return {
+    face,
+    a: (sitio.y0 | 0) + start,
+    b: (sitio.y0 | 0) + start + largura,
+  };
+}
+
+/**
+ * Célula no corredor de entrada (borda do núcleo + avental na face).
+ * @param {object} sitio
+ * @param {number} wx
+ * @param {number} wy
+ * @param {number} ring
+ * @param {{ face: number, a: number, b: number }} [spec]
+ */
+function ehAberturaLar(sitio, wx, wy, ring, spec) {
+  const s = spec || specAberturaLar(sitio);
+  const pad = Math.max(0, LAR_AVENTAL | 0);
+  // Espessura radial: núcleo (ring 0) + avental inteiro — vão atravessável.
+  if (ring > pad) return false;
+  if (s.face === 0) {
+    // Norte: y na borda norte + avental pra fora
+    if (wy > (sitio.y0 | 0) || wy < (sitio.y0 | 0) - pad) return false;
+    return wx >= s.a && wx < s.b;
+  }
+  if (s.face === 2) {
+    if (wy < (sitio.y1 | 0) - 1 || wy > (sitio.y1 | 0) - 1 + pad) return false;
+    return wx >= s.a && wx < s.b;
+  }
+  if (s.face === 1) {
+    if (wx < (sitio.x1 | 0) - 1 || wx > (sitio.x1 | 0) - 1 + pad) return false;
+    return wy >= s.a && wy < s.b;
+  }
+  // Oeste
+  if (wx > (sitio.x0 | 0) || wx < (sitio.x0 | 0) - pad) return false;
+  return wy >= s.a && wy < s.b;
+}
+
+/**
  * Pedras na borda do núcleo, árvores no avental, tufts de detalhe.
  * @returns {object[]}
  */
@@ -382,6 +460,7 @@ export function propsLarChunk(cx, cy) {
     }
 
     const kit = kitDoPonto(sitio.tx, sitio.ty);
+    const abertura = specAberturaLar(sitio);
     let nPedra = 0;
     let nArvore = 0;
     let nDetalhe = 0;
@@ -402,6 +481,9 @@ export function propsLarChunk(cx, cy) {
 
         // Miolo: só a palha — sem prop.
         if (ring === 0 && wx === sitio.tx && wy === sitio.ty) continue;
+
+        // Corredor de entrada/saída (2 tiles): sem pedra/árvore.
+        if (ehAberturaLar(sitio, wx, wy, ring, abertura)) continue;
 
         // Borda do núcleo: pedras de demarcação.
         if (ring === 0) {

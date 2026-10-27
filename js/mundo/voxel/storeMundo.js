@@ -310,10 +310,10 @@ function discoStream(pcx, pcy, raio, grupo = 0) {
   return lista;
 }
 
-/** União de dois discos; chunks do centro B entram primeiro (destino do teleporte). */
-function discoDuplo(pcxA, pcyA, pcxB, pcyB, raio) {
-  const a = discoStream(pcxA, pcyA, raio, 1);
-  const b = discoStream(pcxB, pcyB, raio, 0);
+/** União de dois discos; chunks do centro B entram primeiro (destino / bolso). */
+function discoDuplo(pcxA, pcyA, pcxB, pcyB, raioA, raioB = raioA) {
+  const a = discoStream(pcxA, pcyA, raioA, 1);
+  const b = discoStream(pcxB, pcyB, raioB, 0);
   const visto = new Set();
   const lista = [];
   for (let i = 0; i < b.length; i++) {
@@ -346,15 +346,15 @@ function atualizarAabbStream(pcx, pcy, raio) {
   };
 }
 
-function atualizarAabbDuplo(pcxA, pcyA, pcxB, pcyB, raio) {
-  const a0x = (pcxA - raio) * CHUNK_XZ;
-  const a0y = (pcyA - raio) * CHUNK_XZ;
-  const a1x = (pcxA + raio + 1) * CHUNK_XZ - 1;
-  const a1y = (pcyA + raio + 1) * CHUNK_XZ - 1;
-  const b0x = (pcxB - raio) * CHUNK_XZ;
-  const b0y = (pcyB - raio) * CHUNK_XZ;
-  const b1x = (pcxB + raio + 1) * CHUNK_XZ - 1;
-  const b1y = (pcyB + raio + 1) * CHUNK_XZ - 1;
+function atualizarAabbDuplo(pcxA, pcyA, pcxB, pcyB, raioA, raioB = raioA) {
+  const a0x = (pcxA - raioA) * CHUNK_XZ;
+  const a0y = (pcyA - raioA) * CHUNK_XZ;
+  const a1x = (pcxA + raioA + 1) * CHUNK_XZ - 1;
+  const a1y = (pcyA + raioA + 1) * CHUNK_XZ - 1;
+  const b0x = (pcxB - raioB) * CHUNK_XZ;
+  const b0y = (pcyB - raioB) * CHUNK_XZ;
+  const b1x = (pcxB + raioB + 1) * CHUNK_XZ - 1;
+  const b1y = (pcyB + raioB + 1) * CHUNK_XZ - 1;
   aabbCarregado = {
     x0: Math.min(a0x, b0x),
     y0: Math.min(a0y, b0y),
@@ -511,14 +511,25 @@ export function atualizarStreaming(px, py, raio = raioAtivo, sincrono = false) {
 }
 
 /**
- * Mantém origem e destino carregados (união dos discos).
- * Prioriza entrar os chunks do ponto B (destino da viagem).
+ * Mantém origem e destino (ou outdoor + bolso) carregados.
+ * Prioriza entrar os chunks do ponto B. `raioB` menor no bolso evita
+ * gerar um disco inteiro de void em torno da sala.
  */
-export function atualizarStreamingDuplo(pxA, pyA, pxB, pyB, raio = raioAtivo) {
+export function atualizarStreamingDuplo(
+  pxA,
+  pyA,
+  pxB,
+  pyB,
+  raio = raioAtivo,
+  sincrono = false,
+  raioB = raio,
+) {
   const { cx: pcxA, cy: pcyA } = mundoParaChunk(pxA, pyA);
   const { cx: pcxB, cy: pcyB } = mundoParaChunk(pxB, pyB);
+  const rB = raioB == null ? raio : raioB;
   const duplo = atualizarStreaming._duplo;
   if (
+    !sincrono &&
     !filaStream &&
     !fatiaStream &&
     duplo &&
@@ -527,6 +538,7 @@ export function atualizarStreamingDuplo(pxA, pyA, pxB, pyB, raio = raioAtivo) {
     duplo.pcxB === pcxB &&
     duplo.pcyB === pcyB &&
     duplo.raio === raio &&
+    duplo.raioB === rB &&
     chunks.size > 0
   ) {
     return aabbCarregado;
@@ -539,24 +551,26 @@ export function atualizarStreamingDuplo(pxA, pyA, pxB, pyB, raio = raioAtivo) {
     filaStream.pcyA === pcyA &&
     filaStream.pcxB === pcxB &&
     filaStream.pcyB === pcyB &&
-    filaStream.raio === raio;
+    filaStream.raio === raio &&
+    filaStream.raioB === rB;
   if (!mesmo) {
-    remontarFila(discoDuplo(pcxA, pcyA, pcxB, pcyB, raio), {
+    remontarFila(discoDuplo(pcxA, pcyA, pcxB, pcyB, raio, rB), {
       modo: "duplo",
       pcxA,
       pcyA,
       pcxB,
       pcyB,
       raio,
+      raioB: rB,
     });
   }
 
-  if (drenarFilaStream(false)) {
+  if (drenarFilaStream(sincrono)) {
     atualizarStreaming._pcx = undefined;
     atualizarStreaming._pcy = undefined;
     atualizarStreaming._raio = raio;
-    atualizarStreaming._duplo = { pcxA, pcyA, pcxB, pcyB, raio };
-    atualizarAabbDuplo(pcxA, pcyA, pcxB, pcyB, raio);
+    atualizarStreaming._duplo = { pcxA, pcyA, pcxB, pcyB, raio, raioB: rB };
+    atualizarAabbDuplo(pcxA, pcyA, pcxB, pcyB, raio, rB);
     filaStream = null;
   }
   return aabbCarregado;

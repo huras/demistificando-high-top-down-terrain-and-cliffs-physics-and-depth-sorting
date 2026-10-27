@@ -4,7 +4,9 @@
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import {
   atualizarStreaming,
+  atualizarStreamingDuplo,
   descarregarChunk,
+  obterRaioStream,
   paraCadaChunk,
 } from "../mundo/voxel/storeMundo.js";
 import { CHUNK_XZ } from "../config.js";
@@ -54,7 +56,14 @@ function pousar(corpo, x, y, z = ALTURA_PRACA) {
   corpo.hopLift = 0;
   corpo.pulando = false;
   corpo.pulo = null;
-  atualizarStreaming(x, y, undefined, true);
+  const ox = estado.interior?.outdoorX;
+  const oy = estado.interior?.outdoorY;
+  // Mantém o overworld quente; só garante o bolso do santuário.
+  if (Number.isFinite(ox) && Number.isFinite(oy)) {
+    atualizarStreamingDuplo(ox, oy, x, y, obterRaioStream(), true);
+  } else {
+    atualizarStreaming(x, y, undefined, true);
+  }
   corpo._renasceu = true;
   estado.painel = null;
 }
@@ -132,7 +141,21 @@ export function sairSantuario(corpo) {
     limparDefensoresSantuario();
     limparSantuarioAtivo();
     estado.interior = null;
-    pousar(corpo, ox, oy, oz);
+    corpo.x = ox;
+    corpo.y = oy;
+    corpo.z = oz;
+    corpo.elevacao = oz;
+    corpo.vx = 0;
+    corpo.vy = 0;
+    corpo.vz = 0;
+    corpo.noChao = true;
+    corpo.hopLift = 0;
+    corpo.pulando = false;
+    corpo.pulo = null;
+    // Outdoor já ancorado na visita — solta o bolso em background.
+    atualizarStreaming(ox, oy, undefined, false);
+    corpo._renasceu = true;
+    estado.painel = null;
     estado.saidaGrace = 0.6;
     sfx("porta");
   });

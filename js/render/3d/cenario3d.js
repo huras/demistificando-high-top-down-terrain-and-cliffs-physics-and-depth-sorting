@@ -707,14 +707,22 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   aplicarNevoa(obterRaioStream());
   marcarCorposCrista(corpo, agente, atoresVisiveis());
   const foco = focoStreaming();
-  const mx = foco?.x ?? corpo.x;
-  const my = foco?.y ?? corpo.y;
-  estado.terreno.tickMalha?.(mx, my);
+  const ancora = estadoJogo.interior;
+  const mxMalha = foco?.x ?? corpo.x;
+  const myMalha = foco?.y ?? corpo.y;
+  // LOD outdoor fica pinado na porta enquanto o corpo está no bolso.
+  const mxLod =
+    foco?.x ??
+    (Number.isFinite(ancora?.outdoorX) ? ancora.outdoorX : corpo.x);
+  const myLod =
+    foco?.y ??
+    (Number.isFinite(ancora?.outdoorY) ? ancora.outdoorY : corpo.y);
+  estado.terreno.tickMalha?.(mxMalha, myMalha);
   comecarQuadroLuzes();
   comecarMapaChao();
-  estado.terrenoSuave?.tick(mx, my, estado.terreno.chunksExibidos?.());
-  estado.terrenoHorizonte?.tick(mx, my);
-  estado.cidadeHorizonte?.tick?.(mx, my);
+  estado.terrenoSuave?.tick(mxLod, myLod, estado.terreno.chunksExibidos?.());
+  estado.terrenoHorizonte?.tick(mxLod, myLod);
+  estado.cidadeHorizonte?.tick?.(mxLod, myLod);
   seguirAlvo3d(estado.camera3d, corpo, dt);
   aplicarFacingMira(corpo, estado.camera3d);
   estado.rig?.atualizar(estado.camera3d);
@@ -752,11 +760,11 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   // Mira e teleporte: sprites em pé (blend→1), como no arco.
   const blendBb = Math.max(estado.camera3d.blend ?? 0, estado.camera3d.folgaTeleporte ?? 0);
   const inclinacao = BILLBOARD_INCLINACAO * (1 - blendBb);
-  estado.edificios?.atualizar?.(mx, my, yaw, inclinacao);
+  estado.edificios?.atualizar?.(mxLod, myLod, yaw, inclinacao);
   estado.vegetacao?.atualizar?.(yaw, inclinacao);
-  estado.vegetacaoDistante?.tick?.(mx, my, yaw, inclinacao);
-  estado.vegetacaoHorizonte?.tick?.(mx, my, yaw, inclinacao);
-  estado.palhaLares?.atualizar?.(mx, my);
+  estado.vegetacaoDistante?.tick?.(mxLod, myLod, yaw, inclinacao);
+  estado.vegetacaoHorizonte?.tick?.(mxLod, myLod, yaw, inclinacao);
+  estado.palhaLares?.atualizar?.(mxLod, myLod);
   estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   estado.poeiraPasso?.atualizar?.();
   estado.fxBola?.atualizar?.(camRender);

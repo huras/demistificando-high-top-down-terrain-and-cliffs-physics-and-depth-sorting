@@ -155,6 +155,8 @@ export function tickPartyCampo(mon, selvagens, jogador, dt) {
 /** Wild em agro/roam hostil. */
 export function tickWildCampo(ator, partyMon, jogador, dt) {
   if (!ator || ator.morto || ator.capturado || ator.preso) return;
+  // Sky passers: só combate; cruise fica no habitat/skyPassers.
+  if (ator.skyPasser && ator.modo !== "agro") return;
 
   // Hurt/desmaio: não troca pra roam (senão a população cull e o mon some).
   if ((ator.hp != null && ator.hp <= 0) || (ator.desmaioEm || 0) > 0) {

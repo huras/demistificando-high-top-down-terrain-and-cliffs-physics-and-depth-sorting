@@ -8,6 +8,7 @@ import {
   RAIO_HORIZONTE_MAX,
   RAIO_HORIZONTE_MIN,
   RAIO_STREAM,
+  RAIO_STREAM_BOLSO,
   RAIO_STREAM_MAX,
   RAIO_STREAM_MIN,
   RAIO_SUAVE,
@@ -128,6 +129,7 @@ import {
 } from "./santuario/colocacao.js";
 import { ensureShrineArtLoaded } from "./santuario/arte.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
+import { estado as estadoJogo } from "./jogo/estado.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
 import { jogadorMorto } from "./jogo/hud/morte.js";
 import {
@@ -693,7 +695,27 @@ function loop(agora) {
   });
 
   const alvoPasseio = focoPasseio();
-  if (foco && teleporteNaOrigem()) {
+  const interior = estadoJogo.interior;
+  const ancoraOutdoor =
+    interior?.sala3d &&
+    Number.isFinite(interior.outdoorX) &&
+    Number.isFinite(interior.outdoorY)
+      ? interior
+      : null;
+  if (ancoraOutdoor) {
+    // Casa/lab/santuário: bolso + overworld quente (sem unload na porta).
+    const raioBolso =
+      interior.papel === "santuario" ? obterRaioStream() : RAIO_STREAM_BOLSO;
+    atualizarStreamingDuplo(
+      ancoraOutdoor.outdoorX,
+      ancoraOutdoor.outdoorY,
+      corpo.x,
+      corpo.y,
+      obterRaioStream(),
+      false,
+      raioBolso,
+    );
+  } else if (foco && teleporteNaOrigem()) {
     atualizarStreamingDuplo(corpo.x, corpo.y, foco.x, foco.y);
   } else if (alvoPasseio) {
     atualizarStreamingDuplo(corpo.x, corpo.y, alvoPasseio.x, alvoPasseio.y);

@@ -13,6 +13,8 @@ export const EMOCAO = Object.freeze({
 
 export const EMOCAO_ANIM = 0.8;
 export const EMOCAO_LIMPA = 2;
+/** Intervalo entre balões de raiva em agro (início→início). */
+export const RAIVA_AGRO_INTERVALO = 2;
 
 let imagem = null;
 
@@ -51,13 +53,14 @@ function ehAgroEstado(ator) {
   return ator.faccao === "selvagem" && !!(ator.hostil || ator.modo === "agro");
 }
 
-/** Mantém ZZZ/RAIVA em loop conforme estado; não sobrescreve one-shot ativo. */
+/** Mantém ZZZ preso; RAIVA em agro pulsa a cada RAIVA_AGRO_INTERVALO. */
 export function sincronizarEmocaoEstado(ator) {
   if (!ator || ator.morto || ator.capturado) return;
-  // One-shot (EXCLAMACAO, SUOR, etc.): deixa expirar; no próximo tick volta o estado.
+  // One-shot (EXCLAMACAO, SUOR, raiva em pulso, etc.): deixa expirar.
   if (ator.emocao != null && !ator.emocaoPresa) return;
 
   if (estaDormindo(ator)) {
+    ator._raivaCd = 0;
     if (ator.emocao !== EMOCAO.ZZZ || !ator.emocaoPresa) {
       definirEmocao(ator, EMOCAO.ZZZ, { presa: true });
     }
@@ -65,12 +68,15 @@ export function sincronizarEmocaoEstado(ator) {
   }
 
   if (ehAgroEstado(ator)) {
-    if (ator.emocao !== EMOCAO.RAIVA || !ator.emocaoPresa) {
-      definirEmocao(ator, EMOCAO.RAIVA, { presa: true });
-    }
+    // Sai de ZZZ preso se acordou em agro.
+    if (ator.emocaoPresa && ator.emocao === EMOCAO.ZZZ) limparEmocao(ator);
+    if ((ator._raivaCd || 0) > 0) return;
+    definirEmocao(ator, EMOCAO.RAIVA, { duracao: EMOCAO_ANIM });
+    ator._raivaCd = RAIVA_AGRO_INTERVALO;
     return;
   }
 
+  ator._raivaCd = 0;
   if (
     ator.emocaoPresa &&
     (ator.emocao === EMOCAO.ZZZ || ator.emocao === EMOCAO.RAIVA)
@@ -82,6 +88,9 @@ export function sincronizarEmocaoEstado(ator) {
 export function tickEmocoes(atores, dt) {
   for (let i = 0; i < atores.length; i++) {
     const a = atores[i];
+    if ((a._raivaCd || 0) > 0) {
+      a._raivaCd = Math.max(0, a._raivaCd - dt);
+    }
     if (a.emocao == null) continue;
     a.emocaoIdade += dt;
     // Morto: suor não fica preso animando — limpa após um ciclo.

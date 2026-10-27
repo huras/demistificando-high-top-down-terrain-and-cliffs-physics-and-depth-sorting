@@ -13,22 +13,27 @@ export function distribuicaoPronta() {
 }
 
 export async function carregarDistribuicao() {
-  const res = await fetch("/ref/distribuicao-bioma.json");
-  if (!res.ok) throw new Error("distribuição de bioma indisponível");
-  const json = await res.json();
-  const mapa = json?.porBioma || {};
   porBioma = new Map();
-  const ids = Object.keys(mapa);
-  for (let i = 0; i < ids.length; i++) {
-    const id = ids[i];
-    const item = mapa[id] || {};
-    porBioma.set(
-      id,
-      Object.freeze({
-        casa: Object.freeze(Array.isArray(item.casa) ? item.casa.slice() : []),
-        extras: Object.freeze(Array.isArray(item.extras) ? item.extras.slice() : []),
-      }),
-    );
+  try {
+    const res = await fetch("/ref/distribuicao-bioma.json");
+    if (res.ok) {
+      const json = await res.json();
+      const mapa = json?.porBioma || {};
+      const ids = Object.keys(mapa);
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const item = mapa[id] || {};
+        porBioma.set(
+          id,
+          Object.freeze({
+            casa: Object.freeze(Array.isArray(item.casa) ? item.casa.slice() : []),
+            extras: Object.freeze(Array.isArray(item.extras) ? item.extras.slice() : []),
+          }),
+        );
+      }
+    }
+  } catch {
+    // Sem JSON: pools vazios — sorteio usa pad aquático / light-grass fallback.
   }
   // Área lógica exterior → mesmo pool do bioma de encontro.
   for (let i = 0; i < AREAS_MUNDO.length; i++) {
@@ -36,6 +41,15 @@ export async function carregarDistribuicao() {
     if (porBioma.has(area.id)) continue;
     const base = porBioma.get(area.encontro);
     if (base) porBioma.set(area.id, base);
+  }
+  // Pools mínimos pra mar/shelf se o JSON omitir.
+  const padMar = Object.freeze({
+    casa: Object.freeze(["magikarp", "tentacool", "goldeen", "psyduck"]),
+    extras: Object.freeze(["staryu", "shellder", "horsea", "poliwag"]),
+  });
+  const idsMar = ["sandy-shelf", "deep-trench", "kelp-forest", "mundo-shelf", "mundo-trench"];
+  for (let i = 0; i < idsMar.length; i++) {
+    if (!porBioma.has(idsMar[i])) porBioma.set(idsMar[i], padMar);
   }
   pronto = true;
   return porBioma.size;

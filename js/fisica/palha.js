@@ -33,7 +33,7 @@ export function sincronizarPalha(px, py, lista = null) {
   if (lares.length && Number.isFinite(cacheX) && dx * dx + dy * dy < REBUILD * REBUILD) {
     return;
   }
-  lares = listarLaresProximos(px, py, PALHA_RAIO_SYNC);
+  lares = listarLaresProximos(px, py, PALHA_RAIO_SYNC, { soTerrestre: true });
   cacheX = px;
   cacheY = py;
 }

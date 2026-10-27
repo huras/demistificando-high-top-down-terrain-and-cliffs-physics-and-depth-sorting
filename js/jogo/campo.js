@@ -1,5 +1,6 @@
 /** Campo: porta, enxada, regador, plantar, colher, machado e picareta. */
 
+import { RAIO_STREAM_BOLSO } from "../config.js";
 import { deLocalKanto, paraLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
@@ -7,7 +8,11 @@ import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
 import { naSaidaLaboratorio, spawnLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { naSaidaCentro, spawnCentro } from "../mundo/cidade/centro.js";
 import { naSaidaLoja, spawnLoja } from "../mundo/cidade/loja.js";
-import { atualizarStreaming } from "../mundo/voxel/storeMundo.js";
+import {
+  atualizarStreaming,
+  atualizarStreamingDuplo,
+  obterRaioStream,
+} from "../mundo/voxel/storeMundo.js";
 import { portaDoModelo, vaosPortaPerto } from "../mundo/cidade/cascaCasa.js";
 import { faixaDaPorta, predioNoLayout, saidaDaPorta } from "../mundo/regiao/volumesCidade.js";
 import { alturaEm } from "../mundo/altura.js";
@@ -221,6 +226,29 @@ export function tentarEntrar(corpo, infoPronto) {
   });
 }
 
+function ancorarOutdoor(interior, corpo) {
+  interior.outdoorX = corpo.x;
+  interior.outdoorY = corpo.y;
+  interior.outdoorZ = corpo.z ?? ALTURA_PRACA;
+}
+
+function streamEntradaBolso(corpo, x, y) {
+  const ox = estado.interior?.outdoorX;
+  const oy = estado.interior?.outdoorY;
+  if (Number.isFinite(ox) && Number.isFinite(oy)) {
+    const raioBolso =
+      estado.interior?.papel === "santuario" ? obterRaioStream() : RAIO_STREAM_BOLSO;
+    atualizarStreamingDuplo(ox, oy, x, y, obterRaioStream(), true, raioBolso);
+  } else {
+    atualizarStreaming(x, y, undefined, true);
+  }
+}
+
+/** Outdoor fica quente; só solta o bolso em background. */
+function streamSaidaBolso(x, y) {
+  atualizarStreaming(x, y, undefined, false);
+}
+
 function entrarHub(corpo, info, spawn, papel) {
   estado.interior = {
     sala3d: true,
@@ -230,6 +258,7 @@ function entrarHub(corpo, info, spawn, papel) {
     ay: info.ay,
     predio: info.predio,
   };
+  ancorarOutdoor(estado.interior, corpo);
   pousar(corpo, spawn.x, spawn.y);
   return true;
 }
@@ -245,6 +274,7 @@ function entrarSala3d(corpo, info) {
     ay: info.ay,
     predio: info.predio,
   };
+  ancorarOutdoor(estado.interior, corpo);
   aoEntrarCasa(casaId);
   corpo.x = spawn.x;
   corpo.y = spawn.y;
@@ -257,7 +287,7 @@ function entrarSala3d(corpo, info) {
   corpo.hopLift = 0;
   corpo.pulando = false;
   corpo.pulo = null;
-  atualizarStreaming(spawn.x, spawn.y, undefined, true);
+  streamEntradaBolso(corpo, spawn.x, spawn.y);
   corpo._renasceu = true;
   estado.painel = null;
   sfx("porta");
@@ -274,6 +304,7 @@ function entrarLaboratorio(corpo, info) {
     ay: info.ay,
     predio: info.predio,
   };
+  ancorarOutdoor(estado.interior, corpo);
   pousar(corpo, spawn.x, spawn.y);
   return true;
 }
@@ -290,7 +321,7 @@ function pousar(corpo, x, y) {
   corpo.hopLift = 0;
   corpo.pulando = false;
   corpo.pulo = null;
-  atualizarStreaming(x, y, undefined, true);
+  streamEntradaBolso(corpo, x, y);
   corpo._renasceu = true;
   estado.painel = null;
   sfx("porta");
@@ -340,7 +371,8 @@ export function sairInterior(corpo) {
     corpo.hopLift = 0;
     corpo.pulando = false;
     corpo.pulo = null;
-    atualizarStreaming(saida.x, saida.y, undefined, true);
+    // Outdoor já ficou ancorado durante a visita — sem rebuild sync.
+    streamSaidaBolso(saida.x, saida.y);
     corpo._renasceu = true;
   }
   estado.interior = null;

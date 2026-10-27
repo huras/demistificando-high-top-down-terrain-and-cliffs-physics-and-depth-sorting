@@ -248,7 +248,7 @@ export function atualizarPalhaLares(px, py) {
     return;
   }
   grupo.visible = true;
-  const lista = listarLaresProximos(px, py, raioSync());
+  const lista = listarLaresProximos(px, py, raioSync(), { soTerrestre: true });
   sincronizarPalha(px, py, lista);
   const n = Math.min(lista.length, CAP);
   _esc.set(escala, escala, escala);

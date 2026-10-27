@@ -391,6 +391,8 @@ export function clampAltura(h) {
 export const RAIO_STREAM = 5;
 export const RAIO_STREAM_MIN = 0;
 export const RAIO_STREAM_MAX = 10;
+/** Disco curto no bolso (casa/lab/hub) enquanto o outdoor fica ancorado. */
+export const RAIO_STREAM_BOLSO = 3;
 /** Disco externo da malha suave, em chunks. 0 desliga. Mid ring pra impostores entre stream e horizonte. */
 export const RAIO_SUAVE = 0;
 export const RAIO_SUAVE_MIN = 0;
