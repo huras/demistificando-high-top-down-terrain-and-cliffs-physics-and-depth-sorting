@@ -814,14 +814,14 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
       if (agente && estado.agente3d) {
         estado.agente3d.atualizar(agente, camVirtual, yawVirt, inclReflexo);
       }
-      atualizarPokemon3d(yawVirt, camVirtual, inclReflexo);
+      atualizarPokemon3d(yawVirt, camVirtual, inclReflexo, { contribuirChao: false });
     },
     restaurarBillboards() {
       estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
       if (agente && estado.agente3d) {
         estado.agente3d.atualizar(agente, camRender, yaw, inclinacao);
       }
-      atualizarPokemon3d(yaw, camRender, inclinacao);
+      atualizarPokemon3d(yaw, camRender, inclinacao, { contribuirChao: false });
     },
   });
   estado.renderer.render(estado.scene, camRender);

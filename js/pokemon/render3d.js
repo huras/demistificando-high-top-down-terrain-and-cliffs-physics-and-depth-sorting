@@ -18,8 +18,8 @@ import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoEfeitos } from "../efeitos/catalogo.js";
 import { carregarCatalogoParticulas } from "../particulas/catalogo.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
-import { criarCartaoLuz, oferecerLuz } from "../render/3d/luzes/pool.js";
-import { amostrarLuzCidade } from "../render/3d/luzes/mapaChao.js";
+import { criarCartaoLuz, obterPesoNoite } from "../render/3d/luzes/pool.js";
+import { amostrarLuzCidade, oferecerLuzChao } from "../render/3d/luzes/mapaChao.js";
 import { aplicarCorSprite } from "../render/3d/ceu/luzBillboard.js";
 import {
   COR_SILHUETA_JOGADOR,
@@ -145,6 +145,7 @@ function criarAtorSlot() {
   const brilhos = [];
   for (let i = 0; i < MAX_BRILHO; i++) {
     const brilho = criarCartaoLuz("#fff1d0", 0.6);
+    brilho.userData.fatorLuz = 1;
     brilho.visible = false;
     grupo.add(brilho);
     brilhos.push(brilho);
@@ -446,7 +447,12 @@ function aplicarFlashCorpo(slot, ator) {
   flash.material.opacity = Math.min(1, 0.35 + 0.5 * t * pulso);
 }
 
-function aplicarBrilho(slot, ator, offsetY) {
+/**
+ * Flare no cartão + poça no mapa de chão (mesmo pipeline dos postes).
+ * Sem PointLight: escala com milhares de fontes sem disputar o pool de 8.
+ * `contribuirChao` fica false no re-pose do reflexo (já resolveu o mapa).
+ */
+function aplicarBrilho(slot, ator, offsetY, contribuirChao) {
   const pontos = ator.morto ? [] : pontosDoModelo(ator.especie?.key);
   const n = Math.min(pontos.length, slot.brilhos.length);
   for (let i = 0; i < slot.brilhos.length; i++) {
@@ -462,12 +468,15 @@ function aplicarBrilho(slot, ator, offsetY) {
     const lado = Math.max(0.35, p.raio * 0.85);
     brilho.scale.set(lado, lado, 1);
   }
-  if (!n) return;
+  if (!n || !contribuirChao) return;
+  // Dia: cartão some via resolverLuzes; não suja a assinatura do mapa.
+  if (obterPesoNoite() <= 0.02) return;
   slot.grupo.updateWorldMatrix(true, false);
   for (let i = 0; i < n; i++) {
     const p = pontos[i];
+    if (!(p.intensidade > 0.04)) continue;
     _mundo.set(p.x, p.y - offsetY, 0).applyMatrix4(slot.grupo.matrixWorld);
-    oferecerLuz(ator.id, _mundo.x, _mundo.y, _mundo.z, p.cor, p.raio, p.intensidade);
+    oferecerLuzChao("pokemon", _mundo.x, _mundo.y, _mundo.z, p.cor, p.intensidade);
   }
 }
 
@@ -489,8 +498,9 @@ function pegarLivre() {
   return null;
 }
 
-export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
+export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, opts = null) {
   if (!cena || !pokemonLigado()) return;
+  const contribuirChao = opts?.contribuirChao !== false;
   const lista = atoresVisiveis();
   const naSala = !!estadoJogo.interior?.sala3d;
   const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
@@ -575,7 +585,7 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0) {
       elev,
       _desloc,
     );
-    aplicarBrilho(slot, ator, offsetY);
+    aplicarBrilho(slot, ator, offsetY, contribuirChao);
     aplicarFlashCorpo(slot, ator);
     const py = slot.grupo.position.y;
     amostrarLuzCidade(ator.x, py + 0.6, ator.y, _luzCidade);

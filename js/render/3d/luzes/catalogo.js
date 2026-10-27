@@ -1,4 +1,8 @@
-/** Pontos de luz por modelo. Casa e poste em metros locais; Pokémon no cartão. */
+/**
+ * Pontos de luz por modelo.
+ * Casa/poste/Pokémon: flare (cartão) + poça no mapa de chão.
+ * Só santuário ainda disputa o pool de PointLight (flare dinâmico).
+ */
 
 let modelos = {};
 let promessa = null;
