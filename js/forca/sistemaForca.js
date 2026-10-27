@@ -30,6 +30,13 @@ import {
 import { aplicarDanoLivre } from "../pokemon/combate/executor.js";
 import { reindexarEm } from "../mundo/bioma/propsBioma.js";
 import { alturaCorpo } from "../pokemon/ator.js";
+import {
+  hoverCarrierPsiquico,
+  limparHoverPsiquico,
+  modoAnexoForca,
+  offsetTelecinese,
+  temTipoPsiquico,
+} from "./psiquico.js";
 
 /** @type {{
  *   humanoTier: number,
@@ -134,6 +141,7 @@ function liberarGrabActor() {
   // Companion sob ordem: lock permanece até limparOrderCarrier (canal + carry).
   if (grabActor && grabActor !== orderCarrier) {
     grabActor._forcaCanalLock = false;
+    if (!carry || carryOwner !== grabActor) limparHoverPsiquico(grabActor);
   }
   grabAction = null;
   grabActor = null;
@@ -144,6 +152,7 @@ export function limparOrderCarrier() {
     orderCarrier.forcaVelMul = 1;
     orderCarrier._forcaCanalLock = false;
     orderCarrier.ordemForca = null;
+    if (!carry || carryOwner !== orderCarrier) limparHoverPsiquico(orderCarrier);
   }
   orderCarrier = null;
 }
@@ -187,6 +196,7 @@ function resolverAlvo(carrier) {
 
 export function infoPromptForca(carrier) {
   if (!carrier) return null;
+  const psi = temTipoPsiquico(carrier);
   if (carry) {
     if (!ehDono(carrier)) return null;
     return {
@@ -194,6 +204,7 @@ export function infoPromptForca(carrier) {
       rotulo: "Soltar",
       tecla: "E",
       mobility: mobilidadeDe(carrier),
+      psiquico: psi,
     };
   }
   if (grabAction) {
@@ -205,12 +216,13 @@ export function infoPromptForca(carrier) {
         grabAction.elapsedSec / Math.max(0.01, grabAction.durationSec),
       ),
       tecla: "E",
+      psiquico: temTipoPsiquico(grabActor || carrier),
     };
   }
   if (orderCarrier && carrier === orderCarrier) return null;
   const target = resolverAlvo(carrier);
   if (!target) return null;
-  return { kind: "grab", rotulo: "Pegar", tecla: "E", target };
+  return { kind: "grab", rotulo: "Pegar", tecla: "E", target, psiquico: psi };
 }
 
 /**
@@ -226,6 +238,8 @@ export function tentarInteragir(carrier) {
     liberarGrabActor();
     const ok = tentarSoltarAFrente(carrier, carry);
     if (ok) {
+      limparHoverPsiquico(carrier);
+      limparHoverPsiquico(carryOwner);
       carry = null;
       carryOwner = null;
       if (orderCarrier === carrier) limparOrderCarrier();
@@ -314,6 +328,7 @@ export function iniciarArremesso(carrier, aimTx, aimTy) {
   if (!carry || !ehDono(carrier)) return false;
   const ent = criarArremesso(carrier, carry, aimTx, aimTy);
   thrown.push(ent);
+  limparHoverPsiquico(carrier);
   carry = null;
   carryOwner = null;
   throwAiming = false;
@@ -328,6 +343,19 @@ export function iniciarArremesso(carrier, aimTx, aimTy) {
  */
 export function atualizarCanal(dt, carrier, opts = {}) {
   tickStruggleCarregado(carrier);
+  const donoHover = carryOwner || grabActor || orderCarrier || carrier;
+  const psiquicoAtivo =
+    !!(donoHover && temTipoPsiquico(donoHover) && (carry || (grabAction && !grabAction.failed)));
+  hoverCarrierPsiquico(
+    donoHover,
+    psiquicoAtivo,
+    dt,
+    performance.now() * 0.001,
+  );
+  if (carrier && carrier !== donoHover && !psiquicoAtivo) {
+    limparHoverPsiquico(carrier);
+  }
+
   const action = grabAction;
   if (!action || !carrier) {
     tickCarryMobility(carrier);
@@ -467,29 +495,48 @@ function alturaCabecaAnexo(dono, carga = null) {
 
 /**
  * Mantém pedra/Pokémon colados no carrier (ou no projétil) pra render 3D.
+ * Psíquico: telecinese à frente; físico: na cabeça.
  * @param {object | null} carrier
  */
 function sincronizarAnexoForca(carrier) {
   const dono = carryOwner || grabActor || carrier;
+  const tSec = performance.now() * 0.001;
   if (grabAction && !grabAction.failed && dono) {
     const t = Math.min(
       1,
       grabAction.elapsedSec / Math.max(0.01, grabAction.durationSec),
     );
+    const carga = {
+      halfH: grabAction.prop?.r || grabAction.enemy?.r || 0.4,
+    };
     const ox = grabAction.originX ?? dono.x;
     const oy = grabAction.originY ?? dono.y;
-    const x = ox + (dono.x - ox) * t;
-    const y = oy + (dono.y - oy) * t;
-    const zBase = dono.elevacao ?? dono.z ?? 0;
-    const lift = alturaCabecaAnexo(dono, {
-      halfH: grabAction.prop?.r || grabAction.enemy?.r || 0.4,
-    });
-    const z = zBase + lift * t;
+    const oz = grabAction.originZ ?? grabAction.prop?.z ?? grabAction.enemy?.z ?? dono.z ?? 0;
+    let x;
+    let y;
+    let z;
+    if (modoAnexoForca(dono) === "psiquico") {
+      const alvo = offsetTelecinese(dono, carga, tSec);
+      x = ox + (alvo.x - ox) * t;
+      y = oy + (alvo.y - oy) * t;
+      z = oz + (alvo.z - oz) * t;
+    } else {
+      x = ox + (dono.x - ox) * t;
+      y = oy + (dono.y - oy) * t;
+      const zBase = dono.elevacao ?? dono.z ?? 0;
+      const lift = alturaCabecaAnexo(dono, carga);
+      z = zBase + lift * t;
+    }
     anexarEntidade(grabAction.prop || null, grabAction.enemy || null, x, y, z);
   } else if (carry && dono) {
-    const zBase = dono.elevacao ?? dono.z ?? 0;
-    const z = zBase + alturaCabecaAnexo(dono, carry);
-    anexarEntidade(carry.prop || null, carry.enemy || null, dono.x, dono.y, z);
+    if (modoAnexoForca(dono) === "psiquico") {
+      const alvo = offsetTelecinese(dono, carry, tSec);
+      anexarEntidade(carry.prop || null, carry.enemy || null, alvo.x, alvo.y, alvo.z);
+    } else {
+      const zBase = dono.elevacao ?? dono.z ?? 0;
+      const z = zBase + alturaCabecaAnexo(dono, carry);
+      anexarEntidade(carry.prop || null, carry.enemy || null, dono.x, dono.y, z);
+    }
   }
   for (let i = 0; i < thrown.length; i++) {
     const voo = thrown[i];
@@ -581,6 +628,7 @@ export function forcarSoltarPerto(carrier) {
       soltarVivoDoLift(grabAction.enemy);
       liberarGrabActor();
     }
+    limparHoverPsiquico(dono);
     return;
   }
   const x = dono?.x ?? carry.originX ?? 0;
@@ -590,6 +638,8 @@ export function forcarSoltarPerto(carrier) {
   } else if (carry.prop) {
     restaurarProp(carry.prop, x, y);
   }
+  limparHoverPsiquico(carryOwner);
+  limparHoverPsiquico(dono);
   carry = null;
   carryOwner = null;
   throwAiming = false;

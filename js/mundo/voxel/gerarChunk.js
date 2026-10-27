@@ -30,6 +30,11 @@ import {
   celulasPlazaLetrasChunk,
   celulasSitioLetrasChunk,
 } from "../../letras/plaza.js";
+import {
+  celulasSitioLarChunk,
+  garantirLaresNoChunk,
+  propsLarChunk,
+} from "../../pokemon/laresSitio.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { carimbarCorpos } from "../agua/carimbar.js";
 import { FLUIDO } from "../agua/fluidos.js";
@@ -58,8 +63,11 @@ export function* passosChunk(chunk, seed) {
 
   /** @type {Int16Array} */
   const alturas = new Int16Array(CHUNK_XZ * CHUNK_XZ);
+  // Terraços de lar antes das colunas — alturaDoRelevo já lê o carimbo.
+  garantirLaresNoChunk(chunk.cx, chunk.cy);
   const plazaLetras = celulasPlazaLetrasChunk(chunk.cx, chunk.cy);
   const sitioLetras = celulasSitioLetrasChunk(chunk.cx, chunk.cy);
+  const sitioLar = celulasSitioLarChunk(chunk.cx, chunk.cy);
   let coluna = 0;
 
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
@@ -221,6 +229,8 @@ export function* passosChunk(chunk, seed) {
       if (bloqueioSantuario?.has(`${wx},${wy}`)) continue;
       if (bloqueioLetras?.has(`${wx},${wy}`)) continue;
       if (sitioLetras?.has(`${wx},${wy}`)) continue;
+      // Lar: limpa veg procedural; pedras/árvores vêm de propsLarChunk.
+      if (sitioLar?.has(`${wx},${wy}`)) continue;
       const planta = plantaDoRelevo(wx, wy);
       const livre = !planta || planta.classe === "grama";
       const chaveBerry = livre && arbustos < MAX_ARBUSTO_CHUNK && h >= nivel ? arbustoNaCelula(wx, wy) : null;
@@ -257,6 +267,8 @@ export function* passosChunk(chunk, seed) {
   for (let i = 0; i < pedras.length; i++) props.push(pedras[i]);
   const letras = propsLetrasChunk(chunk.cx, chunk.cy);
   for (let i = 0; i < letras.length; i++) props.push(letras[i]);
+  const decorLar = propsLarChunk(chunk.cx, chunk.cy);
+  for (let i = 0; i < decorLar.length; i++) props.push(decorLar[i]);
   aplicarNaLista(props);
   definirPropsChunk(chunk.cx, chunk.cy, props);
   cronProps?.fim();

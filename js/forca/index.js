@@ -73,6 +73,18 @@ export {
 export { deltaTelaStruggle, ehAgroForca, ehVivoLevantavel } from "./agarrarVivo.js";
 export { ordenarForca, tickOrdensForca } from "./tickOrdensForca.js";
 export { atualizarVisualForca } from "./visualForca.js";
+export { atualizarFxPsiquico, limparFxPsiquico } from "./fxPsiquico.js";
+export {
+  temTipoPsiquico,
+  modoAnexoForca,
+  offsetTelecinese,
+  hoverCarrierPsiquico,
+  limparHoverPsiquico,
+  alcanceGatePsiquico,
+  PSIQUICO_REACH_EXTRA,
+  PSIQUICO_ALCANCE_MAX,
+  PSIQUICO_DIST_FRENTE,
+} from "./psiquico.js";
 export {
   iniciarForca,
   tickForca,

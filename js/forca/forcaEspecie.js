@@ -68,6 +68,8 @@ export function inferirForcaEspecie(chave, corpo = null, tipos = null) {
   const tem = (t) => typeList.includes(t);
   if (tem("fighting") || tem("ground")) tier = Math.min(FORCA_MAX, tier + 1);
   if (tem("rock") || tem("steel")) tier = Math.min(FORCA_MAX, tier + 1);
+  // Telecinese: psychic sobe o teto como fighting (Mewtwo já é MAX via dex).
+  if (tem("psychic")) tier = Math.min(FORCA_MAX, tier + 1);
 
   const dex = Math.floor(Number(esp?.dex) || 0);
   if (FORCA_MAX_DEX.has(dex)) tier = FORCA_MAX;

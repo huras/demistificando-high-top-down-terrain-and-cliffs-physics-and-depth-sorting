@@ -3,6 +3,7 @@
  */
 import { pokemonDeployado, listaParty } from "../pokemon/party.js";
 import { estaMontado } from "../jogo/ride.js";
+import { t } from "../jogo/i18n.js";
 import {
   ehDesmaiadoLevantavel,
   ehPokemonLevantavel,
@@ -14,6 +15,11 @@ import {
 import { pesoDoProp } from "./pesoCarga.js";
 import { celulaLivreParaSoltar, resolverTierCarrier } from "./carregar.js";
 import { podeLevantar } from "./falhaLevantar.js";
+import { temTipoPsiquico } from "./psiquico.js";
+
+function rotuloLevantar(mon) {
+  return temTipoPsiquico(mon) ? t("forca.psiquico") : t("forca.levantar");
+}
 
 export const ALCANCE_COMANDO = 13.5;
 export const RAIO_MIRA = 1.45;
@@ -144,12 +150,13 @@ export function montarOpcoesMenuForca(mundoX, mundoY, corpo, sys, cfg = null) {
     } else {
       opcoes.push({
         id: ACAO_FORCA.LEVANTAR,
-        rotulo: "Levantar",
+        rotulo: rotuloLevantar(assignee),
         locked: false,
         mon: assignee,
         prop,
         weightTier: peso,
         kind: "rock",
+        psiquico: temTipoPsiquico(assignee),
       });
     }
   } else if (monAlvo && ehPokemonLevantavel(monAlvo)) {
@@ -171,12 +178,13 @@ export function montarOpcoesMenuForca(mundoX, mundoY, corpo, sys, cfg = null) {
       } else {
         opcoes.push({
           id: ACAO_FORCA.LEVANTAR,
-          rotulo: "Levantar",
+          rotulo: rotuloLevantar(assignee),
           locked: false,
           mon: assignee,
           enemy: monAlvo,
           weightTier: peso,
           kind: "faintedWild",
+          psiquico: temTipoPsiquico(assignee),
         });
       }
     }

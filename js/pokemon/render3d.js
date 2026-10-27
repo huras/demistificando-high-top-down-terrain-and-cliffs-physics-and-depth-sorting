@@ -519,7 +519,9 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
     }
     vistos.add(ator.id);
     slot.grupo.visible = true;
-    const elev = alturaPe(ator) + oscilacaoNado(ator) + oscilacaoAndar(ator);
+    const hoverForca = Number(ator._forcaHover) || 0;
+    const elev =
+      alturaPe(ator) + oscilacaoNado(ator) + oscilacaoAndar(ator) + hoverForca;
     slot.grupo.position.set(ator.x, elev * ALTURA_BLOCO, ator.y);
     const espEvo = especieVisualEvolucao(ator);
     const espBackup = ator.especie;

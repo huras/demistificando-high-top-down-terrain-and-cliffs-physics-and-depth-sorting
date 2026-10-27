@@ -252,7 +252,8 @@ export default {
     "menuVazio": "Nenhuma ação disponível aqui.",
     "promptPegar": "E Pegar",
     "promptSoltar": "E Soltar",
-    "promptArremessar": "LMB Arremessar"
+    "promptArremessar": "LMB Arremessar",
+    "psiquico": "Telecinese"
   },
   "letras": {
     "encaixe": "Pedra encaixada.",

@@ -252,7 +252,8 @@ export default {
     "menuVazio": "No actions available here.",
     "promptPegar": "E Grab",
     "promptSoltar": "E Place",
-    "promptArremessar": "LMB Throw"
+    "promptArremessar": "LMB Throw",
+    "psiquico": "Telekinesis"
   },
   "letras": {
     "encaixe": "Stone fitted.",

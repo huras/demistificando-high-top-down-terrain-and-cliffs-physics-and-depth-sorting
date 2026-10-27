@@ -122,13 +122,19 @@ export function resolverMiraArremesso(carrier, opts = {}) {
  */
 export function criarArremesso(carrier, carry, aimTx, aimTy) {
   const { sx, sy, vx, vy, vz } = calcularLancamento(carrier, aimTx, aimTy);
-  const zSolo = alturaSobPes(sx, sy, (carrier.z ?? 0) + 1) || carrier.z || 0;
+  // Telecinese: parte da posição atual do anexo (já flutuando).
+  const held = carry?.prop || carry?.enemy;
+  const startX = Number.isFinite(held?.x) ? held.x : sx;
+  const startY = Number.isFinite(held?.y) ? held.y : sy;
+  const zSolo = alturaSobPes(startX, startY, (carrier.z ?? 0) + 1) || carrier.z || 0;
+  const zHeld = Number(held?.z);
+  const zStart = Number.isFinite(zHeld) ? Math.max(zSolo + 0.26, zHeld) : zSolo + 0.26;
   return {
     id: nextId++,
     kind: carry.kind === "faintedWild" ? "faintedWild" : "rock",
-    x: sx,
-    y: sy,
-    z: zSolo + 0.26,
+    x: startX,
+    y: startY,
+    z: zStart,
     zSolo,
     vx,
     vy,

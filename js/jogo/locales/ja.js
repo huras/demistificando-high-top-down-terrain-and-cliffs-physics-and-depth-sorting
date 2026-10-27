@@ -252,7 +252,8 @@ export default {
     "menuVazio": "できることがない。",
     "promptPegar": "E もつ",
     "promptSoltar": "E おろす",
-    "promptArremessar": "LMB なげる"
+    "promptArremessar": "LMB なげる",
+    "psiquico": "テレキネシス"
   },
   "letras": {
     "encaixe": "いしがはまった。",

@@ -5,7 +5,7 @@ import { CHUNK_XZ, POKEMON, SEED_MUNDO } from "../config.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
 import { areaLogicaNoMundo } from "../mundo/bioma/areasMundo.js";
-import { biomaDominante } from "../mundo/bioma/catalogo.js";
+import { alturaDoRelevo, biomaDominante } from "../mundo/bioma/catalogo.js";
 import { SPAWN } from "../mundo/mapaDemo.js";
 import {
   MIOL_X,
@@ -64,11 +64,13 @@ function zonaSemSelvagem(x, y) {
 }
 
 function pisoSeco(x, y) {
-  if (!dentroDoMapa(x, y)) return 0;
-  const z = alturaEm(x, y);
+  // Chunk carregado: superfície real (já com terraço). Senão: relevo (carimbo se existir).
+  const z = dentroDoMapa(x, y) ? alturaEm(x, y) : alturaDoRelevo(x, y);
   if (z <= 0) return 0;
-  const agua = colunaAgua(x, y);
-  if (agua.superficie > 0 && agua.superficie >= z - 0.05) return 0;
+  if (dentroDoMapa(x, y)) {
+    const agua = colunaAgua(x, y);
+    if (agua.superficie > 0 && agua.superficie >= z - 0.05) return 0;
+  }
   return z;
 }
 

@@ -9,6 +9,15 @@ import { listaParty } from "../pokemon/party.js";
 import { PORTAO_CORPO, PORTAO_PEDRA, scoreCone, scoreConeSuperficie } from "./alcance.js";
 import { ehVivoLevantavel } from "./agarrarVivo.js";
 import { pesoDoCorpo, pesoDoProp } from "./pesoCarga.js";
+import { alcanceGatePsiquico, temTipoPsiquico } from "./psiquico.js";
+
+function gatePedra(body) {
+  return temTipoPsiquico(body) ? alcanceGatePsiquico(PORTAO_PEDRA) : PORTAO_PEDRA;
+}
+
+function gateCorpo(body) {
+  return temTipoPsiquico(body) ? alcanceGatePsiquico(PORTAO_CORPO) : PORTAO_CORPO;
+}
 
 /**
  * @param {object | null | undefined} p
@@ -93,7 +102,7 @@ export function scorePedra(body, facing, prop, mode = "enter") {
     prop.x,
     prop.y,
     surface,
-    PORTAO_PEDRA,
+    gatePedra(body),
     mode,
   );
   if (!score) return null;
@@ -114,7 +123,7 @@ export function scorePedra(body, facing, prop, mode = "enter") {
  */
 export function scoreCorpo(body, facing, enemy, mode = "enter") {
   if (!body || !ehPokemonLevantavel(enemy)) return null;
-  const score = scoreCone(body, facing, enemy.x, enemy.y, PORTAO_CORPO, mode);
+  const score = scoreCone(body, facing, enemy.x, enemy.y, gateCorpo(body), mode);
   if (!score) return null;
   return {
     kind: "faintedWild",

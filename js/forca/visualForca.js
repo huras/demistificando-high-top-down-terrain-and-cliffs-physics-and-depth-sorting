@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { ALTURA_BLOCO } from "../config.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
 import { amostrarArcoArremesso, resolverMiraArremesso } from "./arremessar.js";
+import { atualizarFxPsiquico } from "./fxPsiquico.js";
 import {
   cargaArremesso,
   estaCarregandoForca,
@@ -137,6 +138,8 @@ export function atualizarVisualForca(corpo, pointer = null) {
   } else if (linhaArco) {
     linhaArco.visible = false;
   }
+
+  atualizarFxPsiquico(0, corpo);
 
   void _pts;
 }
