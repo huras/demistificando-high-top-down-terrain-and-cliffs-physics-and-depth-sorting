@@ -258,5 +258,78 @@ export default {
   "letras": {
     "encaixe": "いしがはまった。",
     "resolvida": "もじ {letra} かんせい！"
+  },
+  "quests": {
+    "board": {
+      "windowTitle": "クエストボード",
+      "intro": "まちのけいじばん — しごとをうけてじゅうみんをたすけよう。",
+      "forceRefresh": "こうしん",
+      "forceRefreshDone": "ボードをこうしんした。",
+      "statusTabs": "クエストのじょうたい",
+      "typeTabs": "クエストのしゅるい",
+      "tabAvailable": "うけられる ({count})",
+      "tabTaken": "うけた ({count})",
+      "tabCompleted": "かんりょう ({count})",
+      "tabTypeAll": "すべて ({count})",
+      "tabTypeMissing": "きゅうじょ ({count})",
+      "tabTypeDelivery": "はいたつ ({count})",
+      "typeMissing": "きゅうじょ",
+      "typeDelivery": "はいたつ",
+      "accept": "うける",
+      "abandon": "あきらめる",
+      "done": "かんりょう",
+      "fail": "うけられなかった。",
+      "abandoned": "クエストをあきらめた。",
+      "acceptedSearch": "きえたひとをマークのエリアでさがそう。",
+      "acceptedDeliver": "{name} にざいりょうをとどけよう。",
+      "empty": "いまはけいじがない。",
+      "emptyTaken": "このまちでうけたクエストはない。",
+      "emptyCompleted": "まだかんりょうしたクエストはない。",
+      "emptyTypeMissing": "きゅうじょのけいじはない。",
+      "emptyTypeDelivery": "はいたつのけいじはない。",
+      "searchHint": "{name} は {area} でみられた。みつけてつれもどそう。",
+      "rewardBoth": "₽{money} + {item}",
+      "rewardMoney": "₽{money}",
+      "rewardToast": "ほうしゅう: ₽{money} と {item}！"
+    },
+    "menu": {
+      "story": "ストーリー",
+      "boardActive": "ボード — しんこうちゅう",
+      "boardDone": "ボード — かんりょう",
+      "done": "かんりょう",
+      "emptyStory": "ストーリークエストはない。",
+      "emptyBoard": "しんこうちゅうのボードクエストはない。"
+    },
+    "area": {
+      "wild": "やせいエリア"
+    },
+    "hud": {
+      "search": "{area} で {name} をみつけよう。",
+      "escort": "{name} を {city} へつれてかえろう。",
+      "delivery": "{city} の {name} に {item}×{count} をとどけよう。"
+    },
+    "missingNpc": {
+      "default": "きえたひと"
+    },
+    "missingPerson": {
+      "title": "きゅうじょ: {name}",
+      "completed": "{name} は {city} にかえった。",
+      "escort": "{name} を {city} へつれてかえっている。",
+      "talk": {
+        "afraid": "ありがとう… みちにまよってこわかった。",
+        "stuck": "やっと！ ずっとここにとりのこされていた…",
+        "hurt": "いたっ… けがをした。かえしてくれる？"
+      },
+      "talkFollow": "{city} までつれていって。",
+      "talkEscort": "もうすぐ… {city} はとおくない。"
+    },
+    "delivery": {
+      "title": "{name} へのはいたつ",
+      "npcDefault": "じゅうみん",
+      "active": "{city} の {name} に {item}×{count} をとどけよう。",
+      "completed": "{name} へのはいたつがおわった。",
+      "wait": "まだ {item}×{count} がひつようだよ。",
+      "thanks": "かんぺき！ {item}×{count} ありがとう。"
+    }
   }
 };

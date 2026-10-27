@@ -2,6 +2,7 @@
  * Runtime unificado: civis de cidade, indoor e viajantes.
  */
 import { estado as estadoJogo } from "../jogo/estado.js";
+import { anexarQuestNpcVisivel } from "../quests/escort.js";
 import { carregarCatalogoNpc, catalogoPronto } from "./catalogo/carregar.js";
 import { gerarNpcsCasa } from "./casa/gerar.js";
 import {
@@ -101,7 +102,7 @@ export function listarNpcsVisiveis() {
     const n = viajantes[i];
     if (n.visivel !== false && pertoDoPlayer(n, px, py)) out.push(n);
   }
-  return out;
+  return anexarQuestNpcVisivel(out, px, py, NPC_RENDER_REACH_SQ);
 }
 
 /** Corpos sólidos para física (só perto do jogador). */

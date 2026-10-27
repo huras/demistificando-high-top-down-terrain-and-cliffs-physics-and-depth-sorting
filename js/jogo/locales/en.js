@@ -258,5 +258,78 @@ export default {
   "letras": {
     "encaixe": "Stone fitted.",
     "resolvida": "Letter {letra} complete!"
+  },
+  "quests": {
+    "board": {
+      "windowTitle": "Quest board",
+      "intro": "Town notices — take a job and help the locals.",
+      "forceRefresh": "Refresh",
+      "forceRefreshDone": "Board refreshed.",
+      "statusTabs": "Quest status",
+      "typeTabs": "Quest type",
+      "tabAvailable": "Available ({count})",
+      "tabTaken": "Taken ({count})",
+      "tabCompleted": "Completed ({count})",
+      "tabTypeAll": "All ({count})",
+      "tabTypeMissing": "Rescue ({count})",
+      "tabTypeDelivery": "Delivery ({count})",
+      "typeMissing": "Rescue",
+      "typeDelivery": "Delivery",
+      "accept": "Accept",
+      "abandon": "Abandon",
+      "done": "Done",
+      "fail": "Could not accept.",
+      "abandoned": "Quest abandoned.",
+      "acceptedSearch": "Search for the missing person in the marked area.",
+      "acceptedDeliver": "Bring the materials to {name}.",
+      "empty": "No notices right now.",
+      "emptyTaken": "No taken quests in this town.",
+      "emptyCompleted": "No completed quests here yet.",
+      "emptyTypeMissing": "No rescue notices.",
+      "emptyTypeDelivery": "No delivery notices.",
+      "searchHint": "{name} was seen in {area}. Find them and bring them back.",
+      "rewardBoth": "₽{money} + {item}",
+      "rewardMoney": "₽{money}",
+      "rewardToast": "Reward: ₽{money} and {item}!"
+    },
+    "menu": {
+      "story": "Story",
+      "boardActive": "Board — active",
+      "boardDone": "Board — completed",
+      "done": "done",
+      "emptyStory": "No story quests.",
+      "emptyBoard": "No active board quests."
+    },
+    "area": {
+      "wild": "the wild"
+    },
+    "hud": {
+      "search": "Find {name} in {area}.",
+      "escort": "Escort {name} back to {city}.",
+      "delivery": "Deliver {count}× {item} to {name} in {city}."
+    },
+    "missingNpc": {
+      "default": "Missing person"
+    },
+    "missingPerson": {
+      "title": "Rescue: {name}",
+      "completed": "{name} returned safely to {city}.",
+      "escort": "Escorting {name} back to {city}.",
+      "talk": {
+        "afraid": "Thank you… I got lost and I'm scared.",
+        "stuck": "Finally! I've been stuck here forever…",
+        "hurt": "Ow… I'm hurt. Can you help me get back?"
+      },
+      "talkFollow": "Please take me back to {city}.",
+      "talkEscort": "Almost there… {city} isn't far."
+    },
+    "delivery": {
+      "title": "Delivery for {name}",
+      "npcDefault": "Resident",
+      "active": "Bring {count}× {item} to {name} in {city}.",
+      "completed": "Delivery completed for {name}.",
+      "wait": "I still need {count}× {item}. Come back when you have them!",
+      "thanks": "Perfect! Thanks for the {count}× {item}."
+    }
   }
 };

@@ -254,5 +254,7 @@ export function semearDexParty() {
 }
 
 export function questsAtivas() {
-  return estado.quests.filter((q) => !q.feita).length;
+  const historia = estado.quests.filter((q) => !q.feita).length;
+  const board = estado.questState?.taken?.length | 0;
+  return historia + board;
 }

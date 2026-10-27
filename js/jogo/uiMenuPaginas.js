@@ -14,6 +14,13 @@ import { listaParty } from "../pokemon/party.js";
 import { contar, estado, temChave, nomeDe } from "./estado.js";
 import { htmlIcone } from "./icones.js";
 import { t } from "./i18n.js";
+import {
+  postagensConcluidas,
+  registrosTomados,
+  statusPostagem,
+} from "../quests/runtime.js";
+import { detalheMissao, tituloMissao } from "../quests/textoMissao.js";
+import { QUEST_STATUS } from "../quests/tipos.js";
 
 function escHtml(valor) {
   return String(valor ?? "").replace(/[&<>"']/g, (c) => {
@@ -109,12 +116,38 @@ function entradas(obj, tipo) {
 }
 
 export function htmlQuestsMenu() {
-  return `<div class="jogo-grade">${estado.quests
+  const historia = (estado.quests || [])
     .map(
       (q) =>
-        `<div class="jogo-item"><span>${escHtml(q.titulo)}</span><span>${q.feita ? "feita" : escHtml(q.texto)}</span></div>`,
+        `<div class="jogo-item quests-panel__row"><span class="quests-panel__row-meta">${escHtml(q.titulo)}</span><span class="quests-panel__detail-text">${q.feita ? escHtml(t("quests.menu.done")) : escHtml(q.texto)}</span></div>`,
     )
-    .join("")}</div>`;
+    .join("");
+
+  const boardAtivas = registrosTomados()
+    .map((rec) => {
+      const st = statusPostagem(rec.posting);
+      return `<div class="jogo-item quests-panel__row"><span class="quests-panel__row-meta">${escHtml(tituloMissao(rec.posting))}</span><span class="quests-panel__detail-text">${escHtml(detalheMissao(rec.posting, st))}</span></div>`;
+    })
+    .join("");
+
+  const completed = postagensConcluidas()
+    .slice(0, 12)
+    .map(
+      (p) =>
+        `<div class="jogo-item quests-panel__row"><span class="quests-panel__row-meta">${escHtml(tituloMissao(p))}</span><span class="quests-panel__detail-text">${escHtml(detalheMissao(p, QUEST_STATUS.COMPLETED))}</span></div>`,
+    )
+    .join("");
+
+  const secoes = [
+    `<section class="quests-panel__section"><h3>${escHtml(t("quests.menu.story"))}</h3><div class="jogo-grade">${historia || `<p class="quests-panel__empty">${escHtml(t("quests.menu.emptyStory"))}</p>`}</div></section>`,
+    `<section class="quests-panel__section"><h3>${escHtml(t("quests.menu.boardActive"))}</h3><div class="jogo-grade">${boardAtivas || `<p class="quests-panel__empty">${escHtml(t("quests.menu.emptyBoard"))}</p>`}</div></section>`,
+  ];
+  if (completed) {
+    secoes.push(
+      `<section class="quests-panel__section"><h3>${escHtml(t("quests.menu.boardDone"))}</h3><div class="jogo-grade">${completed}</div></section>`,
+    );
+  }
+  return secoes.join("");
 }
 
 export function htmlSaveMenu() {

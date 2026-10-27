@@ -30,6 +30,8 @@ import { ligarFecharMapaMenu, notificarMapaFechou, sincronizarMapaMenu } from ".
 import { montarSkillLoadout } from "./skillLoadout.js";
 import { montarMovesCampo } from "./movesCampo.js";
 import { montarMorteHud } from "./morte.js";
+import { bootQuestBoard } from "./questBoard/janela.js";
+import { aquecerPinMissao } from "../../mapa/pinMissao.js";
 
 let menu = null;
 let partyApi = null;
@@ -101,6 +103,8 @@ export function bootHudCompleto() {
   movesApi = montarMovesCampo(document.getElementById("party-moves-combat"));
   skillApi = montarSkillLoadout();
   montarMorteHud();
+  bootQuestBoard();
+  aquecerPinMissao();
 
   ligarIdiomaMenu();
   return { menu, dexApi, radarApi, statusApi, skillApi, movesApi };

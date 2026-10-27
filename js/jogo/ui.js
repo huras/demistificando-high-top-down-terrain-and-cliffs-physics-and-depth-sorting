@@ -30,6 +30,12 @@ import { cancelarRanged } from "./ranged.js";
 import { npcPorId } from "../npc/runtime.js";
 import { iniciarBatalhaViajante } from "../npc/viajantes/batalha.js";
 import { ancoraDeFalante, sincronizarDialogoBalao } from "./dialogoBalao.js";
+import { abrirQuestBoard } from "./hud/questBoard/janela.js";
+import {
+  acharTomado,
+  comecarEscortMissao,
+  tentarEntregarMaterial,
+} from "../quests/runtime.js";
 import {
   abrirPainel,
   atribuirSlot,
@@ -508,7 +514,9 @@ export function avancarDialogo() {
     if (dlg.npcRef && !estado.batalhaTreinador) {
       dlg.npcRef.combatHold = false;
     }
+    const onClose = dlg.onClose;
     estado.dialogo = null;
+    if (typeof onClose === "function") onClose();
   }
   avisar();
 }
@@ -835,6 +843,10 @@ export function definirCorpo(corpo) {
 
 export function lerPlaca(placa) {
   if (!placa || estado.dialogo || estado.painel) return;
+  if (typeof placa.id === "string" && placa.id.startsWith("quadro:")) {
+    abrirQuestBoard(placa.id.slice("quadro:".length));
+    return;
+  }
   estado.dialogo = {
     nome: placa.nome,
     linhas: placa.linhas.slice(),
@@ -848,6 +860,41 @@ export function lerPlaca(placa) {
 export function falarNpcMundo(npc) {
   if (!npc) return;
   const ancora = ancoraDeFalante(npc);
+
+  if (npc.tipo === "quest-rescue" || npc.questId) {
+    const rec = acharTomado(npc.questId);
+    const jaEscort = !!(rec?.escorting || npc.escorting);
+    estado.dialogo = {
+      nome: npc.nome,
+      linhas: (npc.fala || ["…"]).slice(),
+      i: 0,
+      retrato: npc.retrato || "",
+      npcRef: npc,
+      ancora,
+      onClose: jaEscort ? null : () => comecarEscortMissao(),
+    };
+    avisar();
+    return;
+  }
+
+  const entrega = tentarEntregarMaterial(npc);
+  if (entrega.handled) {
+    estado.dialogo = {
+      nome: npc.nome,
+      linhas: (entrega.linhas || ["…"]).slice(),
+      i: 0,
+      retrato: npc.retrato || "",
+      npcRef: npc,
+      ancora,
+      onClose: entrega.onClose || null,
+    };
+    avisar();
+    return;
+  }
+  falarNpcMundoResto(npc, ancora);
+}
+
+function falarNpcMundoResto(npc, ancora) {
   if (npc.owTrainer) {
     npc.combatHold = true;
     if (npc.defeatedByPlayer) {

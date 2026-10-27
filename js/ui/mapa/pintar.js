@@ -24,8 +24,14 @@ import {
   kickTypeShieldsLoad,
 } from "../../santuario/mapaPin.js";
 import { desenharPinBerry } from "../../mapa/pinBerry.js";
+import {
+  aquecerPinMissao,
+  desenharPinMissao,
+  prenderPinNaBorda,
+} from "../../mapa/pinMissao.js";
 import { filtrarWildParaVista } from "../../mapa/marcasWild.js";
 import { desenharPinWild, wildPinVisivelNoZoom } from "../../mapa/pinWild.js";
+import { pinMissaoAtiva } from "../../quests/pins.js";
 import { imagemIcone } from "../../jogo/icones.js";
 import { pedirRetrato } from "../../pokemon/retrato.js";
 
@@ -403,6 +409,23 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
         prio: 0,
         dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
       });
+    }
+  }
+
+  const pinQ = pinMissaoAtiva();
+  if (pinQ && Number.isFinite(pinQ.x) && Number.isFinite(pinQ.y)) {
+    aquecerPinMissao();
+    let qx = (pinQ.x - vista.cx) * z + w / 2;
+    let qy = (pinQ.y - vista.cy) * z + h / 2;
+    // Minimapa: sempre mostra (prende na borda se estiver fora, igual Pokemon AI).
+    // Mapa grande: só desenha se estiver perto da janela.
+    if (vista.mini) {
+      const preso = prenderPinNaBorda(qx, qy, w, h, { mini: true, circular: true });
+      qx = preso.x;
+      qy = preso.y;
+      desenharPinMissao(ctx, pinQ, qx, qy, { mini: true, dpr });
+    } else if (qx > -40 && qx < w + 40 && qy > -40 && qy < h + 40) {
+      desenharPinMissao(ctx, pinQ, qx, qy, { mini: false, dpr });
     }
   }
   if (santuarioVisto) kickTypeShieldsLoad();

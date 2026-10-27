@@ -28,6 +28,7 @@ import { hidratarCampo, idsRemovidos, reaplicarCarregados, serializarCampo } fro
 import { anunciarGanho, semearVistosDaBolsa } from "./ganhoItem.js";
 import { nomeDoItem } from "./nomeItem.js";
 import { tocarCura } from "./som/combateSfx.js";
+import { createQuestState, normalizeQuestState } from "../quests/tipos.js";
 import {
   tocarBump,
   tocarHotbarEquip,
@@ -106,6 +107,10 @@ export const estado = {
   cortados: [],
   vistos: [],
   quests: questsIniciais(),
+  /** Quadro de missões diárias (resgate/entrega). */
+  questState: createQuestState(),
+  questBoardOpen: false,
+  questBoardCityId: null,
   chaves: ["pokedex"],
   dialogo: null,
   prompt: "",
@@ -653,6 +658,7 @@ export function uiAberta() {
     estado.statusAberto ||
     estado.dialogo ||
     estado.roda ||
+    estado.questBoardOpen ||
     interior2d ||
     estado.construir ||
     estado.craft ||
@@ -739,6 +745,17 @@ export function salvar() {
     capturados: estado.capturadosMap ? { ...estado.capturadosMap } : {},
     vistosItens: estado.vistosItens || {},
     quests: estado.quests,
+    questState: (() => {
+      const qs = estado.questState || createQuestState();
+      return {
+        boardDay: qs.boardDay,
+        ultimaHora: qs.ultimaHora,
+        boardForceSalt: qs.boardForceSalt | 0,
+        boards: qs.boards,
+        taken: qs.taken,
+        completed: qs.completed,
+      };
+    })(),
     chaves: estado.chaves,
     santuarios: serializarSantuarios(),
     descobertaMapa: serializarDescobertaMapa(),
@@ -825,6 +842,7 @@ export function carregar() {
       meta: 1,
     });
   }
+  estado.questState = normalizeQuestState(bruto.questState);
   estado.chaves = bruto.chaves || ["pokedex"];
   hidratarSantuarios(bruto.santuarios);
   hidratarDescobertaMapa(bruto.descobertaMapa);

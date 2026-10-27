@@ -69,8 +69,10 @@ import { teleporteOcupado } from "./teleporte.js";
 import { portaOcupada, tickPortaTransicao } from "./portaTransicao.js";
 import { toggleMenu, semearDexParty } from "./apiHud.js";
 import { bootHudCompleto, tickHudCampo } from "./hud/bootHud.js";
+import { apiQuestBoard } from "./hud/questBoard/janela.js";
 import { jogadorMorto } from "./hud/morte.js";
 import { tickRide } from "./ride.js";
+import { tickMissoesQuadro } from "../quests/runtime.js";
 import { FORCA } from "../config.js";
 import {
   iniciarForca,
@@ -156,6 +158,9 @@ export function tickJogo(dt, corpo) {
   }
   tickRide(dt);
   tickHudCampo(dt, corpo);
+  if (!estado.questBoardOpen && !jogadorMorto()) {
+    tickMissoesQuadro(corpo, dt);
+  }
   registrarParty();
   soltarSlotVazio();
   tickCampo(dt);
@@ -387,6 +392,10 @@ function lerTeclas(corpo) {
     fecharCartaGanho();
     return;
   }
+  if (estado.questBoardOpen && teclaAgora("Escape")) {
+    apiQuestBoard()?.handleKey("Escape");
+    return;
+  }
   if (
     (estado.painel ||
       estado.menuAberto ||
@@ -401,6 +410,7 @@ function lerTeclas(corpo) {
     fecharTopo();
   }
   if (estado.ganhoAberto) return;
+  if (estado.questBoardOpen) return;
 
   if (teclaAgora("Tab")) {
     toggleMenu();

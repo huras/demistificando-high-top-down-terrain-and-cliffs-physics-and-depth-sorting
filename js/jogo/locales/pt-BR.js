@@ -258,5 +258,78 @@ export default {
   "letras": {
     "encaixe": "Pedra encaixada.",
     "resolvida": "Letra {letra} completa!"
+  },
+  "quests": {
+    "board": {
+      "windowTitle": "Quadro de missões",
+      "intro": "Avisos da cidade — aceite um trabalho e ajude os moradores.",
+      "forceRefresh": "Atualizar",
+      "forceRefreshDone": "Quadro renovado.",
+      "statusTabs": "Status das missões",
+      "typeTabs": "Tipo de missão",
+      "tabAvailable": "Disponíveis ({count})",
+      "tabTaken": "Aceitas ({count})",
+      "tabCompleted": "Concluídas ({count})",
+      "tabTypeAll": "Todas ({count})",
+      "tabTypeMissing": "Resgate ({count})",
+      "tabTypeDelivery": "Entrega ({count})",
+      "typeMissing": "Resgate",
+      "typeDelivery": "Entrega",
+      "accept": "Aceitar",
+      "abandon": "Abandonar",
+      "done": "Concluída",
+      "fail": "Não foi possível aceitar.",
+      "abandoned": "Missão abandonada.",
+      "acceptedSearch": "Procure a pessoa desaparecida na área marcada.",
+      "acceptedDeliver": "Leve os materiais para {name}.",
+      "empty": "Nenhum aviso por enquanto.",
+      "emptyTaken": "Nenhuma missão aceita nesta cidade.",
+      "emptyCompleted": "Ainda sem missões concluídas aqui.",
+      "emptyTypeMissing": "Sem avisos de resgate.",
+      "emptyTypeDelivery": "Sem avisos de entrega.",
+      "searchHint": "{name} foi visto(a) em {area}. Encontre e traga de volta.",
+      "rewardBoth": "₽{money} + {item}",
+      "rewardMoney": "₽{money}",
+      "rewardToast": "Recompensa: ₽{money} e {item}!"
+    },
+    "menu": {
+      "story": "História",
+      "boardActive": "Quadro — ativas",
+      "boardDone": "Quadro — concluídas",
+      "done": "feita",
+      "emptyStory": "Nenhuma missão de história.",
+      "emptyBoard": "Nenhuma missão do quadro ativa."
+    },
+    "area": {
+      "wild": "área selvagem"
+    },
+    "hud": {
+      "search": "Encontre {name} em {area}.",
+      "escort": "Leve {name} de volta a {city}.",
+      "delivery": "Entregue {count}× {item} a {name} em {city}."
+    },
+    "missingNpc": {
+      "default": "Desaparecido"
+    },
+    "missingPerson": {
+      "title": "Resgate: {name}",
+      "completed": "{name} voltou em segurança a {city}.",
+      "escort": "Escoltando {name} de volta a {city}.",
+      "talk": {
+        "afraid": "Ai… obrigado por me achar. Eu me perdi e estou com medo.",
+        "stuck": "Finalmente! Estou preso(a) aqui há um tempão…",
+        "hurt": "Ow… me machuquei. Pode me ajudar a voltar?"
+      },
+      "talkFollow": "Me leve de volta a {city}, por favor.",
+      "talkEscort": "Quase lá… {city} não fica longe."
+    },
+    "delivery": {
+      "title": "Entrega para {name}",
+      "npcDefault": "Morador",
+      "active": "Leve {count}× {item} para {name} em {city}.",
+      "completed": "Entrega concluída para {name}.",
+      "wait": "Ainda preciso de {count}× {item}. Volte quando tiver!",
+      "thanks": "Perfeito! Obrigado pelos {count}× {item}."
+    }
   }
 };

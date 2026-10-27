@@ -1,0 +1,1072 @@
+/* Quadro de missões — tábua de madeira diegética + avisos afixados. */
+
+.quest-board-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 5200;
+  display: grid;
+  place-items: stretch;
+  font: 500 14px/1.45 Figtree, "Segoe UI", system-ui, sans-serif;
+  --hud-pill-ink: #3a2818;
+  --hud-pill-muted: #6b5340;
+  --hud-pill-hover: rgba(40, 24, 12, 0.08);
+  --hud-pill-ring: rgba(40, 24, 12, 0.32);
+  --hud-pill-ready: #5a8f12;
+  --hud-pill-stowed: #c2410c;
+  --hud-pill-badge: #e8c547;
+  --hud-pill-badge-ink: #1a1408;
+  --hud-ctrl-ink: #2a1c12;
+  /* Tinta sobre madeira ESCURA (fundo do quadro). */
+  --qb-wood-ink: #fff6e4;
+  --qb-wood-ink-muted: #f0dfc0;
+  --qb-wood-ink-dim: #d8c4a4;
+  --qb-wood-shadow: rgba(18, 8, 2, 0.62);
+  /* Tinta sobre madeira CLARA (slots / botões). */
+  --qb-ctrl-ink: #2a1810;
+  --qb-ctrl-ink-muted: #5c3a24;
+  --qb-ctrl-ink-dim: #6e4a30;
+  --qb-ctrl-shadow: rgba(255, 236, 200, 0.35);
+  --qb-wood-fallback-board: #3a2212;
+  --qb-wood-fallback-ctrl: #c99658;
+  /* urls no stylesheet — tile seamless; NÃO setar via JS */
+  --qb-wood-board: url("../assets/textures/ui/wood_1-dark.jpg");
+  --qb-wood-ctrl: url("../assets/textures/ui/wood_1-light.jpg");
+  --qb-wood-tile: 320px;
+  --qb-wood-tile-ctrl: 180px;
+  --qb-wood-tile-slot: 220px;
+  --qb-wood-sheen: linear-gradient(
+    180deg,
+    rgba(255, 248, 230, 0.38) 0%,
+    transparent 44%,
+    rgba(80, 40, 12, 0.16) 100%
+  );
+  --qb-wood-sheen-hot: linear-gradient(
+    180deg,
+    rgba(255, 252, 240, 0.5) 0%,
+    transparent 42%,
+    rgba(80, 40, 12, 0.12) 100%
+  );
+  --qb-wood-sheen-ready: linear-gradient(
+    180deg,
+    rgba(170, 230, 80, 0.34) 0%,
+    rgba(100, 160, 30, 0.16) 48%,
+    rgba(80, 40, 12, 0.12) 100%
+  );
+  --text: var(--qb-ctrl-ink);
+  --text-dim: var(--qb-ctrl-ink-muted);
+  color: var(--qb-wood-ink);
+  color-scheme: light;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+/* Offsets de tile pra slots vizinhos não “colarem” no mesmo ponto do grão. */
+.quest-board-hud__tab:nth-child(2),
+.quest-board-hud__type:nth-child(2n),
+.quest-board-hud__card:nth-child(2n),
+.quest-board-hud__btn {
+  background-position: center, 48px 24px;
+}
+
+.quest-board-hud__tab:nth-child(3),
+.quest-board-hud__type:nth-child(3n),
+.quest-board-hud__card:nth-child(3n) {
+  background-position: center, 96px 12px;
+}
+
+.quest-board-hud[hidden] {
+  display: none !important;
+}
+
+.quest-board-hud.is-in {
+  opacity: 1;
+}
+
+.quest-board-hud.is-motion,
+.quest-board-hud.is-motion .quest-board-hud__sheet {
+  will-change: opacity, transform;
+}
+
+.quest-board-hud__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 40%, rgba(28, 16, 8, 0.35) 0%, rgba(8, 4, 2, 0.72) 100%),
+    rgba(12, 8, 4, 0.45);
+}
+
+.quest-board-hud__sheet {
+  position: relative;
+  z-index: 1;
+  margin: 18px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 26px 28px 18px;
+  border-radius: 14px;
+  border: 2px solid rgba(28, 14, 6, 0.55);
+  background-color: var(--qb-wood-fallback-board);
+  color: var(--qb-wood-ink);
+  transform: translateY(12px) scale(0.985);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 180, 0.28),
+    inset 0 -3px 0 rgba(20, 8, 2, 0.45),
+    inset 2px 0 0 rgba(255, 220, 160, 0.12),
+    inset -2px 0 0 rgba(20, 8, 2, 0.28),
+    inset 0 0 0 12px rgba(42, 22, 10, 0.42),
+    inset 0 0 0 13px rgba(255, 220, 160, 0.08),
+    0 28px 56px rgba(0, 0, 0, 0.5),
+    0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+/* Camada de madeira — url relativa ao CSS (não via custom property). */
+.quest-board-hud__sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background-color: var(--qb-wood-fallback-board);
+  background-image: var(--qb-wood-board);
+  background-size: var(--qb-wood-tile) var(--qb-wood-tile);
+  background-repeat: repeat;
+  background-position: 0 0;
+  pointer-events: none;
+}
+
+/* Luz / vinheta sobre a tábua — leve para o grão aparecer. */
+.quest-board-hud__sheet::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 236, 200, 0.18) 0%,
+      transparent 28%,
+      rgba(30, 14, 6, 0.12) 70%,
+      rgba(16, 8, 2, 0.32) 100%
+    ),
+    radial-gradient(ellipse 110% 70% at 50% -10%, rgba(255, 240, 200, 0.16), transparent 55%);
+  box-shadow:
+    inset 0 0 60px rgba(20, 8, 2, 0.28),
+    inset 0 0 0 1px rgba(255, 220, 160, 0.1);
+  pointer-events: none;
+}
+
+.quest-board-hud__sheet > * {
+  position: relative;
+  z-index: 1;
+}
+
+.quest-board-hud.is-in .quest-board-hud__sheet {
+  transform: none;
+}
+
+.quest-board-hud.is-out .quest-board-hud__sheet {
+  transform: translateY(10px) scale(0.985);
+}
+
+/* —— Header —— */
+
+.quest-board-hud__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  flex: 0 0 auto;
+}
+
+.quest-board-hud__identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.quest-board-hud__header-icon {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  background-repeat: no-repeat, repeat;
+  border: 1px solid rgba(28, 14, 6, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 180, 0.3),
+    inset 0 -2px 0 rgba(20, 8, 2, 0.35),
+    0 8px 16px rgba(0, 0, 0, 0.35);
+}
+
+.quest-board-hud__titles {
+  min-width: 0;
+}
+
+.quest-board-hud__kicker {
+  margin: 0;
+  font: 700 11px/1.3 Figtree, system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--qb-wood-ink-muted);
+  text-shadow:
+    0 1px 0 rgba(255, 220, 160, 0.18),
+    0 2px 4px var(--qb-wood-shadow);
+}
+
+.quest-board-hud__title {
+  margin: 4px 0 0;
+  font: 800 28px/1.05 Syne, Figtree, system-ui, sans-serif;
+  color: var(--qb-wood-ink);
+  letter-spacing: 0.01em;
+  text-shadow:
+    0 1px 0 rgba(255, 220, 160, 0.22),
+    0 2px 0 rgba(28, 12, 4, 0.55),
+    0 4px 12px var(--qb-wood-shadow);
+}
+
+.quest-board-hud__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.quest-board-hud__force {
+  padding: 9px 14px;
+  border: 1px solid rgba(60, 32, 12, 0.42);
+  border-radius: 10px;
+  font: 700 11px/1 Figtree, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--qb-ctrl-ink);
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  background-repeat: no-repeat, repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.55),
+    inset 0 -2px 0 rgba(80, 40, 12, 0.28),
+    0 4px 10px rgba(0, 0, 0, 0.34);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.quest-board-hud__force:hover {
+  background-image: var(--qb-wood-sheen-hot), var(--qb-wood-ctrl);
+  box-shadow:
+    inset 0 0 0 2px rgba(60, 32, 12, 0.35),
+    inset 0 1px 0 rgba(255, 248, 230, 0.65),
+    0 5px 12px rgba(0, 0, 0, 0.36);
+}
+
+.quest-board-hud__close {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(60, 32, 12, 0.42);
+  border-radius: 10px;
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  background-repeat: no-repeat, repeat;
+  color: var(--qb-ctrl-ink);
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.55),
+    inset 0 -2px 0 rgba(80, 40, 12, 0.28),
+    0 4px 10px rgba(0, 0, 0, 0.34);
+}
+
+.quest-board-hud__close:hover {
+  background-image: var(--qb-wood-sheen-hot), var(--qb-wood-ctrl);
+}
+
+.quest-board-hud__icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
+.quest-board-hud__icon--header {
+  width: 40px;
+  height: 40px;
+}
+
+.quest-board-hud__icon--reward {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+/* —— Status segmented (Disponíveis / Aceitas / Concluídas) —— */
+
+.quest-board-hud__status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.quest-board-hud__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  min-width: 0;
+  padding: 16px 12px 10px;
+  border: 1px solid rgba(28, 14, 6, 0.5);
+  border-radius: 8px;
+  font: 750 13px/1 Figtree, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--qb-ctrl-ink-muted);
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  background-repeat: no-repeat, repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.5),
+    inset 0 -2px 0 rgba(80, 40, 12, 0.3),
+    0 6px 14px rgba(0, 0, 0, 0.34);
+  cursor: pointer;
+  transition: color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.quest-board-hud__tab::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #f3d090, #a06728 52%, #3a2010 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.quest-board-hud__tab:hover {
+  color: var(--qb-ctrl-ink);
+  transform: translateY(-1px);
+  background-image: var(--qb-wood-sheen-hot), var(--qb-wood-ctrl);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.62),
+    inset 0 -2px 0 rgba(80, 40, 12, 0.28),
+    0 8px 16px rgba(0, 0, 0, 0.38);
+}
+
+.quest-board-hud__tab.is-active {
+  color: #2f4f0a;
+  background-image: var(--qb-wood-sheen-ready), var(--qb-wood-ctrl);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--hud-pill-ready) 62%, transparent),
+    inset 0 1px 0 rgba(255, 248, 230, 0.55),
+    inset 0 -2px 0 rgba(40, 60, 10, 0.28),
+    0 8px 16px rgba(0, 0, 0, 0.36);
+}
+
+.quest-board-hud__tab-icon {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.quest-board-hud__tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quest-board-hud__tab-count {
+  min-width: 1.4em;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font: 800 11px/18px Figtree, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--hud-pill-badge-ink, #1a1408);
+  background: var(--hud-pill-badge, #e8c547);
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+
+/* —— Main: type rail + list —— */
+
+.quest-board-hud__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+  flex: 1;
+}
+
+.quest-board-hud__main.has-types {
+  grid-template-columns: 176px minmax(0, 1fr);
+}
+
+.quest-board-hud__types {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 8, 2, 0.35);
+  background: linear-gradient(
+    180deg,
+    rgba(20, 8, 2, 0.22) 0%,
+    rgba(20, 8, 2, 0.12) 100%
+  );
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 220, 160, 0.06);
+  scrollbar-width: thin;
+}
+
+.quest-board-hud__types[hidden] {
+  display: none !important;
+}
+
+.quest-board-hud__type {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 9px 11px;
+  border: 1px solid rgba(28, 14, 6, 0.48);
+  border-radius: 8px;
+  text-align: left;
+  color: var(--qb-ctrl-ink);
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  background-repeat: no-repeat, repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.5),
+    inset 0 -2px 0 rgba(80, 40, 12, 0.28),
+    0 4px 10px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+.quest-board-hud__type:hover:not(:disabled) {
+  transform: translateX(2px);
+  background-image: var(--qb-wood-sheen-hot), var(--qb-wood-ctrl);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.62),
+    inset 0 -2px 0 rgba(80, 40, 12, 0.26),
+    0 6px 12px rgba(0, 0, 0, 0.34);
+}
+
+.quest-board-hud__type.is-active {
+  color: #2f4f0a;
+  background-image: var(--qb-wood-sheen-ready), var(--qb-wood-ctrl);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--hud-pill-ready) 58%, transparent),
+    inset 0 1px 0 rgba(255, 248, 230, 0.55),
+    inset 0 -2px 0 rgba(40, 60, 10, 0.26),
+    0 6px 12px rgba(0, 0, 0, 0.32);
+}
+
+.quest-board-hud__type.is-empty,
+.quest-board-hud__type:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.quest-board-hud__type-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background-color: var(--qb-wood-fallback-board);
+  background-image: var(--qb-wood-board);
+  background-size: var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 220, 160, 0.12);
+}
+
+.quest-board-hud__type-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.quest-board-hud__type-label {
+  min-width: 0;
+  font: 650 13px/1.2 Figtree, system-ui, sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quest-board-hud__type-count {
+  flex: 0 0 auto;
+  font: 800 12px/1 Figtree, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--qb-ctrl-ink-dim);
+}
+
+.quest-board-hud__type.is-active .quest-board-hud__type-count {
+  color: #2f4f0a;
+}
+
+/* —— Scroll list —— */
+
+.quest-board-hud__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 8, 2, 0.28);
+  background: linear-gradient(
+    180deg,
+    rgba(20, 8, 2, 0.16) 0%,
+    rgba(20, 8, 2, 0.08) 100%
+  );
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 220, 160, 0.05);
+  scrollbar-width: thin;
+  outline: none;
+}
+
+.quest-board-hud__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quest-board-hud__group-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(28, 14, 6, 0.45);
+  font: 800 11px/1 Figtree, system-ui, sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--qb-ctrl-ink-muted);
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  background-repeat: no-repeat, repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.5),
+    inset 0 -1px 0 rgba(80, 40, 12, 0.28),
+    0 3px 8px rgba(0, 0, 0, 0.26);
+}
+
+.quest-board-hud__group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Tipo já aparece no cabeçalho do grupo — sem chip redundante. */
+.quest-board-hud__group .quest-board-hud__card-chip {
+  display: none;
+}
+
+.quest-board-hud__empty {
+  margin: auto;
+  max-width: 28rem;
+  padding: 36px 20px;
+  color: var(--qb-wood-ink-muted);
+  font: 500 14px/1.45 Figtree, system-ui, sans-serif;
+  text-align: center;
+  text-shadow: 0 1px 2px var(--qb-wood-shadow);
+}
+
+/* —— Cards = placas/slots de madeira —— */
+
+.quest-board-hud__card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: stretch;
+  padding: 18px 16px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(28, 14, 6, 0.5);
+  color: var(--qb-ctrl-ink);
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-slot) var(--qb-wood-tile-slot);
+  background-repeat: no-repeat, repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.55),
+    inset 0 -2px 0 rgba(80, 40, 12, 0.32),
+    0 1px 0 rgba(255, 230, 180, 0.12),
+    0 10px 20px rgba(0, 0, 0, 0.38),
+    0 2px 4px rgba(0, 0, 0, 0.22);
+}
+
+.quest-board-hud__card::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #f3d090, #a06728 52%, #3a2010 100%);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.quest-board-hud__card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 24px rgba(20, 8, 2, 0.18);
+  pointer-events: none;
+}
+
+.quest-board-hud__card-media {
+  display: grid;
+  place-items: center;
+  align-self: start;
+  width: 56px;
+  height: 56px;
+  margin-top: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(28, 14, 6, 0.4);
+  background-color: var(--qb-wood-fallback-board);
+  background-image: var(--qb-wood-board);
+  background-size: var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 220, 160, 0.1);
+}
+
+.quest-board-hud__card-type-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+}
+
+.quest-board-hud__card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.quest-board-hud__card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.quest-board-hud__card-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font: 750 16px/1.25 Figtree, system-ui, sans-serif;
+  color: var(--qb-ctrl-ink);
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+}
+
+.quest-board-hud__card-chip {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font: 700 10px/1 Figtree, system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--qb-ctrl-ink);
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+  background-color: rgba(80, 40, 12, 0.18);
+  background-image: var(--qb-wood-board);
+  background-size: var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 1px rgba(60, 32, 12, 0.28);
+  white-space: nowrap;
+}
+
+.quest-board-hud__tip {
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.quest-board-hud__card-detail {
+  margin: 0;
+  font: 500 13px/1.45 Figtree, system-ui, sans-serif;
+  color: var(--qb-ctrl-ink-dim);
+}
+
+.quest-board-hud__card-progress:empty,
+.quest-board-hud__card-progress[hidden] {
+  display: none !important;
+}
+
+.quest-board-hud__card-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  font: 700 13px/1.35 Figtree, system-ui, sans-serif;
+  color: #8a5a14;
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+}
+
+.quest-board-hud__card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  min-width: 7.5rem;
+}
+
+.quest-board-hud__btn {
+  padding: 11px 16px;
+  border: 1px solid rgba(60, 32, 12, 0.45);
+  border-radius: 8px;
+  font: 750 12px/1 Figtree, system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--qb-ctrl-ink);
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  background-repeat: no-repeat, repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.55),
+    inset 0 -2px 0 rgba(80, 40, 12, 0.3),
+    0 3px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.quest-board-hud__btn:hover {
+  background-image: var(--qb-wood-sheen-hot), var(--qb-wood-ctrl);
+  box-shadow:
+    inset 0 0 0 2px rgba(60, 32, 12, 0.32),
+    inset 0 1px 0 rgba(255, 248, 230, 0.65),
+    0 4px 10px rgba(0, 0, 0, 0.32);
+}
+
+.quest-board-hud__btn--primary {
+  color: #2f4f0a;
+  border-color: color-mix(in srgb, var(--hud-pill-ready) 55%, rgba(60, 32, 12, 0.45));
+  background-image: var(--qb-wood-sheen-ready), var(--qb-wood-ctrl);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--hud-pill-ready) 45%, transparent),
+    inset 0 1px 0 rgba(255, 248, 230, 0.5),
+    inset 0 -2px 0 rgba(40, 60, 10, 0.28),
+    0 4px 10px rgba(20, 40, 4, 0.28);
+}
+
+.quest-board-hud__btn--primary:hover {
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(180, 230, 80, 0.38) 0%,
+      rgba(90, 140, 20, 0.16) 45%,
+      rgba(80, 40, 12, 0.1) 100%
+    ),
+    var(--qb-wood-ctrl);
+}
+
+.quest-board-hud__btn--abandon {
+  color: #9a3412;
+  border-color: color-mix(in srgb, var(--hud-pill-stowed) 45%, rgba(60, 32, 12, 0.45));
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(220, 100, 40, 0.28) 0%,
+      rgba(180, 80, 30, 0.12) 50%,
+      rgba(80, 40, 12, 0.12) 100%
+    ),
+    var(--qb-wood-ctrl);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--hud-pill-stowed) 40%, transparent),
+    inset 0 1px 0 rgba(255, 248, 230, 0.45),
+    0 3px 8px rgba(0, 0, 0, 0.28);
+}
+
+.quest-board-hud__done {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--hud-pill-ready) 45%, rgba(60, 32, 12, 0.45));
+  font: 750 11px/1 Figtree, system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #2f4f0a;
+  text-shadow: 0 1px 0 var(--qb-ctrl-shadow);
+  background-color: var(--qb-wood-fallback-ctrl);
+  background-image: var(--qb-wood-sheen-ready), var(--qb-wood-ctrl);
+  background-size: auto, var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  background-repeat: no-repeat, repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 230, 0.5),
+    inset 0 -1px 0 rgba(40, 60, 10, 0.25);
+}
+
+/* —— Footer message —— */
+
+.quest-board-hud__message {
+  margin: 0;
+  min-height: 1.2em;
+  flex: 0 0 auto;
+  font: 500 13px/1.4 Figtree, system-ui, sans-serif;
+  color: var(--qb-wood-ink-muted);
+  text-shadow: 0 1px 2px var(--qb-wood-shadow);
+}
+
+.quest-board-hud__message[hidden] {
+  display: none !important;
+}
+
+.quest-board-hud__message[data-tone="good"] {
+  color: #c8ef8a;
+}
+
+.quest-board-hud__message[data-tone="bad"] {
+  color: #ffb4a8;
+}
+
+/* —— Skill progress inside wood slots —— */
+
+.quest-board-hud .quest-skill-progress {
+  margin: 2px 0 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(60, 32, 12, 0.35);
+  background-color: var(--qb-wood-fallback-board);
+  background-image: var(--qb-wood-board);
+  background-size: var(--qb-wood-tile-ctrl) var(--qb-wood-tile-ctrl);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 220, 160, 0.1);
+}
+
+.quest-board-hud .quest-skill-progress__heading {
+  color: var(--qb-wood-ink-muted);
+}
+
+.quest-board-hud .quest-skill-progress__ready {
+  color: #c8ef8a;
+}
+
+.quest-board-hud .quest-skill-progress__or {
+  color: var(--qb-wood-ink-dim);
+}
+
+.quest-board-hud .quest-skill-progress__mark {
+  color: var(--qb-wood-ink-dim);
+}
+
+.quest-board-hud .quest-skill-progress__row.is-ok .quest-skill-progress__mark {
+  color: #c8ef8a;
+}
+
+.quest-board-hud .quest-skill-progress__row.is-no .quest-skill-progress__mark {
+  color: #ffb4a8;
+}
+
+.quest-board-hud .quest-skill-progress__label {
+  color: var(--qb-wood-ink);
+}
+
+.quest-board-hud .quest-skill-progress__bar {
+  background: rgba(20, 8, 2, 0.45);
+  border: 1px solid rgba(255, 220, 160, 0.16);
+}
+
+.quest-board-hud .quest-skill-progress__fill {
+  background: linear-gradient(90deg, #d97706, #e8c547);
+}
+
+.quest-board-hud .quest-skill-progress__row.is-ok .quest-skill-progress__fill {
+  background: linear-gradient(90deg, #65a30d, #86efac);
+}
+
+.quest-board-hud .quest-skill-progress__value {
+  color: #f0d070;
+}
+
+.quest-board-hud .quest-skill-progress__row.is-ok .quest-skill-progress__value {
+  color: #c8ef8a;
+}
+
+/* —— Narrow / mobile —— */
+
+@media (max-width: 820px) {
+  .quest-board-hud__main.has-types {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .quest-board-hud__types {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+
+  .quest-board-hud__type {
+    flex: 0 0 auto;
+    min-width: 9.5rem;
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .quest-board-hud__sheet {
+    margin: 10px;
+    padding: 14px 14px 12px;
+    gap: 12px;
+  }
+
+  .quest-board-hud__header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .quest-board-hud__header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  .quest-board-hud__icon--header {
+    width: 32px;
+    height: 32px;
+  }
+
+  .quest-board-hud__title {
+    font-size: 20px;
+  }
+
+  .quest-board-hud__force {
+    display: none;
+  }
+
+  .quest-board-hud__status {
+    gap: 6px;
+  }
+
+  .quest-board-hud__tab {
+    flex-direction: column;
+    gap: 4px;
+    min-height: 52px;
+    padding: 8px 6px;
+    font-size: 11px;
+  }
+
+  .quest-board-hud__card {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .quest-board-hud__card-media {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .quest-board-hud__card-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  .quest-board-hud__card-chip {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-board-hud,
+  .quest-board-hud__sheet,
+  .quest-board-hud__tab,
+  .quest-board-hud__type {
+    transition: none;
+  }
+}
+
+body.is-quest-board-open .hud-topbar,
+body.is-quest-board-open .hud-party,
+body.is-quest-board-open .party-hud,
+body.is-quest-board-open .readied-item,
+body.is-quest-board-open .hotbar-hud,
+body.is-quest-board-open #hud-item-dock,
+body.is-quest-board-open .hud-chip--money,
+body.is-quest-board-open .player-hearts-hud,
+body.is-quest-board-open #symbiosis-hud,
+body.is-quest-board-open .skill-hud,
+body.is-quest-board-open .hud-utility-rail,
+body.is-quest-board-open .battle-log,
+body.is-quest-board-open .poke-radar-host,
+body.is-quest-board-open .poke-radar-hover,
+body.is-quest-board-open .poke-sonar-far-cry-tip,
+body.is-quest-board-open .quest-objective,
+body.is-quest-board-open .controle-analogico-mobile,
+body.is-quest-board-open .zone-banner,
+body.is-quest-board-open .temple-title,
+body.is-quest-board-open .player-status-layer,
+body.is-quest-board-open #win-party-field,
+body.is-quest-board-open #win-party-roster {
+  visibility: hidden;
+  pointer-events: none;
+}
