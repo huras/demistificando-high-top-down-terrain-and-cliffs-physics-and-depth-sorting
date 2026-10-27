@@ -5,6 +5,7 @@ import { alturaEm } from "../../../mundo/altura.js";
 import { criarAtor } from "../../ator.js";
 import { especie } from "../../dados.js";
 import { nivelEm } from "../../distribuicao/forca.js";
+import { garantirAtlas } from "../../sprites.js";
 import { HABITAT } from "../kinds.js";
 import { PERFIL_NINHO_VOO } from "../perfis.js";
 import { sortearSkyPasser, poolSkyDeChaves } from "./catalogo.js";
@@ -74,12 +75,35 @@ function livre() {
  * @param {string[]} [chavesLocais]
  * @param {number} agora
  */
+/**
+ * Prefere espécie com strip FlapAround no atlas (evita Walk no ar).
+ * @param {readonly { dex: number, key: string }[] | null} pool
+ */
+function escolherComFlap(pool) {
+  const tentativas = 8;
+  let fallback = null;
+  for (let i = 0; i < tentativas; i++) {
+    const entry = sortearSkyPasser(Math.random(), pool);
+    if (!entry) return null;
+    if (!fallback) fallback = entry;
+    const pack = garantirAtlas(entry.dex, false);
+    if (pack?.estado === "fila" || pack?.estado === "carregando") {
+      // Ainda carregando: aceita e o tickVisual usa FlapAround quando vier.
+      return entry;
+    }
+    if (pack?.anims?.FlapAround) return entry;
+  }
+  return fallback;
+}
+
 function spawnFlock(px, py, chavesLocais, agora) {
   const pool = poolSkyDeChaves(chavesLocais || []);
-  const entry = sortearSkyPasser(Math.random(), pool.length ? pool : null);
+  const entry = escolherComFlap(pool.length ? pool : null);
   if (!entry) return;
   const esp = especie(entry.key);
   if (!esp) return;
+  // Pré-aquece atlas pra FlapAround estar pronto no 1º frame.
+  garantirAtlas(esp.dex, false);
 
   const ang = Math.random() * Math.PI * 2;
   const dirX = Math.cos(ang);

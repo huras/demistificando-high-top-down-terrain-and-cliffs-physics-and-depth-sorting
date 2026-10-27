@@ -570,7 +570,10 @@ export function recarregarBarraEsquiva(ator, dt) {
 }
 
 export function tickPassivo(ator, dt, agora) {
-  if (ator.hopLift > 0) ator.hopLift = Math.max(0, ator.hopLift - dt * 3.2);
+  // Sky / voo livre mantém hopLift no tick de locomocão — não decair aqui.
+  if (ator.hopLift > 0 && !ator.voando && !ator.skyPasser && !ator.planando) {
+    ator.hopLift = Math.max(0, ator.hopLift - dt * 3.2);
+  }
   if (ator.iframe > 0) ator.iframe = Math.max(0, ator.iframe - dt);
   if ((ator.recuoRestante || 0) > 0) integrarRecuo(ator, dt);
   else if ((ator.avancoRestante || 0) > 0) integrarAvanco(ator, dt);

@@ -273,7 +273,12 @@ function marcarPasso(ator) {
   return passo;
 }
 
+/** No ar de verdade (paridade Pokemon AI isFlightPoseActive) — não só tipo Flying. */
 function voa(ator, passo) {
+  if (ator.skyPasser || ator.voando || ator.planando) return true;
+  if (ator.habitatKind === "sky" || ator.habitatKind === "high") {
+    if ((ator.hopLift || 0) > 0.12 || ator.voando) return true;
+  }
   if ((ator.hopLift || 0) > 0.12) return true;
   if (!passo) return false;
   const tipos = ator.tipos || ator.especie?.tipos;
@@ -295,7 +300,11 @@ function escolherFaixa(ator, pack, agora, passo) {
   if (noGolpe && ator.golpePose && pack.anims?.[ator.golpePose]) return ator.golpePose;
   if ((ator.conjuroRestante || 0) > 0 && pack.anims?.Shoot) return "Shoot";
   if (agora < ator.poseAte && POSE_GOLPE.has(ator.pose)) return faixaDoGolpe(pack, ator.pose);
-  if (voa(ator, passo) && pack.anims?.FlapAround) return "FlapAround";
+  // Voo: FlapAround obrigatório quando existe — nunca Walk no ar.
+  if (voa(ator, passo)) {
+    if (pack.anims?.FlapAround) return "FlapAround";
+    return pack.anims?.Idle ? "Idle" : "Walk";
+  }
   if (passo && pack.anims?.Walk) return "Walk";
   return "Idle";
 }
