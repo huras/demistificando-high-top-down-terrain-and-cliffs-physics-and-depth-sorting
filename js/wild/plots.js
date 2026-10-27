@@ -43,6 +43,13 @@ export function regar(plot, agora = Date.now()) {
   return true;
 }
 
+/** Chuva: molha qualquer canteiro (solo vazio incluso — só visual/umidade). */
+export function molharPorChuva(plot, agora = Date.now()) {
+  if (!plot) return false;
+  plot.lastWateredAt = agora;
+  return true;
+}
+
 export function simularPlot(plot, agora = Date.now()) {
   if (!estaCrescendo(plot.stage)) {
     plot.lastSimAt = agora;

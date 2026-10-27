@@ -28,7 +28,8 @@ import { yawCamera } from "../render/3d/camera3d.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
 import { BERRIES, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
 import { ESTAGIO } from "../wild/estagios.js";
-import { colher, criarSolo, plantar, regar, simularPlot } from "../wild/plots.js";
+import { lerMixClima } from "../render/3d/ceu/clima.js";
+import { colher, criarSolo, molharPorChuva, plantar, regar, simularPlot } from "../wild/plots.js";
 import { sfx } from "./audio.js";
 import { iniciarPortaTransicao, portaOcupada } from "./portaTransicao.js";
 import { emAlcanceEdicao } from "../mundo/voxel/editar.js";
@@ -352,9 +353,16 @@ export function sairInterior(corpo) {
   sfx("porta");
 }
 
+/** Mix de precipitação já “visível” — evita molhar no rastro residual. */
+const CHUVA_MOLHA = 0.28;
+
 export function tickCampo(dt) {
   if (estado.saidaGrace > 0) estado.saidaGrace = Math.max(0, estado.saidaGrace - dt);
   const agora = Date.now();
+  const chuva = lerMixClima()?.chuva || 0;
+  if (chuva >= CHUVA_MOLHA) {
+    for (let i = 0; i < estado.plots.length; i++) molharPorChuva(estado.plots[i], agora);
+  }
   for (let i = 0; i < estado.plots.length; i++) simularPlot(estado.plots[i], agora);
   tickArvores(dt, agora);
   tickGrama(dt, agora);
