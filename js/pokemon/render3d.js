@@ -17,7 +17,7 @@ import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, direcao8Camera, me
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoEfeitos } from "../efeitos/catalogo.js";
 import { carregarCatalogoParticulas } from "../particulas/catalogo.js";
-import { carregarCatalogoLuzes, pontosDoModelo } from "../render/3d/luzes/catalogo.js";
+import { carregarCatalogoLuzes, pontosBrilhoAtor } from "../render/3d/luzes/catalogo.js";
 import { criarCartaoLuz, obterPesoNoite } from "../render/3d/luzes/pool.js";
 import { amostrarLuzCidade, oferecerLuzChao } from "../render/3d/luzes/mapaChao.js";
 import { aplicarCorSprite } from "../render/3d/ceu/luzBillboard.js";
@@ -451,9 +451,10 @@ function aplicarFlashCorpo(slot, ator) {
  * Flare no cartão + poça no mapa de chão (mesmo pipeline dos postes).
  * Sem PointLight: escala com milhares de fontes sem disputar o pool de 8.
  * `contribuirChao` fica false no re-pose do reflexo (já resolveu o mapa).
+ * Party elétrico/fogo/psíquico brilha mesmo sem entrada no catálogo.
  */
 function aplicarBrilho(slot, ator, offsetY, contribuirChao) {
-  const pontos = ator.morto ? [] : pontosDoModelo(ator.especie?.key);
+  const pontos = pontosBrilhoAtor(ator);
   const n = Math.min(pontos.length, slot.brilhos.length);
   for (let i = 0; i < slot.brilhos.length; i++) {
     const brilho = slot.brilhos[i];
