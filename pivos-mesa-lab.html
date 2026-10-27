@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pivôs — mesa de iniciais (lab)</title>
+  <link rel="stylesheet" href="css/pivos.css" />
+  <link rel="stylesheet" href="css/pivos-maquina.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Pivôs — mesa-3 (iniciais do lab)</h1>
+    <p class="topo__nota" id="status">Carregando…</p>
+    <button type="button" id="salvar">Salvar</button>
+  </header>
+
+  <div class="miolo">
+    <aside class="coluna coluna--maquina">
+      <section class="painel-pivo">
+        <h2>Suporte (origem)</h2>
+        <p class="nota">Ponto-base no topo da malha <code>mesa-3</code> onde os 3 slots se apoiam.</p>
+        <div class="grade-xyz" id="suporte-campos"></div>
+        <h2>Slots (3 bolas)</h2>
+        <p class="nota">Unidades de mundo. Number livre; slider acompanha. y do slot: <code>Y = -y</code>.</p>
+        <div class="lista-slots" id="slots-campos"></div>
+        <button type="button" id="resetar">Resetar padrão</button>
+      </section>
+    </aside>
+    <div class="palco palco--maquina">
+      <span class="palco__tag">3D — mesa-3 · órbita livre</span>
+      <canvas id="vista3d"></canvas>
+    </div>
+  </div>
+  <script type="module" src="js/pivos/editorMesaLab.js"></script>
+</body>
+</html>

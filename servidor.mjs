@@ -415,6 +415,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/mesa-lab-slots") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 40_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        const normalizado = validarSlotsMesaLab(obj);
+        const dest = path.join(raiz, "assets", "models", "cidade", "props", "mesa-3", "slots.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(normalizado, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/partes") {
     const pedacos = [];
     let total = 0;
@@ -868,9 +898,9 @@ function validarPivos(obj) {
   }
 }
 
-function validarSlotsMaquinaCura(obj) {
+function validarSlotsXyz(obj, qtdSlots, rotuloArquivo) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
-    throw new Error("arquivo sem slots da máquina");
+    throw new Error(`arquivo sem slots ${rotuloArquivo}`);
   }
   const lim = 64;
   const ponto = (src, rotulo) => {
@@ -888,11 +918,19 @@ function validarSlotsMaquinaCura(obj) {
     };
   };
   const suporte = ponto(obj.suporte, "suporte");
-  if (!Array.isArray(obj.slots) || obj.slots.length !== 6) {
-    throw new Error("precisam ser 6 slots");
+  if (!Array.isArray(obj.slots) || obj.slots.length !== qtdSlots) {
+    throw new Error(`precisam ser ${qtdSlots} slots`);
   }
   const slots = obj.slots.map((s, i) => ponto(s, `slot ${i}`));
   return { suporte, slots };
+}
+
+function validarSlotsMaquinaCura(obj) {
+  return validarSlotsXyz(obj, 6, "da máquina");
+}
+
+function validarSlotsMesaLab(obj) {
+  return validarSlotsXyz(obj, 3, "da mesa do lab");
 }
 
 function validarPivosProps(obj) {

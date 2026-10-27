@@ -94,8 +94,8 @@ export const PROP_POR_SPRITE = Object.freeze({
   "cama-verde": "cama",
 });
 
-/** Lab: sprite ~3.06×1.44 → mesa-3 / mesa-2 (48×16 / 32×16). */
-export const MESAS_LAB = Object.freeze(["mesa-3", "mesa-2"]);
+/** Lab: mesas de iniciais → só mesa-3 (48×16, casa com o sprite ~3.06×1.44). */
+export const MESA_LAB_BOLAS = "mesa-3";
 
 /** Escrivaninha do lab → mesa lateral. */
 export const MESA_ESCRIVANINHA = "mesa-2";

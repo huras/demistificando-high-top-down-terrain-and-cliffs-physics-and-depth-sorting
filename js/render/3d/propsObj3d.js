@@ -15,6 +15,10 @@ import {
   QTD_SLOTS_CURA,
   slotsCuraAtuais,
 } from "../../jogo/slotsCuraConfig.js";
+import {
+  QTD_SLOTS_MESA_LAB,
+  slotsMesaLabAtuais,
+} from "../../jogo/slotsMesaLabConfig.js";
 import { BOLA_DIAMETRO } from "../../config.js";
 import { devolverInstanciaBola, obterInstanciaBola } from "../../pokemon/malhaBola.js";
 import { aplicarEscalaProp } from "./escalaVertical.js";
@@ -479,6 +483,37 @@ export function criarBolasCuraNaMalha(raiz) {
     bola.userData.diametroAlvo = diametro;
     bola.userData.ballKey = null;
     bola.visible = false;
+    suporte.add(bola);
+    bolas.push(bola);
+    garantirVisualBolaCura(bola, "pokeball");
+  }
+  aplicarPoseBolasCura(suporte, layout, bolas);
+  return bolas;
+}
+
+/**
+ * Bolas iniciais grudadas no topo da mesa-3 do lab.
+ * @param {THREE.Object3D} raiz
+ * @param {string[]} [especies] — só pra metadado; visual usa pokeball.
+ */
+export function criarBolasIniciaisNaMesa(raiz, especies = []) {
+  const layout = slotsMesaLabAtuais();
+  const diametro = diametroBolaCuraPara(raiz);
+  const bolas = [];
+  const suporte = new THREE.Group();
+  suporte.name = "bolas-lab";
+  raiz.add(suporte);
+  for (let i = 0; i < QTD_SLOTS_MESA_LAB; i++) {
+    const bola = new THREE.Group();
+    const ph = placeholderBolaCura(diametro);
+    bola.add(ph);
+    bola.userData.placeholderMesh = ph;
+    bola.userData.mat = ph.userData.mat;
+    bola.userData.placeholder = true;
+    bola.userData.diametroAlvo = diametro;
+    bola.userData.ballKey = null;
+    bola.userData.especie = especies[i] || null;
+    bola.visible = true;
     suporte.add(bola);
     bolas.push(bola);
     garantirVisualBolaCura(bola, "pokeball");

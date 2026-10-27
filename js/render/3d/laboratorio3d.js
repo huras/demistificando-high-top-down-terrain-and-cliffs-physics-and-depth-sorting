@@ -12,12 +12,12 @@ import {
   ORIGEM_LAB_Y,
   ROWS_LAB,
   plantaLaboratorio,
+  sincronizarBolasLabDaConfig,
 } from "../../mundo/cidade/laboratorio.js";
 import { cascasDaParede } from "../../mundo/cidade/plantaHub.js";
-import { MESA_ESCRIVANINHA, MESAS_LAB, propDoSprite } from "../../mundo/cidade/catalogoProps.js";
+import { MESA_ESCRIVANINHA, MESA_LAB_BOLAS, propDoSprite } from "../../mundo/cidade/catalogoProps.js";
 import {
   atualizarBolasCura,
-  emPe,
   girarCartoes,
   imagem,
   moldeChao,
@@ -28,8 +28,14 @@ import {
   recortar,
   facesParedeInterior,
 } from "./cartaoPe.js";
-import { carregarMoldesProps, criarBolasCuraNaMalha, instanciarProp } from "./propsObj3d.js";
-import { fatorYCasa, fatorYProp } from "./escalaVertical.js";
+import {
+  carregarMoldesProps,
+  criarBolasCuraNaMalha,
+  criarBolasIniciaisNaMesa,
+  instanciarProp,
+} from "./propsObj3d.js";
+import { carregarSlotsMesaLab } from "../../jogo/slotsMesaLabConfig.js";
+import { fatorYCasa } from "./escalaVertical.js";
 import { criarFaixaParede } from "./paredeInteriorDual.js";
 
 const FOLHA_MOVEIS = "/ref/sprites/interiors/dcj0huc-7206dd1d-9450-4232-a708-b07b4bd0c392.png";
@@ -51,7 +57,14 @@ const RECORTE = Object.freeze({
   vasoC: Object.freeze({ url: FOLHA_VASO, col: 21, row: 40, cols: 3, rows: 7, tile: 16, escala: 0.5 }),
 });
 
-const IDS_PROPS_LAB = Object.freeze(["cura", "maquina-2", "maquina-3", "maquina-4", ...MESAS_LAB]);
+const IDS_PROPS_LAB = Object.freeze([
+  "cura",
+  "maquina-2",
+  "maquina-3",
+  "maquina-4",
+  MESA_LAB_BOLAS,
+  MESA_ESCRIVANINHA,
+]);
 
 const bolasCura = [];
 
@@ -147,26 +160,6 @@ function anexarMaquinasExtras(sala, planta) {
   }
 }
 
-function anexarBolas(grupo) {
-  const planta = plantaLaboratorio();
-  const geo = new THREE.SphereGeometry(0.16, 10, 8);
-  const mat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
-  aplicarLuzCidade(mat);
-  const faixa = new THREE.MeshLambertMaterial({ color: 0xef4444 });
-  aplicarLuzCidade(faixa);
-  for (let i = 0; i < planta.bolas.length; i++) {
-    const bola = planta.bolas[i];
-    const raiz = emPe(new THREE.Group());
-    const corpo = new THREE.Mesh(geo, mat);
-    const cinto = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.165, 0.05, 10), faixa);
-    cinto.rotation.z = Math.PI / 2;
-    raiz.add(corpo);
-    raiz.add(cinto);
-    raiz.position.set(ORIGEM_LAB_X + bola.x, ALTURA_PRACA + 1.7 * fatorYProp(), ORIGEM_LAB_Y + bola.y);
-    grupo.add(raiz);
-  }
-}
-
 export function atualizarLaboratorio(yaw, inclinacao, px, py) {
   girarCartoes(yaw, inclinacao);
   const dentro =
@@ -194,7 +187,9 @@ export function montarLaboratorio3d(grupo) {
     pedir(FOLHA_PISO),
     pedir(FOLHA_GENTE),
     carregarMoldesProps(IDS_PROPS_LAB),
+    carregarSlotsMesaLab(),
   ]).then((imagens) => {
+    sincronizarBolasLabDaConfig();
     const porUrl = new Map();
     let cursor = 0;
     for (let i = 0; i < chaves.length; i++) porUrl.set(RECORTE[chaves[i]].url, imagens[cursor++]);
@@ -245,11 +240,15 @@ export function montarLaboratorio3d(grupo) {
         continue;
       }
       if (item.id === "mesa") {
-        const idMesa = MESAS_LAB[mesaI % MESAS_LAB.length];
-        mesaI += 1;
-        const inst = instanciarProp(idMesa, x, peZ);
+        const inst = instanciarProp(MESA_LAB_BOLAS, x, peZ);
         if (inst) {
           sala.add(inst);
+          const especies = [];
+          for (let b = 0; b < planta.bolas.length; b++) {
+            if (planta.bolas[b].mesaI === mesaI) especies.push(planta.bolas[b].especie);
+          }
+          criarBolasIniciaisNaMesa(inst, especies);
+          mesaI += 1;
           continue;
         }
       }
@@ -281,6 +280,5 @@ export function montarLaboratorio3d(grupo) {
         }
       }
     }
-    anexarBolas(sala);
   });
 }

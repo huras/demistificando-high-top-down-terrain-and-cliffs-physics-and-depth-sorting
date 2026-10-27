@@ -7,6 +7,7 @@ import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import { ALTURA_PRACA } from "../regiao/amostraKanto.js";
 import { definirLocal, preencherColunaSolida } from "../voxel/chunk.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
+import { slotsMesaLabAtuais } from "../../jogo/slotsMesaLabConfig.js";
 
 export const COLS_LAB = 54;
 export const ROWS_LAB = 36;
@@ -352,21 +353,7 @@ function montar() {
     carimbar(moveis, SPRITE[vasos[i][0]], vasos[i][1], vasos[i][2]);
   }
 
-  const porMesa = Math.ceil(INICIAIS_LAB.length / Math.max(1, mesas.length));
-  const bolas = [];
-  for (let i = 0; i < INICIAIS_LAB.length; i++) {
-    const mesaI = Math.min(mesas.length - 1, Math.floor(i / porMesa));
-    const slot = i - mesaI * porMesa;
-    const naMesa = Math.min(porMesa, INICIAIS_LAB.length - mesaI * porMesa);
-    const base = mesas[mesaI];
-    const span = base.halfW * 1.15;
-    const t = naMesa <= 1 ? 0 : slot / (naMesa - 1);
-    bolas.push({
-      especie: INICIAIS_LAB[i],
-      x: base.x - span / 2 + t * span,
-      y: base.y - base.halfH + 0.36,
-    });
-  }
+  const bolas = gerarBolasIniciais(mesas);
 
   const npcs = [
     { ...NPCS[0], x: bMeio.x, y: b.y0 + 2.55 },
@@ -443,7 +430,44 @@ function montar() {
   };
 }
 
+/**
+ * XY de interação a partir do centro da mesa + suporte/slots (mundo).
+ * Plant Y = profundidade = slot/suporte Z.
+ */
+function gerarBolasIniciais(mesas) {
+  const layout = slotsMesaLabAtuais();
+  const suporte = layout.suporte;
+  const porMesa = Math.ceil(INICIAIS_LAB.length / Math.max(1, mesas.length));
+  const bolas = [];
+  for (let i = 0; i < INICIAIS_LAB.length; i++) {
+    const mesaI = Math.min(mesas.length - 1, Math.floor(i / porMesa));
+    const slot = i - mesaI * porMesa;
+    const base = mesas[mesaI];
+    const sp = layout.slots[slot] || { x: 0, y: 0, z: 0 };
+    bolas.push({
+      especie: INICIAIS_LAB[i],
+      mesaI,
+      slot,
+      x: base.x + suporte.x + sp.x,
+      y: base.y + suporte.z + sp.z,
+    });
+  }
+  return bolas;
+}
+
 const PLANTA = montar();
+
+/** Recalcula planta.bolas depois que slots.json carrega. */
+export function sincronizarBolasLabDaConfig() {
+  const mesas = [];
+  for (let i = 0; i < PLANTA.moveis.length; i++) {
+    if (PLANTA.moveis[i].id === "mesa") mesas.push(PLANTA.moveis[i]);
+  }
+  const novas = gerarBolasIniciais(mesas);
+  PLANTA.bolas.length = 0;
+  for (let i = 0; i < novas.length; i++) PLANTA.bolas.push(novas[i]);
+  return PLANTA.bolas;
+}
 
 export function plantaLaboratorio() {
   return PLANTA;
