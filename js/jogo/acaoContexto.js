@@ -15,6 +15,7 @@ import { plotMaduroPerto } from "./campo.js";
 import { promptSantuario, santuarioPerto } from "../santuario/interagir.js";
 import { puzzleSantuarioAberto } from "../santuario/puzzleModal.js";
 import { totemPerto } from "../santuario/interior.js";
+import { especie } from "../pokemon/dados.js";
 
 const FOLGA_ESCALADA_MS = 160;
 let escaladaAte = 0;
@@ -98,6 +99,21 @@ export function acaoContexto(ctx) {
       ancora: {
         x: ORIGEM_LAB_X + tank.x,
         y: ORIGEM_LAB_Y + tank.y,
+        z: corpo.z || 0,
+      },
+    };
+  }
+
+  if (alvoLab?.tipo === "inicial") {
+    const bola = alvoLab.ref;
+    const esp = especie(bola?.especie);
+    const nome = esp?.nome || bola?.especie || "Pokémon";
+    return {
+      id: "inicial",
+      rotulo: `Pegar ${nome}`,
+      ancora: {
+        x: ORIGEM_LAB_X + (bola?.x || 0),
+        y: ORIGEM_LAB_Y + (bola?.y || 0),
         z: corpo.z || 0,
       },
     };

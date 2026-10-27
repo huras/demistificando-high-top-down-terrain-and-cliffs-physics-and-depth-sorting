@@ -121,6 +121,7 @@ export const estado = {
   promptAncora: null,
   painel: null,
   menuAberto: false,
+  skillAberto: false,
   dexAberta: false,
   statusAberto: false,
   capturadosMap: null,
@@ -656,6 +657,7 @@ export function uiAberta() {
     estado.menuAberto ||
     estado.dexAberta ||
     estado.statusAberto ||
+    estado.skillAberto ||
     estado.dialogo ||
     estado.roda ||
     estado.questBoardOpen ||
@@ -689,7 +691,7 @@ export function fecharTopo() {
     avisar();
     return true;
   }
-  if (estado.dexAberta || estado.statusAberto || estado.menuAberto) {
+  if (estado.dexAberta || estado.statusAberto || estado.menuAberto || estado.skillAberto) {
     if (typeof estado._fecharHudExtra === "function") {
       estado._fecharHudExtra();
       avisar();
@@ -698,6 +700,7 @@ export function fecharTopo() {
     estado.dexAberta = false;
     estado.statusAberto = false;
     estado.menuAberto = false;
+    estado.skillAberto = false;
     avisar();
     return true;
   }

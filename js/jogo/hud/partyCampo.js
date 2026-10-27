@@ -331,6 +331,9 @@ function pintarDetail() {
         <button type="button" class="party-combat__mode" data-act="modo" data-i="${i}" title="Modo: ${escHtml(tipModo)}" aria-label="Modo de IA: ${escHtml(tipModo)}">
           <span class="party-combat__mode-glyph">${iconeModo(pref)}</span>
         </button>
+        <button type="button" class="party-combat__action party-combat__action--skills" data-act="skills" title="Ver golpes">
+          Skills
+        </button>
         <button type="button" class="party-combat__action" data-act="deploy" data-i="${i}" title="Campo">
           ${pokemonDeployado() === ator ? "Recolher" : "Campo"}
         </button>

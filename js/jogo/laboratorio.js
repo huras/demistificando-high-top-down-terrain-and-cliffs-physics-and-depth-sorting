@@ -1,7 +1,7 @@
 /** Ações do laboratório: cura, cápsula, inicial e fala dos pesquisadores. */
 
 import { alvoDoLaboratorio } from "../mundo/cidade/laboratorio.js";
-import { ganharBolas, especieNoTime, listaParty, receberEspecie, curarParty, substituirParty } from "../pokemon/party.js";
+import { ganharBolas, listaParty, receberEspecie, curarParty, substituirParty } from "../pokemon/party.js";
 import { criarAtor } from "../pokemon/ator.js";
 import { especie } from "../pokemon/dados.js";
 import { POKEMON } from "../config.js";
@@ -31,14 +31,36 @@ export function executarAlvoLaboratorio(alvo) {
     return;
   }
   if (alvo.tipo === "inicial") {
+    // Sem quest de starter ainda: pode pegar livremente da mesa.
     const chave = alvo.ref.especie;
-    if (especieNoTime(chave)) {
-      estado.itemGet = "Esse Pokémon já está no time.";
+    const esp = especie(chave);
+    if (!esp) {
+      estado.itemGet = `Espécie desconhecida (${chave}).`;
       avisar();
       return;
     }
-    const ator = receberEspecie(chave, 5);
-    estado.itemGet = ator ? `${ator.especie.nome} entrou no time.` : "O time está cheio.";
+    if (listaParty().length < POKEMON.PARTY_MAX) {
+      const ator = receberEspecie(chave, 5);
+      estado.itemGet = ator ? `${ator.especie.nome} entrou no time.` : "Não foi possível receber.";
+      avisar();
+      return;
+    }
+    const ator = criarAtor({
+      especie: esp,
+      nivel: 5,
+      shiny: false,
+      faccao: "party",
+      x: 0,
+      y: 0,
+      z: 1,
+      hostil: false,
+    });
+    if (!guardarNaCaixa(snapshot(ator))) {
+      estado.itemGet = "O time e o PC estão cheios.";
+      avisar();
+      return;
+    }
+    estado.itemGet = `${esp.nome} foi para o PC.`;
     avisar();
     return;
   }

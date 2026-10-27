@@ -1,0 +1,225 @@
+/**
+ * Tokens + receitas candy (idioma Unite).
+ * Extraído do design system soft-UI — não linkar o CSS minificado inteiro.
+ */
+
+:root {
+  --ink: #2a2440;
+  --ink-2: #5a5478;
+  --ink-3: #4a4466;
+  --muted: #7a7494;
+  --ink-on: #2a2440;
+  --paper: #ffffff;
+  --paper-2: #f3f1fa;
+  --paper-3: #e6e2f2;
+  --line: #e4e0f0;
+  --hi: #ffffff;
+  --edge: transparent;
+
+  --w55: #ffffff8c;
+  --w70: #ffffffb3;
+  --w85: #ffffffd9;
+  --w94: #fffffff0;
+  --w97: #fffffff7;
+
+  --shadow: 0 10px 28px #1a124638, 0 2px 6px #1a12461f;
+  --shadow-sm: 0 4px 12px #1a12462e;
+
+  --red: #ff5a5f;
+  --red-d: #e0303e;
+  --orange: #ff9a3a;
+  --orange-d: #e07818;
+  --yellow: #fc3;
+  --yellow-d: #f2a516;
+  --blue: #3a8cff;
+  --blue-d: #2563d8;
+  --green: #36c96a;
+  --green-d: #1fa04e;
+  --purple: #8a5cff;
+  --purple-d: #5a2fc8;
+
+  --bar-track: #3a3456;
+  --radius: 22px;
+  --font: "Nunito", system-ui, sans-serif;
+  --font-title: "M PLUS Rounded 1c", "Nunito", system-ui, sans-serif;
+  --stripes: repeating-linear-gradient(-45deg, #ffffff24 0 10px, #fff0 10px 20px);
+
+  /* Aliases HUD (antes cream/BOTW) */
+  --hud-pill-ink: var(--ink);
+  --hud-pill-muted: var(--ink-2);
+  --hud-pill-hover: color-mix(in srgb, var(--ink) 7%, transparent);
+  --hud-pill-active: color-mix(in srgb, var(--ink) 10%, transparent);
+  --hud-pill-ring: color-mix(in srgb, var(--purple) 45%, var(--ink));
+  --hud-pill-ready: var(--green);
+  --hud-pill-stowed: var(--orange);
+  --hud-pill-badge: var(--yellow);
+  --hud-pill-badge-ink: var(--ink-on);
+  --hud-sheikah-bg: color-mix(in srgb, var(--ink) 55%, transparent);
+  --hud-sheikah-border: color-mix(in srgb, var(--purple) 35%, transparent);
+}
+
+/* ---- Receitas ---- */
+
+.hud-btn {
+  --c: var(--yellow);
+  --cd: var(--yellow-d);
+  --tc: var(--ink-on);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 999px;
+  font-family: var(--font-title);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--tc);
+  cursor: pointer;
+  user-select: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--c) 82%, white) 0%,
+    var(--c) 60%,
+    var(--cd) 100%
+  );
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--cd) 70%, black), var(--shadow-sm);
+  overflow: hidden;
+  transition:
+    filter 0.12s ease,
+    transform 0.12s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.hud-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--stripes);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.hud-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.hud-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--cd) 70%, black), var(--shadow-sm);
+}
+
+.hud-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  filter: grayscale(0.35);
+  transform: none;
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--cd) 50%, black);
+}
+
+.hud-btn.ghost {
+  --c: var(--paper);
+  --cd: var(--paper-3);
+  --tc: var(--ink);
+}
+
+.hud-btn.red {
+  --c: var(--red);
+  --cd: var(--red-d);
+  --tc: #fff;
+}
+
+.hud-btn.yellow {
+  --c: var(--yellow);
+  --cd: var(--yellow-d);
+  --tc: var(--ink-on);
+}
+
+.hud-btn.blue {
+  --c: var(--blue);
+  --cd: var(--blue-d);
+  --tc: #fff;
+}
+
+.hud-btn.green {
+  --c: var(--green);
+  --cd: var(--green-d);
+  --tc: #fff;
+}
+
+.hud-btn.small {
+  padding: 7px 14px;
+  font-size: 12px;
+}
+
+.hud-btn.big {
+  padding: 14px 28px;
+  font-size: 17px;
+}
+
+.hud-panel {
+  background: var(--w97);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+.hud-head {
+  --head-c: var(--orange);
+  --head-cd: var(--orange-d);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 16px 16px 10px 10px;
+  color: #fff;
+  font-family: var(--font-title);
+  font-weight: 800;
+  text-shadow: 0 1px 2px #00000040;
+  background: var(--stripes), linear-gradient(100deg, var(--head-c), var(--head-cd));
+}
+
+.hud-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    box-shadow 0.12s ease,
+    color 0.12s ease,
+    transform 0.12s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.hud-pill.on,
+.hud-pill.is-on {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 2px 0 #1a12461f, var(--shadow-sm);
+}
+
+.hud-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 78%, black);
+  color: #fff;
+  font: 800 11px/1 var(--font);
+  letter-spacing: 0.02em;
+}

@@ -344,6 +344,7 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
   } else if (acao.id === "pc") executarAlvoHub(alvoHub);
   else if (acao.id === "loja") executarAlvoHub(alvoHub);
   else if (acao.id === "capsula") executarAlvoLaboratorio(alvoLab);
+  else if (acao.id === "inicial") executarAlvoLaboratorio(alvoLab);
   else if (acao.id === "placa") lerPlaca(acao.placa);
   else if (acao.id === "colher") {
     const msg = colherSilvestre(acao.arbusto);

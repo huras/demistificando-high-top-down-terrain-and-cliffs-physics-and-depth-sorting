@@ -15,6 +15,7 @@ import {
   definirMenuApi,
   definirRadarApi,
   definirStatusApi,
+  definirSkillApi,
   abrirMapaMundo,
   questsAtivas,
   salvarJogo,
@@ -102,6 +103,7 @@ export function bootHudCompleto() {
   objetivoApi = montarObjetivoMissao(document.getElementById("quest-objective-hud"));
   movesApi = montarMovesCampo(document.getElementById("party-moves-combat"));
   skillApi = montarSkillLoadout();
+  definirSkillApi(skillApi);
   montarMorteHud();
   bootQuestBoard();
   aquecerPinMissao();
@@ -142,6 +144,7 @@ export function tickHudCampo(dt, corpo) {
   objetivoApi?.sync?.();
   if (radarApi?.isOpen?.()) radarApi.sync?.();
   if (statusApi?.isOpen?.()) statusApi.sync?.();
+  if (skillApi?.isOpen?.()) skillApi.sync?.();
   menu?.syncMoney?.();
 }
 

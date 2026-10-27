@@ -591,14 +591,34 @@ export function alvoDoLaboratorio(x, y) {
     const npc = PLANTA.npcs[i];
     if (Math.hypot(px - npc.x, py - npc.y) <= npc.alcance) return { tipo: "npc", ref: npc };
   }
+  // Bolas ficam no centro do tampo; o jogador só chega na borda — detecta pela mesa.
+  const mesas = [];
+  for (let i = 0; i < PLANTA.moveis.length; i++) {
+    if (PLANTA.moveis[i].id === "mesa") mesas.push(PLANTA.moveis[i]);
+  }
   let bola = null;
-  let distBola = 1.45;
-  for (let i = 0; i < PLANTA.bolas.length; i++) {
-    const item = PLANTA.bolas[i];
-    const dist = Math.hypot(px - item.x, py - item.y);
-    if (dist <= distBola) {
-      distBola = dist;
-      bola = item;
+  let distBola = Infinity;
+  for (let m = 0; m < mesas.length; m++) {
+    if (!pertoCaixa(px, py, mesas[m], 1.55)) continue;
+    for (let b = 0; b < PLANTA.bolas.length; b++) {
+      const item = PLANTA.bolas[b];
+      if ((item.mesaI | 0) !== m) continue;
+      const dist = Math.hypot(px - item.x, py - item.y);
+      if (dist < distBola) {
+        distBola = dist;
+        bola = item;
+      }
+    }
+  }
+  if (!bola) {
+    distBola = 1.85;
+    for (let i = 0; i < PLANTA.bolas.length; i++) {
+      const item = PLANTA.bolas[i];
+      const dist = Math.hypot(px - item.x, py - item.y);
+      if (dist <= distBola) {
+        distBola = dist;
+        bola = item;
+      }
     }
   }
   if (bola) return { tipo: "inicial", ref: bola };
@@ -609,7 +629,7 @@ export function promptDoLaboratorio(alvo) {
   if (!alvo) return "";
   if (alvo.tipo === "cura") return "Recuperar";
   if (alvo.tipo === "capsula") return "";
-  if (alvo.tipo === "inicial") return `Pokébola de ${alvo.ref.especie} — R`;
+  if (alvo.tipo === "inicial") return "";
   if (alvo.tipo === "npc") return `${alvo.ref.nome} — R`;
   return "";
 }

@@ -9,16 +9,6 @@
   --hud-safe-right: 12px;
   --hud-safe-top: 12px;
   --hud-safe-bottom: 12px;
-  --hud-pill-ink: #3a3328;
-  --hud-pill-hover: rgba(40, 32, 24, 0.07);
-  --hud-pill-active: rgba(40, 32, 24, 0.08);
-  --hud-pill-ring: rgba(40, 32, 24, 0.28);
-  --hud-pill-ready: #65a30d;
-  --hud-pill-stowed: #d97706;
-  --hud-pill-badge: #e8c547;
-  --hud-pill-badge-ink: #1a1408;
-  --hud-sheikah-bg: rgba(0, 0, 0, 0.48);
-  --hud-sheikah-border: rgba(56, 189, 248, 0.18);
   --party-slot: clamp(48px, 7.2vmin, 58px);
   --world-map-void: #143a68;
 }
@@ -103,7 +93,6 @@
 .hud-pill-rail,
 .hud-utility-rail,
 .hotbar-hud.hud-pill-rail {
-  --hud-pill-ink: #3a3328;
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -112,11 +101,12 @@
   width: auto;
   padding: 5px 14px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  font-family: var(--font);
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
-    0 8px 18px rgba(0, 0, 0, 0.22);
+    inset 0 1px 0 var(--hi),
+    inset 0 -1px 0 color-mix(in srgb, var(--ink) 10%, transparent),
+    var(--shadow-sm);
   pointer-events: auto;
 }
 
@@ -125,7 +115,7 @@
   padding: 8px 18px;
   max-width: calc(100% - 32px);
   overflow: visible;
-  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
   isolation: isolate;
 }
 
@@ -189,7 +179,7 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  font: 700 10px/16px "Segoe UI", system-ui, sans-serif;
+  font: 700 10px/16px var(--font);
   font-variant-numeric: tabular-nums;
   text-align: center;
   color: var(--hud-pill-badge-ink);
@@ -286,7 +276,7 @@
   width: 36px;
   height: 36px;
   padding: 0 !important;
-  color: #3a3328;
+  color: var(--ink);
   background: transparent !important;
   border: none !important;
   border-radius: 50%;
@@ -299,13 +289,13 @@
 }
 
 .hud-utility-btn:hover:not(:disabled) {
-  background: rgba(40, 32, 24, 0.07) !important;
+  background: color-mix(in srgb, var(--ink) 7%, transparent) !important;
   transform: translateY(-1px);
 }
 
 .hud-utility-btn.is-active {
-  background: rgba(40, 32, 24, 0.08) !important;
-  box-shadow: inset 0 0 0 2px rgba(40, 32, 24, 0.28);
+  background: color-mix(in srgb, var(--ink) 8%, transparent) !important;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ink) 28%, transparent);
 }
 
 .hud-utility-btn__icon {
@@ -335,9 +325,9 @@
   padding: 4px 8px;
   border-radius: 999px;
   background: transparent;
-  border: 1px solid rgba(40, 32, 24, 0.22);
-  font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
-  color: #3a3328;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+  font: 700 11px/1 var(--font);
+  color: var(--ink);
   cursor: pointer;
 }
 
@@ -371,13 +361,13 @@
   min-height: 0;
   padding: 6px 12px 6px 8px;
   gap: 6px;
-  color: #8a6914;
-  background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
+  color: color-mix(in srgb, var(--yellow-d) 70%, var(--ink));
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
   border: none;
   border-radius: 999px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(180, 168, 148, 0.28),
+    inset 0 1px 0 var(--hi),
+    inset 0 -1px 0 color-mix(in srgb, var(--ink) 10%, transparent),
     0 6px 14px rgba(0, 0, 0, 0.18);
   backdrop-filter: none;
   pointer-events: auto;
@@ -641,7 +631,7 @@
   justify-content: center;
   gap: 5px;
   min-width: 0;
-  font: 650 11px/1 "Segoe UI", system-ui, sans-serif;
+  font: 650 11px/1 var(--font);
   color: rgba(230, 238, 252, 0.78);
 }
 
@@ -813,7 +803,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font: 700 0.68rem/1 "Segoe UI", system-ui, sans-serif;
+  font: 700 0.68rem/1 var(--font);
   color: #f8fafc;
   background: linear-gradient(180deg, #64748b, #334155);
   border: 1px solid rgba(226, 232, 240, 0.55);
@@ -837,7 +827,7 @@
 }
 
 .area-minimap__place {
-  font: 700 0.78rem/1.15 "Segoe UI", system-ui, sans-serif;
+  font: 700 0.78rem/1.15 var(--font);
   color: #e6eefc;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
   white-space: nowrap;
@@ -872,13 +862,13 @@
 }
 
 .area-minimap__mode > b {
-  font: 700 0.82rem/1.1 "Segoe UI", system-ui, sans-serif;
+  font: 700 0.82rem/1.1 var(--font);
   color: #d8f0d0;
   letter-spacing: 0.02em;
 }
 
 .area-minimap__mode > span {
-  font: 500 0.68rem/1.2 "Segoe UI", system-ui, sans-serif;
+  font: 500 0.68rem/1.2 var(--font);
   color: #a8c4a8;
   white-space: nowrap;
   overflow: hidden;
@@ -906,7 +896,7 @@
   background: rgba(12, 16, 24, 0.72);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(148, 163, 184, 0.18);
-  font: 600 0.62rem/1 "Segoe UI", system-ui, sans-serif;
+  font: 600 0.62rem/1 var(--font);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(230, 238, 252, 0.55);
@@ -1193,10 +1183,10 @@
   padding: 12px;
   border-radius: 18px;
   color: var(--hud-pill-ink);
-  background: #fffef8;
+  background: var(--paper);
   box-shadow:
     0 10px 28px rgba(15, 23, 42, 0.28),
-    inset 0 0 0 1px rgba(40, 32, 24, 0.12);
+    inset 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent);
 }
 
 .mode-picker__header {
@@ -1205,7 +1195,7 @@
   gap: 8px;
   margin-bottom: 8px;
   padding: 2px 4px 8px;
-  border-bottom: 1px solid rgba(40, 32, 24, 0.1);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
 }
 
 .mode-picker__title {
@@ -1228,13 +1218,13 @@
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  color: #4a4336;
-  background: rgba(40, 32, 24, 0.05);
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
   border: none;
   border-radius: 999px;
   cursor: pointer;
   text-align: left;
-  box-shadow: inset 0 0 0 1px rgba(40, 32, 24, 0.1);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent);
   transition:
     background 0.15s,
     color 0.15s,

@@ -32,6 +32,7 @@ let menuApi = null;
 let dexApi = null;
 let radarApi = null;
 let statusApi = null;
+let skillApi = null;
 let ouvintesHotbar = [];
 let corpoRef = null;
 
@@ -43,6 +44,10 @@ estado._fecharHudExtra = () => {
   if (estado.statusAberto) {
     statusApi?.close?.();
     estado.statusAberto = false;
+  }
+  if (estado.skillAberto) {
+    skillApi?.close?.();
+    estado.skillAberto = false;
   }
   if (estado.menuAberto) {
     menuApi?.close?.();
@@ -66,12 +71,33 @@ export function definirStatusApi(api) {
   statusApi = api;
 }
 
+export function definirSkillApi(api) {
+  skillApi = api;
+}
+
 export function statusHud() {
   return statusApi;
 }
 
+export function skillHud() {
+  return skillApi;
+}
+
 export function toggleStatus() {
   return statusApi?.toggle?.() ?? false;
+}
+
+export function toggleSkillLoadout() {
+  const r = skillApi?.toggle?.() ?? false;
+  estado.skillAberto = !!skillApi?.isOpen?.();
+  avisar();
+  return r;
+}
+
+export function fecharSkillLoadout() {
+  skillApi?.close?.();
+  estado.skillAberto = false;
+  avisar();
 }
 
 export function definirCorpoHud(corpo) {

@@ -64,7 +64,7 @@ import { celulaLivre } from "../wild/salas.js";
 import { sfx } from "./audio.js";
 import { tocarChoose } from "./som/mundoSfx.js";
 import { htmlIcone } from "./icones.js";
-import { abrirDex, dexAberta, fecharDex, toggleRideSlot } from "./apiHud.js";
+import { abrirDex, dexAberta, fecharDex, toggleRideSlot, toggleSkillLoadout } from "./apiHud.js";
 import { tratarUtilityHud } from "./hud/bootHud.js";
 import { htmlMochilaMenu } from "./uiMenuPaginas.js";
 import { aoMudarIdioma, definirIdioma, idiomaAtual, t } from "./i18n.js";
@@ -151,6 +151,10 @@ function noClique(ev) {
   else if (act === "aba") abrirPainel(btn.dataset.painel);
   else if (act === "ride") {
     toggleRideSlot(Number(btn.dataset.i));
+    pintar();
+    return;
+  } else if (act === "skills") {
+    toggleSkillLoadout();
     pintar();
     return;
   } else if (act === "utility") {
