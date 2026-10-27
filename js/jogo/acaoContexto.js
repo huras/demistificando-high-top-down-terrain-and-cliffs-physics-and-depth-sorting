@@ -11,6 +11,7 @@ import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { predioNoLayout } from "../mundo/regiao/volumesCidade.js";
 import { ancoraDoHub } from "./hub.js";
 import { arbustoMaduroPerto } from "../campo/colherBerry.js";
+import { plotMaduroPerto } from "./campo.js";
 import { promptSantuario, santuarioPerto } from "../santuario/interagir.js";
 import { puzzleSantuarioAberto } from "../santuario/puzzleModal.js";
 import { totemPerto } from "../santuario/interior.js";
@@ -124,13 +125,30 @@ export function acaoContexto(ctx) {
   }
 
   if (noMundo && !corpo.escalando) {
-    const arbusto = arbustoMaduroPerto(corpo.x, corpo.y, corpo.z || 0);
-    if (arbusto) {
+    const piso = corpo.z || 0;
+    const arbusto = arbustoMaduroPerto(corpo.x, corpo.y, piso);
+    const plot = plotMaduroPerto(corpo.x, corpo.y, piso);
+    let escolha = null;
+    if (arbusto && plot) {
+      const dArb = Math.hypot(arbusto.x - corpo.x, arbusto.y - corpo.y);
+      const dPlot = Math.hypot(plot.x + 0.5 - corpo.x, plot.y + 0.5 - corpo.y);
+      escolha = dPlot <= dArb ? { tipo: "plot", plot } : { tipo: "arbusto", arbusto };
+    } else if (plot) escolha = { tipo: "plot", plot };
+    else if (arbusto) escolha = { tipo: "arbusto", arbusto };
+    if (escolha?.tipo === "plot") {
+      return {
+        id: "colherCanteiro",
+        rotulo: "Colher",
+        ancora: { x: escolha.plot.x + 0.5, y: escolha.plot.y + 0.5, z: piso },
+        plot: escolha.plot,
+      };
+    }
+    if (escolha?.tipo === "arbusto") {
       return {
         id: "colher",
         rotulo: "Colher",
-        ancora: { x: arbusto.x, y: arbusto.y, z: arbusto.z },
-        arbusto,
+        ancora: { x: escolha.arbusto.x, y: escolha.arbusto.y, z: escolha.arbusto.z },
+        arbusto: escolha.arbusto,
       };
     }
   }

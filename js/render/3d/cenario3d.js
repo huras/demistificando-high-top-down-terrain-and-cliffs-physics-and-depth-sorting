@@ -46,6 +46,8 @@ import { criarFxCampo } from "../../campo/fx.js";
 import { criarPoeiraPasso3d } from "./poeiraPasso3d.js";
 import { criarFxBola3d } from "./fxBola3d.js";
 import { criarFxAgua3d } from "./fxAgua3d.js";
+import { criarLetrasPlaza3d } from "./letrasPlaza3d.js";
+import { criarLetrasArcos3d } from "./letrasArcos3d.js";
 import { criarVentoAsa3d } from "./ventoAsa3d.js";
 import { criarMarcadorHover3d } from "../hoverTile.js";
 import { criarElipsesSelecaoPokemon } from "./elipseSelecaoPokemon.js";
@@ -207,6 +209,8 @@ function aplicarVazioSala(dentro) {
     if (agua) agua.visible = true;
     if (estado.terrenoSuave?.mesh) estado.terrenoSuave.mesh.visible = true;
     if (estado.terrenoHorizonte?.mesh) estado.terrenoHorizonte.mesh.visible = true;
+    if (estado.letrasPlaza?.grupo) estado.letrasPlaza.grupo.visible = true;
+    if (estado.letrasArcos?.grupo) estado.letrasArcos.grupo.visible = true;
     if (domoNoVazio && domo) domo.visible = true;
     domoNoVazio = false;
     return;
@@ -226,6 +230,8 @@ function aplicarVazioSala(dentro) {
   if (estado.vegetacaoDistante?.grupo) estado.vegetacaoDistante.grupo.visible = false;
   if (estado.vegetacaoHorizonte?.grupo) estado.vegetacaoHorizonte.grupo.visible = false;
   if (estado.cidadeHorizonte?.grupo) estado.cidadeHorizonte.grupo.visible = false;
+  if (estado.letrasPlaza?.grupo) estado.letrasPlaza.grupo.visible = false;
+  if (estado.letrasArcos?.grupo) estado.letrasArcos.grupo.visible = false;
   if (domo) {
     domo.visible = false;
     domoNoVazio = true;
@@ -364,6 +370,11 @@ export function iniciarCenario3d(canvas, atlas = null) {
   const fxAgua = criarFxAgua3d();
   scene.add(fxAgua.grupo);
 
+  const letrasPlaza = criarLetrasPlaza3d();
+  scene.add(letrasPlaza.grupo);
+  const letrasArcos = criarLetrasArcos3d();
+  scene.add(letrasArcos.grupo);
+
   const personagem = criarPersonagem3d({
     nome: "personagem",
     sprite: atlas?.jogador ?? null,
@@ -427,6 +438,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
     poeiraPasso,
     fxBola,
     fxAgua,
+    letrasPlaza,
+    letrasArcos,
     palhaLares,
     personagem,
     agente3d,
@@ -748,6 +761,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.poeiraPasso?.atualizar?.();
   estado.fxBola?.atualizar?.(camRender);
   estado.fxAgua?.atualizar?.(camRender);
+  estado.letrasPlaza?.atualizar?.(corpo.x, corpo.y);
+  estado.letrasArcos?.atualizar?.(corpo);
   anotarEstadoSim(estado.personagem.grupo, corpo);
   estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
   if (agente && estado.agente3d) {

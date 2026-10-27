@@ -349,6 +349,34 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       }
       continue;
     }
+    if (marca.tipo === "letra") {
+      const r = (vista.mini ? 4.2 : 5.5) * dpr;
+      ctx.fillStyle = marca.cor || "#c9b6ff";
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = marca.cleared ? "rgba(40,90,60,0.85)" : "rgba(40,30,70,0.75)";
+      ctx.lineWidth = Math.max(1, 1.2 * dpr);
+      ctx.stroke();
+      if (!vista.mini) {
+        ctx.fillStyle = "#1a1528";
+        ctx.font = `700 ${Math.max(9, 10 * dpr)}px ui-sans-serif, system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(marca.letter || "?"), sx, sy + 0.5);
+        if (vista.hoverMarcaId === marca.id && marca.nome) {
+          nomes.push({
+            texto: marca.nome,
+            x: sx + 10 * dpr,
+            y: sy + alturaFonte * 0.3,
+            altura: alturaFonte,
+            prio: 4,
+            dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
+          });
+        }
+      }
+      continue;
+    }
     ctx.fillStyle = marca.cor || "#f2d48a";
     ctx.beginPath();
     ctx.arc(sx, sy, 4.5 * dpr, 0, Math.PI * 2);

@@ -379,6 +379,10 @@
       "classe": "pedra",
       "arquivo": "assets/rocks/small-black-meteorite.png"
     },
+    "small-moon-meteorite": {
+      "classe": "pedra",
+      "arquivo": "assets/rocks/small-moon-meteorite.png"
+    },
     "red-mushroom-b": {
       "classe": "pedra",
       "arquivo": "assets/rocks/red-mushroom-b.png"

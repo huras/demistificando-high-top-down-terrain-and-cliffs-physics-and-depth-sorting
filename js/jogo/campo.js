@@ -14,6 +14,7 @@ import { alturaEm } from "../mundo/altura.js";
 import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { BLOCO } from "../mundo/voxel/tiposBloco.js";
 import { superficieDoRelevo } from "../mundo/bioma/catalogo.js";
+import { ALCANCE_COLHER } from "../mundo/bioma/berriesBioma.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { ajustarItem, pokemonNoCampo } from "../pokemon/party.js";
 import { executarNoProp, textoDoAcerto } from "../campo/acoes.js";
@@ -425,16 +426,41 @@ export function colherSilvestre(prop) {
   return ganho.n > 1 ? `Colheu ${ganho.n} ${nome}.` : `Colheu ${nome}.`;
 }
 
+/** Canteiro maduro perto do jogador (mesmo raio do arbusto silvestre). */
+export function plotMaduroPerto(x, y, z) {
+  let melhor = null;
+  let dist = ALCANCE_COLHER;
+  const piso = z || 0;
+  for (let i = 0; i < estado.plots.length; i++) {
+    const plot = estado.plots[i];
+    if (plot.stage !== ESTAGIO.MADURA || !plot.berryKey) continue;
+    const px = plot.x + 0.5;
+    const py = plot.y + 0.5;
+    const pz = alturaEm(plot.x, plot.y);
+    if (Math.abs(pz - piso) > 2) continue;
+    const d = Math.hypot(px - x, py - y);
+    if (d >= dist) continue;
+    dist = d;
+    melhor = plot;
+  }
+  return melhor;
+}
+
+export function colherCanteiro(plot) {
+  const key = colher(plot);
+  if (!key) return "";
+  const n = 2 + Math.floor(Math.random() * 2);
+  darItem(TIPO_ITEM.BERRY, key, n);
+  marcarQuest("berry");
+  sfx("colher");
+  const nome = nomeDe(TIPO_ITEM.BERRY, key);
+  return n > 1 ? `Colheu ${n} ${nome}.` : `Colheu ${nome}.`;
+}
+
 export function plantarOuColher(alvo, item) {
   const plot = plotEm(alvo.x, alvo.y);
   if (!plot) return "";
-  if (plot.stage === ESTAGIO.MADURA) {
-    const key = colher(plot);
-    if (!key) return "";
-    darItem(TIPO_ITEM.BERRY, key, 2 + Math.floor(Math.random() * 2));
-    marcarQuest("berry");
-    return `Colheu ${nomeDe(TIPO_ITEM.BERRY, key)}.`;
-  }
+  if (plot.stage === ESTAGIO.MADURA) return colherCanteiro(plot);
   if (plot.stage === ESTAGIO.SOLO && item?.tipo === TIPO_ITEM.BERRY && BERRIES[item.key]) {
     if (!gastar(TIPO_ITEM.BERRY, item.key, 1)) return "Sem berry para plantar.";
     plantar(plot, item.key);

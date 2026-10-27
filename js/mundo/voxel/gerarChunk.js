@@ -22,6 +22,14 @@ import {
   propsSantuarioChunk,
 } from "../../santuario/colocacao.js";
 import { dentroDoTerrenoSantuario } from "../../santuario/interior.js";
+import {
+  celulasLetrasChunk,
+  propsLetrasChunk,
+} from "../../letras/colocacao.js";
+import {
+  celulasPlazaLetrasChunk,
+  celulasSitioLetrasChunk,
+} from "../../letras/plaza.js";
 import { COLUNAS, LINHAS } from "../regioes/mapaDemoPatch.js";
 import { carimbarCorpos } from "../agua/carimbar.js";
 import { FLUIDO } from "../agua/fluidos.js";
@@ -50,6 +58,8 @@ export function* passosChunk(chunk, seed) {
 
   /** @type {Int16Array} */
   const alturas = new Int16Array(CHUNK_XZ * CHUNK_XZ);
+  const plazaLetras = celulasPlazaLetrasChunk(chunk.cx, chunk.cy);
+  const sitioLetras = celulasSitioLetrasChunk(chunk.cx, chunk.cy);
   let coluna = 0;
 
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
@@ -80,7 +90,8 @@ export function* passosChunk(chunk, seed) {
 
       const h = alturaDoRelevo(wx, wy);
       alturas[ly * CHUNK_XZ + lx] = h;
-      preencherColunaSolida(chunk, lx, ly, h, superficieDoRelevo(wx, wy));
+      const topoPlaza = plazaLetras?.has(`${wx},${wy}`) ? BLOCO.PEDRA : superficieDoRelevo(wx, wy);
+      preencherColunaSolida(chunk, lx, ly, h, topoPlaza);
       if (amostra) {
         const extra = amostra.predio;
         if (extra > 0 && !(cascasProntas() && amostra.modelo)) {
@@ -180,6 +191,7 @@ export function* passosChunk(chunk, seed) {
   const cronProps = perf ? cronometroFatia("propsBerries") : null;
   const props = [];
   const bloqueioSantuario = celulasSantuarioChunk(chunk.cx, chunk.cy);
+  const bloqueioLetras = celulasLetrasChunk(chunk.cx, chunk.cy);
   let arbustos = 0;
   coluna = 0;
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
@@ -207,6 +219,8 @@ export function* passosChunk(chunk, seed) {
       if (dentroDoTerrenoHub(plantaLoja(), wx, wy)) continue;
       if (dentroDoTerrenoSantuario(wx, wy)) continue;
       if (bloqueioSantuario?.has(`${wx},${wy}`)) continue;
+      if (bloqueioLetras?.has(`${wx},${wy}`)) continue;
+      if (sitioLetras?.has(`${wx},${wy}`)) continue;
       const planta = plantaDoRelevo(wx, wy);
       const livre = !planta || planta.classe === "grama";
       const chaveBerry = livre && arbustos < MAX_ARBUSTO_CHUNK && h >= nivel ? arbustoNaCelula(wx, wy) : null;
@@ -241,6 +255,8 @@ export function* passosChunk(chunk, seed) {
   }
   const pedras = propsSantuarioChunk(chunk.cx, chunk.cy);
   for (let i = 0; i < pedras.length; i++) props.push(pedras[i]);
+  const letras = propsLetrasChunk(chunk.cx, chunk.cy);
+  for (let i = 0; i < letras.length; i++) props.push(letras[i]);
   aplicarNaLista(props);
   definirPropsChunk(chunk.cx, chunk.cy, props);
   cronProps?.fim();

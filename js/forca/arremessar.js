@@ -5,6 +5,7 @@ import { alturaSobPes } from "../fisica/colisao.js";
 import { aplicarDanoLivre } from "../pokemon/combate/executor.js";
 import { selvagensAtivos } from "../pokemon/populacao.js";
 import { restaurarPokemon, restaurarProp } from "./carregar.js";
+import { tentarEncaixarPedraLetra } from "../letras/runtime.js";
 
 const THROW_SPEED = 11.2;
 const THROW_SPEED_MIN = 2.05;
@@ -209,6 +210,7 @@ function pousar(thrown) {
     restaurarPokemon(carry.enemy, x, y);
   } else if (carry?.prop) {
     restaurarProp(carry.prop, x, y);
+    if (carry.prop.letterPuzzleLoose) tentarEncaixarPedraLetra(carry.prop);
   }
 }
 

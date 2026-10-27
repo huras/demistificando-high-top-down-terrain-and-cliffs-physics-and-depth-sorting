@@ -253,5 +253,9 @@ export default {
     "promptPegar": "E もつ",
     "promptSoltar": "E おろす",
     "promptArremessar": "LMB なげる"
+  },
+  "letras": {
+    "encaixe": "いしがはまった。",
+    "resolvida": "もじ {letra} かんせい！"
   }
 };

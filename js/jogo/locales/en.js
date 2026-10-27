@@ -253,5 +253,9 @@ export default {
     "promptPegar": "E Grab",
     "promptSoltar": "E Place",
     "promptArremessar": "LMB Throw"
+  },
+  "letras": {
+    "encaixe": "Stone fitted.",
+    "resolvida": "Letter {letra} complete!"
   }
 };

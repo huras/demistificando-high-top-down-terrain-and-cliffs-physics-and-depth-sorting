@@ -16,6 +16,8 @@ import { pesoDoCorpo, pesoDoProp } from "./pesoCarga.js";
 export function ehPropLevantavel(p) {
   if (!p || p.oculto || p.forcaCarregado) return false;
   if (p.fase && p.fase !== FASE.EM_PE) return false;
+  // Peças já encaixadas do puzzle de letra ficam fixas.
+  if (p.letterPuzzle && !p.letterPuzzleLoose) return false;
   return p.tipo === "pedra" || p.tipo === "cristal";
 }
 

@@ -4,6 +4,7 @@
 import { RAIO_BASE_PEDRA, RAIO_POKEMON } from "../config.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { reindexarEm } from "../mundo/bioma/propsBioma.js";
+import { tentarEncaixarPedraLetra } from "../letras/runtime.js";
 import { forcaDoCarrier, poderForca, FORCA_HUMANO } from "./forcaEspecie.js";
 import { normalizarPeso } from "./pesoCarga.js";
 import { podeLevantar, duracaoFalhaSec } from "./falhaLevantar.js";
@@ -274,6 +275,9 @@ export function tentarSoltarEm(carrier, carry, x, y) {
   }
   if (!carry.prop) return false;
   restaurarProp(carry.prop, x, y);
+  if (carry.prop.letterPuzzleLoose && tentarEncaixarPedraLetra(carry.prop)) {
+    reindexarEm(carry.prop.x, carry.prop.y);
+  }
   return true;
 }
 
@@ -304,6 +308,9 @@ export function tentarSoltarAFrente(carrier, carry) {
   }
   if (!carry.prop) return false;
   restaurarProp(carry.prop, fx2, fy2);
+  if (carry.prop.letterPuzzleLoose && tentarEncaixarPedraLetra(carry.prop)) {
+    reindexarEm(carry.prop.x, carry.prop.y);
+  }
   return true;
 }
 

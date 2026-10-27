@@ -19,6 +19,7 @@ import {
   entradaPerto,
   plantarOuColher,
   colherSilvestre,
+  colherCanteiro,
   checarSaidaSala,
   sairInterior,
   tentarEntrar,
@@ -341,6 +342,9 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
   else if (acao.id === "placa") lerPlaca(acao.placa);
   else if (acao.id === "colher") {
     const msg = colherSilvestre(acao.arbusto);
+    if (msg) mostrar(msg);
+  } else if (acao.id === "colherCanteiro") {
+    const msg = colherCanteiro(acao.plot);
     if (msg) mostrar(msg);
   }
 }

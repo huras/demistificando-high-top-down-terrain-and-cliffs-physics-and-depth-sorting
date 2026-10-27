@@ -253,5 +253,9 @@ export default {
     "promptPegar": "E Pegar",
     "promptSoltar": "E Soltar",
     "promptArremessar": "LMB Arremessar"
+  },
+  "letras": {
+    "encaixe": "Pedra encaixada.",
+    "resolvida": "Letra {letra} completa!"
   }
 };

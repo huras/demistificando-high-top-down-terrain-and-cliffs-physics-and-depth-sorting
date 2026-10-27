@@ -26,14 +26,23 @@ export function limparPropsChunk(cx, cy) {
 }
 
 export function propPorId(id) {
-  const m = /^[vb](-?\d+)_(-?\d+)$/.exec(id || "");
-  if (!m) return null;
-  const wx = Number(m[1]);
-  const wy = Number(m[2]);
-  const lista = porChunk.get(chave(Math.floor(wx / CHUNK_XZ), Math.floor(wy / CHUNK_XZ)));
-  if (!lista) return null;
-  for (let i = 0; i < lista.length; i++) {
-    if (lista[i].id === id) return lista[i];
+  if (!id) return null;
+  const m = /^[vb](-?\d+)_(-?\d+)$/.exec(id);
+  if (m) {
+    const wx = Number(m[1]);
+    const wy = Number(m[2]);
+    const lista = porChunk.get(chave(Math.floor(wx / CHUNK_XZ), Math.floor(wy / CHUNK_XZ)));
+    if (!lista) return null;
+    for (let i = 0; i < lista.length; i++) {
+      if (lista[i].id === id) return lista[i];
+    }
+    return null;
+  }
+  // Letras / santuário / ids estáveis: varre chunks carregados.
+  for (const lista of porChunk.values()) {
+    for (let i = 0; i < lista.length; i++) {
+      if (lista[i].id === id) return lista[i];
+    }
   }
   return null;
 }

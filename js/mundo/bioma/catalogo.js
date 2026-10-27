@@ -7,6 +7,7 @@ import { fbm2, hash2 } from "../voxel/ruido.js";
 import { areaLogicaNoMundo, biomasDaPaleta } from "./areasMundo.js";
 import { avaliarGrafo } from "./grafo.js";
 import { amarrarBioma, plantaNoBioma } from "./detalhe.js";
+import { alturaComPlanoLetra } from "../../letras/relevo.js";
 
 /** @type {object | null} */
 let dados = null;
@@ -300,8 +301,10 @@ function pesoCosturaRelevo(wx, wy, catalogo, seed) {
   return Math.max(t, pesoCostura(wx, wy, faixaMar));
 }
 
-/** Altura em blocos. Costura Kanto↔procedural na borda; no miolo Voronoi mistura A/B. */
-export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
+/**
+ * Altura natural (sem sítio de letra). Usada na planificação dos puzzles.
+ */
+export function alturaDoRelevoNatural(wx, wy, catalogo = dados, seed = semente) {
   const nivel = nivelMarBlocos(catalogo);
   const t = pesoCosturaRelevo(wx, wy, catalogo, seed);
   const hKamostra = dentroDoKanto(wx, wy) ? amostraKanto(wx, wy)?.h : null;
@@ -318,6 +321,12 @@ export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   let h = clampAltura(hK * (1 - t) + hP * t);
   if (hK < nivel) h = Math.min(h, nivel - 1);
   return h;
+}
+
+/** Altura em blocos. Costura Kanto↔procedural na borda; sítios de letra achatam o pad. */
+export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
+  const h = alturaDoRelevoNatural(wx, wy, catalogo, seed);
+  return alturaComPlanoLetra(wx, wy, h);
 }
 
 export { pesoCosturaRelevo };
