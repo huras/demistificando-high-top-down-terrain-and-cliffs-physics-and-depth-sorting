@@ -4,7 +4,6 @@
 import { listarLaresProximos } from "../pokemon/laresMapa.js";
 import {
   PALHA_RAIO,
-  PALHA_RAIO_SYNC,
   PALHA_VEL_MUL,
 } from "../mundo/overworld/catalogoPalha.js";
 
@@ -13,7 +12,9 @@ let lares = [];
 let cacheX = Number.NaN;
 let cacheY = Number.NaN;
 const R2 = PALHA_RAIO * PALHA_RAIO;
-const REBUILD = 10;
+/** Fallback só no boot — o render injeta a lista; raio 64 no hot path matava FPS. */
+const RAIO_FISICA = 20;
+const REBUILD = 14;
 
 /**
  * Atualiza cache de lares próximos (chamado pelo render e pela física).
@@ -33,7 +34,9 @@ export function sincronizarPalha(px, py, lista = null) {
   if (lares.length && Number.isFinite(cacheX) && dx * dx + dy * dy < REBUILD * REBUILD) {
     return;
   }
-  lares = listarLaresProximos(px, py, PALHA_RAIO_SYNC, { soTerrestre: true });
+  // Já tem janela (vindo do render): não deixa jogador/agente rebuildar com raio grande.
+  if (lares.length) return;
+  lares = listarLaresProximos(px, py, RAIO_FISICA, { soTerrestre: true });
   cacheX = px;
   cacheY = py;
 }

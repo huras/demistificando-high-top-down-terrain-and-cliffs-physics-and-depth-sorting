@@ -24,6 +24,7 @@ import {
 import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
+import { larTocaEstrada } from "./laresEstrada.js";
 import {
   ORIGEM_SANTUARIO_X,
   ORIGEM_SANTUARIO_Y,
@@ -150,6 +151,9 @@ function longeDeVizinhos(cx, cy, indice, x, y) {
   return true;
 }
 
+/** Cache: listarLaresProximos / palha chamavam resolver sem memo (gate de estrada custava caro). */
+const cacheSlot = new Map();
+
 /**
  * @param {number} cx
  * @param {number} cy
@@ -161,17 +165,27 @@ function longeDeVizinhos(cx, cy, indice, x, y) {
  */
 export function resolverLarSlot(cx, cy, indice) {
   const id = `${cx},${cy},${indice}`;
+  if (cacheSlot.has(id)) return cacheSlot.get(id);
+
   const pos = posicaoCandidata(cx, cy, indice);
-  if (!pos) return null;
+  if (!pos) {
+    cacheSlot.set(id, null);
+    return null;
+  }
   const { x, y } = pos;
   if (
     zonaSemSelvagem(x, y) ||
     ehCidade(x, y) ||
-    Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN
+    Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN ||
+    larTocaEstrada(x, y)
   ) {
+    cacheSlot.set(id, null);
     return null;
   }
-  if (!longeDeVizinhos(cx, cy, indice, x, y)) return null;
+  if (!longeDeVizinhos(cx, cy, indice, x, y)) {
+    cacheSlot.set(id, null);
+    return null;
+  }
 
   const tile = infoTileHabitat(x, y);
   const hBioma = hash(cx, cy, 35 + indice);
@@ -181,13 +195,19 @@ export function resolverLarSlot(cx, cy, indice) {
 
   if (tile.molhado && !tile.caindo && tile.profundidade >= 1) {
     const kind = kindAguaDoTile(tile, hash(cx, cy, 55 + indice));
-    if (!kind) return null;
+    if (!kind) {
+      cacheSlot.set(id, null);
+      return null;
+    }
     const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
       habitat: kind,
     });
     const esp = especie(chave) || especie("magikarp") || especie("tentacool");
-    if (!esp) return null;
-    return {
+    if (!esp) {
+      cacheSlot.set(id, null);
+      return null;
+    }
+    const lar = {
       id,
       x,
       y,
@@ -198,19 +218,30 @@ export function resolverLarSlot(cx, cy, indice) {
       shiny,
       nivel,
     };
+    cacheSlot.set(id, lar);
+    return lar;
   }
 
-  if (tile.zSeco <= 0) return null;
+  if (tile.zSeco <= 0) {
+    cacheSlot.set(id, null);
+    return null;
+  }
   // Preferir chunk carregado pra terraço HIGH; relevo ainda lista o pin.
-  if (!dentroDoMapa(Math.floor(x), Math.floor(y)) && tile.zSeco <= 0) return null;
+  if (!dentroDoMapa(Math.floor(x), Math.floor(y)) && tile.zSeco <= 0) {
+    cacheSlot.set(id, null);
+    return null;
+  }
 
   const chave = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
     habitat: HABITAT.LAND,
   });
   const esp = especie(chave) || especie("pidgey");
-  if (!esp) return null;
+  if (!esp) {
+    cacheSlot.set(id, null);
+    return null;
+  }
   const kind = temFlapAround(esp) ? HABITAT.HIGH : HABITAT.LAND;
-  return {
+  const lar = {
     id,
     x,
     y,
@@ -221,6 +252,8 @@ export function resolverLarSlot(cx, cy, indice) {
     shiny,
     nivel,
   };
+  cacheSlot.set(id, lar);
+  return lar;
 }
 
 /**

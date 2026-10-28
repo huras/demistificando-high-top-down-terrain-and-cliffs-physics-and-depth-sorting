@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import { marcarSombraSuja } from "./ceu/sombraEstavel.js";
+import { aplicarFadeParedeInterior } from "./fadeParedeInterior3d.js";
 import {
   CHUNK_XZ,
   CHUNK_Y,
@@ -2056,7 +2057,10 @@ export function criarTerrenoMalha(atlas = null) {
   function materialPenhasco() {
     const chave = "parede:*";
     const pronto = materiaisKit.get(chave);
-    if (pronto) return pronto.mat;
+    if (pronto) {
+      aplicarFadeParedeInterior(pronto.mat);
+      return pronto.mat;
+    }
     const mat = new THREE.MeshStandardMaterial({
       map: texturas?.penhasco || texturas?.cliff || null,
       color: 0xffffff,
@@ -2069,6 +2073,7 @@ export function criarTerrenoMalha(atlas = null) {
     });
     materiaisKit.set(chave, { mat, tex: null });
     aplicarSombraNuvem(mat);
+    aplicarFadeParedeInterior(mat);
     return naFrenteDoSuave(mat);
   }
 
@@ -2094,7 +2099,11 @@ export function criarTerrenoMalha(atlas = null) {
     if (kit === KIT_PONTE) return materialPonte();
     const chave = `${tipo}:${kit}`;
     const pronto = materiaisKit.get(chave);
-    if (pronto) return pronto.mat;
+    if (pronto) {
+      // Topo de muro/coluna (santuario/caverna) também precisa do fade.
+      if (tipo === "topo") aplicarFadeParedeInterior(pronto.mat);
+      return pronto.mat;
+    }
     const meta = obterKit(kit);
     let tex = null;
     const img = meta?.chao ? visuais?.centros?.[meta.chao] : null;
@@ -2108,6 +2117,7 @@ export function criarTerrenoMalha(atlas = null) {
     materiaisKit.set(chave, { mat, tex });
     aplicarPeleSplat(mat, urlPele(kit));
     aplicarSombraNuvem(mat);
+    if (tipo === "topo") aplicarFadeParedeInterior(mat);
     return naFrenteDoSuave(mat);
   }
 

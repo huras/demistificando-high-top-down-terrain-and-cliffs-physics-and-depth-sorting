@@ -78,6 +78,7 @@ import { atoresVisiveis } from "../../pokemon/sistema.js";
 import { marcarCorposCrista } from "./texturasAgua3d.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
 import { ligarNpc3d, listarNpcsVisiveis, sincronizarNpc3d } from "../../npc/index.js";
+import { tickFadeParedeInterior } from "./fadeParedeInterior3d.js";
 
 let estado = null;
 let domoNoVazio = false;
@@ -762,7 +763,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   const blendBb = Math.max(estado.camera3d.blend ?? 0, estado.camera3d.folgaTeleporte ?? 0);
   const inclinacao = BILLBOARD_INCLINACAO * (1 - blendBb);
   estado.edificios?.atualizar?.(mxLod, myLod, yaw, inclinacao);
-  estado.vegetacao?.atualizar?.(yaw, inclinacao);
+  estado.vegetacao?.atualizar?.(yaw, inclinacao, mxLod, myLod);
   estado.vegetacaoDistante?.tick?.(mxLod, myLod, yaw, inclinacao);
   estado.vegetacaoHorizonte?.tick?.(mxLod, myLod, yaw, inclinacao);
   estado.palhaLares?.atualizar?.(mxLod, myLod);
@@ -803,6 +804,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   });
 
   atualizarPokemon3d(yaw, camRender, inclinacao);
+  tickFadeParedeInterior(corpo, camRender);
   atualizarDebugCorpos();
   estado.terreno?.atualizarFrustum?.(camRender, { x: corpo.x, y: corpo.y });
   const camPos = estado.camera3d.cam.position;

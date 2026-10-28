@@ -1,9 +1,9 @@
 /**
- * Locomoção 3D de NPCs: mesmo stack do companheiro (`atualizarAgente`),
- * perfil humano com pulo + escalada (sem voo/asa).
+ * Locomoção 3D de NPCs: steering + colisão no chão.
+ * Path/agente completo (atualizarAgente) custava ~8 ms/NPC no overworld.
  */
-import { alturaSobPes } from "../fisica/colisao.js";
-import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
+import { alturaSobPes, moverComColisao } from "../fisica/colisao.js";
+import { garantirCorpoLocomocao } from "../fisica/agente.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { PERFIL_ESCALADOR } from "../navegacao/perfilMovimento.js";
 
@@ -73,34 +73,37 @@ export function alturaSpawnNpc(x, y, ref = ALTURA_PRACA) {
 }
 
 /**
- * Persegue meta XY com path + pulo/climb.
- * @returns {boolean} true se chegou (ou está a chegar) na meta
+ * Persegue meta XY no chão (sem path 3D).
+ * @returns {boolean} true se chegou na meta
  */
 export function irParaNpc(npc, gx, gy, dt, vel = 0) {
   if (!npc) return true;
   garantirNpcLoco(npc);
-  const zBase = npc.elevacao ?? npc.z ?? ALTURA_PRACA;
-  const zAlvo = alturaSobPes(gx, gy, zBase + 12);
-  const zMeta = zAlvo > 0 ? zAlvo : zBase;
-  atualizarAgente(
-    npc,
-    { x: gx, y: gy, z: zMeta, elevacao: zMeta },
-    dt,
-    vel,
-    0,
-  );
-  syncFacingPeople(npc);
   const dx = gx - npc.x;
   const dy = gy - npc.y;
   const dist = Math.hypot(dx, dy);
-  const emTransito = !!(
-    npc.andando ||
-    npc.pulando ||
-    npc.escalando ||
-    npc.mantle ||
-    npc.nadando
-  );
-  if (dist < NPC_DIST_CHEGAR && !emTransito) {
+  if (dist < NPC_DIST_CHEGAR || !(vel > 0) || !(dt > 0)) {
+    npc.vx = 0;
+    npc.vy = 0;
+    npc.andando = false;
+    snapChaoNpc(npc);
+    return dist < NPC_DIST_CHEGAR;
+  }
+  const passo = Math.min(vel * dt, dist);
+  const ix = (dx / dist) * passo;
+  const iy = (dy / dist) * passo;
+  const mov = moverComColisao(npc, ix, iy);
+  npc.x = mov.x;
+  npc.y = mov.y;
+  npc.vx = ix / dt;
+  npc.vy = iy / dt;
+  npc.andando = true;
+  npc.dirX = dx / dist;
+  npc.dirY = dy / dist;
+  snapChaoNpc(npc);
+  syncFacingPeople(npc);
+  const rest = Math.hypot(gx - npc.x, gy - npc.y);
+  if (rest < NPC_DIST_CHEGAR) {
     npc.vx = 0;
     npc.vy = 0;
     npc.andando = false;

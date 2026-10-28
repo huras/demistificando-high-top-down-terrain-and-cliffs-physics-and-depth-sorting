@@ -429,9 +429,19 @@ export function amostraKanto(wx, wy) {
   return cacheAmostra;
 }
 
+/** Só geometria de rua — sem água/perfil (hot path de lares / autotile). */
 export function ehCaminhoKanto(wx, wy) {
-  const amostra = amostraKanto(wx, wy);
-  return !!amostra?.rua;
+  if (!dentroDoKanto(wx, wy)) return false;
+  const local = paraLocalKanto(wx, wy);
+  const x = local.x | 0;
+  const y = local.y | 0;
+  const ax = (x / AREA_KANTO) | 0;
+  const ay = (y / AREA_KANTO) | 0;
+  const zona = zonaEm(ax, ay);
+  if (!zona) return false;
+  const lx = x - ax * AREA_KANTO;
+  const ly = y - ay * AREA_KANTO;
+  return ehRua(lx, ly, zona);
 }
 
 export const ALTURA_PRACA = COTA_CIDADE;

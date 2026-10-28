@@ -123,7 +123,11 @@ function criarAtorSlot() {
   silhueta.scale.copy(sprite.scale);
   silhueta.visible = false;
   grupo.add(silhueta);
+  // veu: só abaixo da lâmina. seco: só acima (half-out sem a água cobrir o sprite).
   const planoVeu = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+  const planoSeco = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1e6);
+  sprite.material.clippingPlanes = [planoSeco];
+  silhueta.material.clippingPlanes = [planoSeco];
   const veu = criarAtorCartao(tex, {
     nome: "pokemon-veu",
     color: 0x1a6fbf,
@@ -175,6 +179,7 @@ function criarAtorSlot() {
     silhueta,
     veu,
     planoVeu,
+    planoSeco,
     sombra,
     brilhos,
     flash,
@@ -538,6 +543,12 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
     if (fr && pack.img && pack.estado === "pronto") pintar(slot, ator, fr, pack);
     else fallback(slot, ator);
     const offsetY = aplicarMedida(slot, ator);
+    // Altura do trim no mundo → imersaoNado (half-out bate com o sprite, não a hitbox).
+    {
+      const { escala } = medidaSprite(ator);
+      const trimH = fr?.trimH || fr?.h || 0;
+      if (trimH > 0) ator._alturaVisual = trimH * PX_MUNDO * escala;
+    }
     if (espEvo) ator.especie = espBackup;
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
     const { sx, sy } = squashAndar(ator);
@@ -570,7 +581,13 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
     const pe = alturaPe(ator);
     const imerso = agua.superficie > 0 && pe < agua.superficie - 0.05;
     slot.veu.visible = imerso && some > 0.04;
-    if (imerso) slot.planoVeu.constant = agua.superficie * ALTURA_BLOCO;
+    if (imerso) {
+      const yLamina = agua.superficie * ALTURA_BLOCO;
+      slot.planoVeu.constant = yLamina;
+      slot.planoSeco.constant = -yLamina;
+    } else {
+      slot.planoSeco.constant = 1e6;
+    }
     // Selvagem: sem silhueta atrás de árvore/sólido (só party/jogador).
     const silhuetaLigada = ator.faccao === "party" && some > 0.04;
     slot.silhueta.visible = silhuetaLigada;

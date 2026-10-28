@@ -54,7 +54,11 @@ export function criarPersonagem3d(opts = {}) {
   silhueta.visible = cartao.visible;
   grupo.add(silhueta);
 
+  // veu: só abaixo da lâmina (tint azul). seco: só acima (corpo seco / half-out).
   const planoVeu = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+  const planoSeco = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1e6);
+  cartao.material.clippingPlanes = [planoSeco];
+  silhueta.material.clippingPlanes = [planoSeco];
   const veu = criarAtorCartao(tex, {
     nome: "personagem-veu",
     color: 0x1a6fbf,
@@ -178,7 +182,15 @@ export function criarPersonagem3d(opts = {}) {
       const agua = colunaAgua(corpoEstado.x, corpoEstado.y);
       const imerso = agua.superficie > 0 && elevFisica < agua.superficie - 0.05;
       veu.visible = imerso && cartao.visible;
-      if (imerso) planoVeu.constant = agua.superficie * ALTURA_BLOCO;
+      if (imerso) {
+        const yLamina = agua.superficie * ALTURA_BLOCO;
+        // veu: y <= lâmina; cartão/silhueta: y >= lâmina (água não cobre o corpo seco).
+        planoVeu.constant = yLamina;
+        planoSeco.constant = -yLamina;
+      } else {
+        // Fora d'água: não corta nada (y + 1e6 >= 0 sempre).
+        planoSeco.constant = 1e6;
+      }
 
       const yaw =
         yawCam != null && Number.isFinite(yawCam)

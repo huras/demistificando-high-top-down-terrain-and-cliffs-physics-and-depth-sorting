@@ -142,11 +142,19 @@ export const STAMINA_REGEN = 28;
  * na mesma imersão de quem ainda pisa no limite.
  */
 export const AGUA_LIMIAR_VADO = 1.05;
-/** Pés no nado: a mesma linha do vau no limite. */
-export const AGUA_FLUTUA = AGUA_LIMIAR_VADO;
+/**
+ * Fallback de imersão no nado (nav / corpos sem altura).
+ * ~metade de ALTURA_SPRITE_JOGADOR × cos(BILLBOARD_INCLINACAO) ≈ 0.71.
+ */
+export const AGUA_FLUTUA = 0.71;
+/** Fração do corpo submersa ao nadar (0.5 = metade fora). */
+export const AGUA_NADO_FRACAO_IMERSOS = 0.5;
+/** Clamp da imersão por entidade (blocos). Já conta tilt do billboard. */
+export const AGUA_NADO_IMERSOS_MIN = 0.4;
+export const AGUA_NADO_IMERSOS_MAX = 1.2;
 /** Lâmina visual abaixo do chanfro da margem (bate com QUEDA_LABIO + folga). */
 export const AGUA_OFFSET_LAMINA = 0.18;
-/** Além de AGUA_FLUTUA, o quanto o corpo desce ao afogar. */
+/** Além da imersão de nado, o quanto o corpo desce ao afogar. */
 export const AGUA_AFOGA_EXTRA = 0.8;
 export const AGUA_VEL_NADO = 2.4;
 export const AGUA_CORRENTE = 2.2;
@@ -306,7 +314,8 @@ export const VEG_CRISTAL_OPACIDADE = 0.62;
 export const VEG_ARVORE_ESCALA = 1;
 export const VEG_MATA_ESCALA = 0.75;
 /** Só reescreve instanceMatrix se o yaw mudou mais que isto (rad). */
-export const VEG_YAW_EPS = 0.001;
+/** ~1.7° — abaixo disso o rewrite de milhares de matrizes CPU não vale o custo. */
+export const VEG_YAW_EPS = 0.03;
 /**
  * Balanço GPU (ventoVeg). forca = metros no topo com intensidade≈1;
  * tipPow >1 deixa o pé mais parado.
@@ -483,6 +492,20 @@ export const FADE_COBERTURA_SOB_TETO = true;
 export const CAVERNA_2D_FUNDO = "#07060a";
 
 /**
+ * Fade 3D de parede (santuario / caverna): dither em shader nas faces
+ * entre a câmera e o jogador/party — sem transparent no chunk inteiro.
+ */
+export const FADE_PAREDE_INTERIOR_ATIVO = true;
+/** Fração de pixels que permanece (screen-door). 0.22 ≈ bem legível. */
+export const FADE_PAREDE_INTERIOR_ALPHA = 0.22;
+/** Raio horizontal (células) em torno de cada foco. */
+export const FADE_PAREDE_INTERIOR_RAIO = 7.2;
+/** Só fade acima dos pés do foco + isto (chão fica opaco). */
+export const FADE_PAREDE_INTERIOR_DELTA_Y = 0.45;
+/** Máx. focos (jogador + party). */
+export const FADE_PAREDE_INTERIOR_FOCOS = 4;
+
+/**
  * Selvagens, party e combate. Números alinhados ao overworld de referência
  * (grama 0.14 / 2.5s / 4 ativos, desmaio 60s, aviso 7, agro 9).
  */
@@ -496,7 +519,8 @@ export const POKEMON = Object.freeze({
   RAIO_MANTER: 56,
   RAIO_MANTER_AGRO: 80,
   RAIO_LARES: 64,
-  MIN_ESPACO_LARES: 20,
+  /** Distância mínima centro↔centro entre lares (núcleo ~5×5). */
+  MIN_ESPACO_LARES: 22,
   MIN_ESPACO_GRAMA: 10,
   FOLGA_SPAWN: 14,
   RAIO_TERRITORIO: 10,

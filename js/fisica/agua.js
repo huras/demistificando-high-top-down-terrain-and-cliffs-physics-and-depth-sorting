@@ -10,15 +10,56 @@ import {
   AGUA_BRACADA_CUSTO,
   AGUA_BRACADA_VZ,
   AGUA_CORRENTE,
-  AGUA_FLUTUA,
   AGUA_LIMIAR_VADO,
+  AGUA_NADO_FRACAO_IMERSOS,
+  AGUA_NADO_IMERSOS_MAX,
+  AGUA_NADO_IMERSOS_MIN,
   AGUA_QUEDA_VEL,
   AGUA_VEL_NADO,
+  ALTURA_SPRITE_JOGADOR,
+  BILLBOARD_INCLINACAO,
   STAMINA_MAX,
 } from "../config.js";
 import { amostraAgua } from "../mundo/agua/amostra.js";
 import { moverAereo } from "./colisao.js";
 import { drenarStaminaNado } from "./stamina.js";
+
+/**
+ * Altura visual do corpo no eixo do billboard (antes do tilt).
+ * Pokémon: `_alturaVisual` (trim do atlas) ou fallback ~PMD; jogador: `alturaCorpo`.
+ */
+function alturaNadoVisual(corpo) {
+  const visual = Number(corpo?._alturaVisual);
+  if (visual > 0) return visual;
+  let h = Number(corpo?.alturaCorpo);
+  if (h > 0) return h;
+  if (corpo?.especie) {
+    const esc = Number(corpo.especie.escala);
+    // ~45px PMD em 1/16 → ~2.8; hitbox 1.8 fica baixo demais pro half-out.
+    return 2.8 * (esc > 0 ? Math.min(1.6, Math.max(0.7, esc)) : 1);
+  }
+  return ALTURA_SPRITE_JOGADOR;
+}
+
+/**
+ * Quanto do corpo fica abaixo da lâmina ao nadar.
+ * Meta: metade do corpo fora d'água (pé em superficie − imersão).
+ * Usa a altura no mundo-Y após o tilt do billboard — senão a lâmina cobre quase tudo.
+ */
+export function imersaoNado(corpo) {
+  const h = alturaNadoVisual(corpo);
+  const fatorTilt = Math.cos(Math.abs(BILLBOARD_INCLINACAO));
+  const hMundo = h * Math.max(0.35, fatorTilt);
+  const raw = hMundo * AGUA_NADO_FRACAO_IMERSOS;
+  if (raw < AGUA_NADO_IMERSOS_MIN) return AGUA_NADO_IMERSOS_MIN;
+  if (raw > AGUA_NADO_IMERSOS_MAX) return AGUA_NADO_IMERSOS_MAX;
+  return raw;
+}
+
+function alvoFlutua(agua, corpo) {
+  if (agua.caindo) return agua.pisoQueda;
+  return agua.superficie - imersaoNado(corpo);
+}
 
 function aproximar(atual, alvo, maxDelta) {
   const d = alvo - atual;
@@ -103,7 +144,7 @@ function gravarAmostra(corpo, agua) {
 }
 
 export function entrarNado(corpo, agua) {
-  const alvo = agua.caindo ? agua.pisoQueda : agua.superficie - AGUA_FLUTUA;
+  const alvo = alvoFlutua(agua, corpo);
   corpo.nadando = true;
   corpo.noChao = false;
   corpo.pulando = false;
@@ -256,7 +297,7 @@ export function atualizarNado(corpo, dx, dy, dt) {
   } else if ((corpo.stamina ?? 0) <= 1e-4 && !corpo.invulneravel) {
     corpo.afogandoT = (corpo.afogandoT || 0) + dt;
     const linha = agua.caindo ? agua.pisoQueda : agua.superficie;
-    const alvo = linha - (AGUA_FLUTUA + AGUA_AFOGA_EXTRA);
+    const alvo = linha - (imersaoNado(corpo) + AGUA_AFOGA_EXTRA);
     corpo.elevacao += (alvo - corpo.elevacao) * Math.min(1, dt * 1.6);
     corpo.acao = "afogando";
     if (corpo.afogandoT >= AGUA_AFOGA_SEG) {
@@ -265,7 +306,7 @@ export function atualizarNado(corpo, dx, dy, dt) {
     }
   } else {
     corpo.afogandoT = 0;
-    const alvo = agua.caindo ? agua.pisoQueda : agua.superficie - AGUA_FLUTUA;
+    const alvo = alvoFlutua(agua, corpo);
     corpo.elevacao += (alvo - corpo.elevacao) * Math.min(1, dt * 8);
     corpo.vz = 0;
     corpo.acao = agua.caindo ? "cachoeira" : "nadando";

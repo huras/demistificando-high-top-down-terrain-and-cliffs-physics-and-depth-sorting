@@ -230,7 +230,9 @@ export function resolverMapaChao(camX, camZ) {
   const ox = Math.floor(camX / PASSO) * PASSO - METROS * 0.5;
   const oz = Math.floor(camZ / PASSO) * PASSO - METROS * 0.5;
   const assinaturaNova = assinaturaDasFontes();
-  if (ox === origemX && oz === origemZ && assinaturaNova === assinatura) return;
+  if (ox === origemX && oz === origemZ && assinaturaNova === assinatura) {
+    return;
+  }
   origemX = ox;
   origemZ = oz;
   assinatura = assinaturaNova;

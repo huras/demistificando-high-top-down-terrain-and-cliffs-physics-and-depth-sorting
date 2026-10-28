@@ -5,6 +5,7 @@ import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import { aplicarVentoVeg } from "./vegetacao/ventoVeg.js";
 import {
   ALTURA_BLOCO,
+  CHUNK_XZ,
   TILE,
   VEG_ALPHA_TEST,
   VEG_CRISTAL_OPACIDADE,
@@ -15,10 +16,10 @@ import {
 import { geometriaNoPe, poseCartao, pivoDoProp, carregarPivosProps } from "./billboard/indice.js";
 import { alturaEm } from "../../mundo/altura.js";
 import { PROPS } from "../../mundo/mapaDemo.js";
-import { todaVegetacao } from "../../mundo/bioma/propsBioma.js";
+import { visitarVegetacaoNaArea } from "../../mundo/bioma/propsBioma.js";
 import { registrarObjetoCena, removerObjetoCena, marcarAuxiliar } from "../../cena/registroCena.js";
 import { usarRaycastBillboard } from "../../cena/selecaoCena.js";
-import { onDirty } from "../../mundo/voxel/storeMundo.js";
+import { obterRaioStream, onDirty } from "../../mundo/voxel/storeMundo.js";
 import { STENCIL_GRAMA, marcarStencilSolido } from "./silhuetaSprite.js";
 import { FASE } from "../../campo/estadoProps.js";
 import { imagemToco } from "../../campo/visualToco.js";
@@ -58,7 +59,12 @@ function chaveDe(prop) {
   return prop.sprite || prop.tipo || null;
 }
 
-function recolherGrupos() {
+/** Raio de desenho near = disco do stream (props só existem nos chunks carregados). */
+function raioDesenhoVeg() {
+  return Math.max(1, obterRaioStream() | 0) * CHUNK_XZ;
+}
+
+function recolherGrupos(px = 0, py = 0) {
   const grupos = new Map();
   function por(prop) {
     const chave = chaveDe(prop);
@@ -75,9 +81,19 @@ function recolherGrupos() {
     }
     if (grupo.itens.length < CAP_INSTANCIAS) grupo.itens.push(prop);
   }
-  for (let i = 0; i < PROPS.length; i++) por(PROPS[i]);
-  const plantas = todaVegetacao();
-  for (let i = 0; i < plantas.length; i++) por(plantas[i]);
+  const r = raioDesenhoVeg();
+  const r2 = r * r;
+  for (let i = 0; i < PROPS.length; i++) {
+    const p = PROPS[i];
+    const dx = p.x - px;
+    const dy = p.y - py;
+    if (dx * dx + dy * dy <= r2) por(p);
+  }
+  visitarVegetacaoNaArea(px - r, py - r, px + r, py + r, (p) => {
+    const dx = p.x - px;
+    const dy = p.y - py;
+    if (dx * dx + dy * dy <= r2) por(p);
+  });
   return grupos;
 }
 
@@ -115,6 +131,14 @@ export function criarVegetacaoBillboard3d() {
   let yawSolAplicado = null;
   let inclinacaoAplicada = 0;
   let alturasSujas = true;
+  /** Coalesce dirty de stream — evita sync+rewrite todo frame ao andar. */
+  let proximoRecalcMs = 0;
+  const RECALC_MIN_MS = 100;
+  /** Yaw-only: no máximo ~8 Hz — 20 ms/frame em 600 cartões era o FPS. */
+  let proximoYawMs = 0;
+  const YAW_MIN_MS = 120;
+  let focoX = 0;
+  let focoY = 0;
   let quadroBerry = -1;
 
   const corInst = new THREE.Color();
@@ -393,12 +417,20 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function pose(p, largura, altura, yaw, inclinacao, amostra, pivotY, dz, opacoY) {
+  function pose(p, largura, altura, yaw, inclinacao, amostra, pivotY, dz, opacoY, refrescarAltura) {
     const grab = obterGrabAction();
     // Carry / lift / arremesso: usa z anexado (cabeça / voo), não o solo da célula.
     const anexado =
       !!(p.forcaCarregado || (grab && grab.prop === p)) && Number.isFinite(p.z);
-    const base = anexado ? p.z : alturaEm(Math.floor(p.x), Math.floor(p.y));
+    let base;
+    if (anexado) {
+      base = p.z;
+    } else if (!refrescarAltura && p._veg && Number.isFinite(p._veg.baseY)) {
+      base = p._veg.baseY;
+    } else {
+      base = alturaEm(Math.floor(p.x), Math.floor(p.y));
+      if (p._veg) p._veg.baseY = base;
+    }
     const roll = amostra ? amostra.roll : 0;
     const esmaga = amostra ? amostra.esmaga : 0;
     let px = p.x;
@@ -428,11 +460,11 @@ export function criarVegetacaoBillboard3d() {
     });
   }
 
-  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora, pivotY, dz, opacoY) {
+  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora, pivotY, dz, opacoY, refrescarAltura) {
     if (!mesh) return;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
-      pose(p, largura, altura, yaw, inclinacao, amostraSacudida(p, agora), pivotY, dz, opacoY);
+      pose(p, largura, altura, yaw, inclinacao, amostraSacudida(p, agora), pivotY, dz, opacoY, refrescarAltura);
       mesh.setMatrixAt(i, dummy.matrix);
       mesh.setColorAt(i, corDe(p));
     }
@@ -461,19 +493,23 @@ export function criarVegetacaoBillboard3d() {
     v.geracao = geracaoLote;
   }
 
-  function escrever(yaw, yawSol, inclinacao, recalcularLimites) {
+  function escrever(yaw, yawSol, inclinacao, recalcularLimites, opts = {}) {
     const agora = performance.now();
     if (recalcularLimites) {
-      sincronizarLotes(recolherGrupos());
+      sincronizarLotes(recolherGrupos(focoX, focoY));
       geracaoLote += 1;
     }
     const grab = obterGrabAction();
     const carry = obterCarry();
+    const refrescarAltura = !!recalcularLimites;
+    const escreverSombra = opts.escreverSombra !== false;
     for (const lote of lotes.values()) {
       const { mesh, sombra, itens, largura, altura, pivotY, dz, opacoY } = lote;
       const pe = Number.isFinite(opacoY) ? opacoY : 1;
-      escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora, pivotY, dz, pe);
-      escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora, pivotY, dz, pe);
+      escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora, pivotY, dz, pe, refrescarAltura);
+      if (escreverSombra) {
+        escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora, pivotY, dz, pe, refrescarAltura);
+      }
       for (let i = 0; i < itens.length; i++) {
         const p = itens[i];
         if (
@@ -546,7 +582,7 @@ export function criarVegetacaoBillboard3d() {
 
   function aplicarAtlas(atlas) {
     atlasAtual = atlas;
-    sincronizarLotes(recolherGrupos());
+    sincronizarLotes(recolherGrupos(focoX, focoY));
     sincronizarVisivel();
     alturasSujas = true;
     if (grupo.visible && yawAplicado != null) {
@@ -562,8 +598,15 @@ export function criarVegetacaoBillboard3d() {
     alturasSujas = false;
   }
 
-  function atualizar(yawCam, inclinacao = 0) {
+  function atualizar(yawCam, inclinacao = 0, px = null, py = null) {
     if (!atlasAtual) return;
+    if (Number.isFinite(px) && Number.isFinite(py)) {
+      const dx = px - focoX;
+      const dy = py - focoY;
+      if (dx * dx + dy * dy > 36) alturasSujas = true;
+      focoX = px;
+      focoY = py;
+    }
     const yaw = Number.isFinite(yawCam) ? yawCam : 0;
     const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
     const mudouYaw = yawDiferente(yaw, yawAplicado);
@@ -588,28 +631,42 @@ export function criarVegetacaoBillboard3d() {
       yawAplicado = yaw;
       yawSolAplicado = yawSol;
       inclinacaoAplicada = tilt;
-      const recalcular = alturasSujas || primeira;
-      alturasSujas = false;
-      escrever(yaw, yawSol, tilt, recalcular);
+      const podeRecalc = alturasSujas && (primeira || agora >= proximoRecalcMs);
+      const recalcular = podeRecalc || primeira;
+      if (podeRecalc) {
+        alturasSujas = false;
+        proximoRecalcMs = agora + RECALC_MIN_MS;
+      }
+      escrever(yaw, yawSol, tilt, recalcular, { escreverSombra: true });
       sincronizarVisivel();
       if (sacode || acabaram.length > 0) {
         pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
       }
       return;
     }
-    if (!mudouYaw && !mudouSol && !mudouTilt && !alturasSujas && !sacode && !primeira && !animou) return;
-    yawAplicado = yaw;
-    yawSolAplicado = yawSol;
-    inclinacaoAplicada = tilt;
-    if (mudouYaw || mudouSol || mudouTilt || alturasSujas || primeira) {
-      const recalcular = alturasSujas || primeira;
-      alturasSujas = false;
-      escrever(yaw, yawSol, tilt, recalcular);
+    const podeRecalc = alturasSujas && (primeira || agora >= proximoRecalcMs);
+    const yawDue = mudouYaw && agora >= proximoYawMs;
+    const precisaEscrever =
+      podeRecalc || primeira || mudouSol || mudouTilt || yawDue || sacode;
+    if (!precisaEscrever && !animou) return;
+
+    if (precisaEscrever) {
+      yawAplicado = yaw;
+      yawSolAplicado = yawSol;
+      inclinacaoAplicada = tilt;
+      const recalcular = podeRecalc || primeira;
+      if (podeRecalc) {
+        alturasSujas = false;
+        proximoRecalcMs = agora + RECALC_MIN_MS;
+      }
+      if (yawDue || primeira || recalcular) proximoYawMs = agora + YAW_MIN_MS;
+      // Yaw da câmera sozinho: não reescreve sombra (sol quase parado).
+      escrever(yaw, yawSol, tilt, recalcular, {
+        escreverSombra: mudouSol || recalcular || primeira,
+      });
       sincronizarVisivel();
       if (sacode) pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
-      return;
     }
-    if (sacode) pulsarSacudidas(yaw, yawSol, tilt, agora, acabaram);
   }
 
   const cancelarDirty = onDirty(() => {

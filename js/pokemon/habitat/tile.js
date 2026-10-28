@@ -93,7 +93,8 @@ export function zDoLarAquatico(kind, tile) {
   if (kind === HABITAT.UNDERSEA) {
     return Math.max(0, (tile.fundo || 0) + 0.35);
   }
-  return Math.max(0.5, (tile.superficie || 0) - 0.15);
+  // Superfície: metade do corpo fora (imersão padrão ~1 bloco).
+  return Math.max(0.5, (tile.superficie || 0) - 1);
 }
 
 export { PROF_UNDERSEA };

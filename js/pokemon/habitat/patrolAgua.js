@@ -1,7 +1,8 @@
 /**
- * Roam aquático: superfície na lâmina; undersea entre fundo e superfície.
+ * Roam aquático: superfície com metade do corpo fora; undersea entre fundo e superfície.
  */
 import { colunaAgua } from "../../mundo/agua/fluxo.js";
+import { imersaoNado } from "../../fisica/agua.js";
 import { HABITAT } from "./kinds.js";
 
 /**
@@ -23,7 +24,7 @@ export function tickPatrolAguaLar(ator, dt, agora = 0) {
   const elev = ator.elevacao ?? ator.z ?? superficie;
 
   if (kind === HABITAT.SURFACE) {
-    const alvo = Math.max(fundo + 0.4, superficie - 0.2);
+    const alvo = Math.max(fundo + 0.4, superficie - imersaoNado(ator));
     ator.elevacao = elev + (alvo - elev) * Math.min(1, 4 * dt);
     ator.z = Math.floor(fundo);
     ator.hopLift = Math.max(0, ator.elevacao - ator.z);

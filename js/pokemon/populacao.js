@@ -22,6 +22,7 @@ import {
 import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
+import { larTocaEstrada } from "./laresEstrada.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
@@ -215,7 +216,8 @@ function garantirLar(cx, cy, indice) {
   if (
     zonaSemSelvagem(x, y) ||
     ehCidade(x, y) ||
-    Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN
+    Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN ||
+    larTocaEstrada(x, y)
   ) {
     lares.set(id, null);
     return null;

@@ -518,7 +518,6 @@ export function criarEdificiosCidade() {
   let inclinacaoAplicada = NaN;
   let pxAplicado = NaN;
   let pyAplicado = NaN;
-  let pesoNoiteAplicado = -1;
   const YAW_EPS = 0.002;
   const POS_EPS = 0.35;
 
@@ -541,11 +540,10 @@ export function criarEdificiosCidade() {
       const mudouPos =
         !(Math.abs(px - pxAplicado) <= POS_EPS) ||
         !(Math.abs(py - pyAplicado) <= POS_EPS);
-      const mudouNoite = Math.abs(pesoNoite - pesoNoiteAplicado) > 0.01;
       const precisaCartao = mudouYaw || mudouTilt || Number.isNaN(yawAplicado);
       const precisaVisibilidade = mudouPos || Number.isNaN(pxAplicado);
-      const precisaLuz = mudouNoite || mudouPos || Number.isNaN(pxAplicado);
-      if (!precisaCartao && !precisaVisibilidade && !precisaLuz) return;
+      // Luz do chão: SEMPRE. comecarMapaChao zera fontes todo quadro — pular
+      // aqui apaga postes/Pokémon no idle e pisca ao andar (POS_EPS).
 
       const alcance = (obterRaioStream() + 2) * CHUNK_XZ + 96;
       const limite = alcance * alcance;
@@ -565,7 +563,6 @@ export function criarEdificiosCidade() {
             cartao.rotation.x = inclinacao;
             cartao.rotation.y = yaw;
           }
-          if (!precisaLuz) continue;
           const pontos = inst.userData.pontosLuz;
           if (!pontos) continue;
           if (inst.userData.roletaJanela) atualizarRoletaJanela(inst, pesoNoite, dtJanela);
@@ -596,11 +593,14 @@ export function criarEdificiosCidade() {
           cartao.rotation.y = yaw;
         }
       }
-      yawAplicado = yaw;
-      inclinacaoAplicada = inclinacao;
-      pxAplicado = px;
-      pyAplicado = py;
-      pesoNoiteAplicado = pesoNoite;
+      if (precisaCartao) {
+        yawAplicado = yaw;
+        inclinacaoAplicada = inclinacao;
+      }
+      if (precisaVisibilidade) {
+        pxAplicado = px;
+        pyAplicado = py;
+      }
     },
   };
 }

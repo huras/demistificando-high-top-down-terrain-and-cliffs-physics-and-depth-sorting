@@ -1,4 +1,9 @@
-import { ASA_DELTA_CORRIDA_MUL, VELOCIDADE_MAX, VELOCIDADE_SPRINT } from "../config.js";
+import {
+  ALTURA_SPRITE_JOGADOR,
+  ASA_DELTA_CORRIDA_MUL,
+  VELOCIDADE_MAX,
+  VELOCIDADE_SPRINT,
+} from "../config.js";
 import { conterNoInterior } from "../jogo/pisoInterior.js";
 import {
   teclaAgora,
@@ -61,6 +66,8 @@ export function criarCorpo(spawn) {
     escalando: false,
     voando: false,
     nadando: false,
+    /** Usado pelo nado: metade do corpo fica fora d'água. */
+    alturaCorpo: ALTURA_SPRITE_JOGADOR,
     aguaSegura: null,
     afogandoT: 0,
     aguaProf: 0,

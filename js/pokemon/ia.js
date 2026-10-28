@@ -4,13 +4,12 @@
  */
 import { AGENTE_DIST_PARAR, POKEMON } from "../config.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
-import { alturaSobPes } from "../fisica/colisao.js";
+import { alturaSobPes, moverComColisao } from "../fisica/colisao.js";
 import { soltarEscalada } from "../fisica/escalada.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { garantirNav } from "../navegacao/seguirCaminho.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
 import { velocidadeDe } from "./ator.js";
-import { irPara } from "./ia/locomocaoCampo.js";
 import {
   cfgPack,
   ehMembroPack,
@@ -21,6 +20,50 @@ import {
 } from "./pack.js";
 
 export { irPara, zDePerseguicao } from "./ia/locomocaoCampo.js";
+
+function facingDeDir(dx, dy) {
+  if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 1 : 2;
+  return dy < 0 ? 3 : 0;
+}
+
+/**
+ * Roam sem path/agente 3D — irPara/atualizarAgente custava ~8 ms/mon (logs).
+ * Combate continua em irPara via campo/engajar.
+ */
+function andarRoamBarato(ator, gx, gy, vel, dt) {
+  const dx = gx - ator.x;
+  const dy = gy - ator.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 1e-4 || !(vel > 0) || !(dt > 0)) {
+    pararCorpo(ator);
+    return false;
+  }
+  const passo = Math.min(vel * dt, d);
+  const ix = (dx / d) * passo;
+  const iy = (dy / d) * passo;
+  const mov = moverComColisao(ator, ix, iy);
+  ator.x = mov.x;
+  ator.y = mov.y;
+  const zRef = (ator.elevacao ?? ator.z ?? 0) + 1.2;
+  const chao = alturaSobPes(ator.x, ator.y, zRef);
+  if (chao > 0) {
+    ator.z = chao;
+    ator.elevacao = chao;
+    ator.hopLift = 0;
+    ator.noChao = true;
+    ator.pulando = false;
+  }
+  ator.vx = ix / dt;
+  ator.vy = iy / dt;
+  ator.andando = true;
+  ator.correndo = false;
+  ator.dirX = dx / d;
+  ator.dirY = dy / d;
+  ator.facing = facingDeDir(dx, dy);
+  ator.acao = "andando";
+  if (mov.bloqueouX && mov.bloqueouY) return false;
+  return true;
+}
 
 function dist2(a, b) {
   const dx = a.x - b.x;
@@ -112,17 +155,16 @@ function vagar(ator, dt) {
     return;
   }
   if (ator._ancoraT == null) marcarAncora(ator);
-  irPara(ator, ator.metaX, ator.metaY, null, velocidadeDe(ator, false), dt);
+  const ok = andarRoamBarato(ator, ator.metaX, ator.metaY, velocidadeDe(ator, false), dt);
   const elev = ator.elevacao ?? ator.z ?? 0;
   const progXY = Math.hypot(ator.x - ator._ax, ator.y - ator._ay);
   const progZ = Math.abs((ator.z ?? 0) - ator._az);
-  const subindoParede = ator.escalando && elev - ator._ae > 0.3;
-  if (progXY > 0.45 || progZ >= 0.9 || subindoParede) {
+  if (progXY > 0.45 || progZ >= 0.9) {
     marcarAncora(ator);
     return;
   }
   ator._ancoraT += dt;
-  if (ator._ancoraT > 1.3) desistirMeta(ator);
+  if (!ok || ator._ancoraT > 1.3) desistirMeta(ator);
 }
 
 function seguirLider(ator, selvagens, dt) {
@@ -151,8 +193,11 @@ function seguirLider(ator, selvagens, dt) {
     return;
   }
   const catchUp = dist > (packCfg.catchUpDistance ?? 2.4);
-  irPara(ator, slot.x, slot.y, null, velocidadeDe(ator, catchUp), dt);
+  andarRoamBarato(ator, slot.x, slot.y, velocidadeDe(ator, catchUp), dt);
 }
+
+/** Além disso: só path/física de roam — agro/aviso continuam no raio curto. */
+const RAIO_ROAM_LOD2 = POKEMON.RAIO_SIM * POKEMON.RAIO_SIM;
 
 /** Aviso de proximidade; combate fica em campo/tickCampo. */
 export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
@@ -172,6 +217,12 @@ export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
         definirEmocao(ator, EMOCAO.EXCLAMACAO);
         if (foco.faccao === "party") definirEmocao(foco, EMOCAO.EXCLAMACAO, { duracao: 1.2 });
       }
+    }
+    // LOD: longe do foco não gasta path/física de passeio (logs: aiMs 70–90 ms).
+    if (foco && dist2(ator, foco) > RAIO_ROAM_LOD2) {
+      pararCorpo(ator);
+      ator.andando = false;
+      continue;
     }
     if (ehMembroPack(ator)) seguirLider(ator, selvagens, dt);
     else vagar(ator, dt);

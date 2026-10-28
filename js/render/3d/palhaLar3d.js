@@ -237,6 +237,12 @@ export function criarPalhaLar3d(scene) {
  * @param {number} px
  * @param {number} py
  */
+let _ultimoPx = NaN;
+let _ultimoPy = NaN;
+let _proximoSync = 0;
+const SYNC_MIN_MS = 200;
+const SYNC_MOVE2 = 2.5 * 2.5;
+
 export function atualizarPalhaLares(px, py) {
   if (!pronto || !malhas || !grupo) {
     if (cenaRef && !malhas && !pedido) garantirMalhas(cenaRef);
@@ -247,8 +253,18 @@ export function atualizarPalhaLares(px, py) {
     for (let m = 0; m < malhas.length; m++) malhas[m].count = 0;
     return;
   }
+  const agora = performance.now();
+  const dx = px - _ultimoPx;
+  const dy = py - _ultimoPy;
+  const moveu = !(dx * dx + dy * dy < SYNC_MOVE2);
+  if (!moveu && agora < _proximoSync) return;
+  _ultimoPx = px;
+  _ultimoPy = py;
+  _proximoSync = agora + SYNC_MIN_MS;
+
   grupo.visible = true;
-  const lista = listarLaresProximos(px, py, raioSync(), { soTerrestre: true });
+  // Disco visual curto — RAIO_LARES no sync gerava dezenas de resolverLarSlot/frame.
+  const lista = listarLaresProximos(px, py, Math.min(28, raioSync()), { soTerrestre: true });
   sincronizarPalha(px, py, lista);
   const n = Math.min(lista.length, CAP);
   _esc.set(escala, escala, escala);
@@ -267,8 +283,6 @@ export function atualizarPalhaLares(px, py) {
   for (let m = 0; m < malhas.length; m++) {
     malhas[m].count = n;
     malhas[m].instanceMatrix.needsUpdate = true;
-    if (n > 0) {
-      malhas[m].computeBoundingSphere();
-    }
+    if (n > 0) malhas[m].computeBoundingSphere();
   }
 }
