@@ -247,6 +247,9 @@ export function dentroDoTerrenoHub(planta, wx, wy) {
   );
 }
 
+/** Vestíbulo sul da porta — passo da transição sem cair no void. */
+const PROF_PORTA_HUB = 1.5;
+
 export function aplicarPlantaNoChunk(chunk, planta) {
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
@@ -256,17 +259,23 @@ export function aplicarPlantaNoChunk(chunk, planta) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
       const wy = baseY + ly;
+      // Pátio (MARGEM) só reserva o bolso do gen outdoor — sem chão andável.
       if (!dentroDoTerrenoHub(planta, wx, wy)) continue;
-      preencherColunaSolida(chunk, lx, ly, ALTURA_PRACA, BLOCO.TERRA);
       const col = wx - planta.origemX;
       const row = wy - planta.origemY;
-      const solido =
-        col >= 0 &&
-        row >= 0 &&
-        col < planta.cols &&
-        row < planta.rows &&
-        planta.muro[row * planta.cols + col] === 1;
-      if (solido) {
+      const naPlanta =
+        col >= 0 && row >= 0 && col < planta.cols && row < planta.rows;
+      const noVestibulo =
+        row >= planta.rows &&
+        row < planta.rows + PROF_PORTA_HUB &&
+        col >= planta.doorX0 - 0.01 &&
+        col < planta.doorX1;
+      if (!naPlanta && !noVestibulo) {
+        mudou = true;
+        continue;
+      }
+      preencherColunaSolida(chunk, lx, ly, ALTURA_PRACA, BLOCO.TERRA);
+      if (naPlanta && planta.muro[row * planta.cols + col] === 1) {
         for (let z = ALTURA_PRACA; z < zParede; z++) definirLocal(chunk, lx, ly, z, BLOCO.PEDRA);
       }
       mudou = true;

@@ -819,12 +819,16 @@ function pintarMini() {
       ponto.y + meio,
     );
   }
+  const corpo = corpoRef;
   pintarMapa(tela.getContext("2d"), px, px, dpr, {
     cx: ponto.x,
     cy: ponto.y,
     zoom: ZOOM_MINI,
     jogadorX: ponto.x,
     jogadorY: ponto.y,
+    jogadorDirX: corpo?.dirX ?? 0,
+    jogadorDirY: corpo?.dirY ?? 0,
+    jogadorFacing: corpo?.facing ?? 0,
     agora: performance.now(),
     mini: true,
   });

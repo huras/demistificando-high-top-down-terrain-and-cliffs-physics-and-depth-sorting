@@ -472,17 +472,59 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
 
   const px = (vista.jogadorX - vista.cx) * z + w / 2;
   const py = (vista.jogadorY - vista.cy) * z + h / 2;
-  const pulso = 5.5 * dpr + Math.sin(vista.agora * 0.006) * 1.4 * dpr;
+  desenharMarcadorJogador(ctx, px, py, dpr, vista);
+}
+
+/** facing 0=S 1=W 2=E 3=N — fallback quando dirX/dirY estão zerados. */
+const FACING_DIR = [
+  [0, 1],
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+];
+
+function rumoJogador(vista) {
+  let dx = Number(vista.jogadorDirX);
+  let dy = Number(vista.jogadorDirY);
+  if (!Number.isFinite(dx)) dx = 0;
+  if (!Number.isFinite(dy)) dy = 0;
+  if (dx * dx + dy * dy < 1e-6) {
+    const f = FACING_DIR[(vista.jogadorFacing | 0) & 3] || FACING_DIR[0];
+    dx = f[0];
+    dy = f[1];
+  }
+  // Canvas: +Y desce. Triângulo local aponta pra cima (−Y); gira pelo rumo mundo.
+  return Math.atan2(dx, -dy);
+}
+
+/**
+ * Triângulo apontando pro rumo do jogador (minimap + mapa grande).
+ */
+function desenharMarcadorJogador(ctx, px, py, dpr, vista) {
+  const pulso = 5.5 * dpr + Math.sin((vista.agora || 0) * 0.006) * 1.4 * dpr;
   ctx.beginPath();
   ctx.arc(px, py, pulso + 4 * dpr, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255, 250, 240, 0.45)";
   ctx.lineWidth = 2 * dpr;
   ctx.stroke();
+
+  const ang = rumoJogador(vista);
+  const len = (vista.mini ? 7.2 : 8.4) * dpr;
+  const half = len * 0.58;
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(ang);
   ctx.beginPath();
-  ctx.arc(px, py, 5.2 * dpr, 0, Math.PI * 2);
+  ctx.moveTo(0, -len);
+  ctx.lineTo(half, len * 0.62);
+  ctx.lineTo(0, len * 0.28);
+  ctx.lineTo(-half, len * 0.62);
+  ctx.closePath();
   ctx.fillStyle = "#fffaf2";
   ctx.fill();
   ctx.lineWidth = 2 * dpr;
   ctx.strokeStyle = "#1b2420";
+  ctx.lineJoin = "round";
   ctx.stroke();
+  ctx.restore();
 }

@@ -501,18 +501,25 @@ export function aplicarLaboratorioNoChunk(chunk) {
       const wx = baseX + lx;
       const wy = baseY + ly;
       if (!dentroDoTerrenoLaboratorio(wx, wy)) continue;
-      preencherColunaSolida(chunk, lx, ly, ALTURA_PRACA, BLOCO.TERRA);
       const col = wx - ORIGEM_LAB_X;
       const row = wy - ORIGEM_LAB_Y;
-      const naPlanta =
-        col >= 0 &&
-        row >= 0 &&
-        col < COLS_LAB &&
-        row < ROWS_LAB &&
-        PLANTA.muro[row * COLS_LAB + col] === 1;
-      const solido = naPlanta || colunaVedada(col, row);
-      if (solido) {
-        for (let z = ALTURA_PRACA; z < zParede; z++) definirLocal(chunk, lx, ly, z, BLOCO.PEDRA);
+      const naPlanta = col >= 0 && row >= 0 && col < COLS_LAB && row < ROWS_LAB;
+      const noVestibulo =
+        row >= ROWS_LAB &&
+        row < ROWS_LAB + 1.5 &&
+        col >= PLANTA.doorX0 &&
+        col < PLANTA.doorX1;
+      // Pátio (MARGEM) sem chão andável — só miolo + vestíbulo da porta.
+      if (!naPlanta && !noVestibulo) {
+        mudou = true;
+        continue;
+      }
+      preencherColunaSolida(chunk, lx, ly, ALTURA_PRACA, BLOCO.TERRA);
+      if (naPlanta) {
+        const solido = PLANTA.muro[row * COLS_LAB + col] === 1 || colunaVedada(col, row);
+        if (solido) {
+          for (let z = ALTURA_PRACA; z < zParede; z++) definirLocal(chunk, lx, ly, z, BLOCO.PEDRA);
+        }
       }
       mudou = true;
     }

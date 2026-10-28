@@ -3,7 +3,13 @@ import { AGENTE_DIST_SEGUIR, OFFSET_MON } from "../navegacao/espacoSeguir.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
 import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { resolverForaDeObstaculo } from "../fisica/obstaculos.js";
-import { PERFIL_CAMPO } from "../navegacao/perfilMovimento.js";
+import { PERFIL_CAMPO, PERFIL_A_PE } from "../navegacao/perfilMovimento.js";
+import {
+  resolverPisoInterior,
+  pisoInteriorValido,
+  conterNoInterior,
+  ehInteriorSala3d,
+} from "../jogo/pisoInterior.js";
 import { AI_MODE } from "./aiModes.js";
 import {
   aplicarModoParty,
@@ -385,12 +391,32 @@ export function atualizarParty(corpo, dt, agora, perfil) {
   if (!vivo) return;
   const z = corpo.elevacao ?? corpo.z ?? vivo.z;
   if (!vivo._colocado) {
-    vivo.x = corpo.x + OFFSET_MON.x;
-    vivo.y = corpo.y + OFFSET_MON.y;
+    let mx = corpo.x + OFFSET_MON.x;
+    let my = corpo.y + OFFSET_MON.y;
+    const piso = resolverPisoInterior(mx, my, corpo.x, corpo.y);
+    if (ehInteriorSala3d()) {
+      if (!piso) {
+        // Indoor sem tile válido no anel — não solta no void.
+        return;
+      }
+      mx = piso.x;
+      my = piso.y;
+    } else if (piso) {
+      mx = piso.x;
+      my = piso.y;
+    }
+    vivo.x = mx;
+    vivo.y = my;
     vivo.z = z;
     vivo.elevacao = z;
     // Não nasce em cima de poste/pedra (Horse no começo).
     resolverForaDeObstaculo(vivo);
+    if (ehInteriorSala3d() && !pisoInteriorValido(vivo.x, vivo.y)) {
+      const deNovo = resolverPisoInterior(vivo.x, vivo.y, corpo.x, corpo.y);
+      if (!deNovo) return;
+      vivo.x = deNovo.x;
+      vivo.y = deNovo.y;
+    }
     vivo._colocado = true;
     if (vivo._pedidoEnvio) {
       vivo._pedidoEnvio = false;
@@ -398,16 +424,19 @@ export function atualizarParty(corpo, dt, agora, perfil) {
     }
   }
   if (vivo.brilhoBola > 0) vivo.brilhoBola = Math.max(0, vivo.brilhoBola - dt);
+  conterNoInterior(vivo);
   // Ordem farm/Força ou canal/carry de lift: não puxar de volta pro follow.
   if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) return;
   // Combate OW (tickPartyCampo) marca _emLutaCampo quando não deve follow.
   if (mon._emLutaCampo) return;
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;
-  const usar = perfil || PERFIL_CAMPO;
+  // Indoor: sem fly — evita atravessar o bolso pelo ar pro void.
+  const usar = ehInteriorSala3d() ? PERFIL_A_PE : perfil || PERFIL_CAMPO;
   if (mon.perfil !== usar) {
     mon.perfil = usar;
     resetarNav(mon);
   }
   garantirCorpoLocomocao(mon, usar);
   atualizarAgente(mon, corpo, dt, 0, AGENTE_DIST_SEGUIR);
+  conterNoInterior(vivo);
 }

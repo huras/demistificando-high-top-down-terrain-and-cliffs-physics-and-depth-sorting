@@ -29,6 +29,7 @@ import { iniciarTrialSantuario, encerrarTrialSantuario } from "./trial.js";
 import { iniciarFeixe, feixeAtivo } from "./feixe.js";
 import { onShrineEnteredQuest } from "./questDevice.js";
 import { abrirPuzzleSantuario } from "./interagir.js";
+import { pousarCompanheiro } from "../pokemon/pousarCompanheiro.js";
 
 function descarregarBolsoSantuario() {
   const x0 = Math.floor((ORIGEM_SANTUARIO_X - 8) / CHUNK_XZ);
@@ -113,6 +114,7 @@ export function tentarEntrarSantuario(corpo, stone) {
     const spawn = spawnSantuario();
     pousar(corpo, spawn.x, spawn.y, spawn.z);
     iniciarTrialSantuario(hub);
+    pousarCompanheiro(corpo, { z: spawn.z });
     spawnDefensoresSantuario(hub);
     onShrineEnteredQuest();
     sfx("porta");
@@ -155,6 +157,7 @@ export function sairSantuario(corpo) {
     // Outdoor já ancorado na visita — solta o bolso em background.
     atualizarStreaming(ox, oy, undefined, false);
     corpo._renasceu = true;
+    pousarCompanheiro(corpo, { z: oz });
     estado.painel = null;
     estado.saidaGrace = 0.6;
     sfx("porta");

@@ -1,4 +1,5 @@
 import { ASA_DELTA_CORRIDA_MUL, VELOCIDADE_MAX, VELOCIDADE_SPRINT } from "../config.js";
+import { conterNoInterior } from "../jogo/pisoInterior.js";
 import {
   teclaAgora,
   teclaBaixa,
@@ -120,6 +121,7 @@ export function atualizarMovimentoDirecionado(corpo, dxIn, dyIn, dt, opts = {}) 
     if (aindaVoo && corpo.correndo && desceAsa) corpo.acao = "voando sprint+desce";
     else if (aindaVoo && corpo.correndo) corpo.acao = "voando sprint";
     else if (aindaVoo && desceAsa) corpo.acao = "voando desce";
+    conterNoInterior(corpo);
     regenerarStamina(corpo, dt);
     return;
   }
@@ -214,6 +216,7 @@ export function atualizarMovimentoDirecionado(corpo, dxIn, dyIn, dt, opts = {}) 
     }
   }
 
+  conterNoInterior(corpo);
   regenerarStamina(corpo, dt);
 }
 

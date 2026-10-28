@@ -15,8 +15,8 @@ import {
   streamDiscoPronto,
 } from "../mundo/voxel/storeMundo.js";
 import { OFFSET_MON, OFFSET_NPC } from "../navegacao/espacoSeguir.js";
-import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { pokemonDeployado } from "../pokemon/party.js";
+import { pousarMon } from "../pokemon/pousarCompanheiro.js";
 import { estado } from "./estado.js";
 import {
   gapJornada,
@@ -208,20 +208,6 @@ function pousarCorpo(corpo, x, y, z) {
   const falta = !streamDiscoPronto(x, y, obterRaioStream());
   atualizarStreaming(x, y, undefined, falta);
   corpo._renasceu = true;
-}
-
-function pousarMon(mon, x, y, z) {
-  mon.x = x;
-  mon.y = y;
-  mon.z = z;
-  mon.elevacao = z;
-  mon.vx = 0;
-  mon.vy = 0;
-  mon.vz = 0;
-  mon.hopLift = 0;
-  mon.noChao = true;
-  mon._colocado = true;
-  if (mon.nav) resetarNav(mon);
 }
 
 function cortar(ctx) {

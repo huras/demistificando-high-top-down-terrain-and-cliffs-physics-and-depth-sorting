@@ -1,6 +1,7 @@
 import { AGENTE_DIST_SEGUIR } from "../../config.js";
 import { garantirNav } from "../seguirCaminho.js";
 import { OFFSET_MON, OFFSET_NPC } from "../espacoSeguir.js";
+import { resolverPisoInterior } from "../../jogo/pisoInterior.js";
 import { HORIZONTE, PASSO_DECISAO, PRESO_CASTIGO, PRESO_FOLGA, PRESO_SEG } from "./constantes.js";
 import { aplicarHabilidade, calcularHabilidade, comandoSeguir } from "./habilidades.js";
 import { entrada, saida } from "./observacao.js";
@@ -20,8 +21,15 @@ export function redeSeguirLigada() {
 
 function postoDe(agente, lider, posto) {
   const off = agente.faccao === "party" ? OFFSET_MON : OFFSET_NPC;
-  posto.x = lider.x + off.x;
-  posto.y = lider.y + off.y;
+  let x = lider.x + off.x;
+  let y = lider.y + off.y;
+  const ok = resolverPisoInterior(x, y, lider.x, lider.y);
+  if (ok) {
+    x = ok.x;
+    y = ok.y;
+  }
+  posto.x = x;
+  posto.y = y;
   posto.z = lider.elevacao ?? lider.z ?? 0;
   return posto;
 }

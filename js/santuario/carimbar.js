@@ -43,19 +43,25 @@ export function aplicarSantuarioNoChunk(chunk) {
         tx >= 0 && ty >= 0 && tx < SHRINE_INTERIOR_COLS && ty < SHRINE_INTERIOR_ROWS;
       const walk = dentro && ehChao(mask, cols, rows, tx, ty);
 
+      // Pad +/-8: sem chão (void). Interior !walk: muro sólido.
+      if (!walk) {
+        if (dentro) {
+          preencherColunaSolida(chunk, lx, ly, ALTURA_PRACA, BLOCO.PEDRA);
+          for (let z = ALTURA_PRACA; z < zParede; z++) {
+            definirLocal(chunk, lx, ly, z, BLOCO.PEDRA);
+          }
+        }
+        mudou = true;
+        continue;
+      }
+
       preencherColunaSolida(chunk, lx, ly, ALTURA_PRACA, BLOCO.PEDRA);
 
-      if (dentro && !walk) {
-        for (let z = ALTURA_PRACA; z < zParede; z++) {
-          definirLocal(chunk, lx, ly, z, BLOCO.PEDRA);
-        }
-      } else if (
-        dentro &&
-        walk &&
-        (!ehChao(mask, cols, rows, tx - 1, ty) ||
-          !ehChao(mask, cols, rows, tx + 1, ty) ||
-          !ehChao(mask, cols, rows, tx, ty - 1) ||
-          !ehChao(mask, cols, rows, tx, ty + 1))
+      if (
+        !ehChao(mask, cols, rows, tx - 1, ty) ||
+        !ehChao(mask, cols, rows, tx + 1, ty) ||
+        !ehChao(mask, cols, rows, tx, ty - 1) ||
+        !ehChao(mask, cols, rows, tx, ty + 1)
       ) {
         // Borda do corredor: pilastra baixa
         definirLocal(chunk, lx, ly, ALTURA_PRACA, BLOCO.PEDRA);

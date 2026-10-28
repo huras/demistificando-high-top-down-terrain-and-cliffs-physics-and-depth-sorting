@@ -727,7 +727,7 @@ function loop(agora) {
   tickJornada(corpo.x, corpo.y, dt);
   definirCorposAtores([...listarSolidosPokemon(), ...listarSolidosNpc()]);
   atualizarMapaKanto(corpo.x, corpo.y);
-  tickMapaMundo(corpo.x, corpo.y, dt);
+  tickMapaMundo(corpo.x, corpo.y, dt, corpo);
   tickPokemon(corpo, dt, agente.perfil);
   if (!trava) tickNpc(corpo, dt);
   tickTeleporte(dt, {

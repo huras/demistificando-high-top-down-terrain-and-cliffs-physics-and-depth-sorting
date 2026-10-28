@@ -24,6 +24,13 @@ import {
 import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
+import {
+  ORIGEM_SANTUARIO_X,
+  ORIGEM_SANTUARIO_Y,
+  SHRINE_INTERIOR_COLS,
+  SHRINE_INTERIOR_ROWS,
+  dentroDoTerrenoSantuario,
+} from "../santuario/interior.js";
 import { especie } from "./dados.js";
 import { nivelEm } from "./distribuicao/forca.js";
 import { sortearEspecie } from "./distribuicao/sorteio.js";
@@ -59,7 +66,13 @@ function naFaixa(x, y, x0, y0, x1, y1, folga) {
 }
 
 function zonaSemSelvagem(x, y) {
-  if (dentroDoTerrenoSala(x, y) || dentroDoTerrenoLaboratorio(x, y)) return true;
+  if (
+    dentroDoTerrenoSala(x, y) ||
+    dentroDoTerrenoLaboratorio(x, y) ||
+    dentroDoTerrenoSantuario(x, y)
+  ) {
+    return true;
+  }
   const faixas = faixasSemSelvagem();
   for (let i = 0; i < faixas.length; i++) {
     const f = faixas[i];
@@ -67,7 +80,16 @@ function zonaSemSelvagem(x, y) {
   }
   return (
     naFaixa(x, y, ORIGEM_LAB_X, ORIGEM_LAB_Y, ORIGEM_LAB_X + COLS_LAB, ORIGEM_LAB_Y + ROWS_LAB, FOLGA_VAZIO) ||
-    naFaixa(x, y, ORIGEM_SALA_X, ORIGEM_SALA_Y, ORIGEM_SALA_X + MIOL_X + 2, ORIGEM_SALA_Y + MIOL_Y + 2, FOLGA_VAZIO)
+    naFaixa(x, y, ORIGEM_SALA_X, ORIGEM_SALA_Y, ORIGEM_SALA_X + MIOL_X + 2, ORIGEM_SALA_Y + MIOL_Y + 2, FOLGA_VAZIO) ||
+    naFaixa(
+      x,
+      y,
+      ORIGEM_SANTUARIO_X,
+      ORIGEM_SANTUARIO_Y,
+      ORIGEM_SANTUARIO_X + SHRINE_INTERIOR_COLS,
+      ORIGEM_SANTUARIO_Y + SHRINE_INTERIOR_ROWS,
+      FOLGA_VAZIO,
+    )
   );
 }
 

@@ -508,7 +508,7 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
   const vistos = new Set();
   for (let i = 0; i < lista.length; i++) {
     const ator = lista[i];
-    if (naSala && ator.faccao === "selvagem") continue;
+    if (naSala && ator.faccao === "selvagem" && !ator._santuario) continue;
     let slot = porId.get(ator.id);
     if (!slot) {
       slot = pegarLivre();

@@ -1,7 +1,9 @@
 /**
  * Transição de porta: dá um passo na porta → fade → teleporta → fade in.
- * Leve (DOM + estado), sem sistema 3D novo.
+ * Companheiro deployado anda junto no approach e pousa no teleporte.
  */
+import { pokemonDeployado } from "../pokemon/party.js";
+import { pousarCompanheiro } from "../pokemon/pousarCompanheiro.js";
 
 const APPROACH = 0.2;
 const FADE_OUT = 0.2;
@@ -43,6 +45,21 @@ function setFade(a) {
   el.style.opacity = String(Math.max(0, Math.min(1, a)));
 }
 
+function monNaPorta() {
+  const mon = pokemonDeployado();
+  if (!mon || mon.capturado || mon.morto) return null;
+  return mon;
+}
+
+function alinharMon(mon, trRef) {
+  if (!mon) return;
+  mon.dirX = trRef.dirX;
+  mon.dirY = trRef.dirY;
+  mon.facing = trRef.facing;
+  mon.vx = 0;
+  mon.vy = 0;
+}
+
 export function portaOcupada() {
   return !!tr;
 }
@@ -71,6 +88,7 @@ export function iniciarPortaTransicao(corpo, kind, onTeleport) {
   corpo.facing = tr.facing;
   corpo.vx = 0;
   corpo.vy = 0;
+  alinharMon(monNaPorta(), tr);
   garantirOverlay();
   setFade(0);
   return true;
@@ -81,6 +99,7 @@ export function tickPortaTransicao(dt) {
   const d = Math.min(0.05, Math.max(0, dt || 0));
   tr.t += d;
   const corpo = tr.corpo;
+  const mon = monNaPorta();
 
   if (tr.fase === "approach") {
     const u = Math.min(1, tr.t / APPROACH);
@@ -89,8 +108,14 @@ export function tickPortaTransicao(dt) {
     corpo.facing = tr.facing;
     corpo.vx = 0;
     corpo.vy = 0;
-    corpo.x += tr.dirX * PASSO * d;
-    corpo.y += tr.dirY * PASSO * d;
+    const passo = PASSO * d;
+    corpo.x += tr.dirX * passo;
+    corpo.y += tr.dirY * passo;
+    if (mon) {
+      alinharMon(mon, tr);
+      mon.x += tr.dirX * passo;
+      mon.y += tr.dirY * passo;
+    }
     setFade(u * 0.45);
     if (tr.t < APPROACH) return;
     tr.fase = "fadeOut";
@@ -112,6 +137,12 @@ export function tickPortaTransicao(dt) {
     corpo.facing = tr.facing;
     corpo.vx = 0;
     corpo.vy = 0;
+    pousarCompanheiro(corpo, {
+      z: corpo.elevacao ?? corpo.z,
+      dirX: tr.dirX,
+      dirY: tr.dirY,
+      facing: tr.facing,
+    });
     setFade(1);
     tr.fase = "hold";
     tr.t = 0;

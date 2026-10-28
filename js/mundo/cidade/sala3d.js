@@ -108,12 +108,24 @@ export function aplicarSalaNoChunk(chunk) {
   const baseX = chunk.cx * CHUNK_XZ;
   const baseY = chunk.cy * CHUNK_XZ;
   const zParede = Math.min(CHUNK_Y, ALTURA_PRACA + ALTURA_PAREDE);
+  const c = caixa();
   let mudou = false;
   for (let ly = 0; ly < CHUNK_XZ; ly++) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
       const wy = baseY + ly;
       if (!dentroDoTerrenoSala(wx, wy)) continue;
+      // Pátio (MARGEM) sem chão — só miolo + vestíbulo da porta.
+      const noMiolo = wx >= c.x0 && wx < c.x1 && wy >= c.y0 && wy < c.y1;
+      const noVestibulo =
+        wy >= c.portaY &&
+        wy < c.portaY + PROF_PORTA_SALA &&
+        wx >= c.portaX0 - 1 &&
+        wx < c.portaX1 + 1;
+      if (!noMiolo && !noVestibulo) {
+        mudou = true;
+        continue;
+      }
       preencherColunaSolida(chunk, lx, ly, ALTURA_PRACA, BLOCO.TERRA);
       if (ehParede(wx, wy)) {
         for (let z = ALTURA_PRACA; z < zParede; z++) definirLocal(chunk, lx, ly, z, BLOCO.PEDRA);

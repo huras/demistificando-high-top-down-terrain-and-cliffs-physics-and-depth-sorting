@@ -464,7 +464,13 @@ export function ligarMapaMundo() {
   });
 }
 
-export function tickMapaMundo(px, py, dt = 1 / 60) {
+/**
+ * @param {number} px
+ * @param {number} py
+ * @param {number} [dt]
+ * @param {{ dirX?: number, dirY?: number, facing?: number } | null} [rumo]
+ */
+export function tickMapaMundo(px, py, dt = 1 / 60, rumo = null) {
   try {
   tickAtlas();
   if (estado.interior && Number.isFinite(estado.interior.ax)) {
@@ -518,6 +524,9 @@ export function tickMapaMundo(px, py, dt = 1 / 60) {
     zoom,
     jogadorX: px,
     jogadorY: py,
+    jogadorDirX: rumo?.dirX ?? 0,
+    jogadorDirY: rumo?.dirY ?? 0,
+    jogadorFacing: rumo?.facing ?? 0,
     agora: performance.now(),
     calorForca,
     jornada: jornadaVisivel,

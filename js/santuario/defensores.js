@@ -6,8 +6,14 @@ import { especie, listarEspecies } from "../pokemon/dados.js";
 import { nivelEm } from "../pokemon/distribuicao/forca.js";
 import { filtrarPorNivel } from "../pokemon/distribuicao/nivelSelvagem.js";
 import { resolverEspecieNoNivel } from "../pokemon/pack.js";
+import { conterNoInterior, resolverPisoInterior } from "../jogo/pisoInterior.js";
+import { PERFIL_A_PE } from "../navegacao/perfilMovimento.js";
 import { mulberry32, hashSeed } from "./dungeonGen.js";
-import { ORIGEM_SANTUARIO_X, ORIGEM_SANTUARIO_Y, santuarioAtivo } from "./interior.js";
+import {
+  ORIGEM_SANTUARIO_X,
+  ORIGEM_SANTUARIO_Y,
+  santuarioAtivo,
+} from "./interior.js";
 
 /** @type {object[]} */
 const defensores = [];
@@ -43,6 +49,49 @@ function poolPara(element, nivel) {
   return ok.length ? ok : bruto;
 }
 
+function pontoNoWalkMask(hub, wx, wy) {
+  const ok = resolverPisoInterior(wx, wy, wx, wy);
+  if (ok) return ok;
+  // Fallback: varrer o AABB da room no mask.
+  return null;
+}
+
+function centroRoomNoMask(hub, room) {
+  const pad = 1.4;
+  const x0 = room.x0 + pad;
+  const x1 = room.x1 - pad;
+  const y0 = room.y0 + pad;
+  const y1 = room.y1 - pad;
+  const cx = ORIGEM_SANTUARIO_X + (x0 + x1) * 0.5;
+  const cy = ORIGEM_SANTUARIO_Y + (y0 + y1) * 0.5;
+  const direto = pontoNoWalkMask(hub, cx, cy);
+  if (direto) return direto;
+
+  const mask = hub.walkMask || hub.floorMask;
+  const cols = hub.cols | 0;
+  if (!mask || !cols) return { x: cx, y: cy };
+
+  let melhor = null;
+  let melhorD = Infinity;
+  const rx0 = Math.floor(room.x0);
+  const rx1 = Math.ceil(room.x1);
+  const ry0 = Math.floor(room.y0);
+  const ry1 = Math.ceil(room.y1);
+  for (let ty = ry0; ty < ry1; ty++) {
+    for (let tx = rx0; tx < rx1; tx++) {
+      if (mask[ty * cols + tx] !== 1) continue;
+      const wx = ORIGEM_SANTUARIO_X + tx + 0.5;
+      const wy = ORIGEM_SANTUARIO_Y + ty + 0.5;
+      const d = (wx - cx) * (wx - cx) + (wy - cy) * (wy - cy);
+      if (d < melhorD) {
+        melhorD = d;
+        melhor = { x: wx, y: wy };
+      }
+    }
+  }
+  return melhor || { x: cx, y: cy };
+}
+
 export function limparDefensoresSantuario() {
   defensores.length = 0;
 }
@@ -67,13 +116,7 @@ export function spawnDefensoresSantuario(hub) {
   for (let i = 0; i < hub.rooms.length; i++) {
     const room = hub.rooms[i];
     if (!room || room.kind === "entrance") continue;
-    const pad = 1.4;
-    const x0 = room.x0 + pad;
-    const x1 = room.x1 - pad;
-    const y0 = room.y0 + pad;
-    const y1 = room.y1 - pad;
-    const wx = ORIGEM_SANTUARIO_X + (x0 + x1) * 0.5;
-    const wy = ORIGEM_SANTUARIO_Y + (y0 + y1) * 0.5;
+    const pos = centroRoomNoMask(hub, room);
     const bruta = typed[Math.floor(rng() * typed.length)] || "eevee";
     const speciesKey =
       resolverEspecieNoNivel(bruta, level) || bruta;
@@ -84,21 +127,25 @@ export function spawnDefensoresSantuario(hub) {
       especie: esp,
       nivel: level,
       faccao: "selvagem",
-      x: wx,
-      y: wy,
+      x: pos.x,
+      y: pos.y,
       z: hub.spawn?.z ?? 1,
-      casaX: wx,
-      casaY: wy,
+      casaX: pos.x,
+      casaY: pos.y,
       casaZ: hub.spawn?.z ?? 1,
       hostil: true,
       efemero: true,
       agroPersistente: true,
+      // Prefere o mon do trial, mas cai no jogador se o mon estiver atrasado.
       prefereParty: true,
       dormindo: 0,
-      raioTerritorio: 22,
+      // Salas do dungeon são largas — agro um pouco além do OW padrão (9).
+      raioTerritorio: 14,
     });
     ator.modo = "agro";
+    ator.raioAgro = 16;
     ator._santuario = true;
+    ator.perfil = PERFIL_A_PE;
     defensores.push(ator);
     index++;
   }
@@ -109,7 +156,9 @@ export function tickDefensoresSantuario() {
     const a = defensores[i];
     if (a.capturado || (a.morto && a.mortoAte && performance.now() >= a.mortoAte)) {
       defensores.splice(i, 1);
+      continue;
     }
+    conterNoInterior(a);
   }
   if (!santuarioAtivo()) limparDefensoresSantuario();
 }

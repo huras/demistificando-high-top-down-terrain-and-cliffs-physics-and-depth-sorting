@@ -133,7 +133,13 @@ export function escolherAlvoWild(ator, partyMon, jogador) {
   }
   if (!ator.hostil && ator.modo !== "agro") return null;
 
-  const raio = (ator.hostil ? POKEMON.RAIO_AGRO : POKEMON.RAIO_AGRO * 2) ** 2;
+  const raioBase =
+    Number.isFinite(ator.raioAgro) && ator.raioAgro > 0
+      ? ator.raioAgro
+      : ator.hostil
+        ? POKEMON.RAIO_AGRO
+        : POKEMON.RAIO_AGRO * 2;
+  const raio = raioBase * raioBase;
   const partyVivo = vivo(partyMon);
   const dParty = partyVivo ? dist2(ator, partyMon) : Infinity;
   const partyNoRaio = partyVivo && dParty < raio;
@@ -146,8 +152,11 @@ export function escolherAlvoWild(ator, partyMon, jogador) {
     const prefere = ator.prefereParty && partyVivo;
     const mult = POKEMON.MULT_ALVO_JOGADOR;
     const partyLonge = !partyVivo || dParty > mult * mult * dJog;
+    // Prefere party só se ela também está no raio; senão cai no treinador.
     if (!prefere && partyLonge) return jogador;
   }
   if (partyNoRaio) return partyMon;
+  // Party preferida mas fora do agro (atrasada no shrine/corredor): ataca o jogador.
+  if (jogNoRaio) return jogador;
   return null;
 }
