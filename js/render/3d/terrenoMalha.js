@@ -1,13 +1,28 @@
 import * as THREE from "three";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import { marcarSombraSuja } from "./ceu/sombraEstavel.js";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
   CHUNK_XZ,
   CHUNK_Y,
   MESH_CHUNKS_POR_FRAME,
   TRONCO_INSET,
+  VISUAL_REAL_PADRAO,
 } from "../../config.js";
+import {
+  anexarGeoAoLote,
+  criarLoteTipado,
+  garantirCapLote,
+  pushLedge,
+  pushQuadAgua,
+  pushQuadEspuma,
+  pushQuadQueda,
+  pushTriEspuma,
+  pushTriTipado,
+  q6Tipado,
+} from "./malha/loteTipado.js";
+import { geoDoLoteTipado } from "./malha/loteTipadoGeo.js";
+import { cancelarMalhaWorker } from "./malha/ponteMalha.js";
+import { aabbDoChunk, atualizarFrustumChunks } from "./malha/frustumChunks.js";
 import { escalaYGrupoRelevo } from "./escalaVertical.js";
 import { FLUIDO } from "../../mundo/agua/fluidos.js";
 import { colunaAgua, garantirFluxoChunk } from "../../mundo/agua/fluxo.js";
@@ -168,15 +183,20 @@ function misturarTinta(material, forca) {
   naFrenteDoSuave(material);
 }
 
+/** Compat: lista de geos → anexa num lote tipado e fecha. */
 function mesclarLista(geos) {
   if (!geos.length) return null;
-  const normalizados = geos.map((g) => (g.index ? g.toNonIndexed() : g));
-  const merged = mergeGeometries(normalizados, false);
-  for (const g of geos) g.dispose();
-  for (const g of normalizados) {
-    if (!geos.includes(g)) g.dispose();
+  const lote = criarLoteTipado(true, false);
+  for (let i = 0; i < geos.length; i++) {
+    const g = geos[i];
+    if (!g) continue;
+    const ni = g.index ? g.toNonIndexed() : g;
+    if (!ni.attributes.normal) ni.computeVertexNormals();
+    anexarGeoAoLote(lote, ni);
+    if (ni !== g) ni.dispose();
+    g.dispose();
   }
-  return merged;
+  return geoDoLoteTipado(lote);
 }
 
 /** Quad 1×1 com UV; face vertical tem V = 1 (tile único). */
@@ -463,23 +483,7 @@ const LADOS_COL = [
 ];
 
 function criarLote(comCor, comSplat) {
-  return {
-    pos: [],
-    uv: [],
-    nor: [],
-    cor: comCor ? [] : null,
-    splat: comSplat ? [] : null,
-    pele: comSplat ? [] : null,
-    _splat: 0,
-    _rgb: null,
-    _n: [0, 1, 0],
-  };
-}
-
-function empurrarSplat(lote, n) {
-  if (!lote.splat) return;
-  const v = lote._splat || 0;
-  for (let i = 0; i < n; i++) lote.splat.push(v);
+  return criarLoteTipado(comCor, comSplat);
 }
 
 function comSplat(geo, peso) {
@@ -495,44 +499,11 @@ function comSplat(geo, peso) {
 }
 
 function q6(lote, coords, uvs, peleUvs) {
-  lote.pos.push(
-    coords[0], coords[1], coords[2],
-    coords[3], coords[4], coords[5],
-    coords[6], coords[7], coords[8],
-    coords[9], coords[10], coords[11],
-    coords[12], coords[13], coords[14],
-    coords[15], coords[16], coords[17],
-  );
-  lote.uv.push(uvs[0], uvs[1], uvs[2], uvs[3], uvs[4], uvs[5], uvs[6], uvs[7], uvs[8], uvs[9], uvs[10], uvs[11]);
-  const n = lote._n;
-  for (let i = 0; i < 6; i++) lote.nor.push(n[0], n[1], n[2]);
-  if (lote.cor) {
-    const r = lote._rgb ? lote._rgb[0] : 1;
-    const g = lote._rgb ? lote._rgb[1] : 1;
-    const b = lote._rgb ? lote._rgb[2] : 1;
-    for (let i = 0; i < 6; i++) lote.cor.push(r, g, b);
-  }
-  empurrarSplat(lote, 6);
-  if (lote.pele) {
-    if (peleUvs) lote.pele.push(...peleUvs);
-    else for (let i = 0; i < 12; i++) lote.pele.push(0);
-  }
+  q6Tipado(lote, coords, uvs, peleUvs);
 }
 
 function geoDoLote(lote) {
-  if (!lote.pos.length) return null;
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(lote.pos, 3));
-  geo.setAttribute("uv", new THREE.Float32BufferAttribute(lote.uv, 2));
-  geo.setAttribute("normal", new THREE.Float32BufferAttribute(lote.nor, 3));
-  if (lote.cor) geo.setAttribute("color", new THREE.Float32BufferAttribute(lote.cor, 3));
-  if (lote.splat && lote.splat.length === lote.pos.length / 3) {
-    geo.setAttribute("splat", new THREE.Float32BufferAttribute(lote.splat, 1));
-  }
-  if (lote.pele && lote.pele.length === (lote.pos.length / 3) * 2) {
-    geo.setAttribute("peleUv", new THREE.Float32BufferAttribute(lote.pele, 2));
-  }
-  return geo;
+  return geoDoLoteTipado(lote);
 }
 
 function insetTronco() {
@@ -540,33 +511,7 @@ function insetTronco() {
 }
 
 function pushTri(lote, a, b, c) {
-  const ab = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-  const bc = Math.hypot(c.x - b.x, c.y - b.y, c.z - b.z);
-  const ca = Math.hypot(a.x - c.x, a.y - c.y, a.z - c.z);
-  if (ab < 1e-6 || bc < 1e-6 || ca < 1e-6) return;
-  const ux = b.x - a.x;
-  const uy = b.y - a.y;
-  const uz = b.z - a.z;
-  const vx = c.x - a.x;
-  const vy = c.y - a.y;
-  const vz = c.z - a.z;
-  let nx = uy * vz - uz * vy;
-  let ny = uz * vx - ux * vz;
-  let nz = ux * vy - uy * vx;
-  const len = Math.hypot(nx, ny, nz) || 1;
-  lote._n = [nx / len, ny / len, nz / len];
-  lote.pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
-  lote.uv.push(0, 0, 1, 0, 0.5, 1);
-  const n = lote._n;
-  for (let k = 0; k < 3; k++) lote.nor.push(n[0], n[1], n[2]);
-  if (lote.cor) {
-    const r = lote._rgb ? lote._rgb[0] : 1;
-    const g = lote._rgb ? lote._rgb[1] : 1;
-    const b = lote._rgb ? lote._rgb[2] : 1;
-    for (let k = 0; k < 3; k++) lote.cor.push(r, g, b);
-  }
-  empurrarSplat(lote, 3);
-  if (lote.pele) for (let k = 0; k < 6; k++) lote.pele.push(0);
+  pushTriTipado(lote, a, b, c);
 }
 
 function pushTriParaFora(lote, a, b, c, nx, ny, nz) {
@@ -687,20 +632,20 @@ function garantirCorBranca(geo) {
 }
 
 function finalizarLote(lote, extras) {
-  const geo = geoDoLote(lote);
-  if (lote.cor) {
-    if (geo) garantirCorBranca(geo);
-    for (let i = 0; i < extras.length; i++) garantirCorBranca(extras[i]);
+  // Extras (bevel/mitra) → anexados no lote tipado; sem mergeGeometries.
+  for (let i = 0; i < extras.length; i++) {
+    const g = extras[i];
+    if (!g) continue;
+    if (lote.cor) garantirCorBranca(g);
+    if (lote.splat && !g.getAttribute("splat")) comSplat(g, 0);
+    const ni = g.index ? g.toNonIndexed() : g;
+    if (!ni.attributes.normal) ni.computeVertexNormals();
+    anexarGeoAoLote(lote, ni);
+    if (ni !== g) ni.dispose();
+    g.dispose();
   }
-  if (!extras.length) return geo;
-  if (geo) extras.push(geo);
-  if (lote.splat) {
-    for (let i = 0; i < extras.length; i++) {
-      const g = extras[i];
-      if (g && !g.getAttribute("splat")) comSplat(g, 0);
-    }
-  }
-  return mesclarLista(extras);
+  extras.length = 0;
+  return geoDoLote(lote);
 }
 
 function uvsRet(u0, v0, u1, v1) {
@@ -737,19 +682,35 @@ function clipPeca(peca, x0, z0, x1, z1) {
 function pushTriChao(lote, y, pts, uvs, splat) {
   lote._splat = splat;
   lote._n = [0, 1, 0];
-  for (let i = 0; i < 3; i++) lote.pos.push(pts[i][0], y, pts[i][1]);
-  for (let i = 0; i < 3; i++) lote.uv.push(uvs[i].bu, uvs[i].bv);
-  for (let i = 0; i < 3; i++) lote.nor.push(0, 1, 0);
-  if (lote.cor) {
-    const r = lote._rgb ? lote._rgb[0] : 1;
-    const g = lote._rgb ? lote._rgb[1] : 1;
-    const b = lote._rgb ? lote._rgb[2] : 1;
-    for (let i = 0; i < 3; i++) lote.cor.push(r, g, b);
+  garantirCapLote(lote, 3);
+  const base = lote.nVerts;
+  const r = lote._rgb ? lote._rgb[0] : 1;
+  const g = lote._rgb ? lote._rgb[1] : 1;
+  const b = lote._rgb ? lote._rgb[2] : 1;
+  const sp = splat || 0;
+  for (let i = 0; i < 3; i++) {
+    const ip = (base + i) * 3;
+    const iu = (base + i) * 2;
+    lote.pos[ip] = pts[i][0];
+    lote.pos[ip + 1] = y;
+    lote.pos[ip + 2] = pts[i][1];
+    lote.uv[iu] = uvs[i].bu;
+    lote.uv[iu + 1] = uvs[i].bv;
+    lote.nor[ip] = 0;
+    lote.nor[ip + 1] = 1;
+    lote.nor[ip + 2] = 0;
+    if (lote.cor) {
+      lote.cor[ip] = r;
+      lote.cor[ip + 1] = g;
+      lote.cor[ip + 2] = b;
+    }
+    if (lote.splat) lote.splat[base + i] = sp;
+    if (lote.pele) {
+      lote.pele[iu] = uvs[i].pu;
+      lote.pele[iu + 1] = uvs[i].pv;
+    }
   }
-  empurrarSplat(lote, 3);
-  if (lote.pele) {
-    for (let i = 0; i < 3; i++) lote.pele.push(uvs[i].pu, uvs[i].pv);
-  }
+  lote.nVerts = base + 3;
 }
 
 function uvNaFaixa(x, z, x0, z0, x1, z1, peca) {
@@ -1009,10 +970,29 @@ function vizinhoAr(wx, wy, wz, dx, dy, dz) {
 }
 
 /**
- * Gera geometrias culled-face de um chunk.
- * Sempre gera cubos + real (grupos separados; só um visível) —
- * pular um dos modos deixava faces/cliff faltando após trocar visual / stream.
+ * Só o modo ativo entra na malha (real OU cubos). Trocar visual (T) suja
+ * os chunks e remalha — evita 2× CPU no stream quando se joga só no real.
+ *
+ * Diagnóstico (faces/bench) força os dois via opts.
  */
+/** @type {{ cubos: boolean, real: boolean }} */
+let opcoesMalha = {
+  cubos: !VISUAL_REAL_PADRAO,
+  real: !!VISUAL_REAL_PADRAO,
+};
+
+/** @param {{ cubos?: boolean, real?: boolean }} opts */
+export function definirOpcoesMalha(opts = {}) {
+  if (opts.cubos != null) opcoesMalha.cubos = !!opts.cubos;
+  if (opts.real != null) opcoesMalha.real = !!opts.real;
+  // Sempre pelo menos um modo — senão o stream fica sem geometria.
+  if (!opcoesMalha.cubos && !opcoesMalha.real) opcoesMalha.real = true;
+}
+
+export function obterOpcoesMalha() {
+  return { ...opcoesMalha };
+}
+
 /** Multiplica o sprite: raso quase branco, fundo um pouco mais escuro. */
 function tintaLago(prof) {
   const t = Math.max(0, Math.min(1, ((prof || 1) - 1) / 3));
@@ -1139,7 +1119,7 @@ function triEspuma(ax, az, bx, bz, cx, cz, y, va, vb, vc) {
  * Faixa só onde a água encosta na terra. O canto fecha o vão
  * entre duas bordas secas. A face da queda não entra aqui.
  */
-function empurrarEspuma(lista, wx, wy, y) {
+function empurrarEspumaLote(lote, wx, wy, y) {
   const norte = terraSeca(wx, wy - 1);
   const sul = terraSeca(wx, wy + 1);
   const oeste = terraSeca(wx - 1, wy);
@@ -1160,44 +1140,42 @@ function empurrarEspuma(lista, wx, wy, y) {
   const zb = sul ? z1 - ESPUMA_LARGO : z1;
 
   if (sul && xb - xa > 1e-3) {
-    lista.push(quadEspuma(xa, z1 - ESPUMA_LARGO, xb, z1, y, 0, 0, 1, 1));
+    pushQuadEspuma(lote, xa, z1 - ESPUMA_LARGO, xb, z1, y, 0, 0, 1, 1);
   }
   if (norte && xb - xa > 1e-3) {
-    lista.push(quadEspuma(xa, z0, xb, z0 + ESPUMA_LARGO, y, 1, 1, 0, 0));
+    pushQuadEspuma(lote, xa, z0, xb, z0 + ESPUMA_LARGO, y, 1, 1, 0, 0);
   }
   if (leste && zb - za > 1e-3) {
-    lista.push(quadEspuma(x1 - ESPUMA_LARGO, za, x1, zb, y, 0, 1, 1, 0));
+    pushQuadEspuma(lote, x1 - ESPUMA_LARGO, za, x1, zb, y, 0, 1, 1, 0);
   }
   if (oeste && zb - za > 1e-3) {
-    lista.push(quadEspuma(x0, za, x0 + ESPUMA_LARGO, zb, y, 1, 0, 0, 1));
+    pushQuadEspuma(lote, x0, za, x0 + ESPUMA_LARGO, zb, y, 1, 0, 0, 1);
   }
   if (sul && leste) {
-    lista.push(quadEspuma(x1 - ESPUMA_LARGO, z1 - ESPUMA_LARGO, x1, z1, y, 0, 1, 1, 1));
+    pushQuadEspuma(lote, x1 - ESPUMA_LARGO, z1 - ESPUMA_LARGO, x1, z1, y, 0, 1, 1, 1);
   }
   if (sul && oeste) {
-    lista.push(quadEspuma(x0, z1 - ESPUMA_LARGO, x0 + ESPUMA_LARGO, z1, y, 1, 0, 1, 1));
+    pushQuadEspuma(lote, x0, z1 - ESPUMA_LARGO, x0 + ESPUMA_LARGO, z1, y, 1, 0, 1, 1);
   }
   if (norte && leste) {
-    lista.push(quadEspuma(x1 - ESPUMA_LARGO, z0, x1, z0 + ESPUMA_LARGO, y, 1, 1, 1, 0));
+    pushQuadEspuma(lote, x1 - ESPUMA_LARGO, z0, x1, z0 + ESPUMA_LARGO, y, 1, 1, 1, 0);
   }
   if (norte && oeste) {
-    lista.push(quadEspuma(x0, z0, x0 + ESPUMA_LARGO, z0 + ESPUMA_LARGO, y, 1, 1, 0, 1));
+    pushQuadEspuma(lote, x0, z0, x0 + ESPUMA_LARGO, z0 + ESPUMA_LARGO, y, 1, 1, 0, 1);
   }
 
-  // Quina convexa: a terra só encosta na diagonal. As duas faixas vizinhas
-  // param na borda da célula e deixam este triângulo aberto.
   const largo = ESPUMA_LARGO;
   if (!sul && !leste && se) {
-    lista.push(triEspuma(x1, z1, x1 - largo, z1, x1, z1 - largo, y, 1, 0, 0));
+    pushTriEspuma(lote, x1, z1, x1 - largo, z1, x1, z1 - largo, y, 1, 0, 0);
   }
   if (!sul && !oeste && sw) {
-    lista.push(triEspuma(x0, z1, x0, z1 - largo, x0 + largo, z1, y, 1, 0, 0));
+    pushTriEspuma(lote, x0, z1, x0, z1 - largo, x0 + largo, z1, y, 1, 0, 0);
   }
   if (!norte && !leste && ne) {
-    lista.push(triEspuma(x1, z0, x1, z0 + largo, x1 - largo, z0, y, 1, 0, 0));
+    pushTriEspuma(lote, x1, z0, x1, z0 + largo, x1 - largo, z0, y, 1, 0, 0);
   }
   if (!norte && !oeste && nw) {
-    lista.push(triEspuma(x0, z0, x0 + largo, z0, x0, z0 + largo, y, 1, 0, 0));
+    pushTriEspuma(lote, x0, z0, x0 + largo, z0, x0, z0 + largo, y, 1, 0, 0);
   }
 }
 
@@ -1238,22 +1216,7 @@ function triCantoTopo(lote, wx, wy, y, ax, az, bx, bz, cx, cz) {
     pts[1] = pts[2];
     pts[2] = tmp;
   }
-  lote._n = [0, 1, 0];
-  lote.pos.push(
-    pts[0].x, y, pts[0].z,
-    pts[1].x, y, pts[1].z,
-    pts[2].x, y, pts[2].z,
-  );
-  lote.uv.push(pts[0].u, pts[0].v, pts[1].u, pts[1].v, pts[2].u, pts[2].v);
-  for (let k = 0; k < 3; k++) lote.nor.push(0, 1, 0);
-  if (lote.cor) {
-    const r = lote._rgb ? lote._rgb[0] : 1;
-    const g = lote._rgb ? lote._rgb[1] : 1;
-    const b = lote._rgb ? lote._rgb[2] : 1;
-    for (let k = 0; k < 3; k++) lote.cor.push(r, g, b);
-  }
-  empurrarSplat(lote, 3);
-  if (lote.pele) for (let k = 0; k < 6; k++) lote.pele.push(0);
+  pushTriTipado(lote, pts[0], pts[1], pts[2]);
 }
 
 function emitirTopoMenosCantos(lote, wx, wy, y, iW, iN, iE, iS, cortes) {
@@ -1523,25 +1486,32 @@ function rebaixarModelo(grade, cx, cy) {
   }
 }
 
-function* construirGeosChunk(chunk) {
-  const ledges = [];
-  const aguas = [];
-  const aguasPantano = [];
-  const aguasLava = [];
-  const espumas = [];
-  const quedas = [];
-  const quedasLava = [];
+/**
+ * @param {object} chunk
+ * @param {{ cubos?: boolean, real?: boolean } | null} [opts]
+ */
+function* construirGeosChunk(chunk, opts = null) {
+  const querCubos = opts?.cubos ?? opcoesMalha.cubos;
+  const querReal = opts?.real ?? opcoesMalha.real;
+  const loteLedges = querReal ? criarLote(true) : null;
+  const loteAguas = criarLote(true);
+  const loteAguasPantano = criarLote(true);
+  const loteAguasLava = criarLote(true);
+  const loteEspumas = criarLote(true);
+  const loteQuedas = criarLote(true);
+  const loteQuedasLava = criarLote(true);
   const sacosTopo = new Map();
-  const sacosParede = new Map();
-  function sacoDe(mapa, kit) {
-    let saco = mapa.get(kit);
+  /** Uma única malha de parede (mesmo materialPenhasco) — corta draw calls. */
+  const sacoParedeUnico = { lote: criarLote(true, false), extras: [] };
+  function sacoDeTopo(kit) {
+    let saco = sacosTopo.get(kit);
     if (!saco) {
-      saco = { lote: criarLote(true, mapa === sacosTopo), extras: [] };
-      mapa.set(kit, saco);
+      saco = { lote: criarLote(true, true), extras: [] };
+      sacosTopo.set(kit, saco);
     }
     return saco;
   }
-  const loteCubos = criarLote(true);
+  const loteCubos = querCubos ? criarLote(true) : null;
   const grade = gradeDoChunk(chunk.cx, chunk.cy);
   rebaixarModelo(grade, chunk.cx, chunk.cy);
   const nCel = CHUNK_XZ * CHUNK_XZ;
@@ -1569,19 +1539,8 @@ function* construirGeosChunk(chunk) {
       const wx = baseX + lx;
       const wy = baseY + ly;
       const ia = ly * CHUNK_XZ + lx;
-      const kit = kitDoRelevo(wx, wy) || "_";
-      const sacoTopo = sacoDe(sacosTopo, kit);
-      const sacoParede = sacoDe(sacosParede, kit);
-      const loteGrama = sacoTopo.lote;
-      const loteTerra = sacoTopo.lote;
-      const loteFaces = sacoParede.lote;
-      const topsGrama = sacoTopo.extras;
-      const topsTerra = sacoTopo.extras;
-      const faces = sacoParede.extras;
       const zSurf = alturaLocal(grade, lx, ly);
       alturaCel[ia] = zSurf;
-      mascaraCel[ia] = mascaraLocal(grade, lx, ly);
-      kitsCel[ia] = kit;
       const modelo = !!amostraKanto(wx, wy)?.modelo;
       let colunaSimples = zSurf > 0 && (modelo || !colunaTemArInterno(wx, wy));
       if (colunaSimples && !modelo) {
@@ -1595,69 +1554,96 @@ function* construirGeosChunk(chunk) {
         }
       }
       simplesCel[ia] = colunaSimples ? 1 : 0;
-      for (let lz = 0; lz < zSurf && !colunaSimples; lz++) {
-        const id = obterBloco(wx, wy, lz);
-        if (!ehSolido(id)) continue;
 
-        const ehSuperficie = vizinhoAr(wx, wy, lz, 0, 0, 1);
-        const lateraisAr = [];
-        for (const lat of ["s", "n", "e", "w"]) {
-          const ld = DIRS.find((x) => x.nome === lat);
-          if (vizinhoAr(wx, wy, lz, ld.dx, ld.dy, 0)) lateraisAr.push(lat);
-        }
-        // Bevel só na borda do cliff (superfície + pelo menos 1 lado aberto)
-        const ehBordaCliff =
-          ehSuperficie && lateraisAr.length > 0 && TRONCO_INSET > 0;
+      let loteGrama = null;
+      let loteTerra = null;
+      let loteFaces = null;
+      let topsGrama = null;
+      let topsTerra = null;
+      if (querReal) {
+        const kit = kitDoRelevo(wx, wy) || "_";
+        const sacoTopo = sacoDeTopo(kit);
+        const sacoParede = sacoParedeUnico;
+        loteGrama = sacoTopo.lote;
+        loteTerra = sacoTopo.lote;
+        loteFaces = sacoParede.lote;
+        topsGrama = sacoTopo.extras;
+        topsTerra = sacoTopo.extras;
+        mascaraCel[ia] = mascaraLocal(grade, lx, ly);
+        kitsCel[ia] = kit;
 
-        for (const d of DIRS) {
-          if (!vizinhoAr(wx, wy, lz, d.dx, d.dy, d.dz)) continue;
+        for (let lz = 0; lz < zSurf && !colunaSimples; lz++) {
+          const id = obterBloco(wx, wy, lz);
+          if (!ehSolido(id)) continue;
 
-          if (d.nome === "u") {
-            const cortesL = ehSuperficie ? cortesConvexosL(wx, wy, lz) : [];
-            const yTopo = lz + 1 - INSET_TOPO;
-            let loteTop;
-            let extrasTop;
-            if (id === BLOCO.PONTE) {
-              const sacoPonte = sacoDe(sacosTopo, KIT_PONTE);
-              loteTop = sacoPonte.lote;
-              extrasTop = sacoPonte.extras;
-            } else if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
-              loteTop = loteTerra;
-              extrasTop = topsTerra;
-            } else {
-              loteTop = loteGrama;
-              extrasTop = topsGrama;
-            }
+          const ehSuperficie = vizinhoAr(wx, wy, lz, 0, 0, 1);
+          const lateraisAr = [];
+          for (const lat of ["s", "n", "e", "w"]) {
+            const ld = DIRS.find((x) => x.nome === lat);
+            if (vizinhoAr(wx, wy, lz, ld.dx, ld.dy, 0)) lateraisAr.push(lat);
+          }
+          // Bevel só na borda do cliff (superfície + pelo menos 1 lado aberto)
+          const ehBordaCliff =
+            ehSuperficie && lateraisAr.length > 0 && TRONCO_INSET > 0;
 
-            if (ehBordaCliff) {
-              empurrarBevel(loteTop, loteFaces, wx, wy, lz, lateraisAr);
-            } else if (cortesL.length > 0) {
-              // Canto L: corta o topo de A + triângulo de mitra
-              for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
-                extrasTop.push(comSplat(pintarPlano(t, loteTop._rgb), 0));
+          for (const d of DIRS) {
+            if (!vizinhoAr(wx, wy, lz, d.dx, d.dy, d.dz)) continue;
+
+            if (d.nome === "u") {
+              const cortesL = ehSuperficie ? cortesConvexosL(wx, wy, lz) : [];
+              const yTopo = lz + 1 - INSET_TOPO;
+              let loteTop;
+              let extrasTop;
+              if (id === BLOCO.PONTE) {
+                const sacoPonte = sacoDeTopo(KIT_PONTE);
+                loteTop = sacoPonte.lote;
+                extrasTop = sacoPonte.extras;
+              } else if (id === BLOCO.TERRA || id === BLOCO.PEDRA || lz + 1 >= 2) {
+                loteTop = loteTerra;
+                extrasTop = topsTerra;
+              } else {
+                loteTop = loteGrama;
+                extrasTop = topsGrama;
               }
-              empurrarMitras(loteFaces, wx, wy, lz, yTopo, cortesL);
-            } else {
-              pushTopoLote(loteTop, wx, wy, lz + 1);
-              for (const lat of lateraisAr) {
-                ledges.push(caixaLedge(wx, wy, lz + 1, lat, hexBioma(wx, wy, false), hexBioma(wx, wy, true)));
+
+              if (ehBordaCliff) {
+                empurrarBevel(loteTop, loteFaces, wx, wy, lz, lateraisAr);
+              } else if (cortesL.length > 0) {
+                // Canto L: corta o topo de A + triângulo de mitra
+                for (const t of topoComCortesConvexos(wx, wy, yTopo, cortesL)) {
+                  extrasTop.push(comSplat(pintarPlano(t, loteTop._rgb), 0));
+                }
+                empurrarMitras(loteFaces, wx, wy, lz, yTopo, cortesL);
+              } else {
+                pushTopoLote(loteTop, wx, wy, lz + 1);
+                for (const lat of lateraisAr) {
+                  pushLedge(
+                    loteLedges,
+                    wx,
+                    wy,
+                    lz + 1,
+                    lat,
+                    hexBioma(wx, wy, false),
+                    hexBioma(wx, wy, true),
+                  );
+                }
               }
+            } else if (d.nome === "d") {
+              loteFaces._n = [0, -1, 0];
+              q6(
+                loteFaces,
+                [wx, lz, wy + 1, wx, lz, wy, wx + 1, lz, wy + 1, wx, lz, wy, wx + 1, lz, wy, wx + 1, lz, wy + 1],
+                UV_FACE,
+              );
+            } else {
+              if (ehBordaCliff && lateraisAr.includes(d.nome)) continue;
+              PUSH_FACE[d.nome](loteFaces, wx, wy, lz);
             }
-          } else if (d.nome === "d") {
-            loteFaces._n = [0, -1, 0];
-            q6(
-              loteFaces,
-              [wx, lz, wy + 1, wx, lz, wy, wx + 1, lz, wy + 1, wx, lz, wy, wx + 1, lz, wy, wx + 1, lz, wy + 1],
-              UV_FACE,
-            );
-          } else {
-            if (ehBordaCliff && lateraisAr.includes(d.nome)) continue;
-            PUSH_FACE[d.nome](loteFaces, wx, wy, lz);
           }
         }
       }
 
-      if (zSurf > 0) {
+      if (querCubos && zSurf > 0) {
         let y0 = 0;
         let y1 = Math.max(0.08, zSurf);
         if (!modelo && colunaTemArInterno(wx, wy)) {
@@ -1678,23 +1664,26 @@ function* construirGeosChunk(chunk) {
         const prof = caindo
           ? Math.max(1, supAgua - (chunk.aguaPiso[ia] | 0))
           : chunk.aguaProf[ia] | 0;
-        const listaAgua = fam === FLUIDO.LAVA ? aguasLava : fam === FLUIDO.PANTANO ? aguasPantano : aguas;
+        const loteAgua =
+          fam === FLUIDO.LAVA ? loteAguasLava : fam === FLUIDO.PANTANO ? loteAguasPantano : loteAguas;
         const corAgua = fam === FLUIDO.LAVA || fam === FLUIDO.PANTANO ? "#ffffff" : tintaLago(prof || 1);
-        listaAgua.push(
-          geoSuperficieAgua(
-            wx,
-            wy,
-            supAgua - 0.04,
-            chunk.fluxoX[ia] | 0,
-            chunk.fluxoY[ia] | 0,
-            corAgua,
-          ),
+        const rgbAgua = hexParaRgb(corAgua);
+        pushQuadAgua(
+          loteAgua,
+          wx,
+          wy,
+          supAgua - 0.04,
+          chunk.fluxoX[ia] | 0,
+          chunk.fluxoY[ia] | 0,
+          rgbAgua.r,
+          rgbAgua.g,
+          rgbAgua.b,
         );
-        empurrarEspuma(espumas, wx, wy, supAgua + 0.16);
+        empurrarEspumaLote(loteEspumas, wx, wy, supAgua + 0.16);
         // Cortina em qualquer fluido (água, pântano, lava) com vizinho
         // molhado/nível mais baixo — dois níveis diferentes adjacentes.
         {
-          const listaQueda = fam === FLUIDO.LAVA ? quedasLava : quedas;
+          const loteQueda = fam === FLUIDO.LAVA ? loteQuedasLava : loteQuedas;
           if (caindo) {
             let yBase = chunk.aguaFundo[ia] | 0;
             let dir = "s";
@@ -1711,7 +1700,7 @@ function* construirGeosChunk(chunk) {
               else dir = "w";
             }
             if (supAgua - yBase > 0.15) {
-              listaQueda.push(planoQueda(wx, wy, yBase, supAgua, dir));
+              pushQuadQueda(loteQueda, wx, wy, yBase, supAgua, dir);
             }
           } else {
             const lados = [
@@ -1727,7 +1716,7 @@ function* construirGeosChunk(chunk) {
               // Só entre colunas molhadas em níveis diferentes.
               if (!(dest.superficie > 0)) continue;
               if (supAgua - dest.superficie < 1) continue;
-              listaQueda.push(planoQueda(wx, wy, dest.superficie, supAgua, lados[d][2]));
+              pushQuadQueda(loteQueda, wx, wy, dest.superficie, supAgua, lados[d][2]);
             }
           }
         }
@@ -1735,59 +1724,61 @@ function* construirGeosChunk(chunk) {
     }
   }
 
-  for (let i = 0; i < nCel; i++) {
-    if (!simplesCel[i] || mascaraCel[i] !== 0) continue;
-    const lx = i % CHUNK_XZ;
-    const ly = (i / CHUNK_XZ) | 0;
-    const wx = baseX + lx;
-    const wy = baseY + ly;
-    if (pesoSplat(wx, wy) === 1) continue;
-    if (!planaNo(grade, lx, ly, wx, wy)) continue;
-    fundivel[i] = 1;
-  }
-  const planos = fundirChao(CHUNK_XZ, fundivel, alturaCel, kitsCel);
-  for (let i = 0; i < planos.length; i++) {
-    const plano = planos[i];
-    carimbarPlano(
-      sacoDe(sacosTopo, plano.kit).lote,
-      baseX + plano.lx,
-      baseY + plano.ly,
-      baseX + plano.lx + plano.w,
-      baseY + plano.ly + plano.d,
-      plano.h,
-    );
-  }
-  for (let ly = 0; ly < CHUNK_XZ; ly++) {
-    for (let lx = 0; lx < CHUNK_XZ; lx++) {
-      const i = ly * CHUNK_XZ + lx;
-      if (!simplesCel[i] || fundivel[i]) continue;
+  if (querReal) {
+    for (let i = 0; i < nCel; i++) {
+      if (!simplesCel[i] || mascaraCel[i] !== 0) continue;
+      const lx = i % CHUNK_XZ;
+      const ly = (i / CHUNK_XZ) | 0;
       const wx = baseX + lx;
       const wy = baseY + ly;
-      const y = alturaCel[i];
-      const kit = kitsCel[i];
-      const sacoTopo = sacoDe(sacosTopo, kit);
-      const sacoParede = sacoDe(sacosParede, kit);
-      const m = mascaraCel[i];
-      const splat = pesoSplat(wx, wy) === 1;
-      const plana = m === 0 && planaNo(grade, lx, ly, wx, wy);
-      if (plana) {
-        emitirTopo(sacoTopo.lote, wx, wy, y, 0, 0, 1, 1);
-        continue;
-      }
-      const { cap, chanfros } = carimbarBorda(
-        sacoTopo.lote,
-        sacoParede.lote,
-        grade,
-        lx,
-        ly,
-        wx,
-        wy,
-        y,
-        m,
-        !splat,
+      if (pesoSplat(wx, wy) === 1) continue;
+      if (!planaNo(grade, lx, ly, wx, wy)) continue;
+      fundivel[i] = 1;
+    }
+    const planos = fundirChao(CHUNK_XZ, fundivel, alturaCel, kitsCel);
+    for (let i = 0; i < planos.length; i++) {
+      const plano = planos[i];
+      carimbarPlano(
+        sacoDeTopo(plano.kit).lote,
+        baseX + plano.lx,
+        baseY + plano.ly,
+        baseX + plano.lx + plano.w,
+        baseY + plano.ly + plano.d,
+        plano.h,
       );
-      if (splat && cap.x1 - cap.x0 > 1e-4 && cap.z1 - cap.z0 > 1e-4) {
-        emitirTopo(sacoTopo.lote, wx, wy, y, cap.x0, cap.z0, cap.x1, cap.z1, chanfros);
+    }
+    for (let ly = 0; ly < CHUNK_XZ; ly++) {
+      for (let lx = 0; lx < CHUNK_XZ; lx++) {
+        const i = ly * CHUNK_XZ + lx;
+        if (!simplesCel[i] || fundivel[i]) continue;
+        const wx = baseX + lx;
+        const wy = baseY + ly;
+        const y = alturaCel[i];
+        const kit = kitsCel[i];
+        const sacoTopo = sacoDeTopo(kit);
+        const sacoParede = sacoParedeUnico;
+        const m = mascaraCel[i];
+        const splat = pesoSplat(wx, wy) === 1;
+        const plana = m === 0 && planaNo(grade, lx, ly, wx, wy);
+        if (plana) {
+          emitirTopo(sacoTopo.lote, wx, wy, y, 0, 0, 1, 1);
+          continue;
+        }
+        const { cap, chanfros } = carimbarBorda(
+          sacoTopo.lote,
+          sacoParede.lote,
+          grade,
+          lx,
+          ly,
+          wx,
+          wy,
+          y,
+          m,
+          !splat,
+        );
+        if (splat && cap.x1 - cap.x0 > 1e-4 && cap.z1 - cap.z0 > 1e-4) {
+          emitirTopo(sacoTopo.lote, wx, wy, y, cap.x0, cap.z0, cap.x1, cap.z1, chanfros);
+        }
       }
     }
   }
@@ -1796,47 +1787,51 @@ function* construirGeosChunk(chunk) {
   yield;
 
   const tFin = perf ? performance.now() : 0;
+  let geoParedes = null;
+  /** Um geo de topo por kit — materialKit + pele/splat (não atlas unificado). */
   const topos = [];
-  for (const [kit, saco] of sacosTopo) {
-    const geo = finalizarLote(saco.lote, saco.extras);
-    if (geo) topos.push({ kit, geo });
-  }
   const paredes = [];
-  for (const [kit, saco] of sacosParede) {
-    const geo = finalizarLote(saco.lote, saco.extras);
-    if (geo) paredes.push({ kit, geo });
+  if (querReal) {
+    for (const [kit, saco] of sacosTopo) {
+      const geo = finalizarLote(saco.lote, saco.extras);
+      if (geo) topos.push({ kit, geo });
+    }
+    geoParedes = finalizarLote(sacoParedeUnico.lote, sacoParedeUnico.extras);
+    if (geoParedes) paredes.push({ kit: "_penhasco", geo: geoParedes });
   }
   const out = {
     topos,
     paredes,
-    geoLedges: mesclarLista(ledges),
-    geoCubos: geoDoLote(loteCubos),
-    geoAgua: mesclarLista(aguas),
-    geoAguaPantano: mesclarLista(aguasPantano),
-    geoAguaLava: mesclarLista(aguasLava),
-    geoEspuma: mesclarLista(espumas),
-    geoQueda: mesclarLista(quedas),
-    geoQuedaLava: mesclarLista(quedasLava),
+    geoTops: null,
+    geoParedes,
+    geoLedges: querReal ? geoDoLote(loteLedges) : null,
+    geoCubos: querCubos ? geoDoLote(loteCubos) : null,
+    geoAgua: geoDoLote(loteAguas),
+    geoAguaPantano: geoDoLote(loteAguasPantano),
+    geoAguaLava: geoDoLote(loteAguasLava),
+    geoEspuma: geoDoLote(loteEspumas),
+    geoQueda: geoDoLote(loteQuedas),
+    geoQuedaLava: geoDoLote(loteQuedasLava),
   };
   if (perf) acumular("finalizarGeos", performance.now() - tFin);
   return out;
 }
 
-function drenarGeosChunk(chunk) {
-  const gen = construirGeosChunk(chunk);
+function drenarGeosChunk(chunk, opts = null) {
+  const gen = construirGeosChunk(chunk, opts);
   let passo = gen.next();
   while (!passo.done) passo = gen.next();
   return passo.value;
 }
 
-/** Malha real de um chunk já instalado no store. A página de faces usa isso. */
+/** Malha completa (cubos+real) — página de faces / profiling. */
 export function malharChunk(chunk) {
-  return drenarGeosChunk(chunk);
+  return drenarGeosChunk(chunk, { cubos: true, real: true });
 }
 
 /** Iterator do mesher — a página de profiling drena com orçamento de frame. */
 export function* iterarGeosChunk(chunk) {
-  return yield* construirGeosChunk(chunk);
+  return yield* construirGeosChunk(chunk, { cubos: true, real: true });
 }
 
 function vertsDeGeo(geo) {
@@ -1961,6 +1956,7 @@ export function criarTerrenoMalha(atlas = null) {
     grama: null,
     terra: null,
     cliff: null,
+    topoAtlas: null,
     ledge: naFrenteDoSuave(aplicarSombraNuvem(new THREE.MeshStandardMaterial({
       color: 0xffffff,
       roughness: 0.85,
@@ -1987,8 +1983,8 @@ export function criarTerrenoMalha(atlas = null) {
   /** @type {Map<string, { mat: THREE.Material, tex: THREE.Texture | null }>} */
   const materiaisKit = new Map();
   let atlasAplicado = false;
-  /** Visual ativo: cubos (didático) vs real (tiles). */
-  let modoCubos = true;
+  /** Visual ativo: cubos (didático) vs real (tiles). Alinha com opcoesMalha. */
+  let modoCubos = !VISUAL_REAL_PADRAO;
   /** @type {THREE.Texture | null} */
   let texPonte = null;
 
@@ -2251,30 +2247,36 @@ export function criarTerrenoMalha(atlas = null) {
       mesh.name = nome;
       mesh.castShadow = opts.cast != null ? opts.cast : opts.shadow !== false;
       mesh.receiveShadow = opts.receive != null ? opts.receive : opts.shadow !== false;
+      mesh.userData._castShadowOrig = !!mesh.castShadow;
       mesh.renderOrder = 1 + (opts.order || 0);
       entry.real.add(mesh);
     }
 
     if (atlasAplicado) {
-      const topos = geos.topos || [];
-      const paredes = geos.paredes || [];
-      for (let i = 0; i < topos.length; i++) {
-        add(topos[i].geo, materialKit(topos[i].kit, "topo"), `tops-${topos[i].kit}`, {
+      for (const item of geos.topos || []) {
+        add(item.geo, materialKit(item.kit, "topo"), `topo-${item.kit}`, {
           cast: false,
           receive: true,
         });
       }
-      for (let i = 0; i < paredes.length; i++) {
-        add(paredes[i].geo, materialKit(paredes[i].kit, "parede"), `faces-${paredes[i].kit}`);
-      }
+      add(geos.geoParedes || geos.paredes?.[0]?.geo, materialPenhasco(), "faces", {
+        cast: true,
+        receive: true,
+      });
       add(geos.geoLedges, materiais.ledge, "ledges", { cast: false, receive: true });
+      geos.geoTops?.dispose();
     } else {
+      geos.geoTops?.dispose();
+      geos.geoParedes?.dispose();
       for (const item of geos.topos || []) item.geo?.dispose();
       for (const item of geos.paredes || []) item.geo?.dispose();
       geos.geoLedges?.dispose();
     }
 
     grupoReal.add(entry.real);
+    entry.aabb = aabbDoChunk(chunk.cx, chunk.cy, 64);
+    entry.alturaMax = 64;
+    entry._frustumVisivel = undefined;
     meshesPorChunk.set(key, entry);
     publicarMalha(entry.cubos, "Terreno");
     publicarMalha(entry.real, "Terreno");
@@ -2300,22 +2302,27 @@ export function criarTerrenoMalha(atlas = null) {
     }
     const geo = construirProps();
     if (!geo) return;
-    meshProps = new THREE.Mesh(geo, materiais.props);
-    meshProps.name = "props";
-    meshProps.castShadow = true;
-    meshProps.receiveShadow = true;
-    meshProps.renderOrder = 1;
-    grupoReal.add(meshProps);
-
-    const geo2 = geo.clone();
-    meshPropsCubos = new THREE.Mesh(geo2, materiais.props);
-    meshPropsCubos.name = "props-cubos";
-    meshPropsCubos.castShadow = true;
-    meshPropsCubos.receiveShadow = true;
-    meshPropsCubos.renderOrder = 1;
-    grupoCubos.add(meshPropsCubos);
-    publicarMalha(meshProps, "Terreno");
-    publicarMalha(meshPropsCubos, "Terreno");
+    if (opcoesMalha.real) {
+      meshProps = new THREE.Mesh(geo, materiais.props);
+      meshProps.name = "props";
+      meshProps.castShadow = true;
+      meshProps.receiveShadow = true;
+      meshProps.renderOrder = 1;
+      grupoReal.add(meshProps);
+      publicarMalha(meshProps, "Terreno");
+    }
+    if (opcoesMalha.cubos) {
+      const geoCubos = meshProps ? geo.clone() : geo;
+      meshPropsCubos = new THREE.Mesh(geoCubos, materiais.props);
+      meshPropsCubos.name = "props-cubos";
+      meshPropsCubos.castShadow = true;
+      meshPropsCubos.receiveShadow = true;
+      meshPropsCubos.renderOrder = 1;
+      grupoCubos.add(meshPropsCubos);
+      publicarMalha(meshPropsCubos, "Terreno");
+    } else if (!meshProps) {
+      geo.dispose();
+    }
     marcarSombraSuja();
   }
 
@@ -2382,6 +2389,9 @@ export function criarTerrenoMalha(atlas = null) {
       }
       return { chunk: melhor, score: melhorScore };
     }
+
+    // Worker heightfield fica desligado: não tem carimbar/bevel/splat.
+    // Mantém generator sync (lote tipado + 1 parede + topos por kit).
 
     if (trabalhoMalha) {
       const atualScore = scoreChunk(trabalhoMalha.chunk.cx, trabalhoMalha.chunk.cy, ctxPri);
@@ -2474,9 +2484,18 @@ export function criarTerrenoMalha(atlas = null) {
     if (materiais.grama) materiais.grama.dispose();
     if (materiais.terra) materiais.terra.dispose();
     if (materiais.cliff) materiais.cliff.dispose();
+    if (materiais.topoAtlas) {
+      materiais.topoAtlas.dispose();
+      materiais.topoAtlas = null;
+    }
     soltarMateriaisKit();
+    if (materiais.topoAtlas) {
+      materiais.topoAtlas.dispose();
+      materiais.topoAtlas = null;
+    }
     visuais = novoAtlas;
     montarMateriaisTextura(texturas);
+    // Topos: materialKit por kit + pele/splat (sprites). Parede única continua.
     atlasAplicado = true;
     reconstruirTudo();
     return true;
@@ -2492,7 +2511,13 @@ export function criarTerrenoMalha(atlas = null) {
     aplicarAtlas,
     aplicarVisual(usarTilesFlag) {
       const real = !!(usarTilesFlag && atlasAplicado);
-      modoCubos = !real;
+      const querCubos = !real;
+      const mudou =
+        modoCubos !== querCubos ||
+        opcoesMalha.cubos !== querCubos ||
+        opcoesMalha.real !== real;
+      modoCubos = querCubos;
+      definirOpcoesMalha({ cubos: querCubos, real });
       grupoReal.visible = real;
       grupoCubos.visible = !real;
       if (!real) {
@@ -2502,8 +2527,19 @@ export function criarTerrenoMalha(atlas = null) {
           }
         });
       }
+      // Modo novo sem geometria: suja e remalha no orçamento (não hitch sync).
+      if (mudou) {
+        paraCadaChunk((chunk) => {
+          chunk.sujo = true;
+        });
+        trabalhoMalha = null;
+        reconstruirProps();
+      }
     },
     tickMalha,
+    atualizarFrustum(cam, foco) {
+      atualizarFrustumChunks(cam, meshesPorChunk, foco || { x: 0, y: 0 });
+    },
     mioloMalhaPronto,
     /** Texturas de topo já usadas nos blocos. Não descartar daqui. */
     obterTexturasTopo() {
@@ -2532,6 +2568,7 @@ export function criarTerrenoMalha(atlas = null) {
     reconstruirSujados,
     reconstruirTudo,
     liberar() {
+      cancelarMalhaWorker();
       for (const key of [...meshesPorChunk.keys()]) {
         liberarGrupoChunk(meshesPorChunk.get(key));
       }
@@ -2545,6 +2582,10 @@ export function criarTerrenoMalha(atlas = null) {
       materiais.terra?.dispose();
       materiais.cliff?.dispose();
       soltarMateriaisKit();
+      if (materiais.topoAtlas) {
+        materiais.topoAtlas.dispose();
+        materiais.topoAtlas = null;
+      }
       texturas?.liberar();
       liberarMateriaisAgua();
     },

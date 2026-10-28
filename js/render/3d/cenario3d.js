@@ -804,6 +804,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   atualizarPokemon3d(yaw, camRender, inclinacao);
   atualizarDebugCorpos();
+  estado.terreno?.atualizarFrustum?.(camRender, { x: corpo.x, y: corpo.y });
   const camPos = estado.camera3d.cam.position;
   oferecerLuzesTotemSantuario(camPos.x, camPos.z, { interior });
   resolverLuzes(camPos.x, camPos.y, camPos.z, estado.scene.fog?.far ?? 90);

@@ -1,5 +1,6 @@
 import { CHUNK_XZ } from "../../../config.js";
 import { alturaEm } from "../../../mundo/altura.js";
+import { garantirCapLote } from "../malha/loteTipado.js";
 import {
   LABIO,
   OC_PAREDE,
@@ -42,12 +43,29 @@ function vizinhanca(grade, lx, ly, wx, wy) {
 }
 
 function empurrar(lote, x, y, z, nx, ny, nz, u, v, oc) {
-  lote.pos.push(x, y, z);
-  lote.uv.push(u, v);
-  lote.nor.push(nx, ny, nz);
-  if (lote.cor) lote.cor.push(oc, oc, oc);
-  if (lote.splat) lote.splat.push(0);
-  if (lote.pele) lote.pele.push(0, 0);
+  garantirCapLote(lote, 1);
+  const i = lote.nVerts;
+  const ip = i * 3;
+  const iu = i * 2;
+  lote.pos[ip] = x;
+  lote.pos[ip + 1] = y;
+  lote.pos[ip + 2] = z;
+  lote.uv[iu] = u;
+  lote.uv[iu + 1] = v;
+  lote.nor[ip] = nx;
+  lote.nor[ip + 1] = ny;
+  lote.nor[ip + 2] = nz;
+  if (lote.cor) {
+    lote.cor[ip] = oc;
+    lote.cor[ip + 1] = oc;
+    lote.cor[ip + 2] = oc;
+  }
+  if (lote.splat) lote.splat[i] = 0;
+  if (lote.pele) {
+    lote.pele[iu] = 0;
+    lote.pele[iu + 1] = 0;
+  }
+  lote.nVerts = i + 1;
 }
 
 function normalDe(a, b, c) {
