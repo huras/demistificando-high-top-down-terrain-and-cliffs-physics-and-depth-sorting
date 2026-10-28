@@ -47,8 +47,10 @@ import {
   temPlanoLar,
 } from "./laresRelevo.js";
 
-/** Raio Chebyshev do núcleo plano (2 → 5×5). */
+/** Raio Chebyshev do núcleo plano em terra (2 → 5×5). */
 export const LAR_NUCLEO_RAIO = 2;
+/** Núcleo dos ninhos altos FlapAround (1 → 3×3). */
+export const LAR_NUCLEO_RAIO_VOADOR = 1;
 /** Anéis de avental (degraus) ao redor do núcleo. */
 export const LAR_AVENTAL = 2;
 /** Offset do terraço vs. natural (0 = achata no chão local). */
@@ -231,7 +233,18 @@ export function garantirSitioLar(cx, cy, indice) {
     return false;
   }
 
-  const raio = Math.max(0, LAR_NUCLEO_RAIO | 0);
+  const esp = especieDoLar(cx, cy, indice, x, y);
+  if (!esp) {
+    rejeitados.add(id);
+    return false;
+  }
+  const elev = elevacaoDoLar(cx, cy, indice, esp);
+  const voador = elev >= LAR_ELEVACAO_VOADOR_MIN;
+  // Flying nest: só 3×3; terra continua 5×5.
+  const raio = Math.max(
+    0,
+    voador ? LAR_NUCLEO_RAIO_VOADOR | 0 : LAR_NUCLEO_RAIO | 0,
+  );
   const x0 = tx - raio;
   const y0 = ty - raio;
   const x1 = tx + raio + 1;
@@ -259,16 +272,10 @@ export function garantirSitioLar(cx, cy, indice) {
     return false;
   }
 
-  const esp = especieDoLar(cx, cy, indice, x, y);
-  if (!esp) {
-    rejeitados.add(id);
-    return false;
-  }
-  const elev = elevacaoDoLar(cx, cy, indice, esp);
   const h = Math.max(nivel + 1, minH + elev);
   carimbarPlanoLar(x0, y0, x1, y1, h, LAR_AVENTAL);
   carimbados.add(id);
-  const kind = elev >= LAR_ELEVACAO_VOADOR_MIN ? HABITAT.HIGH : HABITAT.LAND;
+  const kind = voador ? HABITAT.HIGH : HABITAT.LAND;
   sitios.set(id, {
     id,
     tx,
@@ -283,6 +290,7 @@ export function garantirSitioLar(cx, cy, indice) {
     indice,
     kind,
     elev,
+    nucleoRaio: raio,
   });
   return true;
 }
@@ -294,7 +302,8 @@ export function sitioLarPorId(larId) {
 
 /** Carimba lares cujo núcleo/avental toca este chunk (vizinhos inclusos). */
 export function garantirLaresNoChunk(cx, cy) {
-  const pad = Math.max(0, (LAR_NUCLEO_RAIO | 0) + (LAR_AVENTAL | 0));
+  const nucleoMax = Math.max(LAR_NUCLEO_RAIO | 0, LAR_NUCLEO_RAIO_VOADOR | 0);
+  const pad = Math.max(0, nucleoMax + (LAR_AVENTAL | 0));
   const alcance = Math.max(1, Math.ceil(pad / CHUNK_XZ) + 1);
   const maxSlot = slotsPorChunk();
   for (let ny = cy - alcance; ny <= cy + alcance; ny++) {
@@ -313,7 +322,8 @@ export function celulasSitioLarChunk(cx, cy) {
   const set = new Set();
   const baseX = cx * CHUNK_XZ;
   const baseY = cy * CHUNK_XZ;
-  const pad = Math.max(0, (LAR_NUCLEO_RAIO | 0) + (LAR_AVENTAL | 0));
+  const nucleoMax = Math.max(LAR_NUCLEO_RAIO | 0, LAR_NUCLEO_RAIO_VOADOR | 0);
+  const pad = Math.max(0, nucleoMax + (LAR_AVENTAL | 0));
   for (const sitio of sitios.values()) {
     const xa = sitio.x0 - pad;
     const ya = sitio.y0 - pad;

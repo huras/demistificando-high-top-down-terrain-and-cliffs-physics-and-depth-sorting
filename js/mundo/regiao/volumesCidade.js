@@ -2,7 +2,7 @@
  * Lotes e volumes de prédio. A colisão é a coluna do chunk carregado;
  * o layout em si é só conta, sem malha.
  */
-import { ESCALA_Y_CASA, ESCALA_Y_CASA_REF } from "../../config.js";
+import { ESCALA_Y_CASA } from "../../config.js";
 import { ajusteDe } from "../cidade/ajustesColisor.js";
 import { idDaCasa } from "../cidade/catalogoCasas.js";
 import { portaPadraoSprite } from "../cidade/caixaSprite.js";
@@ -61,7 +61,7 @@ export function varianteCasa(indice) {
   return ((indice % VARIANTES_CASA) + VARIANTES_CASA) % VARIANTES_CASA;
 }
 
-/** Alturas em blocos calibradas em ESCALA_Y_CASA_REF. */
+/** Alturas-base do papel; `alturaDoPapel` aplica ESCALA_Y_CASA. */
 const ALTURA = Object.freeze({
   casa: 5,
   centro: 4,
@@ -77,11 +77,13 @@ const ALTURA = Object.freeze({
   mansao: 8,
 });
 
-/** Coluna sólida do lote acompanha o knob visual ESCALA_Y_CASA. */
+/**
+ * Altura mundial em blocos (colisão = LOD).
+ * Antes: base*(CASA/REF) → lab 8, enquanto o horizonte renderizava ~4.
+ */
 export function alturaDoPapel(papel) {
   const base = ALTURA[papel] || ALTURA.casa;
-  const ref = ESCALA_Y_CASA_REF > 1e-8 ? ESCALA_Y_CASA_REF : 0.5;
-  return Math.max(3, Math.round(base * (ESCALA_Y_CASA / ref)));
+  return Math.max(3, Math.round(base * ESCALA_Y_CASA));
 }
 
 function gradeDe(def) {

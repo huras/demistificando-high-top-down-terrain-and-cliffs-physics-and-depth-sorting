@@ -281,7 +281,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(largura, altura, false);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // PCF (não Soft): menos taps no shadow map — Soft + 4k gerava spikes de frame.
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   ligarRendererSombra(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;

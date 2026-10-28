@@ -102,7 +102,8 @@ export function* passosChunk(chunk, seed) {
       preencherColunaSolida(chunk, lx, ly, h, topoPlaza);
       if (amostra) {
         const extra = amostra.predio;
-        if (extra > 0 && !(cascasProntas() && amostra.modelo)) {
+        // Modelo 3D: colisão vem da casca OBJ — placeholder de pedra vira cliff/land.
+        if (extra > 0 && !amostra.modelo) {
           const topo = Math.min(CHUNK_Y, h + extra);
           for (let lz = h; lz < topo; lz++) definirLocal(chunk, lx, ly, lz, BLOCO.PEDRA);
         }

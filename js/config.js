@@ -12,7 +12,8 @@ export const ALTURA_BLOCO = 1;
 export const ESCALA_Y_RELEVO = 1;
 /**
  * Baseline em que a tabela ALTURA de volumesCidade foi calibrada.
- * alturaEmBlocos = ALTURA[papel] * ESCALA_Y_CASA / ESCALA_Y_CASA_REF.
+ * Colisão/LOD em blocos ≈ ALTURA[papel] * ESCALA_Y_CASA
+ * (CASA/REF inchava 2× vs o visual do horizonte, que desfazia o REF).
  */
 export const ESCALA_Y_CASA_REF = 0.5;
 /** Casas / lotes / prédios GLB (0.75 = +50% sobre o look antigo em REF). */

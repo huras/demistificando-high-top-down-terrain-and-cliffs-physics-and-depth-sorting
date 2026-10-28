@@ -514,6 +514,14 @@ export function criarEdificiosCidade() {
   montarLoja3d(grupo);
   marcarReflexo(grupo);
 
+  let yawAplicado = NaN;
+  let inclinacaoAplicada = NaN;
+  let pxAplicado = NaN;
+  let pyAplicado = NaN;
+  let pesoNoiteAplicado = -1;
+  const YAW_EPS = 0.002;
+  const POS_EPS = 0.35;
+
   return {
     grupo,
     quandoPronto,
@@ -527,6 +535,18 @@ export function criarEdificiosCidade() {
       if (materialGlobo) materialGlobo.emissiveIntensity = pesoNoite;
       const cidades = grupo.userData.cidades;
       if (!cidades) return;
+
+      const mudouYaw = !(Math.abs(yaw - yawAplicado) <= YAW_EPS);
+      const mudouTilt = !(Math.abs(inclinacao - inclinacaoAplicada) <= YAW_EPS);
+      const mudouPos =
+        !(Math.abs(px - pxAplicado) <= POS_EPS) ||
+        !(Math.abs(py - pyAplicado) <= POS_EPS);
+      const mudouNoite = Math.abs(pesoNoite - pesoNoiteAplicado) > 0.01;
+      const precisaCartao = mudouYaw || mudouTilt || Number.isNaN(yawAplicado);
+      const precisaVisibilidade = mudouPos || Number.isNaN(pxAplicado);
+      const precisaLuz = mudouNoite || mudouPos || Number.isNaN(pxAplicado);
+      if (!precisaCartao && !precisaVisibilidade && !precisaLuz) return;
+
       const alcance = (obterRaioStream() + 2) * CHUNK_XZ + 96;
       const limite = alcance * alcance;
       for (let i = 0; i < cidades.length; i++) {
@@ -534,16 +554,18 @@ export function criarEdificiosCidade() {
         const dx = px - c.cx;
         const dy = py - c.cy;
         const visivel = dx * dx + dy * dy < limite;
-        c.grupo.visible = visivel;
+        if (precisaVisibilidade) c.grupo.visible = visivel;
+        else if (!c.grupo.visible) continue;
         if (!visivel) continue;
         const filhos = c.grupo.children;
         for (let f = 0; f < filhos.length; f++) {
           const inst = filhos[f];
           const cartao = inst.userData.cartao;
-          if (cartao) {
+          if (cartao && precisaCartao) {
             cartao.rotation.x = inclinacao;
             cartao.rotation.y = yaw;
           }
+          if (!precisaLuz) continue;
           const pontos = inst.userData.pontosLuz;
           if (!pontos) continue;
           if (inst.userData.roletaJanela) atualizarRoletaJanela(inst, pesoNoite, dtJanela);
@@ -565,7 +587,7 @@ export function criarEdificiosCidade() {
         }
       }
       const sala = grupo.userData.sala;
-      if (sala) {
+      if (sala && precisaCartao) {
         const pecas = sala.children;
         for (let f = 0; f < pecas.length; f++) {
           const cartao = pecas[f].userData.cartao;
@@ -574,6 +596,11 @@ export function criarEdificiosCidade() {
           cartao.rotation.y = yaw;
         }
       }
+      yawAplicado = yaw;
+      inclinacaoAplicada = inclinacao;
+      pxAplicado = px;
+      pyAplicado = py;
+      pesoNoiteAplicado = pesoNoite;
     },
   };
 }

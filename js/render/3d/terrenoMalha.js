@@ -1505,7 +1505,10 @@ function pushParede(lote, nome, wx, wy, y0, y1) {
   }
 }
 
-/** O modelo 3D ocupa o lote. A malha fica no chão; a casca não desenha laje. */
+/**
+ * Modelo/quintal: colisão de casca sobe a coluna, mas a malha fica no chão
+ * (senão vira “terra/cliff” atrás/na frente do prédio).
+ */
 function rebaixarModelo(grade, cx, cy) {
   const n = CHUNK_XZ + 2;
   const x0 = cx * CHUNK_XZ - 1;
@@ -1515,7 +1518,7 @@ function rebaixarModelo(grade, cx, cy) {
     const linha = y * n;
     for (let x = 0; x < n; x++) {
       const amostra = amostraKanto(x0 + x, wy);
-      if (amostra?.modelo) grade[linha + x] = amostra.h;
+      if (amostra?.modelo || amostra?.entradaLab) grade[linha + x] = amostra.h;
     }
   }
 }

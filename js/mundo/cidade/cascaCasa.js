@@ -667,11 +667,13 @@ function selarFundoNoChunk(chunk, casa, fundo, x0, y0, x1, y1) {
       }
       if (!faixaCruza(minE, maxE, plano0, plano1)) continue;
       if (!faixaCruza(minU, maxU, fundo.minU, fundo.maxU)) continue;
+      const amostra = amostraKanto(wx, wy);
+      // Quintal/rua: não vira parede de pedra (malha lia como terra atrás do lab).
+      if (!amostra?.modelo) continue;
       for (let iy = 0; iy < fundo.topo; iy++) {
         const gz = ALTURA_PRACA + iy;
         if (gz < 0 || gz >= CHUNK_Y) continue;
-        const amostra = amostraKanto(wx, wy);
-        if (amostra && gz < (amostra.h | 0)) continue;
+        if (gz < (amostra.h | 0)) continue;
         const li = indiceLocal(wx - x0, wy - y0, gz);
         if (chunk.blocos[li] === BLOCO.PEDRA) continue;
         chunk.blocos[li] = BLOCO.PEDRA;
@@ -730,7 +732,8 @@ function limparLoteNoChunk(chunk, casa, x0, y0, x1, y1) {
   const vy0 = Math.max(y0, Math.floor(casa.oy + casa.y0));
   const vy1 = Math.min(y1, Math.ceil(casa.oy + casa.y1));
   const z0 = ALTURA_PRACA;
-  const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + (casa.altura | 0));
+  // Folga alta: some placeholder/lacrar antigo (ex.: lab em 8) acima da altura nova.
+  const z1 = Math.min(CHUNK_Y, ALTURA_PRACA + Math.max(16, (casa.altura | 0) + 8));
   let mudou = false;
   for (let wy = vy0; wy < vy1; wy++) {
     for (let wx = vx0; wx < vx1; wx++) {
@@ -838,6 +841,7 @@ function montarColocacoes() {
         }, sprite));
         continue;
       }
+      const moldeAlt = moldes.get(id)?.altura | 0;
       colocacoes.push(comMedidaSprite({
         id,
         sprite: sprite || undefined,
@@ -850,7 +854,8 @@ function montarColocacoes() {
         y0: v.y0,
         x1: v.x1,
         y1: v.y1,
-        altura: Math.max(v.altura | 0, moldes.get(id)?.altura | 0),
+        // Altura do colisor = casca do OBJ (não a tabela de papel).
+        altura: moldeAlt > 0 ? moldeAlt : v.altura | 0,
         papel: v.papel,
         cartao: false,
         porta: v.porta !== false,
@@ -912,12 +917,30 @@ export function aplicarCascaNoChunk(chunk) {
       if (gx < x0 || gy < y0 || gx >= x1 || gy >= y1 || gz < 0 || gz >= CHUNK_Y) continue;
       const amostra = amostraKanto(gx, gy);
       if (amostra && gz < (amostra.h | 0)) continue;
+      // Casca só no corpo do modelo — quintal não vira coluna de pedra.
+      if (amostra && !amostra.modelo) continue;
       const li = indiceLocal(gx - x0, gy - y0, gz);
       if (chunk.blocos[li] === BLOCO.PEDRA) continue;
       chunk.blocos[li] = BLOCO.PEDRA;
       mudou = true;
     }
-    if (lacrarLoteNoChunk(chunk, casa, x0, y0, x1, y1)) mudou = true;
+  }
+
+  // Remove pedra velha de quintal/lote que sobrou de casca/lacrar anterior.
+  for (let ly = 0; ly < CHUNK_XZ; ly++) {
+    for (let lx = 0; lx < CHUNK_XZ; lx++) {
+      const wx = x0 + lx;
+      const wy = y0 + ly;
+      const amostra = amostraKanto(wx, wy);
+      if (!amostra?.entradaLab) continue;
+      const chao = amostra.h | 0;
+      for (let z = chao; z < CHUNK_Y; z++) {
+        const li = indiceLocal(lx, ly, z);
+        if (chunk.blocos[li] === BLOCO.AR) continue;
+        chunk.blocos[li] = BLOCO.AR;
+        mudou = true;
+      }
+    }
   }
 
   if (mudou) {

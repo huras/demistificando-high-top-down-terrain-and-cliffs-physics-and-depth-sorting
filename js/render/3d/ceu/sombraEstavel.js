@@ -1,7 +1,11 @@
 import * as THREE from "three";
 
-/** Resolução do shadow map do sol. Um único dono desta constante. */
-export const MAPA_SOMBRA_SOL = 4096;
+/**
+ * Resolução do shadow map do sol. Um único dono desta constante.
+ * 2048: ~4× menos fill que 4096 com qualidade ainda nítida no raio de stream.
+ * (4096 + PCF soft gerava spikes de 40–60 ms no passe de sombra.)
+ */
+export const MAPA_SOMBRA_SOL = 2048;
 
 /** @type {import("three").WebGLRenderer | null} */
 let rendererSombra = null;
@@ -43,12 +47,14 @@ export function sincronizarSombraSuja(sol, alcance, camera, alvo, hora = 0) {
   const yaw = camera
     ? Math.atan2(-(camera.matrixWorld?.elements?.[8] ?? 0), -(camera.matrixWorld?.elements?.[10] ?? 1))
     : 0;
+  // Yaw ~23° / foco em células inteiras: menos regenerações ao andar/olhar
+  // sem shimmer perceptível (o frustum já tem folga generosa).
   const chaveGeo = [
     sol.castShadow ? 1 : 0,
     alcance | 0,
-    Math.round(yaw / 0.2),
-    alvo ? (alvo.x * 2) | 0 : 0,
-    alvo ? (alvo.z * 2) | 0 : 0,
+    Math.round(yaw / 0.4),
+    alvo ? alvo.x | 0 : 0,
+    alvo ? alvo.z | 0 : 0,
   ].join(",");
   // ~6 minutos de jogo por degrau (hora 0–24 → 240 degraus)
   const solAgora = ((hora * 10) | 0) + "";
