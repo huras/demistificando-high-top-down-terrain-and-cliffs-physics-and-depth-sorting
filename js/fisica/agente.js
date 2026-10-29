@@ -1,6 +1,8 @@
 import {
+  AGENTE_DIST_WARP,
   AGENTE_GLIDE_HEUR_FOLGA,
   AGENTE_VEL_MUL,
+  AGENTE_WARP_SEG,
   ASA_DELTA_ABRIR_APOS,
   GRAVIDADE,
   PATH_GLIDE_DIST_MIN,
@@ -8,7 +10,11 @@ import {
   VELOCIDADE_MAX,
   VELOCIDADE_SPRINT,
 } from "../config.js";
-import { aplicarEspacoSeguir } from "../navegacao/espacoSeguir.js";
+import {
+  aplicarEspacoSeguir,
+  OFFSET_MON,
+  OFFSET_NPC,
+} from "../navegacao/espacoSeguir.js";
 import { pensarSeguir } from "../navegacao/ia/pensar.js";
 import { PERFIL_COMPANHEIRO } from "../navegacao/perfilMovimento.js";
 import {
@@ -16,6 +22,11 @@ import {
   garantirNav,
   resetarNav,
 } from "../navegacao/seguirCaminho.js";
+import {
+  ehInteriorSala3d,
+  resolverPisoInterior,
+} from "../jogo/pisoInterior.js";
+import { resolverForaDeObstaculo } from "./obstaculos.js";
 import {
   abrirAsaDelta,
   atualizarAsaDelta,
@@ -208,8 +219,72 @@ export function garantirCorpoLocomocao(corpo, perfil) {
 
 export { resetarNav };
 
+/** Zera estados de locomoção após warp (voo/climb/asa). */
+function limparEstadoWarp(agente) {
+  agente.vx = 0;
+  agente.vy = 0;
+  agente.vz = 0;
+  agente.hopLift = 0;
+  agente.noChao = true;
+  agente.pulando = false;
+  agente.planando = false;
+  agente.voando = false;
+  agente.escalando = false;
+  agente.nadando = false;
+  agente.afogandoT = 0;
+  agente.escalada = null;
+  agente.mantle = null;
+  agente.puloCortado = false;
+  agente.coyoteT = 0;
+  agente.tempoAr = 0;
+  agente.andando = false;
+  if (agente.nav) resetarNav(agente);
+}
+
 /**
- * Segue o líder via pathfinding (sem teleporte).
+ * Se ficou longe do líder por AGENTE_WARP_SEG, puxa pro offset de follow.
+ * @returns {boolean} true se teleportou (frame já resolvido).
+ */
+function puxarSeLongeDemais(agente, lider, dt, distSeguir, liderReal) {
+  if (!liderReal || !(distSeguir > 0)) {
+    agente._longeSeguirT = 0;
+    return false;
+  }
+  const dist = Math.hypot(lider.x - agente.x, lider.y - agente.y);
+  if (!(dist >= AGENTE_DIST_WARP)) {
+    agente._longeSeguirT = 0;
+    return false;
+  }
+  agente._longeSeguirT = (agente._longeSeguirT || 0) + dt;
+  if (agente._longeSeguirT < AGENTE_WARP_SEG) return false;
+  agente._longeSeguirT = 0;
+
+  const off = agente.agente ? OFFSET_NPC : OFFSET_MON;
+  let x = lider.x + off.x;
+  let y = lider.y + off.y;
+  if (ehInteriorSala3d()) {
+    const ok = resolverPisoInterior(x, y, lider.x, lider.y);
+    if (ok) {
+      x = ok.x;
+      y = ok.y;
+    } else {
+      x = lider.x;
+      y = lider.y;
+    }
+  }
+  const zLider = lider.elevacao ?? lider.z ?? 0;
+  const z = alturaSobPes(x, y, zLider + 2) || zLider;
+  agente.x = x;
+  agente.y = y;
+  agente.z = z;
+  agente.elevacao = z;
+  limparEstadoWarp(agente);
+  resolverForaDeObstaculo(agente);
+  return true;
+}
+
+/**
+ * Segue o líder via pathfinding; teleporta se ficar longe demais por 2s.
  * Velocidade = AGENTE_VEL_MUL × walk/sprint do líder.
  */
 export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0) {
@@ -223,6 +298,7 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
   // Meta sintética (irPara combate/item) não tem facing/acao — NN de follow
   // tratava o inimigo como treinador e o mon andava doidão.
   const liderReal = lider.facing != null || lider.acao != null;
+  if (puxarSeLongeDemais(agente, lider, dt, distSeguir, liderReal)) return;
   const redeCmd = liderReal
     ? pensarSeguir(agente, lider, dt, distSeguir)
     : null;

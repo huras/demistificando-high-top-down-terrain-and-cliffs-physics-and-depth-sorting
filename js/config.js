@@ -55,6 +55,9 @@ export const AGENTE_DIST_PARAR = 1.15;
 export const AGENTE_DIST_SEGUIR = 2.45;
 /** Só “chegou” se |Δelev| estiver abaixo disto (evita satisfeito no tile ao lado do cliff). */
 export const AGENTE_GAP_ELEV_PARAR = 0.85;
+/** Longe demais do líder: após AGENTE_WARP_SEG, teleporta pro offset de follow. */
+export const AGENTE_DIST_WARP = 14;
+export const AGENTE_WARP_SEG = 2;
 
 /** Pathfinding compartilhado (muitas entidades). */
 export const PATH_EXPAND_POR_FRAME = 768;
@@ -520,7 +523,7 @@ export const POKEMON = Object.freeze({
   RAIO_MANTER_AGRO: 80,
   RAIO_LARES: 64,
   /** Distância mínima centro↔centro entre lares (núcleo ~5×5). */
-  MIN_ESPACO_LARES: 22,
+  MIN_ESPACO_LARES: 20,
   MIN_ESPACO_GRAMA: 10,
   FOLGA_SPAWN: 14,
   RAIO_TERRITORIO: 10,

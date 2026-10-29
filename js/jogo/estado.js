@@ -738,7 +738,6 @@ export function salvar() {
     bolas: obterBolas(),
     bolsa: bolsaParaLista(),
     hotbar: estado.hotbar,
-    slotAtivo: estado.slotAtivo,
     caixas: estado.caixas,
     plots: estado.plots.map(serializarPlot),
     moveis: estado.moveis,
@@ -808,11 +807,8 @@ export function carregar() {
   if (!estado.hotbar[5] && contarItem("bow") > 0) {
     estado.hotbar[5] = { tipo: TIPO_ITEM.FERRAMENTA, key: "bow" };
   }
-  {
-    const s = Number(bruto.slotAtivo);
-    estado.slotAtivo =
-      Number.isInteger(s) && s >= -1 && s < SLOTS_HOTBAR ? s : -1;
-  }
+  // Slot ativo é sessão — não restaura do save.
+  estado.slotAtivo = -1;
   soltarSlotVazio();
   estado.caixas = bruto.caixas?.length === CAIXAS ? bruto.caixas : caixasVazias();
   estado.plots = [];

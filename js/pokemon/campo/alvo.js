@@ -116,19 +116,35 @@ export function escolherAlvoParty(mon, selvagens, jogador) {
   return null;
 }
 
-/** Alvo do selvagem: party / treinador. */
+/** Alvo do selvagem: party se houver mon fora; treinador só sem party no campo. */
 export function escolherAlvoWild(ator, partyMon, jogador) {
   if (!vivo(ator)) return null;
   if (ator.sonoNatural || (ator.dormindo || 0) > 0 || ator.status === "sleep") return null;
+
+  const partyVivo = vivo(partyMon);
+  const jogOk = jogador && !jogador.morto && jogador.hp > 0;
+  /** Treinador só é alvo válido sem Pokémon deployado. */
+  const podeAlvoJogador = jogOk && !partyVivo;
+
   if (vivo(ator.pendenteAtacante)) {
     const p = ator.pendenteAtacante;
     ator.pendenteAtacante = null;
+    if (p === jogador && !podeAlvoJogador) {
+      // Golpe no treinador com mon fora → redireciona pra party.
+      return partyVivo ? partyMon : null;
+    }
     return p;
   }
   if (vivo(ator.alvo) && ator.modo === "agro") {
-    const d = dist2(ator, ator.alvo);
-    if (ator.agroPersistente || d <= POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA) {
-      return ator.alvo;
+    const stickyJogador = ator.alvo === jogador;
+    if (stickyJogador && !podeAlvoJogador) {
+      // Tinha o treinador; mon saiu — troca pra party se possível.
+      // (cai no pick abaixo)
+    } else {
+      const d = dist2(ator, ator.alvo);
+      if (ator.agroPersistente || d <= POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA) {
+        return ator.alvo;
+      }
     }
   }
   if (!ator.hostil && ator.modo !== "agro") return null;
@@ -140,23 +156,13 @@ export function escolherAlvoWild(ator, partyMon, jogador) {
         ? POKEMON.RAIO_AGRO
         : POKEMON.RAIO_AGRO * 2;
   const raio = raioBase * raioBase;
-  const partyVivo = vivo(partyMon);
   const dParty = partyVivo ? dist2(ator, partyMon) : Infinity;
   const partyNoRaio = partyVivo && dParty < raio;
 
-  const jogOk = jogador && !jogador.morto && jogador.hp > 0;
-  const dJog = jogOk ? dist2(ator, jogador) : Infinity;
-  const jogNoRaio = jogOk && dJog < raio;
+  const dJog = podeAlvoJogador ? dist2(ator, jogador) : Infinity;
+  const jogNoRaio = podeAlvoJogador && dJog < raio;
 
-  if (jogNoRaio) {
-    const prefere = ator.prefereParty && partyVivo;
-    const mult = POKEMON.MULT_ALVO_JOGADOR;
-    const partyLonge = !partyVivo || dParty > mult * mult * dJog;
-    // Prefere party só se ela também está no raio; senão cai no treinador.
-    if (!prefere && partyLonge) return jogador;
-  }
   if (partyNoRaio) return partyMon;
-  // Party preferida mas fora do agro (atrasada no shrine/corredor): ataca o jogador.
   if (jogNoRaio) return jogador;
   return null;
 }
