@@ -10,6 +10,7 @@ import { marcasSantuario } from "../../santuario/mapaMarcas.js";
 import { marcasBerry } from "../../mapa/marcasBerry.js";
 import { marcasWild } from "../../mapa/marcasWild.js";
 import { marcasLetras } from "../../letras/mapaMarcas.js";
+import { marcasSites } from "../../mundo/sites/mapaMarcas.js";
 
 const extras = [];
 
@@ -112,7 +113,13 @@ export function rotasDoMapa() {
 }
 
 export function marcasExtras() {
-  return extras.concat(marcasSantuario(), marcasBerry(), marcasWild(), marcasLetras());
+  return extras.concat(
+    marcasSantuario(),
+    marcasBerry(),
+    marcasWild(),
+    marcasLetras(),
+    marcasSites()
+  );
 }
 
 export function layoutDaCidade(cidade) {

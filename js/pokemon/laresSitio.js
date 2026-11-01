@@ -10,6 +10,7 @@ import {
   SEED_MUNDO,
 } from "../config.js";
 import { temPlanoLetra } from "../letras/relevo.js";
+import { temPlanoSite } from "../mundo/sites/relevo.js";
 import { areaLogicaNoMundo } from "../mundo/bioma/areasMundo.js";
 import {
   alturaDoRelevo,
@@ -251,6 +252,7 @@ export function garantirSitioLar(cx, cy, indice) {
     Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN ||
     !longeDeVizinhos(cx, cy, indice, x, y) ||
     temPlanoLetra(tx, ty) ||
+    temPlanoSite(tx, ty) ||
     larTocaEstrada(x, y)
   ) {
     rejeitados.add(id);
@@ -278,7 +280,7 @@ export function garantirSitioLar(cx, cy, indice) {
   let maxH = -Infinity;
   for (let wy = y0; wy < y1; wy++) {
     for (let wx = x0; wx < x1; wx++) {
-      if (temPlanoLetra(wx, wy)) {
+      if (temPlanoLetra(wx, wy) || temPlanoSite(wx, wy)) {
         rejeitados.add(id);
         return false;
       }

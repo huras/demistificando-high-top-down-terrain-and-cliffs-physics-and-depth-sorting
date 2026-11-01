@@ -396,6 +396,38 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       }
       continue;
     }
+    if (marca.tipo === "site") {
+      const cores = {
+        farm: "#c4a35a",
+        graveyard: "#7a8494",
+        outpost: "#8b6b4a",
+        dock: "#4a8ab5",
+        lookout: "#9a7b5a",
+      };
+      ctx.fillStyle = cores[marca.subtipo] || "#d2b48c";
+      const r = (vista.mini ? 3.4 : 4.8) * dpr;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - r);
+      ctx.lineTo(sx + r, sy);
+      ctx.lineTo(sx, sy + r);
+      ctx.lineTo(sx - r, sy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(30,24,16,0.7)";
+      ctx.lineWidth = Math.max(1, 1.1 * dpr);
+      ctx.stroke();
+      if (!vista.mini && marca.nome && vista.hoverMarcaId === marca.id) {
+        nomes.push({
+          texto: marca.nome,
+          x: sx + 10 * dpr,
+          y: sy + alturaFonte * 0.3,
+          altura: alturaFonte,
+          prio: 4,
+          dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
+        });
+      }
+      continue;
+    }
     ctx.fillStyle = marca.cor || "#f2d48a";
     ctx.beginPath();
     ctx.arc(sx, sy, 4.5 * dpr, 0, Math.PI * 2);

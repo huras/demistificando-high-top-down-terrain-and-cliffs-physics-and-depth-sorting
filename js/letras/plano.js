@@ -17,6 +17,7 @@ import {
   letraQuota,
 } from "./catalogo.js";
 import { carimbarPlanoLetra, limparRelevoLetras } from "./relevo.js";
+import { temPlanoSite } from "../mundo/sites/relevo.js";
 
 const AREA = AREA_KANTO;
 const LADO_AREAS = (LADO_MUNDO / AREA) | 0;
@@ -130,6 +131,7 @@ function amostrarSitio(x0, y0, x1, y1) {
       const borda = tx === x0 || ty === y0 || tx === x1 - 1 || ty === y1 - 1;
       if (!borda && ((tx + ty) & 1) === 1) continue;
       if (ehCidade(tx + 0.5, ty + 0.5)) return null;
+      if (temPlanoSite(tx, ty)) return null;
       const h = alturaDoRelevoNatural(tx + 0.5, ty + 0.5) | 0;
       if (h <= mar) return null;
       if (h < minH) minH = h;

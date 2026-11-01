@@ -9,6 +9,7 @@ import { avaliarGrafo } from "./grafo.js";
 import { amarrarBioma, plantaNoBioma } from "./detalhe.js";
 import { alturaComPlanoLetra } from "../../letras/relevo.js";
 import { alturaComPlanoLar } from "../../pokemon/laresRelevo.js";
+import { alturaComPlanoSite } from "../sites/relevo.js";
 
 /** @type {object | null} */
 let dados = null;
@@ -324,10 +325,14 @@ export function alturaDoRelevoNatural(wx, wy, catalogo = dados, seed = semente) 
   return h;
 }
 
-/** Altura em blocos. Costura Kanto↔procedural; sítios de lar/letra achatam o pad (letra ganha). */
+/** Altura em blocos. Costura Kanto↔procedural; pads: letra > site outdoor > lar. */
 export function alturaDoRelevo(wx, wy, catalogo = dados, seed = semente) {
   const h = alturaDoRelevoNatural(wx, wy, catalogo, seed);
-  return alturaComPlanoLetra(wx, wy, alturaComPlanoLar(wx, wy, h));
+  return alturaComPlanoLetra(
+    wx,
+    wy,
+    alturaComPlanoSite(wx, wy, alturaComPlanoLar(wx, wy, h))
+  );
 }
 
 export { pesoCosturaRelevo };

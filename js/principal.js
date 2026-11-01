@@ -70,6 +70,7 @@ import { invalidarNavCache } from "./navegacao/navGrade.js";
 import { ligarControleModo, obterModo, alternarModo, aoMudarModo } from "./modoJogo.js";
 import { alternarVisual, montarAtlas, usarTiles } from "./render/atlas.js";
 import { carregarVisuaisKits } from "./render/visuaisKit.js";
+import { carregarAtlasSites } from "./mundo/sites/atlas.js";
 import { ajustarZoom, criarCamera } from "./render/camera.js";
 import { desenharCena2d, desenharHudSobre3d } from "./render/renderizador2d.js";
 import { tickPoeiraPasso } from "./fx/poeiraPasso.js";
@@ -210,7 +211,7 @@ async function iniciarInterno() {
   let visuaisFeitos = 0;
   const marcarVisual = () => {
     visuaisFeitos += 1;
-    marcarFase("visuais", visuaisFeitos / 4);
+    marcarFase("visuais", visuaisFeitos / 5);
   };
   const visuaisKits = await Promise.all([
     montarAtlas(CAMINHOS).then((r) => {
@@ -226,6 +227,10 @@ async function iniciarInterno() {
       return r;
     }),
     carregarDetalhe().then((r) => {
+      marcarVisual();
+      return r;
+    }),
+    carregarAtlasSites().then((r) => {
       marcarVisual();
       return r;
     }),

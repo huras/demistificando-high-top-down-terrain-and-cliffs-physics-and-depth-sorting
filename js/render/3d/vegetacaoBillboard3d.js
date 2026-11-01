@@ -27,6 +27,7 @@ import { amostraSacudida, podarSacudidas, propsSacudindo, temSacudida } from "..
 import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto, quadroArbusto } from "./folhaBerry.js";
 import { ensureShrineArtLoaded, imagemSantuario } from "../../santuario/arte.js";
 import { SHRINE_DRAW_SCALE } from "../../santuario/catalogo.js";
+import { imagemDoPropSite } from "../../mundo/sites/atlas.js";
 import {
   obterCarry,
   obterGrabAction,
@@ -45,6 +46,7 @@ const CAP_INSTANCIAS = 4096;
 function estiloDe(prop) {
   if (prop.tipo === "santuario") return SHRINE_DRAW_SCALE;
   if (prop.tipo === "berry") return ESCALA_ARBUSTO;
+  if (prop.tipo === "site") return 1.15;
   if (prop.tipo === "arvore") return VEG_ARVORE_ESCALA;
   if (prop.tipo === "pedra" || prop.tipo === "cristal") return 1;
   return VEG_MATA_ESCALA;
@@ -52,8 +54,10 @@ function estiloDe(prop) {
 
 function chaveDe(prop) {
   // forcaCarregado continua renderizando (anexo na cabeça / arremesso).
-  if (!prop || prop.oculto || prop.tipo === "placa") return null;
+  if (!prop || prop.oculto || prop.ocultoBillboard || prop.tipo === "placa") return null;
+  if (prop.tipo === "siteCasa") return null;
   if (prop.fase === FASE.REMOVIDO) return null;
+  if (prop.tipo === "site") return `site:${prop.propId || prop.sprite || "prop"}`;
   if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return `toco:${prop.sprite || "arvore"}`;
   if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return `tocoq:${prop.sprite || "arvore"}`;
   return prop.sprite || prop.tipo || null;
@@ -157,6 +161,7 @@ export function criarVegetacaoBillboard3d() {
       return imagemSantuario(prop.atlasCol ?? 0);
     }
     if (prop?.tipo === "berry") return imagemArbusto(prop.berryKey, prop.estagio || "maduro", 0);
+    if (prop?.tipo === "site") return imagemDoPropSite(prop.propId || prop.sprite);
     const base = imagemBase(prop);
     if (!base) return null;
     if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return imagemToco(base, false);

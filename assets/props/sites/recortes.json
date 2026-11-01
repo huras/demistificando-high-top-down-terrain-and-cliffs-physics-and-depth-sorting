@@ -1,0 +1,113 @@
+{
+  "big-hay-stack-a": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 2,
+    "rows": 2,
+    "originCol": 40,
+    "originRow": 38
+  },
+  "medium-hay-stack-a": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 2,
+    "rows": 2,
+    "originCol": 42,
+    "originRow": 38
+  },
+  "small-hay-stack-a": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 1,
+    "rows": 1,
+    "originCol": 42,
+    "originRow": 40
+  },
+  "wooden-cart-to-the-left": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 2,
+    "rows": 2,
+    "originCol": 43,
+    "originRow": 43
+  },
+  "farm-lamp-to-the-right": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 2,
+    "rows": 2,
+    "originCol": 40,
+    "originRow": 41
+  },
+  "3-wooden-log-stack": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 1,
+    "rows": 2,
+    "originCol": 47,
+    "originRow": 35
+  },
+  "4-sacos-de-farm-produce-stacked": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 1,
+    "rows": 2,
+    "originCol": 49,
+    "originRow": 58
+  },
+  "mature-planted-cabage": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 1,
+    "rows": 1,
+    "originCol": 45,
+    "originRow": 53
+  },
+  "poço-de-agua-com-telhado": {
+    "sheet": "assets/props/sites/world-props.png",
+    "tileSize": 16,
+    "sheetColumns": 56,
+    "cols": 3,
+    "rows": 2,
+    "originCol": 40,
+    "originRow": 43
+  },
+  "lapide-clean": {
+    "sheet": "assets/sprites/predios/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png",
+    "tileSize": 32,
+    "sheetColumns": 8,
+    "cols": 1,
+    "rows": 2,
+    "originCol": 4,
+    "originRow": 58,
+    "sheetRel": "buildings/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png"
+  },
+  "lapide-mossy": {
+    "sheet": "assets/sprites/predios/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png",
+    "tileSize": 32,
+    "sheetColumns": 8,
+    "cols": 1,
+    "rows": 2,
+    "originCol": 3,
+    "originRow": 58,
+    "sheetRel": "buildings/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png"
+  },
+  "lapide-mossy-cracked": {
+    "sheet": "assets/sprites/predios/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png",
+    "tileSize": 32,
+    "sheetColumns": 8,
+    "cols": 1,
+    "rows": 2,
+    "originCol": 5,
+    "originRow": 58,
+    "sheetRel": "buildings/Mountains-Trees-and-Public-Decorations-Fan-Game-757531020.png"
+  }
+}
