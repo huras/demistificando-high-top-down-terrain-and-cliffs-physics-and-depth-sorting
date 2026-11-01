@@ -374,7 +374,13 @@ function pintarListas() {
     const nome = `${esp.nome || esp.key} ${esp.dex} ${esp.key}`.toLowerCase();
     const tem = !!catalogo.modelos[esp.key]?.pontos?.length;
     if (q && !nome.includes(q) && !tem) continue;
-    if (!q && !tem && esp.tipos?.indexOf("electric") < 0 && esp.tipos?.indexOf("psychic") < 0) {
+    if (
+      !q &&
+      !tem &&
+      esp.tipos?.indexOf("electric") < 0 &&
+      esp.tipos?.indexOf("fire") < 0 &&
+      esp.tipos?.indexOf("psychic") < 0
+    ) {
       continue;
     }
     listaPokemon.appendChild(

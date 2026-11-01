@@ -3,7 +3,7 @@
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { alvoDoCentro, promptDoCentro, ORIGEM_CENTRO_X, ORIGEM_CENTRO_Y } from "../mundo/cidade/centro.js";
 import { alvoDaLoja, promptDaLoja, ORIGEM_LOJA_X, ORIGEM_LOJA_Y } from "../mundo/cidade/loja.js";
-import { curarParty, listaParty } from "../pokemon/party.js";
+import { curarParty, listaParty, reporBolasCura } from "../pokemon/party.js";
 import { tocarCuraCentro } from "./audio.js";
 import { curaOcupada, iniciarCuraMaquina } from "./maquinaCura.js";
 import { abrirPainel, avisar, estado, marcarQuest } from "./estado.js";
@@ -32,10 +32,11 @@ export function executarAlvoHub(alvo) {
   if (alvo.tipo === "cura") {
     if (curaOcupada()) return;
     curarParty();
+    reporBolasCura();
     marcarQuest("centro");
     iniciarCuraMaquina(listaParty().map((m) => m.ballKey || "pokeball"));
     tocarCuraCentro();
-    estado.itemGet = "A enfermeira curou o time.";
+    estado.itemGet = "A enfermeira curou o time e repôs as Pokébolas.";
     avisar();
     return;
   }

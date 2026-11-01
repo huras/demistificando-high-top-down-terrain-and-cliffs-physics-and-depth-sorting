@@ -47,6 +47,7 @@ import { iniciarStamina, regenerarStamina } from "./stamina.js";
 import { resolverMovimentoPosMantle } from "./travaInputEscalada.js";
 import { atualizarVoo, entrarVoo, estaVoando, sairVoo } from "./voo.js";
 import { entradaJogadorSuspensa } from "../cena/modoCena.js";
+import { combateChronoSeguraEntrada } from "../combate/chrono/sessao.js";
 
 export function criarCorpo(spawn) {
   const corpo = {
@@ -228,7 +229,7 @@ export function atualizarMovimentoDirecionado(corpo, dxIn, dyIn, dt, opts = {}) 
 }
 
 export function atualizarMovimento(corpo, dt) {
-  if (entradaJogadorSuspensa()) {
+  if (entradaJogadorSuspensa() || combateChronoSeguraEntrada()) {
     tickFluido(corpo, dt);
     simularSemInput(corpo, dt);
     return;

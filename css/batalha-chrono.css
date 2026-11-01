@@ -1,0 +1,153 @@
+.batalha-chrono {
+  position: fixed;
+  left: 50%;
+  bottom: 1.1rem;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(560px, calc(100vw - 2rem - 260px));
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(12, 18, 16, 0.88);
+  border: 1px solid rgba(180, 210, 190, 0.22);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  color: #e8f0ea;
+  font: 600 13px/1.35 Nunito, system-ui, sans-serif;
+  pointer-events: auto;
+}
+
+.batalha-chrono[hidden] {
+  display: none !important;
+}
+
+.batalha-chrono__cabeca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.batalha-chrono__status {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.batalha-chrono__fuga {
+  appearance: none;
+  border: 1px solid rgba(248, 180, 180, 0.35);
+  background: rgba(90, 28, 28, 0.55);
+  color: #fecaca;
+  border-radius: 8px;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.batalha-chrono__fuga:hover {
+  background: rgba(120, 36, 36, 0.7);
+}
+
+.batalha-chrono__vidas {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+}
+
+.batalha-chrono__vida {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px auto;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 12px;
+}
+
+.batalha-chrono__vida--aliado strong {
+  color: #86efac;
+}
+
+.batalha-chrono__barra {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.batalha-chrono__barra > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #34d399, #a3e635);
+}
+
+.batalha-chrono__turno-titulo {
+  margin: 0 0 0.4rem;
+  font-weight: 800;
+}
+
+.batalha-chrono__alvos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.batalha-chrono__alvos button {
+  appearance: none;
+  border: 1px solid rgba(180, 210, 190, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.batalha-chrono__alvos button.is-ativo {
+  border-color: rgba(134, 239, 172, 0.7);
+  background: rgba(52, 211, 153, 0.18);
+}
+
+.batalha-chrono__golpes {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.batalha-chrono__golpes button {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(180, 210, 190, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  border-radius: 10px;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.batalha-chrono__golpes button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.batalha-chrono__golpe-nome {
+  font-weight: 800;
+}
+
+.batalha-chrono__golpe-meta {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.92;
+}
+
+@media (max-width: 900px) {
+  .batalha-chrono {
+    width: calc(100vw - 1.5rem);
+    bottom: 0.75rem;
+  }
+}

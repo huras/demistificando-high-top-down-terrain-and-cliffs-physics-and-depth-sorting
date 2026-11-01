@@ -186,6 +186,11 @@ export function definirBolas(n) {
   if (alvo > 0) ajustarItem("pokeball", alvo, "mudo");
 }
 
+/** Centro / máquina de cura: repor pokébolas até o estoque padrão. */
+export function reporBolasCura() {
+  if (obterBolas() < POKEMON.BOLAS) definirBolas(POKEMON.BOLAS);
+}
+
 export function guardarItem(chave) {
   ajustarItem(chave, 1);
 }

@@ -544,5 +544,17 @@
       "hit"
     ],
     "altura": 2.2
+  },
+  "4": {
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "sleep",
+      "faint",
+      "attack",
+      "hit"
+    ],
+    "altura": 2.2
   }
 }

@@ -1,7 +1,7 @@
 /** Ações do laboratório: cura, cápsula, inicial e fala dos pesquisadores. */
 
 import { alvoDoLaboratorio } from "../mundo/cidade/laboratorio.js";
-import { ganharBolas, listaParty, receberEspecie, curarParty, substituirParty } from "../pokemon/party.js";
+import { ganharBolas, listaParty, receberEspecie, curarParty, reporBolasCura, substituirParty } from "../pokemon/party.js";
 import { criarAtor } from "../pokemon/ator.js";
 import { especie } from "../pokemon/dados.js";
 import { POKEMON } from "../config.js";
@@ -19,10 +19,11 @@ export function executarAlvoLaboratorio(alvo) {
   if (alvo.tipo === "cura") {
     if (curaOcupada()) return;
     curarParty();
+    reporBolasCura();
     marcarQuest("centro");
     iniciarCuraMaquina(listaParty().map((m) => m.ballKey || "pokeball"));
     tocarCuraCentro();
-    estado.itemGet = "A máquina do Centro curou o time.";
+    estado.itemGet = "A máquina curou o time e repôs as Pokébolas.";
     avisar();
     return;
   }

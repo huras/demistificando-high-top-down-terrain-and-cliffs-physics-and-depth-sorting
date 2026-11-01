@@ -248,7 +248,7 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
  * Ortográfica enquadra a mesma altura no ponto de mira.
  * A mistura deixa o achatamento aparecer em vez de pular.
  */
-function aplicarProjecao(camera3d, dt) {
+export function aplicarProjecao(camera3d, dt) {
   const persp = camera3d.cam;
   const orto = camera3d._orto;
   const dist = Math.max(0.5, persp.position.distanceTo(camera3d._look));

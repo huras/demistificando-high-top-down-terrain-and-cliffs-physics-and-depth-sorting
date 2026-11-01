@@ -509,6 +509,28 @@ export const FADE_PAREDE_INTERIOR_DELTA_Y = 0.45;
 export const FADE_PAREDE_INTERIOR_FOCOS = 4;
 
 /**
+ * Combate no overworld: "realtime" (BOTW) ou "chrono" (Paper Mario / Chrono Trigger).
+ * A sidebar altera em runtime via `definirModoCombateCampo`.
+ */
+export const MODO_COMBATE_CAMPO = "realtime";
+
+/** Knobs do modo Chrono (stomp / toque / volume da sessão). */
+export const CHRONO = Object.freeze({
+  /** Bounce vertical (células/s) ao stomp iniciar a batalha. */
+  STOMP_BOUNCE_VZ: 5.2,
+  /** Player precisa estar pelo menos isto acima do topo do mon. */
+  STOMP_FOLGA_CABECA: 0.35,
+  /** Altura estimada do mon (pés → cabeça) em células. */
+  ALTURA_MON: 1.05,
+  /** Debounce entre tentativas de contato (s). */
+  CONTATO_COOLDOWN: 0.55,
+  /** Raio do volume suave da batalha in-place. */
+  RAIO_VOLUME: 11,
+  /** Iframe do treinador após fuga (s). */
+  FUGA_IFRAME: 1.4,
+});
+
+/**
  * Selvagens, party e combate. Números alinhados ao overworld de referência
  * (grama 0.14 / 2.5s / 4 ativos, desmaio 60s, aviso 7, agro 9).
  */

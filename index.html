@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="css/entrance-puzzle.css" />
   <link rel="stylesheet" href="css/shrine-compass.css" />
   <link rel="stylesheet" href="css/batalha-treinador.css" />
+  <link rel="stylesheet" href="css/batalha-chrono.css" />
   <link rel="stylesheet" href="css/dialogo-balao.css" />
   <link rel="stylesheet" href="css/quest-board.css" />
   <link rel="preload" href="assets/textures/ui/wood_1-dark.jpg" as="image" />
@@ -875,6 +876,34 @@
         </section>
 
         <section class="painel__bloco">
+          <h2>
+            Combate
+            <span class="info">
+              <button type="button" class="info__btn" aria-label="Explicação do modo de combate" aria-expanded="false">?</button>
+              <span class="info__balao" role="tooltip" hidden>
+                <p>
+                  <strong>Tempo real</strong> — combate contínuo no overworld (padrão).
+                </p>
+                <p>
+                  <strong>Chrono / Paper Mario</strong> — pule na cabeça ou toque um selvagem
+                  (ou clique nele) para batalha por turnos no lugar: o mon do party
+                  aproxima/atira e volta; packs entram juntos.
+                </p>
+              </span>
+            </span>
+          </h2>
+          <div class="controle">
+            <div class="controle__topo">
+              <label for="combate-modo">Modo</label>
+            </div>
+            <select id="combate-modo">
+              <option value="realtime" selected>Tempo real</option>
+              <option value="chrono">Chrono / Paper Mario</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="painel__bloco">
           <h2>Estado ao vivo</h2>
           <dl class="estado" id="estado">
             <div><dt>x, y, z</dt><dd>—</dd></div>
@@ -928,7 +957,8 @@
                   <li><kbd>WASD</kbd> — andar; <kbd>Shift</kbd> — sprint (no planar e no voo = 3×); <kbd>Ctrl</kbd> esquerdo — desce no planar e no voo</li>
                   <li><kbd>E</kbd> — gruda / solta a face (2D e 3D)</li>
                   <li><kbd>F</kbd> — fly on/off; <kbd>Space</kbd> sobe no voo; <kbd>Ctrl</kbd> esquerdo desce</li>
-                  <li>Clique no Pokémon selvagem: o seu vai até ele e ataca</li>
+                  <li>Clique no Pokémon selvagem: em tempo real o seu ataca; em Chrono abre a batalha por turnos</li>
+                  <li>Chrono: pule na cabeça ou toque o selvagem (pack entra junto); Fugir no HUD</li>
                   <li><kbd>Space</kbd> — pulo; 2º toque no ar — asa-delta; na parede — solta; no fundo — braçada</li>
                   <li>Água rasa — anda mais devagar. Água funda — nada na superfície (stamina). <kbd>E</kbd> sobe a cachoeira.</li>
                   <li>Topo + subir — mantle; base + descer — pousa; stamina 0 — cai</li>

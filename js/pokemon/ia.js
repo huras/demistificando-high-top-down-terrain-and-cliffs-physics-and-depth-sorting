@@ -207,6 +207,7 @@ export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
     if (ator.skyPasser) continue; // cruise no tickSkyPassers
     if (ator.forcaCarregado || ator._forcaSendoLevantado) continue;
     if ((ator.dormindo || 0) > 0 || ator.sonoNatural) continue;
+    if (ator.combatHold || ator._chronoHold) continue;
     if (ator.modo === "agro" && ator.alvo && !ator.alvo.morto) continue;
 
     const foco = mon && !mon.morto ? mon : jogador;

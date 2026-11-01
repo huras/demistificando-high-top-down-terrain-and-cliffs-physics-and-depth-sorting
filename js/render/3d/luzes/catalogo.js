@@ -3,8 +3,8 @@
  * Casa/poste/Pokémon: flare (cartão) + poça no mapa de chão.
  * Só santuário ainda disputa o pool de PointLight (flare dinâmico).
  *
- * Pokémon party elétrico/fogo/psíquico: fallback por tipo se não houver
- * entrada no catálogo (ex.: Pikachu autorado ganha o ponto do JSON).
+ * Pokémon elétrico/fogo/psíquico (qualquer facção): fallback por tipo se não
+ * houver entrada no catálogo (ex.: Pikachu autorado ganha o ponto do JSON).
  */
 
 /** Tinta luminosa (mais quente que COR_TIPO da UI). */
@@ -61,13 +61,12 @@ export function tipoBrilhoDe(tipos) {
 /**
  * Pontos de flare/poça do ator.
  * 1) Catálogo por espécie (autorado).
- * 2) Party + elétrico/fogo/psíquico → ponto padrão com cor do tipo.
+ * 2) Elétrico/fogo/psíquico → ponto padrão com cor do tipo.
  */
 export function pontosBrilhoAtor(ator) {
   if (!ator || ator.morto) return VAZIO;
   const cat = pontosDoModelo(ator.especie?.key);
   if (cat.length) return cat;
-  if (ator.faccao !== "party") return VAZIO;
   const tipo = tipoBrilhoDe(ator.tipos || ator.especie?.tipos);
   if (!tipo) return VAZIO;
   _pontoTipo.cor = COR_LUZ_TIPO[tipo];

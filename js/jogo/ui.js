@@ -24,6 +24,7 @@ import {
   alternarCampo,
   listaParty,
   pokemonNoCampo,
+  reporBolasCura,
   tirarDaParty,
 } from "../pokemon/party.js";
 import { cancelarRanged } from "./ranged.js";
@@ -248,9 +249,10 @@ function escolher(id) {
   if (!dlg) return;
   if (dlg.acao === "curar" && id === "sim") {
     curarParty();
+    reporBolasCura();
     marcarQuest("centro");
     sfx("cura");
-    estado.dialogo = { nome: "Enfermeira", linhas: ["Pronto. Seu time está curado."], i: 0 };
+    estado.dialogo = { nome: "Enfermeira", linhas: ["Pronto. Seu time está curado e as Pokébolas foram repostas."], i: 0 };
   } else if (dlg.acao === "curar") {
     estado.dialogo = { nome: "Enfermeira", linhas: ["Volte quando precisar."], i: 0 };
   } else if (dlg.acao === "desafioViajante") {
@@ -977,9 +979,10 @@ export function falarCom(alvo) {
   }
   if (ref.cura) {
     curarParty();
+    reporBolasCura();
     marcarQuest("centro");
     sfx("cura");
-    estado.itemGet = "Descansou. O time foi curado.";
+    estado.itemGet = "Descansou. Time curado e Pokébolas repostas.";
     avisar();
     return;
   }

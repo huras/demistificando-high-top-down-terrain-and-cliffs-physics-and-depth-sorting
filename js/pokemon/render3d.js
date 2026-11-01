@@ -58,11 +58,17 @@ const CAP_ATOR = 20;
 const CAP_DROP = 48;
 const CAP_FAISCA = 36;
 const CAP_KI = 8;
+/** Poças no mapa de chão por quadro (flare no cartão não entra no teto). */
+const CAP_CHAO_POKEMON = 14;
 const MAX_BRILHO = 4;
 const _mundo = new THREE.Vector3();
 const _luzCidade = new THREE.Color();
 const _branco = new THREE.Color(1, 1, 1);
 const _desloc = { x: 0, z: 0 };
+/** @type {{ x: number, y: number, z: number, cor: string, intensidade: number, d2: number }[]} */
+const candidatosChao = [];
+let camChaoX = 0;
+let camChaoZ = 0;
 
 let cena = null;
 let atores = [];
@@ -456,7 +462,8 @@ function aplicarFlashCorpo(slot, ator) {
  * Flare no cartão + poça no mapa de chão (mesmo pipeline dos postes).
  * Sem PointLight: escala com milhares de fontes sem disputar o pool de 8.
  * `contribuirChao` fica false no re-pose do reflexo (já resolveu o mapa).
- * Party elétrico/fogo/psíquico brilha mesmo sem entrada no catálogo.
+ * Elétrico/fogo/psíquico brilha mesmo sem entrada no catálogo (qualquer facção).
+ * Poças vão para `candidatosChao` e só as mais próximas da câmera estampam.
  */
 function aplicarBrilho(slot, ator, offsetY, contribuirChao) {
   const pontos = pontosBrilhoAtor(ator);
@@ -482,8 +489,32 @@ function aplicarBrilho(slot, ator, offsetY, contribuirChao) {
     const p = pontos[i];
     if (!(p.intensidade > 0.04)) continue;
     _mundo.set(p.x, p.y - offsetY, 0).applyMatrix4(slot.grupo.matrixWorld);
-    oferecerLuzChao("pokemon", _mundo.x, _mundo.y, _mundo.z, p.cor, p.intensidade);
+    const dx = _mundo.x - camChaoX;
+    const dz = _mundo.z - camChaoZ;
+    candidatosChao.push({
+      x: _mundo.x,
+      y: _mundo.y,
+      z: _mundo.z,
+      cor: p.cor,
+      intensidade: p.intensidade,
+      d2: dx * dx + dz * dz,
+    });
   }
+}
+
+/** Estampa no máximo CAP_CHAO_POKEMON poças (mais perto da câmera). */
+function resolverChaoPokemon() {
+  const n = candidatosChao.length;
+  if (!n) return;
+  if (n > CAP_CHAO_POKEMON) {
+    candidatosChao.sort((a, b) => a.d2 - b.d2);
+    candidatosChao.length = CAP_CHAO_POKEMON;
+  }
+  for (let i = 0; i < candidatosChao.length; i++) {
+    const c = candidatosChao[i];
+    oferecerLuzChao("pokemon", c.x, c.y, c.z, c.cor, c.intensidade);
+  }
+  candidatosChao.length = 0;
 }
 
 function copiarCartao(destino, origem) {
@@ -510,6 +541,11 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
   const lista = atoresVisiveis();
   const naSala = !!estadoJogo.interior?.sala3d;
   const tilt = Number.isFinite(inclinacao) ? inclinacao : 0;
+  candidatosChao.length = 0;
+  if (camera) {
+    camChaoX = camera.position.x;
+    camChaoZ = camera.position.z;
+  }
   const vistos = new Set();
   for (let i = 0; i < lista.length; i++) {
     const ator = lista[i];
@@ -618,6 +654,8 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
       aplicarCorSprite(slot.mat, _branco, fatorSombraMundo(ator.x, py, ator.y), _luzCidade);
     }
   }
+  if (contribuirChao) resolverChaoPokemon();
+  else candidatosChao.length = 0;
   for (const [id, slot] of porId) {
     if (vistos.has(id)) continue;
     slot.grupo.visible = false;

@@ -2,9 +2,11 @@
  * Clique no Pokémon selvagem desenhado sob o cursor.
  */
 import { obterModo } from "../modoJogo.js";
+import { modoChronoCampo } from "../combate/chrono/modo.js";
+import { abrirSessaoChrono, sessaoChronoAtiva } from "../combate/chrono/sessao.js";
 import { projetar2d, projetar3d } from "./hud.js";
 import { ordenarAtaque } from "./party.js";
-import { atoresVisiveis } from "./sistema.js";
+import { atoresVisiveis, efeitosPokemon } from "./sistema.js";
 
 const RAIO_PX = 72;
 const RAIO_HOVER = 72;
@@ -97,9 +99,13 @@ export function pokemonSobClique(ev, camera2d, cenario) {
   return melhor;
 }
 
-/** True se o clique mandou o Pokémon em campo atacar. */
+/** True se o clique mandou o Pokémon em campo atacar (ou abriu Chrono). */
 export function tentarAtaqueNoClique(ev, camera2d, cenario) {
   const alvo = pokemonSobClique(ev, camera2d, cenario);
   if (!alvo) return false;
+  if (modoChronoCampo()) {
+    if (sessaoChronoAtiva()) return false;
+    return abrirSessaoChrono(alvo, { motivo: "clique", efeitos: efeitosPokemon() });
+  }
   return ordenarAtaque(alvo);
 }

@@ -84,6 +84,7 @@ import { ligarDicasPainel } from "./ui/dicasPainel.js";
 import { ligarPainelCeu, sincronizarPainelCeu } from "./ui/painelCeu.js";
 import { ligarPainelCamera, sincronizarPainelCamera } from "./ui/painelCamera.js";
 import { ligarPainelDebug } from "./ui/painelDebug.js";
+import { ligarPainelCombate } from "./ui/painelCombate.js";
 import { ligarHudCompanheiro, atualizarHudCompanheiro } from "./ui/hudCompanheiro.js";
 import {
   ativarInputRelativoCamera,
@@ -269,6 +270,7 @@ async function iniciarInterno() {
   ligarPainelCeu();
   ligarPainelCamera();
   ligarPainelDebug();
+  ligarPainelCombate();
   ligarDicasPainel();
   ligarAjudaAtalhos();
   ligarMapaKanto();

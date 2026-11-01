@@ -1,4 +1,4 @@
-/** Roteiro do combate em turnos. A fórmula já saiu; aqui só anda e dispara uma vez. */
+/** Roteiro do combate em turnos. Arena 1v1 ou grupo Chrono no overworld. */
 
 import { bloqueioNoTrecho } from "./arenas.js";
 import { dispararGolpeTurno } from "../pokemon/combate/executor.js";
@@ -11,6 +11,7 @@ import { notaGolpeTurno, resolverTurno } from "../pokemon/combate/acertoClassico
 import { mapaPp, podeGastarPp } from "../pokemon/pp.js";
 import { emImpacto } from "./impacto.js";
 import { CAM_TURNO } from "./cameraTurno.js";
+import { limitarVolumeChrono, volumeChronoAtivo } from "./chrono/volume.js";
 
 const ESPERA_LINHA = 1.6;
 const ESPERA_CARGA = 0.85;
@@ -30,6 +31,11 @@ let modo = "real";
 let fase = "ocioso";
 let esquerda = null;
 let direita = null;
+/** @type {object[]} */
+let aliados = [];
+/** @type {object[]} */
+let foes = [];
+let modoGrupo = false;
 let fila = [];
 let indice = 0;
 let ator = null;
@@ -44,6 +50,11 @@ let avisouCarregar = false;
 let disparou = false;
 let veioDoTeatro = false;
 let efeitosRef = null;
+
+function limitarPosicao(quem) {
+  if (volumeChronoAtivo()) limitarVolumeChrono(quem);
+  else limitarArena(quem);
+}
 
 export function definirModoLuta(proximo) {
   modo = proximo === "turnos" ? "turnos" : "real";
@@ -80,8 +91,10 @@ const poseVolta = {
 
 export function enquadramentoTurno() {
   if (modo !== "turnos" || fase === "ocioso") return null;
-  if ((fase === "teatro" || aproximandoCorpo()) && esquerda && direita) {
-    return { tipo: "teatro", a: esquerda, b: direita };
+  if ((fase === "teatro" || aproximandoCorpo() || fase === "voltar") && esquerda && direita) {
+    const a = vivo(ator) ? ator : esquerda;
+    const b = vivo(alvo) ? alvo : direita;
+    return { tipo: "teatro", a, b };
   }
   if (!ator || !alvo) return null;
   if (fase === "escolha") {
@@ -117,8 +130,46 @@ export function pedidoEscolha() {
   };
 }
 
+/** Alvos vivos do lado oposto (só grupo Chrono). */
+export function alvosEscolhaTurno() {
+  if (!modoGrupo || modo !== "turnos" || fase !== "escolha") return null;
+  const lista = [];
+  for (let i = 0; i < foes.length; i++) {
+    const f = foes[i];
+    if (!vivo(f)) continue;
+    lista.push({
+      id: f.id,
+      nome: f.especie?.nome || "—",
+      nivel: f.nivel | 0,
+      selecionado: f === alvo,
+    });
+  }
+  return lista;
+}
+
+export function escolherAlvoTurno(id) {
+  if (!modoGrupo || fase !== "escolha") return false;
+  const chave = String(id);
+  for (let i = 0; i < foes.length; i++) {
+    const f = foes[i];
+    if (!vivo(f)) continue;
+    if (String(f.id) !== chave) continue;
+    alvo = f;
+    if (ator) ator.alvo = f;
+    versaoEscolha += 1;
+    return true;
+  }
+  return false;
+}
+
 export function escolherGolpeTurno(chave) {
   if (fase !== "escolha" || !ator || !alvo) return false;
+  if (!vivo(alvo)) {
+    const prox = primeiroVivo(foes);
+    if (!prox) return false;
+    alvo = prox;
+    ator.alvo = prox;
+  }
   const golpes = golpesDisponiveis(ator);
   let achado = null;
   for (let i = 0; i < golpes.length; i++) {
@@ -130,8 +181,27 @@ export function escolherGolpeTurno(chave) {
 }
 
 export function prepararTurnos(esq, dir) {
+  modoGrupo = false;
+  aliados = esq ? [esq] : [];
+  foes = dir ? [dir] : [];
   esquerda = esq;
   direita = dir;
+  if (modo !== "turnos") {
+    fase = "ocioso";
+    ator = null;
+    alvo = null;
+    return;
+  }
+  novaRodada();
+}
+
+/** Chrono OW: vários combatentes na mesma fila de velocidade. */
+export function prepararTurnosGrupo(listaAliados, listaFoes) {
+  modoGrupo = true;
+  aliados = (listaAliados || []).slice();
+  foes = (listaFoes || []).slice();
+  esquerda = aliados[0] || null;
+  direita = foes[0] || null;
   if (modo !== "turnos") {
     fase = "ocioso";
     ator = null;
@@ -149,14 +219,21 @@ export function encerrarTurnos() {
   fila = [];
   indice = 0;
   veioDoTeatro = false;
-  if (esquerda) {
-    esquerda.resultadoTurno = null;
-    esquerda.carregarDepois = false;
-  }
-  if (direita) {
-    direita.resultadoTurno = null;
-    direita.carregarDepois = false;
-  }
+  modoGrupo = false;
+  limparFlags(esquerda);
+  limparFlags(direita);
+  for (let i = 0; i < aliados.length; i++) limparFlags(aliados[i]);
+  for (let i = 0; i < foes.length; i++) limparFlags(foes[i]);
+  aliados = [];
+  foes = [];
+  esquerda = null;
+  direita = null;
+}
+
+function limparFlags(quem) {
+  if (!quem) return;
+  quem.resultadoTurno = null;
+  quem.carregarDepois = false;
 }
 
 export function avisoTurno() {
@@ -167,7 +244,7 @@ export function avisoTurno() {
 export function tickTurnos(dt, agora, efeitos) {
   efeitosRef = efeitos || null;
   if (modo !== "turnos" || fase === "ocioso" || fase === "escolha" || fase === "foco") return;
-  if (!vivo(esquerda) || !vivo(direita)) return;
+  if (!ladoVivo(aliados, esquerda) || !ladoVivo(foes, direita)) return;
   if (fase === "carregar") {
     if (!avisouCarregar) {
       avisouCarregar = true;
@@ -189,7 +266,15 @@ export function tickTurnos(dt, agora, efeitos) {
     if (ocupado(ator)) return;
     if (!disparou) return;
     ator.resultadoTurno = null;
+    if (corpoDoGolpe(slot?.def) && temCasa(ator)) {
+      fase = "voltar";
+      return;
+    }
     comecarTeatro();
+    return;
+  }
+  if (fase === "voltar") {
+    if (passoVoltar(dt)) comecarTeatro();
     return;
   }
   if (fase === "teatro") {
@@ -202,12 +287,27 @@ export function tickTurnos(dt, agora, efeitos) {
   }
 }
 
+function ladoVivo(lista, fallback) {
+  if (modoGrupo) {
+    for (let i = 0; i < lista.length; i++) {
+      if (vivo(lista[i])) return true;
+    }
+    return false;
+  }
+  return vivo(fallback);
+}
+
 function comecarTeatro() {
   fase = "teatro";
   esperaTeatro = ESPERA_TEATRO;
   if (ator && slot?.def?.key) ator.ensaioEvitar = slot.def.key;
-  soltarEnsaio(esquerda);
-  soltarEnsaio(direita);
+  if (modoGrupo) {
+    for (let i = 0; i < aliados.length; i++) soltarEnsaio(aliados[i]);
+    for (let i = 0; i < foes.length; i++) soltarEnsaio(foes[i]);
+  } else {
+    soltarEnsaio(esquerda);
+    soltarEnsaio(direita);
+  }
 }
 
 function soltarEnsaio(quem) {
@@ -238,17 +338,49 @@ function golpesDisponiveis(quem) {
 }
 
 function vivo(atorAtual) {
-  return !!(atorAtual && atorAtual.hp > 0 && !atorAtual.morto);
+  return !!(atorAtual && atorAtual.hp > 0 && !atorAtual.morto && !atorAtual.capturado);
 }
 
-function oponente(de) {
-  return de === esquerda ? direita : esquerda;
+function primeiroVivo(lista) {
+  for (let i = 0; i < lista.length; i++) {
+    if (vivo(lista[i])) return lista[i];
+  }
+  return null;
+}
+
+function ehAliado(quem) {
+  if (!quem) return false;
+  if (modoGrupo) {
+    for (let i = 0; i < aliados.length; i++) {
+      if (aliados[i] === quem) return true;
+    }
+    return quem.faccao === "party" || quem.faccao === "esquerda";
+  }
+  return quem.faccao === "esquerda";
+}
+
+function oponenteDe(de) {
+  if (!modoGrupo) return de === esquerda ? direita : esquerda;
+  if (ehAliado(de)) {
+    if (vivo(alvo) && !ehAliado(alvo)) return alvo;
+    return primeiroVivo(foes);
+  }
+  return primeiroVivo(aliados);
 }
 
 function novaRodada() {
   const lista = [];
-  if (vivo(esquerda)) lista.push(esquerda);
-  if (vivo(direita)) lista.push(direita);
+  if (modoGrupo) {
+    for (let i = 0; i < aliados.length; i++) {
+      if (vivo(aliados[i])) lista.push(aliados[i]);
+    }
+    for (let i = 0; i < foes.length; i++) {
+      if (vivo(foes[i])) lista.push(foes[i]);
+    }
+  } else {
+    if (vivo(esquerda)) lista.push(esquerda);
+    if (vivo(direita)) lista.push(direita);
+  }
   lista.sort((a, b) => {
     const diff = (b.stats?.velocidade || 0) - (a.stats?.velocidade || 0);
     if (diff !== 0) return diff;
@@ -266,7 +398,7 @@ function abrirTurno() {
   esperaCorpo = 0;
   while (indice < fila.length) {
     const atual = fila[indice];
-    const outro = oponente(atual);
+    const outro = oponenteDe(atual);
     if (!vivo(atual) || !vivo(outro)) {
       indice += 1;
       continue;
@@ -295,7 +427,7 @@ function abrirTurno() {
       indice += 1;
       continue;
     }
-    if (atual.faccao === "esquerda") {
+    if (ehAliado(atual)) {
       if (veioDoTeatro) {
         veioDoTeatro = false;
         fase = "foco";
@@ -309,12 +441,18 @@ function abrirTurno() {
     armar(escolherIa(atual, outro, golpes));
     return;
   }
-  if (!vivo(esquerda) || !vivo(direita)) {
+  if (!ladoVivo(aliados, esquerda) || !ladoVivo(foes, direita)) {
     veioDoTeatro = false;
     fase = "ocioso";
     return;
   }
-  if (!golpesDisponiveis(esquerda).length && !golpesDisponiveis(direita).length) {
+  const temGolpeAliado = modoGrupo
+    ? aliados.some((a) => vivo(a) && golpesDisponiveis(a).length)
+    : golpesDisponiveis(esquerda).length;
+  const temGolpeFoe = modoGrupo
+    ? foes.some((a) => vivo(a) && golpesDisponiveis(a).length)
+    : golpesDisponiveis(direita).length;
+  if (!temGolpeAliado && !temGolpeFoe) {
     veioDoTeatro = false;
     fase = "ocioso";
     return;
@@ -360,6 +498,27 @@ function linhaLivre(de, para) {
   return !bloqueioNoTrecho(de.x, de.y, para.x, para.y, RAIO_PROJETIL);
 }
 
+function temCasa(quem) {
+  return quem && Number.isFinite(quem.casaChronoX) && Number.isFinite(quem.casaChronoY);
+}
+
+function passoVoltar(dt) {
+  if (!ator || !temCasa(ator)) return true;
+  const tx = ator.casaChronoX;
+  const ty = ator.casaChronoY;
+  const dx = tx - ator.x;
+  const dy = ty - ator.y;
+  const d = Math.hypot(dx, dy);
+  if (d <= 0.12) {
+    ator.x = tx;
+    ator.y = ty;
+    pararPasso(ator);
+    return true;
+  }
+  andar(ator, dx / d, dy / d, dt, d, 1.05);
+  return false;
+}
+
 function passoAproximar(dt) {
   if (!slot || !vivo(ator) || !vivo(alvo)) return true;
   const def = slot.def;
@@ -373,7 +532,7 @@ function passoAproximar(dt) {
     esperaLinha += dt;
     if (esperaLinha >= ESPERA_LINHA) return true;
     const lado = esperaLinha < ESPERA_LINHA * 0.5 ? 1 : -1;
-    andar(ator, -dy / d * lado, dx / d * lado, dt);
+    andar(ator, (-dy / d) * lado, (dx / d) * lado, dt);
     return false;
   }
   const parada = paradaDe(def);
@@ -396,7 +555,10 @@ function fecharEmArco(ux, uy, dt, falta) {
   const by = -uy - ux * curva * 0.55;
   const bl = Math.hypot(bx, by) || 1;
   andar(ator, ax / al, ay / al, dt, falta * 0.68, 1);
-  andar(alvo, bx / bl, by / bl, dt, falta * 0.32, 0.62);
+  // No Chrono o alvo fica plantado (Paper Mario); na arena 1v1 mantém o arco mútuo.
+  if (!modoGrupo) {
+    andar(alvo, bx / bl, by / bl, dt, falta * 0.32, 0.62);
+  }
   ator.dirX = ux;
   ator.dirY = uy;
   alvo.dirX = -ux;
@@ -425,7 +587,7 @@ function andar(quem, dirX, dirY, dt, limite, folga) {
   quem.vx = dirX * vel;
   quem.vy = dirY * vel;
   quem.andando = true;
-  limitarArena(quem);
+  limitarPosicao(quem);
 }
 
 function soltar(agora, efeitos) {

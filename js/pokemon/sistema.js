@@ -42,10 +42,35 @@ import { aquecerGrito, tickGritosAmbiente } from "../jogo/som/gritos.js";
 import { markSpeciesSeen } from "../jogo/pokedex/progresso.js";
 import { entrarMorte, jogadorMorto } from "../jogo/hud/morte.js";
 import { enfileirarEvolucao, tickEvolucaoCinema } from "./evolucaoCinema.js";
+import { modoChronoCampo } from "../combate/chrono/modo.js";
+import { tickContatoChrono } from "../combate/chrono/contato.js";
+import {
+  ligarHooksChrono,
+  sessaoChronoAtiva,
+  tickSessaoChrono,
+} from "../combate/chrono/sessao.js";
 
 aoLiberarSom(() => {
   aquecerGrito(pokemonNoCampo());
 });
+
+let hooksChronoLigados = false;
+
+function garantirHooksChrono() {
+  if (hooksChronoLigados) return;
+  hooksChronoLigados = true;
+  ligarHooksChrono({
+    obterTreinador: () => treinador,
+    aplicarIframe: (seg) => {
+      treinador.iframe = Math.max(treinador.iframe || 0, seg);
+    },
+  });
+}
+
+/** Efeitos compartilhados (XP/drops/FX) — Chrono e OW. */
+export function efeitosPokemon() {
+  return efeitos;
+}
 
 let agora = 0;
 let ligado = false;
@@ -149,6 +174,7 @@ export function tentarAcertoFlecha(x, y, zAltura, forca = 1) {
 
 export function ligarPokemon() {
   if (!dadosProntos() || ligado) return ligado;
+  garantirHooksChrono();
   carregarEmocoes();
   iniciarParty();
   ligado = true;
@@ -157,6 +183,7 @@ export function ligarPokemon() {
 
 export function tickPokemon(corpo, dt, perfilSeguidor) {
   if (!ligado || !corpo) return;
+  garantirHooksChrono();
   const passo = Math.min(0.05, dt);
   agora += passo;
   treinador.x = corpo.x;
@@ -168,6 +195,8 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   if (treinador.iframe > 0) treinador.iframe = Math.max(0, treinador.iframe - passo);
 
   const morto = jogadorMorto() || (treinador.morto && treinador.hp <= 0);
+  const chrono = modoChronoCampo();
+  const emChrono = sessaoChronoAtiva();
 
   atualizarPopulacao(corpo, passo, agora);
   definirCorposAtores(listarSolidosPokemon());
@@ -176,33 +205,58 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   aquecerGrito(pokemonNoCampo());
   tickGritosAmbiente(passo, corpo, selvagens);
 
-  if (!morto) {
-    // Combate OW: wilds agroam antes do party (DEFEND enxerga no mesmo frame).
-    for (let i = 0; i < selvagens.length; i++) {
-      const w = selvagens[i];
-      if (w.forcaCarregado || w._forcaSendoLevantado) continue;
-      tickWildCampo(w, mon, treinador, passo);
+  if (!morto && !emChrono) {
+    if (chrono) {
+      // Chrono fora de sessão: roam + aviso, sem agro/golpes realtime.
+      for (let i = 0; i < selvagens.length; i++) {
+        const w = selvagens[i];
+        if (!w || w._chronoHold) continue;
+        if (w.modo === "agro") {
+          w.modo = "roam";
+          w.alvo = null;
+          w.agroPersistente = false;
+        }
+      }
+      atualizarRoamSelvagens(selvagens, mon, treinador, passo);
+      tickContatoChrono(corpo, selvagens, passo, efeitos);
+    } else {
+      // Combate OW: wilds agroam antes do party (DEFEND enxerga no mesmo frame).
+      for (let i = 0; i < selvagens.length; i++) {
+        const w = selvagens[i];
+        if (w.forcaCarregado || w._forcaSendoLevantado) continue;
+        tickWildCampo(w, mon, treinador, passo);
+      }
+      if (mon && !mon.forcaCarregado && !mon._forcaCanalLock) {
+        mon._emLutaCampo = tickPartyCampo(mon, selvagens, treinador, passo);
+      }
+      atualizarRoamSelvagens(selvagens, mon, treinador, passo);
     }
-    if (mon && !mon.forcaCarregado && !mon._forcaCanalLock) {
-      mon._emLutaCampo = tickPartyCampo(mon, selvagens, treinador, passo);
-    }
-    atualizarRoamSelvagens(selvagens, mon, treinador, passo);
   }
-  atualizarParty(corpo, passo, agora, perfilSeguidor);
+
+  if (emChrono) {
+    tickSessaoChrono(passo, agora, efeitos);
+  } else {
+    atualizarParty(corpo, passo, agora, perfilSeguidor);
+  }
 
   const atores = mon ? selvagens.concat(mon) : selvagens;
-  for (let i = 0; i < atores.length; i++) tickPassivo(atores[i], passo, agora);
-  for (let i = 0; i < atores.length; i++) tickStatus(atores[i], agora, efeitos, "real");
-  for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
-  montarGrade(atores.concat(treinador));
-  if (!morto) {
-    for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
-    tickGolpesCampo(atores, agora, efeitos);
-    atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
-      impactoProjetil(p, alvo, agora, efeitos);
-    });
+  if (!emChrono) {
+    for (let i = 0; i < atores.length; i++) tickPassivo(atores[i], passo, agora);
+    for (let i = 0; i < atores.length; i++) tickStatus(atores[i], agora, efeitos, "real");
+    for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
+    montarGrade(atores.concat(treinador));
+    if (!morto && !chrono) {
+      for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
+      tickGolpesCampo(atores, agora, efeitos);
+      atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
+        impactoProjetil(p, alvo, agora, efeitos);
+      });
+    }
+    if (!morto) atualizarCaptura(corpo, passo, agora, efeitos);
+  } else if (!morto) {
     atualizarCaptura(corpo, passo, agora, efeitos);
   }
+
   tickFxBola(passo);
   atualizarDrops(corpo, passo, flutuar);
   const visiveis = atoresVisiveis();
@@ -217,7 +271,12 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     if (a && !a.morto && !a.capturado) sincronizarEmocaoEstado(a);
   }
   tickEmocoes(visiveis, passo);
-  for (let i = 0; i < visiveis.length; i++) tickVisual(visiveis[i], passo, agora);
+  // Sessão Chrono já deu tickVisual nos combatentes; completa o resto.
+  for (let i = 0; i < visiveis.length; i++) {
+    const a = visiveis[i];
+    if (emChrono && a && (a._chronoHold || a.combatHold)) continue;
+    tickVisual(a, passo, agora);
+  }
   tickEvolucaoCinema();
   tickFlutuantes(passo);
   tickParticulas(passo);
