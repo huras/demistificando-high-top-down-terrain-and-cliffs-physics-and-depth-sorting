@@ -792,7 +792,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   const blendBb = Math.max(estado.camera3d.blend ?? 0, estado.camera3d.folgaTeleporte ?? 0);
   const inclinacao = BILLBOARD_INCLINACAO * (1 - blendBb);
   estado.edificios?.atualizar?.(mxLod, myLod, yaw, inclinacao);
-  estado.edificiosSites?.atualizar?.(mxLod, myLod);
+  estado.edificiosSites?.atualizar?.(mxLod, myLod, dt);
   estado.vegetacao?.atualizar?.(yaw, inclinacao, mxLod, myLod);
   estado.vegetacaoDistante?.tick?.(mxLod, myLod, yaw, inclinacao);
   estado.vegetacaoHorizonte?.tick?.(mxLod, myLod, yaw, inclinacao);

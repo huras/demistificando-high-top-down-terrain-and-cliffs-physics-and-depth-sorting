@@ -19,57 +19,81 @@
   <header class="topo">
     <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
     <h1>Colisores</h1>
+    <nav class="topo__abas" id="abas" role="tablist">
+      <button type="button" class="topo__aba is-active" data-modo="colisor" role="tab" aria-selected="true">Colisor</button>
+      <button type="button" class="topo__aba" data-modo="moinho" role="tab" aria-selected="false">Moinho</button>
+    </nav>
     <p class="topo__nota" id="status">Carregando…</p>
     <button type="button" id="salvar">Salvar</button>
   </header>
 
-  <div class="miolo">
+  <div class="miolo" data-modo="colisor" id="miolo">
     <aside class="coluna">
       <section class="coluna__lista">
-        <h2>Prédio</h2>
+        <h2 id="lista-titulo">Prédio</h2>
         <input id="busca" type="search" placeholder="Nome" />
         <ul class="lista lista--alta" id="lista"></ul>
       </section>
-      <section id="bloco-corpo">
-        <h2>Corpo</h2>
-        <label class="campo">Leste <strong data-valor="corpo.x">0.00</strong>
-          <input data-caixa="corpo" data-eixo="x" type="range" min="-16" max="16" step="0.01" value="0" />
-        </label>
-        <label class="campo">Sul <strong data-valor="corpo.y">0.00</strong>
-          <input data-caixa="corpo" data-eixo="y" type="range" min="-16" max="16" step="0.01" value="0" />
-        </label>
-        <label class="campo">Largura <strong data-valor="corpo.lx">6.00</strong>
-          <input data-caixa="corpo" data-eixo="lx" type="range" min="0.2" max="24" step="0.01" value="6" />
-        </label>
-        <label class="campo">Profundidade <strong data-valor="corpo.ly">5.00</strong>
-          <input data-caixa="corpo" data-eixo="ly" type="range" min="0.2" max="24" step="0.01" value="5" />
-        </label>
-      </section>
-      <section id="bloco-porta">
-        <h2>Porta</h2>
-        <label class="campo campo--check">
-          <input id="sem-porta" type="checkbox" />
-          Sem porta
-        </label>
-        <label class="campo">Leste <strong data-valor="porta.x">0.00</strong>
-          <input data-caixa="porta" data-eixo="x" type="range" min="-16" max="16" step="0.01" value="0" />
-        </label>
-        <label class="campo">Sul <strong data-valor="porta.y">2.00</strong>
-          <input data-caixa="porta" data-eixo="y" type="range" min="-16" max="16" step="0.01" value="2" />
-        </label>
-        <label class="campo">Largura <strong data-valor="porta.lx">1.00</strong>
-          <input data-caixa="porta" data-eixo="lx" type="range" min="0.2" max="24" step="0.01" value="1" />
-        </label>
-        <label class="campo">Profundidade <strong data-valor="porta.ly">1.00</strong>
-          <input data-caixa="porta" data-eixo="ly" type="range" min="0.2" max="24" step="0.01" value="1" />
-        </label>
-      </section>
-      <button type="button" id="automatico">Voltar ao automático</button>
-      <p class="nota">O laranja é o sólido. O ciano é o vão da porta. Arraste o miolo pra mover e a borda pra mudar o tamanho. Botão direito gira em volta da casa. A roda do mouse aproxima. Sul positivo vai pra fachada. Salvar grava e o jogo usa isso no lugar do chute. Centro e loja giram pra rua junto com essas caixas.</p>
+      <div id="painel-colisor">
+        <section id="bloco-corpo">
+          <h2>Corpo</h2>
+          <label class="campo">Leste <strong data-valor="corpo.x">0.00</strong>
+            <input data-caixa="corpo" data-eixo="x" type="range" min="-16" max="16" step="0.01" value="0" />
+          </label>
+          <label class="campo">Sul <strong data-valor="corpo.y">0.00</strong>
+            <input data-caixa="corpo" data-eixo="y" type="range" min="-16" max="16" step="0.01" value="0" />
+          </label>
+          <label class="campo">Largura <strong data-valor="corpo.lx">6.00</strong>
+            <input data-caixa="corpo" data-eixo="lx" type="range" min="0.2" max="24" step="0.01" value="6" />
+          </label>
+          <label class="campo">Profundidade <strong data-valor="corpo.ly">5.00</strong>
+            <input data-caixa="corpo" data-eixo="ly" type="range" min="0.2" max="24" step="0.01" value="5" />
+          </label>
+        </section>
+        <section id="bloco-porta">
+          <h2>Porta</h2>
+          <label class="campo campo--check">
+            <input id="sem-porta" type="checkbox" />
+            Sem porta
+          </label>
+          <label class="campo">Leste <strong data-valor="porta.x">0.00</strong>
+            <input data-caixa="porta" data-eixo="x" type="range" min="-16" max="16" step="0.01" value="0" />
+          </label>
+          <label class="campo">Sul <strong data-valor="porta.y">2.00</strong>
+            <input data-caixa="porta" data-eixo="y" type="range" min="-16" max="16" step="0.01" value="2" />
+          </label>
+          <label class="campo">Largura <strong data-valor="porta.lx">1.00</strong>
+            <input data-caixa="porta" data-eixo="lx" type="range" min="0.2" max="24" step="0.01" value="1" />
+          </label>
+          <label class="campo">Profundidade <strong data-valor="porta.ly">1.00</strong>
+            <input data-caixa="porta" data-eixo="ly" type="range" min="0.2" max="24" step="0.01" value="1" />
+          </label>
+        </section>
+        <button type="button" id="automatico">Voltar ao automático</button>
+        <p class="nota">O laranja é o sólido. O ciano é o vão da porta. Arraste o miolo pra mover e a borda pra mudar o tamanho. Botão direito gira em volta da casa. A roda do mouse aproxima. Sul positivo vai pra fachada. Salvar grava e o jogo usa isso no lugar do chute. Centro e loja giram pra rua junto com essas caixas.</p>
+      </div>
+      <div id="painel-moinho" hidden>
+        <section>
+          <h2>Pivô do ventilador</h2>
+          <p class="nota">Offset do eixo em relação ao cubo automático. Arraste o gizmo ou use os sliders — o ventilador gira pra você ver se o pivô está no centro.</p>
+          <label class="campo">X <strong id="moinho-dx-valor">0.000</strong>
+            <input id="moinho-dx" type="range" min="-2" max="2" step="0.005" value="0" />
+          </label>
+          <label class="campo">Y <strong id="moinho-dy-valor">0.000</strong>
+            <input id="moinho-dy" type="range" min="-2" max="2" step="0.005" value="0" />
+          </label>
+          <label class="campo">Z <strong id="moinho-dz-valor">0.000</strong>
+            <input id="moinho-dz" type="range" min="-2" max="2" step="0.005" value="0" />
+          </label>
+          <p class="coords" id="moinho-coords">dx 0 · dy 0 · dz 0</p>
+          <button type="button" id="moinho-reset">Zerar offset</button>
+        </section>
+      </div>
     </aside>
     <div class="palco">
       <canvas id="vista"></canvas>
-      <p class="legenda"><span class="legenda__corpo">Corpo</span><span class="legenda__porta">Porta</span></p>
+      <p class="legenda" id="legenda-colisor"><span class="legenda__corpo">Corpo</span><span class="legenda__porta">Porta</span></p>
+      <p class="legenda" id="legenda-moinho" hidden><span class="legenda__moinho">Pivô</span></p>
     </div>
   </div>
   <script type="module" src="js/colisores/editor.js"></script>

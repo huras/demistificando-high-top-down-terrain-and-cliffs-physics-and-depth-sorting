@@ -20,6 +20,31 @@ const FIXOS = {
   "casa-guia": { base: "assets/models/cidade/casa-guia/", arquivo: "modelo.obj" },
 };
 
+/** Modelos HGSS só pra sítios outdoor (fazenda) — não entram no stream das cidades. */
+const SITE_FIXOS = {
+  "moomoo-farm": {
+    base: "assets/models/hgss/MooMoo Farm House/",
+    arquivo: "MooMoo Farm.obj",
+  },
+  "moomoo-farm-silo": {
+    base: "assets/models/hgss/MooMoo Farm Silo/",
+    arquivo: "MooMoo Farm Silo.obj",
+  },
+  "pokemon-day-care": {
+    base: "assets/models/hgss/Pokemon Day Care/",
+    arquivo: "Pokemon Day Care.obj",
+  },
+  /** EditedWindmill: post→head→fan (glTF preserva origin/hierarquia do Blender). */
+  "windmill-1": {
+    base: "assets/models/hgss/Windmills/EditedWindmill 1/",
+    arquivo: "EditedWindmill 1.glb",
+  },
+  logs: {
+    base: "assets/models/hgss/Logs/",
+    arquivo: "Logs.obj",
+  },
+};
+
 function casa(pasta, arquivo) {
   return {
     id: arquivo.replace(/\.obj$/i, "").replace(/\s+/g, "-").toLowerCase(),
@@ -62,6 +87,7 @@ const POR_CIDADE = {
 
 const POR_ID = new Map();
 for (const id of Object.keys(FIXOS)) POR_ID.set(id, FIXOS[id]);
+for (const id of Object.keys(SITE_FIXOS)) POR_ID.set(id, SITE_FIXOS[id]);
 for (const chave of Object.keys(POR_CIDADE)) {
   const lista = POR_CIDADE[chave];
   for (let i = 0; i < lista.length; i++) {
@@ -70,6 +96,8 @@ for (const chave of Object.keys(POR_CIDADE)) {
     POR_ID.set(item.id, item);
   }
 }
+
+const IDS_SITE = new Set(Object.keys(SITE_FIXOS));
 
 export function idDaCasa(cidade, indice) {
   const lista = POR_CIDADE[cidade];
@@ -91,8 +119,12 @@ export function urlDoModelo(caminho) {
 
 export function idsVisuais() {
   const fixos = ["centro", "loja", "lab", "ginasio", "museu", "coliseu", "mansao", "ruina", "poste"];
-  const resto = [...POR_ID.keys()].filter((id) => !fixos.includes(id));
+  const resto = [...POR_ID.keys()].filter((id) => !fixos.includes(id) && !IDS_SITE.has(id));
   return fixos.concat(resto);
+}
+
+export function idsModelosSite() {
+  return [...IDS_SITE];
 }
 
 export function idsColisao() {

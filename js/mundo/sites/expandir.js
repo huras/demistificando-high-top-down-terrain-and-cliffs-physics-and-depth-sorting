@@ -1,7 +1,11 @@
 /**
  * Expande template + âncora → instância congelada do sítio.
  */
-import { CASA_SITE, raioDoPropSite } from "./catalogo.js";
+import {
+  CASA_SITE,
+  MODELO_SITE_SEM_TINT,
+  raioDoPropSite,
+} from "./catalogo.js";
 import { montarLabirintoCemiterio } from "./cemiterio.js";
 import { hash3 } from "./hash.js";
 
@@ -30,6 +34,7 @@ export function expandirTemplate(template, ax, ay, ancoraX, ancoraY, siteId, ori
     const seed = hash3(ax, ay, slot + 17);
     const lx = ancoraX + b.dx + cols * 0.5;
     const ly = ancoraY + b.dy + rows * 0.5;
+    const tint = MODELO_SITE_SEM_TINT.has(b.modelo) ? null : tintCasa(seed);
     edificios.push(
       Object.freeze({
         id: `${siteId}-casa-${slot}`,
@@ -41,7 +46,7 @@ export function expandirTemplate(template, ax, ay, ancoraX, ancoraY, siteId, ori
         ly,
         cols,
         rows,
-        tint: tintCasa(seed),
+        tint,
         r: Math.max(cols, rows) * 0.42,
       })
     );

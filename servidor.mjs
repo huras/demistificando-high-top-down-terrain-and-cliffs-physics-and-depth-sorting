@@ -505,6 +505,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/moinho-pivo") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 50_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarMoinhoPivo(obj);
+        const dest = path.join(raiz, "assets", "models", "moinho-pivo.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (
     (req.method === "GET" || req.method === "HEAD") &&
     url.pathname === "/ref/catalogo.json"
@@ -849,6 +879,37 @@ function caixaLimpa(caixa, id, nome) {
   }
   if (Math.abs(saida.x) > 20 || Math.abs(saida.y) > 20) throw new Error(`${id} ${nome} offset`);
   return saida;
+}
+
+function validarMoinhoPivo(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("arquivo sem pivôs de moinho");
+  }
+  const ids = Object.keys(obj);
+  if (ids.length > 20) throw new Error("muitos moinhos");
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^windmill-[a-z0-9-]{1,40}$/i.test(id)) {
+      throw new Error(`modelo inválido: ${id}`);
+    }
+    const item = obj[id];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`${id} sem offset`);
+    }
+    const limpo = {};
+    for (const eixo of ["dx", "dy", "dz"]) {
+      const n = Number(item[eixo]);
+      if (!Number.isFinite(n) || Math.abs(n) > 8) {
+        throw new Error(`${id} ${eixo}`);
+      }
+      limpo[eixo] = Math.round(n * 1000) / 1000;
+    }
+    if (limpo.dx === 0 && limpo.dy === 0 && limpo.dz === 0) {
+      delete obj[id];
+    } else {
+      obj[id] = limpo;
+    }
+  }
 }
 
 function validarColisores(obj) {

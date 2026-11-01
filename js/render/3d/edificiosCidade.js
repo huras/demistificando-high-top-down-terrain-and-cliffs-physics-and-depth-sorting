@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { CHUNK_XZ, TILE } from "../../config.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
 import { deLocalKanto } from "../../mundo/bounds.js";
@@ -111,26 +112,67 @@ function materialDoGlobo(mapa) {
 
 export const MODELOS_CIDADE = idsVisuais();
 
+/**
+ * Blender costuma exportar map_Kd/map_d com path absoluto do Windows.
+ * No browser isso quebra a textura; map_d falho deixa o mesh transparente.
+ */
+function sanitizarMtl(texto) {
+  return String(texto || "")
+    .split(/\r?\n/)
+    .map((linha) => {
+      const m = linha.match(/^(map_\w+)\s+(.+)$/i);
+      if (!m) return linha;
+      if (/^map_d$/i.test(m[1])) return "";
+      let path = m[2].trim().replace(/^"(.*)"$/, "$1");
+      if (/^[a-zA-Z]:[\\/]/.test(path) || path.includes("\\\\") || /^[\\/]/.test(path)) {
+        path = path.split(/[/\\]/).pop() || path;
+      }
+      return `${m[1]} ${path}`;
+    })
+    .filter((l) => l.length > 0)
+    .join("\n");
+}
+
+function carregarGltf(url) {
+  return new Promise((resolve, reject) => {
+    new GLTFLoader().load(
+      url,
+      (gltf) => resolve(gltf.scene || gltf.scenes?.[0]),
+      undefined,
+      reject
+    );
+  });
+}
+
 function carregarObj(id) {
   const origem = origemDoModelo(id);
   const base = origem ? urlDoModelo(origem.base) : `assets/models/cidade/${id}/`;
   const arquivo = origem?.arquivo || "modelo.obj";
+  const urlArq = `${base}${urlDoModelo(arquivo)}`;
+
+  if (/\.glb$/i.test(arquivo) || /\.gltf$/i.test(arquivo)) {
+    return carregarGltf(urlArq);
+  }
+
   const mtl = arquivo.replace(/\.obj$/i, ".mtl");
-  return new Promise((resolve, reject) => {
-    const mats = new MTLLoader();
-    mats.setResourcePath(base);
-    mats.load(
-      `${base}${urlDoModelo(mtl)}`,
-      (pronto) => {
-        pronto.preload();
+  const urlMtl = `${base}${urlDoModelo(mtl)}`;
+
+  return fetch(urlMtl)
+    .then((res) => {
+      if (!res.ok) throw new Error(`mtl ${res.status}`);
+      return res.text();
+    })
+    .then((texto) => {
+      const mats = new MTLLoader();
+      mats.setResourcePath(base);
+      const pronto = mats.parse(sanitizarMtl(texto), base);
+      pronto.preload();
+      return new Promise((resolve, reject) => {
         const obj = new OBJLoader();
         obj.setMaterials(pronto);
-        obj.load(`${base}${urlDoModelo(arquivo)}`, resolve, undefined, reject);
-      },
-      undefined,
-      reject,
-    );
-  });
+        obj.load(urlArq, resolve, undefined, reject);
+      });
+    });
 }
 
 function consertarNormais(geo) {
@@ -147,12 +189,23 @@ function consertarNormais(geo) {
   }
 }
 
+function nomeDoMesh(filho) {
+  const mat = filho?.material;
+  const doMat = Array.isArray(mat) ? mat[0]?.name : mat?.name;
+  return String(doMat || filho?.name || "").toLowerCase();
+}
+
+function ehKage(nome) {
+  return nome.includes("kage") || nome.includes("shade");
+}
+
 function ajustarMaterial(mat) {
   const lista = Array.isArray(mat) ? mat : [mat];
   for (let i = 0; i < lista.length; i++) {
     const m = lista[i];
     if (!m) continue;
     const novo = new THREE.MeshLambertMaterial({
+      name: m.name || "",
       map: m.map || null,
       color: 0xffffff,
       alphaTest: 0.2,
@@ -214,13 +267,13 @@ function preparar(raiz, volume) {
     if (filho.isMesh && Array.isArray(filho.material)) multi.push(filho);
   });
   for (let i = 0; i < multi.length; i++) partirMultiMaterial(multi[i]);
+  /** h_kage / shade = blob de sombra baked no OBJ: remove, não só esconde (bbox). */
+  const lixoKage = [];
   raiz.traverse((filho) => {
     if (!filho.isMesh) return;
-    const nome = (filho.material?.name || "").toLowerCase();
-    if (nome.includes("kage")) {
-      filho.visible = false;
-      filho.castShadow = false;
-      filho.receiveShadow = false;
+    const nome = nomeDoMesh(filho);
+    if (ehKage(nome)) {
+      lixoKage.push(filho);
       return;
     }
     if (nome === "tkwa_sl3") {
@@ -255,6 +308,13 @@ function preparar(raiz, volume) {
     filho.castShadow = true;
     filho.receiveShadow = true;
   });
+  for (let i = 0; i < lixoKage.length; i++) {
+    const mesh = lixoKage[i];
+    mesh.parent?.remove(mesh);
+    mesh.geometry?.dispose?.();
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (let m = 0; m < mats.length; m++) mats[m]?.dispose?.();
+  }
   raiz.updateMatrixWorld(true);
   const caixa = new THREE.Box3().setFromObject(raiz);
   if (volume) marcarVolume(raiz, caixa.min.y);
@@ -318,10 +378,19 @@ function pendurarLuzes(inst, id, dono) {
   inst.userData.cartoesLuz = cartoes;
 }
 
-export function carregarMoldeCidade(id) {
+/**
+ * @param {string} id
+ * @param {{ ladoX?: number, ladoZ?: number }} [opts] pegada alvo (sítios outdoor)
+ */
+export function carregarMoldeCidade(id, opts = null) {
   return carregarObj(id).then((raiz) => {
     const medido = preparar(raiz, id === "poste");
-    const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
+    const lx = opts?.ladoX > 0 ? opts.ladoX : LADO_X;
+    const lz = opts?.ladoZ > 0 ? opts.ladoZ : LADO_Z;
+    const escala =
+      id === "poste"
+        ? ALTURA_POSTE / medido.sy
+        : Math.min(lx / medido.sx, lz / medido.sz) * FOLGA;
     if (id === "poste") aplicarEscalaProp(medido.grupo, escala);
     else aplicarEscalaCasa(medido.grupo, escala);
     return medido.grupo;

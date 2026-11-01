@@ -1,3 +1,41 @@
+.topo__abas {
+  display: flex;
+  gap: 4px;
+  margin: 0 12px;
+}
+
+.topo__aba {
+  border: 1px solid #3d5248;
+  background: #1a221c;
+  color: var(--texto, #d7e6dc);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.topo__aba.is-active {
+  background: #2d4a38;
+  border-color: #6db38a;
+  color: #e8fff0;
+}
+
+.legenda__moinho::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: -1px;
+  background: #ff5ad5;
+}
+
+#moinho-reset {
+  margin: 4px 0 12px;
+  width: 100%;
+}
+
 .campo--check {
   flex-direction: row;
   align-items: center;

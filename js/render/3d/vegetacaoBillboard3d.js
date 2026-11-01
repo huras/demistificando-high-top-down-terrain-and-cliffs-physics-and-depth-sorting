@@ -28,6 +28,7 @@ import { ESCALA_ARBUSTO, garantirFolhaBerry, imagemArbusto, quadroArbusto } from
 import { ensureShrineArtLoaded, imagemSantuario } from "../../santuario/arte.js";
 import { SHRINE_DRAW_SCALE } from "../../santuario/catalogo.js";
 import { imagemDoPropSite } from "../../mundo/sites/atlas.js";
+import { modeloDoPropSite } from "../../mundo/sites/catalogo.js";
 import {
   obterCarry,
   obterGrabAction,
@@ -63,6 +64,8 @@ function chaveDe(prop) {
   if (!prop || prop.oculto || prop.ocultoBillboard || prop.tipo === "placa") return null;
   if (prop.tipo === "siteCasa") return null;
   if (prop.fase === FASE.REMOVIDO) return null;
+  // Props com malha 3D (ex.: toras HGSS) — stream em edificiosSites.
+  if (prop.tipo === "site" && modeloDoPropSite(prop.propId || prop.sprite)) return null;
   if (prop.tipo === "site") return `site:${prop.propId || prop.sprite || "prop"}`;
   if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return `toco:${prop.sprite || "arvore"}`;
   if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return `tocoq:${prop.sprite || "arvore"}`;

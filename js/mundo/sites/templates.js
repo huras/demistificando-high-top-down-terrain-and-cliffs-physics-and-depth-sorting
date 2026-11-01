@@ -6,14 +6,16 @@ import {
   MODELO_CASA_SITE,
   PROP_SITE,
   TIPO_SITE,
+  pegadaDoModeloSite,
 } from "./catalogo.js";
 
-function casa(dx, dy, modelo) {
+function casa(dx, dy, modelo, opts = null) {
+  const pegada = pegadaDoModeloSite(modelo);
   return Object.freeze({
     dx,
     dy,
-    cols: CASA_SITE.cols,
-    rows: CASA_SITE.rows,
+    cols: opts?.cols ?? pegada?.cols ?? CASA_SITE.cols,
+    rows: opts?.rows ?? pegada?.rows ?? CASA_SITE.rows,
     modelo,
   });
 }
@@ -22,32 +24,48 @@ function prop(propId, dx, dy) {
   return Object.freeze({ propId, dx, dy });
 }
 
+/** Grade de plantação (passo ~1.2) no retângulo incluso. */
+function plantacaoGrade(x0, y0, cols, rows, passo = 1.2) {
+  const lista = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      lista.push(prop(PROP_SITE.plantacao, x0 + c * passo, y0 + r * passo));
+    }
+  }
+  return lista;
+}
+
 export const TEMPLATES_SITE = Object.freeze({
   fazenda: Object.freeze({
     id: "fazenda",
     tipo: TIPO_SITE.FAZENDA,
     biomas: Object.freeze(["terra"]),
-    limpaVeg: 1,
-    largura: 16,
-    altura: 12,
+    limpaVeg: 2,
+    largura: 32,
+    altura: 24,
     edificios: Object.freeze([
-      casa(0, 0, MODELO_CASA_SITE.palha),
-      casa(6, 0, MODELO_CASA_SITE.cinza),
-      casa(12, 0, MODELO_CASA_SITE.branca),
+      // Fileira norte: Day Care + MooMoo Farm + silo
+      casa(1, 1, MODELO_CASA_SITE.dayCare),
+      casa(11, 1, MODELO_CASA_SITE.moomoo),
+      casa(23, 1, MODELO_CASA_SITE.silo),
+      // Moinhos nos flancos do pasto
+      casa(1, 14, MODELO_CASA_SITE.moinho1),
+      casa(27, 12, MODELO_CASA_SITE.moinho2),
     ]),
     props: Object.freeze([
-      prop(PROP_SITE.poco, 2, 7),
-      prop(PROP_SITE.carroca, 8, 7),
-      prop(PROP_SITE.fenoGrande, 12, 7),
-      prop(PROP_SITE.fenoMedio, 14, 9),
-      prop(PROP_SITE.sacos, 0, 7),
-      prop(PROP_SITE.lampiao, 5, 6),
-      prop(PROP_SITE.plantacao, 6, 9),
-      prop(PROP_SITE.plantacao, 7.2, 9),
-      prop(PROP_SITE.plantacao, 8.4, 9),
-      prop(PROP_SITE.plantacao, 6, 10.2),
-      prop(PROP_SITE.plantacao, 7.2, 10.2),
-      prop(PROP_SITE.plantacao, 8.4, 10.2),
+      prop(PROP_SITE.poco, 9, 9),
+      prop(PROP_SITE.lampiao, 10, 8),
+      prop(PROP_SITE.lampiao, 20, 8),
+      prop(PROP_SITE.carroca, 21, 10),
+      prop(PROP_SITE.fenoGrande, 22, 14),
+      prop(PROP_SITE.fenoGrande, 25, 16),
+      prop(PROP_SITE.fenoMedio, 20, 16),
+      prop(PROP_SITE.fenoPequeno, 18, 15),
+      prop(PROP_SITE.sacos, 19, 9),
+      prop(PROP_SITE.sacos, 8, 10),
+      prop(PROP_SITE.toras, 6, 16),
+      ...plantacaoGrade(8, 17, 6, 4, 1.15),
+      ...plantacaoGrade(16, 18, 4, 3, 1.15),
     ]),
   }),
 

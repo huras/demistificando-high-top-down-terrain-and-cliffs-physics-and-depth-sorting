@@ -2,10 +2,17 @@ export {
   TIPO_SITE,
   PROP_SITE,
   MODELO_CASA_SITE,
+  MODELO_PROP_SITE,
+  PEGADA_MODELO_SITE,
+  PEGADA_PROP_SITE,
+  MODELO_SITE_SEM_TINT,
   CASA_SITE,
   LAPIDES,
   raioDoPropSite,
   lapideDoSlot,
+  pegadaDoModeloSite,
+  modeloDoPropSite,
+  pegadaDoPropSite,
 } from "./catalogo.js";
 export { TEMPLATES_SITE, LISTA_TEMPLATES, templatesDoBioma } from "./templates.js";
 export { biomaDaZona, zonaAceitaSite } from "./bioma.js";

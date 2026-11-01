@@ -5,6 +5,7 @@ import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { idsVisuais, origemDoModelo, urlDoModelo } from "../mundo/cidade/catalogoCasas.js";
 import { assarSprite, corpoPadraoSprite, entradasEditorSprite, medidaSprite, portaPadraoSprite } from "../mundo/cidade/spritesPredio.js";
 import { pivoDaImagem } from "../render/pivoPe.js";
+import { criarModoMoinho } from "./modoMoinho.js";
 
 const LADO_X = 6;
 const LADO_Z = 5;
@@ -23,6 +24,17 @@ const btnAuto = document.getElementById("automatico");
 const semPortaEl = document.getElementById("sem-porta");
 const blocoCorpo = document.getElementById("bloco-corpo");
 const blocoPorta = document.getElementById("bloco-porta");
+const mioloEl = document.getElementById("miolo");
+const painelColisor = document.getElementById("painel-colisor");
+const painelMoinho = document.getElementById("painel-moinho");
+const listaTitulo = document.getElementById("lista-titulo");
+const legendaColisor = document.getElementById("legenda-colisor");
+const legendaMoinho = document.getElementById("legenda-moinho");
+const abasEl = document.getElementById("abas");
+
+/** @type {"colisor" | "moinho"} */
+let modo = "colisor";
+let ultimoTick = performance.now();
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -31,7 +43,11 @@ const cena = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 80);
 const controles = new OrbitControls(camera, canvas);
 controles.enableDamping = true;
-controles.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+controles.enablePan = true;
+// Esquerdo órbita · direito pan · meio zoom (sem pan ficava impossível ajustar pivô).
+controles.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+controles.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+controles.mouseButtons.RIGHT = THREE.MOUSE.PAN;
 controles.target.set(0, 1.4, 0.4);
 camera.position.set(0.4, 7.2, 11);
 controles.update();
@@ -55,6 +71,17 @@ cena.add(lote);
 
 const predio = new THREE.Group();
 cena.add(predio);
+
+const modoMoinho = criarModoMoinho({
+  cena,
+  predio,
+  camera,
+  canvas,
+  controles,
+  dizer: (t) => {
+    statusEl.textContent = t;
+  },
+});
 
 const raycaster = new THREE.Raycaster();
 const ponteiro = new THREE.Vector2();
@@ -220,23 +247,70 @@ function mostrar() {
   dizer(vista.salvo ? `${item.nome} · medida sua, salve pra entrar no jogo` : `${item.nome} · automático`);
 }
 
+function listaDoModo() {
+  return modo === "moinho" ? modoMoinho.itens : itens;
+}
+
 function desenharLista() {
   const q = buscaEl.value.trim().toLowerCase();
+  const fonte = listaDoModo();
   listaEl.replaceChildren();
-  for (let i = 0; i < itens.length; i++) {
-    const item = itens[i];
+  for (let i = 0; i < fonte.length; i++) {
+    const item = fonte[i];
     if (q && !item.nome.toLowerCase().includes(q) && !item.id.includes(q)) continue;
     const li = document.createElement("li");
     const botao = document.createElement("button");
     botao.type = "button";
     botao.textContent = item.nome;
-    if (item.id === atual) botao.classList.add("ativo");
-    if (temAjuste(item.id)) botao.classList.add("tem-ajuste");
+    const ativoId = modo === "moinho" ? modoMoinho.modeloId : atual;
+    if (item.id === ativoId) botao.classList.add("ativo");
+    const marcado =
+      modo === "moinho" ? modoMoinho.temAjuste(item.id) : temAjuste(item.id);
+    if (marcado) botao.classList.add("tem-ajuste");
     botao.addEventListener("click", () => abrir(item.id));
     li.append(botao);
     listaEl.append(li);
   }
 }
+
+function setModo(proximo) {
+  if (proximo !== "colisor" && proximo !== "moinho") return;
+  if (proximo === modo) return;
+  modo = proximo;
+  mioloEl.dataset.modo = modo;
+  for (const btn of abasEl.querySelectorAll("[data-modo]")) {
+    const on = btn.dataset.modo === modo;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-selected", String(on));
+  }
+  painelColisor.hidden = modo !== "colisor";
+  painelMoinho.hidden = modo !== "moinho";
+  legendaColisor.hidden = modo !== "colisor";
+  legendaMoinho.hidden = modo !== "moinho";
+  listaTitulo.textContent = modo === "moinho" ? "Moinho" : "Prédio";
+  corpoVis.visible = modo === "colisor";
+  portaVis.visible = modo === "colisor" && !!vista?.porta;
+  lote.visible = modo === "colisor";
+
+  soltarPredio();
+  if (modo === "moinho") {
+    modoMoinho.desativar();
+    desenharLista();
+    const primeiro = modoMoinho.itens[0];
+    if (primeiro) abrir(primeiro.id);
+    else dizer("Nenhum moinho no catálogo");
+  } else {
+    modoMoinho.desativar();
+    desenharLista();
+    if (itens.length) abrir(itens[0].id);
+  }
+}
+
+abasEl.addEventListener("click", (ev) => {
+  const btn = ev.target?.closest?.("[data-modo]");
+  if (!btn) return;
+  setModo(btn.dataset.modo);
+});
 
 function soltarPredio() {
   const texturas = new Set();
@@ -413,6 +487,21 @@ function cartao(folha) {
 }
 
 async function abrir(id) {
+  if (modo === "moinho") {
+    soltarPredio();
+    desenharLista();
+    try {
+      await modoMoinho.abrir(id);
+      controles.target.set(0, 1.8, 0);
+      camera.position.set(3.2, 4.5, 6.5);
+      controles.update();
+      desenharLista();
+    } catch (erro) {
+      dizer(`Não abriu moinho: ${erro.message || erro}`);
+      console.error(erro);
+    }
+    return;
+  }
   const item = itens.find((entrada) => entrada.id === id);
   if (!item) return;
   atual = id;
@@ -523,6 +612,7 @@ function tocar(papel) {
 canvas.addEventListener("contextmenu", (ev) => ev.preventDefault());
 
 canvas.addEventListener("pointerdown", (ev) => {
+  if (modo === "moinho") return;
   if (ev.button !== 0 || !vista) return;
   apontar(ev);
   const alvo = caixaNoPonteiro();
@@ -626,14 +716,20 @@ function corpoParaSalvar() {
 btnSalvar.addEventListener("click", async () => {
   btnSalvar.disabled = true;
   try {
-    const res = await fetch("/api/colisores", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(corpoParaSalvar()),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || json.ok === false) throw new Error(json.erro || "não salvou");
-    dizer("Salvo. Recarrega o jogo pra ver na cidade.");
+    if (modo === "moinho") {
+      await modoMoinho.salvar();
+      dizer("Pivô do moinho salvo. Recarrega o jogo pra ver na fazenda.");
+      desenharLista();
+    } else {
+      const res = await fetch("/api/colisores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpoParaSalvar()),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.ok === false) throw new Error(json.erro || "não salvou");
+      dizer("Salvo. Recarrega o jogo pra ver na cidade.");
+    }
   } catch (erro) {
     dizer(`Não salvou: ${erro.message || erro}`);
   } finally {
@@ -655,6 +751,10 @@ function ajustarTela() {
 window.addEventListener("resize", ajustarTela);
 ajustarTela();
 renderer.setAnimationLoop(() => {
+  const agora = performance.now();
+  const dt = Math.min(0.05, (agora - ultimoTick) / 1000);
+  ultimoTick = agora;
+  if (modo === "moinho") modoMoinho.tick(dt);
   controles.update();
   renderer.render(cena, camera);
 });
@@ -671,6 +771,7 @@ async function iniciar() {
     console.error(erro);
     dizer("Não carregou os prédios 2D");
   }
+  await modoMoinho.boot();
   desenharLista();
   dizer("Escolha um prédio e puxe a caixa até a porta");
   if (itens.length) abrir(itens[0].id);
