@@ -12,7 +12,9 @@ import {
   aplicarFacingMira,
   aplicarOlharMouse,
   criarCamera3d,
+  definirDistancia,
   definirModoCamera,
+  definirPitchOrbita,
   distanciaNormalizada,
   seguirAlvo3d,
   yawCamera,
@@ -692,6 +694,19 @@ export function ajustarZoom3d(fator) {
 export function resetarCamera3d() {
   if (!estado) return;
   estado.camera3d.pronta = false;
+}
+
+/** Restaura yaw/pitch/distância do save no próximo snap da órbita. */
+export function aplicarCameraSalva(pos) {
+  if (!estado?.camera3d || !pos) return;
+  const cam = estado.camera3d;
+  if (Number.isFinite(pos.yawCam)) {
+    cam._yawSalvo = pos.yawCam;
+    cam.yaw = pos.yawCam;
+  }
+  if (Number.isFinite(pos.pitchOrbita)) definirPitchOrbita(cam, pos.pitchOrbita);
+  if (Number.isFinite(pos.distancia)) definirDistancia(cam, pos.distancia);
+  cam.pronta = false;
 }
 
 /** Aplica deltas de mouse-look (pixels) na câmera 3D. */

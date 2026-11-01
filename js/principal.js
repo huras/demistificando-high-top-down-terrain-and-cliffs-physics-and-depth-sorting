@@ -98,6 +98,7 @@ import {
   atualizarEDesenhar3d,
   aquecerProgramas3d,
   aguardarEdificios3d,
+  aplicarCameraSalva,
   definirMira3d,
   entrarVistaCena,
   iniciarCenario3d,
@@ -131,7 +132,7 @@ import {
 } from "./santuario/colocacao.js";
 import { ensureShrineArtLoaded } from "./santuario/arte.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
-import { estado as estadoJogo, obterSpawnSalvo } from "./jogo/estado.js";
+import { estado as estadoJogo, obterSpawnSalvo, registrarCamera } from "./jogo/estado.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
 import { jogadorMorto } from "./jogo/hud/morte.js";
 import {
@@ -363,6 +364,7 @@ async function iniciarInterno() {
     await esperarPaint();
     await aquecerProgramas3d(corpo.x, corpo.y);
   }
+  if (spawn !== SPAWN) aplicarCameraSalva(spawn);
   marcarFase("shaders", 1);
 
   const optsPonteiro = {
@@ -456,6 +458,13 @@ async function iniciarInterno() {
       atualizarStreaming(x, y, undefined, true);
     },
   };
+
+  // 1º render real ainda com a tela de boot — evita canvas preto longo pós-loading.
+  if (obterModo() === "3d" && corpo) {
+    definirStatus("Preparando 1º quadro…", "Malha e iluminação no ponto de spawn.");
+    garantir3d();
+    atualizarEDesenhar3d(corpo, 1 / 60, atlas, agente);
+  }
 
   await concluirCarregamento();
 
@@ -804,6 +813,14 @@ function loop(agora) {
     if (modo === "3d") {
       garantir3d();
       const cen = atualizarEDesenhar3d(corpo, dt, atlas, agente);
+      const cam3d = obterCenario3d()?.camera3d;
+      if (cam3d) {
+        registrarCamera({
+          yaw: cam3d.yaw,
+          pitchOrbita: cam3d.pitchOrbita,
+          distancia: cam3d.distancia,
+        });
+      }
       atualizarVisualForca(corpo);
       const modoVisual = usarTiles(atlas) ? "real" : "cubos";
       desenharHudSobre3d(ctx, canvas, {

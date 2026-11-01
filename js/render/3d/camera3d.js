@@ -164,7 +164,12 @@ export function aplicarOlharMouse(camera3d, dx, dy) {
  */
 export function seguirAlvo3d(camera3d, corpo, dt) {
   if (!camera3d.pronta) {
-    camera3d.yaw = Math.atan2(corpo.dirX || 0, corpo.dirY || 1);
+    if (Number.isFinite(camera3d._yawSalvo)) {
+      camera3d.yaw = camera3d._yawSalvo;
+      camera3d._yawSalvo = undefined;
+    } else {
+      camera3d.yaw = Math.atan2(corpo.dirX || 0, corpo.dirY || 1);
+    }
   }
 
   alinharCostas(camera3d, corpo, dt);

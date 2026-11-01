@@ -143,8 +143,24 @@ export const estado = {
 };
 
 /** Atualiza a posição a gravar no save (chamar no tick / antes de salvar). */
-export function registrarPosicao(corpo) {
+export function registrarPosicao(corpo, cam = null) {
   if (!corpo || !Number.isFinite(corpo.x) || !Number.isFinite(corpo.y)) return;
+  const anterior = estado.posicao;
+  const yawCam = Number.isFinite(cam?.yaw)
+    ? cam.yaw
+    : Number.isFinite(anterior?.yawCam)
+      ? anterior.yawCam
+      : undefined;
+  const pitchOrbita = Number.isFinite(cam?.pitchOrbita)
+    ? cam.pitchOrbita
+    : Number.isFinite(anterior?.pitchOrbita)
+      ? anterior.pitchOrbita
+      : undefined;
+  const distancia = Number.isFinite(cam?.distancia)
+    ? cam.distancia
+    : Number.isFinite(anterior?.distancia)
+      ? anterior.distancia
+      : undefined;
   estado.posicao = {
     x: corpo.x,
     y: corpo.y,
@@ -157,6 +173,17 @@ export function registrarPosicao(corpo) {
     dirX: Number.isFinite(corpo.dirX) ? corpo.dirX : 0,
     dirY: Number.isFinite(corpo.dirY) ? corpo.dirY : 1,
   };
+  if (Number.isFinite(yawCam)) estado.posicao.yawCam = yawCam;
+  if (Number.isFinite(pitchOrbita)) estado.posicao.pitchOrbita = pitchOrbita;
+  if (Number.isFinite(distancia)) estado.posicao.distancia = distancia;
+}
+
+/** Atualiza só a câmera no blob de posição (após o frame 3D). */
+export function registrarCamera(cam) {
+  if (!estado.posicao || !cam) return;
+  if (Number.isFinite(cam.yaw)) estado.posicao.yawCam = cam.yaw;
+  if (Number.isFinite(cam.pitchOrbita)) estado.posicao.pitchOrbita = cam.pitchOrbita;
+  if (Number.isFinite(cam.distancia)) estado.posicao.distancia = cam.distancia;
 }
 
 function normalizarPosicao(p) {
@@ -165,7 +192,7 @@ function normalizarPosicao(p) {
   const y = Number(p.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
   const z = Number(p.z);
-  return {
+  const out = {
     x,
     y,
     z: Number.isFinite(z) ? z : 0,
@@ -173,6 +200,13 @@ function normalizarPosicao(p) {
     dirX: Number.isFinite(p.dirX) ? p.dirX : 0,
     dirY: Number.isFinite(p.dirY) ? p.dirY : 1,
   };
+  const yawCam = Number(p.yawCam);
+  const pitchOrbita = Number(p.pitchOrbita);
+  const distancia = Number(p.distancia);
+  if (Number.isFinite(yawCam)) out.yawCam = yawCam;
+  if (Number.isFinite(pitchOrbita)) out.pitchOrbita = pitchOrbita;
+  if (Number.isFinite(distancia)) out.distancia = distancia;
+  return out;
 }
 
 /** Lê só a posição do save (antes do boot do mundo), sem hidratar o resto. */

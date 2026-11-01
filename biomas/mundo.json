@@ -728,7 +728,7 @@
       "arvore": 0.03,
       "mata": 0.02,
       "transicao": 16,
-      "degrau": 1,
+      "degrau": 2,
       "camada": "terra",
       "nos": [
         {

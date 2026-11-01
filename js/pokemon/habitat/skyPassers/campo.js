@@ -23,10 +23,33 @@ export const SKY_CFG = Object.freeze({
   altMax: 9,
   cullPad: 36,
   spawnPad: 22,
+  /** Blocos/s — acompanha cliff sem teleporte (≈ VOO_VEL_VERT). */
+  chaoSegueVel: 5.2,
 });
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
+}
+
+/**
+ * Suaviza o chão sob o voo: rate-limit + leve ease (sem snap em bordas de voxel).
+ * @param {ReturnType<typeof criarSlot>} slot
+ * @param {number} chaoAlvo
+ * @param {number} dt
+ */
+function seguirChao(slot, chaoAlvo, dt) {
+  if (!Number.isFinite(slot.chaoSuave)) {
+    slot.chaoSuave = chaoAlvo;
+    return slot.chaoSuave;
+  }
+  const passo = Math.min(1, 4.2 * Math.max(0, dt));
+  let next = slot.chaoSuave + (chaoAlvo - slot.chaoSuave) * passo;
+  const maxDz = SKY_CFG.chaoSegueVel * Math.max(0, dt);
+  const dz = next - slot.chaoSuave;
+  if (dz > maxDz) next = slot.chaoSuave + maxDz;
+  else if (dz < -maxDz) next = slot.chaoSuave - maxDz;
+  slot.chaoSuave = next;
+  return next;
 }
 
 function criarSlot() {
@@ -39,6 +62,7 @@ function criarSlot() {
     alt: 6,
     bobPhase: 0,
     bobOmega: 2.1,
+    chaoSuave: 0,
   };
 }
 
@@ -60,6 +84,7 @@ function vivos() {
 function liberar(slot) {
   slot.active = false;
   slot.ator = null;
+  slot.chaoSuave = 0;
 }
 
 function livre() {
@@ -161,6 +186,7 @@ function spawnFlock(px, py, chavesLocais, agora) {
     slot.alt = alt + (Math.random() - 0.5) * 0.8;
     slot.bobPhase = Math.random() * Math.PI * 2;
     slot.bobOmega = 1.8 + Math.random() * 0.8;
+    slot.chaoSuave = chao;
   }
 }
 
@@ -209,7 +235,8 @@ export function tickSkyPassers(px, py, dt, agora, ctx = {}) {
       ator.dirY = slot.dirY;
       ator.andando = true;
       ator.voando = true;
-      const chao = alturaEm(Math.floor(ator.x), Math.floor(ator.y)) || 1;
+      const chaoAlvo = alturaEm(Math.floor(ator.x), Math.floor(ator.y)) || 1;
+      const chao = seguirChao(slot, chaoAlvo, dt);
       ator.z = chao;
       ator.elevacao = chao + slot.alt + bob;
       ator.hopLift = ator.elevacao - ator.z;

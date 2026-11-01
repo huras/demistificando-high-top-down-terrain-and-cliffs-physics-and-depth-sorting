@@ -300,11 +300,18 @@ export function sitesDoChunk(cx, cy) {
   const ay0 = Math.floor(a0.y / AREA_KANTO);
   const ax1 = Math.floor(a1.x / AREA_KANTO);
   const ay1 = Math.floor(a1.y / AREA_KANTO);
+  /** @type {number[]} */
+  const areas = [];
   for (let ay = ay0; ay <= ay1; ay++) {
     for (let ax = ax0; ax <= ax1; ax++) {
       if (ax < 0 || ay < 0 || ax >= LADO_KANTO || ay >= LADO_KANTO) continue;
       resolverSiteDaArea(ax, ay);
+      areas.push(ax, ay);
     }
+  }
+  // Vizinhos uma vez: ninhos em chunks limítrofes leem temPlanoSite sem re-planejar.
+  for (let i = 0; i < areas.length; i += 2) {
+    garantirSitesVizinhos(areas[i], areas[i + 1], 1);
   }
   return byChunk.get(chaveChunk(cx, cy)) || [];
 }
