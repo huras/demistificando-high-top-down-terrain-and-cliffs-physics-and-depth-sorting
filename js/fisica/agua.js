@@ -21,7 +21,7 @@ import {
   STAMINA_MAX,
 } from "../config.js";
 import { amostraAgua } from "../mundo/agua/amostra.js";
-import { moverAereo } from "./colisao.js";
+import { alturaSobPes, moverAereo } from "./colisao.js";
 import { drenarStaminaNado } from "./stamina.js";
 
 /**
@@ -80,10 +80,27 @@ export function fatorVado(profundidade) {
   return 1 - t * 0.5;
 }
 
+/**
+ * Chão caminhável: sólido, ou fundo efetivo do vau (meio-degrau).
+ * No nado devolve o sólido (flutuação usa outro caminho).
+ */
+export function chaoComVado(x, y, elevRef = null) {
+  const solido = alturaSobPes(x, y, elevRef);
+  if (!(solido > 0)) return solido;
+  const elev = elevRef != null && Number.isFinite(elevRef) ? elevRef : solido;
+  const agua = amostraAgua(x, y, elev);
+  if (agua.superficie <= 0 || agua.caindo) return solido;
+  if (agua.profundidade <= 0.05) return solido;
+  if (deveNadar(agua, Math.min(elev, solido))) return solido;
+  if (agua.fundo > solido) return agua.fundo;
+  return solido;
+}
+
 export function lembrarChaoSeguro(corpo) {
   const agua = amostraAgua(corpo.x, corpo.y, corpo.z);
   if (agua.caindo || agua.profundidade > AGUA_LIMIAR_VADO) return;
-  corpo.aguaSegura = { x: corpo.x, y: corpo.y, z: corpo.z };
+  const z = chaoComVado(corpo.x, corpo.y, corpo.z);
+  corpo.aguaSegura = { x: corpo.x, y: corpo.y, z: z > 0 ? z : corpo.z };
 }
 
 const SAI_LAVA = [
@@ -172,7 +189,7 @@ export function sairNado(corpo, zChao) {
   corpo.hopLift = 0;
   corpo.aguaCaindo = 0;
   lembrarChaoSeguro(corpo);
-  corpo.acao = corpo.aguaProf > 0.2 ? "vadeando" : "pousou";
+  corpo.acao = corpo.aguaProf > 0.15 ? "vadeando" : "pousou";
 }
 
 function integrarHorizontal(corpo, dx, dy, dt, velMax, agua, noChao) {

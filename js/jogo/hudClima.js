@@ -10,6 +10,8 @@ import { INTENSIDADE, nomeClimaDisplay } from "../clima/kinds.js";
 
 const SLOTS = 7;
 const SLOT_STEP = 28; /* 20px + 8px gap */
+const SLOT_W = 20;
+const VIEWPORT_W = 84;
 const SVG = "http://www.w3.org/2000/svg";
 
 /** Markup interno por kind (paths do AI). */
@@ -82,6 +84,10 @@ export function tickHudPrevisao(host) {
       entry.intensity === INTENSIDADE.FORTE ? " (forte)" : ""
     }`;
   }
-  const offset = -(scroll.progress || 0) * SLOT_STEP * 0.35;
+  const nowI = past;
+  const progress = scroll.progress || 0;
+  const centroNow = nowI * SLOT_STEP + SLOT_W * 0.5;
+  // progress 0.5 = estável no meio do ciclo; desvia ± meio passo
+  const offset = VIEWPORT_W * 0.5 - centroNow - (progress - 0.5) * SLOT_STEP;
   track.style.transform = `translateX(${offset.toFixed(2)}px)`;
 }

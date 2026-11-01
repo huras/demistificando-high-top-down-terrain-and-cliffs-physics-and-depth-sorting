@@ -1,5 +1,5 @@
 /**
- * Borda de pulo seco, braçada e lâmina.
+ * Borda de pulo seco, braçada, vau e nado.
  * A primeira amostra (spawn, teleporte) fica em silêncio.
  * A física não importa este módulo.
  */
@@ -8,8 +8,23 @@ import { tocar } from "./barramento.js";
 
 const ESPERA = 0.22;
 const TELEPORTE2 = 8 * 8;
+/** Profundidade / águaProf acima disso conta como molhado (vau). */
+const MOLHADO_MIN = 0.15;
 
-/** @type {WeakMap<object, { primed: boolean, x: number, y: number, nadando: boolean, acao: string, saida: number, entrada: number }>} */
+/**
+ * @typedef {{
+ *   primed: boolean,
+ *   x: number,
+ *   y: number,
+ *   nadando: boolean,
+ *   molhado: boolean,
+ *   acao: string,
+ *   saida: number,
+ *   entrada: number,
+ * }} RastroAgua
+ */
+
+/** @type {WeakMap<object, RastroAgua>} */
 const rastros = new WeakMap();
 
 function rastroDe(corpo) {
@@ -20,6 +35,7 @@ function rastroDe(corpo) {
       x: corpo.x,
       y: corpo.y,
       nadando: !!corpo.nadando,
+      molhado: (Number(corpo.aguaProf) || 0) > MOLHADO_MIN || !!corpo.nadando,
       acao: corpo.acao || "",
       saida: 0,
       entrada: 0,
@@ -50,6 +66,11 @@ function amostrar(corpo, dt) {
 
   const acao = corpo.acao || "";
   const nadando = !!corpo.nadando;
+  const molhado =
+    nadando ||
+    (Number(corpo.aguaProf) || 0) > MOLHADO_MIN ||
+    acao === "vado" ||
+    acao === "vadeando";
   const dx = corpo.x - r.x;
   const dy = corpo.y - r.y;
   r.x = corpo.x;
@@ -58,6 +79,7 @@ function amostrar(corpo, dt) {
   if (!r.primed || dx * dx + dy * dy > TELEPORTE2) {
     r.primed = true;
     r.nadando = nadando;
+    r.molhado = molhado;
     r.acao = acao;
     return;
   }
@@ -69,8 +91,11 @@ function amostrar(corpo, dt) {
   }
 
   const cachoeira = !!corpo.aguaCaindo || acao === "cachoeira";
+  let tocouEntrada = false;
+
   if (nadando && !r.nadando && !cachoeira) {
     tocarEntrada(r);
+    tocouEntrada = true;
   } else if (
     !nadando &&
     r.nadando &&
@@ -81,7 +106,23 @@ function amostrar(corpo, dt) {
     tocarSaida(r);
   }
 
+  // Vau: seco ↔ molhado (sem double-fire se já entrou direto no nado).
+  if (!tocouEntrada && molhado && !r.molhado && !nadando && !cachoeira) {
+    tocarEntrada(r);
+  } else if (
+    !molhado &&
+    r.molhado &&
+    !r.nadando &&
+    acao !== "braçada" &&
+    acao !== "afogou" &&
+    r.acao !== "braçada"
+  ) {
+    // Saída do vau pra seco (saída do nado já tocou acima).
+    tocarSaida(r);
+  }
+
   r.nadando = nadando;
+  r.molhado = molhado;
   r.acao = acao;
 }
 

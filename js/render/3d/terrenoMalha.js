@@ -3,6 +3,7 @@ import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import { marcarSombraSuja } from "./ceu/sombraEstavel.js";
 import { aplicarFadeParedeInterior } from "./fadeParedeInterior3d.js";
 import {
+  AGUA_PROF_VADO,
   CHUNK_XZ,
   CHUNK_Y,
   MESH_CHUNKS_POR_FRAME,
@@ -855,6 +856,51 @@ function pushTopoLote(lote, wx, wy, y) {
   emitirTopo(lote, wx, wy, y, 0, 0, 1, 1);
 }
 
+/** Meio-degrau do vau (prof voxel 1): levanta o topo sólido sob a lâmina. */
+function liftVadoChunk(chunk, ia) {
+  if ((chunk.aguaCaindo[ia] | 0) === 1) return 0;
+  if ((chunk.aguaProf[ia] | 0) !== 1) return 0;
+  return AGUA_PROF_VADO;
+}
+
+/** Face lateral com y0/y1 livres (colar do meio-degrau). */
+function pushFaceAlt(lote, dir, wx, wy, y0, y1) {
+  if (!(y1 > y0 + 1e-4)) return;
+  if (dir === "s") {
+    lote._n = [0, 0, 1];
+    const z = wy + 1;
+    q6(
+      lote,
+      [wx, y1, z, wx, y0, z, wx + 1, y1, z, wx, y0, z, wx + 1, y0, z, wx + 1, y1, z],
+      [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1],
+    );
+  } else if (dir === "n") {
+    lote._n = [0, 0, -1];
+    const z = wy;
+    q6(
+      lote,
+      [wx + 1, y1, z, wx + 1, y0, z, wx, y1, z, wx + 1, y0, z, wx, y0, z, wx, y1, z],
+      [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1],
+    );
+  } else if (dir === "e") {
+    lote._n = [1, 0, 0];
+    const x = wx + 1;
+    q6(
+      lote,
+      [x, y1, wy, x, y0, wy, x, y1, wy + 1, x, y0, wy, x, y0, wy + 1, x, y1, wy + 1],
+      [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1],
+    );
+  } else if (dir === "w") {
+    lote._n = [-1, 0, 0];
+    const x = wx;
+    q6(
+      lote,
+      [x, y1, wy + 1, x, y0, wy + 1, x, y1, wy, x, y0, wy + 1, x, y0, wy, x, y1, wy],
+      [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1],
+    );
+  }
+}
+
 function pushFaceSul(lote, wx, wy, wz) {
   lote._n = [0, 0, 1];
   const y0 = wz;
@@ -1561,6 +1607,7 @@ function* construirGeosChunk(chunk, opts = null) {
       let loteFaces = null;
       let topsGrama = null;
       let topsTerra = null;
+      const liftVado = liftVadoChunk(chunk, ia);
       if (querReal) {
         const kit = kitDoRelevo(wx, wy) || "_";
         const sacoTopo = sacoDeTopo(kit);
@@ -1578,6 +1625,7 @@ function* construirGeosChunk(chunk, opts = null) {
           if (!ehSolido(id)) continue;
 
           const ehSuperficie = vizinhoAr(wx, wy, lz, 0, 0, 1);
+          const lift = ehSuperficie ? liftVado : 0;
           const lateraisAr = [];
           for (const lat of ["s", "n", "e", "w"]) {
             const ld = DIRS.find((x) => x.nome === lat);
@@ -1585,14 +1633,14 @@ function* construirGeosChunk(chunk, opts = null) {
           }
           // Bevel só na borda do cliff (superfície + pelo menos 1 lado aberto)
           const ehBordaCliff =
-            ehSuperficie && lateraisAr.length > 0 && TRONCO_INSET > 0;
+            ehSuperficie && lateraisAr.length > 0 && TRONCO_INSET > 0 && lift <= 0;
 
           for (const d of DIRS) {
             if (!vizinhoAr(wx, wy, lz, d.dx, d.dy, d.dz)) continue;
 
             if (d.nome === "u") {
-              const cortesL = ehSuperficie ? cortesConvexosL(wx, wy, lz) : [];
-              const yTopo = lz + 1 - INSET_TOPO;
+              const cortesL = ehSuperficie && lift <= 0 ? cortesConvexosL(wx, wy, lz) : [];
+              const yTopo = lz + 1 - INSET_TOPO + lift;
               let loteTop;
               let extrasTop;
               if (id === BLOCO.PONTE) {
@@ -1616,13 +1664,13 @@ function* construirGeosChunk(chunk, opts = null) {
                 }
                 empurrarMitras(loteFaces, wx, wy, lz, yTopo, cortesL);
               } else {
-                pushTopoLote(loteTop, wx, wy, lz + 1);
+                pushTopoLote(loteTop, wx, wy, lz + 1 + lift);
                 for (const lat of lateraisAr) {
                   pushLedge(
                     loteLedges,
                     wx,
                     wy,
-                    lz + 1,
+                    lz + 1 + lift,
                     lat,
                     hexBioma(wx, wy, false),
                     hexBioma(wx, wy, true),
@@ -1638,7 +1686,11 @@ function* construirGeosChunk(chunk, opts = null) {
               );
             } else {
               if (ehBordaCliff && lateraisAr.includes(d.nome)) continue;
-              PUSH_FACE[d.nome](loteFaces, wx, wy, lz);
+              if (lift > 0 && ehSuperficie) {
+                pushFaceAlt(loteFaces, d.nome, wx, wy, lz, lz + 1 + lift - INSET_TOPO);
+              } else {
+                PUSH_FACE[d.nome](loteFaces, wx, wy, lz);
+              }
             }
           }
         }
@@ -1646,12 +1698,12 @@ function* construirGeosChunk(chunk, opts = null) {
 
       if (querCubos && zSurf > 0) {
         let y0 = 0;
-        let y1 = Math.max(0.08, zSurf);
+        let y1 = Math.max(0.08, zSurf + liftVado);
         if (!modelo && colunaTemArInterno(wx, wy)) {
           const h = Math.max(0.08, espessuraTopo(wx, wy));
           const base = baseTopoEm(wx, wy);
           y0 = base < 0 ? zSurf - h : base;
-          y1 = y0 + h;
+          y1 = y0 + h + liftVado;
         }
         pushCuboLote(loteCubos, wx, wy, y0, y1, hexBioma(wx, wy, false), hexBioma(wx, wy, true));
       }

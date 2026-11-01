@@ -2,8 +2,11 @@
  * Amostra de água sob os pés. Profundidade é a lâmina em repouso;
  * imersão é o quanto os pés estão abaixo da superfície.
  * Pântano fica preso no vau. A cor segue a família.
+ *
+ * Profundidade voxel 1 → meio-degrau (AGUA_PROF_VADO): fundo sobe e
+ * a imersão fica ~0.5 pra o sprite aparecer mais fora d'água.
  */
-import { AGUA_LIMIAR_VADO } from "../../config.js";
+import { AGUA_PROF_VADO } from "../../config.js";
 import { colunaAgua } from "./fluxo.js";
 import { FLUIDO, familiaDaColuna, fluidoDe } from "./fluidos.js";
 
@@ -20,6 +23,30 @@ const SECA = Object.freeze({
   familia: null,
 });
 
+/**
+ * @param {number} profundidadeVoxel
+ * @param {number} superficie
+ * @param {number} fundoVoxel
+ * @param {boolean} caindo
+ * @param {{ raso?: boolean } | null} familia
+ */
+function remapVado(profundidadeVoxel, superficie, fundoVoxel, caindo, familia) {
+  let profundidade = profundidadeVoxel;
+  let fundo = fundoVoxel;
+  if (caindo) return { profundidade, fundo };
+  // Shelf / lago de 1 bloco → meio-degrau.
+  if (profundidadeVoxel === 1) {
+    profundidade = AGUA_PROF_VADO;
+    fundo = superficie - AGUA_PROF_VADO;
+  }
+  if (familia?.raso) {
+    // Pântano: sempre vadeável; mesma altura de meio-degrau.
+    profundidade = Math.min(profundidade, AGUA_PROF_VADO);
+    fundo = Math.max(fundo, superficie - AGUA_PROF_VADO);
+  }
+  return { profundidade, fundo };
+}
+
 export function amostraAgua(x, y, elevPes = 0) {
   const col = colunaAgua(x, y);
   if (col.superficie <= 0) return SECA;
@@ -27,16 +54,16 @@ export function amostraAgua(x, y, elevPes = 0) {
   // Deck oco / ponte: pés acima da lâmina — seco (senão força nado e fura o chão).
   if (elev > col.superficie + 0.08) return SECA;
   const familia = familiaDaColuna(col.fluido);
-  let profundidade = col.profundidade;
-  if (familia.raso) profundidade = Math.min(profundidade, AGUA_LIMIAR_VADO);
+  const caindo = col.caindo && familia.queda;
+  const rem = remapVado(col.profundidade, col.superficie, col.fundo, caindo, familia);
   return {
     superficie: col.superficie,
-    fundo: col.fundo,
-    profundidade,
+    fundo: rem.fundo,
+    profundidade: rem.profundidade,
     imersao: Math.max(0, col.superficie - elev),
     fluxoX: col.fluxoX,
     fluxoY: col.fluxoY,
-    caindo: col.caindo && familia.queda,
+    caindo,
     pisoQueda: col.pisoQueda,
     fluido: col.fluido || FLUIDO.AGUA,
     familia,

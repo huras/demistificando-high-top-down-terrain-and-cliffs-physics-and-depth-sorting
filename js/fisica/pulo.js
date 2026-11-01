@@ -8,7 +8,7 @@ import {
   PULO_VELOCIDADE,
 } from "../config.js";
 import { teclaBaixa } from "../entrada/teclado.js";
-import { resolverAguaAereo } from "./agua.js";
+import { chaoComVado, resolverAguaAereo } from "./agua.js";
 import { alturaSobPes, aplicarTetoOverhang } from "./colisao.js";
 
 /** Edge de pulo com buffer (aperta um pouco antes de pousar). */
@@ -100,12 +100,13 @@ export function atualizarAereo(corpo, dt) {
     corpo.segurarPulo = false;
   }
 
-  const zChao = alturaSobPes(
+  const zSolido = alturaSobPes(
     corpo.x,
     corpo.y,
     corpo.elevacao,
     elevAntes,
   );
+  const zChao = chaoComVado(corpo.x, corpo.y, corpo.elevacao) || zSolido;
 
   if (
     corpo.vz <= 0 &&
@@ -129,8 +130,9 @@ export function atualizarAereo(corpo, dt) {
 
 export function pousarNoChao(corpo, zChao) {
   const zAntes = corpo.elevacao;
-  corpo.z = zChao;
-  corpo.elevacao = zChao;
+  const z = chaoComVado(corpo.x, corpo.y, zChao) || zChao;
+  corpo.z = z;
+  corpo.elevacao = z;
   corpo.vz = 0;
   corpo.hopLift = 0;
   corpo.noChao = true;
@@ -142,7 +144,7 @@ export function pousarNoChao(corpo, zChao) {
   corpo.coyoteT = 0;
   corpo.tempoAr = 0;
 
-  const queda = Math.max(0, Math.round(zAntes) - zChao);
+  const queda = Math.max(0, Math.round(zAntes) - z);
   corpo.acao = queda >= 2 ? `pousou ${queda}↓` : "pousou";
 
   if (corpo.puloBufferT > 0) {

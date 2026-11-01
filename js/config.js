@@ -143,7 +143,13 @@ export const STAMINA_REGEN = 28;
  * Água. Profundidade = superfície − piso sólido.
  * Até o limiar dá pra vadear; acima disso o corpo flutua
  * na mesma imersão de quem ainda pisa no limite.
+ *
+ * Coluna voxel de profundidade 1 (shelf do mar / lago raso) vira
+ * meio-degrau visual/físico (AGUA_PROF_VADO) em amostraAgua.
+ * O limiar continua em ~1 bloco pra o nav (que lê profundidade voxel)
+ * e o nado (prof >= 2) não mudarem de faixa.
  */
+export const AGUA_PROF_VADO = 0.5;
 export const AGUA_LIMIAR_VADO = 1.05;
 /**
  * Fallback de imersão no nado (nav / corpos sem altura).

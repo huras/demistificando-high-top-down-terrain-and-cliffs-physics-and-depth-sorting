@@ -38,6 +38,7 @@ import {
 import {
   aplicarCorrenteChao,
   atualizarNado,
+  chaoComVado,
   fimPassoChao,
   inicioPassoChao,
 } from "./agua.js";
@@ -496,8 +497,8 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
       return;
     }
 
-    const zChao = alturaSobPes(agente.x, agente.y, agente.z);
-    if (zChao <= 0 || zChao < agente.z) {
+    const zChao = chaoComVado(agente.x, agente.y, agente.z);
+    if (zChao <= 0 || zChao < agente.z - 1e-3) {
       iniciarQueda(agente);
       agente.elevacao = agente.z;
       if (deveAbrirAsaAgora(agente, abrirAsa || lancarGlide)) abrirAsaDelta(agente);
@@ -533,7 +534,7 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
     else if (nav?.estado === "buscando") agente.acao = "buscando-path";
     else if (querVoar) agente.acao = "indo-voar";
     else if (querEscalar) agente.acao = "indo-escalar";
-    else if (agente.aguaProf > 0.2) agente.acao = agente.andando ? "vadeando" : "vado";
+    else if (agente.aguaProf > 0.15) agente.acao = agente.andando ? "vadeando" : "vado";
     else if (agente.andando) agente.acao = "seguindo";
     else agente.acao = "parado";
 

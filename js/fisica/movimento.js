@@ -17,10 +17,11 @@ import {
   estaPlanando,
   tratarInputAsaDelta,
 } from "./asaDelta.js";
-import { alturaSobPes, moverAereo, moverComColisao } from "./colisao.js";
+import { moverAereo, moverComColisao } from "./colisao.js";
 import {
   aplicarCorrenteChao,
   atualizarNado,
+  chaoComVado,
   fimPassoChao,
   inicioPassoChao,
   tentarBracada,
@@ -350,9 +351,9 @@ function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
     return;
   }
 
-  const zChao = alturaSobPes(corpo.x, corpo.y, corpo.z);
+  const zChao = chaoComVado(corpo.x, corpo.y, corpo.z);
 
-  if (zChao <= 0 || zChao < corpo.z) {
+  if (zChao <= 0 || zChao < corpo.z - 1e-3) {
     iniciarQueda(corpo);
     corpo.elevacao = corpo.z;
     atualizarAereo(corpo, dt);
@@ -370,7 +371,7 @@ function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
   if (corpo.andando) {
     corpo.animT += dt * ritmoAndar(Math.hypot(corpo.vx, corpo.vy), VELOCIDADE_MAX);
   }
-  if (corpo.aguaProf > 0.2) {
+  if (corpo.aguaProf > 0.15) {
     corpo.correndo = false;
     corpo.acao = corpo.andando ? "vadeando" : "vado";
   } else if (corpo.andando) {
