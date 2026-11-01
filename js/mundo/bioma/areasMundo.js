@@ -178,16 +178,11 @@ function distKantoOrganica(wx, wy, seed) {
  * para precip/encontros sem importar catalogo.js (evita ciclo).
  */
 function pareceMar(wx, wy, seed) {
+  // Espelho de mascaraContinente (sem anel AABB) — mesma geografia do relevo.
   const escala = 880;
   const largo = fbm2(wx / escala, wy / escala, seed + 901, 5);
   const costa = fbm2(wx / (escala * 0.34), wy / (escala * 0.34), seed + 1409, 3);
-  let terra = largo * 0.7 + costa * 0.3;
-  const d = distKantoOrganica(wx, wy, seed);
-  if (d > 0) {
-    const anel = 320;
-    const puxa = 1 - suave01(Math.min(1, d / anel));
-    terra *= 1 - 0.58 * puxa;
-  }
+  const terra = largo * 0.7 + costa * 0.3;
   return terra < 0.5;
 }
 

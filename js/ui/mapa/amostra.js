@@ -5,7 +5,9 @@
  */
 import {
   alturaDoRelevo,
+  alturaProceduralPura,
   biomaDominante,
+  biomaProceduralPuro,
   nivelMarBlocos,
   pesoCosturaRelevo,
 } from "../../mundo/bioma/catalogo.js";
@@ -447,9 +449,17 @@ function pintarKanto(wx, wy, comMote, saida) {
   return saida;
 }
 
+/** Procedural já costurado com o mundo (fora da faixa / lado procedural puro). */
 function pintarProcedural(wx, wy, comMote, saida) {
-  const h = alturaDoRelevo(wx, wy);
-  const bioma = biomaDominante(wx, wy);
+  return pintarRelevoMapa(alturaDoRelevo(wx, wy), biomaDominante(wx, wy), wx, wy, comMote, saida);
+}
+
+/** Procedural sem segunda costura — só pra misturar cor na faixa curta. */
+function pintarProceduralPuro(wx, wy, comMote, saida) {
+  return pintarRelevoMapa(alturaProceduralPura(wx, wy), biomaProceduralPuro(wx, wy), wx, wy, comMote, saida);
+}
+
+function pintarRelevoMapa(h, bioma, wx, wy, comMote, saida) {
   const nivel = nivelMarBlocos();
   const u = h < nivel ? Math.max(0.05, (h / nivel) * 0.45) : 1;
   let rgb = rgbDe(bioma?.cor || "#3a7a4a");
@@ -496,30 +506,21 @@ export function amostraMapa(wx, wy, comMote, saida = SAIDA) {
   const nivel = nivelMarBlocos();
   const t = pesoCosturaRelevo(wx, wy);
   if (t <= 0) return pintarKanto(wx, wy, comMote, saida);
-  if (t >= 1) {
-    pintarProcedural(wx, wy, comMote, saida);
-    // Dentro do oceano authored: sem ilha fantasma no zoom longe.
-    const hK = amostraKanto(wx, wy)?.h;
-    if (Number.isFinite(hK) && hK < nivel) return pintarAgua(Math.min(saida.h, nivel - 1), nivel, saida);
-    return saida;
-  }
+  if (t >= 1) return pintarProcedural(wx, wy, comMote, saida);
+
+  // Faixa curta: altura = geografia do mundo (uma costura só).
+  // Cor: Kanto detalhado ↔ procedural puro — sem ler alturaDoRelevo de novo no lado B.
+  const hMundo = alturaDoRelevo(wx, wy);
+  if (hMundo < nivel) return pintarAgua(hMundo, nivel, saida);
+
   pintarKanto(wx, wy, comMote, TMP_A);
-  pintarProcedural(wx, wy, comMote, TMP_B);
+  pintarProceduralPuro(wx, wy, comMote, TMP_B);
   const u = 1 - t;
-  saida.h = Math.round(TMP_A.h * u + TMP_B.h * t);
+  saida.h = hMundo;
   saida.u = TMP_A.u * u + TMP_B.u * t;
   if (TMP_A.h < nivel) {
-    // Oceano de Kanto: só mistura profundidade/cor de água (nunca terra procedural).
-    const hAgua = Math.min(saida.h, nivel - 1);
-    if (TMP_B.h < nivel) {
-      saida.h = hAgua;
-      saida.r = (TMP_A.r * u + TMP_B.r * t) | 0;
-      saida.g = (TMP_A.g * u + TMP_B.g * t) | 0;
-      saida.b = (TMP_A.b * u + TMP_B.b * t) | 0;
-      saida.u = Math.max(0.05, (hAgua / nivel) * 0.45);
-      return saida;
-    }
-    return pintarAgua(hAgua, nivel, saida);
+    // Costa authored: não pinta terra procedural por cima do mar de Kanto.
+    return pintarAgua(hMundo, nivel, saida);
   }
   saida.r = (TMP_A.r * u + TMP_B.r * t) | 0;
   saida.g = (TMP_A.g * u + TMP_B.g * t) | 0;

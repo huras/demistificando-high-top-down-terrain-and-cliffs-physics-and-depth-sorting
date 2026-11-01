@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { aplicarLuzBillboard, yawCartaoSol } from "./ceu/luzBillboard.js";
 import { marcarReflexo, soltarReflexo } from "./ceu/reflexoPoca.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
+import { marcarSombraSuja } from "./ceu/sombraEstavel.js";
 import { aplicarVentoVeg } from "./vegetacao/ventoVeg.js";
 import {
   ALTURA_BLOCO,
@@ -51,6 +52,17 @@ const CAP_INSTANCIAS = 4096;
 const CHAVE_ARADO = "site:arado";
 /** Fecha a grade do canteiro (geo base 0.92). */
 const ESCALA_ARADO_FAZENDA = 1.08;
+/** Carry/throw/sacudida: não regenera o shadow map a 60 Hz. */
+const SOMBRA_VEG_MIN_MS = 120;
+let ultimaSombraVegMs = 0;
+
+/** Caster veg-sombra-* mudou — suja o mapa do sol. */
+function avisarSombraVeg(forcar = false) {
+  const agora = performance.now();
+  if (!forcar && agora - ultimaSombraVegMs < SOMBRA_VEG_MIN_MS) return;
+  ultimaSombraVegMs = agora;
+  marcarSombraSuja();
+}
 
 function estiloDe(prop) {
   if (prop.tipo === "santuario") return SHRINE_DRAW_SCALE;
@@ -505,11 +517,13 @@ export function criarVegetacaoBillboard3d() {
     let base;
     if (anexado) {
       base = p.z;
-    } else if (!refrescarAltura && p._veg && Number.isFinite(p._veg.baseY)) {
+    } else if (!refrescarAltura && p._veg && Number.isFinite(p._veg.baseY) && p._veg.baseY > 0) {
       base = p._veg.baseY;
     } else {
       base = alturaEm(Math.floor(p.x), Math.floor(p.y));
-      if (p._veg) p._veg.baseY = base;
+      // Chunk ausente → alturaEm 0: não cachear (senão cards ficam no chão até pop).
+      if (p._veg && base > 0) p._veg.baseY = base;
+      else if (p._veg) p._veg.baseY = undefined;
     }
     const roll = amostra ? amostra.roll : 0;
     const esmaga = amostra ? amostra.esmaga : 0;
@@ -546,12 +560,17 @@ export function criarVegetacaoBillboard3d() {
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
       let base;
-      if (!refrescarAltura && p._vegArado && Number.isFinite(p._vegArado.baseY)) {
+      if (
+        !refrescarAltura &&
+        p._vegArado &&
+        Number.isFinite(p._vegArado.baseY) &&
+        p._vegArado.baseY > 0
+      ) {
         base = p._vegArado.baseY;
       } else {
         base = alturaEm(Math.floor(p.x), Math.floor(p.y));
         if (!p._vegArado) p._vegArado = {};
-        p._vegArado.baseY = base;
+        p._vegArado.baseY = base > 0 ? base : undefined;
       }
       dummy.position.set(p.x, base * ALTURA_BLOCO + LIFT_SOLO_ARADO, p.y);
       dummy.rotation.set(0, 0, 0);
@@ -609,6 +628,7 @@ export function criarVegetacaoBillboard3d() {
     const carry = obterCarry();
     const refrescarAltura = !!recalcularLimites;
     const escreverSombra = opts.escreverSombra !== false;
+    let sombraEscrita = false;
     for (const lote of lotes.values()) {
       const { mesh, sombra, itens, largura, altura, pivotY, dz, opacoY } = lote;
       if (lote.arado) {
@@ -619,6 +639,7 @@ export function criarVegetacaoBillboard3d() {
       escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora, pivotY, dz, pe, refrescarAltura);
       if (escreverSombra) {
         escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora, pivotY, dz, pe, refrescarAltura);
+        sombraEscrita = true;
       }
       for (let i = 0; i < itens.length; i++) {
         const p = itens[i];
@@ -632,6 +653,7 @@ export function criarVegetacaoBillboard3d() {
         }
       }
     }
+    if (sombraEscrita) avisarSombraVeg(!!recalcularLimites);
   }
 
   const malhasSujas = [];
@@ -679,7 +701,13 @@ export function criarVegetacaoBillboard3d() {
       const prop = voos[i]?.carry?.prop;
       if (prop) aplicarVinculo(prop._veg, prop, yaw, yawSol, inclinacao, null);
     }
-    for (let i = 0; i < malhasSujas.length; i++) malhasSujas[i].instanceMatrix.needsUpdate = true;
+    let sombraSuja = false;
+    for (let i = 0; i < malhasSujas.length; i++) {
+      const m = malhasSujas[i];
+      m.instanceMatrix.needsUpdate = true;
+      if (m.castShadow) sombraSuja = true;
+    }
+    if (sombraSuja) avisarSombraVeg(false);
   }
 
   function sincronizarVisivel() {

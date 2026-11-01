@@ -14,9 +14,9 @@
   "escalaContinente": 880,
   "limiarContinente": 0.5,
   "faixaCostaContinente": 0.09,
-  "anelMarKanto": 320,
-  "forcaAnelMar": 0.58,
-  "faixaCosturaMar": 520,
+  "anelMarKanto": 0,
+  "forcaAnelMar": 0,
+  "faixaCosturaMar": 64,
   "biomas": [
     {
       "id": "dirty-sand",

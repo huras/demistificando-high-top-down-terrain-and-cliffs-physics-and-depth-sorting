@@ -32,6 +32,7 @@ import {
   alfaSprites,
   definirChecagemMalhaTeleporte,
   focoStreaming,
+  teleporteNaOrigem,
 } from "../../jogo/teleporte.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { atualizarTeleporte3d, criarTeleporte3d } from "./teleporte3d.js";
@@ -731,15 +732,19 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   marcarCorposCrista(corpo, agente, atoresVisiveis());
   const foco = focoStreaming();
   const ancora = estadoJogo.interior;
+  // Malha/stream: preload no destino durante a viagem.
   const mxMalha = foco?.x ?? corpo.x;
   const myMalha = foco?.y ?? corpo.y;
-  // LOD outdoor fica pinado na porta enquanto o corpo está no bolso.
-  const mxLod =
-    foco?.x ??
-    (Number.isFinite(ancora?.outdoorX) ? ancora.outdoorX : corpo.x);
-  const myLod =
-    foco?.y ??
-    (Number.isFinite(ancora?.outdoorY) ? ancora.outdoorY : corpo.y);
+  // LOD visual: na origem até o corte (prep/subida); depois corpo/destino/bolso.
+  // Evita sumir billboards de detalhe enquanto a câmera ainda está no jogador.
+  const mxLod = teleporteNaOrigem()
+    ? corpo.x
+    : foco?.x ??
+      (Number.isFinite(ancora?.outdoorX) ? ancora.outdoorX : corpo.x);
+  const myLod = teleporteNaOrigem()
+    ? corpo.y
+    : foco?.y ??
+      (Number.isFinite(ancora?.outdoorY) ? ancora.outdoorY : corpo.y);
   estado.terreno.tickMalha?.(mxMalha, myMalha);
   comecarQuadroLuzes();
   comecarMapaChao();

@@ -54,6 +54,16 @@ const CORPO_POR_PAPEL = Object.freeze({
   ruina: Object.freeze({ x: 8, y: 6 }),
 });
 
+/**
+ * Pegada alvo do mesh/casca em XZ (y do corpo = profundidade Z).
+ * @param {string} papelOuId
+ * @returns {{ x: number, z: number }}
+ */
+export function pegadaDoPapel(papelOuId) {
+  const corpo = CORPO_POR_PAPEL[papelOuId] || CORPO_POR_PAPEL.casa;
+  return { x: corpo.x, z: corpo.y };
+}
+
 /** Quatro modelos de casa. */
 const VARIANTES_CASA = 4;
 

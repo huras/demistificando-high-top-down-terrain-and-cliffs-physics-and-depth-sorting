@@ -6,7 +6,7 @@
 const CENTRO = 64;
 
 /** Papéis cuja porta do modelo já aponta para o sul. */
-const YAW_SUL = new Set(["casa", "lab", "ruina", "ginasio"]);
+const YAW_SUL = new Set(["casa", "lab", "ruina", "ginasio", "loja", "centro", "mansao"]);
 
 /**
  * @param {string} papel

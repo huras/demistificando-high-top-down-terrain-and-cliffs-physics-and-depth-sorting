@@ -12,7 +12,7 @@ import { CIDADES_KANTO } from "../regiao/kantoCidades.js";
 import { ajusteDe, definirAjustes } from "./ajustesColisor.js";
 import { corpoPadraoSprite, portaPadraoSprite } from "./caixaSprite.js";
 import { chaveColisorSprite, medidaSprite, pontosGradeUsina } from "./spritesPredio.js";
-import { caixaDoCorpo, faixaDaPorta, montarLayout } from "../regiao/volumesCidade.js";
+import { caixaDoCorpo, faixaDaPorta, montarLayout, pegadaDoPapel } from "../regiao/volumesCidade.js";
 import { yawDoEdificio } from "./orientacaoEdificio.js";
 import { fatorYCasa } from "../../render/3d/escalaVertical.js";
 import { indiceLocal, invalidarFluxo, recalcularSuperficies } from "../voxel/chunk.js";
@@ -341,7 +341,7 @@ function abrirVao(marcas, vaos) {
   }
 }
 
-export function moldeDaMalha(objTexto, portas = null) {
+export function moldeDaMalha(objTexto, portas = null, id = "") {
   const obj = lerFacesObj(objTexto);
   let minX = Infinity;
   let minY = Infinity;
@@ -356,7 +356,10 @@ export function moldeDaMalha(objTexto, portas = null) {
     if (v[0] > maxX) maxX = v[0];
     if (v[2] > maxZ) maxZ = v[2];
   }
-  const escala = Math.min(LADO_X / (maxX - minX || 1), LADO_Z / (maxZ - minZ || 1)) * FOLGA;
+  const pegada = pegadaDoPapel(id);
+  const ladoX = pegada?.x > 0 ? pegada.x : LADO_X;
+  const ladoZ = pegada?.z > 0 ? pegada.z : LADO_Z;
+  const escala = Math.min(ladoX / (maxX - minX || 1), ladoZ / (maxZ - minZ || 1)) * FOLGA;
   const escalaY = escala * fatorYCasa();
   const cx = (minX + maxX) * 0.5;
   const cz = (minZ + maxZ) * 0.5;
@@ -956,7 +959,7 @@ async function carregarUm(id) {
   const arquivo = urlDoModelo(origem?.arquivo || "modelo.obj");
   const res = await fetch(`${base}${arquivo}`);
   if (!res.ok) throw new Error(id);
-  return moldeDaMalha(await res.text(), portasDo(id));
+  return moldeDaMalha(await res.text(), portasDo(id), id);
 }
 
 async function garantirUsina() {

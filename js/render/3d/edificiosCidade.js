@@ -9,7 +9,7 @@ import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { AREA_KANTO } from "../../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { postesDeRua } from "../../mundo/regiao/decoracaoKanto.js";
-import { montarLayout } from "../../mundo/regiao/volumesCidade.js";
+import { montarLayout, pegadaDoPapel } from "../../mundo/regiao/volumesCidade.js";
 import { yawDoEdificio } from "../../mundo/cidade/orientacaoEdificio.js";
 import { carregarCatalogoLuzes, pontosDoModelo } from "./luzes/catalogo.js";
 import { criarCartaoLuz, obterPesoNoite } from "./luzes/pool.js";
@@ -337,8 +337,11 @@ function preparar(raiz, volume) {
   };
 }
 
-function escalaDoLote(medido) {
-  return Math.min(LADO_X / medido.sx, LADO_Z / medido.sz) * FOLGA;
+function escalaDoLote(medido, id = "") {
+  const pegada = pegadaDoPapel(id);
+  const lx = pegada?.x > 0 ? pegada.x : LADO_X;
+  const lz = pegada?.z > 0 ? pegada.z : LADO_Z;
+  return Math.min(lx / medido.sx, lz / medido.sz) * FOLGA;
 }
 
 function centrosJanela(grupo) {
@@ -387,8 +390,9 @@ function pendurarLuzes(inst, id, dono) {
 export function carregarMoldeCidade(id, opts = null) {
   return carregarObj(id).then((raiz) => {
     const medido = preparar(raiz, id === "poste");
-    const lx = opts?.ladoX > 0 ? opts.ladoX : LADO_X;
-    const lz = opts?.ladoZ > 0 ? opts.ladoZ : LADO_Z;
+    const pegada = pegadaDoPapel(id);
+    const lx = opts?.ladoX > 0 ? opts.ladoX : pegada.x || LADO_X;
+    const lz = opts?.ladoZ > 0 ? opts.ladoZ : pegada.z || LADO_Z;
     const escala =
       id === "poste"
         ? ALTURA_POSTE / medido.sy
@@ -542,7 +546,7 @@ export function criarEdificiosCidade() {
       for (let i = 0; i < pares.length; i++) {
         const [id, item] = pares[i];
         const medido = preparar(item.grupo, id === "poste");
-        const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido);
+        const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido, id);
         if (id === "poste") aplicarEscalaProp(medido.grupo, escala);
         else aplicarEscalaCasa(medido.grupo, escala);
         moldes.set(id, medido);

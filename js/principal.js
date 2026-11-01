@@ -107,6 +107,7 @@ import {
   redimensionarCenario3d,
   resetarCamera3d,
 } from "./render/3d/cenario3d.js";
+import { snapCamera3dAoCorpo } from "./render/3d/camera3d.js";
 import {
   concluirCarregamento,
   definirStatus,
@@ -794,6 +795,7 @@ function loop(agora) {
     agente.tempoAr = 0;
     resetarNav(agente);
     camera.pronta = false;
+    snapCamera3dAoCorpo(cam3d);
     // Teleporte já drenou o destino em pousarCorpo; evita sync duplo.
     if (!teleporteOcupado()) {
       atualizarStreaming(corpo.x, corpo.y, undefined, true);

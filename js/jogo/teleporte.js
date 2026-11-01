@@ -23,6 +23,7 @@ import {
   pausarJornada,
   registrarTeleporte,
 } from "./jornada.js";
+import { snapCamera3dAoCorpo } from "../render/3d/camera3d.js";
 
 const SUBIDA = 3.2;
 const DESCIDA = 2.6;
@@ -225,6 +226,9 @@ function cortar(ctx) {
   destino.z = z;
 
   pousarCorpo(ctx.corpo, destino.x, destino.y, z);
+  // Câmera 3D salta para a elevação do destino (evita lerp da origem / flash Y=0).
+  snapCamera3dAoCorpo(ctx.camera3d);
+  if (ctx.camera) ctx.camera.pronta = false;
   const mon = pokemonDeployado();
   const zNpc = amostrarPisoTeleporte(destino.x + OFFSET_NPC.x, destino.y + OFFSET_NPC.y) || z;
   ancoras = [

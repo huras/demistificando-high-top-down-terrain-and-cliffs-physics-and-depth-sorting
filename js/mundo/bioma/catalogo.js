@@ -1,5 +1,5 @@
 import { ALTURA_MAX_RELEVO, SEED_MUNDO, clampAltura } from "../../config.js";
-import { distAssinadaKanto, pesoCostura } from "../bounds.js";
+import { pesoCostura } from "../bounds.js";
 import { amostraKanto, dentroDoKanto } from "../regiao/amostraKanto.js";
 import { dentroDoTerrenoSala } from "../cidade/sala3d.js";
 import { BLOCO } from "../voxel/tiposBloco.js";
@@ -238,21 +238,14 @@ export function alturaGrafoDoPar(par, wx, wy, catalogo = dados, seed = semente) 
 /**
  * Campo 0..1 de continente fora de Kanto.
  * Baixo = oceano, alto = terra. Escala larga + detalhe de costa.
+ * Sem anel AABB — a faixa curta de pesoCostura liga a ilha ao continente
+ * procedural pela geografia real, sem fosso de mar artificial.
  */
 export function mascaraContinente(wx, wy, catalogo = dados, seed = semente) {
   const escala = Math.max(120, Number(catalogo?.escalaContinente) || 880);
   const largo = fbm2(wx / escala, wy / escala, seed + 901, 5);
   const costa = fbm2(wx / (escala * 0.34), wy / (escala * 0.34), seed + 1409, 3);
-  let terra = largo * 0.7 + costa * 0.3;
-
-  // Anel logo fora da AABB: puxa pra mar pra costurar com o oceano authored.
-  const d = distAssinadaKanto(wx, wy);
-  if (d > 0) {
-    const anel = Math.max(64, Number(catalogo?.anelMarKanto) || 320);
-    const puxa = 1 - suave01(Math.min(1, d / anel));
-    const forca = Number.isFinite(catalogo?.forcaAnelMar) ? Number(catalogo.forcaAnelMar) : 0.58;
-    terra *= 1 - forca * puxa;
-  }
+  const terra = largo * 0.7 + costa * 0.3;
   return Math.max(0, Math.min(1, terra));
 }
 
@@ -288,19 +281,23 @@ function alturaProcedural(wx, wy, catalogo, seed) {
   return clampAltura(h);
 }
 
+/** Altura procedural sem costura com Kanto — amostra do mapa / debug. */
+export function alturaProceduralPura(wx, wy, catalogo = dados, seed = semente) {
+  return alturaProcedural(wx, wy, catalogo, seed);
+}
+
+/** Bioma procedural dominante sem misturar com Kanto. */
+export function biomaProceduralPuro(wx, wy, catalogo = dados, seed = semente) {
+  const reg = amostrarRegiao(wx, wy, catalogo, seed);
+  return reg?.a || null;
+}
+
 /**
- * Peso da costura. Terra de Kanto mantém a faixa curta.
- * Oceano authored: faixa larga só pra textura/profundidade do mar —
- * nunca libera ilha procedural em cima do oceano de Kanto.
+ * Peso da costura: só a faixa curta AABB (FAIXA_COSTURA).
+ * Oceano authored continua protegido em alturaDoRelevoNatural (clamp ao nível do mar).
  */
-function pesoCosturaRelevo(wx, wy, catalogo, seed) {
-  let t = pesoCostura(wx, wy);
-  if (t >= 1 || !dentroDoKanto(wx, wy)) return t;
-  const hK = amostraKanto(wx, wy)?.h;
-  const nivel = nivelMarBlocos(catalogo);
-  if (!(Number.isFinite(hK) && hK < nivel)) return t;
-  const faixaMar = Math.max(64, Number(catalogo?.faixaCosturaMar) || 520);
-  return Math.max(t, pesoCostura(wx, wy, faixaMar));
+function pesoCosturaRelevo(wx, wy, _catalogo, _seed) {
+  return pesoCostura(wx, wy);
 }
 
 /**

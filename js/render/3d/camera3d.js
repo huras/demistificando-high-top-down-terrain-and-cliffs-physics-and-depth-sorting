@@ -70,6 +70,14 @@ export function criarCamera3d(aspect) {
   };
 }
 
+/** Força o próximo seguirAlvo3d a pular _lookY / clip para o corpo (teleporte / renascer). */
+export function snapCamera3dAoCorpo(camera3d) {
+  if (!camera3d) return;
+  camera3d.pronta = false;
+  camera3d._lookY = null;
+  camera3d._distClip = null;
+}
+
 export function ajustarDistancia(camera3d, fator) {
   camera3d.distancia = clamp(
     camera3d.distancia / fator,
