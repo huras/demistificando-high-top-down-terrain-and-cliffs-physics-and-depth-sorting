@@ -1,6 +1,9 @@
 /**
  * Atlas de props de sítio: recorta world-props / Mountains uma vez e cacheia.
+ * Sheets 32px (Mountains) são reamostrados pra TILE=16 — senão a lápide
+ * (1×2 tiles de 32) vira 2×4 no mundo.
  */
+import { TILE } from "../../config.js";
 import { carregarImagem } from "../../render/atlas.js";
 import { PROP_SITE, RECORTE_DO_PROP } from "./catalogo.js";
 
@@ -25,17 +28,22 @@ async function carregarSheet(url) {
 }
 
 function recortar(img, def) {
-  const ts = def.tileSize | 0;
+  const ts = Math.max(1, def.tileSize | 0);
   const w = (def.cols | 0) * ts;
   const h = (def.rows | 0) * ts;
   const sx = (def.originCol | 0) * ts;
   const sy = (def.originRow | 0) * ts;
+  // 1 tile de art → 1 célula mundo (TILE px).
+  const fator = TILE / ts;
+  const outW = Math.max(1, Math.round(w * fator));
+  const outH = Math.max(1, Math.round(h * fator));
   const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, w);
-  canvas.height = Math.max(1, h);
+  canvas.width = outW;
+  canvas.height = outH;
   const ctx = canvas.getContext("2d");
   if (!ctx || !img) return canvas;
-  ctx.drawImage(img, sx, sy, w, h, 0, 0, w, h);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, sx, sy, w, h, 0, 0, outW, outH);
   return canvas;
 }
 

@@ -33,6 +33,7 @@ import {
   estado,
   fecharTopo,
   registrarParty,
+  registrarPosicao,
   salvar,
   soltarSlotVazio,
   uiAberta,
@@ -152,6 +153,7 @@ export function tickJogo(dt, corpo) {
   atualizarCuraMaquina(dt);
   tickGanho(dt);
   definirCorpo(corpo);
+  registrarPosicao(corpo);
   if (batalhaTreinadorAtiva() || estado.batalhaTreinador) {
     tickBatalhaViajante(dt);
     return;

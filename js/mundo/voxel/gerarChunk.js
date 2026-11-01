@@ -67,10 +67,10 @@ export function* passosChunk(chunk, seed) {
 
   /** @type {Int16Array} */
   const alturas = new Int16Array(CHUNK_XZ * CHUNK_XZ);
-  // Terraços de lar/site antes das colunas — alturaDoRelevo já lê o carimbo.
-  // celulasSiteChunk resolve + carimba o pad outdoor (mesmo papel do garantirLares).
-  garantirLaresNoChunk(chunk.cx, chunk.cy);
+  // POI outdoor antes dos lares — ninhos não nascem no pad (larTocaPoi + stamp).
+  // alturaDoRelevo lê carimbo de site/lar/letra nas colunas abaixo.
   const sitioOutdoor = celulasSiteChunk(chunk.cx, chunk.cy);
+  garantirLaresNoChunk(chunk.cx, chunk.cy);
   const plazaLetras = celulasPlazaLetrasChunk(chunk.cx, chunk.cy);
   const sitioLetras = celulasSitioLetrasChunk(chunk.cx, chunk.cy);
   const sitioLar = celulasSitioLarChunk(chunk.cx, chunk.cy);

@@ -85,6 +85,11 @@ function travarCombatente(ator) {
   ator.vy = 0;
   ator.andando = false;
   ator.correndo = false;
+  // Acorda sono de ninho; sleep de golpe (status) continua e pula turno.
+  if (ator.status !== "sleep") {
+    ator.sonoNatural = false;
+    if ((ator.dormindo || 0) > 0) ator.dormindo = 0;
+  }
   if (ator.faccao === "selvagem") {
     ator.modo = "agro";
     ator.agroPersistente = true;

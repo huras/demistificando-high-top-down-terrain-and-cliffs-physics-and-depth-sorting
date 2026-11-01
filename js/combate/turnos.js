@@ -19,6 +19,8 @@ import { limitarVolumeChrono, volumeChronoAtivo } from "./chrono/volume.js";
 const ESPERA_LINHA = 1.6;
 const ESPERA_CARGA = 0.85;
 const ESPERA_TEATRO = 1;
+/** Pausa entre rodadas quando todo mundo pula (sleep/freeze) — evita recurse infinito. */
+const ESPERA_RODADA = 0.28;
 /** Chrono OW: props/pedras — corta a espera e teleporta pro contato. */
 const ESPERA_CORPO_CHRONO = 1.45;
 const ESPERA_CORPO_ARENA = 3.2;
@@ -53,6 +55,7 @@ let esperaLinha = 0;
 let esperaCorpo = 0;
 let esperaCarregar = 0;
 let esperaTeatro = 0;
+let esperaRodada = 0;
 let avisouCarregar = false;
 let disparou = false;
 let veioDoTeatro = false;
@@ -254,6 +257,12 @@ export function tickTurnos(dt, agora, efeitos) {
   efeitosRef = efeitos || null;
   if (modo !== "turnos" || fase === "ocioso" || fase === "escolha" || fase === "foco") return;
   if (!ladoVivo(aliados, esquerda) || !ladoVivo(foes, direita)) return;
+  if (fase === "rodada") {
+    esperaRodada -= dt;
+    if (esperaRodada > 0) return;
+    novaRodada();
+    return;
+  }
   if (fase === "carregar") {
     if (!avisouCarregar) {
       avisouCarregar = true;
@@ -466,7 +475,10 @@ function abrirTurno() {
     fase = "ocioso";
     return;
   }
-  novaRodada();
+  // Adia a próxima rodada (sleep/freeze em massa) — sem recurse no mesmo frame.
+  veioDoTeatro = false;
+  fase = "rodada";
+  esperaRodada = ESPERA_RODADA;
 }
 
 function escolherIa(atual, outro, golpes) {

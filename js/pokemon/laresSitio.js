@@ -38,6 +38,7 @@ import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { larTocaEstrada } from "./laresEstrada.js";
+import { larTocaPoi } from "./laresPoi.js";
 import {
   ORIGEM_SANTUARIO_X,
   ORIGEM_SANTUARIO_Y,
@@ -253,7 +254,8 @@ export function garantirSitioLar(cx, cy, indice) {
     !longeDeVizinhos(cx, cy, indice, x, y) ||
     temPlanoLetra(tx, ty) ||
     temPlanoSite(tx, ty) ||
-    larTocaEstrada(x, y)
+    larTocaEstrada(x, y) ||
+    larTocaPoi(x, y)
   ) {
     rejeitados.add(id);
     return false;

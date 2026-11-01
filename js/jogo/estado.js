@@ -136,9 +136,58 @@ export const estado = {
   construir: false,
   craft: false,
   saidaGrace: 0,
+  /** Última posição no overworld (persistida no save). */
+  posicao: null,
   /** Sessão de batalha treinador (overlay turnos). */
   batalhaTreinador: null,
 };
+
+/** Atualiza a posição a gravar no save (chamar no tick / antes de salvar). */
+export function registrarPosicao(corpo) {
+  if (!corpo || !Number.isFinite(corpo.x) || !Number.isFinite(corpo.y)) return;
+  estado.posicao = {
+    x: corpo.x,
+    y: corpo.y,
+    z: Number.isFinite(corpo.elevacao)
+      ? corpo.elevacao
+      : Number.isFinite(corpo.z)
+        ? corpo.z
+        : 0,
+    facing: corpo.facing | 0,
+    dirX: Number.isFinite(corpo.dirX) ? corpo.dirX : 0,
+    dirY: Number.isFinite(corpo.dirY) ? corpo.dirY : 1,
+  };
+}
+
+function normalizarPosicao(p) {
+  if (!p || typeof p !== "object") return null;
+  const x = Number(p.x);
+  const y = Number(p.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const z = Number(p.z);
+  return {
+    x,
+    y,
+    z: Number.isFinite(z) ? z : 0,
+    facing: Number.isFinite(p.facing) ? p.facing | 0 : 0,
+    dirX: Number.isFinite(p.dirX) ? p.dirX : 0,
+    dirY: Number.isFinite(p.dirY) ? p.dirY : 1,
+  };
+}
+
+/** Lê só a posição do save (antes do boot do mundo), sem hidratar o resto. */
+export function obterSpawnSalvo() {
+  if (estado.posicao) {
+    const atual = normalizarPosicao(estado.posicao);
+    if (atual) return atual;
+  }
+  try {
+    const bruto = JSON.parse(localStorage.getItem(CHAVE_SAVE) || "null");
+    return normalizarPosicao(bruto?.posicao);
+  } catch {
+    return null;
+  }
+}
 
 let ouvintes = [];
 
@@ -733,6 +782,7 @@ function bolsaParaLista() {
 export function salvar() {
   registrarParty();
   const party = listaParty().map(snapshot);
+  const posicao = normalizarPosicao(estado.posicao);
   const dados = {
     dinheiro: estado.dinheiro,
     bolas: obterBolas(),
@@ -746,6 +796,7 @@ export function salvar() {
     vistos: estado.vistos,
     capturados: estado.capturadosMap ? { ...estado.capturadosMap } : {},
     vistosItens: estado.vistosItens || {},
+    posicao,
     quests: estado.quests,
     questState: (() => {
       const qs = estado.questState || createQuestState();
@@ -845,6 +896,7 @@ export function carregar() {
   estado.chaves = bruto.chaves || ["pokedex"];
   hidratarSantuarios(bruto.santuarios);
   hidratarDescobertaMapa(bruto.descobertaMapa);
+  estado.posicao = normalizarPosicao(bruto.posicao);
   if (bruto.vistosItens && typeof bruto.vistosItens === "object" && !Array.isArray(bruto.vistosItens)) {
     estado.vistosItens = { ...bruto.vistosItens };
   } else {

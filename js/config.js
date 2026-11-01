@@ -524,6 +524,13 @@ export const CHRONO = Object.freeze({
   ALTURA_MON: 1.05,
   /** Debounce entre tentativas de contato (s). */
   CONTATO_COOLDOWN: 0.55,
+  /**
+   * Distância pra iniciar batalha (wild hostil ↔ party/player).
+   * Maior que ALCANCE_TIRO_MAX (10) pra engajar antes de qualquer golpe.
+   */
+  RAIO_ENGATE: 12,
+  /** Hostil começa a perseguir (deve ser > RAIO_ENGATE pra ter chase visível). */
+  RAIO_PERSEGUIR: 16,
   /** Raio do volume suave da batalha in-place. */
   RAIO_VOLUME: 11,
   /** Iframe do treinador após fuga (s). */

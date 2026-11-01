@@ -221,6 +221,15 @@ export function residualTurno(ator, efeitos) {
 export function processarInicioTurno(ator, efeitos, rng = Math.random) {
   if (!ator || ator.morto || ator.hp <= 0) return { pulou: true, motivo: "morto" };
 
+  // Sono de campo (ninho) sem status major — passa o turno e acorda na luta.
+  if (ator.status !== STATUS.sleep && (ator.sonoNatural || (ator.dormindo || 0) > 0)) {
+    ator.sonoNatural = false;
+    ator.dormindo = 0;
+    if (efeitos?.flutuar) efeitos.flutuar(ator, "dormindo", COR.sleep);
+    notar(efeitos, { tipo: "status", alvo: ator, status: "sleep", skip: true });
+    return { pulou: true, motivo: "sleep" };
+  }
+
   if (ator.status === STATUS.sleep) {
     if ((ator.statusTurnos | 0) <= 0) {
       limparStatus(ator);

@@ -205,21 +205,26 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   aquecerGrito(pokemonNoCampo());
   tickGritosAmbiente(passo, corpo, selvagens);
 
-  if (!morto && !emChrono) {
+  if (!morto) {
     if (chrono) {
-      // Chrono fora de sessão: roam + aviso, sem agro/golpes realtime.
-      for (let i = 0; i < selvagens.length; i++) {
-        const w = selvagens[i];
-        if (!w || w._chronoHold) continue;
-        if (w.modo === "agro") {
-          w.modo = "roam";
-          w.alvo = null;
-          w.agroPersistente = false;
+      // Durante a luta: quem não entrou no turno volta a vagar (não congela no mapa).
+      if (emChrono) {
+        for (let i = 0; i < selvagens.length; i++) {
+          const w = selvagens[i];
+          if (!w || w._chronoHold || w.combatHold) continue;
+          if (w.modo === "agro") {
+            w.modo = "roam";
+            w.alvo = null;
+            w.agroPersistente = false;
+          }
         }
       }
       atualizarRoamSelvagens(selvagens, mon, treinador, passo);
-      tickContatoChrono(corpo, selvagens, passo, efeitos);
-    } else {
+      if (!emChrono) {
+        // Hostil persegue e engaja por RAIO_ENGATE / stomp / toque.
+        tickContatoChrono(corpo, selvagens, mon, passo, efeitos);
+      }
+    } else if (!emChrono) {
       // Combate OW: wilds agroam antes do party (DEFEND enxerga no mesmo frame).
       for (let i = 0; i < selvagens.length; i++) {
         const w = selvagens[i];

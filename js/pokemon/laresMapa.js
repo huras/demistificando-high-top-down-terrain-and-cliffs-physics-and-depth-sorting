@@ -25,6 +25,7 @@ import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { larTocaEstrada } from "./laresEstrada.js";
+import { larTocaPoi } from "./laresPoi.js";
 import {
   ORIGEM_SANTUARIO_X,
   ORIGEM_SANTUARIO_Y,
@@ -177,7 +178,8 @@ export function resolverLarSlot(cx, cy, indice) {
     zonaSemSelvagem(x, y) ||
     ehCidade(x, y) ||
     Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN ||
-    larTocaEstrada(x, y)
+    larTocaEstrada(x, y) ||
+    larTocaPoi(x, y)
   ) {
     cacheSlot.set(id, null);
     return null;

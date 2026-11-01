@@ -46,7 +46,13 @@ const CAP_INSTANCIAS = 4096;
 function estiloDe(prop) {
   if (prop.tipo === "santuario") return SHRINE_DRAW_SCALE;
   if (prop.tipo === "berry") return ESCALA_ARBUSTO;
-  if (prop.tipo === "site") return 1.15;
+  if (prop.tipo === "site") {
+    // Lápide 1×2 tiles — escala 1; resto do yard um pouco maior.
+    if (prop.kind === "lapide" || String(prop.propId || "").startsWith("lapide")) {
+      return 1;
+    }
+    return 1.15;
+  }
   if (prop.tipo === "arvore") return VEG_ARVORE_ESCALA;
   if (prop.tipo === "pedra" || prop.tipo === "cristal") return 1;
   return VEG_MATA_ESCALA;

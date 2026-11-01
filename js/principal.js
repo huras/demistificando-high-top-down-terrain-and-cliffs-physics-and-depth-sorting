@@ -131,7 +131,7 @@ import {
 } from "./santuario/colocacao.js";
 import { ensureShrineArtLoaded } from "./santuario/arte.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
-import { estado as estadoJogo } from "./jogo/estado.js";
+import { estado as estadoJogo, obterSpawnSalvo } from "./jogo/estado.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
 import { jogadorMorto } from "./jogo/hud/morte.js";
 import {
@@ -243,9 +243,10 @@ async function iniciarInterno() {
   window.__atlas = atlas;
   marcarFase("visuais", 1);
 
+  const spawn = obterSpawnSalvo() || SPAWN;
   definirStatus("Gerando mundo no spawn…");
   indexarColisaoCidade();
-  iniciarMundoAoRedor(SPAWN.x, SPAWN.y);
+  iniciarMundoAoRedor(spawn.x, spawn.y);
   marcarFase("mundo", 1);
 
   const promessaCascas = carregarCascasCidade().then((ok) => {
@@ -258,11 +259,18 @@ async function iniciarInterno() {
   });
   // Nav só invalida em edição de bloco — streaming não deve rebuildar (era ~18s).
 
-  corpo = criarCorpo(SPAWN);
+  corpo = criarCorpo(spawn);
+  if (spawn !== SPAWN) {
+    corpo.facing = spawn.facing | 0;
+    corpo.dirX = spawn.dirX;
+    corpo.dirY = spawn.dirY;
+    // Recoloca no chão do chunk gerado (save pode ter z antigo).
+    corpo._renasceu = true;
+  }
   agente = criarAgente({
-    x: SPAWN.x + OFFSET_NPC.x,
-    y: SPAWN.y + OFFSET_NPC.y,
-    z: SPAWN.z,
+    x: spawn.x + OFFSET_NPC.x,
+    y: spawn.y + OFFSET_NPC.y,
+    z: spawn.z,
   });
   // Poste/pedra no offset de spawn — não nasce enfiado.
   resolverForaDeObstaculo(agente);
@@ -279,7 +287,7 @@ async function iniciarInterno() {
   ligarDicasPainel();
   ligarAjudaAtalhos();
   ligarMapaKanto();
-  atualizarMapaKanto(SPAWN.x, SPAWN.y);
+  atualizarMapaKanto(spawn.x, spawn.y);
   ligarMapaMundo();
   ligarHierarquiaCena();
   ligarInspetorCena();
@@ -297,7 +305,7 @@ async function iniciarInterno() {
     let perto = Infinity;
     for (let i = 0; i < plan.slots.length; i++) {
       const m = plan.slots[i];
-      const d = Math.hypot(m.x - SPAWN.x, m.y - SPAWN.y);
+      const d = Math.hypot(m.x - spawn.x, m.y - spawn.y);
       if (d < perto) perto = d;
     }
     console.info(
