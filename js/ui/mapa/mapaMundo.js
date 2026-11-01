@@ -15,6 +15,7 @@ import { wildPinVisivelNoZoom } from "../../mapa/pinWild.js";
 import { marcasLetras } from "../../letras/mapaMarcas.js";
 import { getWorldLetterPuzzlePlan } from "../../letras/plano.js";
 import { revelarLetras } from "../../letras/estado.js";
+import { marcasSites } from "../../mundo/sites/mapaMarcas.js";
 import { alturaDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
 import { LADO_MUNDO } from "./grade.js";
@@ -54,6 +55,7 @@ const RAIO_CIDADE = 22;
 const RAIO_SANTUARIO = 18;
 const RAIO_WILD = 16;
 const RAIO_LETRA = 16;
+const RAIO_SITE = 17;
 const ZOOM_VIAGEM = 1.15;
 
 function sincronizarBotaoCalor() {
@@ -190,7 +192,22 @@ function destinoLetra(marca) {
   };
 }
 
-/** Cidade / santuário / letra / wild sob o cursor (teleporte). */
+function destinoSite(marca) {
+  if (!marca) return null;
+  const z = Number.isFinite(marca.z) ? marca.z : alturaDoRelevo(marca.x, marca.y);
+  return {
+    tipo: "site",
+    id: marca.id,
+    nome: marca.nome || "Sítio",
+    emoji: marca.emoji || "",
+    subtipo: marca.subtipo,
+    x: marca.x,
+    y: marca.y,
+    z: z || 1,
+  };
+}
+
+/** Cidade / santuário / letra / site / wild sob o cursor (teleporte). */
 function destinoNoPonto(clientX, clientY) {
   if (!tela || !aberto) return null;
   const rect = tela.getBoundingClientRect();
@@ -202,6 +219,8 @@ function destinoNoPonto(clientX, clientY) {
   if (shrine) return destinoSantuario(shrine);
   const letra = hitNoPonto(marcasLetras(), sx, sy, rect, RAIO_LETRA);
   if (letra) return destinoLetra(letra);
+  const site = hitNoPonto(marcasSites(), sx, sy, rect, RAIO_SITE);
+  if (site) return destinoSite(site);
   const vista = { cx, cy, zoom, mini: false };
   if (!wildPinVisivelNoZoom(vista)) return null;
   const wilds = filtrarWildParaVista(marcasWild(), vista);
@@ -209,7 +228,7 @@ function destinoNoPonto(clientX, clientY) {
   return wild ? destinoWild(wild) : null;
 }
 
-/** Santuário / wild / letra sob o cursor (só para título no hover). */
+/** Santuário / wild / letra / site sob o cursor (só para título no hover). */
 function marcaRotuloNoPonto(clientX, clientY) {
   if (!tela || !aberto) return null;
   const rect = tela.getBoundingClientRect();
@@ -219,6 +238,8 @@ function marcaRotuloNoPonto(clientX, clientY) {
   if (shrine) return shrine;
   const letra = hitNoPonto(marcasLetras(), sx, sy, rect, RAIO_LETRA);
   if (letra) return letra;
+  const site = hitNoPonto(marcasSites(), sx, sy, rect, RAIO_SITE);
+  if (site) return site;
   const vista = { cx, cy, zoom, mini: false };
   if (!wildPinVisivelNoZoom(vista)) return null;
   const wilds = filtrarWildParaVista(marcasWild(), vista);
@@ -243,6 +264,9 @@ function mostrarConfirmacao(dest) {
   if (dest.tipo === "santuario") rotulo = `o santuário ${dest.nome}`;
   else if (dest.tipo === "letra") rotulo = `o puzzle ${dest.nome}`;
   else if (dest.tipo === "wild") rotulo = `o spawn de ${dest.nome}`;
+  else if (dest.tipo === "site") {
+    rotulo = dest.emoji ? `${dest.emoji} ${dest.nome}` : `o sítio ${dest.nome}`;
+  }
   if (confirmTxt) confirmTxt.textContent = `Teleportar para ${rotulo}?`;
   if (confirmEl) confirmEl.hidden = false;
   tela?.classList.remove("mapa-mundo__tela--cidade");

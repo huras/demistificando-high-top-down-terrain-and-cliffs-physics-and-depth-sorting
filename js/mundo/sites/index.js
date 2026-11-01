@@ -24,7 +24,7 @@ export {
   atlasSitesPronto,
   imagemDoPropSite,
 } from "./atlas.js";
-export { marcasSites, NOMES_SITE } from "./mapaMarcas.js";
+export { marcasSites, NOMES_SITE, garantirSitesNoMapa } from "./mapaMarcas.js";
 export {
   carimbarPlanoSite,
   alturaComPlanoSite,

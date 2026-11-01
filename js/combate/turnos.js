@@ -1,5 +1,8 @@
 /** Roteiro do combate em turnos. Arena 1v1 ou grupo Chrono no overworld. */
 
+import { RAIO_POKEMON } from "../config.js";
+import { alturaSobPes } from "../fisica/colisao.js";
+import { invadeDisco } from "../fisica/obstaculos.js";
 import { bloqueioNoTrecho } from "./arenas.js";
 import { dispararGolpeTurno } from "../pokemon/combate/executor.js";
 import { projeteisVivos } from "../pokemon/combate/projeteis.js";
@@ -16,6 +19,10 @@ import { limitarVolumeChrono, volumeChronoAtivo } from "./chrono/volume.js";
 const ESPERA_LINHA = 1.6;
 const ESPERA_CARGA = 0.85;
 const ESPERA_TEATRO = 1;
+/** Chrono OW: props/pedras — corta a espera e teleporta pro contato. */
+const ESPERA_CORPO_CHRONO = 1.45;
+const ESPERA_CORPO_ARENA = 3.2;
+const ESPERA_SEM_PROGRESSO = 0.55;
 
 const RECARREGA_DEPOIS = {
   hyperBeam: true,
@@ -50,6 +57,8 @@ let avisouCarregar = false;
 let disparou = false;
 let veioDoTeatro = false;
 let efeitosRef = null;
+let distAntesAprox = Infinity;
+let semProgresso = 0;
 
 function limitarPosicao(quem) {
   if (volumeChronoAtivo()) limitarVolumeChrono(quem);
@@ -481,6 +490,8 @@ function armar(escolhido) {
   disparou = false;
   esperaLinha = 0;
   esperaCorpo = 0;
+  distAntesAprox = Infinity;
+  semProgresso = 0;
   const forma = escolhido.def.forma;
   const longe = forma === "projectile" || forma === "arc";
   fase = longe && linhaLivre(ator, alvo) ? "golpe" : "aproximar";
@@ -502,6 +513,77 @@ function temCasa(quem) {
   return quem && Number.isFinite(quem.casaChronoX) && Number.isFinite(quem.casaChronoY);
 }
 
+function raioAtor(quem) {
+  return quem?.raioCorpo > 0 ? quem.raioCorpo : RAIO_POKEMON;
+}
+
+function pousarNoChao(quem) {
+  if (!quem) return;
+  const zRef = (quem.elevacao ?? quem.z ?? 0) + 1.2;
+  const chao = alturaSobPes(quem.x, quem.y, zRef);
+  if (chao > 0) {
+    quem.z = chao;
+    quem.elevacao = chao;
+  }
+}
+
+/** Amostra o segmento até o ponto de parada: pedra/árvore no caminho? */
+function trechoComProp(de, para, parada) {
+  const dx = para.x - de.x;
+  const dy = para.y - de.y;
+  const d = Math.hypot(dx, dy) || 0.0001;
+  const stop = Math.max(0.2, parada);
+  const alcance = Math.max(0, d - stop);
+  if (alcance < 0.12) return false;
+  const elev = de.elevacao ?? de.z ?? 0;
+  const r = raioAtor(de);
+  const passos = Math.max(3, Math.ceil(alcance * 2.2));
+  for (let i = 1; i <= passos; i++) {
+    const t = (i / passos) * (alcance / d);
+    const x = de.x + dx * t;
+    const y = de.y + dy * t;
+    if (invadeDisco(x, y, elev, r)) return true;
+  }
+  return false;
+}
+
+/** Ponto no anel de contato; prefere livre de disco e o lado de quem ataca. */
+function pontoContato(de, para, parada) {
+  const stop = Math.max(0.55, parada);
+  const dx = de.x - para.x;
+  const dy = de.y - para.y;
+  const d = Math.hypot(dx, dy);
+  const baseAng = d > 1e-5 ? Math.atan2(dy, dx) : Math.atan2(de.dirY || 1, de.dirX || 0);
+  const elev = para.elevacao ?? para.z ?? de.elevacao ?? de.z ?? 0;
+  const r = raioAtor(de);
+  let fallback = null;
+  const offsets = [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, Math.PI];
+  for (let i = 0; i < offsets.length; i++) {
+    const ang = baseAng + offsets[i];
+    const x = para.x + Math.cos(ang) * stop;
+    const y = para.y + Math.sin(ang) * stop;
+    if (!fallback) fallback = { x, y };
+    if (!invadeDisco(x, y, elev, r)) return { x, y };
+  }
+  // Ninho fechado por pedras: entra mesmo assim (teatro Chrono).
+  return fallback;
+}
+
+function puxarParaContato(quem, para, parada) {
+  const p = pontoContato(quem, para, parada);
+  if (!p) return;
+  quem.x = p.x;
+  quem.y = p.y;
+  pousarNoChao(quem);
+  limitarPosicao(quem);
+  const dx = para.x - quem.x;
+  const dy = para.y - quem.y;
+  const d = Math.hypot(dx, dy) || 1;
+  quem.dirX = dx / d;
+  quem.dirY = dy / d;
+  pararPasso(quem);
+}
+
 function passoVoltar(dt) {
   if (!ator || !temCasa(ator)) return true;
   const tx = ator.casaChronoX;
@@ -512,6 +594,16 @@ function passoVoltar(dt) {
   if (d <= 0.12) {
     ator.x = tx;
     ator.y = ty;
+    pousarNoChao(ator);
+    pararPasso(ator);
+    return true;
+  }
+  const casa = { x: tx, y: ty, elevacao: ator.elevacao ?? ator.z ?? 0 };
+  // Props no caminho de volta: warp pra casa (não atravessa o ninho de pedra).
+  if (modoGrupo && trechoComProp(ator, casa, 0.1)) {
+    ator.x = tx;
+    ator.y = ty;
+    pousarNoChao(ator);
     pararPasso(ator);
     return true;
   }
@@ -537,10 +629,28 @@ function passoAproximar(dt) {
   }
   const parada = paradaDe(def);
   esperaCorpo += dt;
-  if (d <= parada + 0.08 || esperaCorpo >= 3.2) {
+  if (d < distAntesAprox - 0.03) semProgresso = 0;
+  else semProgresso += dt;
+  distAntesAprox = d;
+
+  const limEspera = modoGrupo ? ESPERA_CORPO_CHRONO : ESPERA_CORPO_ARENA;
+  const travou = modoGrupo && semProgresso >= ESPERA_SEM_PROGRESSO;
+  if (d <= parada + 0.08 || esperaCorpo >= limEspera || travou) {
+    if (d > parada + 0.12) puxarParaContato(ator, alvo, parada);
     pararPasso(ator);
     pararPasso(alvo);
     return true;
+  }
+  if (modoGrupo && trechoComProp(ator, alvo, parada)) {
+    // Desvia do anel de pedras; se não fechar, o travou acima teleporta.
+    const lado = Math.sin(esperaCorpo * 3.1) >= 0 ? 1 : -1;
+    const tx = -dy / d;
+    const ty = dx / d;
+    const ux = dx / d + tx * lado * 0.95;
+    const uy = dy / d + ty * lado * 0.95;
+    const ul = Math.hypot(ux, uy) || 1;
+    andar(ator, ux / ul, uy / ul, dt, Math.max(0, d - parada), 1.05);
+    return false;
   }
   fecharEmArco(dx / d, dy / d, dt, Math.max(0, d - parada));
   return false;
@@ -587,6 +697,7 @@ function andar(quem, dirX, dirY, dt, limite, folga) {
   quem.vx = dirX * vel;
   quem.vy = dirY * vel;
   quem.andando = true;
+  pousarNoChao(quem);
   limitarPosicao(quem);
 }
 

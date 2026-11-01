@@ -112,13 +112,14 @@ export function rotasDoMapa() {
   return lista;
 }
 
-export function marcasExtras() {
+/** @param {{ px?: number, py?: number, mini?: boolean }|null} [opts] */
+export function marcasExtras(opts = null) {
   return extras.concat(
     marcasSantuario(),
     marcasBerry(),
     marcasWild(),
     marcasLetras(),
-    marcasSites()
+    marcasSites(opts)
   );
 }
 

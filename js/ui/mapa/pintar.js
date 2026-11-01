@@ -31,6 +31,7 @@ import {
 } from "../../mapa/pinMissao.js";
 import { filtrarWildParaVista } from "../../mapa/marcasWild.js";
 import { desenharPinWild, wildPinVisivelNoZoom } from "../../mapa/pinWild.js";
+import { desenharPinSite } from "../../mapa/pinSite.js";
 import { pinMissaoAtiva } from "../../quests/pins.js";
 import { imagemIcone } from "../../jogo/icones.js";
 import { pedirRetrato } from "../../pokemon/retrato.js";
@@ -316,7 +317,11 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     });
   }
 
-  const extrasBrutos = marcasExtras();
+  const extrasBrutos = marcasExtras({
+    mini: !!vista.mini,
+    px: vista.jogadorX,
+    py: vista.jogadorY,
+  });
   const wildCap = filtrarWildParaVista(
     extrasBrutos.filter((m) => m.tipo === "wild"),
     vista,
@@ -397,29 +402,12 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       continue;
     }
     if (marca.tipo === "site") {
-      const cores = {
-        farm: "#c4a35a",
-        graveyard: "#7a8494",
-        outpost: "#8b6b4a",
-        dock: "#4a8ab5",
-        lookout: "#9a7b5a",
-      };
-      ctx.fillStyle = cores[marca.subtipo] || "#d2b48c";
-      const r = (vista.mini ? 3.4 : 4.8) * dpr;
-      ctx.beginPath();
-      ctx.moveTo(sx, sy - r);
-      ctx.lineTo(sx + r, sy);
-      ctx.lineTo(sx, sy + r);
-      ctx.lineTo(sx - r, sy);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = "rgba(30,24,16,0.7)";
-      ctx.lineWidth = Math.max(1, 1.1 * dpr);
-      ctx.stroke();
+      desenharPinSite(ctx, marca, sx, sy, { mini: !!vista.mini, dpr });
       if (!vista.mini && marca.nome && vista.hoverMarcaId === marca.id) {
+        const rotulo = `${marca.emoji ? `${marca.emoji} ` : ""}${marca.nome}`;
         nomes.push({
-          texto: marca.nome,
-          x: sx + 10 * dpr,
+          texto: rotulo,
+          x: sx + 12 * dpr,
           y: sy + alturaFonte * 0.3,
           altura: alturaFonte,
           prio: 4,
