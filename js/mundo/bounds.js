@@ -4,21 +4,21 @@
  * Sem import de grafoKanto — evita ciclo (grafo e amostra importam daqui).
  */
 
-/** Lado do overworld (4× a área de Kanto). */
-export const LADO_MUNDO = 8192;
+/** Lado do overworld (2× a extensão de Kanto — ilha centrada). */
+export const LADO_MUNDO = 24576;
 
-/** Ilha authored: 32 áreas × 128 blocos. */
-export const EXTENSAO_KANTO = 4096;
+/** Ilha authored: 32 áreas × 384 blocos. */
+export const EXTENSAO_KANTO = 12288;
 
 /** Origem mundial da ilha (Kanto centrado). */
-export const ORIGEM_KANTO_X = 2048;
-export const ORIGEM_KANTO_Y = 2048;
+export const ORIGEM_KANTO_X = 6144;
+export const ORIGEM_KANTO_Y = 6144;
 
 /** Faixa de costura Kanto ↔ procedural (blocos). */
-export const FAIXA_COSTURA = 64;
+export const FAIXA_COSTURA = 96;
 
 /**
- * Bolso das salas 3D (casa, centro, loja, lab) — longe do overworld 8192².
+ * Bolso das salas 3D (casa, centro, loja, lab) — longe do overworld.
  * O streaming precisa carregar chunks aqui; senão a física cai no z=0
  * enquanto o chão decorativo continua flutuando na altura da praça.
  */

@@ -36,7 +36,7 @@ function garantirBake() {
   return bake;
 }
 
-/** Heat fill no espaço mundo — overworld 8192². */
+/** Heat fill no espaço mundo — overworld LADO_MUNDO². */
 export function pintarCalorForcaMundo(ctx) {
   const img = garantirBake();
   if (!img) return;

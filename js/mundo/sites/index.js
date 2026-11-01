@@ -18,12 +18,14 @@ export { TEMPLATES_SITE, LISTA_TEMPLATES, templatesDoBioma } from "./templates.j
 export { biomaDaZona, zonaAceitaSite } from "./bioma.js";
 export {
   resolverSiteDaArea,
+  resolverSitesDaArea,
   garantirSitesVizinhos,
   sitesDoChunk,
   siteEm,
   limparCacheSites,
   listarSites,
   peekSiteDaArea,
+  peekSitesDaArea,
 } from "./plano.js";
 export { celulasSiteChunk, celulasAradoSiteChunk, propsSiteChunk } from "./colocacao.js";
 export {

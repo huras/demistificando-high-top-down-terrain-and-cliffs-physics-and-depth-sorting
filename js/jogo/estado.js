@@ -63,7 +63,8 @@ import {
   serializarDescobertaMapa,
 } from "../mapa/descoberta.js";
 
-const CHAVE_SAVE = "demo-jogo-v1";
+/** v2: overworld 3× (AREA 384 / LADO 24576) — posições absolutas incompatíveis. */
+const CHAVE_SAVE = "demo-jogo-v2";
 const CAIXAS = 8;
 const SLOTS_CAIXA = 30;
 

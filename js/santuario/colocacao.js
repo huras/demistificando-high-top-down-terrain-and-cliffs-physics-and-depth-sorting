@@ -1,5 +1,5 @@
 /**
- * Plano mundial: 493 pedras (gens 1–4) espalhadas no overworld 8192².
+ * Plano mundial: pedras (gens 1–4) espalhadas no overworld (LADO_MUNDO²).
  */
 import { SEED_MUNDO, CHUNK_XZ } from "../config.js";
 import {
@@ -8,7 +8,7 @@ import {
   ORIGEM_KANTO_X,
   ORIGEM_KANTO_Y,
 } from "../mundo/bounds.js";
-import { AREA_KANTO, ehCidade, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
+import { AREA_KANTO, CENTRO_AREA, ehCidade, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { alturaDoRelevo, nivelMarBlocos } from "../mundo/bioma/catalogo.js";
 import {
   chunksComProps,
@@ -164,8 +164,8 @@ function tentarAncora(ax, ay, slotIndex) {
     const hz = alturaDoRelevo(wx, wy);
     if (!(hz >= nivel)) continue;
     // Evita spawn Pallet (origem Kanto + centro aproximado)
-    const dx = wx - (ORIGEM_KANTO_X + 4 * AREA_KANTO + 64);
-    const dy = wy - (ORIGEM_KANTO_Y + 27 * AREA_KANTO + 64);
+    const dx = wx - (ORIGEM_KANTO_X + 4 * AREA_KANTO + CENTRO_AREA);
+    const dy = wy - (ORIGEM_KANTO_Y + 27 * AREA_KANTO + CENTRO_AREA);
     if (dx * dx + dy * dy < 40 * 40) continue;
     return { tx, ty, wx, wy, z: hz };
   }

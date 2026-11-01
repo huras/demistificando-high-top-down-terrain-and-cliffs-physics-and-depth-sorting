@@ -6,7 +6,7 @@ import { AREA_KANTO, LADO_KANTO, zonaEm } from "../regiao/grafoKanto.js";
 import { alturaDoRelevo } from "../bioma/catalogo.js";
 import { TIPO_SITE } from "./catalogo.js";
 import { zonaAceitaSite } from "./bioma.js";
-import { garantirSitesVizinhos, peekSiteDaArea } from "./plano.js";
+import { garantirSitesVizinhos, peekSitesDaArea } from "./plano.js";
 import { corDoSite, emojiDoSite } from "../../mapa/pinSite.js";
 
 const NOME = Object.freeze({
@@ -46,22 +46,25 @@ export function marcasSites(opts = null) {
     for (let ax = 0; ax < LADO_KANTO; ax++) {
       const zona = zonaEm(ax, ay);
       if (!zonaAceitaSite(zona)) continue;
-      const site = peekSiteDaArea(ax, ay);
-      if (!site) continue;
-      const subtipo = site.tipo;
-      lista.push({
-        tipo: "site",
-        id: site.id,
-        nome: NOME[subtipo] || "Sítio",
-        subtipo,
-        emoji: emojiDoSite(subtipo),
-        cor: corDoSite(subtipo),
-        x: site.mapX,
-        y: site.mapY,
-        z: site.hPad ?? alturaDoRelevo(site.mapX, site.mapY),
-        ax,
-        ay,
-      });
+      const sites = peekSitesDaArea(ax, ay);
+      if (!sites?.length) continue;
+      for (let i = 0; i < sites.length; i++) {
+        const site = sites[i];
+        const subtipo = site.tipo;
+        lista.push({
+          tipo: "site",
+          id: site.id,
+          nome: NOME[subtipo] || "Sítio",
+          subtipo,
+          emoji: emojiDoSite(subtipo),
+          cor: corDoSite(subtipo),
+          x: site.mapX,
+          y: site.mapY,
+          z: site.hPad ?? alturaDoRelevo(site.mapX, site.mapY),
+          ax,
+          ay,
+        });
+      }
     }
   }
   return lista;

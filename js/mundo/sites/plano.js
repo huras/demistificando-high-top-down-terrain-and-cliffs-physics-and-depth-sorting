@@ -1,5 +1,5 @@
 /**
- * Plano mundial de sítios outdoor: 1 por área rota/mato elegível.
+ * Plano mundial de sítios outdoor: vários por área rota/mato (mundo 3×).
  * Cache por área; farthest-template por bioma; âncora longe da estrada/cidade.
  */
 import { CHUNK_XZ } from "../../config.js";
@@ -28,7 +28,7 @@ import {
 } from "./plaza.js";
 import { carimbarPlanoSite, limparRelevoSites } from "./relevo.js";
 
-/** @type {Map<string, object|null>} */
+/** @type {Map<string, object[]|null>} */
 const cacheArea = new Map();
 /** @type {Map<string, object[]>} */
 const byChunk = new Map();
@@ -37,6 +37,10 @@ let todosSites = null;
 
 const FOLGA_SPAWN = 14;
 const MEIO_RUA = MEIA_LARGURA_ESTRADA;
+/** Quantos sítios tentar por célula (3× área → 3–6). */
+const SITES_MIN = 3;
+const SITES_MAX = 6;
+const FOLGA_ENTRE_SITES = 18;
 
 function chaveArea(ax, ay) {
   return `${ax},${ay}`;
@@ -74,6 +78,18 @@ function longeDeMarcas(wx, wy, raio) {
   return true;
 }
 
+function longeDosSites(lx, ly, w, h, ocupados, folga) {
+  const x0 = lx - folga;
+  const y0 = ly - folga;
+  const x1 = lx + w + folga;
+  const y1 = ly + h + folga;
+  for (let i = 0; i < ocupados.length; i++) {
+    const o = ocupados[i];
+    if (x0 < o.x1 && x1 > o.x0 && y0 < o.y1 && y1 > o.y0) return false;
+  }
+  return true;
+}
+
 function tileOk(ax, ay, lx, ly, bioma) {
   if (lx < 2 || ly < 2 || lx >= AREA_KANTO - 2 || ly >= AREA_KANTO - 2) return false;
   if (pertoDaEstrada(lx, ly)) return false;
@@ -82,7 +98,6 @@ function tileOk(ax, ay, lx, ly, bioma) {
   const h = alturaDoRelevo(origem.x, origem.y);
   const mar = nivelMarBlocos();
   if (bioma === "agua") {
-    // Doca: aceita terra ou beira (não fundo aberto).
     return Number.isFinite(h);
   }
   if (!(h >= mar)) return false;
@@ -110,8 +125,14 @@ function footprintLivre(ax, ay, x0, y0, w, h, bioma, pad) {
  * Valida desnível natural do pad mundial; devolve hPad se ok.
  * @returns {{ x:number, y:number, hPad:number }|null}
  */
-function ancoraComTerraço(ax, ay, template, bioma, x0, y0) {
+function ancoraComTerraço(ax, ay, template, bioma, x0, y0, ocupados) {
   const pad = padFootprint(template);
+  if (
+    ocupados?.length &&
+    !longeDosSites(x0, y0, template.largura, template.altura, ocupados, FOLGA_ENTRE_SITES)
+  ) {
+    return null;
+  }
   if (!footprintLivre(ax, ay, x0, y0, template.largura, template.altura, bioma, pad)) {
     return null;
   }
@@ -129,18 +150,19 @@ function ancoraComTerraço(ax, ay, template, bioma, x0, y0) {
   return { x: x0, y: y0, hPad: amostra.hPad };
 }
 
-function acharAncora(ax, ay, template, bioma) {
+function acharAncora(ax, ay, template, bioma, ocupados, salt) {
   const w = template.largura;
   const h = template.altura;
-  const base = hash3(ax, ay, 991);
+  const base = hash3(ax, ay, 991 + (salt | 0) * 131);
   const xSpan = Math.max(1, AREA_KANTO - 8 - w);
   const ySpan = Math.max(1, AREA_KANTO - 8 - h);
 
-  for (let i = 0; i < 96; i++) {
+  // Mais tentativas aleatórias — varredura densa em AREA 384 é proibitiva.
+  for (let i = 0; i < 160; i++) {
     const r = hash3(base, i, 4049);
     const x0 = 4 + (r % xSpan);
     const y0 = 4 + (hash3(r, i, 7717) % ySpan);
-    const ok = ancoraComTerraço(ax, ay, template, bioma, x0, y0);
+    const ok = ancoraComTerraço(ax, ay, template, bioma, x0, y0, ocupados);
     if (ok) return ok;
   }
 
@@ -151,33 +173,37 @@ function acharAncora(ax, ay, template, bioma) {
     { x: sx + 10, y: sy - h - 10 },
     { x: sx - w - 10, y: sy + 10 },
     { x: sx + 10, y: sy + 10 },
+    { x: 24, y: 24 },
+    { x: AREA_KANTO - w - 24, y: 24 },
+    { x: 24, y: AREA_KANTO - h - 24 },
+    { x: AREA_KANTO - w - 24, y: AREA_KANTO - h - 24 },
   ];
   for (const c of candidatos) {
     const x0 = Math.max(4, Math.min(AREA_KANTO - 4 - w, c.x));
     const y0 = Math.max(4, Math.min(AREA_KANTO - 4 - h, c.y));
-    const ok = ancoraComTerraço(ax, ay, template, bioma, x0, y0);
+    const ok = ancoraComTerraço(ax, ay, template, bioma, x0, y0, ocupados);
     if (ok) return ok;
   }
 
-  const step = w >= 20 || h >= 16 ? 3 : 4;
+  // Grade grossa de fallback (passo ~AREA/24) — não O(AREA²) fino.
+  const step = Math.max(10, (AREA_KANTO / 24) | 0);
   for (let y0 = 4; y0 <= AREA_KANTO - 4 - h; y0 += step) {
     for (let x0 = 4; x0 <= AREA_KANTO - 4 - w; x0 += step) {
-      const ok = ancoraComTerraço(ax, ay, template, bioma, x0, y0);
+      const ok = ancoraComTerraço(ax, ay, template, bioma, x0, y0, ocupados);
       if (ok) return ok;
     }
   }
   return null;
 }
 
-function escolherTemplate(ax, ay, zona, bioma) {
+function escolherTemplate(ax, ay, zona, bioma, slot) {
   if (bioma === "montanha") return TEMPLATES_SITE.mirante;
   let lista = templatesDoBioma(bioma);
   if (!lista.length && bioma === "floresta") lista = templatesDoBioma("terra");
   if (!lista.length) lista = [TEMPLATES_SITE.posto];
-  // Mirante só sobe em montanha.
   lista = lista.filter((t) => t.tipo !== TIPO_SITE.MIRANTE || bioma === "montanha");
   if (!lista.length) lista = [TEMPLATES_SITE.posto];
-  const h = hash3(ax, ay, (zona?.tipo === "mato" ? 91 : 0) + lista.length * 17);
+  const h = hash3(ax, ay, (zona?.tipo === "mato" ? 91 : 0) + lista.length * 17 + (slot | 0) * 53);
   return lista[h % lista.length];
 }
 
@@ -205,43 +231,9 @@ function indexarSite(site) {
   }
 }
 
-/**
- * Resolve (e cacheia) o sítio da área.
- * @returns {object|null}
- */
-export function resolverSiteDaArea(ax, ay) {
-  const key = chaveArea(ax, ay);
-  if (cacheArea.has(key)) return cacheArea.get(key);
-
-  const zona = zonaEm(ax, ay);
-  if (!zonaAceitaSite(zona)) {
-    cacheArea.set(key, null);
-    return null;
-  }
-
-  const bioma = biomaDaZona(zona);
-  const preferido = escolherTemplate(ax, ay, zona, bioma);
-  let lista = templatesDoBioma(bioma);
-  if (!lista.length) lista = templatesDoBioma("terra");
-  const ordenados = [preferido, ...lista.filter((t) => t.id !== preferido.id)];
-
-  let template = preferido;
-  let ancora = null;
-  for (const cand of ordenados) {
-    const b = cand.biomas.includes(bioma) ? bioma : cand.biomas[0];
-    ancora = acharAncora(ax, ay, cand, b);
-    if (ancora) {
-      template = cand;
-      break;
-    }
-  }
-  if (!ancora) {
-    cacheArea.set(key, null);
-    return null;
-  }
-
+function montarSite(ax, ay, template, ancora, slot) {
   const origem = deLocalKanto(ax * AREA_KANTO, ay * AREA_KANTO);
-  const siteId = `site-${ax}-${ay}-${template.id}`;
+  const siteId = `site-${ax}-${ay}-${slot}-${template.id}`;
   const siteBase = expandirTemplate(
     template,
     ax,
@@ -259,7 +251,7 @@ export function resolverSiteDaArea(ax, ay) {
     carimbarPlanoSite(plaza.x0, plaza.y0, plaza.x1, plaza.y1, hPad, anel);
   }
 
-  const site = Object.freeze({
+  return Object.freeze({
     ...siteBase,
     hPad,
     plaza: plaza
@@ -272,10 +264,66 @@ export function resolverSiteDaArea(ax, ay) {
         })
       : null,
   });
+}
 
-  cacheArea.set(key, site);
-  indexarSite(site);
-  return site;
+/**
+ * Resolve (e cacheia) os sítios da área.
+ * @returns {object[]}
+ */
+export function resolverSitesDaArea(ax, ay) {
+  const key = chaveArea(ax, ay);
+  if (cacheArea.has(key)) return cacheArea.get(key) || [];
+
+  const zona = zonaEm(ax, ay);
+  if (!zonaAceitaSite(zona)) {
+    cacheArea.set(key, []);
+    return [];
+  }
+
+  const bioma = biomaDaZona(zona);
+  const alvo = SITES_MIN + (hash3(ax, ay, 55) % (SITES_MAX - SITES_MIN + 1));
+  /** @type {object[]} */
+  const sites = [];
+  /** @type {{ x0:number, y0:number, x1:number, y1:number }[]} */
+  const ocupados = [];
+
+  for (let slot = 0; slot < alvo; slot++) {
+    const preferido = escolherTemplate(ax, ay, zona, bioma, slot);
+    let lista = templatesDoBioma(bioma);
+    if (!lista.length) lista = templatesDoBioma("terra");
+    const ordenados = [preferido, ...lista.filter((t) => t.id !== preferido.id)];
+
+    let template = preferido;
+    let ancora = null;
+    for (const cand of ordenados) {
+      const b = cand.biomas.includes(bioma) ? bioma : cand.biomas[0];
+      ancora = acharAncora(ax, ay, cand, b, ocupados, slot);
+      if (ancora) {
+        template = cand;
+        break;
+      }
+    }
+    if (!ancora) break;
+
+    const site = montarSite(ax, ay, template, ancora, slot);
+    sites.push(site);
+    indexarSite(site);
+    ocupados.push({
+      x0: ancora.x,
+      y0: ancora.y,
+      x1: ancora.x + template.largura,
+      y1: ancora.y + template.altura,
+    });
+  }
+
+  cacheArea.set(key, sites);
+  return sites;
+}
+
+/** Primeiro sítio da área (compat). */
+export function resolverSiteDaArea(ax, ay) {
+  const lista = resolverSitesDaArea(ax, ay);
+  return lista[0] || null;
 }
 
 /** Garante o plano das áreas ao redor (stream). */
@@ -285,13 +333,12 @@ export function garantirSitesVizinhos(ax, ay, raio = 1) {
       const x = ax + dx;
       const y = ay + dy;
       if (x < 0 || y < 0 || x >= LADO_KANTO || y >= LADO_KANTO) continue;
-      resolverSiteDaArea(x, y);
+      resolverSitesDaArea(x, y);
     }
   }
 }
 
 export function sitesDoChunk(cx, cy) {
-  // Garante áreas Kanto que tocam este chunk (coords mundiais → locais).
   const wx0 = cx * CHUNK_XZ;
   const wy0 = cy * CHUNK_XZ;
   const a0 = paraLocalKanto(wx0, wy0);
@@ -305,11 +352,10 @@ export function sitesDoChunk(cx, cy) {
   for (let ay = ay0; ay <= ay1; ay++) {
     for (let ax = ax0; ax <= ax1; ax++) {
       if (ax < 0 || ay < 0 || ax >= LADO_KANTO || ay >= LADO_KANTO) continue;
-      resolverSiteDaArea(ax, ay);
+      resolverSitesDaArea(ax, ay);
       areas.push(ax, ay);
     }
   }
-  // Vizinhos uma vez: ninhos em chunks limítrofes leem temPlanoSite sem re-planejar.
   for (let i = 0; i < areas.length; i += 2) {
     garantirSitesVizinhos(areas[i], areas[i + 1], 1);
   }
@@ -321,10 +367,13 @@ export function siteEm(wx, wy) {
   const ax = Math.floor(local.x / AREA_KANTO);
   const ay = Math.floor(local.y / AREA_KANTO);
   if (ax < 0 || ay < 0 || ax >= LADO_KANTO || ay >= LADO_KANTO) return null;
-  const site = resolverSiteDaArea(ax, ay);
-  if (!site) return null;
-  if (wx < site.x0 || wy < site.y0 || wx >= site.x1 || wy >= site.y1) return null;
-  return site;
+  const lista = resolverSitesDaArea(ax, ay);
+  for (let i = 0; i < lista.length; i++) {
+    const site = lista[i];
+    if (wx < site.x0 || wy < site.y0 || wx >= site.x1 || wy >= site.y1) continue;
+    return site;
+  }
+  return null;
 }
 
 export function limparCacheSites() {
@@ -339,14 +388,21 @@ export function listarSites() {
   const lista = [];
   for (let ay = 0; ay < LADO_KANTO; ay++) {
     for (let ax = 0; ax < LADO_KANTO; ax++) {
-      const s = resolverSiteDaArea(ax, ay);
-      if (s) lista.push(s);
+      const sites = resolverSitesDaArea(ax, ay);
+      for (let i = 0; i < sites.length; i++) lista.push(sites[i]);
     }
   }
   todosSites = lista;
   return lista;
 }
 
-export function peekSiteDaArea(ax, ay) {
+/** @returns {object[]|undefined} */
+export function peekSitesDaArea(ax, ay) {
   return cacheArea.get(chaveArea(ax, ay));
+}
+
+/** Primeiro sítio em cache (compat com marcas). */
+export function peekSiteDaArea(ax, ay) {
+  const lista = cacheArea.get(chaveArea(ax, ay));
+  return lista && lista.length ? lista[0] : undefined;
 }

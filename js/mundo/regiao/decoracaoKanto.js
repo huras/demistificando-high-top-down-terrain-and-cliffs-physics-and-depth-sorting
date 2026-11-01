@@ -18,8 +18,9 @@ import { linhasDaRota, MEIA_LARGURA_ESTRADA } from "./linhasEstrada.js";
 
 const MEIO_RUA = MEIA_LARGURA_ESTRADA;
 const OMBRO = MEIO_RUA + 1.15;
-const PASSO_POSTE = 12;
-const PASSO_POSTE_RUA = 10;
+/** Passo um pouco mais curto — rotas 3× longas ainda sentem densas. */
+const PASSO_POSTE = 10;
+const PASSO_POSTE_RUA = 8;
 const MARGEM_POSTE_RUA = MEIO_RUA + 0.8;
 const DIST_PRACA_POSTE = 1.6;
 const RECUO_POSTE = 14;

@@ -23,8 +23,8 @@ const LOTE_CASA_Y = CORPO_Y + QUINTAL * 2;
 const PASSO_X = LOTE_CASA_X + RUA;
 const PASSO_Y = LOTE_CASA_Y + RUA;
 const MEIO_RUA = 3.5;
-const CENTRO = 64;
-const LIMITE = 36;
+/** Centro da área (= CENTRO_AREA / AREA_KANTO÷2). Sem import de grafoKanto (ciclo). */
+const CENTRO = 192;
 
 /** Máscara O(1): vazio na borda, rua, quintal/lote, corpo do prédio. */
 const MASK_VAZIO = 0;
@@ -32,10 +32,11 @@ const MASK_RUA = 1;
 const MASK_LOTE = 2;
 const MASK_CORPO = 3;
 
+/** Grades ~3× densas (mesmos corpos de prédio, mais lotes). */
 const GRADE = Object.freeze({
-  starter: Object.freeze({ col: 5, lin: 5 }),
-  town: Object.freeze({ col: 5, lin: 5 }),
-  city: Object.freeze({ col: 7, lin: 7 }),
+  starter: Object.freeze({ col: 13, lin: 13 }),
+  town: Object.freeze({ col: 13, lin: 13 }),
+  city: Object.freeze({ col: 19, lin: 19 }),
 });
 
 /** Pegada no chão por papel (não a altura do billboard). */
@@ -346,7 +347,8 @@ export function montarLayout(def) {
 
   const ordemCasa = ordenarCandidatos(candidatos, false);
   const loteCasa = loteDoCorpo(CORPO_X, CORPO_Y);
-  for (let i = 0; i < ordemCasa.length && volumes.length < LIMITE; i++) {
+  const limite = grade.col * grade.lin;
+  for (let i = 0; i < ordemCasa.length && volumes.length < limite; i++) {
     const lugar = encaixarLote(ocupada, grade, [ordemCasa[i]], loteCasa.x, loteCasa.y, fp);
     if (!lugar) continue;
     marcarCelulas(ocupada, grade, lugar.col, lugar.lin, lugar.spanC, lugar.spanL);

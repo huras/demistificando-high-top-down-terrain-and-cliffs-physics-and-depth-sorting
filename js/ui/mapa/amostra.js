@@ -64,7 +64,8 @@ const SEMENTE = 1337;
 const MEIO_RUA = 3.5;
 const SANGRIA = 4;
 const AVENTAL = 18;
-const N = 512;
+/** Grade de costa/relevo Kanto — ~8 blocos/célula (igual ao mapa 4096). */
+const N = 1536;
 const PASSO = EXTENSAO_KANTO / N;
 
 const AGUA_FUNDO = [20, 62, 102];

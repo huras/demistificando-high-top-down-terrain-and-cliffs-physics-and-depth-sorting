@@ -1,5 +1,5 @@
 /**
- * Assa o overworld (8192²) para PNG + veg chunked.
+ * Assa o overworld (LADO_MUNDO²) para PNG + veg chunked.
  * Rode de novo se mudar relevo, bioma, kit, layout de cidade ou filtro de veg.
  *
  * Flags: --so-visao | --so-veg | --tiles tx0:tx1,ty0:ty1

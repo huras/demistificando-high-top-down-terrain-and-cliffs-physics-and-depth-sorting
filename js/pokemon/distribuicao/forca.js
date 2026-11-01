@@ -22,9 +22,9 @@ const INF = 65535;
 export const TILES_POR_NIVEL = 48;
 const NIVEL_MIN = 2;
 
-/** Célula do heatmap / labels (= área Kanto, 128 blocos). */
+/** Célula do heatmap / labels (= área Kanto). */
 export const CELULA_FORCA = AREA_KANTO;
-/** Grade mundo: 8192 / 128 = 64. */
+/** Grade mundo: LADO_MUNDO / AREA_KANTO. */
 export const GRADE_FORCA = (LADO_MUNDO / CELULA_FORCA) | 0;
 
 /** Distância finita para células de hop inalcançáveis. */
@@ -33,7 +33,7 @@ const DIST_INF =
 
 const ALPHA_CALOR = 0.58;
 
-/** Offset da grade Kanto na grade mundo (ORIGEM 2048 / 128 = 16). */
+/** Offset da grade Kanto na grade mundo. */
 const OX_GRADE = (ORIGEM_KANTO_X / AREA_KANTO) | 0;
 const OY_GRADE = (ORIGEM_KANTO_Y / AREA_KANTO) | 0;
 

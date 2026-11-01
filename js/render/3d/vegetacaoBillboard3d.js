@@ -48,7 +48,8 @@ import {
  * Yaw segue a câmera. Na terceira pessoa o cartão deita no X; na mira fica em pé.
  */
 
-const CAP_INSTANCIAS = 4096;
+/** Cidades 3× densas — cabe mais billboard no raio de stream. */
+const CAP_INSTANCIAS = 8192;
 const CHAVE_ARADO = "site:arado";
 /** Fecha a grade do canteiro (geo base 0.92). */
 const ESCALA_ARADO_FAZENDA = 1.08;

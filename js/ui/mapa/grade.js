@@ -9,6 +9,10 @@ export const SEMENTE_MAPA = 1337;
 
 export const LADO_MUNDO = LADO_BOUNDS;
 
+/**
+ * Overview 2048² (passo 12 no mundo 24576) — bake ~igual ao mapa antigo.
+ * Perto tiles 1:1 cobrem nitidez no minimapa; 6144 é upgrade opcional.
+ */
 export const LADO_VISAO = 2048;
 export const PASSO_VISAO = LADO_MUNDO / LADO_VISAO;
 
@@ -25,6 +29,6 @@ export const TEXEL_INTIMO = 4;
 export const LADO_INTIMO = BLOCOS_INTIMO * TEXEL_INTIMO;
 export const GRADE_INTIMO = LADO_MUNDO / BLOCOS_INTIMO;
 
-/** Chunks da máscara de vegetação (não um blob 8192²). */
+/** Chunks da máscara de vegetação (não um blob LADO_MUNDO²). */
 export const LADO_VEG_CHUNK = 1024;
 export const GRADE_VEG = LADO_MUNDO / LADO_VEG_CHUNK;
