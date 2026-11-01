@@ -35,6 +35,11 @@ import {
   obterThrown,
 } from "../../forca/sistemaForca.js";
 import { amostrarMotionFalha, ehFalhaGrab } from "../../forca/falhaLevantar.js";
+import {
+  geoSoloArado,
+  LIFT_SOLO_ARADO,
+  materialSoloArado,
+} from "./soloArado.js";
 
 /**
  * Vegetação HD-2D: um InstancedMesh por sprite presente no stream.
@@ -43,6 +48,9 @@ import { amostrarMotionFalha, ehFalhaGrab } from "../../forca/falhaLevantar.js";
  */
 
 const CAP_INSTANCIAS = 4096;
+const CHAVE_ARADO = "site:arado";
+/** Fecha a grade do canteiro (geo base 0.92). */
+const ESCALA_ARADO_FAZENDA = 1.08;
 
 function estiloDe(prop) {
   if (prop.tipo === "santuario") return SHRINE_DRAW_SCALE;
@@ -64,12 +72,19 @@ function chaveDe(prop) {
   if (!prop || prop.oculto || prop.ocultoBillboard || prop.tipo === "placa") return null;
   if (prop.tipo === "siteCasa") return null;
   if (prop.fase === FASE.REMOVIDO) return null;
+  if (prop.tipo === "site" && (prop.kind === "arado" || prop.propId === "arado")) {
+    return CHAVE_ARADO;
+  }
   // Props com malha 3D (ex.: toras HGSS) — stream em edificiosSites.
   if (prop.tipo === "site" && modeloDoPropSite(prop.propId || prop.sprite)) return null;
   if (prop.tipo === "site") return `site:${prop.propId || prop.sprite || "prop"}`;
   if (prop.tipo === "arvore" && (prop.fase === FASE.TOCO || prop.fase === FASE.CAINDO)) return `toco:${prop.sprite || "arvore"}`;
   if (prop.tipo === "arvore" && prop.fase === FASE.TOCO_QUEIMADO) return `tocoq:${prop.sprite || "arvore"}`;
   return prop.sprite || prop.tipo || null;
+}
+
+function ehArado(prop) {
+  return prop?.tipo === "site" && (prop.kind === "arado" || prop.propId === "arado");
 }
 
 /** Raio de desenho near = disco do stream (props só existem nos chunks carregados). */
@@ -210,6 +225,10 @@ export function criarVegetacaoBillboard3d() {
       lote.sombra.dispatchEvent({ type: "dispose" });
     }
     lote.material.dispose();
+    if (lote.arado) {
+      // geo/tex compartilhados em soloArado.js
+      return;
+    }
     lote.matSombra?.dispose();
     lote.depth.dispose();
     if (lote.texturasAnim) {
@@ -224,6 +243,45 @@ export function criarVegetacaoBillboard3d() {
       lote.textura.dispose();
     }
     lote.geo?.dispose();
+  }
+
+  function montarLoteArado(def) {
+    const anterior = lotes.get(def.chave);
+    if (anterior) soltarLote(anterior);
+    const material = materialSoloArado(false);
+    const geo = geoSoloArado();
+    const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
+    mesh.name = "veg-arado";
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = true;
+    mesh.renderOrder = 2;
+    mesh.count = Math.min(def.itens.length, CAP_INSTANCIAS);
+    mesh.raycast = () => {};
+    grupo.add(mesh);
+    const lote = {
+      chave: def.chave,
+      mesh,
+      sombra: null,
+      material,
+      matSombra: null,
+      depth: null,
+      textura: material.map,
+      texturasAnim: null,
+      img: material.map,
+      itens: def.itens,
+      largura: ESCALA_ARADO_FAZENDA,
+      altura: ESCALA_ARADO_FAZENDA,
+      geo,
+      pivotX: 0.5,
+      pivotY: 0.5,
+      opacoY: 1,
+      dz: 0,
+      grama: false,
+      arado: true,
+    };
+    lotes.set(def.chave, lote);
+    return lote;
   }
 
   function aplicarMapaBerry(lote, quadro) {
@@ -397,6 +455,14 @@ export function criarVegetacaoBillboard3d() {
 
   function sincronizarLotes(grupos) {
     for (const def of grupos.values()) {
+      if (def.chave === CHAVE_ARADO || ehArado(def.amostra)) {
+        let lote = lotes.get(CHAVE_ARADO);
+        if (!lote?.arado) lote = montarLoteArado(def);
+        lote.itens = def.itens;
+        lote.mesh.count = def.itens.length;
+        lote.mesh.visible = def.itens.length > 0;
+        continue;
+      }
       const img = imagemDe(def.amostra);
       let lote = lotes.get(def.chave);
       if (!img) {
@@ -474,6 +540,32 @@ export function criarVegetacaoBillboard3d() {
     });
   }
 
+  function escreverArado(mesh, itens, limites, refrescarAltura) {
+    if (!mesh) return;
+    const s = ESCALA_ARADO_FAZENDA;
+    for (let i = 0; i < itens.length; i++) {
+      const p = itens[i];
+      let base;
+      if (!refrescarAltura && p._vegArado && Number.isFinite(p._vegArado.baseY)) {
+        base = p._vegArado.baseY;
+      } else {
+        base = alturaEm(Math.floor(p.x), Math.floor(p.y));
+        if (!p._vegArado) p._vegArado = {};
+        p._vegArado.baseY = base;
+      }
+      dummy.position.set(p.x, base * ALTURA_BLOCO + LIFT_SOLO_ARADO, p.y);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(s, 1, s);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    if (itens.length) mesh.instanceMatrix.needsUpdate = true;
+    if (limites && itens.length) {
+      mesh.computeBoundingBox();
+      mesh.computeBoundingSphere();
+    }
+  }
+
   function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora, pivotY, dz, opacoY, refrescarAltura) {
     if (!mesh) return;
     for (let i = 0; i < itens.length; i++) {
@@ -519,6 +611,10 @@ export function criarVegetacaoBillboard3d() {
     const escreverSombra = opts.escreverSombra !== false;
     for (const lote of lotes.values()) {
       const { mesh, sombra, itens, largura, altura, pivotY, dz, opacoY } = lote;
+      if (lote.arado) {
+        escreverArado(mesh, itens, recalcularLimites, refrescarAltura);
+        continue;
+      }
       const pe = Number.isFinite(opacoY) ? opacoY : 1;
       escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora, pivotY, dz, pe, refrescarAltura);
       if (escreverSombra) {

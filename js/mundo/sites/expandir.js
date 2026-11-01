@@ -97,6 +97,15 @@ export function expandirTemplate(template, ax, ay, ancoraX, ancoraY, siteId, ori
     })
   );
 
+  const canteiros = (template.canteiros ?? []).map((c) =>
+    Object.freeze({
+      x0: Math.floor(ox + ancoraX + c.dx),
+      y0: Math.floor(oy + ancoraY + c.dy),
+      x1: Math.floor(ox + ancoraX + c.dx + c.cols),
+      y1: Math.floor(oy + ancoraY + c.dy + c.rows),
+    })
+  );
+
   const mapX =
     edificios.length > 0
       ? edificios.reduce((s, h) => s + h.x, 0) / edificios.length
@@ -125,6 +134,7 @@ export function expandirTemplate(template, ax, ay, ancoraX, ancoraY, siteId, ori
     y1: oy + ancoraY + template.altura,
     edificios: Object.freeze(edificios),
     props: Object.freeze(props),
+    canteiros: Object.freeze(canteiros),
     navegacao,
   });
 }

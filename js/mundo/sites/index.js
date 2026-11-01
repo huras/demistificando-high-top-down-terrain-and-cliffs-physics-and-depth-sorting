@@ -25,7 +25,7 @@ export {
   listarSites,
   peekSiteDaArea,
 } from "./plano.js";
-export { celulasSiteChunk, propsSiteChunk } from "./colocacao.js";
+export { celulasSiteChunk, celulasAradoSiteChunk, propsSiteChunk } from "./colocacao.js";
 export {
   carregarAtlasSites,
   atlasSitesPronto,

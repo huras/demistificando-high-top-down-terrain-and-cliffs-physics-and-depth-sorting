@@ -8,6 +8,9 @@ import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
 import { naSaidaLaboratorio, spawnLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { naSaidaCentro, spawnCentro } from "../mundo/cidade/centro.js";
 import { naSaidaLoja, spawnLoja } from "../mundo/cidade/loja.js";
+import { naSaidaGinasio, spawnGinasio } from "../mundo/cidade/ginasio.js";
+import { naSaidaMansao, spawnMansao } from "../mundo/cidade/mansao.js";
+import { definirLayoutSala } from "../mundo/cidade/interiorCasa.js";
 import {
   atualizarStreaming,
   atualizarStreamingDuplo,
@@ -54,7 +57,7 @@ import {
 import { checarSaidaSantuario, sairSantuario } from "../santuario/entrar.js";
 import { aoEntrarCasa, aoSairInterior } from "../npc/index.js";
 
-const PAPEIS = new Set(["casa", "loja", "centro", "lab"]);
+const PAPEIS = new Set(["casa", "loja", "centro", "lab", "ginasio", "mansao"]);
 /**
  * Frente da porta, maior que o alcance de grudar na parede.
  * Entrar ganha de escalar enquanto o corpo está nessa faixa.
@@ -217,12 +220,23 @@ export function tentarEntrar(corpo, infoPronto) {
   const info = infoPronto || entradaPerto(corpo.x, corpo.y);
   if (!info || info.predio.porta === false) return false;
   const papel = info.predio.papel;
-  if (papel !== "casa" && papel !== "lab" && papel !== "centro" && papel !== "loja") return false;
+  if (
+    papel !== "casa" &&
+    papel !== "lab" &&
+    papel !== "centro" &&
+    papel !== "loja" &&
+    papel !== "ginasio" &&
+    papel !== "mansao"
+  ) {
+    return false;
+  }
   return iniciarPortaTransicao(corpo, "enter", () => {
     if (papel === "casa") entrarSala3d(corpo, info);
     else if (papel === "lab") entrarLaboratorio(corpo, info);
     else if (papel === "centro") entrarHub(corpo, info, spawnCentro(), "centro");
-    else entrarHub(corpo, info, spawnLoja(), "loja");
+    else if (papel === "loja") entrarHub(corpo, info, spawnLoja(), "loja");
+    else if (papel === "ginasio") entrarHub(corpo, info, spawnGinasio(), "ginasio");
+    else entrarHub(corpo, info, spawnMansao(), "mansao");
   });
 }
 
@@ -266,6 +280,7 @@ function entrarHub(corpo, info, spawn, papel) {
 function entrarSala3d(corpo, info) {
   const spawn = spawnSala();
   const casaId = idCasa(info);
+  definirLayoutSala(casaId);
   estado.interior = {
     sala3d: true,
     papel: "casa",
@@ -340,7 +355,11 @@ export function checarSaidaSala(corpo) {
         ? naSaidaCentro(corpo.x, corpo.y)
         : papel === "loja"
           ? naSaidaLoja(corpo.x, corpo.y)
-          : naSaidaSala(corpo.x, corpo.y);
+          : papel === "ginasio"
+            ? naSaidaGinasio(corpo.x, corpo.y)
+            : papel === "mansao"
+              ? naSaidaMansao(corpo.x, corpo.y)
+              : naSaidaSala(corpo.x, corpo.y);
   if (!naSaida) return false;
   return iniciarPortaTransicao(corpo, "exit", () => sairInterior(corpo));
 }

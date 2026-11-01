@@ -22,8 +22,8 @@ let elegiveis = new Set();
 let parties = { templates: {}, byPeopleId: {} };
 /** @type {{ masculino: string[], feminino: string[], neutro: string[] }} */
 let nomes = { masculino: [], feminino: [], neutro: [] };
-/** @type {{ cumprimentos: string[], casa: string[], viajante: string[] }} */
-let falas = { cumprimentos: [], casa: [], viajante: [] };
+/** @type {{ cumprimentos: string[], casa: string[], viajante: string[], celadon: string[], casaCeladon: string[] }} */
+let falas = { cumprimentos: [], casa: [], viajante: [], celadon: [], casaCeladon: [] };
 /** @type {Map<string, string>} */
 const papeis = new Map();
 
@@ -198,6 +198,8 @@ export async function carregarCatalogoNpc() {
         cumprimentos: falasDocRaw.cumprimentos || [],
         casa: falasDocRaw.casa || [],
         viajante: falasDocRaw.viajante || [],
+        celadon: falasDocRaw.celadon || [],
+        casaCeladon: falasDocRaw.casaCeladon || [],
       };
     }
 

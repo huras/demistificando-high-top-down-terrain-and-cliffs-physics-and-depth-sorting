@@ -91,6 +91,15 @@ export function acaoContexto(ctx) {
     return { id: "loja", rotulo: "Balcão", ancora: ancoraDoHub(papelHub, alvoHub) };
   }
 
+  if (alvoHub?.tipo === "npc" || alvoHub?.tipo === "lore") {
+    escaladaAte = 0;
+    return {
+      id: "hubFalar",
+      rotulo: alvoHub.tipo === "lore" ? "Ler" : alvoHub.nome || "Falar",
+      ancora: ancoraDoHub(papelHub, alvoHub),
+    };
+  }
+
   if (alvoLab?.tipo === "capsula") {
     const tank = alvoLab.ref;
     return {

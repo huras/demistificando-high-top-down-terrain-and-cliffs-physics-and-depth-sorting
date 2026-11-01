@@ -31,6 +31,8 @@ import { anexarCascaSala, anexarDecoracaoCidade, anexarInteriores, carregarSprit
 import { atualizarLaboratorio, montarLaboratorio3d } from "./laboratorio3d.js";
 import { atualizarCentro, montarCentro3d } from "./centro3d.js";
 import { montarLoja3d } from "./loja3d.js";
+import { montarGinasio3d } from "./ginasio3d.js";
+import { montarMansao3d } from "./mansao3d.js";
 import { carregarSpritesPredio, chaveSpritePredio, criarSpritePredio, montarUsina } from "./prediosSprite.js";
 import { aplicarEscalaCasa, aplicarEscalaProp, aplicarFatorYCasa } from "./escalaVertical.js";
 import { atualizarParedesDual } from "./paredeInteriorDual.js";
@@ -581,6 +583,8 @@ export function criarEdificiosCidade() {
   montarLaboratorio3d(grupo);
   montarCentro3d(grupo);
   montarLoja3d(grupo);
+  montarGinasio3d(grupo);
+  montarMansao3d(grupo);
   marcarReflexo(grupo);
 
   let yawAplicado = NaN;

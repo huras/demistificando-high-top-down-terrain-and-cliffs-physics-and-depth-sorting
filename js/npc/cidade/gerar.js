@@ -91,7 +91,12 @@ export function gerarNpcsCidade() {
         facing: { x: 0, y: 1 },
         raio: 0.4,
         modo: id.perfilAndar === PERFIL_ANDAR.STILL ? "parado" : "lote",
-        fala: [falaCivil(`${seed}:fala`, "cumprimentos")],
+        fala: [
+          falaCivil(
+            `${seed}:fala`,
+            def.key === "celadon" ? "celadon" : "cumprimentos",
+          ),
+        ],
         retrato: null,
         casa: casaMundo,
         ox,

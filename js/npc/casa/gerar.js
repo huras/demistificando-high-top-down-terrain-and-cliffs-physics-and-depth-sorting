@@ -33,6 +33,7 @@ export function gerarNpcsCasa(predioId = "casa") {
     { x: MIOL_X - 3.5, y: 5.2 },
     { x: MIOL_X * 0.5, y: MIOL_Y - 4 },
   ];
+  const celadon = String(predioId).startsWith("celadon:");
   for (let i = 0; i < qtd; i++) {
     const seed = `${predioId}:indoor:${i}`;
     const id = resolverNpc({ seed });
@@ -61,10 +62,15 @@ export function gerarNpcsCasa(predioId = "casa") {
       facing: { x: 0, y: 1 },
       raio: 0.36,
       modo: "parado",
-      fala: [
-        falaCivil(`${seed}:a`, "casa"),
-        falaCivil(`${seed}:b`, "cumprimentos"),
-      ],
+      fala: celadon
+        ? [
+            falaCivil(`${seed}:a`, "casaCeladon"),
+            falaCivil(`${seed}:b`, "celadon"),
+          ]
+        : [
+            falaCivil(`${seed}:a`, "casa"),
+            falaCivil(`${seed}:b`, "cumprimentos"),
+          ],
       retrato: null,
       vx: 0,
       vy: 0,

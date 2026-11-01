@@ -12,6 +12,8 @@ import { aplicarSalaNoChunk } from "../cidade/sala3d.js";
 import { aplicarLaboratorioNoChunk, dentroDoTerrenoLaboratorio } from "../cidade/laboratorio.js";
 import { aplicarCentroNoChunk, plantaCentro } from "../cidade/centro.js";
 import { aplicarLojaNoChunk, plantaLoja } from "../cidade/loja.js";
+import { aplicarGinasioNoChunk, plantaGinasio } from "../cidade/ginasio.js";
+import { aplicarMansaoNoChunk, plantaMansao } from "../cidade/mansao.js";
 import { aplicarSantuarioNoChunk } from "../../santuario/carimbar.js";
 import { dentroDoTerrenoHub } from "../cidade/plantaHub.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
@@ -36,6 +38,7 @@ import {
   propsLarChunk,
 } from "../../pokemon/laresSitio.js";
 import {
+  celulasAradoSiteChunk,
   celulasSiteChunk,
   propsSiteChunk,
 } from "../sites/colocacao.js";
@@ -70,6 +73,7 @@ export function* passosChunk(chunk, seed) {
   // POI outdoor antes dos lares — ninhos não nascem no pad (larTocaPoi + stamp).
   // alturaDoRelevo lê carimbo de site/lar/letra nas colunas abaixo.
   const sitioOutdoor = celulasSiteChunk(chunk.cx, chunk.cy);
+  const aradoSite = celulasAradoSiteChunk(chunk.cx, chunk.cy);
   garantirLaresNoChunk(chunk.cx, chunk.cy);
   const plazaLetras = celulasPlazaLetrasChunk(chunk.cx, chunk.cy);
   const sitioLetras = celulasSitioLetrasChunk(chunk.cx, chunk.cy);
@@ -104,7 +108,12 @@ export function* passosChunk(chunk, seed) {
 
       const h = alturaDoRelevo(wx, wy);
       alturas[ly * CHUNK_XZ + lx] = h;
-      const topoPlaza = plazaLetras?.has(`${wx},${wy}`) ? BLOCO.PEDRA : superficieDoRelevo(wx, wy);
+      const chaveCel = `${wx},${wy}`;
+      const topoPlaza = plazaLetras?.has(chaveCel)
+        ? BLOCO.PEDRA
+        : aradoSite?.has(chaveCel)
+          ? BLOCO.TERRA
+          : superficieDoRelevo(wx, wy);
       preencherColunaSolida(chunk, lx, ly, h, topoPlaza);
       if (amostra) {
         const extra = amostra.predio;
@@ -232,6 +241,8 @@ export function* passosChunk(chunk, seed) {
       if (dentroDoTerrenoLaboratorio(wx, wy)) continue;
       if (dentroDoTerrenoHub(plantaCentro(), wx, wy)) continue;
       if (dentroDoTerrenoHub(plantaLoja(), wx, wy)) continue;
+      if (dentroDoTerrenoHub(plantaGinasio(), wx, wy)) continue;
+      if (dentroDoTerrenoHub(plantaMansao(), wx, wy)) continue;
       if (dentroDoTerrenoSantuario(wx, wy)) continue;
       if (bloqueioSantuario?.has(`${wx},${wy}`)) continue;
       if (bloqueioLetras?.has(`${wx},${wy}`)) continue;
@@ -292,6 +303,8 @@ export function* passosChunk(chunk, seed) {
   medir("laboratorio", () => aplicarLaboratorioNoChunk(chunk));
   medir("centro", () => aplicarCentroNoChunk(chunk));
   medir("loja", () => aplicarLojaNoChunk(chunk));
+  medir("ginasio", () => aplicarGinasioNoChunk(chunk));
+  medir("mansao", () => aplicarMansaoNoChunk(chunk));
   medir("santuario", () => aplicarSantuarioNoChunk(chunk));
   medir("recalcularSuperficies", () => recalcularSuperficies(chunk));
   chunk.gerado = true;

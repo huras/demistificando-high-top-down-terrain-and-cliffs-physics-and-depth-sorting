@@ -35,6 +35,15 @@ function plantacaoGrade(x0, y0, cols, rows, passo = 1.2) {
   return lista;
 }
 
+/** Células de chão arado sob a grade (margem pequena além do último pé). */
+function canteiroDeGrade(x0, y0, cols, rows, passo = 1.15) {
+  const dx = Math.floor(x0 - 0.2);
+  const dy = Math.floor(y0 - 0.2);
+  const x1 = Math.ceil(x0 + (cols - 1) * passo + 0.9);
+  const y1 = Math.ceil(y0 + (rows - 1) * passo + 0.9);
+  return Object.freeze({ dx, dy, cols: x1 - dx, rows: y1 - dy });
+}
+
 export const TEMPLATES_SITE = Object.freeze({
   fazenda: Object.freeze({
     id: "fazenda",
@@ -66,6 +75,10 @@ export const TEMPLATES_SITE = Object.freeze({
       prop(PROP_SITE.toras, 6, 16),
       ...plantacaoGrade(8, 17, 6, 4, 1.15),
       ...plantacaoGrade(16, 18, 4, 3, 1.15),
+    ]),
+    canteiros: Object.freeze([
+      canteiroDeGrade(8, 17, 6, 4, 1.15),
+      canteiroDeGrade(16, 18, 4, 3, 1.15),
     ]),
   }),
 

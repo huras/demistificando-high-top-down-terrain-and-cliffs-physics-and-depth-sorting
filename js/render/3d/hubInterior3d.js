@@ -29,6 +29,8 @@ const RECORTE = Object.freeze({
   pc: Object.freeze({ url: "/ref/sprites/interiors/lab/lab-computer-blank.png" }),
   /** Fallback visual da prateleira (mesma estante do centro/lab). */
   estante: Object.freeze({ url: FOLHA_MOVEIS, col: 0, row: 45, cols: 2, rows: 2, tile: 16 }),
+  vaso: Object.freeze({ url: FOLHA_MOVEIS, col: 5, row: 40, cols: 1, rows: 2, tile: 16 }),
+  mesa: Object.freeze({ url: FOLHA_MOVEIS, col: 42, row: 15, cols: 3, rows: 3, tile: 16 }),
 });
 
 function materialCaixa(cor) {
@@ -203,16 +205,24 @@ export function montarHub3d(grupo, planta, bolas) {
     imagem(RECORTE.cura.url).catch(() => null),
     imagem(RECORTE.pc.url).catch(() => null),
     imagem(RECORTE.estante.url).catch(() => null),
+    imagem(RECORTE.vaso.url).catch(() => null),
+    imagem(RECORTE.mesa.url).catch(() => null),
     carregarSlotsCura(),
   ]).then((imagens) => {
-    const [bg, fg, gente, curaImg, pcImg, estanteImg] = imagens;
+    const [bg, fg, gente, curaImg, pcImg, estanteImg, vasoImg, mesaImg] = imagens;
     if (bg) anexarChao(sala, planta, texturaChao(bg, planta.camada));
     const moldeNpc = new Map();
     let moldeCura = null;
     let moldePc = null;
     let moldePrateleira = null;
+    let moldeEstante = null;
+    let moldeVaso = null;
+    let moldeMesa = null;
     if (curaImg) moldeCura = moldePe(recortar(curaImg, RECORTE.cura));
     if (pcImg) moldePc = moldePe(pcImg);
+    if (estanteImg) moldeEstante = moldePe(recortar(estanteImg, RECORTE.estante));
+    if (vasoImg) moldeVaso = moldePe(recortar(vasoImg, RECORTE.vaso));
+    if (mesaImg) moldeMesa = moldePe(recortar(mesaImg, RECORTE.mesa));
     for (let i = 0; i < planta.props.length; i++) {
       const prop = planta.props[i];
       const x = planta.origemX + prop.x;
@@ -233,13 +243,22 @@ export function montarHub3d(grupo, planta, bolas) {
       } else if (prop.id === "pc" && moldePc) {
         const inst = porBillboard(moldePc, x, z);
         if (inst) sala.add(inst);
+      } else if (prop.id === "estante" && moldeEstante) {
+        const inst = porBillboard(moldeEstante, x, z);
+        if (inst) sala.add(inst);
+      } else if (prop.id === "vaso" && moldeVaso) {
+        const inst = porBillboard(moldeVaso, x, z);
+        if (inst) sala.add(inst);
+      } else if (prop.id === "mesa" && moldeMesa) {
+        const inst = porBillboard(moldeMesa, x, z);
+        if (inst) sala.add(inst);
       } else if (prop.id === "prateleira") {
         if (!moldePrateleira) {
           let tela = null;
           if (fg && prop.tiles) tela = recorteTiles(fg, prop.tiles);
           else if (fg && prop.area) tela = recorteArea(fg, planta.camada, prop.area);
           if (tela) moldePrateleira = moldePe(tela);
-          else if (estanteImg) moldePrateleira = moldePe(recortar(estanteImg, RECORTE.estante));
+          else if (moldeEstante) moldePrateleira = moldeEstante;
         }
         if (!moldePrateleira) continue;
         const inst = porBillboard(moldePrateleira, x, z);

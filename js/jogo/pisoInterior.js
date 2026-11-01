@@ -7,6 +7,8 @@ import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { medidasSala, PROF_PORTA_SALA } from "../mundo/cidade/sala3d.js";
 import { plantaCentro } from "../mundo/cidade/centro.js";
 import { plantaLoja } from "../mundo/cidade/loja.js";
+import { plantaGinasio } from "../mundo/cidade/ginasio.js";
+import { plantaMansao } from "../mundo/cidade/mansao.js";
 import { plantaLaboratorio, ORIGEM_LAB_X, ORIGEM_LAB_Y, COLS_LAB, ROWS_LAB } from "../mundo/cidade/laboratorio.js";
 import {
   ORIGEM_SANTUARIO_X,
@@ -87,6 +89,8 @@ export function pisoInteriorValido(x, y) {
   if (papel === "casa") return celulaCasa(x, y);
   if (papel === "centro") return celulaHub(plantaCentro(), x, y);
   if (papel === "loja") return celulaHub(plantaLoja(), x, y);
+  if (papel === "ginasio") return celulaHub(plantaGinasio(), x, y);
+  if (papel === "mansao") return celulaHub(plantaMansao(), x, y);
   if (papel === "lab") return celulaLab(x, y);
   if (papel === "santuario") return celulaSantuario(x, y);
   return true;

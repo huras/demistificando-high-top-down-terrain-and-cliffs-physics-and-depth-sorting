@@ -39,6 +39,35 @@ export function celulasSiteChunk(cx, cy) {
 }
 
 /**
+ * Células de canteiro arado (topo BLOCO.TERRA) neste chunk.
+ * @returns {Set<string>|null}
+ */
+export function celulasAradoSiteChunk(cx, cy) {
+  const sites = sitesDoChunk(cx, cy);
+  if (!sites.length) return null;
+  const baseX = cx * CHUNK_XZ;
+  const baseY = cy * CHUNK_XZ;
+  /** @type {Set<string>} */
+  const set = new Set();
+  for (const site of sites) {
+    const lista = site.canteiros;
+    if (!lista?.length) continue;
+    for (let i = 0; i < lista.length; i++) {
+      const c = lista[i];
+      for (let y = c.y0 | 0; y < (c.y1 | 0); y++) {
+        for (let x = c.x0 | 0; x < (c.x1 | 0); x++) {
+          if (x < baseX || y < baseY || x >= baseX + CHUNK_XZ || y >= baseY + CHUNK_XZ) {
+            continue;
+          }
+          set.add(chaveCelula(x, y));
+        }
+      }
+    }
+  }
+  return set.size ? set : null;
+}
+
+/**
  * Props billboard + discos de casa pra colisão/visual stream.
  * @returns {object[]}
  */
@@ -68,6 +97,32 @@ export function propsSiteChunk(cx, cy) {
         siteId: site.id,
         siteTipo: site.tipo,
       });
+    }
+    const canteiros = site.canteiros;
+    if (canteiros?.length) {
+      for (let i = 0; i < canteiros.length; i++) {
+        const c = canteiros[i];
+        for (let y = c.y0 | 0; y < (c.y1 | 0); y++) {
+          for (let x = c.x0 | 0; x < (c.x1 | 0); x++) {
+            if (x < baseX || y < baseY || x >= xMax || y >= yMax) continue;
+            const cx = x + 0.5;
+            const cy = y + 0.5;
+            out.push({
+              id: `${site.id}-arado-${x}-${y}`,
+              x: cx,
+              y: cy,
+              z: alturaDoRelevo(cx, cy),
+              tipo: "site",
+              propId: "arado",
+              sprite: "arado",
+              r: 0,
+              kind: "arado",
+              siteId: site.id,
+              siteTipo: site.tipo,
+            });
+          }
+        }
+      }
     }
     for (const e of site.edificios) {
       if (e.x < baseX - 2 || e.y < baseY - 2 || e.x >= xMax + 2 || e.y >= yMax + 2) continue;

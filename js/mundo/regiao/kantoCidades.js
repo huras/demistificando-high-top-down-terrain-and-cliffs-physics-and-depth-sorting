@@ -43,9 +43,11 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 16,
     ay: 11,
     tier: "city",
+    lotesCol: 8,
+    lotesLin: 8,
     ginasio: "erika",
     fonte: true,
-    marco: Object.freeze({ tipo: "ruina" }),
+    marco: Object.freeze({ tipo: "mansao" }),
   }),
   Object.freeze({
     key: "saffron",

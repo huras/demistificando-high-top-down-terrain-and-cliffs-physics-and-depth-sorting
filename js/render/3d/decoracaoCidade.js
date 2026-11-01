@@ -7,7 +7,9 @@ import {
   PECAS_INTERIOR,
   PX_MOVEL,
   moveisDaSala,
+  registrarRefreshMoveis,
 } from "../../mundo/cidade/interiorCasa.js";
+import { indexarColisaoCidade } from "../../mundo/cidade/colisaoDecor.js";
 import { medidasSala, PROF_PORTA_SALA } from "../../mundo/cidade/sala3d.js";
 import { geometriaNoPe } from "./billboard/indice.js";
 import { pivoDaImagem } from "../pivoPe.js";
@@ -417,24 +419,24 @@ function ehCama(id) {
   return id === "cama-azul" || id === "cama-vermelha" || id === "cama-verde";
 }
 
-export function anexarInteriores(grupo, moveis) {
-  const lista = moveisDaSala();
-  let vasoI = 0;
-  const idsProps = ["cama", "mesa-1"];
-  const idsVaso = [];
-  for (let i = 0; i < lista.length; i++) {
-    if (lista[i].id === "vaso") {
-      const id = VASOS_CASA[vasoI++ % VASOS_CASA.length];
-      idsVaso.push(id);
-      idsProps.push(id);
-    }
+function limparMoveis(grupo) {
+  const lixo = [];
+  for (let i = 0; i < grupo.children.length; i++) {
+    const filho = grupo.children[i];
+    if (String(filho.name || "").startsWith("movel-")) lixo.push(filho);
   }
+  for (let i = 0; i < lixo.length; i++) grupo.remove(lixo[i]);
+}
+
+export function anexarInteriores(grupo, moveis) {
   const colocar = () => {
-    vasoI = 0;
+    limparMoveis(grupo);
+    const lista = moveisDaSala();
+    let vasoI = 0;
     for (let i = 0; i < lista.length; i++) {
       const item = lista[i];
       if (item.id === "vaso") {
-        const id = idsVaso[vasoI++] || "vaso-1";
+        const id = VASOS_CASA[vasoI++ % VASOS_CASA.length];
         const prop = instanciarProp(id, item.x, item.y);
         if (prop) {
           prop.name = `movel-${item.id}`;
@@ -464,11 +466,14 @@ export function anexarInteriores(grupo, moveis) {
       inst.name = `movel-${item.id}`;
       grupo.add(inst);
     }
+    indexarColisaoCidade();
   };
+  const idsProps = ["cama", "mesa-1", ...VASOS_CASA];
   carregarMoldesProps(idsProps).then(colocar).catch((erro) => {
     console.error("moveis 3d da casa", erro);
     colocar();
   });
+  registrarRefreshMoveis(colocar);
 }
 
 export function criarDecoracaoRotas(moldePoste, acender) {

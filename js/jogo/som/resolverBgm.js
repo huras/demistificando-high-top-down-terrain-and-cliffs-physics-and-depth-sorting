@@ -14,6 +14,7 @@ export const PAPEL_HUB_BGM = Object.freeze({
   loja: "hub.mart",
   lab: "hub.lab",
   ginasio: "hub.gym",
+  mansao: "hub.lab",
 });
 
 const HOLD_BIOMA_SEC = 3;

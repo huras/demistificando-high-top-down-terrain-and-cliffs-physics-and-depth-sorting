@@ -38,6 +38,27 @@
       13
     ]
   },
+  "celadon-city-house": {
+    "porta": [
+      93,
+      94
+    ],
+    "janela": [
+      0,
+      1,
+      2
+    ]
+  },
+  "ginasio": {
+    "porta": [
+      177
+    ]
+  },
+  "mansao": {
+    "porta": [
+      80
+    ]
+  },
   "copycat's-house": {
     "porta": [
       14

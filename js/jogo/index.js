@@ -204,7 +204,13 @@ export function tickJogo(dt, corpo) {
   const papelHub = estado.interior?.sala3d ? estado.interior.papel : "";
   const alvoLab = noLab && !estado.dialogo && !estado.painel && !estado.ganhoAberto ? alvoLaboratorio(corpo.x, corpo.y) : null;
   const alvoHub =
-    (papelHub === "centro" || papelHub === "loja") && !estado.dialogo && !estado.painel && !estado.ganhoAberto
+    (papelHub === "centro" ||
+      papelHub === "loja" ||
+      papelHub === "ginasio" ||
+      papelHub === "mansao") &&
+    !estado.dialogo &&
+    !estado.painel &&
+    !estado.ganhoAberto
       ? alvoDoHub(papelHub, corpo.x, corpo.y)
       : null;
   const curaPerto = (alvoLab?.tipo === "cura" || alvoHub?.tipo === "cura") && !curaOcupada();
@@ -345,6 +351,7 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
     else executarAlvoLaboratorio(alvoLab);
   } else if (acao.id === "pc") executarAlvoHub(alvoHub);
   else if (acao.id === "loja") executarAlvoHub(alvoHub);
+  else if (acao.id === "hubFalar") executarAlvoHub(alvoHub);
   else if (acao.id === "capsula") executarAlvoLaboratorio(alvoLab);
   else if (acao.id === "inicial") executarAlvoLaboratorio(alvoLab);
   else if (acao.id === "placa") lerPlaca(acao.placa);
@@ -457,7 +464,13 @@ function interagir(corpo) {
     if (perto) executarAlvoLaboratorio(perto);
     return;
   }
-  if (estado.interior?.sala3d && (estado.interior.papel === "centro" || estado.interior.papel === "loja")) {
+  if (
+    estado.interior?.sala3d &&
+    (estado.interior.papel === "centro" ||
+      estado.interior.papel === "loja" ||
+      estado.interior.papel === "ginasio" ||
+      estado.interior.papel === "mansao")
+  ) {
     const perto = alvoDoHub(estado.interior.papel, corpo.x, corpo.y);
     if (perto) executarAlvoHub(perto);
     return;

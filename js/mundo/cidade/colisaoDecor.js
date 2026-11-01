@@ -13,6 +13,8 @@ import { moveisDaSala } from "./interiorCasa.js";
 import { plantaLaboratorio } from "./laboratorio.js";
 import { plantaCentro } from "./centro.js";
 import { plantaLoja } from "./loja.js";
+import { plantaGinasio } from "./ginasio.js";
+import { plantaMansao } from "./mansao.js";
 
 const RAIO_QUADRO = 0.72;
 const RAIO_CORREIO = 0.38;
@@ -64,6 +66,10 @@ export function indexarColisaoCidade() {
   for (let i = 0; i < discosCentro.length; i++) lista.push(discosCentro[i]);
   const discosLoja = plantaLoja().discos;
   for (let i = 0; i < discosLoja.length; i++) lista.push(discosLoja[i]);
+  const discosGinasio = plantaGinasio().discos;
+  for (let i = 0; i < discosGinasio.length; i++) lista.push(discosGinasio[i]);
+  const discosMansao = plantaMansao().discos;
+  for (let i = 0; i < discosMansao.length; i++) lista.push(discosMansao[i]);
   for (let i = 0; i < moveis.length; i++) {
     const item = moveis[i];
     lista.push({ x: item.x, y: item.y, z, r: item.r });

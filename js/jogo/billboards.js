@@ -14,6 +14,12 @@ import {
   imagemArbusto,
   quadroArbusto,
 } from "../render/3d/folhaBerry.js";
+import {
+  geoSoloArado,
+  LIFT_SOLO_ARADO,
+  mapaSoloArado,
+  materialSoloArado,
+} from "../render/3d/soloArado.js";
 import { ESTAGIO, estaUmido } from "../wild/estagios.js";
 import { estado } from "./estado.js";
 
@@ -26,73 +32,12 @@ const ESCALA = {
   [ESTAGIO.MADURA]: ESCALA_ARBUSTO,
 };
 
-const LIFT_SOLO = 0.04;
-
 let grupo = null;
 /** @type {Map<string, { solo: THREE.Mesh, planta: THREE.Mesh | null, visual: string }>} */
 const atores = new Map();
-/** @type {THREE.BufferGeometry | null} */
-let geoSolo = null;
-let texSoloSeco = null;
-let texSoloUmido = null;
 /** @type {Map<string, THREE.CanvasTexture>} */
 const texPlanta = new Map();
 let folhaPedida = false;
-
-function geoSoloChao() {
-  if (geoSolo) return geoSolo;
-  geoSolo = new THREE.PlaneGeometry(0.92, 0.92);
-  geoSolo.rotateX(-Math.PI / 2);
-  return geoSolo;
-}
-
-/** Soft soil com sulcos — fica sob a planta em todos os estágios. */
-function texturaSoloProcedural(umido) {
-  const tela = document.createElement("canvas");
-  tela.width = 32;
-  tela.height = 32;
-  const ctx = tela.getContext("2d");
-  const base = umido ? "#3d2818" : "#6b4426";
-  const sulco = umido ? "#2a1a10" : "#4a2e18";
-  const borda = umido ? "#241408" : "#3a2414";
-  const claro = umido ? "#5a3c24" : "#8a5a32";
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, 32, 32);
-  ctx.fillStyle = borda;
-  ctx.fillRect(0, 0, 32, 2);
-  ctx.fillRect(0, 30, 32, 2);
-  ctx.fillRect(0, 0, 2, 32);
-  ctx.fillRect(30, 0, 2, 32);
-  ctx.strokeStyle = sulco;
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 5; i++) {
-    const y = 6 + i * 5;
-    ctx.beginPath();
-    ctx.moveTo(3, y);
-    ctx.lineTo(29, y + ((i & 1) === 0 ? 1 : -1));
-    ctx.stroke();
-  }
-  ctx.fillStyle = claro;
-  for (let n = 0; n < 18; n++) {
-    const x = 4 + ((n * 7) % 24);
-    const y = 4 + ((n * 11) % 24);
-    ctx.fillRect(x, y, 1, 1);
-  }
-  const tex = new THREE.CanvasTexture(tela);
-  tex.magFilter = THREE.NearestFilter;
-  tex.minFilter = THREE.NearestFilter;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
-function mapaSolo(umido) {
-  if (umido) {
-    if (!texSoloUmido) texSoloUmido = texturaSoloProcedural(true);
-    return texSoloUmido;
-  }
-  if (!texSoloSeco) texSoloSeco = texturaSoloProcedural(false);
-  return texSoloSeco;
-}
 
 function texturaDaFolha(chave, estagio, quadro) {
   const img = imagemArbusto(chave, estagio, quadro);
@@ -109,21 +54,7 @@ function texturaDaFolha(chave, estagio, quadro) {
 }
 
 function criarPatchSolo(umido) {
-  // Standard + sombraNuvem: recebe sol/céu do ciclo (Basic ficava “aceso” de noite).
-  const mat = aplicarSombraNuvem(
-    new THREE.MeshStandardMaterial({
-      map: mapaSolo(umido),
-      roughness: 1,
-      metalness: 0,
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
-    }),
-  );
-  const mesh = new THREE.Mesh(geoSoloChao(), mat);
+  const mesh = new THREE.Mesh(geoSoloArado(), materialSoloArado(umido));
   mesh.name = "canteiro-solo";
   mesh.renderOrder = 2;
   mesh.frustumCulled = false;
@@ -226,7 +157,7 @@ export function atualizarBillboardsBerry() {
     }
 
     if (ator.visual !== chaveVisual) {
-      ator.solo.material.map = mapaSolo(umido);
+      ator.solo.material.map = mapaSoloArado(umido);
       ator.solo.material.needsUpdate = true;
 
       if (plot.stage === ESTAGIO.SOLO) {
@@ -250,7 +181,7 @@ export function atualizarBillboardsBerry() {
     }
 
     const base = alturaEm(plot.x, plot.y) * ALTURA_BLOCO;
-    ator.solo.position.set(plot.x + 0.5, base + LIFT_SOLO, plot.y + 0.5);
+    ator.solo.position.set(plot.x + 0.5, base + LIFT_SOLO_ARADO, plot.y + 0.5);
     ator.solo.visible = true;
 
     if (ator.planta) {
