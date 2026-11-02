@@ -187,7 +187,7 @@ export function tickJogo(dt, corpo) {
   }
   tickDescobertaMapa(corpo, { interior: !!estado.interior });
   tickBlocos(corpo, dt);
-  tickInundar();
+  tickInundar(dt);
   if (!campoFocado()) {
     tickRoda();
     lerTeclas(corpo);

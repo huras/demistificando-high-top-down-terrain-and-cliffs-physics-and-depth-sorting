@@ -4,7 +4,7 @@
  */
 import {
   CHUNK_Y,
-  INUNDAR_CELULAS_POR_FRAME,
+  INUNDAR_CELULAS_POR_SEG,
   INUNDAR_FILA_MAX,
 } from "../../config.js";
 import { invalidarNavCache } from "../../navegacao/navGrade.js";
@@ -31,6 +31,7 @@ const fila = [];
 let filaIni = 0;
 /** @type {Set<string>} */
 const visitado = new Set();
+let acumCelulas = 0;
 
 function chave(x, y, z) {
   return `${x|0},${y|0},${z|0}`;
@@ -121,18 +122,28 @@ export function semearInundacao(x, y, z) {
   }
 }
 
-/** Processa até INUNDAR_CELULAS_POR_FRAME células. */
-export function tickInundar() {
+/** Processa células conforme INUNDAR_CELULAS_POR_SEG (acumulador + dt). */
+export function tickInundar(dt = 0) {
   if (filaIni >= fila.length) {
     fila.length = 0;
     filaIni = 0;
     visitado.clear();
+    acumCelulas = 0;
     return;
   }
 
+  const passo = Number(dt);
+  if (passo > 0 && Number.isFinite(passo)) {
+    acumCelulas += passo * INUNDAR_CELULAS_POR_SEG;
+  } else {
+    acumCelulas += 1;
+  }
+  const teto = Math.min(filaTam(), Math.floor(acumCelulas));
+  if (teto <= 0) return;
+  acumCelulas -= teto;
+
   const lote = [];
   let processados = 0;
-  const teto = INUNDAR_CELULAS_POR_FRAME | 0;
 
   while (processados < teto && filaIni < fila.length) {
     const item = fila[filaIni++];

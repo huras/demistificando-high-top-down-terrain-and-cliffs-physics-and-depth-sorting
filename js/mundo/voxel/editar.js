@@ -44,18 +44,31 @@ export function quebrarBloco(corpo, alvo) {
 }
 
 /**
- * Coloca blocoNaMao no ar adjacente.
+ * Destino do place: líquido é replaceable (Minecraft) — escreve no voxel atingido.
+ * Sólido → célula adjacente pela normal.
+ */
+export function celulaDestinoPlace(alvo) {
+  if (!alvo) return null;
+  const id =
+    alvo.id != null ? alvo.id | 0 : obterBloco(alvo.x, alvo.y, alvo.z);
+  if (ehLiquido(id)) {
+    return { x: alvo.x | 0, y: alvo.y | 0, z: alvo.z | 0 };
+  }
+  return {
+    x: (alvo.x | 0) + (alvo.nx | 0),
+    y: (alvo.y | 0) + (alvo.ny | 0),
+    z: (alvo.z | 0) + (alvo.nz | 0),
+  };
+}
+
+/**
+ * Coloca blocoNaMao no destino (adjacente, ou no líquido se replaceable).
  */
 export function colocarBloco(corpo, alvo) {
   if (!alvo) return false;
-  let px = alvo.x;
-  let py = alvo.y;
-  let pz = alvo.z;
-  if (alvo.nx != null) {
-    px = alvo.x + (alvo.nx | 0);
-    py = alvo.y + (alvo.ny | 0);
-    pz = alvo.z + (alvo.nz | 0);
-  }
+  const dest = celulaDestinoPlace(alvo);
+  if (!dest) return false;
+  const { x: px, y: py, z: pz } = dest;
   if (!alcanceOk(corpo, px, py, pz)) return false;
   if (ehSolido(obterBloco(px, py, pz))) return false;
 
@@ -76,13 +89,22 @@ export function quebrarSuperficie(corpo, cx, cy) {
 }
 
 export function colocarSobreSuperficie(corpo, cx, cy) {
-  const surf = superficieEm(cx, cy);
+  const x = cx | 0;
+  const y = cy | 0;
+  const surf = superficieEm(x, y);
+  const zTopo = Math.max(0, surf - 1);
+  const idTopo = obterBloco(x, y, zTopo);
+  // Líquido no topo: place no próprio voxel (cresce o chão). Senão, em cima.
+  if (ehLiquido(idTopo)) {
+    return colocarBloco(corpo, { x, y, z: zTopo, nx: 0, ny: 0, nz: 0, id: idTopo });
+  }
   return colocarBloco(corpo, {
-    x: cx,
-    y: cy,
-    z: Math.max(0, surf - 1),
+    x,
+    y,
+    z: zTopo,
     nx: 0,
     ny: 0,
     nz: 1,
+    id: idTopo,
   });
 }
