@@ -208,7 +208,7 @@ export function serializarCampo() {
 export function idsRemovidos() {
   const lista = [];
   for (const [id, e] of porId) {
-    if (e.fase === FASE.REMOVIDO && e.tipo !== "grama") lista.push(id);
+    if (e.fase === FASE.REMOVIDO && e.tipo !== "grama" && e.tipo !== "mata") lista.push(id);
   }
   return lista;
 }

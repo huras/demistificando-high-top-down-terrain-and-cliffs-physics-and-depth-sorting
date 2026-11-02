@@ -1,0 +1,14 @@
+Tycoon systems and items and stores for:
+- Fazenda pokemon
+- Zoologico pokémon
+- Fishing port
+- 
+
+
+
+
+Nested pokémon progression
+
+1 ~ 2 max - unested pokémon
+1 ~ 4 max - nested pokémon
+3 ~ 7 max - pokemon family

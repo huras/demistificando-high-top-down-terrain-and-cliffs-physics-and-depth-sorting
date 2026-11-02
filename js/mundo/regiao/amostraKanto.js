@@ -6,7 +6,7 @@ import { clampAltura } from "../../config.js";
 import { dentroDoKanto, paraLocalKanto } from "../bounds.js";
 import { fbm2 } from "../voxel/ruido.js";
 import { amostraCorpo, ligarConsultasCorpo } from "../agua/corpos.js";
-import { parBiomaKanto } from "./biomasKanto.js";
+import { biomaKantoPorId, parBiomaKanto } from "./biomasKanto.js";
 import {
   AREA_KANTO,
   CENTRO_AREA,
@@ -42,8 +42,12 @@ function predioSprite(papel) {
 }
 const COTA_MONTANHA = 36;
 const COTA_PICO = 54;
-const COTA_RASO = 10;
+/** Shelf raso perto da praia. */
+const COTA_RASO = 11;
+/** Fundo médio / legado. */
 const COTA_FUNDO = 8;
+/** Bacia profunda (batimetria). */
+const COTA_FOSSA = 4;
 const SEMENTE = 1337;
 const MEIO_RUA = 3.5;
 const SANGRIA = 4;
@@ -171,6 +175,26 @@ function cotaAgua(zona) {
   return byte === RELEVO_RASO ? COTA_RASO : COTA_FUNDO;
 }
 
+/**
+ * Batimetria authored: shelf perto da costa, bacias longe.
+ * Cotas entre COTA_FOSSA e COTA_RASO — não afunda a beira toda.
+ */
+function batimetria(x, y, perfilU) {
+  const largo = fbm2(x * 0.0024, y * 0.0024, SEMENTE + 211, 4);
+  const detalhe = fbm2(x * 0.009, y * 0.009, SEMENTE + 307, 3);
+  const shelf = suaveBat(Math.max(0, Math.min(1, perfilU / 0.34)));
+  const bacia = suaveBat(largo * 0.62 + detalhe * 0.38);
+  // Só aprofunda longe do shelf; perto da praia fica 9–11.
+  const t = (1 - shelf) * (0.22 + bacia * 0.78);
+  const h = COTA_RASO + (COTA_FOSSA - COTA_RASO) * t;
+  return Math.max(COTA_FOSSA, Math.min(COTA_RASO, Math.round(h)));
+}
+
+function suaveBat(t) {
+  const x = t < 0 ? 0 : t > 1 ? 1 : t;
+  return x * x * (3 - 2 * x);
+}
+
 function cotaRua(zona) {
   if (!zona || zona.tipo === "cidade") return COTA_CIDADE;
   // Rota de água: deck constante (ponte). Leito fica em hLeito no sample.
@@ -276,9 +300,14 @@ function distanciaAte(wx, wy, casa) {
 }
 
 function perfilCosta(wx, wy) {
-  const onda = (fbm2(wx * 0.006, wy * 0.006, SEMENTE + 17, 4) - 0.5) * 110;
-  const afast = distanciaAte(wx, wy, ehAgua) - distanciaAte(wx, wy, (b) => b === RELEVO_TERRA || b === RELEVO_MONTANHA) + onda;
-  const faixa = 30;
+  const onda = (fbm2(wx * 0.006, wy * 0.006, SEMENTE + 17, 4) - 0.5) * 140;
+  const afast =
+    distanciaAte(wx, wy, ehAgua) -
+    distanciaAte(wx, wy, (b) => b === RELEVO_TERRA || b === RELEVO_MONTANHA) +
+    onda;
+  // Praia variável: alguns trechos longos (Pallet/Vermilion), outros curtos (falésia).
+  const alonga = fbm2(wx * 0.0035, wy * 0.0035, SEMENTE + 91, 3);
+  const faixa = 48 + alonga * 48;
   let u = (afast + faixa) / (faixa * 2);
   if (u < 0) u = 0;
   else if (u > 1) u = 1;
@@ -303,7 +332,13 @@ function alturaDoTerreno(x, y, zona, perfil) {
 function alturaNatural(x, y, zona, perfil) {
   // Fora do canal, rota de água usa a mesma costa do relevo (não afunda a célula inteira).
   const terra = alturaDoTerreno(x, y, zona, perfil);
-  return Math.round(COTA_FUNDO + (terra - COTA_FUNDO) * perfil.u);
+  if (perfil.u < 0.34) {
+    const fundo = batimetria(x, y, perfil.u);
+    // Mistura shelf→terra na beira; fundo batimétrico no largo.
+    return Math.round(fundo + (terra - fundo) * (perfil.u / 0.34) * 0.15);
+  }
+  const fundo = batimetria(x, y, 0.2);
+  return Math.round(fundo + (terra - fundo) * perfil.u);
 }
 
 function distanciaFora(lx, ly, fp) {
@@ -358,7 +393,21 @@ function calcularBase(x, y) {
   else h = alturaNatural(x, y, zona, perfil);
 
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
-  const par = parBiomaKanto(x, y, perfil.u, perfil.dentroMontanha, floresta, predio, rua);
+  const biomaCidade =
+    zona.tipo === "cidade" && !rua && !predio && zona.biomaId
+      ? biomaKantoPorId(zona.biomaId)
+      : null;
+  const par = parBiomaKanto(
+    x,
+    y,
+    perfil.u,
+    perfil.dentroMontanha,
+    floresta,
+    predio,
+    rua,
+    biomaCidade,
+    !!zona.densa,
+  );
   const travado = !!(rua || predio || noFp || ponte);
   h = aplicarDetalheBioma(h, x, y, par, perfil.u, travado);
   h = clampAltura(h);

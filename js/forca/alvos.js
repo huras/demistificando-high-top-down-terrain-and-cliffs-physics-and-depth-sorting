@@ -1,5 +1,5 @@
 /**
- * Alvos de Força: pedras/cristais e Pokémon (desmaiado / vivo).
+ * Alvos de Força: pedras/cristais, tufos (grama/mata) e Pokémon.
  */
 import { RAIO_BASE_PEDRA, RAIO_POKEMON } from "../config.js";
 import { FASE } from "../campo/estadoProps.js";
@@ -27,7 +27,12 @@ export function ehPropLevantavel(p) {
   if (p.fase && p.fase !== FASE.EM_PE) return false;
   // Peças já encaixadas do puzzle de letra ficam fixas.
   if (p.letterPuzzle && !p.letterPuzzleLoose) return false;
-  return p.tipo === "pedra" || p.tipo === "cristal";
+  return (
+    p.tipo === "pedra" ||
+    p.tipo === "cristal" ||
+    p.tipo === "grama" ||
+    p.tipo === "mata"
+  );
 }
 
 /**

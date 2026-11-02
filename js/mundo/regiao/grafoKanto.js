@@ -141,6 +141,7 @@ function montarZonas() {
     zona.tipo = "cidade";
     zona.nome = def.nome;
     zona.id = def.key;
+    zona.biomaId = def.bioma || null;
     zona.layout = montarLayout(def);
   }
 
@@ -163,12 +164,13 @@ function montarZonas() {
     }
   }
 
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
+  // Floresta de Viridian 5×5 (selva densa no miolo).
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
       const zona = zonas[indice(10 + dx, 8 + dy)];
       if (!zona || zona.tipo === "cidade") continue;
       zona.floresta = true;
-      zona.densa = true;
+      zona.densa = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
       if (dx === 0 && dy === 0) zona.nome = "Floresta de Viridian";
     }
   }

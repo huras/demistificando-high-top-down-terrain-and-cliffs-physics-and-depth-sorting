@@ -21,7 +21,7 @@ import {
 import { amostraCorpo } from "../../mundo/agua/corpos.js";
 import { fluidoDe } from "../../mundo/agua/fluidos.js";
 import { BIOMA_KANTO, alturaBaseKanto, amostraKanto } from "../../mundo/regiao/amostraKanto.js";
-import { parBiomaKanto } from "../../mundo/regiao/biomasKanto.js";
+import { biomaKantoPorId, parBiomaKanto } from "../../mundo/regiao/biomasKanto.js";
 import { aplicarDetalheBioma } from "../../mundo/regiao/detalheRelevo.js";
 import {
   AREA_KANTO,
@@ -390,7 +390,21 @@ function lerPontoLocal(wx, wy) {
   const noFp = !!(zona?.tipo === "cidade" && zona.layout && noFootprint(lx, ly, zona.layout));
   let h = alturaEm(x, y, lx, ly, zona, perfil, rua || predio);
   const floresta = !rua && !predio && h >= COTA_CIDADE && florestaEm(lx, ly, zona);
-  const par = parBiomaKanto(x, y, perfil.u, perfil.dentro, floresta, predio, rua);
+  const biomaCidade =
+    zona?.tipo === "cidade" && !rua && !predio && zona.biomaId
+      ? biomaKantoPorId(zona.biomaId)
+      : null;
+  const par = parBiomaKanto(
+    x,
+    y,
+    perfil.u,
+    perfil.dentro,
+    floresta,
+    predio,
+    rua,
+    biomaCidade,
+    !!zona?.densa,
+  );
   const travado = !!(rua || predio || noFp);
   h = aplicarDetalheBioma(h, x, y, par, perfil.u, travado);
   const bioma = par.bioma;

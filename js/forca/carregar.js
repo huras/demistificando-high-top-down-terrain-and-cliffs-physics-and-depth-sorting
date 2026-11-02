@@ -2,8 +2,10 @@
  * Canal de lift, estado de carregamento e mobilidade.
  */
 import { RAIO_BASE_PEDRA, RAIO_POKEMON } from "../config.js";
+import { colherTufoPorForca } from "../campo/grama.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { reindexarEm } from "../mundo/bioma/propsBioma.js";
+import { ajustarItem } from "../pokemon/party.js";
 import { tentarEncaixarPedraLetra } from "../letras/runtime.js";
 import { forcaDoCarrier, poderForca, FORCA_HUMANO } from "./forcaEspecie.js";
 import { normalizarPeso } from "./pesoCarga.js";
@@ -223,6 +225,11 @@ export function finalizarGrab(action, carrier) {
   }
   const prop = action.prop;
   if (!prop || prop.forcaCarregado) return null;
+  // Harvest Moon: puxa grama/mata → some + fibra (não vira carga).
+  if (prop.tipo === "grama" || prop.tipo === "mata") {
+    if (colherTufoPorForca(prop)) ajustarItem("plantFiber", 1);
+    return null;
+  }
   ocultarProp(prop);
   const r = Math.max(0.35, prop.r > 0 ? prop.r : RAIO_BASE_PEDRA);
   return {

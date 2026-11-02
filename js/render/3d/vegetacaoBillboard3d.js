@@ -379,7 +379,8 @@ export function criarVegetacaoBillboard3d() {
       alphaTest: VEG_ALPHA_TEST,
       side: THREE.DoubleSide,
     });
-    if (perfilVento) depth = aplicarVentoVeg(depth, perfilVento);
+    // Vento na depth da grama forçaria shadow map a cada frame — não.
+    if (perfilVento && !grama) depth = aplicarVentoVeg(depth, perfilVento);
 
     const pivo = pivoDoProp(img, def.chave);
     const geo = geometriaNoPe(pivo.x, pivo.y);
@@ -403,7 +404,8 @@ export function criarVegetacaoBillboard3d() {
       depthWrite: false,
       side: THREE.DoubleSide,
     });
-    if (perfilVento) matSombra = aplicarVentoVeg(matSombra, perfilVento);
+    // Grama: vento só no mesh visível — sombra estática (barato).
+    if (perfilVento && !grama) matSombra = aplicarVentoVeg(matSombra, perfilVento);
     // O sol olha a face da frente. O padrão do Three só rasteriza a de trás.
     matSombra.shadowSide = THREE.DoubleSide;
     const sombra = new THREE.InstancedMesh(geo, matSombra, CAP_INSTANCIAS);
@@ -654,7 +656,14 @@ export function criarVegetacaoBillboard3d() {
         }
       }
     }
-    if (sombraEscrita) avisarSombraVeg(!!recalcularLimites);
+    // Rebuild (corte) ou caster em grab/throw — vento/sacudida NÃO.
+    const forcaCaster =
+      !!grab?.prop ||
+      !!carry?.prop ||
+      !!(obterThrown()?.some((v) => v?.carry?.prop));
+    if (sombraEscrita && (recalcularLimites || forcaCaster)) {
+      avisarSombraVeg(!!recalcularLimites);
+    }
   }
 
   const malhasSujas = [];
@@ -689,26 +698,29 @@ export function criarVegetacaoBillboard3d() {
       aplicarVinculo(p._veg, p, yaw, yawSol, inclinacao, null);
     }
     // Força: lift / carry / arremesso — matriz todo frame (senão a pedra fica no chão).
+    let moveuCaster = false;
     const grab = obterGrabAction();
     if (grab?.prop) {
       aplicarVinculo(grab.prop._veg, grab.prop, yaw, yawSol, inclinacao, null);
+      moveuCaster = true;
     }
     const carry = obterCarry();
     if (carry?.prop) {
       aplicarVinculo(carry.prop._veg, carry.prop, yaw, yawSol, inclinacao, null);
+      moveuCaster = true;
     }
     const voos = obterThrown();
     for (let i = 0; i < (voos?.length || 0); i++) {
       const prop = voos[i]?.carry?.prop;
-      if (prop) aplicarVinculo(prop._veg, prop, yaw, yawSol, inclinacao, null);
+      if (prop) {
+        aplicarVinculo(prop._veg, prop, yaw, yawSol, inclinacao, null);
+        moveuCaster = true;
+      }
     }
-    let sombraSuja = false;
     for (let i = 0; i < malhasSujas.length; i++) {
-      const m = malhasSujas[i];
-      m.instanceMatrix.needsUpdate = true;
-      if (m.castShadow) sombraSuja = true;
+      malhasSujas[i].instanceMatrix.needsUpdate = true;
     }
-    if (sombraSuja) avisarSombraVeg(false);
+    if (moveuCaster) avisarSombraVeg(false);
   }
 
   function sincronizarVisivel() {

@@ -17,11 +17,13 @@ export function normalizarPeso(raw, fallback = PESO_MIN) {
 
 /**
  * Pedra/cristal: small→1, default→2, large/tall→3.
+ * Grama/mata (Harvest Moon): sempre 1.
  * @param {{ sprite?: string, tipo?: string, porte?: number } | null | undefined} prop
  */
 export function pesoDoProp(prop) {
   if (!prop) return PESO_MIN;
   if (prop.carryWeight != null) return normalizarPeso(prop.carryWeight);
+  if (prop.tipo === "grama" || prop.tipo === "mata") return PESO_MIN;
   const id = String(prop.sprite || prop.id || "").toLowerCase();
   if (id.includes("small") || id.includes("tiny") || id.includes("pebble")) return 1;
   if (id.includes("large") || id.includes("tall") || id.includes("huge") || id.includes("boulder")) {

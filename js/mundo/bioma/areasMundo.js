@@ -241,8 +241,9 @@ function areaTerra(wx, wy, seed) {
   const detalhe = fbm2(p.x / 520, p.y / 520, seed + 6631, 3);
   const temp = clamp01(lat * 0.5 + clima * 0.38 + (detalhe - 0.5) * 0.22);
 
-  // Halo de costura com Kanto: temperado ganha perto, sem corte duro.
-  const anelKanto = (1 - rampa(d, 180, 980)) * (d > -80 ? 1 : 0.35);
+  // Halo fraco: não lava tudo de temperado/light-grass na beira de Kanto.
+  const anelKanto = (1 - rampa(d, 220, 720)) * (d > -40 ? 0.55 : 0.2);
+  const costaLeste = clamp01((p.x / LADO_MUNDO - 0.45) * 2.2);
 
   const candidatos = [
     {
@@ -263,11 +264,17 @@ function areaTerra(wx, wy, seed) {
     },
     {
       id: "mundo-marsh",
-      score: rampa(umidade, 0.62, 0.92) * pico(temp, 0.52, 0.28) * 1.45 + rampa(umidade, 0.7, 0.95) * 0.4,
+      score:
+        rampa(umidade, 0.62, 0.92) * pico(temp, 0.52, 0.28) * 1.45 +
+        rampa(umidade, 0.7, 0.95) * 0.4 +
+        costaLeste * 0.35,
     },
     {
       id: "mundo-forest",
-      score: rampa(umidade, 0.48, 0.78) * pico(temp, 0.45, 0.32) * 1.25 + pico(umidade, 0.66, 0.2) * 0.4,
+      score:
+        rampa(umidade, 0.48, 0.78) * pico(temp, 0.45, 0.32) * 1.45 +
+        pico(umidade, 0.66, 0.2) * 0.55 +
+        anelKanto * 0.4,
     },
     {
       id: "mundo-floral",
@@ -275,7 +282,7 @@ function areaTerra(wx, wy, seed) {
     },
     {
       id: "mundo-temperate",
-      score: 0.55 + pico(temp, 0.42, 0.28) * 0.7 + anelKanto * 1.85 + (1 - Math.abs(umidade - 0.5)) * 0.2,
+      score: 0.55 + pico(temp, 0.42, 0.28) * 0.7 + anelKanto * 0.75 + (1 - Math.abs(umidade - 0.5)) * 0.2,
     },
   ];
 

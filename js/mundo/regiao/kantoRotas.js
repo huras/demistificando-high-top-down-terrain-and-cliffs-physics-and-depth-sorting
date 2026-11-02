@@ -6,6 +6,7 @@ export const ROTAS_KANTO = Object.freeze([
   Object.freeze({
     id: "route-1",
     nome: "Rota 1",
+    floresta: true,
     path: Object.freeze([
       [10, 16],
       [10, 12],
@@ -149,6 +150,7 @@ export const ROTAS_KANTO = Object.freeze([
   Object.freeze({
     id: "route-15",
     nome: "Rota 15",
+    floresta: true,
     path: Object.freeze([
       [22, 24],
       [21, 24],
@@ -157,6 +159,7 @@ export const ROTAS_KANTO = Object.freeze([
   Object.freeze({
     id: "route-16",
     nome: "Rota 16",
+    floresta: true,
     path: Object.freeze([
       [15, 11],
       [13, 11],

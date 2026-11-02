@@ -1,6 +1,7 @@
 /**
  * Assentamentos de Kanto no grid 32×32 (ax oeste→leste, ay norte→sul).
  * O footprint sai do grid de lotes por tier.
+ * `bioma` = chão característico (kit id) fora de rua/prédio.
  */
 export const CIDADES_KANTO = Object.freeze([
   Object.freeze({
@@ -9,6 +10,7 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 10,
     ay: 17,
     tier: "starter",
+    bioma: "light-grass",
   }),
   Object.freeze({
     key: "viridian",
@@ -16,6 +18,7 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 10,
     ay: 11,
     tier: "town",
+    bioma: "lush-grass",
     ginasio: "giovanni",
     fonte: true,
   }),
@@ -25,6 +28,7 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 10,
     ay: 5,
     tier: "town",
+    bioma: "pewter-massif",
     ginasio: "brock",
     marco: Object.freeze({ tipo: "museu" }),
   }),
@@ -34,6 +38,7 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 22,
     ay: 5,
     tier: "town",
+    bioma: "marsh",
     ginasio: "misty",
     fonte: true,
   }),
@@ -45,6 +50,7 @@ export const CIDADES_KANTO = Object.freeze([
     tier: "city",
     lotesCol: 25,
     lotesLin: 25,
+    bioma: "honey-trees-flower-fields",
     ginasio: "erika",
     fonte: true,
     marco: Object.freeze({ tipo: "mansao" }),
@@ -57,6 +63,7 @@ export const CIDADES_KANTO = Object.freeze([
     tier: "city",
     lotesCol: 25,
     lotesLin: 25,
+    bioma: "stone",
     ginasio: "sabrina",
     fonte: true,
     marco: Object.freeze({ tipo: "coliseu" }),
@@ -67,6 +74,7 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 26,
     ay: 11,
     tier: "town",
+    bioma: "ghost-forest",
     marco: Object.freeze({ tipo: "torre" }),
   }),
   Object.freeze({
@@ -75,6 +83,7 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 20,
     ay: 17,
     tier: "town",
+    bioma: "dirty-sand",
     ginasio: "surge",
     marco: Object.freeze({ tipo: "porto" }),
   }),
@@ -84,6 +93,7 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 20,
     ay: 24,
     tier: "town",
+    bioma: "marsh",
     ginasio: "koga",
     marco: Object.freeze({ tipo: "safari" }),
   }),
@@ -93,6 +103,7 @@ export const CIDADES_KANTO = Object.freeze([
     ax: 10,
     ay: 26,
     tier: "city",
+    bioma: "amber-rock",
     ginasio: "blaine",
     marco: Object.freeze({ tipo: "mansao" }),
   }),

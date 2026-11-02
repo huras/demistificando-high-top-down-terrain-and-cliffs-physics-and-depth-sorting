@@ -1,5 +1,5 @@
 /**
- * Tufo de grama: acende no raio, some e volta. Não encadeia fora do círculo.
+ * Tufo de grama/mata: fogo, colheita por Força (Harvest Moon) e rebrota.
  */
 
 import { propPorId, vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
@@ -17,6 +17,28 @@ import {
 export const RAIO_GRAMA = 0.72;
 const FOGO_MS = 9000;
 const REBROTA_MS = 90000;
+
+function ehTufo(prop) {
+  return !!prop && (prop.tipo === "grama" || prop.tipo === "mata");
+}
+
+/**
+ * Puxa o tufo do chão (grab). Some e volta depois — fibra no caller.
+ * @param {object} prop
+ * @param {number} [agora]
+ */
+export function colherTufoPorForca(prop, agora = Date.now()) {
+  if (!ehTufo(prop) || prop.forcaCarregado) return false;
+  preparar(prop);
+  if (prop.fase !== FASE.EM_PE || prop.oculto) return false;
+  prop.fase = FASE.REMOVIDO;
+  prop.hp = 0;
+  prop.inicioMs = agora;
+  prop.apagaMs = 0;
+  prop.voltaMs = agora + REBROTA_MS;
+  confirmar(prop);
+  return true;
+}
 
 let acumFagulha = 0;
 
@@ -49,7 +71,7 @@ export function tickGrama(dt, agora) {
   const tocados = [];
   let mudou = false;
   cadaEstado((id, e) => {
-    if (e.tipo !== "grama") return;
+    if (e.tipo !== "grama" && e.tipo !== "mata") return;
     if (e.fase === FASE.QUEIMANDO && e.apagaMs && agora >= e.apagaMs) {
       const p = mudarEstado(id, { fase: FASE.REMOVIDO, hp: 0 });
       if (p) tocados.push(p);
