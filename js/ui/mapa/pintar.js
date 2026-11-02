@@ -416,6 +416,26 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       }
       continue;
     }
+    if (marca.tipo === "baseJogador" || marca.tipo === "casaJogador") {
+      ctx.fillStyle = marca.cor || "#38bdf8";
+      ctx.beginPath();
+      ctx.arc(sx, sy, (marca.tipo === "baseJogador" ? 6.5 : 4.5) * dpr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(15,23,42,0.55)";
+      ctx.lineWidth = 1.2 * dpr;
+      ctx.stroke();
+      if (!vista.mini) {
+        nomes.push({
+          texto: marca.tipo === "baseJogador" ? "Sua base" : "Sua casa",
+          x: sx + 10 * dpr,
+          y: sy + alturaFonte * 0.3,
+          altura: alturaFonte,
+          prio: 5,
+          dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
+        });
+      }
+      continue;
+    }
     ctx.fillStyle = marca.cor || "#f2d48a";
     ctx.beginPath();
     ctx.arc(sx, sy, 4.5 * dpr, 0, Math.PI * 2);

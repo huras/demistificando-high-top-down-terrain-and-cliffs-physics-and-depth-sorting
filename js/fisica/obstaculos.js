@@ -30,7 +30,9 @@ function chaveCelula(x, y) {
 function raioBase(tipo) {
   if (tipo === "arvore") return RAIO_BASE_ARVORE;
   if (tipo === "pedra" || tipo === "site") return RAIO_BASE_PEDRA;
-  if (tipo === "siteCasa") return 2.2;
+  if (tipo === "siteCasa" || tipo === "baseCasa") return 2.2;
+  if (tipo === "baseMovel") return 0.4;
+  if (tipo === "baseCerca") return 0.35;
   if (tipo === "santuario") return RAIO_SANTUARIO;
   return 0;
 }

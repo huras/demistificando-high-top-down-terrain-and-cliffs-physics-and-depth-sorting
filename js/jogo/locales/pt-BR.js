@@ -141,6 +141,19 @@ export default {
     "hammer": "Martelo",
     "flag": "Bandeira"
   },
+  "construir": {
+    "titulo": "Construir",
+    "basePlantada": "Base plantada.",
+    "baseRelocada": "Base relocada.",
+    "catalogoAberto": "Catálogo aberto.",
+    "ritual": "Construção iniciada.",
+    "demolido": "Demolido.",
+    "suaBase": "Sua base",
+    "suaCasa": "Sua casa"
+  },
+  "bandeira": {
+    "dica": "Planta ou relocate a área da sua base."
+  },
   "ui": {
     "obteve": "Você obteve",
     "guarda": "Dá para guardar na bolsa.",

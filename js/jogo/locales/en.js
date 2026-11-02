@@ -141,6 +141,19 @@ export default {
     "hammer": "Hammer",
     "flag": "Flag"
   },
+  "construir": {
+    "titulo": "Build",
+    "basePlantada": "Base planted.",
+    "baseRelocada": "Base relocated.",
+    "catalogoAberto": "Catalog open.",
+    "ritual": "Construction started.",
+    "demolido": "Demolished.",
+    "suaBase": "Your base",
+    "suaCasa": "Your house"
+  },
+  "bandeira": {
+    "dica": "Plant or relocate your base claim."
+  },
   "ui": {
     "obteve": "You obtained",
     "guarda": "You can keep it in the bag.",

@@ -82,6 +82,8 @@ import {
   tentarPegarComE,
 } from "../forca/tickForca.js";
 import { t } from "./i18n.js";
+import { tickConstrucao, definirMiraConstrucao } from "../construir/tick.js";
+import { obterCenario3d } from "../render/3d/cenario3d.js";
 
 let viewport = null;
 let toastAte = 0;
@@ -166,6 +168,16 @@ export function tickJogo(dt, corpo) {
   registrarParty();
   soltarSlotVazio();
   tickCampo(dt);
+  if (!estado.interior) {
+    const mira = celulaAlvo(corpo);
+    if (mira) definirMiraConstrucao(mira.x + 0.5, mira.y + 0.5);
+    else definirMiraConstrucao(corpo.x, corpo.y);
+    try {
+      tickConstrucao(corpo, dt, obterCenario3d());
+    } catch {
+      tickConstrucao(corpo, dt, null);
+    }
+  }
   if (!campoFocado() && !jogadorMorto()) {
     tickForca(dt, corpo, { trava: jogoTravaMundo() || !!estado.interior });
   }

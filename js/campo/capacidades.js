@@ -9,6 +9,7 @@ export const ACAO = Object.freeze({
   QUEIMAR: "queimar",
   MINERAR: "minerar",
   QUEBRAR: "quebrar",
+  CONSTRUIR: "construir",
 });
 
 const LISTA = Object.freeze([
@@ -16,6 +17,7 @@ const LISTA = Object.freeze([
   Object.freeze({ id: ACAO.QUEIMAR, nome: "Queimar", tipos: Object.freeze(["fire"]) }),
   Object.freeze({ id: ACAO.MINERAR, nome: "Minerar", tipos: Object.freeze(["rock", "ground", "steel"]) }),
   Object.freeze({ id: ACAO.QUEBRAR, nome: "Quebrar", tipos: Object.freeze(["fighting"]) }),
+  Object.freeze({ id: ACAO.CONSTRUIR, nome: "Construir", tipos: Object.freeze(["fighting", "normal", "rock", "steel"]) }),
 ]);
 
 const ESPERA = Object.freeze({
@@ -23,6 +25,7 @@ const ESPERA = Object.freeze({
   queimar: 550,
   minerar: 400,
   quebrar: 350,
+  construir: 280,
 });
 
 export function esperaDaAcao(id) {

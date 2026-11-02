@@ -40,6 +40,9 @@ import { criarPalhaLar3d } from "./palhaLar3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarEdificiosCidade } from "./edificiosCidade.js";
 import { criarEdificiosSites } from "./edificiosSites.js";
+import { criarEdificiosBaseJogador } from "./edificiosBaseJogador.js";
+import { criarGhostConstrucao } from "./ghostConstrucao.js";
+import { criarCercasJogador3d } from "./cercasJogador3d.js";
 import { criarDebugVaosPorta } from "./debugVaosPorta.js";
 import { atualizarDebugCorpos, criarDebugCorpos } from "./debugCorpos.js";
 import { criarDebugCasas } from "./debugCasas.js";
@@ -343,6 +346,12 @@ export function iniciarCenario3d(canvas, atlas = null) {
   terreno.grupo.add(edificios.grupo);
   const edificiosSites = criarEdificiosSites();
   terreno.grupo.add(edificiosSites.grupo);
+  const edificiosBase = criarEdificiosBaseJogador();
+  terreno.grupo.add(edificiosBase.grupo);
+  const ghostConstrucao = criarGhostConstrucao();
+  terreno.grupo.add(ghostConstrucao.grupo);
+  const cercasJogador = criarCercasJogador3d();
+  terreno.grupo.add(cercasJogador.grupo);
   scene.add(criarDebugVaosPorta());
   scene.add(criarDebugCorpos());
   scene.add(criarDebugCasas());
@@ -441,6 +450,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
     cidadeHorizonte,
     edificios,
     edificiosSites,
+    edificiosBase,
+    ghostConstrucao,
+    cercasJogador,
     vegetacao,
     vegetacaoDistante,
     vegetacaoHorizonte,
@@ -512,6 +524,8 @@ export async function aquecerProgramas3d(px = 0, py = 0) {
     estado.terrenoSuave?.tick?.(px, py, estado.terreno?.chunksExibidos?.());
     estado.edificios?.atualizar?.(px, py, 0, 0);
     estado.edificiosSites?.atualizar?.(px, py);
+    estado.edificiosBase?.atualizar?.(px, py);
+    estado.cercasJogador?.atualizar?.(px, py);
     estado.cidadeHorizonte?.tick?.(px, py);
     estado.vegetacao?.atualizar?.(0, 0);
     estado.vegetacaoDistante?.tick?.(px, py, 0, 0);
@@ -798,6 +812,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   const inclinacao = BILLBOARD_INCLINACAO * (1 - blendBb);
   estado.edificios?.atualizar?.(mxLod, myLod, yaw, inclinacao);
   estado.edificiosSites?.atualizar?.(mxLod, myLod, dt);
+  estado.edificiosBase?.atualizar?.(mxLod, myLod);
+  estado.cercasJogador?.atualizar?.(mxLod, myLod);
   estado.vegetacao?.atualizar?.(yaw, inclinacao, mxLod, myLod);
   estado.vegetacaoDistante?.tick?.(mxLod, myLod, yaw, inclinacao);
   estado.vegetacaoHorizonte?.tick?.(mxLod, myLod, yaw, inclinacao);

@@ -62,6 +62,13 @@ import {
   resetDescobertaMapa,
   serializarDescobertaMapa,
 } from "../mapa/descoberta.js";
+import {
+  hidratarConstrucao,
+  moveisDasCasasJogador,
+  resetConstrucao,
+  serializarConstrucao,
+} from "../construir/estadoConstrucao.js";
+import { syncInteriorMoveis } from "../construir/estruturas.js";
 
 /** v2: overworld 3× (AREA 384 / LADO 24576) — posições absolutas incompatíveis. */
 const CHAVE_SAVE = "demo-jogo-v2";
@@ -816,6 +823,12 @@ function bolsaParaLista() {
 
 export function salvar() {
   registrarParty();
+  if (estado.interior?.papel === "casa" && estado.interior.playerHouseId) {
+    syncInteriorMoveis(
+      estado.interior.playerHouseId,
+      estado.moveis[estado.interior.casaId] || []
+    );
+  }
   const party = listaParty().map(snapshot);
   const posicao = normalizarPosicao(estado.posicao);
   const dados = {
@@ -847,6 +860,7 @@ export function salvar() {
     chaves: estado.chaves,
     santuarios: serializarSantuarios(),
     descobertaMapa: serializarDescobertaMapa(),
+    construcao: serializarConstrucao(),
     party,
   };
   try {
@@ -931,6 +945,11 @@ export function carregar() {
   estado.chaves = bruto.chaves || ["pokedex"];
   hidratarSantuarios(bruto.santuarios);
   hidratarDescobertaMapa(bruto.descobertaMapa);
+  hidratarConstrucao(bruto.construcao);
+  const moveisPlayer = moveisDasCasasJogador();
+  for (const [casaId, lista] of Object.entries(moveisPlayer)) {
+    if (!estado.moveis[casaId]?.length) estado.moveis[casaId] = lista;
+  }
   estado.posicao = normalizarPosicao(bruto.posicao);
   if (bruto.vistosItens && typeof bruto.vistosItens === "object" && !Array.isArray(bruto.vistosItens)) {
     estado.vistosItens = { ...bruto.vistosItens };
@@ -952,6 +971,7 @@ export function carregar() {
 function semearInicio() {
   resetEstadoSantuario();
   resetDescobertaMapa();
+  resetConstrucao();
   estado.vistosItens = {};
   if (contarItem("oran") <= 0) ajustarItem("oran", 5, "mudo");
   if (contarItem("potion") <= 0) ajustarItem("potion", 2, "mudo");
@@ -963,9 +983,14 @@ function semearInicio() {
   estado.hotbar[0] = { tipo: TIPO_ITEM.FERRAMENTA, key: "hoe" };
   estado.hotbar[1] = { tipo: TIPO_ITEM.FERRAMENTA, key: "wateringCan" };
   estado.hotbar[2] = { tipo: TIPO_ITEM.BOLA, key: "pokeball" };
-  estado.hotbar[3] = { tipo: TIPO_ITEM.REMEDIO, key: "potion" };
-  estado.hotbar[4] = { tipo: TIPO_ITEM.FERRAMENTA, key: "pickaxe" };
+  estado.hotbar[3] = { tipo: TIPO_ITEM.FERRAMENTA, key: "hammer" };
+  estado.hotbar[4] = { tipo: TIPO_ITEM.FERRAMENTA, key: "flag" };
   estado.hotbar[5] = { tipo: TIPO_ITEM.FERRAMENTA, key: "bow" };
+  if (contarItem("pickaxe") <= 0) ajustarItem("pickaxe", 1, "mudo");
+  if (contarItem("axe") <= 0) ajustarItem("axe", 1, "mudo");
+  if (contarItem("wood") <= 0) ajustarItem("wood", 120, "mudo");
+  if (contarItem("stone") <= 0) ajustarItem("stone", 80, "mudo");
+  if (contarItem("plantFiber") <= 0) ajustarItem("plantFiber", 60, "mudo");
   darChave("pokedex");
   anunciarGanho("pokedex", 1, "mudo");
   registrarParty();

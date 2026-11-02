@@ -28,6 +28,7 @@ import {
   tickFluido,
 } from "./agua.js";
 import { aplicarMulPalha } from "./palha.js";
+import { avaliarVault } from "../construir/cerca/vault.js";
 import { atualizarCorrida } from "./corrida.js";
 import { ritmoAndar } from "./ritmoAndar.js";
 import {
@@ -327,7 +328,18 @@ function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
       : comCorrente;
   const passoX = corpo.vx * dt;
   const passoY = corpo.vy * dt;
-  const novo = moverComColisao(corpo, passoX, passoY, "andar");
+  let novo = moverComColisao(corpo, passoX, passoY, "andar");
+
+  if ((novo.bloqueouX || novo.bloqueouY) && (passoX || passoY)) {
+    const tx = corpo.x + Math.sign(passoX || corpo.vx || 0) * 0.85;
+    const ty = corpo.y + Math.sign(passoY || corpo.vy || 0) * 0.85;
+    const vault = avaliarVault(corpo, tx, ty);
+    if (vault.vault && Number.isFinite(vault.landX)) {
+      novo = { x: vault.landX, y: vault.landY, bloqueouX: false, bloqueouY: false };
+      corpo.vz = Math.max(corpo.vz || 0, 4.2);
+      corpo.hopLift = Math.max(corpo.hopLift || 0, 0.45);
+    }
+  }
 
   if (novo.bloqueouX) corpo.vx = 0;
   if (novo.bloqueouY) corpo.vy = 0;

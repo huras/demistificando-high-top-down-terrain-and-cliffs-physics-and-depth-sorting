@@ -998,7 +998,15 @@ export function promptDe(alvo, ferramenta) {
   if (alvo?.ref?.acao === "pc") return "PC — R";
   if (alvo?.ref?.cura) return "Cama — R";
   if (alvo?.ref?.craft || alvo?.ref?.key === "bancada") return "Bancada — R";
-  if (estado.interior?.papel === "casa" && !estado.interior.sala3d && hotbarAtivo()?.key === "hammer") return "Martelo — clique esquerdo abre os móveis";
+  if (estado.interior?.papel === "casa" && hotbarAtivo()?.key === "hammer") {
+    return "Martelo — clique esquerdo abre os móveis";
+  }
+  if (!estado.interior && hotbarAtivo()?.key === "flag") {
+    return "Bandeira — clique planta/reloca a base";
+  }
+  if (!estado.interior && hotbarAtivo()?.key === "hammer") {
+    return "Martelo — clique: catálogo/construir · Shift+clique: demolir";
+  }
   if (!estado.interior && ferramenta) return `${ferramenta} — clique esquerdo`;
   return "";
 }

@@ -34,6 +34,7 @@ import { tickOrdens } from "../campo/ordem.js";
 import { tickOrdensForca } from "../forca/tickOrdensForca.js";
 import { yawCamera } from "../render/3d/camera3d.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
+import { teclaBaixa } from "../entrada/teclado.js";
 import { BERRIES, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
 import { ESTAGIO } from "../wild/estagios.js";
 import { lerMixClima } from "../render/3d/ceu/clima.js";
@@ -42,6 +43,19 @@ import { sfx } from "./audio.js";
 import { iniciarPortaTransicao, portaOcupada } from "./portaTransicao.js";
 import { emAlcanceEdicao } from "../mundo/voxel/editar.js";
 import { tentarColocar, tentarQuebrar } from "./blocos.js";
+import {
+  buildMode,
+  casasPerto,
+  iniciarRitual,
+  mensagemFalha,
+  plantarBandeira,
+  temSelecaoConstruir,
+  toggleCatalogoConstruir,
+  alvoDemolirPerto,
+  acertarDemolicao,
+} from "../construir/indice.js";
+import { atualizarCatalogoConstruir } from "../ui/construirCatalogoHud.js";
+import { definirMiraConstrucao } from "../construir/tick.js";
 import {
   contar,
   darItem,
@@ -82,8 +96,11 @@ export function loteSob(x, y) {
 
 export function idCasa(info) {
   if (!info) return "";
+  if (info.playerHouse?.id) return `player-${info.playerHouse.id}`;
+  if (info.predio?.playerHouseId) return `player-${info.predio.playerHouseId}`;
   const v = info.predio;
-  return `${info.zona.key}:${v.papel}:${v.x0}:${v.y0}`;
+  const zonaKey = info.zona?.key || "campo";
+  return `${zonaKey}:${v.papel}:${v.x0 ?? v.x}:${v.y0 ?? v.y}`;
 }
 
 function gramaLivre(x, y) {
@@ -181,8 +198,53 @@ function fecharBusca(estadoBusca) {
   return { zona: escolhido.zona, predio: escolhido.predio, ax: escolhido.ax, ay: escolhido.ay };
 }
 
+/** Porta sintética de casa do jogador (frente sul da pegada). */
+function entradaCasaJogador(x, y) {
+  const casas = casasPerto(x, y, 10);
+  let melhor = null;
+  let melhorD = 2.4 * 2.4;
+  for (const h of casas) {
+    if (!h.enterable) continue;
+    const cols = h.cols || 6;
+    const rows = h.rows || 5;
+    const portaX = h.x;
+    const portaY = h.y + rows * 0.5 + 0.35;
+    const dx = x - portaX;
+    const dy = y - portaY;
+    const d = dx * dx + dy * dy;
+    if (d < melhorD) {
+      melhorD = d;
+      melhor = h;
+    }
+  }
+  if (!melhor) return null;
+  const cols = melhor.cols || 6;
+  const rows = melhor.rows || 5;
+  return {
+    ax: 0,
+    ay: 0,
+    predio: {
+      papel: "casa",
+      modelo: melhor.buildingId,
+      porta: true,
+      x: melhor.x - cols / 2,
+      y: melhor.y - rows / 2,
+      w: cols,
+      h: rows,
+      playerHouseId: melhor.id,
+      casaJogador: true,
+    },
+    playerHouse: melhor,
+  };
+}
+
 /** Na frente da porta, dá pra entrar. Cada contato novo vale. */
 export function entradaPerto(x, y) {
+  const casaPlayer = entradaCasaJogador(x, y);
+  if (casaPlayer) {
+    portaSegura = casaPlayer.playerHouse.id;
+    return casaPlayer;
+  }
   const zona = zonaNoMundo(x, y);
   if (!zona?.layout || zona.tipo !== "cidade") {
     portaSegura = "";
@@ -279,7 +341,9 @@ function entrarHub(corpo, info, spawn, papel) {
 
 function entrarSala3d(corpo, info) {
   const spawn = spawnSala();
-  const casaId = idCasa(info);
+  const casaId = info.playerHouse
+    ? `player-${info.playerHouse.id}`
+    : idCasa(info);
   definirLayoutSala(casaId);
   estado.interior = {
     sala3d: true,
@@ -288,6 +352,7 @@ function entrarSala3d(corpo, info) {
     ax: info.ax,
     ay: info.ay,
     predio: info.predio,
+    playerHouseId: info.playerHouse?.id || null,
   };
   ancorarOutdoor(estado.interior, corpo);
   aoEntrarCasa(casaId);
@@ -581,9 +646,48 @@ export function usarNoClique(corpo, celula, alvoBloco) {
     return "Não deu para colocar o bloco.";
   }
   if (item.tipo === TIPO_ITEM.FERRAMENTA) {
-    if (item.key === "hammer" && estado.interior?.papel === "casa" && !estado.interior.sala3d) {
+    if (item.key === "flag" && !estado.interior) {
+      definirMiraConstrucao(celula.x + 0.5, celula.y + 0.5);
+      const r = plantarBandeira(celula.x + 0.5, celula.y + 0.5);
+      if (!r.ok) return mensagemFalha(r.reason) || "Não deu para plantar a bandeira.";
+      return r.relocated ? "Base relocada." : "Base plantada.";
+    }
+    if (item.key === "hammer" && estado.interior?.papel === "casa") {
+      if (!estado.interior.sala3d) {
+        estado.construir = true;
+        return "";
+      }
+      // Casa 3D do jogador: móveis via catálogo indoor existente
       estado.construir = true;
       return "";
+    }
+    if (item.key === "hammer" && !estado.interior) {
+      definirMiraConstrucao(celula.x + 0.5, celula.y + 0.5);
+      if (!temSelecaoConstruir()) {
+        if (
+          (teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight")) &&
+          celulaEmAlcance(corpo, celula, null)
+        ) {
+          const alvo = alvoDemolirPerto(celula.x + 0.5, celula.y + 0.5, 2.4);
+          if (alvo) {
+            const hit = acertarDemolicao(alvo, 10);
+            if (hit.ok) {
+              return hit.destroyed
+                ? hit.message || "Demolido."
+                : `Demolindo… ${hit.hp}/${hit.maxHp}`;
+            }
+          }
+        }
+        const aberto = toggleCatalogoConstruir();
+        atualizarCatalogoConstruir();
+        return aberto ? "Catálogo aberto." : "Catálogo fechado.";
+      }
+      if (buildMode.selected && celulaEmAlcance(corpo, celula, null)) {
+        const r = iniciarRitual(buildMode.selected, celula.x + 0.5, celula.y + 0.5, corpo);
+        if (!r.ok) return r.message || mensagemFalha(r.reason);
+        return "Construção iniciada — o companion está trabalhando.";
+      }
+      return "Selecione no catálogo e clique no chão.";
     }
     if (!celulaEmAlcance(corpo, celula, alvoBloco)) return "Longe demais.";
     if (item.key === "pickaxe") {

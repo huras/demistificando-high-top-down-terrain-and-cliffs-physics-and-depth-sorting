@@ -11,6 +11,7 @@ import { marcasBerry } from "../../mapa/marcasBerry.js";
 import { marcasWild } from "../../mapa/marcasWild.js";
 import { marcasLetras } from "../../letras/mapaMarcas.js";
 import { marcasSites } from "../../mundo/sites/mapaMarcas.js";
+import { marcasBaseJogador } from "../../construir/mapaMarcas.js";
 
 const extras = [];
 
@@ -119,7 +120,8 @@ export function marcasExtras(opts = null) {
     marcasBerry(),
     marcasWild(),
     marcasLetras(),
-    marcasSites(opts)
+    marcasSites(opts),
+    marcasBaseJogador()
   );
 }
 

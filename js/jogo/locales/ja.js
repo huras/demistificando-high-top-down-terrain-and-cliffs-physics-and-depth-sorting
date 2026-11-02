@@ -141,6 +141,19 @@ export default {
     "hammer": "ハンマー",
     "flag": "はた"
   },
+  "construir": {
+    "titulo": "けんせつ",
+    "basePlantada": "ベースを設置した。",
+    "baseRelocada": "ベースを移動した。",
+    "catalogoAberto": "カタログを開いた。",
+    "ritual": "けんせつを開始した。",
+    "demolido": "とりこわした。",
+    "suaBase": "じぶんのベース",
+    "suaCasa": "じぶんのいえ"
+  },
+  "bandeira": {
+    "dica": "ベースの範囲を設置・移動する。"
+  },
   "ui": {
     "obteve": "てにいれた",
     "guarda": "バッグにしまえる。",

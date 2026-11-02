@@ -467,6 +467,29 @@ function criarCartaoCasa(folha) {
   return raiz;
 }
 
+/** Dist² ao AABB (0 se o ponto está dentro). */
+function dist2AoAabb(px, py, x0, y0, x1, y1) {
+  const cx = px < x0 ? x0 : px > x1 ? x1 : px;
+  const cy = py < y0 ? y0 : py > y1 ? y1 : py;
+  const dx = px - cx;
+  const dy = py - cy;
+  return dx * dx + dy * dy;
+}
+
+/**
+ * Histerese de stream: evita pop na borda do alcance.
+ * @param {boolean} visivelAgora
+ * @param {number} d2
+ * @param {number} alcance
+ * @param {number} [folga]
+ */
+function deveFicarVisivel(visivelAgora, d2, alcance, folga = 40) {
+  const in2 = alcance * alcance;
+  if (!visivelAgora) return d2 <= in2;
+  const out = alcance + folga;
+  return d2 <= out * out;
+}
+
 function montarCidade(moldes, folhas, def, sprites, predios) {
   const layout = montarLayout(def);
   const grupo = new THREE.Group();
@@ -518,10 +541,16 @@ function montarCidade(moldes, folhas, def, sprites, predios) {
       grupo.add(inst);
     }
   }
+  // Centro/AABB no layout atual (AREA 384 → CENTRO 192). +64 era da era 128.
+  const fp = layout.fp;
   return {
     grupo,
-    cx: ox + 64,
-    cy: oy + 64,
+    cx: ox + (fp?.cx ?? AREA_KANTO * 0.5),
+    cy: oy + (fp?.cy ?? AREA_KANTO * 0.5),
+    x0: ox + (fp?.x0 ?? 0),
+    y0: oy + (fp?.y0 ?? 0),
+    x1: ox + (fp?.x1 ?? AREA_KANTO),
+    y1: oy + (fp?.y1 ?? AREA_KANTO),
   };
 }
 
@@ -622,13 +651,15 @@ export function criarEdificiosCidade() {
       // Luz do chão: SEMPRE. comecarMapaChao zera fontes todo quadro — pular
       // aqui apaga postes/Pokémon no idle e pisca ao andar (POS_EPS).
 
+      // Alcance: stream + margem. Visibilidade por AABB do footprint (não ponto +64).
       const alcance = (obterRaioStream() + 2) * CHUNK_XZ + 96;
-      const limite = alcance * alcance;
       for (let i = 0; i < cidades.length; i++) {
         const c = cidades[i];
-        const dx = px - c.cx;
-        const dy = py - c.cy;
-        const visivel = dx * dx + dy * dy < limite;
+        const d2 =
+          Number.isFinite(c.x0) && Number.isFinite(c.y0)
+            ? dist2AoAabb(px, py, c.x0, c.y0, c.x1, c.y1)
+            : (px - c.cx) * (px - c.cx) + (py - c.cy) * (py - c.cy);
+        const visivel = deveFicarVisivel(!!c.grupo.visible, d2, alcance);
         if (precisaVisibilidade) c.grupo.visible = visivel;
         else if (!c.grupo.visible) continue;
         if (!visivel) continue;
