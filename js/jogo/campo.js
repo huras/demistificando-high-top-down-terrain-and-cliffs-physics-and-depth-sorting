@@ -1,7 +1,7 @@
 /** Campo: porta, enxada, regador, plantar, colher, machado e picareta. */
 
 import { ALCANCE_CONSTRUIR, RAIO_STREAM_BOLSO } from "../config.js";
-import { deLocalKanto, paraLocalKanto } from "../mundo/bounds.js";
+import { deLocalKanto, dentroDoBolsoSala, paraLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 import { naSaidaSala, spawnSala } from "../mundo/cidade/sala3d.js";
@@ -10,7 +10,7 @@ import { naSaidaCentro, spawnCentro } from "../mundo/cidade/centro.js";
 import { naSaidaLoja, spawnLoja } from "../mundo/cidade/loja.js";
 import { naSaidaGinasio, spawnGinasio } from "../mundo/cidade/ginasio.js";
 import { naSaidaMansao, spawnMansao } from "../mundo/cidade/mansao.js";
-import { definirLayoutSala } from "../mundo/cidade/interiorCasa.js";
+import { definirLayoutSala, definirMoveisJogador } from "../mundo/cidade/interiorCasa.js";
 import {
   atualizarStreaming,
   atualizarStreamingDuplo,
@@ -44,6 +44,7 @@ import { iniciarPortaTransicao, portaOcupada } from "./portaTransicao.js";
 import { emAlcanceEdicao } from "../mundo/voxel/editar.js";
 import { tentarColocar, tentarQuebrar } from "./blocos.js";
 import {
+  acharCasa,
   buildMode as modoBuild,
   casasPerto,
   iniciarRitual,
@@ -72,7 +73,11 @@ import {
   usarNoJogador,
   usarNoPokemon,
 } from "./estado.js";
-import { checarSaidaSantuario, sairSantuario } from "../santuario/entrar.js";
+import {
+  checarSaidaSantuario,
+  restaurarSantuarioSalvo,
+  sairSantuario,
+} from "../santuario/entrar.js";
 import { aoEntrarCasa, aoSairInterior } from "../npc/index.js";
 
 const PAPEIS = new Set(["casa", "loja", "centro", "lab", "ginasio", "mansao"]);
@@ -380,6 +385,7 @@ function entrarSala3d(corpo, info) {
     ? `player-${info.playerHouse.id}`
     : idCasa(info);
   definirLayoutSala(casaId);
+  definirMoveisJogador(estado.moveis[casaId] || []);
   estado.interior = {
     sala3d: true,
     papel: "casa",
@@ -424,7 +430,7 @@ function entrarLaboratorio(corpo, info) {
   return true;
 }
 
-function pousar(corpo, x, y) {
+function pousar(corpo, x, y, opts = {}) {
   corpo.x = x;
   corpo.y = y;
   corpo.z = ALTURA_PRACA;
@@ -439,7 +445,121 @@ function pousar(corpo, x, y) {
   streamEntradaBolso(corpo, x, y);
   corpo._renasceu = true;
   estado.painel = null;
-  sfx("porta");
+  if (!opts.silencio) sfx("porta");
+}
+
+function spawnPadraoDoPapel(papel) {
+  if (papel === "lab") return spawnLaboratorio();
+  if (papel === "centro") return spawnCentro();
+  if (papel === "loja") return spawnLoja();
+  if (papel === "ginasio") return spawnGinasio();
+  if (papel === "mansao") return spawnMansao();
+  return spawnSala();
+}
+
+function aplicarFacingLocal(corpo, local) {
+  if (!local) return;
+  if (Number.isFinite(local.facing)) corpo.facing = local.facing | 0;
+  if (Number.isFinite(local.dirX)) corpo.dirX = local.dirX;
+  if (Number.isFinite(local.dirY)) corpo.dirY = local.dirY;
+}
+
+/**
+ * Depois do boot: se o save estava dentro de um lugar, recoloca no bolso.
+ * @param {object} corpo
+ */
+export function restaurarInteriorSalvo(corpo) {
+  const snap = estado.interiorSalvo;
+  estado.interiorSalvo = null;
+  if (!corpo || !snap?.sala3d || !snap.papel) return false;
+
+  const local = estado.posicaoInterior;
+  if (snap.papel === "santuario") {
+    const ok = restaurarSantuarioSalvo(corpo, snap, local);
+    if (!ok) estado.posicaoInterior = null;
+    return ok;
+  }
+
+  if (
+    Number.isFinite(snap.outdoorX) &&
+    Number.isFinite(snap.outdoorY)
+  ) {
+    // outdoor já é a âncora do stream; garante no snap interior
+  } else if (snap.playerHouseId) {
+    const casa = acharCasa(snap.playerHouseId);
+    if (!casa) {
+      estado.posicaoInterior = null;
+      return false;
+    }
+    const porta = {
+      x: casa.x,
+      y: casa.y + (casa.rows || 5) * 0.5 + 1.15,
+      z: Number.isFinite(casa.z) ? casa.z : ALTURA_PRACA,
+    };
+    snap.outdoorX = porta.x;
+    snap.outdoorY = porta.y;
+    snap.outdoorZ = porta.z;
+  } else if (!snap.predio) {
+    estado.posicaoInterior = null;
+    return false;
+  }
+
+  if (snap.papel === "casa") {
+    if (snap.playerHouseId && !acharCasa(snap.playerHouseId)) {
+      estado.posicaoInterior = null;
+      return false;
+    }
+    const casaId = snap.casaId || (snap.playerHouseId ? `player-${snap.playerHouseId}` : "");
+    if (!casaId) {
+      estado.posicaoInterior = null;
+      return false;
+    }
+    definirLayoutSala(casaId);
+    definirMoveisJogador(estado.moveis[casaId] || []);
+    estado.interior = {
+      sala3d: true,
+      papel: "casa",
+      casaId,
+      ax: snap.ax,
+      ay: snap.ay,
+      predio: snap.predio || null,
+      playerHouseId: snap.playerHouseId || null,
+      outdoorX: snap.outdoorX,
+      outdoorY: snap.outdoorY,
+      outdoorZ: snap.outdoorZ,
+    };
+    aoEntrarCasa(casaId);
+    const spawn = spawnSala();
+    const x = local && dentroDoBolsoSala(local.x, local.y) ? local.x : spawn.x;
+    const y = local && dentroDoBolsoSala(local.x, local.y) ? local.y : spawn.y;
+    pousar(corpo, x, y, { silencio: true });
+    aplicarFacingLocal(corpo, local);
+    return true;
+  }
+
+  const hubs = new Set(["lab", "centro", "loja", "ginasio", "mansao"]);
+  if (!hubs.has(snap.papel)) {
+    estado.posicaoInterior = null;
+    return false;
+  }
+
+  estado.interior = {
+    sala3d: true,
+    papel: snap.papel,
+    casaId: snap.casaId || "",
+    ax: snap.ax,
+    ay: snap.ay,
+    predio: snap.predio || null,
+    outdoorX: snap.outdoorX,
+    outdoorY: snap.outdoorY,
+    outdoorZ: snap.outdoorZ,
+  };
+  const spawn = spawnPadraoDoPapel(snap.papel);
+  const x = local && dentroDoBolsoSala(local.x, local.y) ? local.x : spawn.x;
+  const y = local && dentroDoBolsoSala(local.x, local.y) ? local.y : spawn.y;
+  pousar(corpo, x, y, { silencio: true });
+  aplicarFacingLocal(corpo, local);
+  return true;
 }
 
 export function checarSaidaSala(corpo) {

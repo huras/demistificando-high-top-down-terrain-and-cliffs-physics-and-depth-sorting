@@ -10,6 +10,7 @@ import {
   BLOCOS,
   CHAVES,
   FERRAMENTAS,
+  MATERIAIS,
   MOVEIS,
   RECEITAS_BOLA,
   REMEDIOS,
@@ -18,6 +19,9 @@ import {
   materiaisDaBolsa,
   teclaDoSlot,
 } from "../wild/catalogo.js";
+import { origemDoChao, medidasSala } from "../mundo/cidade/sala3d.js";
+import { definirMoveisJogador } from "../mundo/cidade/interiorCasa.js";
+import { syncInteriorMoveis } from "../construir/estruturas.js";
 import { especie, listarEspecies } from "../pokemon/dados.js";
 import {
   curarParty,
@@ -221,7 +225,15 @@ function usarSelecionado(tipo, key) {
 
 function colocarSelecionado(key) {
   const interior = estado.interior;
-  if (!interior || interior.papel !== "casa" || interior.sala3d || !interior.sala) {
+  if (!interior || interior.papel !== "casa") {
+    estado.itemGet = "Só dentro de casa.";
+    return;
+  }
+  if (interior.sala3d) {
+    colocarMovelSala3d(key);
+    return;
+  }
+  if (!interior.sala) {
     estado.itemGet = "Só dentro de casa.";
     return;
   }
@@ -238,6 +250,54 @@ function colocarSelecionado(key) {
     }
   }
   toast(colocarMovel(interior.casaId, key, cel.x, cel.y));
+}
+
+function colocarMovelSala3d(key) {
+  const corpo = corpoRef;
+  const interior = estado.interior;
+  if (!corpo || !interior?.casaId) {
+    estado.itemGet = "Só dentro de casa.";
+    return;
+  }
+  const chao = origemDoChao();
+  const med = medidasSala();
+  let fx = Number(corpo.dirX);
+  let fy = Number(corpo.dirY);
+  if (!Number.isFinite(fx)) fx = 0;
+  if (!Number.isFinite(fy)) fy = 0;
+  const len2 = fx * fx + fy * fy;
+  if (len2 < 0.01) {
+    fx = 0;
+    fy = 1;
+  } else {
+    const len = Math.sqrt(len2);
+    fx /= len;
+    fy /= len;
+  }
+  const wx = corpo.x + fx * 1.25;
+  const wy = corpo.y + fy * 1.25;
+  if (wx < med.chaoX0 || wx >= med.chaoX1 || wy < med.chaoY0 || wy >= med.chaoY1) {
+    estado.itemGet = "Aponte para o chão da sala.";
+    return;
+  }
+  const tx = Math.floor(wx - chao.x);
+  const ty = Math.floor(wy - chao.y);
+  const lista = estado.moveis[interior.casaId] || [];
+  for (let i = 0; i < lista.length; i++) {
+    if (lista[i].x === tx && lista[i].y === ty) {
+      estado.itemGet = "Já tem alguma coisa aí.";
+      return;
+    }
+  }
+  const msg = colocarMovel(interior.casaId, key, tx, ty);
+  if (msg) {
+    toast(msg);
+    return;
+  }
+  definirMoveisJogador(estado.moveis[interior.casaId] || []);
+  if (interior.playerHouseId) {
+    syncInteriorMoveis(interior.playerHouseId, estado.moveis[interior.casaId] || []);
+  }
 }
 
 function escolher(id) {
@@ -723,20 +783,51 @@ function htmlSave() {
   return `<p>O save fica neste navegador.</p><button type="button" data-act="salvar">Salvar agora</button>`;
 }
 
+function chipCustoMovel(key, amount) {
+  const tem = contar(TIPO_ITEM.MATERIAL, key) | 0;
+  const nome = MATERIAIS[key]?.nome || key;
+  const empty = tem < amount ? " is-empty" : "";
+  return `<span class="bch-mat${empty}" title="${escHtml(nome)} (${tem}/${amount})">${htmlIcone(key, "bch-mat__ico", 16)}<b>${amount}</b></span>`;
+}
+
 function pintarConstruir() {
   const host = el("#jogo-construir");
   if (!host) return;
   host.hidden = !estado.construir;
   if (!estado.construir) return;
+  host.className = "bch-hud bch-hud--indoor";
   const chaves = Object.keys(MOVEIS);
-  host.innerHTML = `<header class="jogo-topo"><h2>Móveis</h2><button type="button" data-act="fechar">Fechar</button></header>${chaves
+  const cards = chaves
     .map((key) => {
       const m = MOVEIS[key];
       const ok = podePagarCusto(m.custo);
-      const custo = Object.entries(m.custo).map(([k, n]) => `${n} ${k}`).join(", ");
-      return `<div class="jogo-item"><span>${m.nome}</span><span>${custo}</span><button type="button" data-act="movel" data-key="${key}" ${ok ? "" : "disabled"}>Colocar</button></div>`;
+      const custo = Object.entries(m.custo)
+        .map(([k, n]) => chipCustoMovel(k, n))
+        .join("");
+      return `<article class="bch-card${ok ? "" : " is-off"}">
+        <span class="bch-card__nome">${escHtml(m.nome)}</span>
+        <button type="button" class="hud-btn yellow small" data-act="movel" data-key="${key}" ${ok ? "" : "disabled"}>Colocar</button>
+        <div class="bch-card__custo">${custo}</div>
+      </article>`;
     })
-    .join("")}`;
+    .join("");
+  host.innerHTML = `<div class="bch-hud__panel hud-panel" role="dialog" aria-label="Móveis">
+    <header class="bch-hud__head hud-head">
+      <div class="bch-hud__head-text">
+        <b>Móveis</b>
+        <span>Decore o interior da casa</span>
+      </div>
+      <button type="button" class="bch-hud__x" data-act="fechar" aria-label="Fechar">×</button>
+    </header>
+    <div class="bch-hud__lista">${cards}</div>
+    <footer class="bch-hud__foot">
+      <p class="bch-hud__hint">Olhe para o chão livre e coloque.</p>
+      <button type="button" class="hud-btn red big" data-act="fechar">
+        Fechar
+        <kbd class="hud-kbd">Esc</kbd>
+      </button>
+    </footer>
+  </div>`;
 }
 
 function pintarCraft() {

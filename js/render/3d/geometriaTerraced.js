@@ -3,6 +3,7 @@
  * Topologia do Terreno 3D do gerador; coords mundo (x,z) e altura em blocos (y).
  */
 import * as THREE from "three";
+import { yLaminaAgua } from "../../config.js";
 
 /**
  * @param {Float32Array} alturas grid (nx+1)*(ny+1)
@@ -146,7 +147,7 @@ export function criarGeometriaMarPlano(mar, opts) {
   const normals = [];
   const uvs = [];
   const colors = [];
-  const y = nivel - 0.04;
+  const y = yLaminaAgua(nivel);
 
   for (let cy = 0; cy < ny; cy++) {
     for (let cx = 0; cx < nx; cx++) {

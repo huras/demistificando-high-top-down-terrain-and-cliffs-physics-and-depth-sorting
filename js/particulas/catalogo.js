@@ -2,6 +2,7 @@
  * Catálogo data-driven de presets de partículas.
  * Defaults embutidos = comportamento legado; JSON sobrescreve no boot.
  */
+import { AGUA_OFFSET_LAMINA } from "../config.js";
 
 const IDS_ELEMENTO = [
   "normal",
@@ -234,7 +235,7 @@ const AGUA_PADRAO = {
     atras: 0.25,
     passo: 0.022,
     imersaoMin: 0.12,
-    offsetLamina: 0.18,
+    offsetLamina: AGUA_OFFSET_LAMINA,
   },
   gota: {
     vida: 0.35,

@@ -75,14 +75,41 @@ const PRESETS_CELADON = Object.freeze([
   ]),
 ]);
 
+/** Móveis do catálogo indoor → peças da folha 3D. */
+const MAPA_MOVEL = Object.freeze({
+  cama: "cama-azul",
+  mesa: "mesa",
+  cadeira: "cadeira",
+  planta: "vaso",
+  bancada: "mesa",
+});
+
 /** @type {readonly (readonly [string, number, number])[]} */
 let pontosAtivos = PONTOS_PADRAO;
 let casaIdAtiva = "";
+/** @type {{ key: string, x: number, y: number }[]} */
+let moveisJogador = [];
 /** @type {null | (() => void)} */
 let aoMudarLayout = null;
 
 export function registrarRefreshMoveis(fn) {
   aoMudarLayout = typeof fn === "function" ? fn : null;
+}
+
+export function forcarRefreshMoveis() {
+  aoMudarLayout?.();
+}
+
+/** Lista salva em estado.moveis (coords relativas ao chão). */
+export function definirMoveisJogador(lista) {
+  moveisJogador = Array.isArray(lista)
+    ? lista.map((m) => ({
+        key: String(m.key || ""),
+        x: Number(m.x) || 0,
+        y: Number(m.y) || 0,
+      }))
+    : [];
+  aoMudarLayout?.();
 }
 
 export function definirLayoutSala(casaId = "") {
@@ -92,10 +119,13 @@ export function definirLayoutSala(casaId = "") {
   if (id.startsWith("player-")) {
     // Casa do jogador: vazia até ele mobiliar (não herda layout de NPC).
     pontosAtivos = Object.freeze([]);
+    moveisJogador = [];
   } else if (id.startsWith("celadon:")) {
+    moveisJogador = [];
     const rng = mulberry32(hashStr(`moveis:${id}`));
     pontosAtivos = PRESETS_CELADON[pickIndex(rng, PRESETS_CELADON.length)];
   } else {
+    moveisJogador = [];
     pontosAtivos = PONTOS_PADRAO;
   }
   aoMudarLayout?.();
@@ -111,6 +141,18 @@ export function moveisDaSala() {
       id: peca.id,
       x: chao.x + pontosAtivos[i][1],
       y: chao.y + pontosAtivos[i][2],
+      r: peca.r,
+    });
+  }
+  for (let i = 0; i < moveisJogador.length; i++) {
+    const m = moveisJogador[i];
+    const id = MAPA_MOVEL[m.key] || m.key;
+    const peca = porId.get(id);
+    if (!peca) continue;
+    lista.push({
+      id: peca.id,
+      x: chao.x + m.x + 0.5,
+      y: chao.y + m.y + 0.5,
       r: peca.r,
     });
   }

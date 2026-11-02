@@ -235,18 +235,20 @@
   border: 1px solid #1c1917;
 }
 
-.jogo-hud button:not(.hotbar-hud__slot):not(.hud-utility-btn):not(.party-slot),
+/* Só painéis legacy cream — não pisar em hud-btn / Skills / construir. */
+.jogo-painel button:not(.hud-btn):not(.bch-hud__x):not(.skill-loadout-hud__x),
 .jogo-painel select {
   pointer-events: auto;
   border: 1px solid #1c1917;
   background: #fff;
+  color: #1c1917;
   border-radius: 8px;
   padding: 4px 8px;
   font: inherit;
   cursor: pointer;
 }
 
-.jogo-hud button.is-on:not(.hotbar-hud__slot):not(.party-slot):not(.hud-utility-btn),
+.jogo-painel button.is-on:not(.hud-btn),
 .jogo-slot.is-on {
   background: #1c1917;
   color: #fff;

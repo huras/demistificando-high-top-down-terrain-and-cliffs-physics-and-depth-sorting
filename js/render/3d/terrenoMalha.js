@@ -9,6 +9,8 @@ import {
   MESH_CHUNKS_POR_FRAME,
   TRONCO_INSET,
   VISUAL_REAL_PADRAO,
+  yEspumaMargem,
+  yLaminaAgua,
 } from "../../config.js";
 import {
   anexarGeoAoLote,
@@ -1725,14 +1727,14 @@ function* construirGeosChunk(chunk, opts = null) {
           loteAgua,
           wx,
           wy,
-          supAgua - 0.04,
+          yLaminaAgua(supAgua),
           chunk.fluxoX[ia] | 0,
           chunk.fluxoY[ia] | 0,
           rgbAgua.r,
           rgbAgua.g,
           rgbAgua.b,
         );
-        empurrarEspumaLote(loteEspumas, wx, wy, supAgua + 0.16);
+        empurrarEspumaLote(loteEspumas, wx, wy, yEspumaMargem(supAgua));
         // Cortina em qualquer fluido (água, pântano, lava) com vizinho
         // molhado/nível mais baixo — dois níveis diferentes adjacentes.
         {

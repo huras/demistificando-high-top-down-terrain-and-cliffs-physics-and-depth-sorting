@@ -21,6 +21,7 @@ import {
   colherSilvestre,
   colherCanteiro,
   checarSaidaSala,
+  restaurarInteriorSalvo,
   sairInterior,
   tentarEntrar,
   tickCampo,
@@ -139,6 +140,8 @@ export function montarJogo(opts) {
   bootHudCompleto();
   definirGateEvolucao(() => !uiAberta() && !jogadorMorto() && !mapaAberto());
   carregar();
+  // Mundo já streamou no outdoor; se o save estava dentro, entra no bolso agora.
+  if (opts.corpo) restaurarInteriorSalvo(opts.corpo);
   semearDexParty();
   iniciarForca(FORCA);
   aoMudar(pintar);

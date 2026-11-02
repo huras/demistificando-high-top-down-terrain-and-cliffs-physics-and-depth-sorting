@@ -68,7 +68,8 @@ import {
   resetConstrucao,
   serializarConstrucao,
 } from "../construir/estadoConstrucao.js";
-import { syncInteriorMoveis } from "../construir/estruturas.js";
+import { acharCasa, syncInteriorMoveis } from "../construir/estruturas.js";
+import { dentroDoBolsoSala } from "../mundo/bounds.js";
 
 /** v2: overworld 3× (AREA 384 / LADO 24576) — posições absolutas incompatíveis. */
 const CHAVE_SAVE = "demo-jogo-v2";
@@ -142,6 +143,10 @@ export const estado = {
   morteAberta: false,
   vistosItens: {},
   interior: null,
+  /** Snapshot do interior no save — aplicado após o boot do mundo. */
+  interiorSalvo: null,
+  /** Posição dentro do bolso 3D (casa/hub/santuário). */
+  posicaoInterior: null,
   construir: false,
   craft: false,
   saidaGrace: 0,
@@ -150,6 +155,51 @@ export const estado = {
   /** Sessão de batalha treinador (overlay turnos). */
   batalhaTreinador: null,
 };
+
+/** Porta sul da pegada (centro da casa → fora da porta). */
+function portaOutdoorDaCasa(house) {
+  if (!house || !Number.isFinite(house.x) || !Number.isFinite(house.y)) return null;
+  const rows = house.rows || 5;
+  return {
+    x: house.x,
+    y: house.y + rows * 0.5 + 1.15,
+    z: Number.isFinite(house.z) ? house.z : 0,
+  };
+}
+
+/** Lê a 1ª casa do blob de save (obterSpawn roda antes de hidratar). */
+function portaCasaDoSaveBruto(bruto) {
+  const areas = bruto?.construcao?.playerStructures?.areas;
+  if (!areas || typeof areas !== "object") return null;
+  for (const b of Object.values(areas)) {
+    const houses = b?.houses;
+    if (!Array.isArray(houses)) continue;
+    for (let i = 0; i < houses.length; i++) {
+      const porta = portaOutdoorDaCasa(houses[i]);
+      if (porta && !dentroDoBolsoSala(porta.x, porta.y)) return porta;
+    }
+  }
+  return null;
+}
+
+/** Âncora outdoor enquanto está no bolso 3D (sala/lab/etc). */
+function ancoraOutdoorInterior() {
+  const interior = estado.interior;
+  if (!interior?.sala3d) return null;
+  if (Number.isFinite(interior.outdoorX) && Number.isFinite(interior.outdoorY)) {
+    return {
+      x: interior.outdoorX,
+      y: interior.outdoorY,
+      z: Number.isFinite(interior.outdoorZ) ? interior.outdoorZ : 0,
+    };
+  }
+  const id = interior.playerHouseId || interior.predio?.playerHouseId;
+  if (id) {
+    const porta = portaOutdoorDaCasa(acharCasa(id));
+    if (porta) return porta;
+  }
+  return null;
+}
 
 /** Atualiza a posição a gravar no save (chamar no tick / antes de salvar). */
 export function registrarPosicao(corpo, cam = null) {
@@ -170,21 +220,104 @@ export function registrarPosicao(corpo, cam = null) {
     : Number.isFinite(anterior?.distancia)
       ? anterior.distancia
       : undefined;
-  estado.posicao = {
-    x: corpo.x,
-    y: corpo.y,
-    z: Number.isFinite(corpo.elevacao)
-      ? corpo.elevacao
-      : Number.isFinite(corpo.z)
-        ? corpo.z
-        : 0,
-    facing: corpo.facing | 0,
-    dirX: Number.isFinite(corpo.dirX) ? corpo.dirX : 0,
-    dirY: Number.isFinite(corpo.dirY) ? corpo.dirY : 1,
-  };
+
+  const facing = corpo.facing | 0;
+  const dirX = Number.isFinite(corpo.dirX) ? corpo.dirX : 0;
+  const dirY = Number.isFinite(corpo.dirY) ? corpo.dirY : 1;
+  const zCorpo = Number.isFinite(corpo.elevacao)
+    ? corpo.elevacao
+    : Number.isFinite(corpo.z)
+      ? corpo.z
+      : 0;
+
+  // Bolso 3D: guarda posição local; no overworld só a âncora outdoor.
+  let x = corpo.x;
+  let y = corpo.y;
+  let z = zCorpo;
+  if (dentroDoBolsoSala(x, y) || estado.interior?.sala3d) {
+    estado.posicaoInterior = { x: corpo.x, y: corpo.y, z: zCorpo, facing, dirX, dirY };
+    const ancora = ancoraOutdoorInterior();
+    if (ancora) {
+      x = ancora.x;
+      y = ancora.y;
+      z = ancora.z;
+    } else if (anterior && !dentroDoBolsoSala(anterior.x, anterior.y)) {
+      if (Number.isFinite(yawCam)) anterior.yawCam = yawCam;
+      if (Number.isFinite(pitchOrbita)) anterior.pitchOrbita = pitchOrbita;
+      if (Number.isFinite(distancia)) anterior.distancia = distancia;
+      return;
+    } else {
+      return;
+    }
+  } else {
+    estado.posicaoInterior = null;
+  }
+
+  estado.posicao = { x, y, z, facing, dirX, dirY };
   if (Number.isFinite(yawCam)) estado.posicao.yawCam = yawCam;
   if (Number.isFinite(pitchOrbita)) estado.posicao.pitchOrbita = pitchOrbita;
   if (Number.isFinite(distancia)) estado.posicao.distancia = distancia;
+}
+
+function serializarInterior() {
+  const i = estado.interior;
+  if (!i?.sala3d) return null;
+  const out = {
+    sala3d: true,
+    papel: String(i.papel || ""),
+    casaId: i.casaId || null,
+    playerHouseId: i.playerHouseId || null,
+    ax: Number.isFinite(i.ax) ? i.ax : null,
+    ay: Number.isFinite(i.ay) ? i.ay : null,
+    outdoorX: Number.isFinite(i.outdoorX) ? i.outdoorX : null,
+    outdoorY: Number.isFinite(i.outdoorY) ? i.outdoorY : null,
+    outdoorZ: Number.isFinite(i.outdoorZ) ? i.outdoorZ : null,
+    shrineId: i.shrineId || null,
+    element: i.element || null,
+  };
+  if (i.predio && typeof i.predio === "object") {
+    out.predio = { ...i.predio };
+  }
+  return out.papel ? out : null;
+}
+
+function normalizarInteriorSalvo(bruto) {
+  if (!bruto || typeof bruto !== "object" || !bruto.sala3d) return null;
+  const papel = String(bruto.papel || "");
+  if (!papel) return null;
+  const out = {
+    sala3d: true,
+    papel,
+    casaId: bruto.casaId || null,
+    playerHouseId: bruto.playerHouseId || null,
+    ax: Number.isFinite(bruto.ax) ? bruto.ax : null,
+    ay: Number.isFinite(bruto.ay) ? bruto.ay : null,
+    outdoorX: Number.isFinite(bruto.outdoorX) ? bruto.outdoorX : null,
+    outdoorY: Number.isFinite(bruto.outdoorY) ? bruto.outdoorY : null,
+    outdoorZ: Number.isFinite(bruto.outdoorZ) ? bruto.outdoorZ : null,
+    shrineId: bruto.shrineId || null,
+    element: bruto.element || null,
+  };
+  if (bruto.predio && typeof bruto.predio === "object") {
+    out.predio = { ...bruto.predio };
+  }
+  return out;
+}
+
+function normalizarPosicaoInterior(p) {
+  if (!p || typeof p !== "object") return null;
+  const x = Number(p.x);
+  const y = Number(p.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !dentroDoBolsoSala(x, y)) return null;
+  const z = Number(p.z);
+  return {
+    x,
+    y,
+    z: Number.isFinite(z) ? z : 0,
+    facing: Number.isFinite(p.facing) ? p.facing | 0 : 0,
+    dirX: Number.isFinite(p.dirX) ? p.dirX : 0,
+    dirY: Number.isFinite(p.dirY) ? p.dirY : 1,
+  };
 }
 
 /** Atualiza só a câmera no blob de posição (após o frame 3D). */
@@ -195,16 +328,36 @@ export function registrarCamera(cam) {
   if (Number.isFinite(cam.distancia)) estado.posicao.distancia = cam.distancia;
 }
 
-function normalizarPosicao(p) {
+function normalizarPosicao(p, bruto = null) {
   if (!p || typeof p !== "object") return null;
-  const x = Number(p.x);
-  const y = Number(p.y);
+  let x = Number(p.x);
+  let y = Number(p.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-  const z = Number(p.z);
+  let z = Number(p.z);
+  if (!Number.isFinite(z)) z = 0;
+
+  // Saves antigos gravavam o bolso 3D; remapeia pra porta outdoor / casa do jogador.
+  if (dentroDoBolsoSala(x, y)) {
+    const ox = Number(p.outdoorX);
+    const oy = Number(p.outdoorY);
+    if (Number.isFinite(ox) && Number.isFinite(oy) && !dentroDoBolsoSala(ox, oy)) {
+      x = ox;
+      y = oy;
+      const oz = Number(p.outdoorZ);
+      if (Number.isFinite(oz)) z = oz;
+    } else {
+      const porta = portaCasaDoSaveBruto(bruto);
+      if (!porta) return null;
+      x = porta.x;
+      y = porta.y;
+      z = porta.z;
+    }
+  }
+
   const out = {
     x,
     y,
-    z: Number.isFinite(z) ? z : 0,
+    z,
     facing: Number.isFinite(p.facing) ? p.facing | 0 : 0,
     dirX: Number.isFinite(p.dirX) ? p.dirX : 0,
     dirY: Number.isFinite(p.dirY) ? p.dirY : 1,
@@ -220,16 +373,17 @@ function normalizarPosicao(p) {
 
 /** Lê só a posição do save (antes do boot do mundo), sem hidratar o resto. */
 export function obterSpawnSalvo() {
+  let bruto = null;
+  try {
+    bruto = JSON.parse(localStorage.getItem(CHAVE_SAVE) || "null");
+  } catch {
+    bruto = null;
+  }
   if (estado.posicao) {
-    const atual = normalizarPosicao(estado.posicao);
+    const atual = normalizarPosicao(estado.posicao, bruto);
     if (atual) return atual;
   }
-  try {
-    const bruto = JSON.parse(localStorage.getItem(CHAVE_SAVE) || "null");
-    return normalizarPosicao(bruto?.posicao);
-  } catch {
-    return null;
-  }
+  return normalizarPosicao(bruto?.posicao, bruto);
 }
 
 let ouvintes = [];
@@ -839,7 +993,10 @@ export function salvar() {
     );
   }
   const party = listaParty().map(snapshot);
-  const posicao = normalizarPosicao(estado.posicao);
+  const construcao = serializarConstrucao();
+  const posicao = normalizarPosicao(estado.posicao, { construcao });
+  const interior = serializarInterior();
+  const posicaoInterior = interior ? normalizarPosicaoInterior(estado.posicaoInterior) : null;
   const dados = {
     dinheiro: estado.dinheiro,
     bolas: obterBolas(),
@@ -854,6 +1011,8 @@ export function salvar() {
     capturados: estado.capturadosMap ? { ...estado.capturadosMap } : {},
     vistosItens: estado.vistosItens || {},
     posicao,
+    interior,
+    posicaoInterior,
     quests: estado.quests,
     questState: (() => {
       const qs = estado.questState || createQuestState();
@@ -869,7 +1028,7 @@ export function salvar() {
     chaves: estado.chaves,
     santuarios: serializarSantuarios(),
     descobertaMapa: serializarDescobertaMapa(),
-    construcao: serializarConstrucao(),
+    construcao,
     party,
   };
   try {
@@ -959,7 +1118,12 @@ export function carregar() {
   for (const [casaId, lista] of Object.entries(moveisPlayer)) {
     if (!estado.moveis[casaId]?.length) estado.moveis[casaId] = lista;
   }
-  estado.posicao = normalizarPosicao(bruto.posicao);
+  estado.posicao = normalizarPosicao(bruto.posicao, bruto);
+  estado.interior = null;
+  estado.interiorSalvo = normalizarInteriorSalvo(bruto.interior);
+  estado.posicaoInterior = estado.interiorSalvo
+    ? normalizarPosicaoInterior(bruto.posicaoInterior)
+    : null;
   if (bruto.vistosItens && typeof bruto.vistosItens === "object" && !Array.isArray(bruto.vistosItens)) {
     estado.vistosItens = { ...bruto.vistosItens };
   } else {
@@ -981,6 +1145,9 @@ function semearInicio() {
   resetEstadoSantuario();
   resetDescobertaMapa();
   resetConstrucao();
+  estado.interior = null;
+  estado.interiorSalvo = null;
+  estado.posicaoInterior = null;
   estado.vistosItens = {};
   if (contarItem("oran") <= 0) ajustarItem("oran", 5, "mudo");
   if (contarItem("potion") <= 0) ajustarItem("potion", 2, "mudo");

@@ -163,6 +163,14 @@ export const AGUA_NADO_IMERSOS_MIN = 0.4;
 export const AGUA_NADO_IMERSOS_MAX = 1.2;
 /** Lâmina visual abaixo do chanfro da margem (bate com QUEDA_LABIO + folga). */
 export const AGUA_OFFSET_LAMINA = 0.18;
+/** Y da lâmina de água (render/FX). Física continua na superficie inteira. */
+export function yLaminaAgua(superficie) {
+  return (superficie | 0) - AGUA_OFFSET_LAMINA;
+}
+/** Espuma cola no lábio (lâmina + folga do offset vs QUEDA_LABIO). */
+export function yEspumaMargem(superficie) {
+  return yLaminaAgua(superficie) + 0.02;
+}
 /** Além da imersão de nado, o quanto o corpo desce ao afogar. */
 export const AGUA_AFOGA_EXTRA = 0.8;
 export const AGUA_VEL_NADO = 2.4;

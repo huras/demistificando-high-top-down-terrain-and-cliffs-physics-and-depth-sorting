@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ALTURA_BLOCO, TILE } from "../config.js";
+import { ALTURA_BLOCO, TILE, yLaminaAgua } from "../config.js";
 import { oscilacaoNado } from "../fx/fxAgua.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaPe } from "./ator.js";
@@ -633,7 +633,7 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
     const imerso = agua.superficie > 0 && pe < agua.superficie - 0.05;
     slot.veu.visible = imerso && some > 0.04;
     if (imerso) {
-      const yLamina = agua.superficie * ALTURA_BLOCO;
+      const yLamina = yLaminaAgua(agua.superficie) * ALTURA_BLOCO;
       slot.planoVeu.constant = yLamina;
       slot.planoSeco.constant = -yLamina;
     } else {

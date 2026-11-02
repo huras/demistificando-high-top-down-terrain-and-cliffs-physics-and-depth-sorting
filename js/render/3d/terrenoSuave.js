@@ -6,6 +6,7 @@ import {
   RAIO_SUAVE,
   RAIO_SUAVE_MAX,
   RAIO_SUAVE_MIN,
+  yLaminaAgua,
 } from "../../config.js";
 import { alturaDoRelevo, amostrarRegiao, nivelMarBlocos } from "../../mundo/bioma/catalogo.js";
 import { amostraKanto, dentroDoKanto } from "../../mundo/regiao/amostraKanto.js";
@@ -593,7 +594,7 @@ function* gerarMalha(px, py, raioSuave) {
     agua.mapa.set(k, i);
     const prof = Math.max(0, nivel - a.h);
     const esc = 1 - Math.min(1, prof / 8) * 0.4;
-    agua.pos.push(wx, nivel - 0.04, wy);
+    agua.pos.push(wx, yLaminaAgua(nivel), wy);
     agua.uv.push(wx, -wy);
     agua.cor.push(esc, esc, 1);
     return i;

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ALTURA_BLOCO, ALTURA_SPRITE_JOGADOR, JOGADOR_FRAME } from "../../config.js";
+import { ALTURA_BLOCO, ALTURA_SPRITE_JOGADOR, JOGADOR_FRAME, yLaminaAgua } from "../../config.js";
 import { oscilacaoNado } from "../../fx/fxAgua.js";
 import { pivoDoFrame } from "../pivoPe.js";
 import { carregarPivoJogador, pivoDoJogador } from "../pivoJogador.js";
@@ -183,7 +183,7 @@ export function criarPersonagem3d(opts = {}) {
       const imerso = agua.superficie > 0 && elevFisica < agua.superficie - 0.05;
       veu.visible = imerso && cartao.visible;
       if (imerso) {
-        const yLamina = agua.superficie * ALTURA_BLOCO;
+        const yLamina = yLaminaAgua(agua.superficie) * ALTURA_BLOCO;
         // veu: y <= lâmina; cartão/silhueta: y >= lâmina (água não cobre o corpo seco).
         planoVeu.constant = yLamina;
         planoSeco.constant = -yLamina;

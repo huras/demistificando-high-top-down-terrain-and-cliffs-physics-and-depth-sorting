@@ -1906,7 +1906,7 @@
       "arvore": 0,
       "mata": 0,
       "transicao": 16,
-      "degrau": 1,
+      "degrau": 4,
       "camada": "mar",
       "nos": [
         {
@@ -1993,7 +1993,7 @@
       "arvore": 0,
       "mata": 0,
       "transicao": 16,
-      "degrau": 1,
+      "degrau": 6,
       "camada": "mar",
       "nos": [
         {
@@ -2080,7 +2080,7 @@
       "arvore": 0,
       "mata": 0,
       "transicao": 14,
-      "degrau": 2,
+      "degrau": 12,
       "camada": "mar",
       "nos": [
         {

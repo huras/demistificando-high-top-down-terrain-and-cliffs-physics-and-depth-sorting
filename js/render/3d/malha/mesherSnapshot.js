@@ -2,6 +2,7 @@
  * Mesher puro a partir de snapshot (Worker-safe, sem store/Three).
  * Gera lotes tipados: tops por kit, paredes unificadas, água/espuma/queda.
  */
+import { yEspumaMargem, yLaminaAgua } from "../../../config.js";
 import {
   criarLoteTipado,
   pushLedge,
@@ -229,14 +230,14 @@ export function malharDeSnapshot(snap) {
           loteA,
           wx,
           wy,
-          sup - 0.04,
+          yLaminaAgua(sup),
           snap.fluxoX[ia] | 0,
           snap.fluxoY[ia] | 0,
           rgb.r,
           rgb.g,
           rgb.b,
         );
-        empurrarEspuma(lx, ly, wx, wy, sup + 0.16);
+        empurrarEspuma(lx, ly, wx, wy, yEspumaMargem(sup));
         const loteQ = fam === 3 ? loteQuedasLava : loteQuedas;
         const lados = viz;
         for (let d = 0; d < 4; d++) {
