@@ -4,6 +4,7 @@
  */
 import { pokemonDeployado } from "../pokemon/party.js";
 import { pousarCompanheiro } from "../pokemon/pousarCompanheiro.js";
+import { olharCameraNorte3d } from "../render/3d/cenario3d.js";
 
 const APPROACH = 0.2;
 const FADE_OUT = 0.2;
@@ -143,6 +144,8 @@ export function tickPortaTransicao(dt) {
       dirY: tr.dirY,
       facing: tr.facing,
     });
+    // Câmera sempre norte ao atravessar porta (não herda yaw da rua/sala).
+    olharCameraNorte3d();
     setFade(1);
     tr.fase = "hold";
     tr.t = 0;

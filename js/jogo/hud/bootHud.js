@@ -9,9 +9,11 @@ import { montarRadar } from "./radar.js";
 import { montarStatusJogador } from "./statusJogador.js";
 import { montarObjetivoMissao, pintarObjetivo } from "./objetivoMissao.js";
 import { montarHudPokedex } from "../pokedex/hud.js";
+import { montarHudCapsula } from "../capsula.js";
 import {
   definirCorpoHud,
   definirDexApi,
+  definirCapsulaApi,
   definirMenuApi,
   definirRadarApi,
   definirStatusApi,
@@ -51,6 +53,24 @@ export function bootHudCompleto() {
     },
   });
   definirDexApi(dexApi);
+
+  const capsulaApi = montarHudCapsula(document.getElementById("capsula-hud"), {
+    aoMudarAberto(aberto) {
+      estado.capsulaAberta = !!aberto;
+      avisar();
+    },
+    podeAbrir() {
+      return !(
+        estado.dialogo ||
+        estado.menuAberto ||
+        estado.dexAberta ||
+        estado.statusAberto ||
+        estado.skillAberto ||
+        estado.painel
+      );
+    },
+  });
+  definirCapsulaApi(capsulaApi);
 
   menu = criarMenuJogo(document.getElementById("game-menu"), {
     onPageChange(page, open) {

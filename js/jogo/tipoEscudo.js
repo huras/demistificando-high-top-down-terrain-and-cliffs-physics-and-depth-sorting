@@ -2,6 +2,8 @@
  * Atlas de escudos elementais (type-shields.png do Pokémon AI via /ref).
  */
 
+import { COR_TIPO } from "../pokemon/tipos.js";
+
 const SHEET_URL = "/ref/sprites/shields/type-shields.png";
 const COLS = 5;
 const ROWS = 4;
@@ -201,7 +203,8 @@ export function definirEscudoTipo(host, tipo, sizePx = 24) {
 export function criarIconeTipo(tipo, sizePx = 24, extraClass = "") {
   const el = document.createElement("span");
   el.className = extraClass ? `type-icon ${extraClass}` : "type-icon";
-  el.style.setProperty("--type", "");
+  const key = String(tipo || "normal").toLowerCase();
+  el.style.setProperty("--type", COR_TIPO[key] ?? "#64748b");
   definirEscudoTipo(el, tipo, sizePx);
   return el;
 }

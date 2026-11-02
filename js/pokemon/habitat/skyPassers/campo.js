@@ -8,6 +8,7 @@ import { nivelEm } from "../../distribuicao/forca.js";
 import { garantirAtlas } from "../../sprites.js";
 import { HABITAT } from "../kinds.js";
 import { PERFIL_NINHO_VOO } from "../perfis.js";
+import { escolherAnimVoo } from "../poseVoo.js";
 import { sortearSkyPasser, poolSkyDeChaves } from "./catalogo.js";
 
 export const SKY_CFG = Object.freeze({
@@ -101,33 +102,36 @@ function livre() {
  * @param {number} agora
  */
 /**
- * Prefere espécie com strip FlapAround no atlas (evita Walk no ar).
+ * Só spawna se o atlas já tem pose aérea (FlapAround/Hover/Hop/Float).
+ * Sem fallback Idle — evita cruise “morto” no ar.
  * @param {readonly { dex: number, key: string }[] | null} pool
  */
-function escolherComFlap(pool) {
-  const tentativas = 8;
-  let fallback = null;
+function escolherComPoseVoo(pool) {
+  const tentativas = 12;
   for (let i = 0; i < tentativas; i++) {
     const entry = sortearSkyPasser(Math.random(), pool);
     if (!entry) return null;
-    if (!fallback) fallback = entry;
     const pack = garantirAtlas(entry.dex, false);
-    if (pack?.estado === "fila" || pack?.estado === "carregando") {
-      // Ainda carregando: aceita e o tickVisual usa FlapAround quando vier.
-      return entry;
-    }
-    if (pack?.anims?.FlapAround) return entry;
+    if (!pack) continue;
+    if (pack.estado === "pronto" && escolherAnimVoo(pack)) return entry;
   }
-  return fallback;
+  return null;
 }
 
 function spawnFlock(px, py, chavesLocais, agora) {
   const pool = poolSkyDeChaves(chavesLocais || []);
-  const entry = escolherComFlap(pool.length ? pool : null);
-  if (!entry) return;
+  const entry = escolherComPoseVoo(pool.length ? pool : null);
+  if (!entry) {
+    // Pré-aquece pool pra próximo intervalo ter atlas pronto.
+    const amostra = pool.length ? pool : null;
+    for (let i = 0; i < 3; i++) {
+      const e = sortearSkyPasser(Math.random(), amostra);
+      if (e) garantirAtlas(e.dex, false);
+    }
+    return;
+  }
   const esp = especie(entry.key);
   if (!esp) return;
-  // Pré-aquece atlas pra FlapAround estar pronto no 1º frame.
   garantirAtlas(esp.dex, false);
 
   const ang = Math.random() * Math.PI * 2;

@@ -16,7 +16,9 @@ import {
   definirModoCamera,
   definirPitchOrbita,
   distanciaNormalizada,
+  olharCameraNorte,
   seguirAlvo3d,
+  snapCamera3dAoCorpo,
   yawCamera,
   yawDeCameraThree,
 } from "./camera3d.js";
@@ -46,6 +48,7 @@ import { criarCercasJogador3d } from "./cercasJogador3d.js";
 import { criarDebugVaosPorta } from "./debugVaosPorta.js";
 import { atualizarDebugCorpos, criarDebugCorpos } from "./debugCorpos.js";
 import { criarDebugCasas } from "./debugCasas.js";
+import { atualizarDebugForca, criarDebugForca } from "./debugForca.js";
 import { criarVegetacaoBillboard3d } from "./vegetacaoBillboard3d.js";
 import { criarVegetacaoDistante } from "./vegetacaoDistante.js";
 import { criarVegetacaoHorizonte } from "./vegetacaoHorizonte.js";
@@ -355,6 +358,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.add(criarDebugVaosPorta());
   scene.add(criarDebugCorpos());
   scene.add(criarDebugCasas());
+  scene.add(criarDebugForca());
 
   const terrenoSuave = criarTerrenoSuave();
   terreno.grupo.add(terrenoSuave.mesh);
@@ -709,19 +713,22 @@ export function ajustarZoom3d(fator) {
 export function resetarCamera3d() {
   if (!estado) return;
   estado.camera3d.pronta = false;
+  olharCameraNorte(estado.camera3d);
 }
 
-/** Restaura yaw/pitch/distância do save no próximo snap da órbita. */
+/** Restaura pitch/distância do save; yaw sempre norte no spawn/load. */
 export function aplicarCameraSalva(pos) {
   if (!estado?.camera3d || !pos) return;
   const cam = estado.camera3d;
-  if (Number.isFinite(pos.yawCam)) {
-    cam._yawSalvo = pos.yawCam;
-    cam.yaw = pos.yawCam;
-  }
   if (Number.isFinite(pos.pitchOrbita)) definirPitchOrbita(cam, pos.pitchOrbita);
   if (Number.isFinite(pos.distancia)) definirDistancia(cam, pos.distancia);
-  cam.pronta = false;
+  snapCamera3dAoCorpo(cam);
+}
+
+/** Força a órbita a olhar o norte (teleporte / porta / spawn). */
+export function olharCameraNorte3d() {
+  if (!estado?.camera3d) return;
+  snapCamera3dAoCorpo(estado.camera3d);
 }
 
 /** Aplica deltas de mouse-look (pixels) na câmera 3D. */
@@ -857,6 +864,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   atualizarPokemon3d(yaw, camRender, inclinacao);
   tickFadeParedeInterior(corpo, camRender);
   atualizarDebugCorpos();
+  atualizarDebugForca(corpo);
   estado.terreno?.atualizarFrustum?.(camRender, { x: corpo.x, y: corpo.y });
   const camPos = estado.camera3d.cam.position;
   oferecerLuzesTotemSantuario(camPos.x, camPos.z, { interior });

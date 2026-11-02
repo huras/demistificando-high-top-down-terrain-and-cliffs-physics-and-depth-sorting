@@ -127,6 +127,11 @@ export function listarSolidosNpc() {
 
 export function aoEntrarCasa(predioId) {
   predioCasaAtual = predioId || "casa";
+  // Casa construída pelo jogador: sem moradores procedurais.
+  if (String(predioCasaAtual).startsWith("player-")) {
+    civisCasa = [];
+    return;
+  }
   civisCasa = gerarNpcsCasa(predioCasaAtual);
 }
 

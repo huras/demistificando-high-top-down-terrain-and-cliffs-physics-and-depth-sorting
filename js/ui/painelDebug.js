@@ -1,6 +1,7 @@
 import { definirDebugVaosPorta } from "../render/3d/debugVaosPorta.js";
 import { definirDebugCorpos } from "../render/3d/debugCorpos.js";
 import { definirDebugCasas } from "../render/3d/debugCasas.js";
+import { definirDebugForca } from "../render/3d/debugForca.js";
 
 function escreverNota(nota, ativo, total, um, varios, vazio) {
   if (!nota) return;
@@ -69,5 +70,13 @@ export function ligarPainelDebug() {
     "volume",
     "volumes",
     "nenhum volume",
+  );
+  ligarCaixa(
+    "debug-forca",
+    "debug-forca-nota",
+    definirDebugForca,
+    "alvo no cone",
+    "alvos no cone",
+    "nenhum alvo no cone",
   );
 }

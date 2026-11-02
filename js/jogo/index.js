@@ -422,6 +422,7 @@ function lerTeclas(corpo) {
     (estado.painel ||
       estado.menuAberto ||
       estado.dexAberta ||
+      estado.capsulaAberta ||
       estado.statusAberto ||
       estado.dialogo ||
       estado.roda ||
@@ -452,6 +453,7 @@ function lerTeclas(corpo) {
     estado.painel ||
     estado.menuAberto ||
     estado.dexAberta ||
+    estado.capsulaAberta ||
     estado.statusAberto ||
     estado.dialogo ||
     estado.roda ||

@@ -7,11 +7,21 @@
  * houver entrada no catálogo (ex.: Pikachu autorado ganha o ponto do JSON).
  */
 
+/**
+ * Fallback por tipo: cor + alcance do flare (poça no mapa usa intensidade;
+ * raio do stamp continua no PERFIL_POKEMON).
+ */
+export const PERFIL_LUZ_TIPO = Object.freeze({
+  electric: Object.freeze({ cor: "#ffcc66", raio: 2.35, intensidade: 1.2 }),
+  fire: Object.freeze({ cor: "#ff7a3d", raio: 2.85, intensidade: 1.25 }),
+  psychic: Object.freeze({ cor: "#ff6ad5", raio: 2.15, intensidade: 1.05 }),
+});
+
 /** Tinta luminosa (mais quente que COR_TIPO da UI). */
 export const COR_LUZ_TIPO = Object.freeze({
-  electric: "#ffcc66",
-  fire: "#ff7a3d",
-  psychic: "#ff6ad5",
+  electric: PERFIL_LUZ_TIPO.electric.cor,
+  fire: PERFIL_LUZ_TIPO.fire.cor,
+  psychic: PERFIL_LUZ_TIPO.psychic.cor,
 });
 
 const VAZIO = Object.freeze([]);
@@ -19,9 +29,9 @@ const _pontoTipo = {
   x: 0,
   y: 0.48,
   z: 0,
-  cor: COR_LUZ_TIPO.electric,
-  raio: 2.5,
-  intensidade: 1.15,
+  cor: PERFIL_LUZ_TIPO.electric.cor,
+  raio: PERFIL_LUZ_TIPO.electric.raio,
+  intensidade: PERFIL_LUZ_TIPO.electric.intensidade,
 };
 const _listaTipo = [_pontoTipo];
 
@@ -69,6 +79,9 @@ export function pontosBrilhoAtor(ator) {
   if (cat.length) return cat;
   const tipo = tipoBrilhoDe(ator.tipos || ator.especie?.tipos);
   if (!tipo) return VAZIO;
-  _pontoTipo.cor = COR_LUZ_TIPO[tipo];
+  const perfil = PERFIL_LUZ_TIPO[tipo];
+  _pontoTipo.cor = perfil.cor;
+  _pontoTipo.raio = perfil.raio;
+  _pontoTipo.intensidade = perfil.intensidade;
   return _listaTipo;
 }

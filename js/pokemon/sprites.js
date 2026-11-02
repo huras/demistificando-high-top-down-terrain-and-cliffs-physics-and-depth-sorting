@@ -1,6 +1,16 @@
 import { POKEMON } from "../config.js";
+import { CADEIA_VOO, escolherAnimVoo, ehAnimVoo } from "./habitat/poseVoo.js";
 
-const QUER = new Set(["Idle", "Walk", "Attack", "Shoot", "Hurt", "Strike", "Sleep", "FlapAround"]);
+const QUER = new Set([
+  "Idle",
+  "Walk",
+  "Attack",
+  "Shoot",
+  "Hurt",
+  "Strike",
+  "Sleep",
+  ...CADEIA_VOO,
+]);
 const POSE_GOLPE = new Set(["Attack", "Shoot", "Hurt", "Strike"]);
 const cache = new Map();
 const fila = [];
@@ -258,7 +268,7 @@ function cicloDaFaixa(spec) {
 
 function ritmoLocomocao(spec, nome, ator) {
   const ciclo = cicloDaFaixa(spec);
-  const piso = nome === "FlapAround" ? CICLO_VOO : CICLO_ANDAR;
+  const piso = ehAnimVoo(nome) ? CICLO_VOO : CICLO_ANDAR;
   const base = Math.min(1, ciclo / piso);
   const vel = velocidadePlana(ator);
   const acompanha = Math.min(1.15, Math.max(0.8, vel / POKEMON.VEL_ROAM));
@@ -300,10 +310,9 @@ function escolherFaixa(ator, pack, agora, passo) {
   if (noGolpe && ator.golpePose && pack.anims?.[ator.golpePose]) return ator.golpePose;
   if ((ator.conjuroRestante || 0) > 0 && pack.anims?.Shoot) return "Shoot";
   if (agora < ator.poseAte && POSE_GOLPE.has(ator.pose)) return faixaDoGolpe(pack, ator.pose);
-  // Voo: FlapAround obrigatório quando existe — nunca Walk no ar.
+  // Voo: FlapAround → Hover → Hop → Float; Idle só se pack quebrado.
   if (voa(ator, passo)) {
-    if (pack.anims?.FlapAround) return "FlapAround";
-    return pack.anims?.Idle ? "Idle" : "Walk";
+    return escolherAnimVoo(pack) || (pack.anims?.Idle ? "Idle" : "Walk");
   }
   if (passo && pack.anims?.Walk) return "Walk";
   return "Idle";

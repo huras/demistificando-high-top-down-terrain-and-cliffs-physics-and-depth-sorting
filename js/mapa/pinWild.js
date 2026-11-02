@@ -1,8 +1,9 @@
 /**
- * Pin de wild home (retrato + badge de stack).
- * Mantém último retrato bom por marca pra não piscar bola amarela no reload.
+ * Pin de wild no mapa / minimapa — ícones `sprites/pokemon/{gen}/minimap`
+ * do Pokemon AI. Já vêm redondos com transparência: desenha o size inteiro,
+ * sem clip nem anel.
  */
-import { pedirRetrato } from "../pokemon/retrato.js";
+import { pedirIconeMinimap, enfileirarIconeMinimap } from "../pokemon/minimapIcone.js";
 import { especie } from "../pokemon/dados.js";
 
 const ZOOM_HIDE_MUNDO = 0.8;
@@ -11,12 +12,16 @@ const ZOOM_HIDE_MUNDO = 0.8;
 const ultimoBom = new Map();
 
 /**
- * @param {{ mini?: boolean, dpr?: number, count?: number }} opts
+ * Diâmetro do pin. Paridade Pokemon AI: r = clamp(display×0.075, 6…12) no mini.
+ * @param {{ mini?: boolean, dpr?: number }} opts
  */
 export function tamanhoPinWild(opts = {}) {
   const dpr = opts.dpr > 0 ? opts.dpr : 1;
-  const base = opts.mini ? 16 : 20;
-  return Math.max(12, Math.round(base * dpr));
+  const display = opts.mini ? 220 : 480;
+  const r = opts.mini
+    ? Math.max(6, Math.min(12, display * 0.075))
+    : Math.max(8, Math.min(14, display * 0.035));
+  return Math.round(r * 2 * dpr * 1.2);
 }
 
 export function wildPinVisivelNoZoom(vista) {
@@ -24,29 +29,63 @@ export function wildPinVisivelNoZoom(vista) {
   return (vista.zoom ?? 1) >= ZOOM_HIDE_MUNDO;
 }
 
-function desenharBadge(ctx, sx, sy, size, count) {
-  if (!(count > 1)) return;
-  const r = Math.max(6, size * 0.28);
-  const bx = sx + size * 0.38;
-  const by = sy - size * 0.38;
+/**
+ * Preload do ícone de minimapa (chamado pelo pintar quando há wilds na vista).
+ * @param {number} dex
+ * @param {boolean} [shiny]
+ */
+export function aquecerPinWild(dex, shiny = false) {
+  return enfileirarIconeMinimap(dex, shiny);
+}
+
+function desenharBadge(ctx, sx, sy, iconR, count) {
+  const n = count | 0;
+  if (n <= 1) return;
+  const label = n > 99 ? "99+" : String(n);
+  const badgeR = Math.max(5, Math.min(9, iconR * 0.45));
+  const bx = Math.round(sx + iconR * 0.68);
+  const by = Math.round(sy + iconR * 0.68);
+  const fontPx = Math.max(7, Math.min(10, badgeR * 1.15));
+
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(bx, by, r, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+  ctx.arc(bx, by, badgeR, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(248, 250, 252, 0.9)";
-  ctx.lineWidth = Math.max(1, size * 0.05);
+  ctx.strokeStyle = "rgba(248, 250, 252, 0.88)";
+  ctx.lineWidth = Math.max(1, badgeR * 0.14);
   ctx.stroke();
   ctx.fillStyle = "#f8fafc";
-  ctx.font = `600 ${Math.max(8, Math.round(r * 1.15))}px "Segoe UI", sans-serif`;
+  ctx.font = `700 ${fontPx}px ui-sans-serif, system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(String(count > 99 ? "99+" : count), bx, by + 0.5);
-  ctx.textAlign = "start";
-  ctx.textBaseline = "alphabetic";
+  ctx.fillText(label, bx, by + 0.5);
+  ctx.restore();
 }
 
 function imgPronta(img) {
   return !!(img && img.complete && img.naturalWidth > 0);
+}
+
+/**
+ * Sprite inteiro no size — sem clip/anel (transparência natural do asset).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {HTMLImageElement} icon
+ * @param {number} px
+ * @param {number} py
+ * @param {number} r
+ */
+function blitIconeCheio(ctx, icon, px, py, r) {
+  const cx = Math.round(px);
+  const cy = Math.round(py);
+  const size = Math.max(2, Math.round(r * 2));
+  const half = size * 0.5;
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(icon, cx - half, cy - half, size, size);
+  ctx.restore();
 }
 
 /**
@@ -58,19 +97,14 @@ function imgPronta(img) {
  */
 export function desenharPinWild(ctx, marca, sx, sy, opts = {}) {
   if (!ctx || !Number.isFinite(sx) || !Number.isFinite(sy)) return;
-  const size = tamanhoPinWild({ ...opts, count: marca.count });
-  const half = size * 0.5;
+  const size = tamanhoPinWild(opts);
+  const r = size * 0.5;
   const dex = (marca.dex | 0) || (especie(marca.speciesKey)?.dex | 0);
   const pinKey = String(marca.id || `${dex}:${marca.speciesKey || ""}`);
 
-  ctx.beginPath();
-  ctx.arc(sx, sy + size * 0.04, half * 1.08, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
-  ctx.fill();
-
-  let img = dex > 0 ? pedirRetrato(dex, !!marca.shiny) : null;
+  let img = dex > 0 ? pedirIconeMinimap(dex, !!marca.shiny) : null;
   if (!imgPronta(img) && marca.shiny && dex > 0) {
-    img = pedirRetrato(dex, false);
+    img = pedirIconeMinimap(dex, false);
   }
   if (imgPronta(img)) {
     ultimoBom.set(pinKey, img);
@@ -79,23 +113,16 @@ export function desenharPinWild(ctx, marca, sx, sy, opts = {}) {
   }
 
   if (imgPronta(img)) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(sx, sy, half * 0.92, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(img, sx - half, sy - half, size, size);
-    ctx.restore();
-    ctx.beginPath();
-    ctx.arc(sx, sy, half * 0.92, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(248, 250, 252, 0.35)";
-    ctx.lineWidth = Math.max(1, size * 0.06);
-    ctx.stroke();
+    blitIconeCheio(ctx, img, sx, sy, r);
   } else {
     ctx.beginPath();
-    ctx.arc(sx, sy, half * 0.65, 0, Math.PI * 2);
-    ctx.fillStyle = "#facc15";
+    ctx.arc(sx, sy, Math.max(2.5, r * 0.35), 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(250, 204, 21, 0.92)";
     ctx.fill();
+    ctx.strokeStyle = "rgba(15, 23, 42, 0.85)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
-  desenharBadge(ctx, sx, sy, size, marca.count | 0);
+  desenharBadge(ctx, sx, sy, r, marca.count | 0);
 }

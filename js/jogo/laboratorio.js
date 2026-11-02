@@ -7,7 +7,8 @@ import { especie } from "../pokemon/dados.js";
 import { POKEMON } from "../config.js";
 import { tocarCuraCentro } from "./audio.js";
 import { curaOcupada, iniciarCuraMaquina } from "./maquinaCura.js";
-import { abrirPainel, darChave, estado, guardarNaCaixa, guardarVariosNaCaixa, marcarQuest, snapshot, temChave, vagasNasCaixas, avisar } from "./estado.js";
+import { darChave, estado, guardarNaCaixa, guardarVariosNaCaixa, marcarQuest, snapshot, temChave, vagasNasCaixas, avisar } from "./estado.js";
+import { abrirCapsula } from "./apiHud.js";
 import { falarRinaSantuario, garantirQuestDevice } from "../santuario/questDevice.js";
 
 export function alvoLaboratorio(x, y) {
@@ -28,7 +29,7 @@ export function executarAlvoLaboratorio(alvo) {
     return;
   }
   if (alvo.tipo === "capsula") {
-    abrirPainel("capsula");
+    abrirCapsula();
     return;
   }
   if (alvo.tipo === "inicial") {

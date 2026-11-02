@@ -3,16 +3,23 @@ export {
   FLAP_DENY_DEX,
   FLAP_DEXES,
   FLAP_ENTRIES,
+  FLIGHT_POSE_DEXES,
+  FLIGHT_POSE_ENTRIES,
   chaveTemFlapAround,
+  chaveTemPoseVoo,
   dexTemFlapAround,
+  dexTemPoseVoo,
   sortearFlapEntry,
+  sortearPoseVooEntry,
 } from "./flapCatalog.js";
 export {
   ehAquatico,
   especieServeHabitat,
   kindDoLar,
   temFlapAround,
+  temPoseVoo,
 } from "./gates.js";
+export { CADEIA_VOO, escolherAnimVoo, ehAnimVoo } from "./poseVoo.js";
 export {
   PERFIL_CAMPO,
   PERFIL_NINHO_VOO,

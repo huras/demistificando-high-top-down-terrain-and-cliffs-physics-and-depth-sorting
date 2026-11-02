@@ -30,6 +30,7 @@ import { alternarRide, indiceMontado, modoRideAtual, podeMontar } from "./ride.j
 
 let menuApi = null;
 let dexApi = null;
+let capsulaApi = null;
 let radarApi = null;
 let statusApi = null;
 let skillApi = null;
@@ -37,6 +38,10 @@ let ouvintesHotbar = [];
 let corpoRef = null;
 
 estado._fecharHudExtra = () => {
+  if (estado.capsulaAberta) {
+    capsulaApi?.fechar?.() ?? capsulaApi?.close?.();
+    estado.capsulaAberta = false;
+  }
   if (estado.dexAberta) {
     dexApi?.fechar?.() ?? dexApi?.close?.();
     estado.dexAberta = false;
@@ -61,6 +66,32 @@ export function definirMenuApi(api) {
 
 export function definirDexApi(api) {
   dexApi = api;
+}
+
+export function definirCapsulaApi(api) {
+  capsulaApi = api;
+}
+
+export function capsulaHud() {
+  return capsulaApi;
+}
+
+export function abrirCapsula() {
+  const ok = capsulaApi?.abrir?.() ?? capsulaApi?.open?.() ?? false;
+  estado.capsulaAberta = !!(capsulaApi?.estaAberta?.() ?? capsulaApi?.isOpen?.());
+  avisar();
+  return ok;
+}
+
+export function fecharCapsula() {
+  const r = capsulaApi?.fechar?.() ?? capsulaApi?.close?.();
+  estado.capsulaAberta = false;
+  avisar();
+  return r;
+}
+
+export function capsulaAberta() {
+  return !!(capsulaApi?.estaAberta?.() ?? capsulaApi?.isOpen?.() ?? estado.capsulaAberta);
 }
 
 export function definirRadarApi(api) {

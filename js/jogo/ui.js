@@ -69,7 +69,6 @@ import { abrirDex, dexAberta, fecharDex, toggleRideSlot, toggleSkillLoadout } fr
 import { tratarUtilityHud } from "./hud/bootHud.js";
 import { htmlMochilaMenu } from "./uiMenuPaginas.js";
 import { aoMudarIdioma, definirIdioma, idiomaAtual, t } from "./i18n.js";
-import { capsulaEh, htmlCapsula, ligarCapsula, montarJanelaCapsula, tratarCliqueCapsula, tratarInputCapsula } from "./capsula.js";
 import { ligarJanelaPc, sincronizarJanelaPc } from "./pc/janela.js";
 import { ligarJanelaLoja, sincronizarJanelaLoja } from "./loja/janela.js";
 import { quantidadeLoja, tratarLoja } from "./loja.js";
@@ -100,15 +99,20 @@ export function ligarUi(overlay) {
   );
   raiz.addEventListener("click", noClique);
   raiz.addEventListener("change", noChange);
-  raiz.addEventListener("input", tratarInputCapsula);
-  ligarCapsula(raiz);
   ligarJanelaPc(raiz);
   ligarJanelaLoja(raiz);
   ligarHudClima();
   ligarHudVento();
   raiz.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
-    if (!estado.painel && !estado.menuAberto && !estado.dexAberta && !estado.statusAberto) return;
+    if (
+      !estado.painel &&
+      !estado.menuAberto &&
+      !estado.dexAberta &&
+      !estado.capsulaAberta &&
+      !estado.statusAberto
+    )
+      return;
     ev.preventDefault();
     fecharTopo();
     pintar();
@@ -189,15 +193,7 @@ function noClique(ev) {
   else if (act === "salvar") salvar();
   else if (act === "escolha") escolher(btn.dataset.id);
   else if (act === "seguir") avancarDialogo();
-  else if (capsulaEh(act)) {
-    const modo = tratarCliqueCapsula(act, btn);
-    if (modo === "lista") {
-      pintar();
-      return;
-    }
-    atualizarLeve();
-    return;
-  } else if (tratarLoja(act, btn)) {
+  else if (tratarLoja(act, btn)) {
     pintar();
     return;
   }
@@ -416,6 +412,7 @@ function pintarPrompt() {
     estado.painel ||
     estado.menuAberto ||
     estado.dexAberta ||
+    estado.capsulaAberta ||
     estado.statusAberto ||
     estado.roda ||
     estado.construir ||
@@ -597,15 +594,12 @@ function pintarPainel() {
   sincronizarJanelaPc(false);
   sincronizarJanelaLoja(false);
   host.hidden = !nome;
-  host.classList.toggle("jogo-painel--capsula", nome === "capsula");
+  host.classList.remove("jogo-painel--capsula");
   if (!nome) {
     host.innerHTML = "";
     return;
   }
-  if (nome === "capsula") {
-    host.innerHTML = htmlCapsula();
-    montarJanelaCapsula();
-  } else host.innerHTML = htmlMenu(nome);
+  host.innerHTML = htmlMenu(nome);
 }
 
 
@@ -1005,7 +999,7 @@ export function promptDe(alvo, ferramenta) {
     return "Bandeira — clique planta/reloca a base";
   }
   if (!estado.interior && hotbarAtivo()?.key === "hammer") {
-    return "Martelo — clique: catálogo/construir · Shift+clique: demolir";
+    return "Martelo — 1º bandeira · catálogo · clique p/ Pokémon construir · Shift: demolir";
   }
   if (!estado.interior && ferramenta) return `${ferramenta} — clique esquerdo`;
   return "";

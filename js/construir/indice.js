@@ -101,4 +101,10 @@ export { alvoDemolirPerto, acertarDemolicao } from "./demolir.js";
 
 export { tileOcupado, pontoOcupado } from "./ocupacao.js";
 
+export {
+  ordenarRitualConstrucao,
+  tickOrdemConstrucao,
+  indiceCompanheiroConstrutor,
+} from "./ordemRitual.js";
+
 export * from "./cerca/index.js";

@@ -131,6 +131,7 @@ export const estado = {
   menuAberto: false,
   skillAberto: false,
   dexAberta: false,
+  capsulaAberta: false,
   statusAberto: false,
   capturadosMap: null,
   vistosMap: null,
@@ -747,6 +748,7 @@ export function uiAberta() {
     estado.painel ||
     estado.menuAberto ||
     estado.dexAberta ||
+    estado.capsulaAberta ||
     estado.statusAberto ||
     estado.skillAberto ||
     estado.dialogo ||
@@ -782,12 +784,19 @@ export function fecharTopo() {
     avisar();
     return true;
   }
-  if (estado.dexAberta || estado.statusAberto || estado.menuAberto || estado.skillAberto) {
+  if (
+    estado.capsulaAberta ||
+    estado.dexAberta ||
+    estado.statusAberto ||
+    estado.menuAberto ||
+    estado.skillAberto
+  ) {
     if (typeof estado._fecharHudExtra === "function") {
       estado._fecharHudExtra();
       avisar();
       return true;
     }
+    estado.capsulaAberta = false;
     estado.dexAberta = false;
     estado.statusAberto = false;
     estado.menuAberto = false;

@@ -70,12 +70,23 @@ export function criarCamera3d(aspect) {
   };
 }
 
+/**
+ * Yaw 0 = câmera ao sul olhando o norte.
+ * Usado em teleporte, spawn e porta — não herda facing anterior.
+ */
+export function olharCameraNorte(camera3d) {
+  if (!camera3d) return;
+  camera3d.yaw = 0;
+  camera3d._yawSalvo = undefined;
+}
+
 /** Força o próximo seguirAlvo3d a pular _lookY / clip para o corpo (teleporte / renascer). */
 export function snapCamera3dAoCorpo(camera3d) {
   if (!camera3d) return;
   camera3d.pronta = false;
   camera3d._lookY = null;
   camera3d._distClip = null;
+  olharCameraNorte(camera3d);
 }
 
 export function ajustarDistancia(camera3d, fator) {
@@ -176,7 +187,8 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
       camera3d.yaw = camera3d._yawSalvo;
       camera3d._yawSalvo = undefined;
     } else {
-      camera3d.yaw = Math.atan2(corpo.dirX || 0, corpo.dirY || 1);
+      // Sem yaw salvo: sempre norte (não herda facing do corpo / órbita antiga).
+      camera3d.yaw = 0;
     }
   }
 

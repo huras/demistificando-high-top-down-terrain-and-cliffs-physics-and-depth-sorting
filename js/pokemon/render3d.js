@@ -458,16 +458,31 @@ function aplicarFlashCorpo(slot, ator) {
   flash.material.opacity = Math.min(1, 0.35 + 0.5 * t * pulso);
 }
 
+/** Fase estável por ator — pulsos desalinhados sem alocar. */
+function faseLuxAtor(ator) {
+  const id = ator?.id;
+  let h = 0;
+  if (typeof id === "string") {
+    for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0;
+  } else if (Number.isFinite(id)) {
+    h = id | 0;
+  }
+  return (h & 1023) * 0.00613;
+}
+
 /**
  * Flare no cartão + poça no mapa de chão (mesmo pipeline dos postes).
  * Sem PointLight: escala com milhares de fontes sem disputar o pool de 8.
  * `contribuirChao` fica false no re-pose do reflexo (já resolveu o mapa).
  * Elétrico/fogo/psíquico brilha mesmo sem entrada no catálogo (qualquer facção).
  * Poças vão para `candidatosChao` e só as mais próximas da câmera estampam.
+ * Pulso só no flare (poça estável → não re-stampa o mapa todo frame).
  */
 function aplicarBrilho(slot, ator, offsetY, contribuirChao) {
   const pontos = pontosBrilhoAtor(ator);
   const n = Math.min(pontos.length, slot.brilhos.length);
+  const pulso =
+    n > 0 ? 0.92 + 0.08 * Math.sin(performance.now() * 0.0035 + faseLuxAtor(ator)) : 1;
   for (let i = 0; i < slot.brilhos.length; i++) {
     const brilho = slot.brilhos[i];
     if (i >= n) {
@@ -478,7 +493,7 @@ function aplicarBrilho(slot, ator, offsetY, contribuirChao) {
     brilho.visible = true;
     brilho.position.set(p.x, p.y - offsetY, 0.02);
     brilho.material.color.set(p.cor);
-    const lado = Math.max(0.35, p.raio * 0.85);
+    const lado = Math.max(0.35, p.raio * 0.85 * pulso);
     brilho.scale.set(lado, lado, 1);
   }
   if (!n || !contribuirChao) return;

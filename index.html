@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="css/pc-hud.css" />
   <link rel="stylesheet" href="css/loja-hud.css" />
   <link rel="stylesheet" href="css/pokedex-hud.css" />
+  <link rel="stylesheet" href="css/capsula-hud.css" />
   <link rel="stylesheet" href="css/game-menu.css" />
   <link rel="stylesheet" href="css/hud-chrome.css" />
   <link rel="stylesheet" href="css/action-prompt-hud.css" />
@@ -365,6 +366,61 @@
               </div>
             </div>
 
+            <div
+              id="capsula-hud"
+              class="capsula-hud"
+              hidden
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <div class="capsula-hud__backdrop"></div>
+              <div
+                class="capsula-hud__device"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="capsula-hud-titulo"
+              >
+                <header class="capsula-hud__header">
+                  <div class="capsula-hud__title-wrap">
+                    <h2 id="capsula-hud-titulo" class="capsula-hud__title">Cápsula</h2>
+                    <p class="capsula-hud__status" data-capsula-status aria-live="polite"></p>
+                  </div>
+                  <button type="button" class="capsula-hud__close" aria-label="Fechar">×</button>
+                </header>
+                <div class="capsula-hud__screen">
+                  <div class="capsula-hud__toolbar">
+                    <input
+                      type="search"
+                      class="capsula-hud__search"
+                      data-capsula-busca
+                      placeholder="Nome ou número"
+                    />
+                    <label class="capsula-hud__level-wrap">
+                      <span data-capsula-nivel-label>Nível</span>
+                      <input
+                        type="number"
+                        class="capsula-hud__level"
+                        data-capsula-nivel
+                        min="1"
+                        max="100"
+                        value="50"
+                      />
+                    </label>
+                    <button type="button" class="capsula-hud__give" data-capsula-dar disabled>
+                      Colocar no time
+                    </button>
+                    <button type="button" class="capsula-hud__random" data-capsula-aleatorio>
+                      Time aleatório
+                    </button>
+                    <div class="capsula-hud__type-filters" data-capsula-tipos role="group"></div>
+                  </div>
+                  <div class="capsula-hud__grid-wrap">
+                    <div class="capsula-hud__grid" data-capsula-grade></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Top-left: hotbar → hearts → dinheiro (parity Pokémon AI) -->
             <div id="hud-item-dock" class="hud-item-dock">
               <div id="readied-item-home" class="readied-item-home">
@@ -685,6 +741,11 @@
             Colisores das casas
           </label>
           <p class="debug-nota" id="debug-casas-nota" hidden></p>
+          <label class="ceu-ciclo" for="debug-forca">
+            <input id="debug-forca" type="checkbox" />
+            Alcance dos grabábles
+          </label>
+          <p class="debug-nota" id="debug-forca-nota" hidden></p>
         </section>
 
         <section class="painel__bloco">

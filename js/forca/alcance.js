@@ -27,13 +27,35 @@ export const PORTAO_CORPO = {
 const SCORE = { dist2: 0, toward: 0 };
 
 /**
- * @param {{ x: number, y: number }} body
+ * Preferir dirX/dirY. `body` passado como facing tem x/y = posição mundo —
+ * não pode ganhar de dir* (senão o cone congela apontando pra origem).
+ * @param {{ x: number, y: number, dirX?: number, dirY?: number }} body
  * @param {{ x?: number, y?: number, dirX?: number, dirY?: number } | null} facing
  */
 export function facingDe(body, facing) {
-  let fx = Number(facing?.x ?? facing?.dirX ?? body?.dirX) || 0;
-  let fy = Number(facing?.y ?? facing?.dirY ?? body?.dirY) || 1;
-  const fl = Math.hypot(fx, fy) || 1;
+  const src = facing || body;
+  let fx;
+  let fy;
+  if (src && Number.isFinite(src.dirX) && Number.isFinite(src.dirY)) {
+    fx = src.dirX;
+    fy = src.dirY;
+  } else if (
+    src &&
+    src !== body &&
+    Number.isFinite(src.x) &&
+    Number.isFinite(src.y)
+  ) {
+    // Vetor unitário explícito {x,y} (não é o corpo).
+    fx = src.x;
+    fy = src.y;
+  } else {
+    fx = Number(body?.dirX);
+    fy = Number(body?.dirY);
+  }
+  if (!Number.isFinite(fx)) fx = 0;
+  if (!Number.isFinite(fy)) fy = 0;
+  const fl = Math.hypot(fx, fy);
+  if (fl < 1e-6) return { x: 0, y: 1 };
   return { x: fx / fl, y: fy / fl };
 }
 

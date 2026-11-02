@@ -1,6 +1,6 @@
 /** Campo: porta, enxada, regador, plantar, colher, machado e picareta. */
 
-import { RAIO_STREAM_BOLSO } from "../config.js";
+import { ALCANCE_CONSTRUIR, RAIO_STREAM_BOLSO } from "../config.js";
 import { deLocalKanto, paraLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
@@ -44,18 +44,22 @@ import { iniciarPortaTransicao, portaOcupada } from "./portaTransicao.js";
 import { emAlcanceEdicao } from "../mundo/voxel/editar.js";
 import { tentarColocar, tentarQuebrar } from "./blocos.js";
 import {
-  buildMode,
+  buildMode as modoBuild,
   casasPerto,
   iniciarRitual,
   mensagemFalha,
   plantarBandeira,
   temSelecaoConstruir,
+  temClaim,
   toggleCatalogoConstruir,
   alvoDemolirPerto,
   acertarDemolicao,
+  obterPreview,
 } from "../construir/indice.js";
 import { atualizarCatalogoConstruir } from "../ui/construirCatalogoHud.js";
 import { definirMiraConstrucao } from "../construir/tick.js";
+import { ordenarRitualConstrucao } from "../construir/ordemRitual.js";
+import { clampMiraConstrucao, emAlcanceConstrucao } from "../construir/mira.js";
 import {
   contar,
   darItem,
@@ -198,7 +202,7 @@ function fecharBusca(estadoBusca) {
   return { zona: escolhido.zona, predio: escolhido.predio, ax: escolhido.ax, ay: escolhido.ay };
 }
 
-/** Porta sintética de casa do jogador (frente sul da pegada). */
+/** Porta sintética de casa do jogador (frente sul da pegada, coords mundo). */
 function entradaCasaJogador(x, y) {
   const casas = casasPerto(x, y, 10);
   let melhor = null;
@@ -220,21 +224,52 @@ function entradaCasaJogador(x, y) {
   if (!melhor) return null;
   const cols = melhor.cols || 6;
   const rows = melhor.rows || 5;
+  const x0 = melhor.x - cols / 2;
+  const y0 = melhor.y - rows / 2;
+  const x1 = x0 + cols;
+  const y1 = y0 + rows;
   return {
-    ax: 0,
-    ay: 0,
+    // ax/ay não se aplicam — saída usa outdoorX/Y ou a pegada mundo.
+    ax: null,
+    ay: null,
     predio: {
       papel: "casa",
       modelo: melhor.buildingId,
       porta: true,
-      x: melhor.x - cols / 2,
-      y: melhor.y - rows / 2,
+      x0,
+      y0,
+      x1,
+      y1,
+      x: x0,
+      y: y0,
       w: cols,
       h: rows,
       playerHouseId: melhor.id,
       casaJogador: true,
     },
     playerHouse: melhor,
+  };
+}
+
+/** Saída em coords mundo (sul da pegada), sem origem de área Kanto. */
+function saidaCasaJogador(interior) {
+  if (Number.isFinite(interior?.outdoorX) && Number.isFinite(interior?.outdoorY)) {
+    return {
+      x: interior.outdoorX,
+      y: interior.outdoorY,
+      z: Number.isFinite(interior.outdoorZ) ? interior.outdoorZ : ALTURA_PRACA,
+    };
+  }
+  const v = interior?.predio;
+  if (!v) return { x: 0, y: 0, z: ALTURA_PRACA };
+  const x0 = Number.isFinite(v.x0) ? v.x0 : v.x || 0;
+  const y0 = Number.isFinite(v.y0) ? v.y0 : v.y || 0;
+  const x1 = Number.isFinite(v.x1) ? v.x1 : x0 + (v.w || 6);
+  const y1 = Number.isFinite(v.y1) ? v.y1 : y0 + (v.h || 5);
+  return {
+    x: (x0 + x1) * 0.5,
+    y: y1 + 1.15,
+    z: ALTURA_PRACA,
   };
 }
 
@@ -430,6 +465,9 @@ export function checarSaidaSala(corpo) {
 }
 
 function saidaDoPredio(interior) {
+  if (interior?.playerHouseId || interior?.predio?.casaJogador) {
+    return saidaCasaJogador(interior);
+  }
   const v = interior.predio;
   const origem = deLocalKanto(interior.ax * AREA_KANTO, interior.ay * AREA_KANTO);
   return saidaDaPorta(v, origem.x, origem.y, portaDoModelo(v.modelo));
@@ -448,8 +486,9 @@ export function sairInterior(corpo) {
   corpo.vx = 0;
   corpo.vy = 0;
   if (interior.sala3d) {
-    corpo.z = ALTURA_PRACA;
-    corpo.elevacao = ALTURA_PRACA;
+    const zOut = Number.isFinite(saida.z) ? saida.z : ALTURA_PRACA;
+    corpo.z = zOut;
+    corpo.elevacao = zOut;
     corpo.vz = 0;
     corpo.noChao = true;
     corpo.hopLift = 0;
@@ -662,32 +701,52 @@ export function usarNoClique(corpo, celula, alvoBloco) {
       return "";
     }
     if (item.key === "hammer" && !estado.interior) {
-      definirMiraConstrucao(celula.x + 0.5, celula.y + 0.5);
-      if (!temSelecaoConstruir()) {
-        if (
-          (teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight")) &&
-          celulaEmAlcance(corpo, celula, null)
-        ) {
-          const alvo = alvoDemolirPerto(celula.x + 0.5, celula.y + 0.5, 2.4);
-          if (alvo) {
-            const hit = acertarDemolicao(alvo, 10);
-            if (hit.ok) {
-              return hit.destroyed
-                ? hit.message || "Demolido."
-                : `Demolindo… ${hit.hp}/${hit.maxHp}`;
-            }
+      const mira = clampMiraConstrucao(corpo, celula.x + 0.5, celula.y + 0.5);
+      const ax = mira.x;
+      const ay = mira.y;
+      definirMiraConstrucao(ax, ay);
+      if (
+        (teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight")) &&
+        celulaEmAlcance(corpo, celula, null)
+      ) {
+        const alvo = alvoDemolirPerto(ax, ay, 2.8);
+        if (alvo) {
+          const hit = acertarDemolicao(alvo, 10);
+          if (hit.ok) {
+            return hit.destroyed
+              ? hit.message || "Demolido."
+              : `Demolindo… ${hit.hp}/${hit.maxHp}`;
           }
+        }
+        return "Nada para demolir aqui.";
+      }
+      if (!temSelecaoConstruir()) {
+        if (!temClaim()) {
+          const aberto = toggleCatalogoConstruir();
+          atualizarCatalogoConstruir();
+          return aberto
+            ? "Plante a Bandeira antes de construir. Catálogo aberto."
+            : "Plante a Bandeira da base primeiro.";
         }
         const aberto = toggleCatalogoConstruir();
         atualizarCatalogoConstruir();
-        return aberto ? "Catálogo aberto." : "Catálogo fechado.";
+        return aberto ? "Catálogo aberto — escolha uma casa." : "Catálogo fechado.";
       }
-      if (buildMode.selected && celulaEmAlcance(corpo, celula, null)) {
-        const r = iniciarRitual(buildMode.selected, celula.x + 0.5, celula.y + 0.5, corpo);
-        if (!r.ok) return r.message || mensagemFalha(r.reason);
-        return "Construção iniciada — o companion está trabalhando.";
+      if (!emAlcanceConstrucao(corpo, ax, ay)) {
+        return `Longe demais — aproxime-se (até ${ALCANCE_CONSTRUIR} m).`;
       }
-      return "Selecione no catálogo e clique no chão.";
+      const check = obterPreview(modoBuild.selected, ax, ay, corpo);
+      if (!check?.ok) {
+        return check?.reason
+          ? mensagemFalha(check.reason)
+          : "Não dá pra construir aqui.";
+      }
+      const r = iniciarRitual(modoBuild.selected, ax, ay, corpo);
+      if (!r.ok) return r.message || mensagemFalha(r.reason);
+      const comMon = ordenarRitualConstrucao();
+      return comMon
+        ? "Pokémon a caminho — construindo com marteladas…"
+        : "Construção iniciada (sem companion — progresso automático).";
     }
     if (!celulaEmAlcance(corpo, celula, alvoBloco)) return "Longe demais.";
     if (item.key === "pickaxe") {

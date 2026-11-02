@@ -10,9 +10,33 @@ const TICK_MS = 16;
 const DIR_COUNT = 8;
 const LARGURA_MAX = 2048;
 const ALFA_CORTE = 16;
-const QUER = ["Idle", "Walk", "Attack", "Shoot", "Hurt", "Strike", "Sleep", "FlapAround"];
-const OPCIONAIS = new Set(["Hurt", "Sleep", "Attack", "Shoot", "Strike", "FlapAround"]);
+const QUER = [
+  "Idle",
+  "Walk",
+  "Attack",
+  "Shoot",
+  "Hurt",
+  "Strike",
+  "Sleep",
+  "FlapAround",
+  "Hover",
+  "Hop",
+  "Float",
+];
+const OPCIONAIS = new Set([
+  "Hurt",
+  "Sleep",
+  "Attack",
+  "Shoot",
+  "Strike",
+  "FlapAround",
+  "Hover",
+  "Hop",
+  "Float",
+]);
 const SEM_DIRECAO = new Set(["Sleep"]);
+/** Strips aéreas: mesmo detector de ciclo de FlapAround (giro 8 dirs). */
+const VOOS_GIRO = new Set(["FlapAround", "Hover", "Hop", "Float"]);
 
 const emCurso = new Map();
 
@@ -181,7 +205,7 @@ function fatiar(anim, off, meta) {
   const cols = Math.max(1, Math.round(anim.width / fw));
   const rows = Math.max(1, Math.round(anim.height / fh));
   let frameCount = cols;
-  if (!meta.directionless && meta.name === "FlapAround") {
+  if (!meta.directionless && VOOS_GIRO.has(meta.name)) {
     const giro = quadrosPorGiro(anim.data, anim.width, fw, fh, cols, rows);
     if (giro) frameCount = giro;
   }

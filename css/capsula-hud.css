@@ -1,0 +1,381 @@
+/* Capsula do laboratorio — overlay teal (parity Pokemon AI). */
+
+.capsula-hud {
+  --lab-ink: #2f5570;
+  --lab-muted: #5d849c;
+  position: fixed;
+  inset: 0;
+  z-index: 9060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.capsula-hud[hidden] {
+  display: none !important;
+}
+
+.capsula-hud__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(40, 32, 24, 0.28);
+}
+
+.capsula-hud__device {
+  position: relative;
+  z-index: 1;
+  width: min(760px, calc(100vw - 24px));
+  height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #4dd0e1 0%, #26c6da 42%, #00acc1 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -2px 0 rgba(0, 60, 70, 0.28),
+    0 16px 36px rgba(0, 0, 0, 0.32);
+}
+
+.capsula-hud__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.capsula-hud__title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.capsula-hud__title {
+  margin: 0;
+  font: 800 18px/1.15 "Syne", "Figtree", system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 40, 50, 0.28);
+}
+
+.capsula-hud__status {
+  margin: 4px 0 0;
+  min-height: 1.2em;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.capsula-hud__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 32%, #fff 0%, #f3f3f3 62%, #d0d0d0 100%);
+  color: #0d5c66;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 1px 0 rgba(0, 40, 50, 0.28);
+}
+
+.capsula-hud__close:hover {
+  background:
+    radial-gradient(circle at 38% 32%, #fff 0%, #fff 60%, #e8e8e8 100%);
+}
+
+.capsula-hud__screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--lab-ink);
+  background: linear-gradient(180deg, #d8f4ff 0%, #b6e4fb 100%);
+}
+
+.capsula-hud__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 8px;
+}
+
+.capsula-hud__search {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--lab-ink);
+  font: inherit;
+  font-size: 13px;
+  box-shadow: 0 2px 0 rgba(70, 130, 170, 0.1);
+}
+
+.capsula-hud__search::placeholder {
+  color: var(--lab-muted);
+}
+
+.capsula-hud__level-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--lab-muted);
+  box-shadow: 0 2px 0 rgba(70, 130, 170, 0.1);
+}
+
+.capsula-hud__level {
+  width: 56px;
+  padding: 2px 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--lab-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.capsula-hud__give,
+.capsula-hud__random {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(70, 130, 170, 0.1);
+}
+
+.capsula-hud__give {
+  background: #fff;
+  color: var(--lab-ink);
+}
+
+.capsula-hud__give:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.capsula-hud__random {
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--lab-muted);
+}
+
+.capsula-hud__random:hover,
+.capsula-hud__give:hover:not(:disabled) {
+  background: #fff;
+  color: var(--lab-ink);
+}
+
+.capsula-hud__type-filters {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding-top: 2px;
+}
+
+.capsula-hud__type-hint {
+  margin-right: 4px;
+  color: var(--lab-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.capsula-hud__type-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid color-mix(in srgb, var(--type, #64748b) 45%, #fff);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--lab-ink);
+  cursor: pointer;
+  opacity: 0.78;
+}
+
+.capsula-hud__type-filter:hover,
+.capsula-hud__type-filter.is-active {
+  opacity: 1;
+  background: #fff;
+}
+
+.capsula-hud__type-filter.is-active {
+  border-color: var(--type, #64748b);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--type, #64748b) 28%, transparent);
+}
+
+.capsula-hud__type-filter.is-muted {
+  opacity: 0.32;
+}
+
+.capsula-hud__type-filter .type-icon {
+  pointer-events: none;
+}
+
+.capsula-hud__type-clear {
+  margin-left: 2px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--lab-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.capsula-hud__type-clear:hover {
+  color: #0d5c66;
+  background: #fff;
+}
+
+.capsula-hud__type-clear[hidden] {
+  display: none;
+}
+
+.capsula-hud__grid-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 18px 16px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: #ffffff rgba(20, 24, 28, 0.55);
+}
+
+.capsula-hud__grid-wrap::-webkit-scrollbar {
+  width: 12px;
+}
+
+.capsula-hud__grid-wrap::-webkit-scrollbar-button {
+  display: none;
+}
+
+.capsula-hud__grid-wrap::-webkit-scrollbar-track {
+  margin: 12px 0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 5px,
+      #1a1a1a 5px,
+      #1a1a1a 6px,
+      transparent 6px
+    );
+}
+
+.capsula-hud__grid-wrap::-webkit-scrollbar-thumb {
+  background: #fff;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.capsula-hud__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px 6px;
+}
+
+.capsula-hud__card {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 10px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--lab-ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.capsula-hud__card[hidden] {
+  display: none !important;
+}
+
+.capsula-hud__card:hover,
+.capsula-hud__card:focus-visible {
+  background: #fff;
+  outline: none;
+}
+
+.capsula-hud__card.is-selected {
+  background: #fff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #00acc1 36%, transparent);
+}
+
+.capsula-hud__card-portrait {
+  width: 56px;
+  height: 56px;
+}
+
+.capsula-hud__card-portrait .pokemon-portrait {
+  --portrait-size: 56px;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+body.capsula-aberta .hud-item-dock,
+body.capsula-aberta .hud-party,
+body.capsula-aberta #party-combat-detail,
+body.capsula-aberta .party-moves-combat,
+body.capsula-aberta .hud-map-dock,
+body.capsula-aberta .hud-utility-dock {
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.capsula-hud__card-num {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--lab-muted);
+}
+
+.capsula-hud__card-name {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.capsula-hud__card-type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 16px;
+}

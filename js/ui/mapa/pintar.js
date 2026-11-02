@@ -29,12 +29,12 @@ import {
   desenharPinMissao,
   prenderPinNaBorda,
 } from "../../mapa/pinMissao.js";
+import { aquecerPinBase, desenharPinBase, dimensoesPinBase } from "../../mapa/pinBase.js";
 import { filtrarWildParaVista } from "../../mapa/marcasWild.js";
-import { desenharPinWild, wildPinVisivelNoZoom } from "../../mapa/pinWild.js";
+import { aquecerPinWild, desenharPinWild, wildPinVisivelNoZoom } from "../../mapa/pinWild.js";
 import { desenharPinSite } from "../../mapa/pinSite.js";
 import { pinMissaoAtiva } from "../../quests/pins.js";
 import { imagemIcone } from "../../jogo/icones.js";
-import { pedirRetrato } from "../../pokemon/retrato.js";
 
 const ZOOM_NOME_ROTA = 0.36;
 const ZOOM_LAYOUT = 64;
@@ -416,21 +416,45 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       }
       continue;
     }
-    if (marca.tipo === "baseJogador" || marca.tipo === "casaJogador") {
-      ctx.fillStyle = marca.cor || "#38bdf8";
+    if (marca.tipo === "baseJogador") {
+      aquecerPinBase();
+      let bx = sx;
+      let by = sy;
+      if (vista.mini) {
+        const preso = prenderPinNaBorda(bx, by, w, h, { mini: true, circular: true });
+        bx = preso.x;
+        by = preso.y;
+      }
+      const pinOpts = { mini: !!vista.mini, dpr };
+      desenharPinBase(ctx, marca, bx, by, pinOpts);
+      if (!vista.mini) {
+        const { dw } = dimensoesPinBase(pinOpts);
+        nomes.push({
+          texto: "Sua base",
+          x: bx + dw * 0.5 + 8 * dpr,
+          y: by + alturaFonte * 0.3,
+          altura: alturaFonte,
+          prio: 5,
+          dist: (bx - w / 2) * (bx - w / 2) + (by - h / 2) * (by - h / 2),
+        });
+      }
+      continue;
+    }
+    if (marca.tipo === "casaJogador") {
+      ctx.fillStyle = marca.cor || "#fbbf24";
       ctx.beginPath();
-      ctx.arc(sx, sy, (marca.tipo === "baseJogador" ? 6.5 : 4.5) * dpr, 0, Math.PI * 2);
+      ctx.arc(sx, sy, 4.5 * dpr, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = "rgba(15,23,42,0.55)";
       ctx.lineWidth = 1.2 * dpr;
       ctx.stroke();
       if (!vista.mini) {
         nomes.push({
-          texto: marca.tipo === "baseJogador" ? "Sua base" : "Sua casa",
+          texto: "Sua casa",
           x: sx + 10 * dpr,
           y: sy + alturaFonte * 0.3,
           altura: alturaFonte,
-          prio: 5,
+          prio: 4,
           dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
         });
       }
@@ -477,7 +501,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   if (wildVisto) {
     for (let i = 0; i < extras.length; i++) {
       const m = extras[i];
-      if (m.tipo === "wild" && m.dex) pedirRetrato(m.dex, !!m.shiny);
+      if (m.tipo === "wild" && m.dex) aquecerPinWild(m.dex, !!m.shiny);
     }
   }
 

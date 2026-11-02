@@ -18,10 +18,22 @@ import {
   rangedNaMao,
 } from "../jogo/ranged.js";
 import { usarNoClique } from "../jogo/campo.js";
-import { estado, uiAberta } from "../jogo/estado.js";
+import { estado, hotbarAtivo, uiAberta } from "../jogo/estado.js";
 import { atualizarLeve, pintar } from "../jogo/ui.js";
 import { estaCarregandoForca } from "../forca/sistemaForca.js";
 import { definirPonteiroForca } from "../forca/tickForca.js";
+import { definirMiraConstrucao } from "../construir/tick.js";
+import { temSelecaoConstruir, temRitualAtivo } from "../construir/indice.js";
+import { TIPO_ITEM } from "../wild/catalogo.js";
+
+function marteloConstruindo() {
+  const item = hotbarAtivo();
+  return (
+    !estado.interior &&
+    item?.tipo === TIPO_ITEM.FERRAMENTA &&
+    (item.key === "hammer" || item.key === "flag")
+  );
+}
 
 let canvas2d = null;
 let canvas3d = null;
@@ -81,15 +93,24 @@ function aoMove2d(ev) {
 
 function aoMove3d(ev) {
   if (obterModo() !== "3d" || estaEmCena() || !canvas3d) return;
-  if (botaoDireitoSegurado() || ponteiroTravado()) return;
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d) return;
-  const { ndcX, ndcY } = ndcDoEvento(ev, canvas3d);
+  // Com pointer lock: mira no centro. Sem lock / RMB: mira no cursor.
+  let ndcX = 0;
+  let ndcY = 0;
+  if (!(ponteiroTravado() || botaoDireitoSegurado())) {
+    const ndc = ndcDoEvento(ev, canvas3d);
+    ndcX = ndc.ndcX;
+    ndcY = ndc.ndcY;
+  }
   const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
   const chao = pontoNoChao(raio, corpo.z ?? 0);
   definirMiraCursor(chao.x, chao.y);
   definirPonteiroForca({ x: chao.x, y: chao.y });
+  if (marteloConstruindo() || temSelecaoConstruir() || temRitualAtivo()) {
+    definirMiraConstrucao(chao.x, chao.y);
+  }
 }
 
 function aoMouseDown2d(ev) {
@@ -132,7 +153,8 @@ function aoMouseDown3d(ev) {
     iniciarCargaRanged();
     return;
   }
-  if (tentarAtaqueNoClique(ev, null, cen)) {
+  // Martelo/bandeira: não rouba clique pra atacar Pokémon
+  if (!marteloConstruindo() && tentarAtaqueNoClique(ev, null, cen)) {
     ev.preventDefault();
     return;
   }
@@ -142,6 +164,7 @@ function aoMouseDown3d(ev) {
   const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
   const chao = pontoNoChao(raio, corpo.z ?? 0);
   const celula = alvo ? { x: alvo.x, y: alvo.y } : { x: Math.floor(chao.x), y: Math.floor(chao.y) };
+  if (marteloConstruindo()) definirMiraConstrucao(chao.x, chao.y);
   ev.preventDefault();
   dispararItem(corpo, celula, alvo, chao);
 }

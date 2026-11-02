@@ -1,18 +1,23 @@
 /**
- * Gates de habitat: FlapAround ≠ Flying type; aquático = Water type.
+ * Gates de habitat: pose aérea (FlapAround/Hover/Hop/Float) ≠ tipo Flying;
+ * aquático = Water type.
  */
-import { chaveTemFlapAround, dexTemFlapAround } from "./flapCatalog.js";
+import { chaveTemPoseVoo, dexTemPoseVoo } from "./flapCatalog.js";
 import { HABITAT, ehHabitatAquatico } from "./kinds.js";
 
 /**
+ * Espécie tem strip aérea no catálogo (asset gate).
  * @param {{ dex?: number, key?: string, tipos?: string[] } | null | undefined} esp
  */
-export function temFlapAround(esp) {
+export function temPoseVoo(esp) {
   if (!esp) return false;
-  if (dexTemFlapAround(esp.dex)) return true;
-  if (chaveTemFlapAround(esp.key)) return true;
+  if (dexTemPoseVoo(esp.dex)) return true;
+  if (chaveTemPoseVoo(esp.key)) return true;
   return false;
 }
+
+/** @deprecated use temPoseVoo */
+export const temFlapAround = temPoseVoo;
 
 /**
  * @param {{ tipos?: string[] } | null | undefined} esp
@@ -40,7 +45,7 @@ export function kindDoLar(esp, tile = null) {
     if (undersea || prof >= 3) return HABITAT.UNDERSEA;
     return HABITAT.SURFACE;
   }
-  if (temFlapAround(esp)) return HABITAT.HIGH;
+  if (temPoseVoo(esp)) return HABITAT.HIGH;
   return HABITAT.LAND;
 }
 
@@ -51,9 +56,9 @@ export function kindDoLar(esp, tile = null) {
  */
 export function especieServeHabitat(esp, kind) {
   if (!esp) return false;
-  if (kind === HABITAT.SKY) return temFlapAround(esp);
+  if (kind === HABITAT.SKY) return temPoseVoo(esp);
   if (ehHabitatAquatico(kind)) return ehAquatico(esp);
-  if (kind === HABITAT.HIGH) return temFlapAround(esp);
+  if (kind === HABITAT.HIGH) return temPoseVoo(esp);
   if (kind === HABITAT.LAND) return !ehAquatico(esp);
   return true;
 }

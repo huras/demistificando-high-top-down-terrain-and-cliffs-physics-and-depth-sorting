@@ -55,6 +55,8 @@ export function tickOrdens(dt) {
     return;
   }
   if (!mon._colocado) return;
+  // Ritual de construção tem tick próprio (js/construir/ordemRitual.js).
+  if (mon.ordemCampo.construir) return;
   mon.ordemAlvo = null;
   mon.alvo = null;
   const ordem = mon.ordemCampo;

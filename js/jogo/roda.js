@@ -269,7 +269,14 @@ export function ligarRoda() {
 
 export function tickRoda() {
   if (!raiz) return;
-  if (campoFocado() || estado.painel || estado.dialogo || estado.construir || estado.craft) {
+  if (
+    campoFocado() ||
+    estado.painel ||
+    estado.capsulaAberta ||
+    estado.dialogo ||
+    estado.construir ||
+    estado.craft
+  ) {
     if (aberta) fechar(false);
     tecla = "";
     comShift = false;

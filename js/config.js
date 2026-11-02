@@ -441,6 +441,11 @@ export const IMPOSTOR_CAP = 256;
 export const CLUMP_HORIZONTE_CAP = 448;
 export const SEED_MUNDO = 1337;
 export const ALCANCE_EDICAO = 5;
+/**
+ * Colocar casa/móvel/cerca com o martelo (tiles). Maior que edição de bloco —
+ * footprint de casa é grande e o player não precisa ficar em cima do site.
+ */
+export const ALCANCE_CONSTRUIR = 20;
 /** Cursor enxerga o chão com a câmera longe; editar continua no alcance curto. */
 export const ALCANCE_MIRA = 320;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */
@@ -580,6 +585,8 @@ export const POKEMON = Object.freeze({
   DROPS_MAX: 48,
   CACHE_ATLAS: 24,
   CACHE_RETRATO: 64,
+  /** Ícones de minimapa (Pokemon AI gen/minimap) — LRU separado do retrato HUD. */
+  CACHE_MINIMAP: 96,
   // Perseguir / luta / coleta = sprint do treinador (antes 4.2 < walk 5.4).
   VEL_AGRO: VELOCIDADE_SPRINT,
   VEL_ROAM: 1.45,

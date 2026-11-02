@@ -13,11 +13,13 @@ import {
   buildMode,
   selecionarConstruir,
   abrirCatalogoConstruir,
+  temClaim,
 } from "../construir/indice.js";
 import { contarItem } from "../pokemon/party.js";
 import { nomeMaterial } from "../construir/custos.js";
 import { contarStockCasa, contarStockMovel } from "../construir/stock.js";
 import { MATERIAIS } from "../wild/catalogo.js";
+import { soltarTravaMira } from "../entrada/ponteiro3d.js";
 
 const LABELS_SUB = Object.freeze({
   city: "Cidade",
@@ -45,37 +47,50 @@ function garantirDom() {
       <h2 class="bch__titulo">Construir</h2>
       <button type="button" class="bch__fechar" data-act="fechar" aria-label="Fechar">×</button>
     </div>
+    <p class="bch__aviso" data-aviso hidden></p>
     <div class="bch__tabs" data-tabs></div>
     <div class="bch__subs" data-subs></div>
     <div class="bch__lista" data-lista></div>
-    <p class="bch__rodape">Selecione e clique no chão para iniciar a construção.</p>
+    <p class="bch__rodape">Selecione um item — o fantasma aparece na mira. Clique no chão para o Pokémon construir.</p>
   `;
   document.body.appendChild(raiz);
+  raiz.addEventListener(
+    "pointerdown",
+    (ev) => {
+      // Libera mira e não deixa o clique vazar pro canvas / pointer lock.
+      soltarTravaMira();
+      ev.stopPropagation();
+    },
+    true,
+  );
+  raiz.addEventListener("mousedown", (ev) => ev.stopPropagation(), true);
   raiz.addEventListener("click", (ev) => {
+    ev.stopPropagation();
     const btn = ev.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.getAttribute("data-act");
     if (act === "fechar") {
       abrirCatalogoConstruir(false);
-      pintar();
+      pintarCatalogoConstruir();
       return;
     }
     if (act === "tab") {
       tab = btn.getAttribute("data-id");
       sub = tab === TIPO_CONSTRUIR.CASA ? SUB_CASA_ORDEM[0] : SUB_MOVEL_ORDEM[0];
-      pintar();
+      pintarCatalogoConstruir();
       return;
     }
     if (act === "sub") {
       sub = btn.getAttribute("data-id");
-      pintar();
+      pintarCatalogoConstruir();
       return;
     }
     if (act === "item") {
       const kind = btn.getAttribute("data-kind");
       const id = btn.getAttribute("data-id");
       selecionarConstruir(kind, id);
-      pintar();
+      // Mantém catálogo aberto pra ver seleção; fecha se quiser com X
+      pintarCatalogoConstruir();
     }
   });
   return raiz;
@@ -97,6 +112,19 @@ export function pintarCatalogoConstruir() {
   const el = garantirDom();
   el.hidden = !buildMode.catalogOpen;
   if (el.hidden) return;
+
+  const aviso = el.querySelector("[data-aviso]");
+  if (aviso) {
+    if (!temClaim()) {
+      aviso.hidden = false;
+      aviso.textContent = "Plante a Bandeira primeiro para marcar sua base.";
+    } else if (buildMode.selected) {
+      aviso.hidden = false;
+      aviso.textContent = `Selecionado: ${buildMode.selected.id} — clique no chão dentro da base.`;
+    } else {
+      aviso.hidden = true;
+    }
+  }
 
   const tabs = el.querySelector("[data-tabs]");
   tabs.innerHTML = [
@@ -148,10 +176,6 @@ export function pintarCatalogoConstruir() {
       </button>`;
     })
     .join("");
-}
-
-function pintar() {
-  pintarCatalogoConstruir();
 }
 
 export function atualizarCatalogoConstruir() {

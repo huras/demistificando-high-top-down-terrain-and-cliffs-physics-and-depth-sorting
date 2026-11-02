@@ -18,6 +18,7 @@ import {
   consumirStockMovel,
 } from "./stock.js";
 import { FENCE_KIND } from "./cerca/tipos.js";
+import { poeiraDoPreview } from "./poeira.js";
 
 /** @type {object|null} */
 let site = null;
@@ -83,14 +84,15 @@ export function iniciarRitual(selected, aimX, aimY, player) {
       z: check.preview.z ?? 0,
     },
   };
-  return { ok: true, site };
+  poeiraDoPreview(check.preview);
+  return { ok: true, site, message: "Construção iniciada." };
 }
 
 /**
  * @returns {{ done: boolean, progress: number, committed?: object }}
  */
 export function acertarRitual(n = 1) {
-  if (!site) return { done: false, progress: 0 };
+  if (!site) return { done: false, progress: 0, hit: false };
   site.hitsDone += Math.max(1, n | 0);
   if (site.hitsDone >= site.nextBurstAt && site.burst < 3) {
     site.burst += 1;
@@ -98,10 +100,10 @@ export function acertarRitual(n = 1) {
   }
   site.progress = Math.min(1, site.hitsDone / site.hitsNeeded);
   if (site.hitsDone < site.hitsNeeded) {
-    return { done: false, progress: site.progress };
+    return { done: false, progress: site.progress, hit: true };
   }
   const committed = commitSite();
-  return { done: true, progress: 1, committed };
+  return { done: true, progress: 1, committed, hit: true };
 }
 
 function commitSite() {
@@ -166,8 +168,10 @@ export function tickRitual(dt, opts = {}) {
     const interval = 1 / Math.max(1, site.burst);
     if (site._acc >= interval) {
       site._acc = 0;
-      return acertarRitual(1);
+      const r = acertarRitual(1);
+      if (r.hit) poeiraDoPreview(site?.preview);
+      return r;
     }
   }
-  return { done: false, progress: site.progress };
+  return { done: false, progress: site.progress, hit: false };
 }

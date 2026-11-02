@@ -44,12 +44,21 @@ export function criarGhostConstrucao() {
     });
   }
 
+  let moldePendente = null;
+
   function garantirMolde(buildingId) {
     if (moldes.has(buildingId)) return moldes.get(buildingId);
+    if (moldePendente === buildingId) return null;
+    moldePendente = buildingId;
     const pegada = pegadaDoModeloSite(buildingId);
     const opts = pegada ? { ladoX: pegada.ladoX, ladoZ: pegada.ladoZ } : null;
     carregarMoldeCidade(buildingId, opts).then((g) => {
       if (g) moldes.set(buildingId, g);
+      if (moldePendente === buildingId) {
+        moldePendente = null;
+        // Força rebuild do ghost no próximo frame
+        ghostKey = null;
+      }
     });
     return null;
   }
@@ -110,12 +119,15 @@ export function criarGhostConstrucao() {
      */
     atualizar(buildPreview, flagPreview) {
       const ritual = siteConstrucao();
-      const claim = flagPreview?.rect || (!buildPreview && !flagPreview ? claimRect() : null);
-      if (flagPreview) {
+      // Sempre desenha o claim quando há preview de bandeira OU claim plantado
+      const claimPlantado = claimRect();
+      if (flagPreview?.rect) {
         desenharClaim(flagPreview.rect, flagPreview.ok !== false);
-      } else if (claim && !buildPreview) {
-        desenharClaim(claim, true);
-      } else if (!flagPreview) {
+      } else if (claimPlantado && (buildPreview || ritual)) {
+        desenharClaim(claimPlantado, true);
+      } else if (claimPlantado && !buildPreview && !flagPreview) {
+        desenharClaim(claimPlantado, true);
+      } else if (!flagPreview?.rect) {
         desenharClaim(null);
       }
 

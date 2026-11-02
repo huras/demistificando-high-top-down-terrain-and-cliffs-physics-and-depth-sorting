@@ -89,7 +89,10 @@ export function definirLayoutSala(casaId = "") {
   const id = String(casaId || "");
   if (id === casaIdAtiva) return;
   casaIdAtiva = id;
-  if (id.startsWith("celadon:")) {
+  if (id.startsWith("player-")) {
+    // Casa do jogador: vazia até ele mobiliar (não herda layout de NPC).
+    pontosAtivos = Object.freeze([]);
+  } else if (id.startsWith("celadon:")) {
     const rng = mulberry32(hashStr(`moveis:${id}`));
     pontosAtivos = PRESETS_CELADON[pickIndex(rng, PRESETS_CELADON.length)];
   } else {

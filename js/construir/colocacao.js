@@ -20,7 +20,6 @@ import {
   blockersInsideRect,
   blockersMovel,
   footprintEm,
-  jogadorSobrepoe,
   snapOrigemCasa,
 } from "./pegadas.js";
 import { motivoSobreposicao, motivoTerrenoOutdoor } from "./checagensOutdoor.js";
@@ -48,7 +47,6 @@ const MOTIVOS = Object.freeze({
   shrine: "Há um santuário perto.",
   fence: "Há uma cerca no caminho.",
   occupied: "Tile ocupado.",
-  player: "Você está no caminho.",
   materials: "Materiais insuficientes.",
   mira: "Mira inválida.",
   stock: "Sem estoque nem materiais.",
@@ -77,9 +75,9 @@ export function validarCasa(buildingId, aimX, aimY, player) {
   if (terrain) return { ok: false, reason: terrain, preview, recipe };
   const over = motivoSobreposicao(blockers);
   if (over) return { ok: false, reason: over, preview, recipe };
-  if (player && jogadorSobrepoe(player.x, player.y, player.r ?? 0.45, blockers)) {
-    return { ok: false, reason: "player", preview, recipe };
-  }
+  // Não bloqueia se o player está no footprint: o ritual constrói com companion
+  // e o jogador pode sair do tile — senão casa grande + mira nos pés = impossível.
+  void player;
   const temStock = contarStockCasa(buildingId) > 0;
   if (!temStock && !podePagar(recipe)) {
     return { ok: false, reason: "materials", preview, recipe };
@@ -104,9 +102,7 @@ export function validarMovelOutdoor(key, aimX, aimY, player) {
   if (terrain) return { ok: false, reason: terrain, preview, recipe };
   const over = motivoSobreposicao(blockers);
   if (over) return { ok: false, reason: over, preview, recipe };
-  if (player && jogadorSobrepoe(player.x, player.y, player.r ?? 0.45, blockers)) {
-    return { ok: false, reason: "player", preview, recipe };
-  }
+  void player;
   const temStock = contarStockMovel(key) > 0;
   if (!temStock && !podePagar(recipe)) {
     return { ok: false, reason: "materials", preview, recipe };
