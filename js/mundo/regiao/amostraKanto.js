@@ -333,9 +333,8 @@ function alturaNatural(x, y, zona, perfil) {
   // Fora do canal, rota de água usa a mesma costa do relevo (não afunda a célula inteira).
   const terra = alturaDoTerreno(x, y, zona, perfil);
   if (perfil.u < 0.34) {
-    const fundo = batimetria(x, y, perfil.u);
-    // Mistura shelf→terra na beira; fundo batimétrico no largo.
-    return Math.round(fundo + (terra - fundo) * (perfil.u / 0.34) * 0.15);
+    // Fundo do oceano: grafo + degrau do bioma mar em aplicarDetalheBioma.
+    return Math.min(terra, COTA_RASO);
   }
   const fundo = batimetria(x, y, 0.2);
   return Math.round(fundo + (terra - fundo) * perfil.u);

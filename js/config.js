@@ -163,6 +163,10 @@ export const AGUA_NADO_IMERSOS_MIN = 0.4;
 export const AGUA_NADO_IMERSOS_MAX = 1.2;
 /** Lâmina visual abaixo do chanfro da margem (bate com QUEDA_LABIO + folga). */
 export const AGUA_OFFSET_LAMINA = 0.18;
+/** Células de inundação escritas por frame (cava adjacente à água). */
+export const INUNDAR_CELULAS_POR_FRAME = 10;
+/** Teto da fila BFS de inundação (drop se encher). */
+export const INUNDAR_FILA_MAX = 2048;
 /** Y da lâmina de água (render/FX). Física continua na superficie inteira. */
 export function yLaminaAgua(superficie) {
   return (superficie | 0) - AGUA_OFFSET_LAMINA;

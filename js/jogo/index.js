@@ -11,6 +11,7 @@ import {
   tratarTeclaEvolucao,
 } from "../pokemon/evolucaoCinema.js";
 import { alternarMudo, atualizarAudio, destravarAudio, estaMudo, sincronizarBgm } from "./audio.js";
+import { tickInundar } from "../mundo/agua/inundar.js";
 import { tickBlocos } from "./blocos.js";
 import { atualizarBillboardsBerry } from "./billboards.js";
 import {
@@ -186,6 +187,7 @@ export function tickJogo(dt, corpo) {
   }
   tickDescobertaMapa(corpo, { interior: !!estado.interior });
   tickBlocos(corpo, dt);
+  tickInundar();
   if (!campoFocado()) {
     tickRoda();
     lerTeclas(corpo);

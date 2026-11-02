@@ -1,4 +1,5 @@
 import { ALCANCE_EDICAO } from "../../config.js";
+import { semearInundacao } from "../agua/inundar.js";
 import { invalidarNavCache } from "../../navegacao/navGrade.js";
 import { definirBloco, obterBloco, superficieEm } from "./storeMundo.js";
 import { BLOCO, ehLiquido, ehSolido } from "./tiposBloco.js";
@@ -38,6 +39,7 @@ export function quebrarBloco(corpo, alvo) {
   if (!definirBloco(x, y, z, BLOCO.AR)) return BLOCO.AR;
   definirBlocoNaMao(id);
   invalidarNavCache();
+  semearInundacao(x, y, z);
   return id;
 }
 

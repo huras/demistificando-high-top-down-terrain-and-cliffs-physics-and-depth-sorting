@@ -236,7 +236,7 @@ function areaTerra(wx, wy, seed) {
   // Temperatura mistura latitude + clima — mata a faixa horizontal pura.
   const lat = clamp01(p.y / LADO_MUNDO);
   const clima = fbm2(p.x / 1600, p.y / 1600, seed + 3307, 4);
-  const relevo = fbm2(p.x / 920, p.y / 920, seed + 4411, 3);
+  const relevo = fbm2(p.x / 1500, p.y / 1500, seed + 4411, 3);
   const umidade = fbm2(p.x / 1100, p.y / 1100, seed + 5523, 3);
   const detalhe = fbm2(p.x / 520, p.y / 520, seed + 6631, 3);
   const temp = clamp01(lat * 0.5 + clima * 0.38 + (detalhe - 0.5) * 0.22);
@@ -252,7 +252,7 @@ function areaTerra(wx, wy, seed) {
     },
     {
       id: "mundo-mountain",
-      score: rampa(relevo, 0.58, 0.86) * 1.55 + pico(relevo, 0.78, 0.2) * 0.5,
+      score: rampa(relevo, 0.74, 0.94) * 1.0 + pico(relevo, 0.78, 0.2) * 0.25,
     },
     {
       id: "mundo-desert",

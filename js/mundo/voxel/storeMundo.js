@@ -197,6 +197,73 @@ export function definirBloco(wx, wy, wz, id) {
   return true;
 }
 
+/**
+ * Escreve líquidos em lote (inundação). Um dirty/AABB e fluxo por frame.
+ * @param {{ x: number, y: number, z: number, id: number, fluido: number }[]} escritas
+ * @returns {number} quantas células mudaram
+ */
+export function definirLiquidoLote(escritas) {
+  if (!escritas || !escritas.length) return 0;
+
+  let n = 0;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let z0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  let z1 = -Infinity;
+  /** @type {Map<string, { chunk: object, cx: number, cy: number }>} */
+  const tocados = new Map();
+
+  for (let i = 0; i < escritas.length; i++) {
+    const e = escritas[i];
+    const x = e.x | 0;
+    const y = e.y | 0;
+    const z = e.z | 0;
+    const id = e.id | 0;
+    if (z < 0 || z >= CHUNK_Y) continue;
+    const { cx, cy } = mundoParaChunk(x, y);
+    const chunk = obterChunk(cx, cy);
+    if (!chunk) continue;
+    const lx = x - cx * CHUNK_XZ;
+    const ly = y - cy * CHUNK_XZ;
+    if (!definirLocal(chunk, lx, ly, z, id)) continue;
+
+    edits.set(chaveEdit(x, y, z), id);
+    const fam = e.fluido | 0;
+    if (fam > 0) {
+      const ci = ly * CHUNK_XZ + lx;
+      if (!(chunk.fluido[ci] | 0)) chunk.fluido[ci] = fam;
+    }
+    marcarVizinhosSujos(cx, cy, lx, ly);
+    tocados.set(chaveChunk(cx, cy), { chunk, cx, cy });
+    if (x < x0) x0 = x;
+    if (y < y0) y0 = y;
+    if (z < z0) z0 = z;
+    if (x > x1) x1 = x;
+    if (y > y1) y1 = y;
+    if (z > z1) z1 = z;
+    n++;
+  }
+
+  if (!n) return 0;
+
+  for (const { chunk, cx, cy } of tocados.values()) {
+    invalidarFluxo(chunk);
+    invalidarFluxoVizinhos(cx, cy);
+  }
+
+  emitirDirty({
+    x0: x0 - 1,
+    y0: y0 - 1,
+    x1: x1 + 1,
+    y1: y1 + 1,
+    z0: Math.max(0, z0 - 1),
+    z1: Math.min(CHUNK_Y - 1, z1 + 1),
+  });
+  return n;
+}
+
 function invalidarFluxoVizinhos(cx, cy) {
   for (const [dx, dy] of [
     [1, 0],

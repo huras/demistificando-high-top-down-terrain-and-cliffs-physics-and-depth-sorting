@@ -258,7 +258,7 @@ function pesoTerraContinente(terra, catalogo) {
   return suave01((terra - (limiar - faixa)) / (2 * faixa));
 }
 
-/** Altura procedural pura (sem Kanto). Mar vem da máscara de continente. */
+/** Altura procedural pura (sem Kanto). Mar = grafo/degrau do bioma aquático. */
 function alturaProcedural(wx, wy, catalogo, seed) {
   const reg = amostrarRegiao(wx, wy, catalogo, seed);
   if (!reg) return 4;
@@ -268,16 +268,10 @@ function alturaProcedural(wx, wy, catalogo, seed) {
   const mistura = ha * reg.dominio + hb * (1 - reg.dominio);
   const degrau = reg.dominio > 0.92 ? reg.a.degrau : 1;
   let h = snap(mistura, degrau);
-  if (reg.a.camada === "mar") h = Math.min(h, nivel - 1);
-
+  // Costa / oceano: fundo nunca sobe à lâmina; degrau do bioma mar manda.
   const terra = mascaraContinente(wx, wy, catalogo, seed);
   const t = pesoTerraContinente(terra, catalogo);
-  if (t < 1) {
-    const profundidade = Math.round((1 - terra) * 7);
-    const fundo = Math.max(2, Math.min(nivel - 1, nivel - 1 - profundidade));
-    h = Math.round(fundo * (1 - t) + h * t);
-    if (t < 0.55) h = Math.min(h, nivel - 1);
-  }
+  if (reg.a.camada === "mar" || t < 0.55) h = Math.min(h, nivel - 1);
   return clampAltura(h);
 }
 
