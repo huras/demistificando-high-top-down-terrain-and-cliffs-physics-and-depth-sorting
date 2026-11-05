@@ -6,6 +6,7 @@ export const TIPO_ITEM = Object.freeze({
   BOLA: "ball",
   BERRY: "berry",
   REMEDIO: "medicine",
+  HOLD: "hold",
   FERRAMENTA: "tool",
   MATERIAL: "material",
   CHAVE: "key",
@@ -95,6 +96,48 @@ export const REMEDIOS = Object.freeze({
   iceHeal: Object.freeze({ key: "iceHeal", nome: "Cura de Gelo", nameKey: "medicine.iceHeal", tipo: TIPO_ITEM.REMEDIO, compra: 250, venda: 125, efeito: Object.freeze({ cura: "freeze" }) }),
   fullHeal: Object.freeze({ key: "fullHeal", nome: "Cura Total", nameKey: "medicine.fullHeal", tipo: TIPO_ITEM.REMEDIO, compra: 600, venda: 300, efeito: Object.freeze({ cura: "all" }) }),
   revive: Object.freeze({ key: "revive", nome: "Revivir", nameKey: "medicine.revive", tipo: TIPO_ITEM.REMEDIO, compra: 1500, venda: 750, efeito: Object.freeze({ reviver: 0.5 }) }),
+  maxRevive: Object.freeze({ key: "maxRevive", nome: "Revivir Máximo", nameKey: "medicine.maxRevive", tipo: TIPO_ITEM.REMEDIO, compra: 4000, venda: 2000, efeito: Object.freeze({ reviver: 1 }) }),
+  revivalHerb: Object.freeze({ key: "revivalHerb", nome: "Erva Reviver", nameKey: "medicine.revivalHerb", tipo: TIPO_ITEM.REMEDIO, compra: 0, venda: 1400, efeito: Object.freeze({ reviver: 1 }) }),
+  sacredAsh: Object.freeze({ key: "sacredAsh", nome: "Cinza Sagrada", nameKey: "medicine.sacredAsh", tipo: TIPO_ITEM.REMEDIO, compra: 0, venda: 100, efeito: Object.freeze({ reviver: 1, reviverParty: true }) }),
+});
+
+export const HOLD_ITEMS = Object.freeze({
+  leftovers: Object.freeze({
+    key: "leftovers",
+    nome: "Sobras",
+    nameKey: "holdItems.leftovers",
+    tipo: TIPO_ITEM.HOLD,
+    compra: 500,
+    venda: 250,
+    efeito: Object.freeze({ regenFrac: 1 / 16 }),
+  }),
+  lightClay: Object.freeze({
+    key: "lightClay",
+    nome: "Argila Clara",
+    nameKey: "holdItems.lightClay",
+    tipo: TIPO_ITEM.HOLD,
+    compra: 500,
+    venda: 250,
+    efeito: Object.freeze({ screenTurns: 8 }),
+  }),
+  deepSeaTooth: Object.freeze({
+    key: "deepSeaTooth",
+    nome: "Dente do Mar",
+    nameKey: "holdItems.deepSeaTooth",
+    tipo: TIPO_ITEM.HOLD,
+    compra: 500,
+    venda: 250,
+    efeito: null,
+  }),
+  deepSeaScale: Object.freeze({
+    key: "deepSeaScale",
+    nome: "Escama do Mar",
+    nameKey: "holdItems.deepSeaScale",
+    tipo: TIPO_ITEM.HOLD,
+    compra: 500,
+    venda: 250,
+    efeito: null,
+  }),
 });
 
 export const BOLAS = Object.freeze({
@@ -251,6 +294,7 @@ export const ESTOQUE_LOJA = Object.freeze([
   { tipo: TIPO_ITEM.REMEDIO, key: "iceHeal" },
   { tipo: TIPO_ITEM.REMEDIO, key: "fullHeal" },
   { tipo: TIPO_ITEM.REMEDIO, key: "revive" },
+  { tipo: TIPO_ITEM.REMEDIO, key: "maxRevive" },
   { tipo: TIPO_ITEM.MATERIAL, key: "wood" },
   { tipo: TIPO_ITEM.MATERIAL, key: "stone" },
 ]);
@@ -313,6 +357,7 @@ export function defItem(tipo, key) {
   if (tipo === TIPO_ITEM.BOLA) return BOLAS[key] || null;
   if (tipo === TIPO_ITEM.BERRY) return BERRIES[key] || null;
   if (tipo === TIPO_ITEM.REMEDIO) return REMEDIOS[key] || null;
+  if (tipo === TIPO_ITEM.HOLD) return HOLD_ITEMS[key] || null;
   if (tipo === TIPO_ITEM.FERRAMENTA) return FERRAMENTAS[key] || null;
   if (tipo === TIPO_ITEM.MATERIAL) return MATERIAIS[key] || MATERIAIS_DROP[key] || null;
   if (tipo === TIPO_ITEM.CHAVE) return CHAVES[key] || null;
@@ -324,6 +369,7 @@ export function classificarChave(key) {
   if (BOLAS[key]) return TIPO_ITEM.BOLA;
   if (BERRIES[key]) return TIPO_ITEM.BERRY;
   if (REMEDIOS[key]) return TIPO_ITEM.REMEDIO;
+  if (HOLD_ITEMS[key]) return TIPO_ITEM.HOLD;
   if (FERRAMENTAS[key]) return TIPO_ITEM.FERRAMENTA;
   if (MATERIAIS[key] || MATERIAIS_DROP[key]) return TIPO_ITEM.MATERIAL;
   if (CHAVES[key]) return TIPO_ITEM.CHAVE;

@@ -12,3 +12,14 @@ Nested pokémon progression
 1 ~ 2 max - unested pokémon
 1 ~ 4 max - nested pokémon
 3 ~ 7 max - pokemon family
+
+
+
+Main goal of game:
+
+Create base
+explored looking for resources
+	establish resource processing building there
+		establish secure route to your base
+
+Put rare minerals around ago pokemon nests haha

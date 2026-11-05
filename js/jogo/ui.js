@@ -69,7 +69,7 @@ import { celulaLivre } from "../wild/salas.js";
 import { sfx } from "./audio.js";
 import { tocarChoose } from "./som/mundoSfx.js";
 import { htmlIcone } from "./icones.js";
-import { abrirDex, dexAberta, fecharDex, toggleRideSlot, toggleSkillLoadout } from "./apiHud.js";
+import { abrirDex, dexAberta, fecharDex, toggleRideSlot, toggleSkillLoadout, toggleStatusMon } from "./apiHud.js";
 import { tratarUtilityHud } from "./hud/bootHud.js";
 import { htmlMochilaMenu } from "./uiMenuPaginas.js";
 import { aoMudarIdioma, definirIdioma, idiomaAtual, t } from "./i18n.js";
@@ -114,7 +114,9 @@ export function ligarUi(overlay) {
       !estado.menuAberto &&
       !estado.dexAberta &&
       !estado.capsulaAberta &&
-      !estado.statusAberto
+      !estado.statusAberto &&
+      !estado.skillAberto &&
+      !estado.statusMonAberto
     )
       return;
     ev.preventDefault();
@@ -166,6 +168,10 @@ function noClique(ev) {
     toggleSkillLoadout();
     pintar();
     return;
+  } else if (act === "status-mon") {
+    toggleStatusMon(Number(btn.dataset.i));
+    pintar();
+    return;
   } else if (act === "utility") {
     tratarUtility(btn.dataset.utility);
     pintar();
@@ -187,7 +193,11 @@ function noClique(ev) {
     alternarSlot(i);
   } else if (act === "ciclo") cicloSlot(i);
   else if (act === "limpar-slot") atribuirSlot(i, null, null);
-  else if (act === "deploy") alternarCampo(i);
+  else if (act === "deploy") {
+    const mon = listaParty()[i];
+    if (mon && (mon.morto || mon.hp <= 0)) toggleStatusMon(i);
+    else alternarCampo(i);
+  }
   else if (act === "depositar") toast(moverDaPartyParaCaixa(i));
   else if (act === "retirar") toast(moverDaCaixaParaParty(i));
   else if (act === "soltar-caixa") toast(soltarDaCaixa(i));
@@ -479,6 +489,8 @@ function pintarPrompt() {
     estado.dexAberta ||
     estado.capsulaAberta ||
     estado.statusAberto ||
+    estado.skillAberto ||
+    estado.statusMonAberto ||
     estado.roda ||
     estado.construir ||
     estado.craft ||
@@ -618,11 +630,14 @@ function pintarEquipe() {
               ? `<img class="party-slot__face" src="${url}" alt="" draggable="false" />`
               : `<span class="party-slot__face">${escHtml(nomeEspecie(ator).slice(0, 1))}</span>`;
             const faint = ator.hpMax > 0 && ator.hp <= 0;
-            return `<button type="button" class="party-slot${fora && campo === ator ? " is-on is-out" : ""}${faint ? " is-fainted" : ""}" data-act="deploy" data-i="${i}" title="${escHtml(nomeEspecie(ator))} Nv${ator.nivel}">
-              <span class="party-slot__portrait">${face}</span>
-              <span class="party-slot__lv">Nv${ator.nivel}</span>
-              <span class="party-slot__hp"><i data-hp="${i}"></i></span>
-            </button>`;
+            const actSlot = faint ? "status-mon" : "deploy";
+            return `<div class="party-slot-wrap">
+              <button type="button" class="party-slot${fora && campo === ator ? " is-on is-out" : ""}${faint ? " is-fainted" : ""}" data-act="${actSlot}" data-i="${i}" title="${escHtml(nomeEspecie(ator))}">
+                <span class="party-slot__portrait">${face}</span>
+                <span class="party-slot__hp"><i data-hp="${i}"></i></span>
+              </button>
+              <button type="button" class="party-slot__lv" data-act="status-mon" data-i="${i}" title="Status · Nv${ator.nivel}" aria-label="Abrir status">Nv${ator.nivel}</button>
+            </div>`;
           })
           .join("")
       : "";

@@ -7,6 +7,7 @@ import { montarPartyCampo, pintarPartyCampo } from "./partyCampo.js";
 import { montarCoracoes, pintarCoracoes } from "./coracoes.js";
 import { montarRadar } from "./radar.js";
 import { montarStatusJogador } from "./statusJogador.js";
+import { montarStatusPokemon } from "./statusPokemon.js";
 import { montarObjetivoMissao, pintarObjetivo } from "./objetivoMissao.js";
 import { montarHudPokedex } from "../pokedex/hud.js";
 import { montarHudCapsula } from "../capsula.js";
@@ -17,6 +18,7 @@ import {
   definirMenuApi,
   definirRadarApi,
   definirStatusApi,
+  definirStatusMonApi,
   definirSkillApi,
   abrirMapaMundo,
   questsAtivas,
@@ -41,6 +43,7 @@ let partyApi = null;
 let heartsApi = null;
 let radarApi = null;
 let statusApi = null;
+let statusMonApi = null;
 let objetivoApi = null;
 let skillApi = null;
 let movesApi = null;
@@ -124,12 +127,14 @@ export function bootHudCompleto() {
   movesApi = montarMovesCampo(document.getElementById("party-moves-combat"));
   skillApi = montarSkillLoadout();
   definirSkillApi(skillApi);
+  statusMonApi = montarStatusPokemon();
+  definirStatusMonApi(statusMonApi);
   montarMorteHud();
   bootQuestBoard();
   aquecerPinMissao();
 
   ligarIdiomaMenu();
-  return { menu, dexApi, radarApi, statusApi, skillApi, movesApi };
+  return { menu, dexApi, radarApi, statusApi, statusMonApi, skillApi, movesApi };
 }
 
 function ligarIdiomaMenu() {
@@ -164,6 +169,7 @@ export function tickHudCampo(dt, corpo) {
   objetivoApi?.sync?.();
   if (radarApi?.isOpen?.()) radarApi.sync?.();
   if (statusApi?.isOpen?.()) statusApi.sync?.();
+  if (statusMonApi?.isOpen?.()) statusMonApi.sync?.();
   if (skillApi?.isOpen?.()) skillApi.sync?.();
   menu?.syncMoney?.();
 }

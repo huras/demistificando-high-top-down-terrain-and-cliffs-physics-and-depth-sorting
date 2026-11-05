@@ -13,10 +13,18 @@ import {
 } from "../../mundo/regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { linhasDaRota } from "../../mundo/regiao/linhasEstrada.js";
+import { RAIO_CORPO } from "../../config.js";
+import { projetarMetaLivre } from "../../navegacao/metaLivre.js";
 import { irParaNpc, manterFisicaNpc, snapChaoNpc } from "../locomocao.js";
 import { avancarAnimPeople } from "../render/peopleAnim.js";
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
 import { OW_CFG, OW_LOD, OW_MODO } from "./config.js";
+
+function metaLivreNoPiso(p, z, raio = RAIO_CORPO) {
+  if (!p) return p;
+  const elev = Number.isFinite(z) ? z : 0;
+  return projetarMetaLivre(p.x, p.y, elev, raio);
+}
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -32,28 +40,32 @@ function boundsArea(ax, ay) {
   };
 }
 
-function pontoEstrada(ax, ay, rng) {
+function pontoEstrada(ax, ay, rng, zRef = 0) {
   const zona = zonaEm(ax, ay);
   const linhas = zona?.tipo === "rota" ? linhasDaRota(zona) : [];
+  let p;
   if (linhas.length) {
     const [a, b] = linhas[pickIndex(rng, linhas.length)];
     const t = rng();
-    return deLocalKanto(
+    p = deLocalKanto(
       ax * AREA_KANTO + a[0] + (b[0] - a[0]) * t,
       ay * AREA_KANTO + a[1] + (b[1] - a[1]) * t,
     );
+  } else {
+    const b = boundsArea(ax, ay);
+    p = {
+      x: b.minX + rng() * (b.maxX - b.minX),
+      y: b.minY + rng() * (b.maxY - b.minY),
+    };
   }
-  const b = boundsArea(ax, ay);
-  return {
-    x: b.minX + rng() * (b.maxX - b.minX),
-    y: b.minY + rng() * (b.maxY - b.minY),
-  };
+  return metaLivreNoPiso(p, zRef, OW_CFG.RAIO);
 }
 
 function escolherWanderGoal(trainer, rng) {
-  const goal = pontoEstrada(trainer.ax | 0, trainer.ay | 0, rng);
+  const z = trainer.elevacao ?? trainer.z ?? 0;
+  const goal = pontoEstrada(trainer.ax | 0, trainer.ay | 0, rng, z);
   if (Math.hypot(goal.x - trainer.x, goal.y - trainer.y) < OW_CFG.WANDER_MIN_GOAL) {
-    return pontoEstrada(trainer.ax | 0, trainer.ay | 0, rng);
+    return pontoEstrada(trainer.ax | 0, trainer.ay | 0, rng, z);
   }
   return goal;
 }
@@ -187,7 +199,12 @@ function tickTravel(trainer, dt) {
   const [tax, tay] = route[trainer.travelI];
   if (!trainer.travelTarget) {
     const rng = mulberry32(hashStr(`${trainer.id}:tt:${trainer.travelI}`));
-    trainer.travelTarget = pontoEstrada(tax, tay, rng);
+    trainer.travelTarget = pontoEstrada(
+      tax,
+      tay,
+      rng,
+      trainer.elevacao ?? trainer.z ?? 0,
+    );
   }
   const prevX = trainer.x;
   const prevY = trainer.y;
@@ -208,7 +225,12 @@ function tickTravel(trainer, dt) {
     ) {
       // ainda no miolo — pega outro ponto na mesma área
       const rng = mulberry32(hashStr(`${trainer.id}:retry:${trainer.transitWalked|0}`));
-      trainer.travelTarget = pontoEstrada(tax, tay, rng);
+      trainer.travelTarget = pontoEstrada(
+        tax,
+        tay,
+        rng,
+        trainer.elevacao ?? trainer.z ?? 0,
+      );
       return;
     }
     trainer.travelI += 1;

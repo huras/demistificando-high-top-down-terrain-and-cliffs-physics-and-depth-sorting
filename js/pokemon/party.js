@@ -387,10 +387,19 @@ const DELAY_RECOLHER_DESMAIO = 0.7;
 
 export function atualizarParty(corpo, dt, agora, perfil) {
   const mon = pokemonNoCampo();
-  // Desmaiou: após Hurt (morreuEm), volta pra bola — sem revive no campo.
-  if (mon && !mon.capturado && mon.morto) {
-    const desde = mon.morreuEm > 0 ? mon.morreuEm : agora;
-    if (agora >= desde + DELAY_RECOLHER_DESMAIO) recolher(mon);
+  // Desmaiou (HP 0): completa Hurt → morto → volta pra bola.
+  if (mon && !mon.capturado && (mon.morto || mon.hp <= 0)) {
+    if (!mon.morto && mon.hp <= 0) {
+      if (!(mon.desmaioEm > 0) || agora >= mon.desmaioEm) {
+        mon.morto = true;
+        if (!(mon.morreuEm > 0)) mon.morreuEm = agora;
+        mon.desmaioEm = 0;
+      }
+    }
+    if (mon.morto) {
+      const desde = mon.morreuEm > 0 ? mon.morreuEm : agora;
+      if (agora >= desde + DELAY_RECOLHER_DESMAIO) recolher(mon);
+    }
   }
   const vivo = pokemonDeployado();
   if (!vivo) return;

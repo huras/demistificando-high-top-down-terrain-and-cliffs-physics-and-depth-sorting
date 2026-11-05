@@ -759,7 +759,7 @@
     "dirty-sand": {
       "sand-grass": {
         "canal": 30,
-        "freq": 0.158,
+        "freq": 4.266,
         "limiar": 0,
         "oitavas": 2,
         "persistencia": 0.5,
@@ -767,7 +767,7 @@
       },
       "small-cactus": {
         "canal": 30,
-        "freq": 0.2805,
+        "freq": 7.5735,
         "limiar": 0.66,
         "oitavas": 2,
         "persistencia": 0.5,
@@ -777,7 +777,7 @@
     "stone": {
       "ice-grass": {
         "canal": 30,
-        "freq": 0.1675,
+        "freq": 4.5225,
         "limiar": 0.33,
         "oitavas": 2,
         "persistencia": 0.5,
@@ -787,7 +787,7 @@
     "pewter-massif": {
       "greeny": {
         "canal": 30,
-        "freq": 0.0265,
+        "freq": 0.7155,
         "limiar": 0.31,
         "oitavas": 2,
         "persistencia": 0.5,
@@ -799,7 +799,7 @@
     "light-grass": {
       "meadow": {
         "canal": 60,
-        "freq": 0.243,
+        "freq": 2.187,
         "limiar": 0.1,
         "oitavas": 2,
         "persistencia": 0.5,

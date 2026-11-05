@@ -239,8 +239,11 @@ function indicePeloMouse(lista) {
   const dz = Math.max(MOUSE_DEADZONE_PX, radius * MOUSE_CENTER_RATIO);
   if (Math.hypot(dx, dy) < dz) return null;
   const ang = Math.atan2(dy, dx);
-  let t = (ang + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
-  return Math.min(lista.length - 1, Math.floor((t / (Math.PI * 2)) * lista.length));
+  // 0 = topo (mesmo referencial dos ícones). Setor centrado no item:
+  // metade do wedge antes, metade depois — não no início do ângulo.
+  const t = (ang + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
+  const n = lista.length;
+  return ((Math.round((t / (Math.PI * 2)) * n) % n) + n) % n;
 }
 
 function apontar() {

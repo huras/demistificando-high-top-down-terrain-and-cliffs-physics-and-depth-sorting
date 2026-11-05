@@ -1,7 +1,9 @@
 import {
   ASA_DELTA_DESCIDA,
   ASA_DELTA_VEL_MUL,
+  CHUNK_XZ,
   ESCALADA_VEL,
+  NAV_FOLGA_DISCO,
   NAV_MAX_PISOS,
   NAV_RAIO,
   PATH_CUSTO_ESCALADA,
@@ -16,10 +18,11 @@ import {
   PATH_VOO_CUSTO_MUL,
   PATH_VOO_DIST_MIN,
   PATH_VOO_VEL,
+  RAIO_BASE_ARVORE,
   VELOCIDADE_MAX,
 } from "../config.js";
 import { listarPisosWalkable } from "../fisica/colisao.js";
-import { arestaCortaBase } from "../fisica/obstaculos.js";
+import { arestaCortaBase, centroNaBase } from "../fisica/obstaculos.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import {
   alturasLocomocao,
@@ -96,9 +99,96 @@ export function pisoMaisProximo(cx, cy, elev, perfil = null) {
   return best;
 }
 
-export function invalidarNavCache(_aabb = null) {
-  cache.clear();
-  trabalhoNav = null;
+/** Halo em células além do disco (arestaCortaBase olha centro + meio). */
+const HALO_CEL = 1;
+const MARGEM_DISCO = Math.ceil(RAIO_BASE_ARVORE + NAV_FOLGA_DISCO + 0.5);
+
+/** @type {((aabb: object | null) => void) | null} */
+let onCacheLimpo = null;
+
+/** Hook pra limpar cache de path coalesce (evita ciclo com filaPath). */
+export function aoLimparNavCache(fn) {
+  onCacheLimpo = fn;
+}
+
+function expandirAabb(aabb) {
+  if (!aabb) return null;
+  const pad = HALO_CEL + MARGEM_DISCO;
+  return {
+    x0: (aabb.x0 | 0) - pad,
+    y0: (aabb.y0 | 0) - pad,
+    x1: (aabb.x1 | 0) + pad,
+    y1: (aabb.y1 | 0) + pad,
+  };
+}
+
+function aabbsIntersectam(a, b) {
+  if (!a || !b) return false;
+  return !(a.x1 < b.x0 || a.x0 > b.x1 || a.y1 < b.y0 || a.y0 > b.y1);
+}
+
+function fracaoCoberta(grade, dirty) {
+  const gw = Math.max(1, (grade.x1 - grade.x0 + 1) * (grade.y1 - grade.y0 + 1));
+  const ix0 = Math.max(grade.x0, dirty.x0);
+  const iy0 = Math.max(grade.y0, dirty.y0);
+  const ix1 = Math.min(grade.x1, dirty.x1);
+  const iy1 = Math.min(grade.y1, dirty.y1);
+  if (ix1 < ix0 || iy1 < iy0) return 0;
+  return ((ix1 - ix0 + 1) * (iy1 - iy0 + 1)) / gw;
+}
+
+/**
+ * Invalida grade(s). Sem AABB = clear total.
+ * Com AABB: patch local das arestas walk no retângulo+halo; se cobrir ≥45% da
+ * grade ou trabalho fatiado intersecta, descarta e rebuilda sob demanda.
+ */
+export function invalidarNavCache(aabb = null) {
+  if (!aabb) {
+    cache.clear();
+    trabalhoNav = null;
+    onCacheLimpo?.(null);
+    return;
+  }
+  const dirty = expandirAabb(aabb);
+  if (
+    trabalhoNav &&
+    aabbsIntersectam(trabalhoNav, dirty)
+  ) {
+    trabalhoNav = null;
+  }
+  const ids = [...cache.keys()];
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const grade = cache.get(id);
+    if (!grade || !aabbsIntersectam(grade, dirty)) continue;
+    if (fracaoCoberta(grade, dirty) >= 0.45 || !grade.perfil) {
+      cache.delete(id);
+      continue;
+    }
+    patchArestasNaAabb(grade, dirty);
+  }
+  onCacheLimpo?.(dirty);
+}
+
+/**
+ * Sinal público: discos mudaram nesta AABB mundo (células inclusivas).
+ * @param {{ x0: number, y0: number, x1: number, y1: number } | null} aabb
+ */
+export function marcarNavSujo(aabb) {
+  invalidarNavCache(aabb);
+}
+
+/** AABB de um chunk de props (mundo). Sentinels (cx <= -9000) → null. */
+export function aabbDoChunkProps(cx, cy) {
+  const cxi = cx | 0;
+  const cyi = cy | 0;
+  if (cxi <= -9000 || cyi <= -9000) return null;
+  return {
+    x0: cxi * CHUNK_XZ,
+    y0: cyi * CHUNK_XZ,
+    x1: cxi * CHUNK_XZ + CHUNK_XZ - 1,
+    y1: cyi * CHUNK_XZ + CHUNK_XZ - 1,
+  };
 }
 
 function caixaCobre(box, ax, ay, gx, gy) {
@@ -204,12 +294,7 @@ function temBeiraGlide(cx, cy, zA, pisosDe) {
   return false;
 }
 
-function* construirGrade(perfil, centroX, centroY, raio) {
-  const { x0, y0, x1, y1 } = limitesGrade(centroX, centroY, raio);
-
-  /** @type {Map<number, number[]>} */
-  const edges = new Map();
-  /** Cache local de pisos e de água no AABB */
+function criarCachesLocais(perfil) {
   const cachePisos = new Map();
   const cacheAgua = new Map();
   function aguaDe(cx, cy) {
@@ -234,6 +319,107 @@ function* construirGrade(perfil, centroX, centroY, raio) {
     }
     return p;
   }
+  return { aguaDe, pisosDe };
+}
+
+/**
+ * Monta lista de arestas saindo de (cx,cy,zA). Centro bloqueado por disco → [].
+ */
+function montarListaArestas(cx, cy, zA, pisosA, perfil, aguaDe, pisosDe) {
+  if (centroNaBase(cx, cy, zA)) return [];
+  const lista = [];
+
+  for (const [dx, dy, diag] of DIRS) {
+    const nx = cx + dx;
+    const ny = cy + dy;
+    if (!dentroDoMapa(nx, ny)) continue;
+    const pisosB = pisosDe(nx, ny);
+    if (!pisosB.length) continue;
+    if (diag && !cantoDiagonalLivre(cx, cy, zA, nx, ny, pisosDe)) continue;
+    for (const zB of pisosB) {
+      if (centroNaBase(nx, ny, zB)) continue;
+      const edge = classificarAresta(zA, zB, perfil, diag);
+      if (!edge) continue;
+      if (
+        (edge.tipo === TIPO_WALK || edge.tipo === TIPO_JUMP) &&
+        arestaCortaBase(cx, cy, nx, ny, zB)
+      ) {
+        continue;
+      }
+      const mult = multiplicadorAgua(
+        aguaDe(cx, cy),
+        aguaDe(nx, ny),
+        dx,
+        dy,
+        perfil,
+      );
+      if (mult == null) continue;
+      edge.custo *= mult;
+      lista.push(chaveCelula(nx, ny, zB), edge.custo, edge.tipo);
+    }
+  }
+
+  const jaAgua = new Set();
+  for (let i = 0; i < lista.length; i += 3) jaAgua.add(lista[i]);
+  for (const link of linksCachoeira(cx, cy, zA, perfil, aguaDe, pisosDe)) {
+    const k = chaveCelula(link.cx, link.cy, link.z);
+    if (jaAgua.has(k)) continue;
+    lista.push(k, link.custo, link.tipo === "nado" ? TIPO_NADO : TIPO_CLIMB);
+    jaAgua.add(k);
+  }
+
+  if (perfil.podeEscalar) {
+    for (const zB of pisosA) {
+      if (zB <= zA) continue;
+      const dz = zB - zA;
+      if (dz < 2 || dz > 12) continue;
+      const custo = PATH_CUSTO_ESCALADA + dz / Math.max(0.25, ESCALADA_VEL);
+      lista.push(chaveCelula(cx, cy, zB), custo, TIPO_CLIMB);
+    }
+  }
+
+  if (perfil.podePlanar && temBeiraGlide(cx, cy, zA, pisosDe)) {
+    adicionarGlideRays(lista, cx, cy, zA, pisosDe);
+  }
+  if (perfil.podeVoar && temBeiraGlide(cx, cy, zA, pisosDe)) {
+    adicionarVooRays(lista, cx, cy, zA, pisosDe);
+  }
+  return lista;
+}
+
+function patchArestasNaAabb(grade, dirty) {
+  const perfil = grade.perfil;
+  if (!perfil || !grade.edges) return;
+  const { aguaDe, pisosDe } = criarCachesLocais(perfil);
+  const x0 = Math.max(grade.x0, dirty.x0);
+  const y0 = Math.max(grade.y0, dirty.y0);
+  const x1 = Math.min(grade.x1, dirty.x1);
+  const y1 = Math.min(grade.y1, dirty.y1);
+  for (let cy = y0; cy <= y1; cy++) {
+    for (let cx = x0; cx <= x1; cx++) {
+      if (!dentroDoMapa(cx, cy)) continue;
+      const pisosA = pisosDe(cx, cy);
+      // Remove nós antigos desta coluna no AABB (pisos podem ter mudado).
+      for (const key of [...grade.edges.keys()]) {
+        const c = celulaDeChave(key);
+        if (c.cx === cx && c.cy === cy) grade.edges.delete(key);
+      }
+      if (!pisosA.length) continue;
+      for (const zA of pisosA) {
+        grade.edges.set(
+          chaveCelula(cx, cy, zA),
+          montarListaArestas(cx, cy, zA, pisosA, perfil, aguaDe, pisosDe),
+        );
+      }
+    }
+  }
+}
+
+function* construirGrade(perfil, centroX, centroY, raio) {
+  const { x0, y0, x1, y1 } = limitesGrade(centroX, centroY, raio);
+  /** @type {Map<number, number[]>} */
+  const edges = new Map();
+  const { aguaDe, pisosDe } = criarCachesLocais(perfil);
 
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
@@ -245,75 +431,10 @@ function* construirGrade(perfil, centroX, centroY, raio) {
       }
 
       for (const zA of pisosA) {
-        const key = chaveCelula(cx, cy, zA);
-        const lista = [];
-
-        for (const [dx, dy, diag] of DIRS) {
-          const nx = cx + dx;
-          const ny = cy + dy;
-          if (!dentroDoMapa(nx, ny)) continue;
-          const pisosB = pisosDe(nx, ny);
-          if (!pisosB.length) continue;
-          if (diag && !cantoDiagonalLivre(cx, cy, zA, nx, ny, pisosDe)) {
-            continue;
-          }
-          for (const zB of pisosB) {
-            const edge = classificarAresta(zA, zB, perfil, diag);
-            if (!edge) continue;
-            if (edge.tipo === TIPO_WALK && arestaCortaBase(cx, cy, nx, ny, zB)) continue;
-            const mult = multiplicadorAgua(
-              aguaDe(cx, cy),
-              aguaDe(nx, ny),
-              dx,
-              dy,
-              perfil,
-            );
-            if (mult == null) continue;
-            edge.custo *= mult;
-            lista.push(chaveCelula(nx, ny, zB), edge.custo, edge.tipo);
-          }
-        }
-
-        const jaAgua = new Set();
-        for (let i = 0; i < lista.length; i += 3) jaAgua.add(lista[i]);
-        for (const link of linksCachoeira(
-          cx,
-          cy,
-          zA,
-          perfil,
-          aguaDe,
-          pisosDe,
-        )) {
-          const key = chaveCelula(link.cx, link.cy, link.z);
-          if (jaAgua.has(key)) continue;
-          lista.push(
-            key,
-            link.custo,
-            link.tipo === "nado" ? TIPO_NADO : TIPO_CLIMB,
-          );
-          jaAgua.add(key);
-        }
-
-        // Shaft vertical na mesma coluna (climb curto entre andares)
-        if (perfil.podeEscalar) {
-          for (const zB of pisosA) {
-            if (zB <= zA) continue;
-            const dz = zB - zA;
-            if (dz < 2 || dz > 12) continue;
-            const custo =
-              PATH_CUSTO_ESCALADA + dz / Math.max(0.25, ESCALADA_VEL);
-            lista.push(chaveCelula(cx, cy, zB), custo, TIPO_CLIMB);
-          }
-        }
-
-        if (perfil.podePlanar && temBeiraGlide(cx, cy, zA, pisosDe)) {
-          adicionarGlideRays(lista, cx, cy, zA, pisosDe);
-        }
-        if (perfil.podeVoar && temBeiraGlide(cx, cy, zA, pisosDe)) {
-          adicionarVooRays(lista, cx, cy, zA, pisosDe);
-        }
-
-        edges.set(key, lista);
+        edges.set(
+          chaveCelula(cx, cy, zA),
+          montarListaArestas(cx, cy, zA, pisosA, perfil, aguaDe, pisosDe),
+        );
         yield;
       }
     }
@@ -321,6 +442,7 @@ function* construirGrade(perfil, centroX, centroY, raio) {
 
   return {
     perfilId: perfil.id,
+    perfil,
     x0,
     y0,
     x1,

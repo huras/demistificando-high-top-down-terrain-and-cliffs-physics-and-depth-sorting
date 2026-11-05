@@ -1,19 +1,24 @@
 /**
- * Locomoção 3D de NPCs: steering local + física compartilhada do jogador.
+ * Locomoção 3D de NPCs: LOD path perto do player; steering + desviarDisco longe.
  *
- * Path/agente completo (`atualizarAgente`) custava ~8 ms/NPC — aqui só
- * direção + sensoria local (nado / pulo +1 / climb). Mesmo pipeline de
- * `atualizarMovimentoDirecionado` (água, hop, escalada, mantle).
- *
- * Regra de ouro: climb/pulo só com terreno À FRENTE mais alto.
- * Queda = deixa a física cair. Nunca auto-gruda na face da beirada.
+ * Perto (≤ NAV_RAIO): `atualizarAgente` (mesmo pipeline do mon).
+ * Longe: direção + sensoria local + desviarDisco (O(1)).
  */
-import { ALTURA_SPRITE_JOGADOR, STAMINA_MAX, VELOCIDADE_MAX } from "../config.js";
-import { garantirCorpoLocomocao } from "../fisica/agente.js";
+import {
+  ALTURA_SPRITE_JOGADOR,
+  NAV_RAIO,
+  RAIO_CORPO,
+  STAMINA_MAX,
+  VELOCIDADE_MAX,
+} from "../config.js";
+import { atualizarAgente, garantirCorpoLocomocao } from "../fisica/agente.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { soltarEscalada } from "../fisica/escalada.js";
 import { atualizarMovimentoDirecionado } from "../fisica/movimento.js";
+import { desviarDisco } from "../navegacao/desviarDisco.js";
+import { projetarMetaLivre } from "../navegacao/metaLivre.js";
 import { PERFIL_ESCALADOR } from "../navegacao/perfilMovimento.js";
+import { tickStuck } from "../navegacao/recoveryStuck.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 
 /** Distância XY pra considerar meta alcançada (wander/travel). */
@@ -21,6 +26,38 @@ export const NPC_DIST_CHEGAR = 0.85;
 
 /** Depois de ver queda, bloqueia auto-climb (evita grudar na face da beirada). */
 const BLOQUEIO_CLIMB_POS_QUEDA = 0.9;
+
+const NAV_RAIO_SQ = NAV_RAIO * NAV_RAIO;
+
+/** Âncora do player pra LOD (setada no tickNpc). */
+let ancoraLodX = 0;
+let ancoraLodY = 0;
+let ancoraLodOk = false;
+
+/** @param {number} x @param {number} y */
+export function definirAncoraLodNpc(x, y) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    ancoraLodOk = false;
+    return;
+  }
+  ancoraLodX = x;
+  ancoraLodY = y;
+  ancoraLodOk = true;
+}
+
+function pertoDoPlayerLod(npc) {
+  if (!ancoraLodOk || !npc) return false;
+  const dx = npc.x - ancoraLodX;
+  const dy = npc.y - ancoraLodY;
+  return dx * dx + dy * dy <= NAV_RAIO_SQ;
+}
+
+function onStuckNpc(npc) {
+  if (!npc) return;
+  npc.wanderGoal = null;
+  npc.travelTarget = null;
+  npc._seq = (npc._seq | 0) + 1;
+}
 
 /**
  * @param {object} npc
@@ -37,6 +74,9 @@ export function garantirNpcLoco(npc) {
   if (npc.acao == null || typeof npc.acao !== "string") npc.acao = "parado";
   if (npc.staminaMax == null) npc.staminaMax = STAMINA_MAX;
   if (npc.stamina == null) npc.stamina = npc.staminaMax;
+  if (npc.raioCorpo == null) {
+    npc.raioCorpo = npc.raio > 0 ? npc.raio : RAIO_CORPO;
+  }
 }
 
 /** Treinadores OW não afogam / não caem da parede no meio da rota. */
@@ -83,14 +123,12 @@ function sensoriarFrente(npc, nx, ny) {
     const ax = npc.x + nx * dist;
     const ay = npc.y + ny * dist;
 
-    // Amostra “pés”: queda / degrau baixo (ref perto do chão atual).
     const zBaixo = alturaSobPes(ax, ay, base + 0.35);
     if (!(zBaixo > 0) || zBaixo <= base - 2) {
       viuQueda = true;
       continue;
     }
 
-    // Amostra “ombro”: só sobe se o piso à frente for mais alto.
     const zAlto = alturaSobPes(ax, ay, base + 2.8);
     if (!(zAlto > 0)) continue;
     const dz = Math.round(zAlto) - base;
@@ -98,7 +136,6 @@ function sensoriarFrente(npc, nx, ny) {
     else if (dz >= 2) viuEscalar = true;
   }
 
-  // Subida manda; queda só conta se não houver degrau pra cima no caminho.
   if (viuEscalar && npc.perfil?.podeEscalar) return "escalar";
   if (viuPulo && npc.perfil?.podePular) return "pulo";
   if (viuQueda) return "queda";
@@ -162,7 +199,6 @@ export function manterFisicaNpc(npc, dt) {
     npc.noChao === false
   ) {
     reabastecerStaminaNpc(npc);
-    // Se grudou na face de uma queda, solta e cai.
     if (npc.escalando && climbBloqueado(npc)) {
       soltarEscalada(npc, { impulso: false, motivo: "queda-npc" });
     }
@@ -189,40 +225,31 @@ export function alturaSpawnNpc(x, y, ref = ALTURA_PRACA) {
   return z > 0 ? z : ref;
 }
 
-/**
- * Persegue meta XY com física real (nado / pulo / climb).
- * @returns {boolean} true se chegou na meta
- */
-export function irParaNpc(npc, gx, gy, dt, vel = 0) {
-  if (!npc) return true;
-  garantirNpcLoco(npc);
-  tickBloqueioClimb(npc, dt > 0 ? dt : 0);
-
-  const dx = gx - npc.x;
-  const dy = gy - npc.y;
-  const dist = Math.hypot(dx, dy);
-  const emTransicao =
+function emTransicaoNpc(npc) {
+  return (
     !!npc.nadando ||
     !!npc.escalando ||
     !!npc.mantle ||
     !!npc.pulando ||
-    npc.noChao === false;
+    npc.noChao === false
+  );
+}
 
-  if (!(vel > 0) || !(dt > 0)) {
-    manterFisicaNpc(npc, dt);
-    pararIntent(npc);
-    return dist < NPC_DIST_CHEGAR;
-  }
-
-  if (dist < NPC_DIST_CHEGAR && !emTransicao) {
-    pararIntent(npc);
-    manterFisicaNpc(npc, dt);
-    return true;
-  }
-
+/**
+ * Steer + desviarDisco (longe do player).
+ */
+function irParaSteer(npc, mx, my, dt, vel) {
+  const dx = mx - npc.x;
+  const dy = my - npc.y;
+  const dist = Math.hypot(dx, dy);
   const inv = dist > 1e-4 ? 1 / dist : 0;
-  const nx = dx * inv;
-  const ny = dy * inv;
+  let nx = dx * inv;
+  let ny = dy * inv;
+
+  const desvio = desviarDisco(npc, nx, ny);
+  nx = desvio.x;
+  ny = desvio.y;
+
   if (nx !== 0 || ny !== 0) {
     npc.dirX = nx;
     npc.dirY = ny;
@@ -242,15 +269,12 @@ export function irParaNpc(npc, gx, gy, dt, vel = 0) {
     npc._npcClimbIntent = false;
   }
 
-  // Grudou na face da beirada (queda / sem intent de subir): solta e cai.
   if (npc.escalando && (climbBloqueado(npc) || !npc._npcClimbIntent)) {
     soltarEscalada(npc, { impulso: false, motivo: "queda-npc" });
     marcarBloqueioClimb(npc, BLOQUEIO_CLIMB_POS_QUEDA);
     npc._npcClimbIntent = false;
   }
 
-  // Pulo/climb só com evidência de terreno MAIS ALTO à frente.
-  // Sem “forçar quando stuck” — isso virava canguru eterno na beirada.
   const querPulo =
     !!npc.perfil?.podePular &&
     npc.noChao &&
@@ -275,21 +299,64 @@ export function irParaNpc(npc, gx, gy, dt, vel = 0) {
     correndo: false,
     apertouPulo: querPulo,
     querEscalar,
-    // NUNCA auto-grudar em queda/ar — só climb explícito de subida.
     autoEscalar: querEscalar,
     podeSoltarEscala: false,
   });
 
   syncFacingPeople(npc);
+}
 
-  const rest = Math.hypot(gx - npc.x, gy - npc.y);
-  const aindaNoAr =
-    !!npc.nadando ||
-    !!npc.escalando ||
-    !!npc.mantle ||
-    !!npc.pulando ||
-    npc.noChao === false;
-  if (rest < NPC_DIST_CHEGAR && !aindaNoAr) {
+/**
+ * Persegue meta XY com física real (nado / pulo / climb) + LOD path.
+ * @returns {boolean} true se chegou na meta
+ */
+export function irParaNpc(npc, gx, gy, dt, vel = 0) {
+  if (!npc) return true;
+  garantirNpcLoco(npc);
+  tickBloqueioClimb(npc, dt > 0 ? dt : 0);
+
+  const elev = npc.elevacao ?? npc.z ?? 0;
+  const r = npc.raioCorpo > 0 ? npc.raioCorpo : RAIO_CORPO;
+  const meta = projetarMetaLivre(gx, gy, elev, r);
+  const mx = meta.x;
+  const my = meta.y;
+
+  const dist = Math.hypot(mx - npc.x, my - npc.y);
+  const transicao = emTransicaoNpc(npc);
+
+  if (!(vel > 0) || !(dt > 0)) {
+    manterFisicaNpc(npc, dt);
+    pararIntent(npc);
+    return dist < NPC_DIST_CHEGAR;
+  }
+
+  if (dist < NPC_DIST_CHEGAR && !transicao) {
+    pararIntent(npc);
+    manterFisicaNpc(npc, dt);
+    return true;
+  }
+
+  if (pertoDoPlayerLod(npc)) {
+    // Path real; stuck fica a cargo de seguirCaminho/recoveryStuck.
+    atualizarAgente(
+      npc,
+      { x: mx, y: my, z: elev, elevacao: elev },
+      dt,
+      vel,
+      0,
+    );
+    syncFacingPeople(npc);
+  } else {
+    irParaSteer(npc, mx, my, dt, vel);
+    tickStuck(npc, dt, {
+      usarNav: false,
+      ativo: !emTransicaoNpc(npc) && dist >= NPC_DIST_CHEGAR,
+      onStuck: onStuckNpc,
+    });
+  }
+
+  const rest = Math.hypot(mx - npc.x, my - npc.y);
+  if (rest < NPC_DIST_CHEGAR && !emTransicaoNpc(npc)) {
     pararIntent(npc);
     snapChaoNpc(npc);
     return true;

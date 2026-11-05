@@ -1,4 +1,5 @@
 import {
+  CHUNK_XZ,
   NAV_FOLGA_DISCO,
   RAIO_BASE_ARVORE,
   RAIO_BASE_PEDRA,
@@ -19,6 +20,14 @@ const porChunk = new Map();
 const corposFixos = [];
 const corposAtores = [];
 
+/** @type {((aabb: { x0: number, y0: number, x1: number, y1: number } | null) => void) | null} */
+let onBasesDirty = null;
+
+/** Registra listener (navGrade) pra sujar path quando discos mudam. */
+export function aoBasesDirty(fn) {
+  onBasesDirty = fn;
+}
+
 function chaveChunk(cx, cy) {
   return `${cx | 0},${cy | 0}`;
 }
@@ -37,8 +46,66 @@ function raioBase(tipo) {
   return 0;
 }
 
+function aabbDeDiscos(discos, cx, cy) {
+  if (discos?.length) {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (let i = 0; i < discos.length; i++) {
+      const d = discos[i];
+      const r = d.r > 0 ? d.r : 0.5;
+      if (d.x - r < x0) x0 = d.x - r;
+      if (d.y - r < y0) y0 = d.y - r;
+      if (d.x + r > x1) x1 = d.x + r;
+      if (d.y + r > y1) y1 = d.y + r;
+    }
+    if (Number.isFinite(x0)) {
+      return {
+        x0: Math.floor(x0),
+        y0: Math.floor(y0),
+        x1: Math.ceil(x1),
+        y1: Math.ceil(y1),
+      };
+    }
+  }
+  const cxi = cx | 0;
+  const cyi = cy | 0;
+  if (cxi <= -9000 || cyi <= -9000) return null;
+  return {
+    x0: cxi * CHUNK_XZ,
+    y0: cyi * CHUNK_XZ,
+    x1: cxi * CHUNK_XZ + CHUNK_XZ - 1,
+    y1: cyi * CHUNK_XZ + CHUNK_XZ - 1,
+  };
+}
+
+function emitirDirty(aabbAntes, aabbDepois) {
+  if (!onBasesDirty) return;
+  if (!aabbAntes && !aabbDepois) {
+    onBasesDirty(null);
+    return;
+  }
+  if (!aabbAntes) {
+    onBasesDirty(aabbDepois);
+    return;
+  }
+  if (!aabbDepois) {
+    onBasesDirty(aabbAntes);
+    return;
+  }
+  onBasesDirty({
+    x0: Math.min(aabbAntes.x0, aabbDepois.x0),
+    y0: Math.min(aabbAntes.y0, aabbDepois.y0),
+    x1: Math.max(aabbAntes.x1, aabbDepois.x1),
+    y1: Math.max(aabbAntes.y1, aabbDepois.y1),
+  });
+}
+
 export function indexarBases(cx, cy, lista) {
-  limparBases(cx, cy);
+  const antes = porChunk.get(chaveChunk(cx, cy));
+  const aabbAntes = aabbDeDiscos(antes, cx, cy);
+  limparBases(cx, cy, true);
   const meus = [];
   const itens = lista || [];
   for (let i = 0; i < itens.length; i++) {
@@ -57,11 +124,18 @@ export function indexarBases(cx, cy, lista) {
     balde.push(disco);
   }
   if (meus.length) porChunk.set(chaveChunk(cx, cy), meus);
+  emitirDirty(aabbAntes, aabbDeDiscos(meus, cx, cy));
 }
 
-export function limparBases(cx, cy) {
+/**
+ * @param {number} cx
+ * @param {number} cy
+ * @param {boolean} [silencioso] se true, não emite dirty (indexarBases já emite)
+ */
+export function limparBases(cx, cy, silencioso = false) {
   const meus = porChunk.get(chaveChunk(cx, cy));
   if (!meus) return;
+  const aabb = silencioso ? null : aabbDeDiscos(meus, cx, cy);
   for (let i = 0; i < meus.length; i++) {
     const disco = meus[i];
     const k = chaveCelula(disco.x, disco.y);
@@ -72,6 +146,7 @@ export function limparBases(cx, cy) {
     if (!balde.length) porCelula.delete(k);
   }
   porChunk.delete(chaveChunk(cx, cy));
+  if (!silencioso) emitirDirty(aabb, null);
 }
 
 function discoQueInvade(x, y, elev, alcance) {

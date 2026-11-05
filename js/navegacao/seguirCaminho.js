@@ -6,24 +6,14 @@ import {
 } from "../config.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { encontrarFacePerto } from "../mundo/facesCliff.js";
-import {
-  arestaCortaBase,
-  resolverForaDeObstaculo,
-} from "../fisica/obstaculos.js";
+import { arestaCortaBase } from "../fisica/obstaculos.js";
 import {
   cancelarPath,
-  limparCachePath,
   obterResultadoPath,
   solicitarPath,
 } from "./filaPath.js";
 import { TIPO_CLIMB, TIPO_GLIDE, TIPO_JUMP, TIPO_NADO, TIPO_VOO, TIPO_WALK, pisoMaisProximo } from "./navGrade.js";
-
-const BLOQUEIO_WP_MS = 2800;
-
-function marcarWpBloqueado(nav, cx, cy) {
-  if (!nav.wpBloqueados) nav.wpBloqueados = new Map();
-  nav.wpBloqueados.set(`${cx | 0},${cy | 0}`, performance.now() + BLOQUEIO_WP_MS);
-}
+import { executarRecoveryStuck } from "./recoveryStuck.js";
 
 function wpBloqueado(nav, cx, cy) {
   if (!nav.wpBloqueados) return false;
@@ -859,24 +849,20 @@ export function atualizarSeguirCaminho(agente, lider, dt, distSeguir = 0) {
     !segmentoVoo &&
     nav.stuckT >= PATH_STUCK_SEG
   ) {
-    nav.stuckT = 0;
-    const wpStuck = nav.path?.cells?.[nav.idx];
-    if (wpStuck) marcarWpBloqueado(nav, wpStuck.cx, wpStuck.cy);
-    // Sai do poste/pedra; cache antigo devolvia a mesma rota na hora.
-    resolverForaDeObstaculo(agente);
-    limparCachePath();
-    cancelarPath(agente.id);
-    nav.path = null;
-    pedirPath(
-      agente,
-      nav,
-      agente.x | 0,
-      agente.y | 0,
-      goalCx,
-      goalCy,
-      agente.elevacao ?? elevAg,
-      zGoal,
-    );
+    executarRecoveryStuck(agente, {
+      onStuck: () => {
+        pedirPath(
+          agente,
+          nav,
+          agente.x | 0,
+          agente.y | 0,
+          goalCx,
+          goalCy,
+          agente.elevacao ?? elevAg,
+          zGoal,
+        );
+      },
+    });
     // Desvia lateral se ainda empurrado pro obstáculo.
     const latX = -ay / ad;
     const latY = ax / ad;

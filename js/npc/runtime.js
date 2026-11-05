@@ -11,6 +11,9 @@ import {
   tickLotWalk,
 } from "./cidade/index.js";
 import { npcPerfCount, npcPerfMeasure } from "./perf.js";
+import { NAV_RAIO, PATH_STUCK_SEG } from "../config.js";
+import { tickStuck } from "../navegacao/recoveryStuck.js";
+import { definirAncoraLodNpc } from "./locomocao.js";
 import {
   atualizarResidencia,
   contarAtivos,
@@ -18,6 +21,8 @@ import {
   tentarSpawnViajante,
   tickMovimentoViajante,
 } from "./viajantes/index.js";
+
+const NAV_RAIO_SQ = NAV_RAIO * NAV_RAIO;
 
 /** Raio (tiles) pra render + colisão dinâmica. */
 export const NPC_RENDER_REACH = 36;
@@ -158,6 +163,7 @@ function aabbCamera(player, pad = LOT_SIM_PAD) {
 export function tickNpc(player, dt, ctx = {}) {
   if (!iniciado || !player) return;
   playerRef = player;
+  definirAncoraLodNpc(player.x, player.y);
   const interior = estadoJogo.interior;
   const aabb = aabbCamera(player);
 
@@ -214,6 +220,22 @@ export function tickNpc(player, dt, ctx = {}) {
         continue;
       }
       tickMovimentoViajante(t, dt);
+      // Safety net só no modo path (perto): irParaNpc longe já faz tickStuck.
+      const dx = t.x - player.x;
+      const dy = t.y - player.y;
+      const pertoPath = dx * dx + dy * dy <= NAV_RAIO_SQ;
+      if (pertoPath && (t.wanderGoal || t.travelTarget)) {
+        tickStuck(t, dt, {
+          usarNav: false,
+          limiar: PATH_STUCK_SEG * 1.5,
+          ativo: !t.nadando && !t.escalando && !t.mantle && !t.pulando,
+          onStuck: (ent) => {
+            ent.wanderGoal = null;
+            ent.travelTarget = null;
+            ent._seq = (ent._seq | 0) + 1;
+          },
+        });
+      }
     }
   });
   npcPerfCount("viajantes", viajantes.length);

@@ -9,6 +9,7 @@ import {
   FERRAMENTAS,
   MOVEIS,
   PREMIER_A_CADA,
+  HOLD_ITEMS,
   RECEITAS_BOLA,
   REMEDIOS,
   SLOTS_HOTBAR,
@@ -23,6 +24,7 @@ import { hidratarPlot, serializarPlot } from "../wild/plots.js";
 import { criarAtor } from "../pokemon/ator.js";
 import { especie } from "../pokemon/dados.js";
 import { restaurarPp } from "../pokemon/pp.js";
+import { limparStatus } from "../pokemon/combate/status.js";
 import { obterTreinador } from "../pokemon/sistema.js";
 import { hidratarCampo, idsRemovidos, reaplicarCarregados, serializarCampo } from "../campo/estadoProps.js";
 import {
@@ -135,6 +137,7 @@ export const estado = {
   painel: null,
   menuAberto: false,
   skillAberto: false,
+  statusMonAberto: false,
   dexAberta: false,
   capsulaAberta: false,
   statusAberto: false,
@@ -450,6 +453,27 @@ export function gastar(tipo, key, n = 1) {
   return true;
 }
 
+export function remedioAjuda(tipo, key, ator) {
+  const def = defItem(tipo, key);
+  const efeito = def?.efeito;
+  if (!efeito || !ator) return false;
+  if (efeito.reviverParty) {
+    const party = listaParty();
+    for (let i = 0; i < party.length; i++) {
+      const mon = party[i];
+      if (mon && (mon.morto || mon.hp <= 0)) return true;
+    }
+    return false;
+  }
+  if (efeito.reviver) return !!(ator.morto || ator.hp <= 0);
+  if (ator.morto || ator.hp <= 0) return false;
+  if (efeito.curaHp || efeito.curaFrac) return ator.hp < ator.hpMax;
+  if (efeito.pp) return true;
+  if (efeito.cura === "all") return !!ator.status;
+  if (efeito.cura) return ator.status === efeito.cura;
+  return false;
+}
+
 export function aplicarEfeito(ator, efeito) {
   if (!ator || !efeito) return false;
   if (efeito.reviver) {
@@ -461,15 +485,58 @@ export function aplicarEfeito(ator, efeito) {
     return true;
   }
   if (ator.morto || ator.hp <= 0) return false;
-  if (efeito.curaHp) ator.hp = Math.min(ator.hpMax, ator.hp + efeito.curaHp);
-  if (efeito.curaFrac) ator.hp = Math.min(ator.hpMax, ator.hp + Math.round(ator.hpMax * efeito.curaFrac));
-  if (efeito.pp) restaurarPp(ator, efeito.pp);
-  return true;
+  let ok = false;
+  if (efeito.curaHp) {
+    const antes = ator.hp;
+    ator.hp = Math.min(ator.hpMax, ator.hp + efeito.curaHp);
+    if (ator.hp > antes) ok = true;
+  }
+  if (efeito.curaFrac) {
+    const antes = ator.hp;
+    ator.hp = Math.min(ator.hpMax, ator.hp + Math.round(ator.hpMax * efeito.curaFrac));
+    if (ator.hp > antes) ok = true;
+  }
+  if (efeito.pp) {
+    restaurarPp(ator, efeito.pp);
+    ok = true;
+  }
+  if (efeito.cura === "all" && ator.status) {
+    limparStatus(ator);
+    ok = true;
+  } else if (efeito.cura && ator.status === efeito.cura) {
+    limparStatus(ator);
+    ok = true;
+  }
+  return ok;
 }
 
 export function usarNoPokemon(tipo, key, ator) {
   const def = defItem(tipo, key);
-  if (!def?.efeito || !ator) return false;
+  if (!def?.efeito) return false;
+  if (def.efeito.reviverParty) {
+    const party = listaParty();
+    let algum = false;
+    for (let i = 0; i < party.length; i++) {
+      const mon = party[i];
+      if (mon && (mon.morto || mon.hp <= 0)) {
+        algum = true;
+        break;
+      }
+    }
+    if (!algum) {
+      tocarBump();
+      return false;
+    }
+    if (!gastar(tipo, key, 1)) return false;
+    for (let i = 0; i < party.length; i++) {
+      const mon = party[i];
+      if (mon && (mon.morto || mon.hp <= 0)) aplicarEfeito(mon, def.efeito);
+    }
+    tocarCura(ator || party[0]);
+    avisar();
+    return true;
+  }
+  if (!ator) return false;
   if (!gastar(tipo, key, 1)) return false;
   const ok = aplicarEfeito(ator, def.efeito);
   if (!ok) {
@@ -478,7 +545,7 @@ export function usarNoPokemon(tipo, key, ator) {
     tocarBump();
     return false;
   }
-  if (def.efeito.curaHp || def.efeito.curaFrac || def.efeito.reviver) {
+  if (def.efeito.curaHp || def.efeito.curaFrac || def.efeito.reviver || def.efeito.cura) {
     tocarCura(ator);
   }
   avisar();
@@ -779,18 +846,25 @@ export function snapshot(ator) {
     exp: ator.exp,
     shiny: !!ator.shiny,
     ballKey: typeof ator.ballKey === "string" && ator.ballKey ? ator.ballKey : "pokeball",
+    heldItemKey: ator.heldItemKey || ator.itemSegurado || null,
+    autoHealBerryKey: ator.autoHealBerryKey || null,
+    autoCureBerryKey: ator.autoCureBerryKey || null,
   };
 }
 
 export function atorDoSnapshot(snap) {
   const esp = especie(snap?.especieKey);
   if (!esp) return null;
+  const held = snap.heldItemKey || snap.itemSegurado || null;
   const ator = criarAtor({
     especie: esp,
     nivel: snap.nivel || 1,
     shiny: !!snap.shiny,
     hp: snap.hp,
     ballKey: typeof snap.ballKey === "string" && snap.ballKey ? snap.ballKey : "pokeball",
+    heldItemKey: held,
+    autoHealBerryKey: snap.autoHealBerryKey || null,
+    autoCureBerryKey: snap.autoCureBerryKey || null,
     faccao: "party",
     x: 0,
     y: 0,
@@ -921,6 +995,7 @@ export function uiAberta() {
     estado.capsulaAberta ||
     estado.statusAberto ||
     estado.skillAberto ||
+    estado.statusMonAberto ||
     estado.dialogo ||
     estado.roda ||
     estado.questBoardOpen ||
@@ -959,7 +1034,8 @@ export function fecharTopo() {
     estado.dexAberta ||
     estado.statusAberto ||
     estado.menuAberto ||
-    estado.skillAberto
+    estado.skillAberto ||
+    estado.statusMonAberto
   ) {
     if (typeof estado._fecharHudExtra === "function") {
       estado._fecharHudExtra();
@@ -971,6 +1047,7 @@ export function fecharTopo() {
     estado.statusAberto = false;
     estado.menuAberto = false;
     estado.skillAberto = false;
+    estado.statusMonAberto = false;
     avisar();
     return true;
   }
@@ -1106,6 +1183,8 @@ export function carregar() {
   for (let i = 0; i < ferr.length; i++) {
     if (contarItem(ferr[i]) <= 0) ajustarItem(ferr[i], 1, "mudo");
   }
+  garantirRevivesGen4();
+  garantirHoldItensDemo();
   if (!estado.hotbar[5] && contarItem("bow") > 0) {
     estado.hotbar[5] = { tipo: TIPO_ITEM.FERRAMENTA, key: "bow" };
   }
@@ -1195,6 +1274,25 @@ export function carregar() {
   return true;
 }
 
+const REVIVES_GEN4 = Object.freeze(["revive", "maxRevive", "revivalHerb", "sacredAsh"]);
+
+function garantirRevivesGen4() {
+  for (let i = 0; i < REVIVES_GEN4.length; i++) {
+    const key = REVIVES_GEN4[i];
+    const falta = 999 - contarItem(key);
+    if (falta > 0) ajustarItem(key, falta, "mudo");
+  }
+}
+
+function garantirHoldItensDemo() {
+  if (contarItem("leftovers") <= 0) ajustarItem("leftovers", 5, "mudo");
+  if (contarItem("deepSeaTooth") <= 0) ajustarItem("deepSeaTooth", 1, "mudo");
+  if (contarItem("deepSeaScale") <= 0) ajustarItem("deepSeaScale", 1, "mudo");
+  if (contarItem("oran") < 5) ajustarItem("oran", 5 - contarItem("oran"), "mudo");
+  if (contarItem("cheri") <= 0) ajustarItem("cheri", 5, "mudo");
+  if (contarItem("lum") <= 0) ajustarItem("lum", 3, "mudo");
+}
+
 function semearInicio() {
   resetEstadoSantuario();
   resetDescobertaMapa();
@@ -1205,6 +1303,8 @@ function semearInicio() {
   estado.vistosItens = {};
   if (contarItem("oran") <= 0) ajustarItem("oran", 5, "mudo");
   if (contarItem("potion") <= 0) ajustarItem("potion", 2, "mudo");
+  garantirRevivesGen4();
+  garantirHoldItensDemo();
   if (contarItem("pokeball") <= 0) definirBolas(POKEMON.BOLAS);
   const ferr = Object.keys(FERRAMENTAS);
   for (let i = 0; i < ferr.length; i++) {
@@ -1230,4 +1330,4 @@ export function nomeDe(tipo, key) {
   return nomeDoItem(key, tipo);
 }
 
-export { ESTAGIO, TIPO_ITEM, BOLAS, BERRIES, REMEDIOS, FERRAMENTAS, MOVEIS, RECEITAS_BOLA, CHAVES };
+export { ESTAGIO, TIPO_ITEM, BOLAS, BERRIES, REMEDIOS, HOLD_ITEMS, FERRAMENTAS, MOVEIS, RECEITAS_BOLA, CHAVES };

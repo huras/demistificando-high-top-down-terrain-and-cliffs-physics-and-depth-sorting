@@ -2,10 +2,11 @@
  * Pernas do combate OW: pathfinding 3D (atualizarAgente).
  * Política/targeting vive em js/pokemon/campo/. Arena usa integrarComando + pensar.
  */
-import { AGENTE_DIST_PARAR, POKEMON } from "../../config.js";
+import { AGENTE_DIST_PARAR, POKEMON, RAIO_POKEMON } from "../../config.js";
 import { alturaSobPes } from "../../fisica/colisao.js";
 import { atualizarAgente, garantirCorpoLocomocao } from "../../fisica/agente.js";
 import { sincronizarFacingParede } from "../../fisica/escalada.js";
+import { projetarMetaLivre } from "../../navegacao/metaLivre.js";
 import { emAvanco, emEsquiva, emRecuo, presoNoGolpe, velocidadeDe } from "../ator.js";
 import { perfilDoHabitat } from "../habitat/index.js";
 import { FOLGA_PARADA } from "./constantes.js";
@@ -53,9 +54,12 @@ export function irPara(ator, gx, gy, gz, vel, dt, distParar = 0) {
   garantirCorpoLocomocao(ator, ator.perfil);
   const zBase = ator.elevacao ?? ator.z ?? 0;
   const zAlvo = gz != null && gz > 0 ? gz : alturaSobPes(gx, gy, zBase + 12);
+  const zMeta = zAlvo > 0 ? zAlvo : zBase;
+  const r = ator.raioCorpo > 0 ? ator.raioCorpo : RAIO_POKEMON;
+  const meta = projetarMetaLivre(gx, gy, zMeta, r);
   atualizarAgente(
     ator,
-    { x: gx, y: gy, z: zAlvo > 0 ? zAlvo : zBase, elevacao: zAlvo > 0 ? zAlvo : zBase },
+    { x: meta.x, y: meta.y, z: zMeta, elevacao: zMeta },
     dt,
     vel,
     distParar,

@@ -205,7 +205,14 @@ function alturaContinua(bioma, wx, wy, seed, catalogo) {
   const origem = Number(catalogo?.origemMetros);
   const base = Number.isFinite(origem) ? origem : -200;
   const mpb = Number(catalogo?.metrosPorBloco) || 48;
-  return (metros - base) / mpb;
+  let h = (metros - base) / mpb;
+  // Mar: relevo secundário só escava. Pico acima da média vira fossa
+  // simétrica — evita pontes rasas entre continentes.
+  if (bioma.camada === "mar") {
+    const mid = (piso + faixa * 0.5 - base) / mpb;
+    h = mid - Math.abs(h - mid);
+  }
+  return h;
 }
 
 /** Altura contínua do grafo completo (catálogo), em blocos. */

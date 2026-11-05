@@ -40,6 +40,7 @@ let capsulaApi = null;
 let radarApi = null;
 let statusApi = null;
 let skillApi = null;
+let statusMonApi = null;
 let ouvintesHotbar = [];
 let corpoRef = null;
 
@@ -59,6 +60,10 @@ estado._fecharHudExtra = () => {
   if (estado.skillAberto) {
     skillApi?.close?.();
     estado.skillAberto = false;
+  }
+  if (estado.statusMonAberto) {
+    statusMonApi?.close?.();
+    estado.statusMonAberto = false;
   }
   if (estado.menuAberto) {
     menuApi?.close?.();
@@ -112,12 +117,20 @@ export function definirSkillApi(api) {
   skillApi = api;
 }
 
+export function definirStatusMonApi(api) {
+  statusMonApi = api;
+}
+
 export function statusHud() {
   return statusApi;
 }
 
 export function skillHud() {
   return skillApi;
+}
+
+export function statusMonHud() {
+  return statusMonApi;
 }
 
 export function toggleStatus() {
@@ -134,6 +147,26 @@ export function toggleSkillLoadout() {
 export function fecharSkillLoadout() {
   skillApi?.close?.();
   estado.skillAberto = false;
+  avisar();
+}
+
+export function abrirStatusMon(indice) {
+  const r = statusMonApi?.open?.(indice) ?? false;
+  estado.statusMonAberto = !!statusMonApi?.isOpen?.();
+  avisar();
+  return r;
+}
+
+export function toggleStatusMon(indice) {
+  const r = statusMonApi?.toggle?.(indice) ?? false;
+  estado.statusMonAberto = !!statusMonApi?.isOpen?.();
+  avisar();
+  return r;
+}
+
+export function fecharStatusMon() {
+  statusMonApi?.close?.();
+  estado.statusMonAberto = false;
   avisar();
 }
 

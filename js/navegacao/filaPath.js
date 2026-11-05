@@ -1,7 +1,10 @@
 import { PATH_EXPAND_POR_FRAME } from "../config.js";
+import { aoBasesDirty } from "../fisica/obstaculos.js";
 import { criarBusca, expandirBusca, reconstruirCaminho } from "./astar.js";
 import {
+  aoLimparNavCache,
   chaveCelula,
+  invalidarNavCache,
   obterNavGrade,
   pisoMaisProximo,
   tickNavGrade,
@@ -171,3 +174,11 @@ export function tickFilaPath(orcamento = PATH_EXPAND_POR_FRAME) {
     }
   }
 }
+
+// Discos mudaram → suja grade + apaga path coalesce (mesmo frame).
+aoLimparNavCache(() => {
+  limparCachePath();
+});
+aoBasesDirty((aabb) => {
+  invalidarNavCache(aabb);
+});

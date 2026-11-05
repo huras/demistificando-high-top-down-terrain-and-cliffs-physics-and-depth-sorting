@@ -202,11 +202,16 @@ function pintarStrip() {
             const tipModo = pref === AI_MODE.DEFAULT
               ? `Padrão (${rotuloModo(modoEfetivo(ator))})`
               : rotuloModo(pref);
+            const actSlot = faint ? "status-mon" : "deploy";
+            const tipSlot = faint
+              ? `Status · ${escHtml(nomeEspecie(ator))} (desmaiado)`
+              : `${escHtml(nomeEspecie(ator))} · campo / recolher`;
             return `<div class="party-slot-wrap">
-              <button type="button" class="party-slot${fora && campo === ator ? " is-on is-out" : ""}${faint ? " is-fainted" : ""}${rideOn ? " is-ride" : ""}" data-act="deploy" data-i="${i}" title="${escHtml(nomeEspecie(ator))} Nv${ator.nivel}">
+              <button type="button" class="party-slot${fora && campo === ator ? " is-on is-out" : ""}${faint ? " is-fainted" : ""}${rideOn ? " is-ride" : ""}" data-act="${actSlot}" data-i="${i}" title="${tipSlot}">
                 <span class="party-slot__portrait">${face}</span>
                 <span class="party-slot__hp"><i data-hp="${i}"></i></span>
               </button>
+              <button type="button" class="party-slot__lv" data-act="status-mon" data-i="${i}" title="Status · Nv${ator.nivel}" aria-label="Abrir status de ${escHtml(nomeEspecie(ator))}">Nv${ator.nivel}</button>
               <button type="button" class="party-slot__mode" data-act="modo" data-i="${i}" title="Modo: ${escHtml(tipModo)}" aria-label="Modo de IA: ${escHtml(tipModo)}">
                 <span class="party-slot__mode-glyph">${iconeModo(pref)}</span>
               </button>
@@ -331,6 +336,9 @@ function pintarDetail() {
       <div class="party-combat__actions">
         <button type="button" class="party-combat__mode" data-act="modo" data-i="${i}" title="Modo: ${escHtml(tipModo)}" aria-label="Modo de IA: ${escHtml(tipModo)}">
           <span class="party-combat__mode-glyph">${iconeModo(pref)}</span>
+        </button>
+        <button type="button" class="party-combat__action party-combat__action--status" data-act="status-mon" data-i="${i}" title="Status">
+          Status
         </button>
         <button type="button" class="party-combat__action party-combat__action--skills" data-act="skills" title="Ver golpes">
           Skills

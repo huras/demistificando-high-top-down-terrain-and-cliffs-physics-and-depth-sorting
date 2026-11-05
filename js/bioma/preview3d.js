@@ -100,7 +100,12 @@ function alturaBlocos(bioma, wx, wy, seed, catalogo) {
   const origem = Number(catalogo?.origemMetros);
   const base = Number.isFinite(origem) ? origem : -200;
   const mpb = Number(catalogo?.metrosPorBloco) || 48;
-  return (metros - base) / mpb;
+  let h = (metros - base) / mpb;
+  if (bioma?.camada === "mar") {
+    const mid = (piso + faixa * 0.5 - base) / mpb;
+    h = mid - Math.abs(h - mid);
+  }
+  return h;
 }
 
 function encaixar(h, degrau) {

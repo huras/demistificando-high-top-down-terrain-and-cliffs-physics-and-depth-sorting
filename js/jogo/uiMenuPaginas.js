@@ -6,6 +6,7 @@ import {
   BLOCOS,
   CHAVES,
   FERRAMENTAS,
+  HOLD_ITEMS,
   REMEDIOS,
   TIPO_ITEM,
   materiaisDaBolsa,
@@ -54,6 +55,7 @@ export function htmlPartyMenu() {
       const foto = urlRetrato(ator);
       const img = foto ? `<img class="pc-retrato" alt="" src="${foto}" />` : "";
       return `<div class="jogo-item">${img}<span>${escHtml(nomeEspecie(ator))} Lv${ator.nivel}${ator.shiny ? " ✦" : ""}</span><span>${hp}</span>
+        <button type="button" data-act="status-mon" data-i="${i}">Status</button>
         <button type="button" data-act="deploy" data-i="${i}">Campo</button>
         <button type="button" data-act="ride" data-i="${i}">Ride</button>
         <button type="button" data-act="soltar-party" data-i="${i}">Soltar</button></div>`;
@@ -69,6 +71,7 @@ export function htmlMochilaMenu() {
     ["balls", t("ui.bolas")],
     ["berries", t("ui.berries")],
     ["medicine", t("ui.remedios")],
+    ["hold", t("ui.hold")],
     ["materials", t("ui.materiais")],
     ["blocks", t("ui.blocos")],
     ["tools", t("ui.ferramentas")],
@@ -112,6 +115,7 @@ function itensVisiveis(cat) {
     balls: entradas(BOLAS, TIPO_ITEM.BOLA),
     berries: entradas(BERRIES, TIPO_ITEM.BERRY),
     medicine: entradas(REMEDIOS, TIPO_ITEM.REMEDIO),
+    hold: entradas(HOLD_ITEMS, TIPO_ITEM.HOLD),
     materials: entradas(materiaisDaBolsa(), TIPO_ITEM.MATERIAL),
     blocks: entradas(BLOCOS, TIPO_ITEM.BLOCO),
     tools: entradas(FERRAMENTAS, TIPO_ITEM.FERRAMENTA),

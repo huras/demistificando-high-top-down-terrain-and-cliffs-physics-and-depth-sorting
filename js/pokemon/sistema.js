@@ -201,8 +201,11 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   atualizarPopulacao(corpo, passo, agora);
   definirCorposAtores(listarSolidosPokemon());
   const mon = pokemonDeployado();
+  const monCampo = pokemonNoCampo();
+  // Inclui mon desmaiando (HP 0 / Hurt) pra tickDesmaio — pokemonDeployado() filtra hp<=0.
+  const monNoMundo = monCampo && !monCampo.capturado ? monCampo : null;
   const selvagens = selvagensAtivos();
-  aquecerGrito(pokemonNoCampo());
+  aquecerGrito(monCampo);
   tickGritosAmbiente(passo, corpo, selvagens);
 
   if (!morto) {
@@ -244,7 +247,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     atualizarParty(corpo, passo, agora, perfilSeguidor);
   }
 
-  const atores = mon ? selvagens.concat(mon) : selvagens;
+  const atores = monNoMundo ? selvagens.concat(monNoMundo) : selvagens;
   if (!emChrono) {
     for (let i = 0; i < atores.length; i++) tickPassivo(atores[i], passo, agora);
     for (let i = 0; i < atores.length; i++) tickStatus(atores[i], agora, efeitos, "real");

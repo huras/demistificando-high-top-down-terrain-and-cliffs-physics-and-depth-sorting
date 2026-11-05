@@ -1,4 +1,5 @@
 import { POKEMON, RAIO_POKEMON } from "../config.js";
+import { alturaSobPes, moverComColisao } from "../fisica/colisao.js";
 import { ESQUIVA_ATIVA, ESQUIVA_DIST, ESQUIVA_DUR, ESQUIVA_PREP, ESQUIVA_REC } from "./ia/constantes.js";
 import { limparEstagiosAte, tickEstagios } from "./combate/estagios.js";
 import { golpe } from "./dados.js";
@@ -138,6 +139,10 @@ export function criarAtor(opts) {
     paraTrava: 0,
     shiny: !!opts.shiny,
     ballKey: typeof opts.ballKey === "string" && opts.ballKey ? opts.ballKey : "pokeball",
+    heldItemKey: opts.heldItemKey || null,
+    itemSegurado: opts.heldItemKey || null,
+    autoHealBerryKey: opts.autoHealBerryKey || null,
+    autoCureBerryKey: opts.autoCureBerryKey || null,
     faccao: opts.faccao,
     x: opts.x,
     y: opts.y,
@@ -382,6 +387,24 @@ function zerarRolamento(ator) {
   ator.esquivaInv = false;
 }
 
+/**
+ * Deslize de combate (recuo / avanço / esquiva) no voxel real —
+ * sem isso o mon atravessa cliff como se o mundo fosse plano.
+ */
+function deslizarNoChao(ator, dx, dy) {
+  if (!ator || (Math.abs(dx) < 1e-8 && Math.abs(dy) < 1e-8)) return;
+  const elev = ator.elevacao ?? ator.z ?? 0;
+  const mov = moverComColisao(ator, dx, dy, "andar");
+  ator.x = mov.x;
+  ator.y = mov.y;
+  const chao = alturaSobPes(ator.x, ator.y, elev + 0.45);
+  if (!(chao > 0)) return;
+  // Sobe no máximo 1 degrau (igual andar); queda no knockback ok.
+  if (chao - elev > 1.05) return;
+  ator.z = chao;
+  ator.elevacao = chao;
+}
+
 function integrarRecuo(ator, dt) {
   ator.avancoRestante = 0;
   zerarRolamento(ator);
@@ -401,8 +424,7 @@ function integrarRecuo(ator, dt) {
   const u1 = 1 - depois / dur;
   const fatia = (1 - u0) * (1 - u0) - (1 - u1) * (1 - u1);
   const anda = (ator.recuoDist || 0) * Math.max(0, fatia);
-  ator.x += (ator.recuoDirX || 0) * anda;
-  ator.y += (ator.recuoDirY || 0) * anda;
+  deslizarNoChao(ator, (ator.recuoDirX || 0) * anda, (ator.recuoDirY || 0) * anda);
   const vel = (ator.recuoDist * 2 * Math.max(0, 1 - u0)) / dur;
   ator.vx = (ator.recuoDirX || 0) * vel;
   ator.vy = (ator.recuoDirY || 0) * vel;
@@ -426,8 +448,7 @@ function integrarAvanco(ator, dt) {
   const u1 = 1 - depois / dur;
   const fatia = (1 - u0) * (1 - u0) - (1 - u1) * (1 - u1);
   const anda = (ator.avancoDist || 0) * Math.max(0, fatia);
-  ator.x += (ator.avancoDirX || 0) * anda;
-  ator.y += (ator.avancoDirY || 0) * anda;
+  deslizarNoChao(ator, (ator.avancoDirX || 0) * anda, (ator.avancoDirY || 0) * anda);
   const vel = (ator.avancoDist * 2 * Math.max(0, 1 - u0)) / dur;
   ator.vx = (ator.avancoDirX || 0) * vel;
   ator.vy = (ator.avancoDirY || 0) * vel;
@@ -468,8 +489,7 @@ function aplicarFatiaRolamento(ator, fase, antes, depois, dur) {
   const anda = dist * Math.max(0, fatia);
   const dx = ator.esquivaDirX || 0;
   const dy = ator.esquivaDirY || 0;
-  ator.x += dx * anda;
-  ator.y += dy * anda;
+  deslizarNoChao(ator, dx * anda, dy * anda);
   const vel = dur > 0 ? (dist * 2 * Math.max(0, 1 - u0)) / dur : 0;
   ator.vx = dx * vel;
   ator.vy = dy * vel;

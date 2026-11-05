@@ -130,7 +130,16 @@ export default {
     "burnHeal": "やけどなおし",
     "iceHeal": "こおりなおし",
     "fullHeal": "なんでもなおし",
-    "revive": "げんきのかけら"
+    "revive": "げんきのかけら",
+    "maxRevive": "げんきのかたまり",
+    "revivalHerb": "ふっかつそう",
+    "sacredAsh": "せいなるはい"
+  },
+  "holdItems": {
+    "leftovers": "たべのこし",
+    "lightClay": "ひかりのねんど",
+    "deepSeaTooth": "しんかいのキバ",
+    "deepSeaScale": "しんかいのウロコ"
   },
   "tools": {
     "hoe": "くわ",
@@ -161,6 +170,7 @@ export default {
     "bolas": "ボール",
     "berries": "きのみ",
     "remedios": "かいふく",
+    "hold": "もたせる",
     "materiais": "ざいりょう",
     "blocos": "ブロック",
     "ferramentas": "どうぐ",

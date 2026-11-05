@@ -2,7 +2,9 @@
  * Andar no lote — wait / burst / LOD por câmera.
  * Z segue o voxel (`snapChaoNpc`); degraus >1 bloco são rejeitados.
  */
+import { RAIO_CORPO } from "../../config.js";
 import { alturaSobPes } from "../../fisica/colisao.js";
+import { centroNaBase, invadeDisco } from "../../fisica/obstaculos.js";
 import { PERFIL_ANDAR } from "../catalogo/identidade.js";
 import { snapChaoNpc } from "../locomocao.js";
 import { npcPerfCount } from "../perf.js";
@@ -115,6 +117,13 @@ function pickStepDir(walk, tx, ty, mask, player, npc) {
       continue;
     }
     if (npc && !alturaTileOk(npc, nx, ny)) continue;
+    if (npc) {
+      const z = npc.elevacao ?? npc.z ?? 0;
+      const r = npc.raioCorpo > 0 ? npc.raioCorpo : RAIO_CORPO;
+      if (centroNaBase(nx, ny, z) || invadeDisco(nx + 0.5, ny + 0.5, z, r)) {
+        continue;
+      }
+    }
     return dir;
   }
   return null;

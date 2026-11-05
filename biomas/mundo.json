@@ -1924,7 +1924,7 @@
           "offsetX": 78.6,
           "offsetY": 37.2,
           "inverter": false,
-          "degraus": 0
+          "degraus": 6
         },
         {
           "id": "sandy-shelf-detalhe",
@@ -1941,7 +1941,7 @@
           "offsetX": 97.8,
           "offsetY": 44.900000000000006,
           "inverter": false,
-          "degraus": 0
+          "degraus": 2
         },
         {
           "id": "sandy-shelf-mistura",

@@ -225,8 +225,6 @@ export function tentarSpawnViajante(player, lista, cameraAabb, periodo = "day") 
       seenByPlayer: false,
       defeatedByPlayer: false,
       combatHold: false,
-      path: null,
-      pathI: 0,
     };
   }
   return null;

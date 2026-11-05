@@ -2,6 +2,7 @@
  * Detalhe residual: o relevo pintado manda no macro;
  * o grafo do bioma só soma variação em torno da faixa média.
  * Bioma camada "mar": o grafo + degrau mandam no fundo (sem early-out de costa).
+ * Picos do grafo mar já vêm dobrados pra baixo em alturaContinua (só escava).
  */
 import { clampAltura } from "../../config.js";
 import {

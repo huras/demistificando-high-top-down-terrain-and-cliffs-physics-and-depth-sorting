@@ -130,7 +130,16 @@ export default {
     "burnHeal": "Antiqueimadura",
     "iceHeal": "Anticongelante",
     "fullHeal": "Cura Total",
-    "revive": "Reviver"
+    "revive": "Reviver",
+    "maxRevive": "Reviver Máximo",
+    "revivalHerb": "Erva Reviver",
+    "sacredAsh": "Cinza Sagrada"
+  },
+  "holdItems": {
+    "leftovers": "Sobras",
+    "lightClay": "Argila Clara",
+    "deepSeaTooth": "Dente do Mar",
+    "deepSeaScale": "Escama do Mar"
   },
   "tools": {
     "hoe": "Enxada",
@@ -161,6 +170,7 @@ export default {
     "bolas": "Bolas",
     "berries": "Berries",
     "remedios": "Remédios",
+    "hold": "Held",
     "materiais": "Materiais",
     "blocos": "Blocos",
     "ferramentas": "Ferramentas",

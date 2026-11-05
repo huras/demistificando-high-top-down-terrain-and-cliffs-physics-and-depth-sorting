@@ -130,7 +130,16 @@ export default {
     "burnHeal": "Burn Heal",
     "iceHeal": "Ice Heal",
     "fullHeal": "Full Heal",
-    "revive": "Revive"
+    "revive": "Revive",
+    "maxRevive": "Max Revive",
+    "revivalHerb": "Revival Herb",
+    "sacredAsh": "Sacred Ash"
+  },
+  "holdItems": {
+    "leftovers": "Leftovers",
+    "lightClay": "Light Clay",
+    "deepSeaTooth": "Deep Sea Tooth",
+    "deepSeaScale": "Deep Sea Scale"
   },
   "tools": {
     "hoe": "Hoe",
@@ -161,6 +170,7 @@ export default {
     "bolas": "Balls",
     "berries": "Berries",
     "remedios": "Medicine",
+    "hold": "Hold items",
     "materiais": "Materials",
     "blocos": "Blocks",
     "ferramentas": "Tools",

@@ -41,7 +41,7 @@ import { tickOrdensForca } from "../forca/tickOrdensForca.js";
 import { yawCamera } from "../render/3d/camera3d.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
 import { teclaBaixa } from "../entrada/teclado.js";
-import { BERRIES, FERRAMENTAS, TIPO_ITEM } from "../wild/catalogo.js";
+import { BERRIES, FERRAMENTAS, TIPO_ITEM, defItem } from "../wild/catalogo.js";
 import { ESTAGIO } from "../wild/estagios.js";
 import { lerMixClima } from "../render/3d/ceu/clima.js";
 import { colher, criarSolo, molharPorChuva, plantar, regar, simularPlot } from "../wild/plots.js";
@@ -926,6 +926,13 @@ function usarPicaretaNo(x, y) {
 function usarConsumivel(item) {
   const slot = pokemonNoCampo();
   const mon = slot && !slot.capturado ? slot : null;
+  const def = defItem(item.tipo, item.key);
+  if (def?.efeito?.reviverParty) {
+    if (usarNoPokemon(item.tipo, item.key, mon)) {
+      return `Usou ${nomeDe(item.tipo, item.key)} na party.`;
+    }
+    return "Nenhum Pokémon desmaiado.";
+  }
   const monPrecisa = !!(mon && (mon.morto || mon.hp < mon.hpMax || mon.status));
   if (monPrecisa && usarNoPokemon(item.tipo, item.key, mon)) {
     return `Usou ${nomeDe(item.tipo, item.key)} no ${mon.especie?.nome || "Pokémon"}.`;

@@ -5,7 +5,12 @@
 import { alturaEm } from "../mundo/altura.js";
 import { deLocalKanto } from "../mundo/bounds.js";
 import { AREA_KANTO, zonaNoMundo } from "../mundo/regiao/grafoKanto.js";
-import { irParaNpc, garantirNpcLoco, alturaSpawnNpc } from "../npc/locomocao.js";
+import {
+  alturaSpawnNpc,
+  definirAncoraLodNpc,
+  garantirNpcLoco,
+  irParaNpc,
+} from "../npc/locomocao.js";
 import { pessoaPorId, resolverNpc } from "../npc/catalogo/index.js";
 import { t } from "../jogo/i18n.js";
 import { cidadePorId } from "./cidades.js";
@@ -208,6 +213,7 @@ export function iniciarDismiss(cityId) {
 export function tickQuestNpc(player, dt, hooks = {}) {
   const npc = questNpc;
   if (!npc || !player) return;
+  definirAncoraLodNpc(player.x, player.y);
 
   if (npc.dismissing) {
     npc._dismissAge = (npc._dismissAge || 0) + dt;

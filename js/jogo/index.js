@@ -471,6 +471,8 @@ function lerTeclas(corpo) {
       estado.dexAberta ||
       estado.capsulaAberta ||
       estado.statusAberto ||
+      estado.skillAberto ||
+      estado.statusMonAberto ||
       estado.dialogo ||
       estado.roda ||
       estado.construir ||
@@ -502,6 +504,8 @@ function lerTeclas(corpo) {
     estado.dexAberta ||
     estado.capsulaAberta ||
     estado.statusAberto ||
+    estado.skillAberto ||
+    estado.statusMonAberto ||
     estado.dialogo ||
     estado.roda ||
     estado.construir ||

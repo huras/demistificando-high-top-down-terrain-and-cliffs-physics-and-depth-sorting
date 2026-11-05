@@ -21,7 +21,10 @@ function partesEfeito(efeito) {
     partes.push(`Recupera ${pct}% do HP`);
   }
   if (efeito.pp) partes.push(`Recupera ${efeito.pp} PP`);
-  if (efeito.reviver != null) {
+  if (efeito.reviverParty) {
+    const pct = Math.round(Number(efeito.reviver ?? 1) * 100);
+    partes.push(`Revive toda a party com ${pct}% do HP`);
+  } else if (efeito.reviver != null) {
     const pct = Math.round(Number(efeito.reviver) * 100);
     partes.push(`Revive com ${pct}% do HP`);
   }
