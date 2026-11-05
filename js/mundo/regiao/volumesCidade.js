@@ -50,6 +50,8 @@ const CORPO_POR_PAPEL = Object.freeze({
   torre: Object.freeze({ x: 9, y: 7 }),
   coliseu: Object.freeze({ x: 15, y: 8 }),
   mansao: Object.freeze({ x: 18, y: 9 }),
+  /** Um prédio do bloco 3×3 — um pouco maior que casa comum. */
+  condominio: Object.freeze({ x: 7, y: 6 }),
   porto: Object.freeze({ x: 6, y: 5 }),
   safari: Object.freeze({ x: 6, y: 5 }),
   ruina: Object.freeze({ x: 8, y: 6 }),
@@ -86,6 +88,7 @@ const ALTURA = Object.freeze({
   ruina: 6,
   coliseu: 7,
   mansao: 8,
+  condominio: 10,
 });
 
 /**
@@ -133,6 +136,65 @@ function papeisEspeciais(def) {
   if (def.ginasio) lista.push("ginasio");
   if (def.marco?.tipo) lista.push(def.marco.tipo);
   return lista;
+}
+
+/** Celadon: nove condomínios em grade 3×3 (um por lote). */
+const BLOCO_CONDO_COL = 3;
+const BLOCO_CONDO_LIN = 3;
+
+function loteNaCelula(c, lw, lh) {
+  const utilX = PASSO_X - RUA;
+  const utilY = PASSO_Y - RUA;
+  const lx0 = c.ox + Math.floor((utilX - lw) * 0.5);
+  const ly0 = c.oy + Math.floor((utilY - lh) * 0.5);
+  return { x0: lx0, y0: ly0, x1: lx0 + lw, y1: ly0 + lh, col: c.col, lin: c.lin, spanC: 1, spanL: 1 };
+}
+
+function encaixarBlocoCondominios(ocupada, grade, candidatos, fp, volumes, casas, def) {
+  const corpo = corpoDoPapel("condominio");
+  const loteTam = loteDoCorpo(corpo.x, corpo.y);
+  const porChave = new Map(candidatos.map((c) => [`${c.col},${c.lin}`, c]));
+  const ordem = ordenarCandidatos(candidatos, true);
+  for (let i = 0; i < ordem.length; i++) {
+    const base = ordem[i];
+    if (
+      !celulaLivre(ocupada, grade, base.col, base.lin, BLOCO_CONDO_COL, BLOCO_CONDO_LIN)
+    ) {
+      continue;
+    }
+    const lotes = [];
+    let ok = true;
+    for (let dy = 0; dy < BLOCO_CONDO_LIN && ok; dy++) {
+      for (let dx = 0; dx < BLOCO_CONDO_COL; dx++) {
+        const c = porChave.get(`${base.col + dx},${base.lin + dy}`);
+        if (!c) {
+          ok = false;
+          break;
+        }
+        const lugar = loteNaCelula(c, loteTam.x, loteTam.y);
+        if (
+          lugar.x0 < fp.x0 + BORDA ||
+          lugar.y0 < fp.y0 + BORDA ||
+          lugar.x1 > fp.x1 - BORDA ||
+          lugar.y1 > fp.y1 - BORDA ||
+          cruzaFaixa(lugar.x0, lugar.y0, lugar.x1, lugar.y1)
+        ) {
+          ok = false;
+          break;
+        }
+        lotes.push(lugar);
+      }
+    }
+    if (!ok || lotes.length !== BLOCO_CONDO_COL * BLOCO_CONDO_LIN) continue;
+    marcarCelulas(ocupada, grade, base.col, base.lin, BLOCO_CONDO_COL, BLOCO_CONDO_LIN);
+    for (let n = 0; n < lotes.length; n++) {
+      const vol = montarVolume(def, "condominio", lotes[n], casas);
+      vol.condoIndex = n;
+      volumes.push(vol);
+    }
+    return true;
+  }
+  return false;
 }
 
 function celulaLivre(ocupada, grade, col, lin, spanC, spanL) {
@@ -220,6 +282,7 @@ function montarVolume(def, papel, lote, casas) {
     papel === "museu" ||
     papel === "coliseu" ||
     papel === "mansao" ||
+    papel === "condominio" ||
     papel === "ruina"
   ) {
     modelo = papel;
@@ -343,6 +406,10 @@ export function montarLayout(def) {
     if (!lugar) continue;
     marcarCelulas(ocupada, grade, lugar.col, lugar.lin, lugar.spanC, lugar.spanL);
     volumes.push(montarVolume(def, papel, lugar, casas));
+  }
+
+  if (def.key === "celadon") {
+    encaixarBlocoCondominios(ocupada, grade, candidatos, fp, volumes, casas, def);
   }
 
   const ordemCasa = ordenarCandidatos(candidatos, false);

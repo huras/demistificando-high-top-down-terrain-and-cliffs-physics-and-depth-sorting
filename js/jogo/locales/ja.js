@@ -249,7 +249,17 @@ export default {
       "growthMediumSlow": "ややおそい",
       "growthSlow": "おそい",
       "growthErratic": "バラバラ",
-      "growthFluctuating": "ふめい"
+      "growthFluctuating": "ふめい",
+      "habitatTitulo": "すみか",
+      "habitatVazio": "すみかは不明。",
+      "habitatResumo": "{n} か所",
+      "habitatCasa": "よくいる",
+      "habitatExtra": "まれ",
+      "habitatSantuario": "ほこら",
+      "habitatCarregando": "マップ中…",
+      "habitatShrineTitulo": "ほこら",
+      "habitatMapa": "すみかのマップ",
+      "habitatShrineMapa": "ほこらのマップ"
     }
   },
   "forca": {

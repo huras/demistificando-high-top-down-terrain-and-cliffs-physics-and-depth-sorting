@@ -1753,6 +1753,81 @@
   display: none !important;
 }
 
+.pokedex-detail__habitat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+  max-height: 96px;
+  overflow: auto;
+}
+
+.pokedex-detail__habitat-list:empty {
+  display: none;
+}
+
+.pokedex-detail__habitat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 8px 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 2px 0 rgba(70, 130, 170, 0.08);
+  color: var(--dex-ink, #2f5570);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.pokedex-detail__habitat-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.55);
+}
+
+.pokedex-detail__habitat-papel {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dex-muted, #5d849c);
+}
+
+.pokedex-detail__habitat-chip--casa .pokedex-detail__habitat-papel {
+  color: #a16207;
+}
+
+.pokedex-detail__habitat-chip--extra .pokedex-detail__habitat-papel {
+  color: #0369a1;
+}
+
+.pokedex-detail__habitat-chip--santuario .pokedex-detail__habitat-papel {
+  color: #b91c1c;
+}
+
+.pokedex-detail__map-legend-swatch {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.pokedex-detail__map-legend-swatch--casa {
+  background: #facc15;
+}
+
+.pokedex-detail__map-legend-swatch--extra {
+  background: #38bdf8;
+}
+
+.pokedex-detail__map-legend-swatch--santuario {
+  background: #ef5350;
+}
+
 .pokedex-detail__map-wrap {
   position: relative;
   height: min(42vh, 360px);

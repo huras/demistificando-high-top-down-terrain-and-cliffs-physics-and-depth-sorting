@@ -6,7 +6,8 @@ import { especie, golpe } from "../../pokemon/dados.js";
 import { COR_TIPO, nomeTipo } from "../../pokemon/tipos.js";
 import { criarIconeTipo, garantirAtlasTipo } from "../tipoEscudo.js";
 import { getSpeciesDexStatus } from "./progresso.js";
-import { listarHabitats } from "./habitat.js";
+import { consultarHabitats, habitatsProntos } from "./habitat.js";
+import { criarMapaHabitat, pintarMiniSantuario } from "./habitat/mapa.js";
 import { padDex } from "./hudGrade.js";
 import { t } from "../i18n.js";
 
@@ -64,7 +65,21 @@ export function montarDetalhePokedex(root, opts = {}) {
   const habilidadesEl = root.querySelector("[data-pokedex-detail-abilities]");
   const statsEl = root.querySelector("[data-pokedex-detail-stats]");
   const locaisEl = root.querySelector("[data-pokedex-detail-locations]");
+  const habitatListaEl = root.querySelector("[data-pokedex-detail-habitat-list]");
   const habitatVazioEl = root.querySelector("[data-pokedex-detail-habitat-empty]");
+  const habitatTituloEl = root.querySelector("[data-pokedex-detail-habitat-title]");
+  const mapWrapEl = root.querySelector("[data-pokedex-detail-map-wrap]");
+  const mapCanvas = root.querySelector("[data-pokedex-detail-map]");
+  const mapBusyEl = root.querySelector("[data-pokedex-detail-map-busy-label]");
+  const shrineEl = root.querySelector("[data-pokedex-detail-shrine]");
+  const shrineTituloEl = root.querySelector("[data-pokedex-detail-shrine-title]");
+  const shrineMetaEl = root.querySelector("[data-pokedex-detail-shrine-meta]");
+  const shrineMapEl = root.querySelector("[data-pokedex-detail-shrine-map]");
+  const filtroInputs = [...root.querySelectorAll("[data-pokedex-habitat-filter]")];
+  const mapaHabitat = criarMapaHabitat(
+    mapCanvas instanceof HTMLCanvasElement ? mapCanvas : null,
+    mapWrapEl instanceof HTMLElement ? mapWrapEl : null,
+  );
   const eggGroupsEl = root.querySelector("[data-pokedex-detail-egg-groups]");
   const genderEl = root.querySelector("[data-pokedex-detail-gender]");
   const hatchEl = root.querySelector("[data-pokedex-detail-hatch]");
@@ -81,6 +96,14 @@ export function montarDetalhePokedex(root, opts = {}) {
   let chaveAtiva = null;
   /** @type {AbaDetalhe} */
   let aba = "overview";
+  let habitatSeq = 0;
+  const filtrosHabitat = { casa: true, extra: true, santuario: true };
+
+  const ROTULO_PAPEL = Object.freeze({
+    casa: "pokedex.detail.habitatCasa",
+    extra: "pokedex.detail.habitatExtra",
+    santuario: "pokedex.detail.habitatSantuario",
+  });
 
   function estaAberta() {
     return !root.hidden;
@@ -97,6 +120,8 @@ export function montarDetalhePokedex(root, opts = {}) {
     for (const pane of panes) {
       pane.hidden = pane.getAttribute("data-pokedex-detail-pane") !== aba;
     }
+    if (aba === "overview" && chaveAtiva) mapaHabitat.retomar();
+    else mapaHabitat.pausar();
   }
 
   function formatarAltura(m) {
@@ -200,20 +225,124 @@ export function montarDetalhePokedex(root, opts = {}) {
     }
   }
 
+  function rotulosHabitat() {
+    if (habitatTituloEl) habitatTituloEl.textContent = t("pokedex.detail.habitatTitulo");
+    if (shrineTituloEl) shrineTituloEl.textContent = t("pokedex.detail.habitatShrineTitulo");
+    if (mapBusyEl) mapBusyEl.textContent = t("pokedex.detail.habitatCarregando");
+    if (habitatVazioEl) habitatVazioEl.textContent = t("pokedex.detail.habitatVazio");
+    if (mapCanvas instanceof HTMLCanvasElement) {
+      mapCanvas.setAttribute("aria-label", t("pokedex.detail.habitatMapa"));
+    }
+    if (shrineMapEl instanceof HTMLCanvasElement) {
+      shrineMapEl.setAttribute("aria-label", t("pokedex.detail.habitatShrineMapa"));
+    }
+    const legendas = {
+      casa: root.querySelector("[data-pokedex-legend-casa]"),
+      extra: root.querySelector("[data-pokedex-legend-extra]"),
+      santuario: root.querySelector("[data-pokedex-legend-santuario]"),
+    };
+    if (legendas.casa) legendas.casa.textContent = t("pokedex.detail.habitatCasa");
+    if (legendas.extra) legendas.extra.textContent = t("pokedex.detail.habitatExtra");
+    if (legendas.santuario) legendas.santuario.textContent = t("pokedex.detail.habitatSantuario");
+    for (const input of filtroInputs) {
+      const papel = input.getAttribute("data-pokedex-habitat-filter");
+      const label = root.querySelector(`[data-pokedex-habitat-filter-label="${papel}"]`);
+      const chave = ROTULO_PAPEL[papel];
+      if (label && chave) label.textContent = t(chave);
+    }
+  }
+
+  function lerFiltros() {
+    for (const input of filtroInputs) {
+      if (!(input instanceof HTMLInputElement)) continue;
+      const papel = input.getAttribute("data-pokedex-habitat-filter");
+      if (papel === "casa" || papel === "extra" || papel === "santuario") {
+        filtrosHabitat[papel] = input.checked;
+      }
+    }
+    return filtrosHabitat;
+  }
+
+  function pontoSantuario(locais) {
+    if (!filtrosHabitat.santuario) return null;
+    const slot = locais.find((item) => item.papel === "santuario");
+    if (!slot || !Number.isFinite(slot.wx) || !Number.isFinite(slot.wy)) return null;
+    return { x: slot.wx, y: slot.wy };
+  }
+
+  function pintarListaHabitat(locais) {
+    if (!habitatListaEl) return;
+    habitatListaEl.replaceChildren();
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < locais.length; i++) {
+      const local = locais[i];
+      if (!filtrosHabitat[local.papel]) continue;
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = `pokedex-detail__habitat-chip pokedex-detail__habitat-chip--${local.papel}`;
+      const nome = document.createElement("span");
+      nome.textContent = local.nome;
+      const papel = document.createElement("span");
+      papel.className = "pokedex-detail__habitat-papel";
+      papel.textContent = t(ROTULO_PAPEL[local.papel] || "pokedex.detail.habitatCasa");
+      chip.append(nome, papel);
+      chip.addEventListener("click", () => {
+        mapaHabitat.focarLocal(local);
+      });
+      frag.append(chip);
+    }
+    habitatListaEl.append(frag);
+  }
+
+  function pintarSantuario(locais) {
+    const slot = locais.find((item) => item.papel === "santuario");
+    const mostrar = !!slot && filtrosHabitat.santuario;
+    if (shrineEl instanceof HTMLElement) shrineEl.hidden = !mostrar;
+    if (!mostrar || !slot) return;
+    if (shrineMetaEl) shrineMetaEl.textContent = slot.nome;
+    if (shrineMapEl instanceof HTMLCanvasElement && Number.isFinite(slot.wx) && Number.isFinite(slot.wy)) {
+      pintarMiniSantuario(shrineMapEl, slot.wx, slot.wy);
+    }
+  }
+
   function pintarHabitat(chave) {
-    const nomes = listarHabitats(chave);
+    const seq = ++habitatSeq;
+    rotulosHabitat();
+    lerFiltros();
+    const prontos = habitatsProntos();
     if (locaisEl) {
-      if (nomes.length) {
+      locaisEl.hidden = false;
+      locaisEl.classList.toggle("is-pending", !prontos);
+      locaisEl.textContent = prontos ? "" : t("pokedex.detail.habitatCarregando");
+    }
+    if (!prontos) {
+      if (habitatListaEl) habitatListaEl.replaceChildren();
+      if (habitatVazioEl) habitatVazioEl.hidden = true;
+      if (shrineEl instanceof HTMLElement) shrineEl.hidden = true;
+      if (mapWrapEl instanceof HTMLElement) mapWrapEl.hidden = false;
+      mapaHabitat.mostrar(chave, { ...filtrosHabitat }, null);
+      return;
+    }
+
+    const locais = consultarHabitats(chave);
+    if (seq !== habitatSeq) return;
+    const visiveis = locais.filter((item) => filtrosHabitat[item.papel]);
+    if (locaisEl) {
+      locaisEl.classList.remove("is-pending");
+      if (visiveis.length) {
         locaisEl.hidden = false;
-        locaisEl.textContent = nomes.join(" · ");
+        locaisEl.textContent = t("pokedex.detail.habitatResumo", { n: visiveis.length });
       } else {
         locaisEl.hidden = true;
         locaisEl.textContent = "";
       }
     }
-    if (habitatVazioEl) {
-      habitatVazioEl.hidden = nomes.length > 0;
-    }
+    pintarListaHabitat(locais);
+    if (habitatVazioEl) habitatVazioEl.hidden = visiveis.length > 0;
+    if (mapWrapEl instanceof HTMLElement) mapWrapEl.hidden = false;
+    pintarSantuario(locais);
+    const filtros = { ...filtrosHabitat };
+    mapaHabitat.mostrar(chave, filtros, pontoSantuario(locais));
   }
 
   function pintarLearnset(esp) {
@@ -352,6 +481,8 @@ export function montarDetalhePokedex(root, opts = {}) {
     root.hidden = true;
     root.setAttribute("aria-hidden", "true");
     chaveAtiva = null;
+    habitatSeq += 1;
+    mapaHabitat.pausar();
     if (!opcoes.silencioso) opts.aoFechar?.();
     return true;
   }
@@ -377,6 +508,27 @@ export function montarDetalhePokedex(root, opts = {}) {
     btn.addEventListener("click", () => {
       const id = /** @type {AbaDetalhe} */ (btn.dataset.pokedexDetailTab);
       setAba(id);
+    });
+  }
+  for (const input of filtroInputs) {
+    input.addEventListener("change", () => {
+      if (!chaveAtiva) return;
+      lerFiltros();
+      const locais = habitatsProntos() ? consultarHabitats(chaveAtiva) : [];
+      const visiveis = locais.filter((item) => filtrosHabitat[item.papel]);
+      if (locaisEl) {
+        if (visiveis.length) {
+          locaisEl.hidden = false;
+          locaisEl.textContent = t("pokedex.detail.habitatResumo", { n: visiveis.length });
+        } else {
+          locaisEl.hidden = true;
+          locaisEl.textContent = "";
+        }
+      }
+      pintarListaHabitat(locais);
+      if (habitatVazioEl) habitatVazioEl.hidden = !habitatsProntos() || visiveis.length > 0;
+      pintarSantuario(locais);
+      mapaHabitat.definirFiltros({ ...filtrosHabitat }, pontoSantuario(locais));
     });
   }
 

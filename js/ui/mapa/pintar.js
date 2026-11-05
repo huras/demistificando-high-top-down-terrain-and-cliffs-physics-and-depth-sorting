@@ -290,6 +290,12 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     }
   }
   if (vista.calorForca && !vista.mini) pintarCalorForcaMundo(ctx);
+  if (vista.overlayHabitat) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(vista.overlayHabitat, 0, 0, LADO_MUNDO, LADO_MUNDO);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+  }
   for (let i = 0; i < rotas.length; i++) desenharRota(ctx, rotas[i]);
   for (let i = 0; i < cidades.length; i++) desenharLayout(ctx, cidades[i], z);
   if (!vista.mini && vista.jornada !== false) desenharJornadaMundo(ctx);
@@ -317,11 +323,13 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     });
   }
 
-  const extrasBrutos = marcasExtras({
-    mini: !!vista.mini,
-    px: vista.jogadorX,
-    py: vista.jogadorY,
-  });
+  const extrasBrutos = vista.habitat
+    ? []
+    : marcasExtras({
+        mini: !!vista.mini,
+        px: vista.jogadorX,
+        py: vista.jogadorY,
+      });
   const wildCap = filtrarWildParaVista(
     extrasBrutos.filter((m) => m.tipo === "wild"),
     vista,
@@ -476,7 +484,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     }
   }
 
-  const pinQ = pinMissaoAtiva();
+  const pinQ = vista.habitat ? null : pinMissaoAtiva();
   if (pinQ && Number.isFinite(pinQ.x) && Number.isFinite(pinQ.y)) {
     aquecerPinMissao();
     let qx = (pinQ.x - vista.cx) * z + w / 2;

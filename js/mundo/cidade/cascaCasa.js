@@ -90,6 +90,7 @@ function modeloDoPapel(papel, variante, cidade) {
     papel === "museu" ||
     papel === "coliseu" ||
     papel === "mansao" ||
+    papel === "condominio" ||
     papel === "ruina"
   ) {
     return papel;

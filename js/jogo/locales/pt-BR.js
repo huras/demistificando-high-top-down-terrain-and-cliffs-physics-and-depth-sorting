@@ -249,7 +249,17 @@ export default {
       "growthMediumSlow": "Médio-lento",
       "growthSlow": "Lento",
       "growthErratic": "Errático",
-      "growthFluctuating": "Flutuante"
+      "growthFluctuating": "Flutuante",
+      "habitatTitulo": "Habitat",
+      "habitatVazio": "Sem habitats conhecidos.",
+      "habitatResumo": "{n} locais",
+      "habitatCasa": "Comum",
+      "habitatExtra": "Raro",
+      "habitatSantuario": "Santuário",
+      "habitatCarregando": "Mapeando…",
+      "habitatShrineTitulo": "Santuário",
+      "habitatMapa": "Mapa de habitat",
+      "habitatShrineMapa": "Mapa do santuário"
     }
   },
   "forca": {

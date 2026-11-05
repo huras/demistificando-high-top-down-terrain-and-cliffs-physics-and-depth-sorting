@@ -9,6 +9,7 @@ import { plantaCentro } from "../mundo/cidade/centro.js";
 import { plantaLoja } from "../mundo/cidade/loja.js";
 import { plantaGinasio } from "../mundo/cidade/ginasio.js";
 import { plantaMansao } from "../mundo/cidade/mansao.js";
+import { plantaCondominio } from "../mundo/cidade/condominio.js";
 import { plantaLaboratorio, ORIGEM_LAB_X, ORIGEM_LAB_Y, COLS_LAB, ROWS_LAB } from "../mundo/cidade/laboratorio.js";
 import {
   ORIGEM_SANTUARIO_X,
@@ -91,6 +92,9 @@ export function pisoInteriorValido(x, y) {
   if (papel === "loja") return celulaHub(plantaLoja(), x, y);
   if (papel === "ginasio") return celulaHub(plantaGinasio(), x, y);
   if (papel === "mansao") return celulaHub(plantaMansao(), x, y);
+  if (papel === "condominio") {
+    return celulaHub(plantaCondominio(estado.interior?.floorIndex || 0), x, y);
+  }
   if (papel === "lab") return celulaLab(x, y);
   if (papel === "santuario") return celulaSantuario(x, y);
   return true;

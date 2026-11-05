@@ -15,6 +15,7 @@ import { plantaCentro } from "./centro.js";
 import { plantaLoja } from "./loja.js";
 import { plantaGinasio } from "./ginasio.js";
 import { plantaMansao } from "./mansao.js";
+import { plantasCondominio } from "./condominio.js";
 
 const RAIO_QUADRO = 0.72;
 const RAIO_CORREIO = 0.38;
@@ -70,6 +71,11 @@ export function indexarColisaoCidade() {
   for (let i = 0; i < discosGinasio.length; i++) lista.push(discosGinasio[i]);
   const discosMansao = plantaMansao().discos;
   for (let i = 0; i < discosMansao.length; i++) lista.push(discosMansao[i]);
+  const andaresCondo = plantasCondominio();
+  for (let a = 0; a < andaresCondo.length; a++) {
+    const discos = andaresCondo[a].discos;
+    for (let i = 0; i < discos.length; i++) lista.push(discos[i]);
+  }
   for (let i = 0; i < moveis.length; i++) {
     const item = moveis[i];
     lista.push({ x: item.x, y: item.y, z, r: item.r });

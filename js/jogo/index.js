@@ -22,11 +22,14 @@ import {
   plantarOuColher,
   colherSilvestre,
   colherCanteiro,
+  checarEscadasCondominio,
   checarSaidaSala,
+  entrarApartamentoCondominio,
   restaurarInteriorSalvo,
   sairInterior,
   tentarEntrar,
   tickCampo,
+  trocarAndarCondominio,
 } from "./campo.js";
 import {
   abrirPainel,
@@ -207,6 +210,7 @@ export function tickJogo(dt, corpo) {
   }
   if (estado.interior?.sala3d) {
     checarSaidaSala(corpo);
+    if (estado.interior.papel === "condominio") checarEscadasCondominio(corpo);
   } else if (
     estado.interior &&
     !estado.dialogo &&
@@ -237,7 +241,8 @@ export function tickJogo(dt, corpo) {
     (papelHub === "centro" ||
       papelHub === "loja" ||
       papelHub === "ginasio" ||
-      papelHub === "mansao") &&
+      papelHub === "mansao" ||
+      papelHub === "condominio") &&
     !estado.dialogo &&
     !estado.painel &&
     !estado.ganhoAberto
@@ -402,7 +407,11 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
   } else if (acao.id === "pc") executarAlvoHub(alvoHub);
   else if (acao.id === "loja") executarAlvoHub(alvoHub);
   else if (acao.id === "hubFalar") executarAlvoHub(alvoHub);
-  else if (acao.id === "capsula") executarAlvoLaboratorio(alvoLab);
+  else if (acao.id === "condoEscada" && alvoHub?.tipo === "escada") {
+    trocarAndarCondominio(corpo, alvoHub.dir || 1);
+  } else if (acao.id === "condoApto" && alvoHub?.tipo === "apartamento") {
+    entrarApartamentoCondominio(corpo, alvoHub);
+  } else if (acao.id === "capsula") executarAlvoLaboratorio(alvoLab);
   else if (acao.id === "inicial") executarAlvoLaboratorio(alvoLab);
   else if (acao.id === "placa") lerPlaca(acao.placa);
   else if (acao.id === "colher") {
@@ -526,9 +535,18 @@ function interagir(corpo) {
     (estado.interior.papel === "centro" ||
       estado.interior.papel === "loja" ||
       estado.interior.papel === "ginasio" ||
-      estado.interior.papel === "mansao")
+      estado.interior.papel === "mansao" ||
+      estado.interior.papel === "condominio")
   ) {
     const perto = alvoDoHub(estado.interior.papel, corpo.x, corpo.y);
+    if (perto?.tipo === "escada") {
+      trocarAndarCondominio(corpo, perto.dir || 1);
+      return;
+    }
+    if (perto?.tipo === "apartamento") {
+      entrarApartamentoCondominio(corpo, perto);
+      return;
+    }
     if (perto) executarAlvoHub(perto);
     return;
   }

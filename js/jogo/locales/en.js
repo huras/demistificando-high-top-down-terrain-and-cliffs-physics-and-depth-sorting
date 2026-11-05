@@ -249,7 +249,17 @@ export default {
       "growthMediumSlow": "Medium Slow",
       "growthSlow": "Slow",
       "growthErratic": "Erratic",
-      "growthFluctuating": "Fluctuating"
+      "growthFluctuating": "Fluctuating",
+      "habitatTitulo": "Habitat",
+      "habitatVazio": "No known habitats.",
+      "habitatResumo": "{n} locations",
+      "habitatCasa": "Common",
+      "habitatExtra": "Rare",
+      "habitatSantuario": "Shrine",
+      "habitatCarregando": "Mapping…",
+      "habitatShrineTitulo": "Shrine",
+      "habitatMapa": "Habitat map",
+      "habitatShrineMapa": "Shrine map"
     }
   },
   "forca": {

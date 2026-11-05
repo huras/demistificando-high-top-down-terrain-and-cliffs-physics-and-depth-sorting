@@ -1,11 +1,11 @@
 {
   "semente": 1337,
-  "ladoMundo": 24576,
+  "ladoMundo": 8192,
   "visao": 2048,
-  "passoVisao": 12,
+  "passoVisao": 4,
   "ladoTile": 512,
   "passoTile": 1,
-  "grade": 48,
+  "grade": 16,
   "ladoVegChunk": 1024,
-  "gradeVeg": 24
+  "gradeVeg": 8
 }

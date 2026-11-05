@@ -34,6 +34,7 @@ const COR_PAPEL = Object.freeze({
   ruina: 0x5a5a62,
   coliseu: 0xa09070,
   mansao: 0xd0c4a8,
+  condominio: 0xc8b8a0,
 });
 
 const JANELA_W = 0.35;

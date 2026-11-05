@@ -172,6 +172,24 @@ export function acaoContexto(ctx) {
     };
   }
 
+  if (alvoHub?.tipo === "escada") {
+    escaladaAte = 0;
+    return {
+      id: "condoEscada",
+      rotulo: alvoHub.nome || "Escada",
+      ancora: ancoraDoHub(papelHub, alvoHub),
+    };
+  }
+
+  if (alvoHub?.tipo === "apartamento") {
+    escaladaAte = 0;
+    return {
+      id: "condoApto",
+      rotulo: alvoHub.nome || "Entrar",
+      ancora: ancoraDoHub(papelHub, alvoHub),
+    };
+  }
+
   if (alvoLab?.tipo === "capsula") {
     const tank = alvoLab.ref;
     return {

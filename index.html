@@ -297,20 +297,68 @@
                       </div>
                       <div class="pokedex-detail__body-scroll">
                         <div class="pokedex-detail__pane" data-pokedex-detail-pane="overview">
-                          <p class="pokedex-detail__flavor" data-pokedex-detail-flavor></p>
-                          <section class="pokedex-detail__section">
-                            <h3 class="pokedex-detail__section-title">Habilidades</h3>
-                            <div class="pokedex-detail__abilities" data-pokedex-detail-abilities></div>
-                          </section>
-                          <section class="pokedex-detail__section">
-                            <h3 class="pokedex-detail__section-title">Status base</h3>
-                            <div class="pokedex-detail__stats" data-pokedex-detail-stats></div>
-                          </section>
-                          <section class="pokedex-detail__section pokedex-detail__section--habitat">
-                            <h3 class="pokedex-detail__section-title">Habitat</h3>
-                            <p class="pokedex-detail__habitat-summary" data-pokedex-detail-locations hidden></p>
-                            <p class="pokedex-detail__habitat-empty" data-pokedex-detail-habitat-empty>Sem habitats conhecidos.</p>
-                          </section>
+                          <div class="pokedex-detail__layout">
+                            <div class="pokedex-detail__dossier">
+                              <p class="pokedex-detail__flavor" data-pokedex-detail-flavor></p>
+                              <section class="pokedex-detail__section">
+                                <h3 class="pokedex-detail__section-title">Habilidades</h3>
+                                <div class="pokedex-detail__abilities" data-pokedex-detail-abilities></div>
+                              </section>
+                              <section class="pokedex-detail__section">
+                                <h3 class="pokedex-detail__section-title">Status base</h3>
+                                <div class="pokedex-detail__stats" data-pokedex-detail-stats></div>
+                              </section>
+                            </div>
+                            <div class="pokedex-detail__field">
+                              <section class="pokedex-detail__section pokedex-detail__section--habitat">
+                                <div class="pokedex-detail__habitat-head">
+                                  <h3 class="pokedex-detail__section-title" data-pokedex-detail-habitat-title>Habitat</h3>
+                                </div>
+                                <div class="pokedex-detail__habitat-filters" data-pokedex-detail-habitat-filters>
+                                  <label class="pokedex-detail__habitat-filter">
+                                    <input type="checkbox" data-pokedex-habitat-filter="casa" checked />
+                                    <span data-pokedex-habitat-filter-label="casa">Comum</span>
+                                  </label>
+                                  <label class="pokedex-detail__habitat-filter">
+                                    <input type="checkbox" data-pokedex-habitat-filter="extra" checked />
+                                    <span data-pokedex-habitat-filter-label="extra">Raro</span>
+                                  </label>
+                                  <label class="pokedex-detail__habitat-filter">
+                                    <input type="checkbox" data-pokedex-habitat-filter="santuario" checked />
+                                    <span data-pokedex-habitat-filter-label="santuario">Santuário</span>
+                                  </label>
+                                </div>
+                                <p class="pokedex-detail__habitat-summary" data-pokedex-detail-locations hidden></p>
+                                <div class="pokedex-detail__habitat-list" data-pokedex-detail-habitat-list></div>
+                                <p class="pokedex-detail__habitat-empty" data-pokedex-detail-habitat-empty hidden>Sem habitats conhecidos.</p>
+                                <div class="pokedex-detail__map-wrap" data-pokedex-detail-map-wrap>
+                                  <div class="pokedex-detail__map-busy" data-pokedex-detail-map-busy>
+                                    <span class="pokedex-detail__map-spinner" aria-hidden="true"></span>
+                                    <span data-pokedex-detail-map-busy-label>Mapeando…</span>
+                                  </div>
+                                  <canvas class="pokedex-detail__map" data-pokedex-detail-map aria-label="Mapa de habitat"></canvas>
+                                  <div class="pokedex-detail__map-legend" data-pokedex-detail-map-legend>
+                                    <span class="pokedex-detail__map-legend-swatch pokedex-detail__map-legend-swatch--casa"></span>
+                                    <span data-pokedex-legend-casa>Comum</span>
+                                    <span class="pokedex-detail__map-legend-swatch pokedex-detail__map-legend-swatch--extra"></span>
+                                    <span data-pokedex-legend-extra>Raro</span>
+                                    <span class="pokedex-detail__map-legend-swatch pokedex-detail__map-legend-swatch--santuario"></span>
+                                    <span data-pokedex-legend-santuario>Santuário</span>
+                                  </div>
+                                </div>
+                              </section>
+                              <section class="pokedex-detail__section pokedex-detail__section--shrine" data-pokedex-detail-shrine hidden>
+                                <div class="pokedex-detail__habitat-head">
+                                  <h3 class="pokedex-detail__section-title" data-pokedex-detail-shrine-title>Santuário</h3>
+                                </div>
+                                <p class="pokedex-detail__shrine-meta" data-pokedex-detail-shrine-meta></p>
+                                <p class="pokedex-detail__habitat-empty" data-pokedex-detail-shrine-empty hidden></p>
+                                <div class="pokedex-detail__shrine-map-wrap" data-pokedex-detail-shrine-map-wrap>
+                                  <canvas class="pokedex-detail__shrine-map" data-pokedex-detail-shrine-map aria-label="Mapa do santuário"></canvas>
+                                </div>
+                              </section>
+                            </div>
+                          </div>
                         </div>
                         <div class="pokedex-detail__pane" data-pokedex-detail-pane="moves" hidden>
                           <section class="pokedex-detail__section">

@@ -283,9 +283,13 @@ function serializarInterior() {
     outdoorZ: Number.isFinite(i.outdoorZ) ? i.outdoorZ : null,
     shrineId: i.shrineId || null,
     element: i.element || null,
+    floorIndex: Number.isFinite(i.floorIndex) ? i.floorIndex | 0 : null,
   };
   if (i.predio && typeof i.predio === "object") {
     out.predio = { ...i.predio };
+  }
+  if (i.condominioRetorno && typeof i.condominioRetorno === "object") {
+    out.condominioRetorno = { ...i.condominioRetorno };
   }
   return out.papel ? out : null;
 }
@@ -306,9 +310,13 @@ function normalizarInteriorSalvo(bruto) {
     outdoorZ: Number.isFinite(bruto.outdoorZ) ? bruto.outdoorZ : null,
     shrineId: bruto.shrineId || null,
     element: bruto.element || null,
+    floorIndex: Number.isFinite(bruto.floorIndex) ? bruto.floorIndex | 0 : 0,
   };
   if (bruto.predio && typeof bruto.predio === "object") {
     out.predio = { ...bruto.predio };
+  }
+  if (bruto.condominioRetorno && typeof bruto.condominioRetorno === "object") {
+    out.condominioRetorno = { ...bruto.condominioRetorno };
   }
   return out;
 }

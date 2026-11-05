@@ -10,6 +10,12 @@ import { naSaidaCentro, spawnCentro } from "../mundo/cidade/centro.js";
 import { naSaidaLoja, spawnLoja } from "../mundo/cidade/loja.js";
 import { naSaidaGinasio, spawnGinasio } from "../mundo/cidade/ginasio.js";
 import { naSaidaMansao, spawnMansao } from "../mundo/cidade/mansao.js";
+import {
+  ANDARES_CONDOMINIO,
+  naSaidaCondominio,
+  plantaCondominio,
+  spawnCondominio,
+} from "../mundo/cidade/condominio.js";
 import { definirLayoutSala, definirMoveisJogador } from "../mundo/cidade/interiorCasa.js";
 import {
   atualizarStreaming,
@@ -82,7 +88,7 @@ import {
 } from "../santuario/entrar.js";
 import { aoEntrarCasa, aoSairInterior } from "../npc/index.js";
 
-const PAPEIS = new Set(["casa", "loja", "centro", "lab", "ginasio", "mansao"]);
+const PAPEIS = new Set(["casa", "loja", "centro", "lab", "ginasio", "mansao", "condominio"]);
 /**
  * Frente da porta, maior que o alcance de grudar na parede.
  * Entrar ganha de escalar enquanto o corpo está nessa faixa.
@@ -330,7 +336,8 @@ export function tentarEntrar(corpo, infoPronto) {
     papel !== "centro" &&
     papel !== "loja" &&
     papel !== "ginasio" &&
-    papel !== "mansao"
+    papel !== "mansao" &&
+    papel !== "condominio"
   ) {
     return false;
   }
@@ -340,6 +347,7 @@ export function tentarEntrar(corpo, infoPronto) {
     else if (papel === "centro") entrarHub(corpo, info, spawnCentro(), "centro");
     else if (papel === "loja") entrarHub(corpo, info, spawnLoja(), "loja");
     else if (papel === "ginasio") entrarHub(corpo, info, spawnGinasio(), "ginasio");
+    else if (papel === "condominio") entrarCondominio(corpo, info, 0);
     else entrarHub(corpo, info, spawnMansao(), "mansao");
   });
 }
@@ -378,6 +386,97 @@ function entrarHub(corpo, info, spawn, papel) {
   };
   ancorarOutdoor(estado.interior, corpo);
   pousar(corpo, spawn.x, spawn.y);
+  return true;
+}
+
+function entrarCondominio(corpo, info, andar = 0, opts = {}) {
+  const floorIndex = Math.max(0, Math.min(ANDARES_CONDOMINIO - 1, andar | 0));
+  const spawn = spawnCondominio(floorIndex);
+  estado.interior = {
+    sala3d: true,
+    papel: "condominio",
+    casaId: idCasa(info),
+    ax: info.ax,
+    ay: info.ay,
+    predio: info.predio,
+    floorIndex,
+  };
+  if (opts.manterOutdoor && Number.isFinite(opts.outdoorX) && Number.isFinite(opts.outdoorY)) {
+    estado.interior.outdoorX = opts.outdoorX;
+    estado.interior.outdoorY = opts.outdoorY;
+    estado.interior.outdoorZ = opts.outdoorZ;
+  } else {
+    ancorarOutdoor(estado.interior, corpo);
+  }
+  pousar(corpo, spawn.x, spawn.y);
+  if (!opts.silencio) {
+    estado.itemGet =
+      floorIndex === 0
+        ? "Condomínios de Celadon"
+        : `Condomínios de Celadon — andar ${floorIndex + 1}`;
+  }
+  return true;
+}
+
+export function trocarAndarCondominio(corpo, dir) {
+  const int = estado.interior;
+  if (int?.papel !== "condominio") return false;
+  const next = (int.floorIndex | 0) + (dir > 0 ? 1 : -1);
+  if (next < 0 || next >= ANDARES_CONDOMINIO) return false;
+  const planta = plantaCondominio(next);
+  let spawn = spawnCondominio(next);
+  // Spawna longe do gatilho oposto pra não oscilar entre andares.
+  if (dir > 0 && planta.stairsDown) {
+    spawn = {
+      x: planta.origemX + planta.stairsDown.x,
+      y: planta.origemY + planta.stairsDown.y - 1.6,
+      z: ALTURA_PRACA,
+    };
+  } else if (dir < 0 && planta.stairsUp) {
+    spawn = {
+      x: planta.origemX + planta.stairsUp.x,
+      y: planta.origemY + planta.stairsUp.y - 1.6,
+      z: ALTURA_PRACA,
+    };
+  }
+  int.floorIndex = next;
+  pousar(corpo, spawn.x, spawn.y, { silencio: true });
+  estado.itemGet = `Condomínios de Celadon — andar ${next + 1}`;
+  sfx("porta");
+  return true;
+}
+
+export function entrarApartamentoCondominio(corpo, alvo) {
+  const int = estado.interior;
+  if (int?.papel !== "condominio" || !alvo?.casaId) return false;
+  const casaId = alvo.casaId;
+  definirLayoutSala(casaId);
+  definirMoveisJogador(estado.moveis[casaId] || []);
+  const spawn = spawnSala();
+  estado.interior = {
+    sala3d: true,
+    papel: "casa",
+    casaId,
+    ax: int.ax,
+    ay: int.ay,
+    predio: int.predio,
+    outdoorX: int.outdoorX,
+    outdoorY: int.outdoorY,
+    outdoorZ: int.outdoorZ,
+    condominioRetorno: {
+      floorIndex: int.floorIndex | 0,
+      ax: int.ax,
+      ay: int.ay,
+      predio: int.predio,
+      outdoorX: int.outdoorX,
+      outdoorY: int.outdoorY,
+      outdoorZ: int.outdoorZ,
+      casaId: int.casaId,
+    },
+  };
+  aoEntrarCasa(casaId);
+  pousar(corpo, spawn.x, spawn.y);
+  estado.itemGet = alvo.nome || "Apartamento";
   return true;
 }
 
@@ -450,12 +549,13 @@ function pousar(corpo, x, y, opts = {}) {
   if (!opts.silencio) sfx("porta");
 }
 
-function spawnPadraoDoPapel(papel) {
+function spawnPadraoDoPapel(papel, floorIndex = 0) {
   if (papel === "lab") return spawnLaboratorio();
   if (papel === "centro") return spawnCentro();
   if (papel === "loja") return spawnLoja();
   if (papel === "ginasio") return spawnGinasio();
   if (papel === "mansao") return spawnMansao();
+  if (papel === "condominio") return spawnCondominio(floorIndex);
   return spawnSala();
 }
 
@@ -529,6 +629,7 @@ export function restaurarInteriorSalvo(corpo) {
       outdoorX: snap.outdoorX,
       outdoorY: snap.outdoorY,
       outdoorZ: snap.outdoorZ,
+      condominioRetorno: snap.condominioRetorno || null,
     };
     aoEntrarCasa(casaId);
     const spawn = spawnSala();
@@ -539,7 +640,7 @@ export function restaurarInteriorSalvo(corpo) {
     return true;
   }
 
-  const hubs = new Set(["lab", "centro", "loja", "ginasio", "mansao"]);
+  const hubs = new Set(["lab", "centro", "loja", "ginasio", "mansao", "condominio"]);
   if (!hubs.has(snap.papel)) {
     estado.posicaoInterior = null;
     return false;
@@ -555,8 +656,9 @@ export function restaurarInteriorSalvo(corpo) {
     outdoorX: snap.outdoorX,
     outdoorY: snap.outdoorY,
     outdoorZ: snap.outdoorZ,
+    floorIndex: snap.floorIndex | 0,
   };
-  const spawn = spawnPadraoDoPapel(snap.papel);
+  const spawn = spawnPadraoDoPapel(snap.papel, snap.floorIndex | 0);
   const x = local && dentroDoBolsoSala(local.x, local.y) ? local.x : spawn.x;
   const y = local && dentroDoBolsoSala(local.x, local.y) ? local.y : spawn.y;
   pousar(corpo, x, y, { silencio: true });
@@ -569,6 +671,33 @@ export function checarSaidaSala(corpo) {
   const papel = estado.interior.papel;
   if (papel === "santuario") {
     return checarSaidaSantuario(corpo);
+  }
+  if (papel === "condominio") {
+    const andar = estado.interior.floorIndex | 0;
+    if (naSaidaCondominio(corpo.x, corpo.y, andar)) {
+      return iniciarPortaTransicao(corpo, "exit", () => sairInterior(corpo));
+    }
+    return false;
+  }
+  if (papel === "casa" && estado.interior.condominioRetorno) {
+    if (!naSaidaSala(corpo.x, corpo.y)) return false;
+    return iniciarPortaTransicao(corpo, "exit", () => {
+      const ret = estado.interior.condominioRetorno;
+      aoSairInterior();
+      entrarCondominio(
+        corpo,
+        { ax: ret.ax, ay: ret.ay, predio: ret.predio },
+        ret.floorIndex,
+        {
+          silencio: true,
+          manterOutdoor: true,
+          outdoorX: ret.outdoorX,
+          outdoorY: ret.outdoorY,
+          outdoorZ: ret.outdoorZ,
+        },
+      );
+      estado.interior.casaId = ret.casaId;
+    });
   }
   const naSaida =
     papel === "lab"
@@ -584,6 +713,25 @@ export function checarSaidaSala(corpo) {
               : naSaidaSala(corpo.x, corpo.y);
   if (!naSaida) return false;
   return iniciarPortaTransicao(corpo, "exit", () => sairInterior(corpo));
+}
+
+/** Escadas por proximidade (mesmo padrão do armazém Rocket). */
+export function checarEscadasCondominio(corpo) {
+  const int = estado.interior;
+  if (int?.papel !== "condominio" || portaOcupada()) return;
+  const planta = plantaCondominio(int.floorIndex | 0);
+  const ox = planta.origemX;
+  const oy = planta.origemY;
+  if (planta.stairsUp) {
+    const sx = ox + planta.stairsUp.x;
+    const sy = oy + planta.stairsUp.y;
+    if (Math.hypot(corpo.x - sx, corpo.y - sy) < 1.3) trocarAndarCondominio(corpo, 1);
+  }
+  if (planta.stairsDown) {
+    const sx = ox + planta.stairsDown.x;
+    const sy = oy + planta.stairsDown.y;
+    if (Math.hypot(corpo.x - sx, corpo.y - sy) < 1.3) trocarAndarCondominio(corpo, -1);
+  }
 }
 
 function saidaDoPredio(interior) {

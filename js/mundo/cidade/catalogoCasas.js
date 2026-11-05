@@ -12,6 +12,10 @@ const FIXOS = {
   museu: { base: "assets/models/cidade/museu/", arquivo: "modelo.obj" },
   coliseu: { base: "assets/models/cidade/coliseu/", arquivo: "modelo.obj" },
   mansao: { base: "assets/models/cidade/mansao/", arquivo: "modelo.obj" },
+  condominio: {
+    base: "assets/models/hgss/Celadon Condominiums/",
+    arquivo: "Celadon Condominiums.obj",
+  },
   ruina: { base: "assets/models/cidade/ruina/", arquivo: "modelo.obj" },
   poste: { base: "assets/models/cidade/poste/", arquivo: "modelo.obj" },
   "casa-bark": { base: "assets/models/cidade/casa-bark/", arquivo: "modelo.obj" },
@@ -118,7 +122,18 @@ export function urlDoModelo(caminho) {
 }
 
 export function idsVisuais() {
-  const fixos = ["centro", "loja", "lab", "ginasio", "museu", "coliseu", "mansao", "ruina", "poste"];
+  const fixos = [
+    "centro",
+    "loja",
+    "lab",
+    "ginasio",
+    "museu",
+    "coliseu",
+    "mansao",
+    "condominio",
+    "ruina",
+    "poste",
+  ];
   const resto = [...POR_ID.keys()].filter((id) => !fixos.includes(id) && !IDS_SITE.has(id));
   return fixos.concat(resto);
 }

@@ -14,6 +14,10 @@ import { aplicarCentroNoChunk, plantaCentro } from "../cidade/centro.js";
 import { aplicarLojaNoChunk, plantaLoja } from "../cidade/loja.js";
 import { aplicarGinasioNoChunk, plantaGinasio } from "../cidade/ginasio.js";
 import { aplicarMansaoNoChunk, plantaMansao } from "../cidade/mansao.js";
+import {
+  aplicarCondominioNoChunk,
+  dentroDoTerrenoCondominio,
+} from "../cidade/condominio.js";
 import { aplicarSantuarioNoChunk } from "../../santuario/carimbar.js";
 import { dentroDoTerrenoHub } from "../cidade/plantaHub.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
@@ -243,6 +247,7 @@ export function* passosChunk(chunk, seed) {
       if (dentroDoTerrenoHub(plantaLoja(), wx, wy)) continue;
       if (dentroDoTerrenoHub(plantaGinasio(), wx, wy)) continue;
       if (dentroDoTerrenoHub(plantaMansao(), wx, wy)) continue;
+      if (dentroDoTerrenoCondominio(wx, wy)) continue;
       if (dentroDoTerrenoSantuario(wx, wy)) continue;
       if (bloqueioSantuario?.has(`${wx},${wy}`)) continue;
       if (bloqueioLetras?.has(`${wx},${wy}`)) continue;
@@ -305,6 +310,7 @@ export function* passosChunk(chunk, seed) {
   medir("loja", () => aplicarLojaNoChunk(chunk));
   medir("ginasio", () => aplicarGinasioNoChunk(chunk));
   medir("mansao", () => aplicarMansaoNoChunk(chunk));
+  medir("condominio", () => aplicarCondominioNoChunk(chunk));
   medir("santuario", () => aplicarSantuarioNoChunk(chunk));
   medir("recalcularSuperficies", () => recalcularSuperficies(chunk));
   chunk.gerado = true;
