@@ -45,6 +45,8 @@ const ALFA_SPRITE = 0.12;
 const FOLHAS_CASA = 5;
 const PX_MUNDO = 1 / TILE;
 const ALTURA_POSTE = 3.6;
+/** Folga no espaço do pai do molde: evita z-fight do chão/kage com o terreno. */
+const LIFT_KAGE = 0.04;
 const _ponto = new THREE.Vector3();
 let materialFlare = null;
 let materialGlobo = null;
@@ -264,6 +266,18 @@ function marcarVolume(raiz, yChao) {
   });
 }
 
+/**
+ * Sobe o molde um pouco no espaço do pai (depois da escala XZ/Y).
+ * Compensa o scale local pra LIFT_KAGE ficar estável em todas as casas.
+ */
+function aplicarFolgaKage(grupo) {
+  if (!grupo?.userData?.temKage) return;
+  const raiz = grupo.children[0];
+  if (!raiz) return;
+  const sy = Math.abs(grupo.scale.y) > 1e-8 ? grupo.scale.y : 1;
+  raiz.position.y += LIFT_KAGE / sy;
+}
+
 function preparar(raiz, volume) {
   const multi = [];
   raiz.traverse((filho) => {
@@ -311,6 +325,7 @@ function preparar(raiz, volume) {
     filho.castShadow = true;
     filho.receiveShadow = true;
   });
+  const temKage = lixoKage.length > 0;
   for (let i = 0; i < lixoKage.length; i++) {
     const mesh = lixoKage[i];
     mesh.parent?.remove(mesh);
@@ -322,6 +337,7 @@ function preparar(raiz, volume) {
   const caixa = new THREE.Box3().setFromObject(raiz);
   if (volume) marcarVolume(raiz, caixa.min.y);
   const grupo = new THREE.Group();
+  // Corpo no y=0; modelos com kage sobem LIFT_KAGE pra não z-fightar com o terreno.
   raiz.position.set(
     -((caixa.min.x + caixa.max.x) * 0.5),
     -caixa.min.y,
@@ -329,12 +345,14 @@ function preparar(raiz, volume) {
   );
   grupo.add(raiz);
   grupo.scale.setScalar(1);
+  grupo.userData.temKage = temKage;
   grupo.userData.janelas = centrosJanela(grupo);
   return {
     grupo,
     sx: caixa.max.x - caixa.min.x,
     sz: caixa.max.z - caixa.min.z,
     sy: caixa.max.y - caixa.min.y,
+    temKage,
   };
 }
 
@@ -400,6 +418,7 @@ export function carregarMoldeCidade(id, opts = null) {
         : Math.min(lx / medido.sx, lz / medido.sz) * FOLGA;
     if (id === "poste") aplicarEscalaProp(medido.grupo, escala);
     else aplicarEscalaCasa(medido.grupo, escala);
+    aplicarFolgaKage(medido.grupo);
     return medido.grupo;
   });
 }
@@ -579,6 +598,7 @@ export function criarEdificiosCidade() {
         const escala = id === "poste" ? ALTURA_POSTE / medido.sy : escalaDoLote(medido, id);
         if (id === "poste") aplicarEscalaProp(medido.grupo, escala);
         else aplicarEscalaCasa(medido.grupo, escala);
+        aplicarFolgaKage(medido.grupo);
         moldes.set(id, medido);
       }
       const acender = (inst, dono) => pendurarLuzes(inst, "poste", dono);
