@@ -17,7 +17,7 @@ import { obterPesoNoite } from "./luzes/pool.js";
 import { intensidadeJanela } from "./luzes/janelasCasa.js";
 
 /** Centro da área Kanto (AREA_KANTO/2). Era 64 na grade 128. */
-const CENTRO_LOCAL = 192;
+const CENTRO_LOCAL = 64;
 const COR_JANELA = new THREE.Color(0xb9d7ff);
 const COR_APAGADA = new THREE.Color(0x000000);
 

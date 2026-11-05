@@ -1,5 +1,5 @@
 /**
- * Plano mundial de sítios outdoor: vários por área rota/mato (mundo 3×).
+ * Plano mundial de sítios outdoor: 1 por área rota/mato elegível.
  * Cache por área; farthest-template por bioma; âncora longe da estrada/cidade.
  */
 import { CHUNK_XZ } from "../../config.js";
@@ -37,9 +37,9 @@ let todosSites = null;
 
 const FOLGA_SPAWN = 14;
 const MEIO_RUA = MEIA_LARGURA_ESTRADA;
-/** Quantos sítios tentar por célula (3× área → 3–6). */
-const SITES_MIN = 3;
-const SITES_MAX = 6;
+/** Quantos sítios tentar por célula. */
+const SITES_MIN = 1;
+const SITES_MAX = 1;
 const FOLGA_ENTRE_SITES = 18;
 
 function chaveArea(ax, ay) {
@@ -157,7 +157,7 @@ function acharAncora(ax, ay, template, bioma, ocupados, salt) {
   const xSpan = Math.max(1, AREA_KANTO - 8 - w);
   const ySpan = Math.max(1, AREA_KANTO - 8 - h);
 
-  // Mais tentativas aleatórias — varredura densa em AREA 384 é proibitiva.
+  // Mais tentativas aleatórias antes da varredura densa.
   for (let i = 0; i < 160; i++) {
     const r = hash3(base, i, 4049);
     const x0 = 4 + (r % xSpan);

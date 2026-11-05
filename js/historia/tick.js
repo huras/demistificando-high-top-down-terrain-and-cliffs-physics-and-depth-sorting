@@ -17,7 +17,7 @@ export function bootHistoria() {
   // Re-hidrata se o save já veio no blob (carregar rodou antes do register)
   const bruto = (() => {
     try {
-      return JSON.parse(localStorage.getItem("demo-jogo-v2") || "null");
+      return JSON.parse(localStorage.getItem("demo-jogo-v1") || "null");
     } catch {
       return null;
     }

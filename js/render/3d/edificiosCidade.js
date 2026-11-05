@@ -542,7 +542,7 @@ function montarCidade(moldes, folhas, def, sprites, predios) {
       grupo.add(inst);
     }
   }
-  // Centro/AABB no layout atual (AREA 384 → CENTRO 192). +64 era da era 128.
+  // Centro/AABB no layout (AREA 128 → CENTRO 64).
   const fp = layout.fp;
   return {
     grupo,

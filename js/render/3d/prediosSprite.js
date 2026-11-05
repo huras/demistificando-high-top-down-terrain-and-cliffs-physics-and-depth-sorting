@@ -113,6 +113,6 @@ export function montarUsina(folhas) {
   }
   const ox = 28 * AREA_KANTO;
   const oy = 8 * AREA_KANTO;
-  // Centro da área 384 (não +64 da grade 128 antiga).
+  // Centro da área 128 (= CENTRO_AREA 64).
   return { grupo, cx: ox + AREA_KANTO * 0.5, cy: oy + AREA_KANTO * 0.5 };
 }

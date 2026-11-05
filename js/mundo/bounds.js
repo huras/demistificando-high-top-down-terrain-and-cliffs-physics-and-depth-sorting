@@ -5,17 +5,17 @@
  */
 
 /** Lado do overworld (2× a extensão de Kanto — ilha centrada). */
-export const LADO_MUNDO = 24576;
+export const LADO_MUNDO = 8192;
 
-/** Ilha authored: 32 áreas × 384 blocos. */
-export const EXTENSAO_KANTO = 12288;
+/** Ilha authored: 32 áreas × 128 blocos. */
+export const EXTENSAO_KANTO = 4096;
 
 /** Origem mundial da ilha (Kanto centrado). */
-export const ORIGEM_KANTO_X = 6144;
-export const ORIGEM_KANTO_Y = 6144;
+export const ORIGEM_KANTO_X = 2048;
+export const ORIGEM_KANTO_Y = 2048;
 
 /** Faixa de costura Kanto ↔ procedural (blocos). */
-export const FAIXA_COSTURA = 96;
+export const FAIXA_COSTURA = 64;
 
 /**
  * Bolso das salas 3D (casa, centro, loja, lab) — longe do overworld.

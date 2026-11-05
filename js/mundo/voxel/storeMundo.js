@@ -51,7 +51,7 @@ const ouvintesDirty = new Set();
 
 let seed = SEED_MUNDO;
 let aabbCarregado = { x0: 0, y0: 0, x1: -1, y1: -1 };
-let saveIdEdits = "demo-jogo-v2";
+let saveIdEdits = "demo-jogo-v1";
 let flushTimer = 0;
 /** @type {Promise<void> | null} */
 let flushEmVoo = null;

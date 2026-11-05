@@ -49,7 +49,7 @@ import {
  */
 
 /** Cidades 3× densas — cabe mais billboard no raio de stream. */
-const CAP_INSTANCIAS = 8192;
+const CAP_INSTANCIAS = 4096;
 const CHAVE_ARADO = "site:arado";
 /** Fecha a grade do canteiro (geo base 0.92). */
 const ESCALA_ARADO_FAZENDA = 1.08;

@@ -9,12 +9,12 @@ import { ROTAS_KANTO } from "./kantoRotas.js";
 import { montarLayout } from "./volumesCidade.js";
 
 export const LADO_KANTO = 32;
-export const AREA_KANTO = 384;
+export const AREA_KANTO = 128;
 export const EXTENSAO_KANTO = LADO_KANTO * AREA_KANTO;
 if (EXTENSAO_KANTO !== EXTENSAO_BOUNDS) {
   throw new Error("EXTENSAO_KANTO desalinhada de bounds.js");
 }
-export const CENTRO_AREA = (AREA_KANTO / 2) | 0;
+export const CENTRO_AREA = 64;
 
 export const SAIDA_NORTE = 1;
 export const SAIDA_LESTE = 2;

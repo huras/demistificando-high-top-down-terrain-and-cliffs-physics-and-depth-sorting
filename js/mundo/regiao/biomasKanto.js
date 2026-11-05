@@ -6,7 +6,7 @@ import { AREA_KANTO, CENTRO_AREA } from "./grafoKanto.js";
 import { fbm2 } from "../voxel/ruido.js";
 
 const SEMENTE = 1337;
-const FAIXA = 64;
+const FAIXA = 42;
 
 function bioma(id, kit, superficie, cor, camada) {
   return Object.freeze({ id, kit, superficie, cor, camada });
@@ -62,21 +62,19 @@ function centro(ax, ay, item, raio, folga, semente) {
   });
 }
 
-/** Sub-províncias locais (por cima do Voronoi). Raios ×~1.5 pós-mundo 3×. */
+/** Sub-províncias locais (por cima do Voronoi). */
 const TERRA = Object.freeze([
-  centro(16, 5, BIOMA_KANTO.lua, 900, 220, 11),
-  centro(25, 7.5, BIOMA_KANTO.tunel, 650, 180, 23),
-  centro(26, 11, BIOMA_KANTO.fantasma, 380, 140, 37),
-  centro(20, 24, BIOMA_KANTO.pantano, 420, 160, 53),
-  centro(10, 26, BIOMA_KANTO.ambar, 360, 120, 71),
+  centro(16, 5, BIOMA_KANTO.lua, 600, 160, 11),
+  centro(25, 7.5, BIOMA_KANTO.tunel, 430, 120, 23),
+  centro(26, 11, BIOMA_KANTO.fantasma, 210, 80, 37),
+  centro(20, 24, BIOMA_KANTO.pantano, 260, 100, 53),
+  centro(10, 26, BIOMA_KANTO.ambar, 200, 70, 71),
 ]);
 
 /** Fundos marinhos — Pallet / leste / fossa oeste. */
 const MAR = Object.freeze([
-  centro(25, 2, BIOMA_KANTO.kelp, 520, 200, 89),
-  centro(4, 18, BIOMA_KANTO.fossa, 640, 240, 97),
-  centro(10, 20, BIOMA_KANTO.fossa, 480, 180, 103),
-  centro(18, 28, BIOMA_KANTO.kelp, 400, 160, 109),
+  centro(25, 2, BIOMA_KANTO.kelp, 360, 140, 89),
+  centro(4, 18, BIOMA_KANTO.fossa, 420, 160, 97),
 ]);
 
 /**

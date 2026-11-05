@@ -10,8 +10,8 @@ export const SEMENTE_MAPA = 1337;
 export const LADO_MUNDO = LADO_BOUNDS;
 
 /**
- * Overview 2048² (passo 12 no mundo 24576) — bake ~igual ao mapa antigo.
- * Perto tiles 1:1 cobrem nitidez no minimapa; 6144 é upgrade opcional.
+ * Overview 2048² (passo 4 no mundo 8192).
+ * Perto tiles 1:1 cobrem nitidez no minimapa.
  */
 export const LADO_VISAO = 2048;
 export const PASSO_VISAO = LADO_MUNDO / LADO_VISAO;

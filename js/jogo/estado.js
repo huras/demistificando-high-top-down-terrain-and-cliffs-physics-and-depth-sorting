@@ -76,8 +76,7 @@ import {
 import { acharCasa, syncInteriorMoveis } from "../construir/estruturas.js";
 import { dentroDoBolsoSala } from "../mundo/bounds.js";
 
-/** v2: overworld 3× (AREA 384 / LADO 24576) — posições absolutas incompatíveis. */
-const CHAVE_SAVE = "demo-jogo-v2";
+const CHAVE_SAVE = "demo-jogo-v1";
 const CAIXAS = 8;
 const SLOTS_CAIXA = 30;
 

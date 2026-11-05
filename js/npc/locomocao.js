@@ -4,10 +4,14 @@
  * Path/agente completo (`atualizarAgente`) custava ~8 ms/NPC — aqui só
  * direção + sensoria local (nado / pulo +1 / climb). Mesmo pipeline de
  * `atualizarMovimentoDirecionado` (água, hop, escalada, mantle).
+ *
+ * Regra de ouro: climb/pulo só com terreno À FRENTE mais alto.
+ * Queda = deixa a física cair. Nunca auto-gruda na face da beirada.
  */
 import { ALTURA_SPRITE_JOGADOR, STAMINA_MAX, VELOCIDADE_MAX } from "../config.js";
 import { garantirCorpoLocomocao } from "../fisica/agente.js";
 import { alturaSobPes } from "../fisica/colisao.js";
+import { soltarEscalada } from "../fisica/escalada.js";
 import { atualizarMovimentoDirecionado } from "../fisica/movimento.js";
 import { PERFIL_ESCALADOR } from "../navegacao/perfilMovimento.js";
 import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
@@ -15,8 +19,8 @@ import { ALTURA_PRACA } from "../mundo/regiao/amostraKanto.js";
 /** Distância XY pra considerar meta alcançada (wander/travel). */
 export const NPC_DIST_CHEGAR = 0.85;
 
-/** Tempo sem progresso XY antes de forçar pulo/climb. */
-const STUCK_SEC = 0.4;
+/** Depois de ver queda, bloqueia auto-climb (evita grudar na face da beirada). */
+const BLOQUEIO_CLIMB_POS_QUEDA = 0.9;
 
 /**
  * @param {object} npc
@@ -63,50 +67,55 @@ function syncFacingPeople(npc) {
 }
 
 /**
- * Olha pra frente: +1 = hop Mario; ≥2 = climb BOTW.
- * @returns {"pulo"|"escalar"|null}
+ * Sensor local na direção do movimento.
+ * @returns {"pulo"|"escalar"|"queda"|null}
  */
-function sensoriarObstaculoVertical(npc, nx, ny) {
+function sensoriarFrente(npc, nx, ny) {
   if (!npc?.noChao || npc.nadando || npc.escalando || npc.mantle || npc.pulando) {
     return null;
   }
-  if (!npc.perfil?.podePular && !npc.perfil?.podeEscalar) return null;
   const base = Math.round(npc.z ?? npc.elevacao ?? 0);
-  let melhor = null;
-  for (const dist of [0.45, 0.8, 1.15]) {
-    const zFrente = alturaSobPes(
-      npc.x + nx * dist,
-      npc.y + ny * dist,
-      base + 2.8,
-    );
-    if (!(zFrente > 0)) continue;
-    const dz = Math.round(zFrente) - base;
-    if (dz === 1 && npc.perfil?.podePular) {
-      melhor = "pulo";
-      break;
+  let viuQueda = false;
+  let viuPulo = false;
+  let viuEscalar = false;
+
+  for (const dist of [0.55, 0.95, 1.35]) {
+    const ax = npc.x + nx * dist;
+    const ay = npc.y + ny * dist;
+
+    // Amostra “pés”: queda / degrau baixo (ref perto do chão atual).
+    const zBaixo = alturaSobPes(ax, ay, base + 0.35);
+    if (!(zBaixo > 0) || zBaixo <= base - 2) {
+      viuQueda = true;
+      continue;
     }
-    if (dz >= 2 && npc.perfil?.podeEscalar) {
-      melhor = "escalar";
-      break;
-    }
+
+    // Amostra “ombro”: só sobe se o piso à frente for mais alto.
+    const zAlto = alturaSobPes(ax, ay, base + 2.8);
+    if (!(zAlto > 0)) continue;
+    const dz = Math.round(zAlto) - base;
+    if (dz === 1) viuPulo = true;
+    else if (dz >= 2) viuEscalar = true;
   }
-  return melhor;
+
+  // Subida manda; queda só conta se não houver degrau pra cima no caminho.
+  if (viuEscalar && npc.perfil?.podeEscalar) return "escalar";
+  if (viuPulo && npc.perfil?.podePular) return "pulo";
+  if (viuQueda) return "queda";
+  return null;
 }
 
-function registrarProgresso(npc, distMeta, dt) {
-  const prev = npc._npcGoalD;
-  if (prev == null || distMeta < prev - 0.06) {
-    npc._npcGoalD = distMeta;
-    npc._npcStuckT = 0;
-    return 0;
-  }
-  npc._npcStuckT = (npc._npcStuckT || 0) + dt;
-  return npc._npcStuckT;
+function marcarBloqueioClimb(npc, dtOuSeg) {
+  npc._npcBloqueioClimbT = Math.max(npc._npcBloqueioClimbT || 0, dtOuSeg);
 }
 
-function limparProgresso(npc) {
-  npc._npcGoalD = null;
-  npc._npcStuckT = 0;
+function tickBloqueioClimb(npc, dt) {
+  if ((npc._npcBloqueioClimbT || 0) <= 0) return;
+  npc._npcBloqueioClimbT = Math.max(0, npc._npcBloqueioClimbT - dt);
+}
+
+function climbBloqueado(npc) {
+  return (npc._npcBloqueioClimbT || 0) > 0;
 }
 
 function pararIntent(npc) {
@@ -144,6 +153,7 @@ export function snapChaoNpc(npc) {
 export function manterFisicaNpc(npc, dt) {
   if (!npc) return;
   garantirNpcLoco(npc);
+  tickBloqueioClimb(npc, dt > 0 ? dt : 0);
   if (
     npc.nadando ||
     npc.escalando ||
@@ -152,6 +162,10 @@ export function manterFisicaNpc(npc, dt) {
     npc.noChao === false
   ) {
     reabastecerStaminaNpc(npc);
+    // Se grudou na face de uma queda, solta e cai.
+    if (npc.escalando && climbBloqueado(npc)) {
+      soltarEscalada(npc, { impulso: false, motivo: "queda-npc" });
+    }
     atualizarMovimentoDirecionado(npc, 0, 0, dt > 0 ? dt : 0, {
       autoEscalar: false,
       podeSoltarEscala: false,
@@ -182,6 +196,7 @@ export function alturaSpawnNpc(x, y, ref = ALTURA_PRACA) {
 export function irParaNpc(npc, gx, gy, dt, vel = 0) {
   if (!npc) return true;
   garantirNpcLoco(npc);
+  tickBloqueioClimb(npc, dt > 0 ? dt : 0);
 
   const dx = gx - npc.x;
   const dy = gy - npc.y;
@@ -200,7 +215,6 @@ export function irParaNpc(npc, gx, gy, dt, vel = 0) {
   }
 
   if (dist < NPC_DIST_CHEGAR && !emTransicao) {
-    limparProgresso(npc);
     pararIntent(npc);
     manterFisicaNpc(npc, dt);
     return true;
@@ -217,17 +231,38 @@ export function irParaNpc(npc, gx, gy, dt, vel = 0) {
   reabastecerStaminaNpc(npc);
   npc.forcaVelMul = Math.max(0.15, Math.min(1.35, vel / VELOCIDADE_MAX));
 
-  const senso = sensoriarObstaculoVertical(npc, nx, ny);
-  const stuckT = registrarProgresso(npc, dist, dt);
-  const forcarClimb = stuckT >= STUCK_SEC;
-  const forcarPulo = stuckT >= STUCK_SEC * 2.5;
+  const senso = sensoriarFrente(npc, nx, ny);
+
+  if (senso === "queda") {
+    marcarBloqueioClimb(npc, BLOQUEIO_CLIMB_POS_QUEDA);
+    npc._npcClimbIntent = false;
+  } else if (senso === "escalar") {
+    npc._npcClimbIntent = true;
+  } else if (!npc.escalando && !npc.mantle && npc.noChao) {
+    npc._npcClimbIntent = false;
+  }
+
+  // Grudou na face da beirada (queda / sem intent de subir): solta e cai.
+  if (npc.escalando && (climbBloqueado(npc) || !npc._npcClimbIntent)) {
+    soltarEscalada(npc, { impulso: false, motivo: "queda-npc" });
+    marcarBloqueioClimb(npc, BLOQUEIO_CLIMB_POS_QUEDA);
+    npc._npcClimbIntent = false;
+  }
+
+  // Pulo/climb só com evidência de terreno MAIS ALTO à frente.
+  // Sem “forçar quando stuck” — isso virava canguru eterno na beirada.
   const querPulo =
     !!npc.perfil?.podePular &&
-    !emTransicao &&
-    (senso === "pulo" || (forcarPulo && senso !== "escalar"));
+    npc.noChao &&
+    !npc.nadando &&
+    !npc.escalando &&
+    !npc.mantle &&
+    senso === "pulo";
+
   const querEscalar =
     !!npc.perfil?.podeEscalar &&
-    (senso === "escalar" || forcarClimb || !!npc.escalando);
+    !climbBloqueado(npc) &&
+    (senso === "escalar" || (!!npc._npcClimbIntent && !!npc.escalando));
 
   if (querPulo) {
     npc.segurarPulo = true;
@@ -240,7 +275,8 @@ export function irParaNpc(npc, gx, gy, dt, vel = 0) {
     correndo: false,
     apertouPulo: querPulo,
     querEscalar,
-    autoEscalar: !!npc.perfil?.podeEscalar,
+    // NUNCA auto-grudar em queda/ar — só climb explícito de subida.
+    autoEscalar: querEscalar,
     podeSoltarEscala: false,
   });
 
@@ -254,7 +290,6 @@ export function irParaNpc(npc, gx, gy, dt, vel = 0) {
     !!npc.pulando ||
     npc.noChao === false;
   if (rest < NPC_DIST_CHEGAR && !aindaNoAr) {
-    limparProgresso(npc);
     pararIntent(npc);
     snapChaoNpc(npc);
     return true;
