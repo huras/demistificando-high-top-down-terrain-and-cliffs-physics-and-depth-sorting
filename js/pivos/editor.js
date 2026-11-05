@@ -1,6 +1,14 @@
 import { CAMINHOS, JOGADOR_ESCALA, JOGADOR_FRAME, TILE } from "../config.js";
 import { blitQuadro, garantirAtlas } from "../pokemon/sprites.js";
 import { pivoDoFrame } from "../render/pivoPe.js";
+import {
+  ASSENTOS_PADRAO,
+  definirAssentoRide,
+  definirEstadoRideAssentos,
+  estadoRideAssentos,
+  garantirRideAssentos,
+  obterAssentoRide,
+} from "../jogo/rideAssentos.js";
 
 const CHAVE_JOGADOR = "jogador";
 const JOGADOR = Object.freeze({
@@ -20,6 +28,14 @@ const buscaEl = document.getElementById("busca");
 const offsetEl = document.getElementById("offset");
 const offsetValorEl = document.getElementById("offset-valor");
 const coordsEl = document.getElementById("coords");
+const painelAssento = document.getElementById("painel-assento");
+const seatXEl = document.getElementById("seat-x");
+const seatYEl = document.getElementById("seat-y");
+const seatElevEl = document.getElementById("seat-elev");
+const seatXValor = document.getElementById("seat-x-valor");
+const seatYValor = document.getElementById("seat-y-valor");
+const seatElevValor = document.getElementById("seat-elev-valor");
+const seatCoords = document.getElementById("seat-coords");
 const canvas = document.getElementById("vista");
 const ctx = canvas.getContext("2d");
 
@@ -33,6 +49,8 @@ let frame = 0;
 let frameT = 0;
 let ultimo = performance.now();
 let arraste = null;
+let arrasteAssento = null;
+let modoAssento = "ride";
 let avisoSprite = "";
 let vistaW = 1;
 let vistaH = 1;
@@ -89,6 +107,10 @@ function ehJogador(esp) {
   return esp?.key === CHAVE_JOGADOR;
 }
 
+function temAssentoSalvo(key) {
+  return !!estadoRideAssentos()[key];
+}
+
 function botaoLista(esp) {
   const li = document.createElement("li");
   const btn = document.createElement("button");
@@ -97,6 +119,7 @@ function botaoLista(esp) {
   btn.textContent = ehJogador(esp) ? "Jogador" : `#${esp.dex} ${esp.nome || esp.key}`;
   if (esp.key === escolhida?.key) btn.classList.add("ativo");
   if (arquivo[esp.key]) btn.classList.add("tem-ajuste");
+  if (!ehJogador(esp) && temAssentoSalvo(esp.key)) btn.classList.add("tem-assento");
   li.appendChild(btn);
   return li;
 }
@@ -130,6 +153,36 @@ function ajustarDirs() {
   }
 }
 
+function leituraAssento(esp) {
+  if (!esp || ehJogador(esp)) return { ...ASSENTOS_PADRAO[modoAssento] };
+  return obterAssentoRide(esp.key, modoAssento);
+}
+
+function publicarAssento(esp, seat) {
+  if (!esp || ehJogador(esp)) return;
+  definirAssentoRide(esp.key, modoAssento, seat);
+  seatCoords.textContent = `assento ${seat.x.toFixed(2)}, ${seat.y.toFixed(2)} · elev ${seat.elev.toFixed(2)}`;
+  const btn = listaEl.querySelector(`button[data-key="${CSS.escape(esp.key)}"]`);
+  if (btn) btn.classList.add("tem-assento");
+}
+
+function mostrarAssento(esp) {
+  const mostra = !!(esp && !ehJogador(esp));
+  painelAssento.hidden = !mostra;
+  if (!mostra) return;
+  const seat = leituraAssento(esp);
+  seatXEl.value = String(seat.x);
+  seatYEl.value = String(seat.y);
+  seatElevEl.value = String(seat.elev);
+  seatXValor.textContent = seat.x.toFixed(2);
+  seatYValor.textContent = seat.y.toFixed(2);
+  seatElevValor.textContent = seat.elev.toFixed(2);
+  seatCoords.textContent = `assento ${seat.x.toFixed(2)}, ${seat.y.toFixed(2)} · elev ${seat.elev.toFixed(2)}`;
+  for (const btn of document.querySelectorAll("#modos-assento button")) {
+    btn.classList.toggle("ativo", btn.dataset.modo === modoAssento);
+  }
+}
+
 function escolher(key) {
   const esp = key === CHAVE_JOGADOR ? JOGADOR : especies.find((item) => item.key === key);
   if (!esp) return;
@@ -137,9 +190,11 @@ function escolher(key) {
   avisoSprite = "";
   frame = 0;
   frameT = 0;
+  arrasteAssento = null;
   if (!ehJogador(esp)) garantirAtlas(esp.dex, false);
   ajustarDirs();
   mostrarControles(esp);
+  mostrarAssento(esp);
   pintarListas();
   dizer(`${esp.nome || esp.key} · escala ${escalaDa(esp).toFixed(2)}`);
 }
@@ -168,7 +223,7 @@ function avancarPose(pack, dt) {
   frame = (frame + 1) % n;
 }
 
-function desenharCruz(x, y) {
+function desenharCruz(x, y, cor = "#ffcc66") {
   ctx.save();
   ctx.strokeStyle = "#1a120c";
   ctx.lineWidth = 4;
@@ -178,10 +233,19 @@ function desenharCruz(x, y) {
   ctx.moveTo(x, y - 12);
   ctx.lineTo(x, y + 12);
   ctx.stroke();
-  ctx.strokeStyle = "#ffcc66";
+  ctx.strokeStyle = cor;
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.restore();
+}
+
+/** Preview: X lateral na tela; Y costas sobe no sprite; elev sobe mais o pezinho. */
+function pontoAssentoPreview(peX, peY, seat) {
+  const cell = TILE * ZOOM;
+  return {
+    x: peX + seat.x * cell,
+    y: peY + seat.y * cell - seat.elev * cell,
+  };
 }
 
 function desenhar() {
@@ -210,6 +274,21 @@ function desenhar() {
       ctx.imageSmoothingEnabled = false;
       blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, peX, peY, ZOOM * escalaDa(esp), aj);
     }
+    const seat = leituraAssento(esp);
+    const rider = pontoAssentoPreview(peX, peY, seat);
+    const ajJog = leitura(JOGADOR);
+    desenharJogador(rider.x, rider.y, ajJog);
+    ctx.save();
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(peX, peY);
+    ctx.lineTo(rider.x, rider.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    desenharCruz(rider.x, rider.y, "#38bdf8");
   }
 
   ctx.save();
@@ -344,8 +423,39 @@ document.getElementById("dirs").addEventListener("click", (ev) => {
   }
 });
 
+function peCanvas() {
+  const peX = vistaW * 0.5;
+  const chaoY = vistaH * 0.72;
+  const aj = leitura(escolhida);
+  const peY = chaoY + aj.offsetY * TILE * ZOOM;
+  return { peX, peY };
+}
+
+function pointerPertoAssento(clientX, clientY) {
+  if (!escolhida || ehJogador(escolhida)) return false;
+  const rect = canvas.getBoundingClientRect();
+  const x = ((clientX - rect.left) / rect.width) * vistaW;
+  const y = ((clientY - rect.top) / rect.height) * vistaH;
+  const { peX, peY } = peCanvas();
+  const rider = pontoAssentoPreview(peX, peY, leituraAssento(escolhida));
+  return Math.hypot(x - rider.x, y - rider.y) <= 28;
+}
+
 canvas.addEventListener("pointerdown", (ev) => {
   if (ev.button !== 0 || !escolhida) return;
+  if (!ehJogador(escolhida) && pointerPertoAssento(ev.clientX, ev.clientY)) {
+    const seat = leituraAssento(escolhida);
+    arrasteAssento = {
+      x: ev.clientX,
+      y: ev.clientY,
+      seatX: seat.x,
+      seatY: seat.y,
+      elev: seat.elev,
+    };
+    canvas.classList.add("arrastando");
+    canvas.setPointerCapture(ev.pointerId);
+    return;
+  }
   const aj = leitura(escolhida);
   arraste = { x: ev.clientX, y: ev.clientY, dx: aj.dx, dy: aj.dy };
   canvas.classList.add("arrastando");
@@ -353,6 +463,22 @@ canvas.addEventListener("pointerdown", (ev) => {
 });
 
 canvas.addEventListener("pointermove", (ev) => {
+  if (arrasteAssento && escolhida && !ehJogador(escolhida)) {
+    const cell = TILE * ZOOM;
+    const dx = (ev.clientX - arrasteAssento.x) / cell;
+    const dy = (ev.clientY - arrasteAssento.y) / cell;
+    // Arraste: X = lateral; Y mistura costas + elev (Shift = só elev).
+    let seatX = celula(arrasteAssento.seatX + dx);
+    let seatY = celula(arrasteAssento.seatY + (ev.shiftKey ? 0 : dy));
+    let elev = celula(arrasteAssento.elev + (ev.shiftKey ? -dy : 0));
+    seatX = Math.max(-1.5, Math.min(1.5, seatX));
+    seatY = Math.max(-1.5, Math.min(1.5, seatY));
+    elev = Math.max(0, Math.min(2, elev));
+    const seat = { x: seatX, y: seatY, elev };
+    publicarAssento(escolhida, seat);
+    mostrarAssento(escolhida);
+    return;
+  }
   if (!arraste || !escolhida) return;
   const esc = ZOOM * escalaDa(escolhida);
   const aj = leitura(escolhida);
@@ -363,23 +489,60 @@ canvas.addEventListener("pointermove", (ev) => {
 
 canvas.addEventListener("pointerup", () => {
   arraste = null;
+  arrasteAssento = null;
   canvas.classList.remove("arrastando");
 });
 
+document.getElementById("modos-assento").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button");
+  if (!btn?.dataset.modo) return;
+  modoAssento = btn.dataset.modo;
+  mostrarAssento(escolhida);
+});
+
+function aoSliderAssento() {
+  if (!escolhida || ehJogador(escolhida)) return;
+  const seat = {
+    x: celula(seatXEl.value),
+    y: celula(seatYEl.value),
+    elev: celula(seatElevEl.value),
+  };
+  publicarAssento(escolhida, seat);
+  mostrarAssento(escolhida);
+}
+seatXEl.addEventListener("input", aoSliderAssento);
+seatYEl.addEventListener("input", aoSliderAssento);
+seatElevEl.addEventListener("input", aoSliderAssento);
+
 document.getElementById("salvar").addEventListener("click", async () => {
   dizer("Salvando…");
-  const res = await fetch("/api/pivos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(arquivo),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    dizer(json.erro || "Não salvou.");
+  const [resPivo, resSeat] = await Promise.all([
+    fetch("/api/pivos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(arquivo),
+    }),
+    fetch("/api/ride-assentos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(estadoRideAssentos()),
+    }),
+  ]);
+  const jsonPivo = await resPivo.json().catch(() => ({}));
+  const jsonSeat = await resSeat.json().catch(() => ({}));
+  if (!resPivo.ok) {
+    dizer(jsonPivo.erro || "Não salvou pivôs.");
+    return;
+  }
+  if (!resSeat.ok) {
+    dizer(jsonSeat.erro || "Não salvou assentos.");
     return;
   }
   const n = Object.keys(arquivo).length;
-  dizer(n ? `Salvo. ${n} espécie${n === 1 ? "" : "s"} com ajuste.` : "Salvo. Nenhuma espécie com ajuste.");
+  const a = Object.keys(estadoRideAssentos()).length;
+  dizer(
+    `Salvo. ${n} pivô${n === 1 ? "" : "s"} · ${a} assento${a === 1 ? "" : "s"}.`,
+  );
 });
 
 function aceitarArquivo(json) {
@@ -397,11 +560,18 @@ function aceitarArquivo(json) {
 }
 
 async function iniciar() {
-  const [pivoRes, pokeRes] = await Promise.all([
+  const [pivoRes, pokeRes, seatRes] = await Promise.all([
     fetch("/assets/pokemon/pivos.json"),
     fetch("/ref/catalogo.json"),
+    garantirRideAssentos().then(() =>
+      fetch("/assets/pokemon/ride-assentos.json", { cache: "no-store" }),
+    ),
   ]);
   if (pivoRes.ok) aceitarArquivo(await pivoRes.json());
+  if (seatRes.ok) {
+    const seatJson = await seatRes.json();
+    definirEstadoRideAssentos(seatJson);
+  }
   if (!pokeRes.ok) throw new Error("catálogo de pokémon indisponível");
   const json = await pokeRes.json();
   const mapa = json.especies || {};

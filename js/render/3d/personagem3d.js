@@ -99,9 +99,11 @@ export function criarPersonagem3d(opts = {}) {
     if (!sheet || !frameCtx) return;
     const linha = linhaFacingDoCorpo(corpoEstado, yawCam ?? 0);
     const ciclo = [0, 1, 0, 3];
-    const col = corpoEstado.andando
-      ? ciclo[Math.floor(corpoEstado.animT * 8) % 4]
-      : 0;
+    // Montado: só o Pokémon anda — player fica parado (Idle).
+    const col =
+      corpoEstado.rideAtivo || !corpoEstado.andando
+        ? 0
+        : ciclo[Math.floor(corpoEstado.animT * 8) % 4];
     const key = `${linha}:${col}`;
     if (key !== ultimoFrameKey) {
       ultimoFrameKey = key;
@@ -172,8 +174,18 @@ export function criarPersonagem3d(opts = {}) {
     atualizar(corpoEstado, camera = null, yawCam = 0, inclinacao = 0) {
       const elevFisica =
         corpoEstado.elevacao ?? corpoEstado.z + (corpoEstado.hopLift || 0);
-      const elev = elevFisica + oscilacaoNado(corpoEstado);
+      // Montaria: pés no pivot do assento (altura acima do mon).
+      const liftRide =
+        corpoEstado.rideAtivo && Number(corpoEstado._rideSeatElev) > 0
+          ? Number(corpoEstado._rideSeatElev)
+          : 0;
+      const elev = elevFisica + liftRide + oscilacaoNado(corpoEstado);
       grupo.position.set(corpoEstado.x, elev * ALTURA_BLOCO, corpoEstado.y);
+      // Por cima do mon montado (mesma renderOrder 3 do party).
+      const ordem = corpoEstado.rideAtivo ? 6 : 3;
+      cartao.renderOrder = ordem;
+      silhueta.renderOrder = ordem;
+      veu.renderOrder = ordem;
       const folgaPe = -pivoDoJogador().offsetY;
       const sombraNuvem = fatorSombraMundo(corpoEstado.x, grupo.position.y, corpoEstado.y);
       amostrarLuzCidade(grupo.position.x, grupo.position.y + ALTURA_SPRITE_JOGADOR * 0.56, grupo.position.z, _luzCidade);

@@ -26,7 +26,13 @@ import {
   progressoDex,
   bootstrapDexDaParty,
 } from "./pokedex/progresso.js";
-import { alternarRide, indiceMontado, modoRideAtual, podeMontar } from "./ride.js";
+import {
+  alternarRide,
+  cinemaRideAtivo,
+  indiceRideHud,
+  modoRideAtual,
+  podeMontar,
+} from "./ride.js";
 
 let menuApi = null;
 let dexApi = null;
@@ -242,11 +248,15 @@ export function deploySlot(i) {
 }
 
 export function toggleRideSlot(i) {
-  return alternarRide(i);
+  return alternarRide(i, corpoHud());
 }
 
 export function rideSlot() {
-  return indiceMontado();
+  return indiceRideHud();
+}
+
+export function rideCinemaHud() {
+  return cinemaRideAtivo();
 }
 
 export function rideModo() {

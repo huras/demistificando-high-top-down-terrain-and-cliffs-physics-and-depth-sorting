@@ -97,7 +97,7 @@ function subMovelDe(key) {
   if (key === "cama") return SUB_MOVEL.CAMAS;
   if (key === "cadeira") return SUB_MOVEL.ASSENTOS;
   if (key === "mesa") return SUB_MOVEL.MESAS;
-  if (key === "bancada") return SUB_MOVEL.CRAFT;
+  if (key === "bancada" || key === "maquinaCura" || key === "pc") return SUB_MOVEL.CRAFT;
   if (key === "planta") return SUB_MOVEL.DECOR;
   return SUB_MOVEL.OUTRO;
 }
@@ -113,10 +113,12 @@ function receitaMovel(key) {
     rows: 1,
     costs: { ...(def.custo || { wood: 2 }) },
     indoor: true,
-    outdoor: key !== "bancada",
+    outdoor: !def.indoorOnly,
     wall: false,
     cura: !!def.cura,
     craft: !!def.craft,
+    maquinaCura: !!def.maquinaCura,
+    pc: !!def.pc,
   };
 }
 
@@ -160,7 +162,8 @@ export function listarMoveisConstruiveis(sub) {
   for (const key of Object.keys(MOVEIS)) {
     if (sub && subMovelDe(key) !== sub) continue;
     const r = receitaMovel(key);
-    if (r) out.push(r);
+    // Catálogo outdoor: só o que pode no campo (cura/PC/bancada são indoor).
+    if (r && r.outdoor !== false) out.push(r);
   }
   return out;
 }

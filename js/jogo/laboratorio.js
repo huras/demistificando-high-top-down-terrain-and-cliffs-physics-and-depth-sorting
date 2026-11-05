@@ -10,6 +10,15 @@ import { curaOcupada, iniciarCuraMaquina } from "./maquinaCura.js";
 import { darChave, estado, guardarNaCaixa, guardarVariosNaCaixa, marcarQuest, snapshot, temChave, vagasNasCaixas, avisar } from "./estado.js";
 import { abrirCapsula } from "./apiHud.js";
 import { falarRinaSantuario, garantirQuestDevice } from "../santuario/questDevice.js";
+import {
+  falarOakLab,
+  mesaIniciaisLiberada,
+  openingAtiva,
+  openingStage,
+  podeEscolherFinal,
+  concluirFinalStarter,
+  OPENING_STAGE,
+} from "../historia/index.js";
 
 export function alvoLaboratorio(x, y) {
   return alvoDoLaboratorio(x, y);
@@ -33,8 +42,26 @@ export function executarAlvoLaboratorio(alvo) {
     return;
   }
   if (alvo.tipo === "inicial") {
-    // Sem quest de starter ainda: pode pegar livremente da mesa.
     const chave = alvo.ref.especie;
+    if (openingAtiva() && openingStage() === OPENING_STAGE.RESCUE_ROUTE) {
+      // Trial só na rota (bolas scriptadas), não na mesa.
+      estado.itemGet = "As Pokébolas de emergência estão na Rota 1.";
+      avisar();
+      return;
+    }
+    if (openingAtiva() && !mesaIniciaisLiberada()) {
+      estado.itemGet = "O Professor ainda não liberou os iniciais.";
+      avisar();
+      return;
+    }
+    if (openingAtiva() && openingStage() === OPENING_STAGE.FINAL_STARTER) {
+      if (!podeEscolherFinal()) return;
+      // Mesa final: qualquer inicial da mesa.
+    } else if (openingAtiva() && !podeEscolherFinal()) {
+      estado.itemGet = "Termine a introdução antes de pegar um inicial permanente.";
+      avisar();
+      return;
+    }
     const esp = especie(chave);
     if (!esp) {
       estado.itemGet = `Espécie desconhecida (${chave}).`;
@@ -44,6 +71,9 @@ export function executarAlvoLaboratorio(alvo) {
     if (listaParty().length < POKEMON.PARTY_MAX) {
       const ator = receberEspecie(chave, 5);
       estado.itemGet = ator ? `${ator.especie.nome} entrou no time.` : "Não foi possível receber.";
+      if (ator && openingAtiva() && openingStage() === OPENING_STAGE.FINAL_STARTER) {
+        concluirFinalStarter();
+      }
       avisar();
       return;
     }
@@ -87,6 +117,13 @@ function falarNpc(npc) {
     };
     avisar();
     return;
+  }
+  if (npc.id === "oak" || npc.role === "professor") {
+    if (falarOakLab()) return;
+  }
+  // Cientistas avançam checkLab
+  if (openingAtiva() && openingStage() === OPENING_STAGE.CHECK_LAB && npc.id !== "oak") {
+    if (falarOakLab()) return;
   }
   const feita = !!(npc.presente && temChave(npc.presente));
   if (npc.presente && !feita) {

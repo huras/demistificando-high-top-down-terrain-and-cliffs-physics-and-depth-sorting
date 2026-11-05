@@ -46,6 +46,8 @@ export const SOBRESCREVE_ICONE = {
   "bow": "tileset:iconset_2:r13_c10",
   "hammer": "tileset:r9_c3",
   "flag": "tileset:r17_c10",
+  "maquinaCura": "medicine/revive.png",
+  "pc": "hold-items/exp-share.png",
   "stone": "hold-items/hard-stone.png",
   "wood": "tileset:iconset_2:r18_c7",
   "oakParcel": "tileset:iconset_2:r17_c2",

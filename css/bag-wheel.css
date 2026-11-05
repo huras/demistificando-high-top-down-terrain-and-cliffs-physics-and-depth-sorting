@@ -78,6 +78,7 @@
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
   --bag-wheel-chip: 15.5%;
   --bag-wheel-icon: 56px;
+  --bag-wheel-wedge: 36deg;
 }
 
 .bag-wheel__ring::before {
@@ -90,36 +91,115 @@
   z-index: 0;
 }
 
+.bag-wheel__aim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.14s ease;
+}
+
+.bag-wheel__aim.is-on {
+  opacity: 1;
+  visibility: visible;
+}
+
+.bag-wheel__aim-wedge {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from calc(90deg - var(--bag-wheel-wedge, 36deg) / 2),
+    transparent 0deg,
+    rgba(58, 51, 40, 0.06) 0deg,
+    rgba(58, 51, 40, 0.12) calc(var(--bag-wheel-wedge, 36deg) * 0.5),
+    rgba(58, 51, 40, 0.06) var(--bag-wheel-wedge, 36deg),
+    transparent var(--bag-wheel-wedge, 36deg)
+  );
+  -webkit-mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 0 49.5%,
+    #000 51.2%,
+    #000 76%,
+    transparent 84%
+  );
+  mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 0 49.5%,
+    #000 51.2%,
+    #000 76%,
+    transparent 84%
+  );
+}
+
+.bag-wheel__aim-mark {
+  position: absolute;
+  left: 75%;
+  top: 50%;
+  width: 22px;
+  height: 18px;
+  transform: translate(2px, -50%);
+  overflow: visible;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+}
+
+.bag-wheel__aim-mark-edge {
+  fill: #fffef8;
+}
+
+.bag-wheel__aim-mark-body {
+  fill: #3a3328;
+}
+
 .bag-wheel__center {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 42%;
-  height: 42%;
-  transform: translate(-50%, -50%);
+  width: 54%;
+  height: 54%;
+  transform: translate(-50%, -50%) scale(0.88);
   border-radius: 50%;
   display: grid;
   place-items: center;
   align-content: center;
-  gap: 6px;
+  gap: 8px;
+  transition: transform 0.4s cubic-bezier(0.22, 1.4, 0.36, 1) 0.05s;
   background: linear-gradient(180deg, #fffef8 0%, #f3efe6 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     inset 0 -1px 0 rgba(180, 168, 148, 0.28),
     0 8px 18px rgba(0, 0, 0, 0.16);
   text-align: center;
-  padding: 16px 20px 14px;
+  padding: 18px 22px 16px;
   pointer-events: none;
   z-index: 1;
   color: #3a3328;
+}
+
+.bag-wheel.is-in .bag-wheel__center {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.bag-wheel__hero {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
 }
 
 .bag-wheel__center-icon,
 .bag-wheel__center-icon img,
 .bag-wheel__center-icon canvas,
 .bag-wheel__center-icon.jogo-icone--tileset {
-  width: 100px !important;
-  height: 100px !important;
+  width: 120px !important;
+  height: 120px !important;
   object-fit: contain;
   image-rendering: pixelated;
   display: grid;
@@ -128,8 +208,10 @@
 }
 
 .bag-wheel__center-qty {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
   display: inline-block;
-  margin-top: -2px;
   padding: 3px 9px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffe56a 0%, #e8c547 100%);
@@ -156,6 +238,10 @@
   max-width: 92%;
   font: 500 12px/1.35 "Segoe UI", system-ui, sans-serif;
   color: #7a7266;
+}
+
+.bag-wheel__center-desc[hidden] {
+  display: none;
 }
 
 .bag-wheel__item {
@@ -263,6 +349,11 @@
 }
 
 @media (max-width: 520px) {
+  .bag-wheel__hero {
+    width: 84px;
+    height: 84px;
+  }
+
   .bag-wheel__center-icon,
   .bag-wheel__center-icon img,
   .bag-wheel__center-icon canvas {

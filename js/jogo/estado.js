@@ -25,10 +25,15 @@ import { especie } from "../pokemon/dados.js";
 import { restaurarPp } from "../pokemon/pp.js";
 import { obterTreinador } from "../pokemon/sistema.js";
 import { hidratarCampo, idsRemovidos, reaplicarCarregados, serializarCampo } from "../campo/estadoProps.js";
+import {
+  flushEditsIdb,
+  reaplicarEditsNosChunksCarregados,
+} from "../mundo/voxel/storeMundo.js";
 import { anunciarGanho, semearVistosDaBolsa } from "./ganhoItem.js";
 import { nomeDoItem } from "./nomeItem.js";
 import { tocarCura } from "./som/combateSfx.js";
 import { createQuestState, normalizeQuestState } from "../quests/tipos.js";
+import { criarHistoriaState } from "../historia/flags.js";
 import {
   tocarBump,
   tocarHotbarEquip,
@@ -137,6 +142,8 @@ export const estado = {
   capturadosMap: null,
   vistosMap: null,
   categoria: "balls",
+  /** Seleção da mochila BOTW no menu B: `{ tipo, key }` ou null. */
+  itemBagSel: null,
   roda: false,
   itemGet: "",
   ganhoAberto: false,
@@ -154,6 +161,8 @@ export const estado = {
   posicao: null,
   /** Sessão de batalha treinador (overlay turnos). */
   batalhaTreinador: null,
+  /** Opening + warehouses Rocket. */
+  historia: criarHistoriaState(),
 };
 
 /** Porta sul da pegada (centro da casa → fora da porta). */
@@ -985,6 +994,11 @@ function bolsaParaLista() {
 }
 
 export function salvar() {
+  if (estado.historia?.cinemaAtiva) {
+    estado.itemGet = "Não é possível salvar durante uma cena.";
+    avisar();
+    return false;
+  }
   registrarParty();
   if (estado.interior?.papel === "casa" && estado.interior.playerHouseId) {
     syncInteriorMoveis(
@@ -1026,6 +1040,18 @@ export function salvar() {
       };
     })(),
     chaves: estado.chaves,
+    historia: estado.historia
+      ? {
+          opening: { ...(estado.historia.opening || {}) },
+          rocketCleanupQuestStatus: estado.historia.rocketCleanupQuestStatus,
+          rocketCleanupTurnedIn: [...(estado.historia.rocketCleanupTurnedIn || [])],
+          discoveredWarehouses: [...(estado.historia.discoveredWarehouses || [])],
+          clearedWarehouses: [...(estado.historia.clearedWarehouses || [])],
+          unlockedEntrances: [...(estado.historia.unlockedEntrances || [])],
+          warehouseGuardsDefeated: [...(estado.historia.warehouseGuardsDefeated || [])],
+          viridianRocketScene: estado.historia.viridianRocketScene,
+        }
+      : null,
     santuarios: serializarSantuarios(),
     descobertaMapa: serializarDescobertaMapa(),
     construcao,
@@ -1033,6 +1059,7 @@ export function salvar() {
   };
   try {
     localStorage.setItem(CHAVE_SAVE, JSON.stringify(dados));
+    void flushEditsIdb();
     estado.itemGet = "Jogo salvo.";
     tocarSalvar();
     avisar();
@@ -1089,6 +1116,7 @@ export function carregar() {
   hidratarCampo(bruto.campo, bruto.cortados);
   estado.cortados = idsRemovidos();
   reaplicarCarregados();
+  reaplicarEditsNosChunksCarregados();
   estado.vistos = bruto.vistos || [];
   estado.vistosMap = Object.create(null);
   for (const key of estado.vistos) estado.vistosMap[key] = true;
@@ -1111,6 +1139,25 @@ export function carregar() {
   }
   estado.questState = normalizeQuestState(bruto.questState);
   estado.chaves = bruto.chaves || ["pokedex"];
+  // História completa é hidratada em bootHistoria() (após registrar estado).
+  if (bruto.historia?.opening) {
+    estado.historia = {
+      ...criarHistoriaState(),
+      ...bruto.historia,
+      opening: { ...criarHistoriaState().opening, ...(bruto.historia.opening || {}) },
+      cinemaAtiva: false,
+    };
+    if (
+      estado.historia.opening.stage === "complete" ||
+      estado.historia.opening.stage === "legacy"
+    ) {
+      estado.historia.opening.active = false;
+    }
+  } else if ((bruto.party || []).length > 0) {
+    estado.historia = criarHistoriaState();
+    estado.historia.opening.active = false;
+    estado.historia.opening.stage = "legacy";
+  }
   hidratarSantuarios(bruto.santuarios);
   hidratarDescobertaMapa(bruto.descobertaMapa);
   hidratarConstrucao(bruto.construcao);

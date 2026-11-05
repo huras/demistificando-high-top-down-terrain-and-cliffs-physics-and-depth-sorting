@@ -24,6 +24,7 @@ import {
 } from "./camera3d.js";
 import { aplicarCameraChrono } from "../../combate/chrono/camera.js";
 import { sessaoChronoAtiva } from "../../combate/chrono/sessao.js";
+import { aplicarCameraEvento } from "../../historia/cameraEvento.js";
 import { criarFlechas3d } from "./flechas3d.js";
 import { criarMiraArcoBola3d } from "./miraArcoBola3d.js";
 import { criarRigCamera3d } from "./rigCamera3d.js";
@@ -774,6 +775,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.cidadeHorizonte?.tick?.(mxLod, myLod);
   if (sessaoChronoAtiva() && aplicarCameraChrono(estado.camera3d, dt)) {
     /* câmera de turno Chrono */
+  } else if (aplicarCameraEvento(estado.camera3d, corpo, dt)) {
+    /* câmera de história / opening */
   } else {
     seguirAlvo3d(estado.camera3d, corpo, dt);
   }
@@ -862,6 +865,10 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   });
 
   atualizarPokemon3d(yaw, camRender, inclinacao);
+  // Montaria: redesenha o player depois do mon (pés no assento por cima).
+  if (corpo?.rideAtivo) {
+    estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
+  }
   tickFadeParedeInterior(corpo, camRender);
   atualizarDebugCorpos();
   atualizarDebugForca(corpo);

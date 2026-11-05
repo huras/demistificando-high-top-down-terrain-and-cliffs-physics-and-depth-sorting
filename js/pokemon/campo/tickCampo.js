@@ -103,6 +103,16 @@ function perseguirItem(mon, jogador, dt) {
  */
 export function tickPartyCampo(mon, selvagens, jogador, dt) {
   if (!mon || mon.morto || mon.capturado || mon.preso) return false;
+  // Montaria / cinema: mon congelado sob o assento.
+  if (mon.rideAtivo || mon._rideFreeze) {
+    mon.vx = 0;
+    mon.vy = 0;
+    mon.andando = false;
+    mon.correndo = false;
+    mon.alvo = null;
+    mon._emLutaCampo = false;
+    return true;
+  }
   if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) return false;
 
   if (tickMeleeApproach(mon, dt)) return true;

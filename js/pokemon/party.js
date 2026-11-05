@@ -430,6 +430,14 @@ export function atualizarParty(corpo, dt, agora, perfil) {
   }
   if (vivo.brilhoBola > 0) vivo.brilhoBola = Math.max(0, vivo.brilhoBola - dt);
   conterNoInterior(vivo);
+  // Montaria: snap do ride manda na posição — não follow.
+  if (vivo.rideAtivo || vivo._rideFreeze) {
+    vivo.vx = 0;
+    vivo.vy = 0;
+    vivo.andando = false;
+    vivo.correndo = false;
+    return;
+  }
   // Ordem farm/Força ou canal/carry de lift: não puxar de volta pro follow.
   if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) return;
   // Combate OW (tickPartyCampo) marca _emLutaCampo quando não deve follow.

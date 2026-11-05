@@ -435,6 +435,14 @@ export function anexarInteriores(grupo, moveis) {
     let vasoI = 0;
     for (let i = 0; i < lista.length; i++) {
       const item = lista[i];
+      if (item.id === "cura" || item.id === "pc") {
+        const prop = instanciarProp(item.id, item.x, item.y);
+        if (prop) {
+          prop.name = `movel-${item.id}`;
+          grupo.add(prop);
+          continue;
+        }
+      }
       if (item.id === "vaso") {
         const id = VASOS_CASA[vasoI++ % VASOS_CASA.length];
         const prop = instanciarProp(id, item.x, item.y);
@@ -468,7 +476,7 @@ export function anexarInteriores(grupo, moveis) {
     }
     indexarColisaoCidade();
   };
-  const idsProps = ["cama", "mesa-1", ...VASOS_CASA];
+  const idsProps = ["cama", "mesa-1", "cura", "pc", ...VASOS_CASA];
   carregarMoldesProps(idsProps).then(colocar).catch((erro) => {
     console.error("moveis 3d da casa", erro);
     colocar();

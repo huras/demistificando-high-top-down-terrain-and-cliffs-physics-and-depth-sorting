@@ -355,6 +355,36 @@ const servidor = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/ride-assentos") {
+    const pedacos = [];
+    let total = 0;
+    req.on("data", (parte) => {
+      total += parte.length;
+      if (total > 400_000) {
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+        return;
+      }
+      pedacos.push(parte);
+    });
+    req.on("end", () => {
+      try {
+        const obj = JSON.parse(Buffer.concat(pedacos).toString("utf8"));
+        validarRideAssentos(obj);
+        const dest = path.join(raiz, "assets", "pokemon", "ride-assentos.json");
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, JSON.stringify(obj, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end('{"ok":true}');
+      } catch (erro) {
+        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, erro: String(erro.message || erro) }));
+      }
+    });
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/pivos-props") {
     const pedacos = [];
     let total = 0;
@@ -956,6 +986,34 @@ function validarPivos(obj) {
     }
     if (item.offsetY < -4 || item.offsetY > 4) throw new Error(`${id} altura fora`);
     if (Math.abs(item.dx) > 256 || Math.abs(item.dy) > 256) throw new Error(`${id} pivô fora`);
+  }
+}
+
+function validarRideAssentos(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error("arquivo sem assentos");
+  }
+  const modos = ["ride", "fly", "surf"];
+  const ids = Object.keys(obj);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw new Error(`espécie inválida: ${id}`);
+    const item = obj[id];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`${id} sem assentos`);
+    }
+    for (let m = 0; m < modos.length; m++) {
+      const modo = modos[m];
+      const seat = item[modo];
+      if (!seat || typeof seat !== "object") throw new Error(`${id}.${modo} inválido`);
+      for (const chave of ["x", "y", "elev"]) {
+        const n = Number(seat[chave]);
+        if (!Number.isFinite(n)) throw new Error(`${id}.${modo} sem ${chave}`);
+        seat[chave] = Math.round(n * 100) / 100;
+      }
+      if (Math.abs(seat.x) > 2 || Math.abs(seat.y) > 2) throw new Error(`${id}.${modo} xy fora`);
+      if (seat.elev < 0 || seat.elev > 3) throw new Error(`${id}.${modo} elev fora`);
+    }
   }
 }
 

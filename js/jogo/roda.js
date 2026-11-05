@@ -12,6 +12,8 @@ import { pintar } from "./ui.js";
 const SEGURAR_MS = 160;
 const POR_PAGINA = 10;
 const ICONE_PX = 56;
+const MOUSE_DEADZONE_PX = 20;
+const MOUSE_CENTER_RATIO = 0.5;
 const TECLAS = ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6"];
 const CATS = [
   { id: "ball", nome: "Bolas", tipo: TIPO_ITEM.BOLA, fonte: BOLAS },
@@ -23,6 +25,7 @@ const CATS = [
 
 let raiz = null;
 let anel = null;
+let spoke = null;
 let aberta = false;
 let tecla = "";
 let desde = 0;
@@ -35,6 +38,8 @@ let slotAlvo = 0;
 let comShift = false;
 /** Depois de Escape (ou fechar sem equipar), ignora o Digit até soltar. */
 let ignoraAteSoltar = false;
+let aimDeg = -90;
+let ouvindoPonteiro = false;
 
 function campoFocado() {
   const tag = document.activeElement?.tagName;
@@ -64,9 +69,60 @@ function itensDaPagina(lista) {
   return todos.slice(ini, ini + POR_PAGINA);
 }
 
+function wrapDeg360(deg) {
+  return ((deg % 360) + 360) % 360;
+}
+
+function shortestRotation(currentDeg, targetDeg) {
+  const from = wrapDeg360(currentDeg);
+  const to = wrapDeg360(targetDeg);
+  let delta = to - from;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  return currentDeg + delta;
+}
+
+function itemAngleDeg(index, count) {
+  if (count < 1) return -90;
+  return (index / count) * 360 - 90;
+}
+
 function pintarCmds() {
   const el = raiz?.querySelector("[data-cmds-soltar]");
   if (el) el.textContent = `atribuir no ${slotAlvo + 1}`;
+}
+
+function syncAim(hoverIndex, count) {
+  if (!spoke) return;
+  const on = hoverIndex >= 0 && count > 0;
+  spoke.classList.toggle("is-on", on);
+  if (!on) return;
+  aimDeg = shortestRotation(aimDeg, itemAngleDeg(hoverIndex, count));
+  spoke.style.transform = `rotate(${aimDeg}deg)`;
+}
+
+function atualizarWedge(count) {
+  if (!anel) return;
+  const wedge = Math.min(count > 0 ? 360 / count : 36, 44);
+  anel.style.setProperty("--bag-wheel-wedge", `${wedge.toFixed(2)}deg`);
+}
+
+function aoPonteiroJanela(ev) {
+  if (!aberta) return;
+  ponteiro = { x: ev.clientX, y: ev.clientY };
+  apontar();
+}
+
+function ligarPonteiroJanela() {
+  if (ouvindoPonteiro) return;
+  window.addEventListener("pointermove", aoPonteiroJanela);
+  ouvindoPonteiro = true;
+}
+
+function desligarPonteiroJanela() {
+  if (!ouvindoPonteiro) return;
+  window.removeEventListener("pointermove", aoPonteiroJanela);
+  ouvindoPonteiro = false;
 }
 
 function montarDom() {
@@ -78,9 +134,18 @@ function montarDom() {
     <div class="bag-wheel__frame">
       <div class="bag-wheel__tabs" data-tabs></div>
       <div class="bag-wheel__ring" data-anel>
+        <div class="bag-wheel__aim" data-spoke>
+          <div class="bag-wheel__aim-wedge"></div>
+          <svg class="bag-wheel__aim-mark" viewBox="0 0 22 18" aria-hidden="true">
+            <path class="bag-wheel__aim-mark-edge" d="M1 1.2 21 9 1 16.8 6.2 9Z"/>
+            <path class="bag-wheel__aim-mark-body" d="M2.6 3.2 17.8 9 2.6 14.8 6.6 9Z"/>
+          </svg>
+        </div>
         <div class="bag-wheel__center">
-          <div data-centro-icone></div>
-          <span class="bag-wheel__center-qty" data-centro-qtd hidden></span>
+          <div class="bag-wheel__hero">
+            <div data-centro-icone></div>
+            <span class="bag-wheel__center-qty" data-centro-qtd hidden></span>
+          </div>
           <div class="bag-wheel__center-name" data-centro-nome></div>
           <div class="bag-wheel__center-desc" data-centro-desc></div>
         </div>
@@ -93,10 +158,7 @@ function montarDom() {
     </div>`;
   document.body.appendChild(raiz);
   anel = raiz.querySelector("[data-anel]");
-  raiz.addEventListener("pointermove", (ev) => {
-    ponteiro = { x: ev.clientX, y: ev.clientY };
-    if (aberta) apontar();
-  });
+  spoke = raiz.querySelector("[data-spoke]");
   raiz.querySelector("[data-tabs]").addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-cat]");
     if (!btn) return;
@@ -107,6 +169,13 @@ function montarDom() {
   });
 }
 
+function aplicarMira(i, lista) {
+  mira = i;
+  pintarCentro(lista);
+  syncAim(mira, lista.length);
+  anel.querySelectorAll(".bag-wheel__item").forEach((node, k) => node.classList.toggle("is-on", k === i));
+}
+
 function desenhar() {
   const paginaItens = itensDaPagina();
   if (mira >= paginaItens.length) mira = Math.max(0, paginaItens.length - 1);
@@ -114,6 +183,7 @@ function desenhar() {
   tabs.innerHTML = CATS.map((c, i) => `<button type="button" class="bag-wheel__tab${i === cat ? " is-active" : ""}" data-cat="${i}">${c.nome}</button>`).join("");
   anel.querySelectorAll(".bag-wheel__item").forEach((n) => n.remove());
   const n = paginaItens.length || 1;
+  atualizarWedge(paginaItens.length);
   paginaItens.forEach((item, i) => {
     const el = document.createElement("button");
     el.type = "button";
@@ -125,14 +195,13 @@ function desenhar() {
     const qtd = contar(item.tipo, item.key);
     el.innerHTML = `${htmlIcone(item.key, "bag-wheel__icon", ICONE_PX)}<span class="bag-wheel__qty">x${qtd}</span>`;
     el.addEventListener("pointerenter", () => {
-      mira = i;
-      pintarCentro(paginaItens);
-      anel.querySelectorAll(".bag-wheel__item").forEach((node, k) => node.classList.toggle("is-on", k === i));
+      aplicarMira(i, paginaItens);
     });
     anel.appendChild(el);
   });
   pintarCmds();
   pintarCentro(paginaItens);
+  syncAim(paginaItens.length ? mira : -1, paginaItens.length);
 }
 
 function pintarCentro(lista) {
@@ -147,27 +216,40 @@ function pintarCentro(lista) {
     qtd.hidden = true;
     qtd.textContent = "";
     desc.textContent = "";
+    desc.hidden = true;
     return;
   }
   icone.innerHTML = htmlIcone(item.key, "bag-wheel__center-icon", 120);
   nome.textContent = item.nome || nomeDe(item.tipo, item.key);
   qtd.hidden = false;
   qtd.textContent = `x${contar(item.tipo, item.key)}`;
-  desc.textContent = descricaoItem(item.tipo, item.key);
+  const texto = descricaoItem(item.tipo, item.key);
+  desc.textContent = texto;
+  desc.hidden = !texto;
+}
+
+function indicePeloMouse(lista) {
+  if (!ponteiro || !anel || !lista.length) return null;
+  const rect = anel.getBoundingClientRect();
+  const cx = rect.left + rect.width * 0.5;
+  const cy = rect.top + rect.height * 0.5;
+  const dx = ponteiro.x - cx;
+  const dy = ponteiro.y - cy;
+  const radius = Math.min(rect.width, rect.height) * 0.5;
+  const dz = Math.max(MOUSE_DEADZONE_PX, radius * MOUSE_CENTER_RATIO);
+  if (Math.hypot(dx, dy) < dz) return null;
+  const ang = Math.atan2(dy, dx);
+  let t = (ang + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
+  return Math.min(lista.length - 1, Math.floor((t / (Math.PI * 2)) * lista.length));
 }
 
 function apontar() {
-  if (!ponteiro || !anel) return;
+  if (!anel) return;
   const lista = itensDaPagina();
   if (!lista.length) return;
-  const rect = anel.getBoundingClientRect();
-  const ang = Math.atan2(ponteiro.y - (rect.top + rect.height / 2), ponteiro.x - (rect.left + rect.width / 2));
-  let t = (ang + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
-  const i = Math.min(lista.length - 1, Math.floor((t / (Math.PI * 2)) * lista.length));
-  if (i === mira) return;
-  mira = i;
-  pintarCentro(lista);
-  anel.querySelectorAll(".bag-wheel__item").forEach((node, k) => node.classList.toggle("is-on", k === i));
+  const i = indicePeloMouse(lista);
+  if (i == null || i === mira) return;
+  aplicarMira(i, lista);
 }
 
 function catInicial(slot) {
@@ -196,6 +278,7 @@ function abrir(slot) {
   }
   raiz.hidden = false;
   raiz.classList.add("is-in");
+  ligarPonteiroJanela();
   desenhar();
 }
 
@@ -206,8 +289,10 @@ function fechar(equipar) {
   aberta = false;
   estado.roda = false;
   acumScroll = 0;
+  desligarPonteiroJanela();
   raiz.classList.remove("is-in");
   raiz.hidden = true;
+  if (spoke) spoke.classList.remove("is-on");
   if (item) {
     const atual = estado.hotbar[slot];
     const mesmo = !!(atual && atual.tipo === item.tipo && atual.key === item.key);

@@ -75,13 +75,21 @@ const PRESETS_CELADON = Object.freeze([
   ]),
 ]);
 
-/** Móveis do catálogo indoor → peças da folha 3D. */
+/** Móveis do catálogo indoor → peças da folha 3D / props cidade. */
 const MAPA_MOVEL = Object.freeze({
   cama: "cama-azul",
   mesa: "mesa",
   cadeira: "cadeira",
   planta: "vaso",
   bancada: "mesa",
+  maquinaCura: "cura",
+  pc: "pc",
+});
+
+/** Props 3D (OBJ) sem recorte na folha de interior. */
+const PROP_MOVEL = Object.freeze({
+  cura: Object.freeze({ r: 0.62 }),
+  pc: Object.freeze({ r: 0.45 }),
 });
 
 /** @type {readonly (readonly [string, number, number])[]} */
@@ -148,12 +156,14 @@ export function moveisDaSala() {
     const m = moveisJogador[i];
     const id = MAPA_MOVEL[m.key] || m.key;
     const peca = porId.get(id);
-    if (!peca) continue;
+    const prop = PROP_MOVEL[id];
+    if (!peca && !prop) continue;
     lista.push({
-      id: peca.id,
+      id: peca?.id || id,
+      key: m.key,
       x: chao.x + m.x + 0.5,
       y: chao.y + m.y + 0.5,
-      r: peca.r,
+      r: peca?.r ?? prop.r,
     });
   }
   return lista;

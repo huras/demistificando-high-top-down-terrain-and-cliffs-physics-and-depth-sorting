@@ -40,6 +40,8 @@ import { ESTAGIO } from "../wild/estagios.js";
 import { lerMixClima } from "../render/3d/ceu/clima.js";
 import { colher, criarSolo, molharPorChuva, plantar, regar, simularPlot } from "../wild/plots.js";
 import { sfx } from "./audio.js";
+import { sairArmazem } from "../historia/warehouses/entrar.js";
+import { onGiovanniGymCleared } from "../historia/warehouses/overhear.js";
 import { iniciarPortaTransicao, portaOcupada } from "./portaTransicao.js";
 import { emAlcanceEdicao } from "../mundo/voxel/editar.js";
 import { tentarColocar, tentarQuebrar } from "./blocos.js";
@@ -600,6 +602,12 @@ export function sairInterior(corpo) {
     sairSantuario(corpo);
     return;
   }
+  if (interior.papel === "armazem") {
+    sairArmazem(corpo);
+    return;
+  }
+  const eraGinasioViridian =
+    interior.papel === "ginasio" && (interior.ax | 0) === 10 && (interior.ay | 0) === 11;
   const saida = saidaDoPredio(interior);
   corpo.x = saida.x;
   corpo.y = saida.y;
@@ -626,6 +634,7 @@ export function sairInterior(corpo) {
   estado.dialogo = null;
   estado.saidaGrace = 0.6;
   sfx("porta");
+  if (eraGinasioViridian) onGiovanniGymCleared();
 }
 
 /** Mix de precipitação já “visível” — evita molhar no rastro residual. */

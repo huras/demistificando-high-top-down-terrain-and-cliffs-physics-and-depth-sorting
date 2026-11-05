@@ -260,7 +260,30 @@ export const MOVEIS = Object.freeze({
   mesa: Object.freeze({ key: "mesa", nome: "Mesa", cor: "#92400e", custo: Object.freeze({ wood: 4 }) }),
   cadeira: Object.freeze({ key: "cadeira", nome: "Cadeira", cor: "#a8a29e", custo: Object.freeze({ wood: 2 }) }),
   planta: Object.freeze({ key: "planta", nome: "Vaso", cor: "#16a34a", custo: Object.freeze({ plantFiber: 2 }) }),
-  bancada: Object.freeze({ key: "bancada", nome: "Bancada", cor: "#44403c", custo: Object.freeze({ wood: 6, stone: 2 }), craft: true }),
+  bancada: Object.freeze({
+    key: "bancada",
+    nome: "Bancada",
+    cor: "#44403c",
+    custo: Object.freeze({ wood: 6, stone: 2 }),
+    craft: true,
+    indoorOnly: true,
+  }),
+  maquinaCura: Object.freeze({
+    key: "maquinaCura",
+    nome: "Aparelho do Centro",
+    cor: "#ec4899",
+    custo: Object.freeze({ wood: 16, stone: 24 }),
+    maquinaCura: true,
+    indoorOnly: true,
+  }),
+  pc: Object.freeze({
+    key: "pc",
+    nome: "PC do Bill",
+    cor: "#38bdf8",
+    custo: Object.freeze({ wood: 12, stone: 16 }),
+    pc: true,
+    indoorOnly: true,
+  }),
 });
 
 export const RECEITAS_BOLA = Object.freeze({

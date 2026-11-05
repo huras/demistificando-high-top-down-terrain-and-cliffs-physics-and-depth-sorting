@@ -172,9 +172,14 @@ function noClique(ev) {
     return;
   } else if (act === "cat") {
     estado.categoria = btn.dataset.cat;
+    estado.itemBagSel = null;
     const hostBag = document.querySelector('[data-menu-host="bag"]');
     if (estado.menuAberto && hostBag) hostBag.innerHTML = htmlMochilaMenu();
     avisar();
+  } else if (act === "bag-sel") {
+    estado.itemBagSel = tipo && key ? { tipo, key } : null;
+    const hostBag = document.querySelector('[data-menu-host="bag"]');
+    if (estado.menuAberto && hostBag) hostBag.innerHTML = htmlMochilaMenu();
   } else if (act === "usar" || act === "usar-mon") usarSelecionado(tipo, key, "pokemon");
   else if (act === "usar-jogador") usarSelecionado(tipo, key, "jogador");
   else if (act === "slot") {

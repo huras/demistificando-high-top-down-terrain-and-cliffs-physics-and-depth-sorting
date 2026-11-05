@@ -19,6 +19,10 @@ import {
   superficieBaixaLocal,
   superficieLocal,
 } from "./chunk.js";
+import {
+  gravarChunksEditsIdb,
+  listarChunksEditsIdb,
+} from "./cacheEditsIdb.js";
 import { limparPropsChunk } from "../bioma/propsBioma.js";
 import { gerarChunkProcedural, passosChunk } from "./gerarChunk.js";
 import { BLOCO, ehSolido } from "./tiposBloco.js";
@@ -31,15 +35,26 @@ import {
 } from "./prioridadeChunk.js";
 import { medir } from "../../diagnostico/perfChunk.js";
 
+const FLUSH_EDITS_MS = 500;
+
 /** @type {Map<string, object>} */
 const chunks = new Map();
-/** edits jogador: "x,y,z" → id */
-const edits = new Map();
+/**
+ * Edits por chunk: "cx,cy" → Map<"lx,ly,z", id>.
+ * @type {Map<string, Map<string, number>>}
+ */
+const editsPorChunk = new Map();
+/** @type {Set<string>} */
+const editsDirty = new Set();
 /** @type {Set<(aabb: object) => void>} */
 const ouvintesDirty = new Set();
 
 let seed = SEED_MUNDO;
 let aabbCarregado = { x0: 0, y0: 0, x1: -1, y1: -1 };
+let saveIdEdits = "demo-jogo-v2";
+let flushTimer = 0;
+/** @type {Promise<void> | null} */
+let flushEmVoo = null;
 
 export function obterSeed() {
   return seed;
@@ -63,18 +78,138 @@ export function avisarDirty() {
   emitirDirty(aabbCarregado);
 }
 
-function chaveEdit(x, y, z) {
-  return `${x|0},${y|0},${z|0}`;
+function chaveCelulaLocal(lx, ly, z) {
+  return `${lx|0},${ly|0},${z|0}`;
+}
+
+function mapaEditsDoChunk(cx, cy, criar = false) {
+  const k = chaveChunk(cx, cy);
+  let m = editsPorChunk.get(k);
+  if (!m && criar) {
+    m = new Map();
+    editsPorChunk.set(k, m);
+  }
+  return m || null;
+}
+
+function registrarEditLocal(cx, cy, lx, ly, z, id) {
+  const m = mapaEditsDoChunk(cx, cy, true);
+  m.set(chaveCelulaLocal(lx, ly, z), id | 0);
+  editsDirty.add(chaveChunk(cx, cy));
+  agendarFlushEdits();
+}
+
+function cellsDoMapa(mapa) {
+  const n = mapa.size;
+  const cells = new Int16Array(n * 4);
+  let i = 0;
+  for (const [k, id] of mapa) {
+    const p = k.split(",");
+    cells[i++] = p[0] | 0;
+    cells[i++] = p[1] | 0;
+    cells[i++] = p[2] | 0;
+    cells[i++] = id | 0;
+  }
+  return cells;
+}
+
+function hidratarMapaDeCells(cx, cy, cells) {
+  if (!cells || !cells.length) return;
+  const m = mapaEditsDoChunk(cx, cy, true);
+  for (let i = 0; i + 3 < cells.length; i += 4) {
+    m.set(
+      chaveCelulaLocal(cells[i], cells[i + 1], cells[i + 2]),
+      cells[i + 3] | 0,
+    );
+  }
 }
 
 function aplicarEditsNoChunk(chunk) {
-  const baseX = chunk.cx * CHUNK_XZ;
-  const baseY = chunk.cy * CHUNK_XZ;
-  for (const [k, id] of edits) {
-    const [sx, sy, sz] = k.split(",").map(Number);
-    if (Math.floor(sx / CHUNK_XZ) !== chunk.cx) continue;
-    if (Math.floor(sy / CHUNK_XZ) !== chunk.cy) continue;
-    definirLocal(chunk, sx - baseX, sy - baseY, sz, id);
+  const m = mapaEditsDoChunk(chunk.cx, chunk.cy, false);
+  if (!m || !m.size) return;
+  for (const [k, id] of m) {
+    const p = k.split(",");
+    definirLocal(chunk, p[0] | 0, p[1] | 0, p[2] | 0, id | 0);
+  }
+}
+
+function agendarFlushEdits() {
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = 0;
+    void flushEditsIdb();
+  }, FLUSH_EDITS_MS);
+}
+
+/**
+ * Grava chunks dirty no IndexedDB. Safe chamar várias vezes.
+ * @returns {Promise<void>}
+ */
+export function flushEditsIdb() {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = 0;
+  }
+  if (!editsDirty.size) return flushEmVoo || Promise.resolve();
+
+  const dirtyKeys = [...editsDirty];
+  editsDirty.clear();
+  const lista = [];
+  for (let i = 0; i < dirtyKeys.length; i++) {
+    const k = dirtyKeys[i];
+    const m = editsPorChunk.get(k);
+    const partes = k.split(",");
+    const cx = partes[0] | 0;
+    const cy = partes[1] | 0;
+    lista.push({
+      cx,
+      cy,
+      cells: m && m.size ? cellsDoMapa(m) : new Int16Array(0),
+    });
+  }
+
+  const job = gravarChunksEditsIdb(saveIdEdits, lista).finally(() => {
+    if (flushEmVoo === job) flushEmVoo = null;
+  });
+  flushEmVoo = job;
+  return job;
+}
+
+/**
+ * Carrega edits do save para a RAM (antes do stream do mundo).
+ * @param {string} saveId
+ */
+export async function hidratarEditsDoSave(saveId) {
+  saveIdEdits = saveId || saveIdEdits;
+  editsPorChunk.clear();
+  editsDirty.clear();
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = 0;
+  }
+  const lista = await listarChunksEditsIdb(saveIdEdits);
+  for (let i = 0; i < lista.length; i++) {
+    const { cx, cy, cells } = lista[i];
+    hidratarMapaDeCells(cx, cy, cells);
+  }
+}
+
+/** Reaplica edits nos chunks já publicados (após boot tardio). */
+export function reaplicarEditsNosChunksCarregados() {
+  for (const chunk of chunks.values()) {
+    aplicarEditsNoChunk(chunk);
+    chunk.sujo = true;
+    invalidarFluxo(chunk);
+  }
+  if (chunks.size) {
+    emitirDirty({
+      x0: aabbCarregado.x0,
+      y0: aabbCarregado.y0,
+      x1: aabbCarregado.x1,
+      y1: aabbCarregado.y1,
+      z0: 0,
+      z1: CHUNK_Y - 1,
+    });
   }
 }
 
@@ -179,7 +314,7 @@ export function definirBloco(wx, wy, wz, id) {
   const mudou = definirLocal(chunk, lx, ly, z, id);
   if (!mudou) return false;
 
-  edits.set(chaveEdit(x, y, z), id | 0);
+  registrarEditLocal(cx, cy, lx, ly, z, id);
 
   // marca vizinhos se na borda
   marcarVizinhosSujos(cx, cy, lx, ly);
@@ -229,7 +364,7 @@ export function definirLiquidoLote(escritas) {
     const ly = y - cy * CHUNK_XZ;
     if (!definirLocal(chunk, lx, ly, z, id)) continue;
 
-    edits.set(chaveEdit(x, y, z), id);
+    registrarEditLocal(cx, cy, lx, ly, z, id);
     const fam = e.fluido | 0;
     if (fam > 0) {
       const ci = ly * CHUNK_XZ + lx;

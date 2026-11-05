@@ -12,6 +12,7 @@ import {
 } from "../wild/catalogo.js";
 import { listaParty } from "../pokemon/party.js";
 import { contar, estado, temChave, nomeDe } from "./estado.js";
+import { descricaoItem } from "./descricaoItem.js";
 import { htmlIcone } from "./icones.js";
 import { t } from "./i18n.js";
 import {
@@ -60,6 +61,9 @@ export function htmlPartyMenu() {
     .join("")}</div>`;
 }
 
+const SLOT_ICONE_PX = 56;
+const DETAIL_ICONE_PX = 64;
+
 export function htmlMochilaMenu() {
   const cats = [
     ["balls", t("ui.bolas")],
@@ -70,16 +74,40 @@ export function htmlMochilaMenu() {
     ["tools", t("ui.ferramentas")],
     ["key", t("ui.chave")],
   ];
+  const lista = itensVisiveis(estado.categoria);
+  const sel = resolverSelecao(lista);
   const botoes = cats
-    .map(
-      ([id, rotulo]) =>
-        `<button type="button" data-act="cat" data-cat="${id}" class="${estado.categoria === id ? "is-on" : ""}">${rotulo}</button>`,
-    )
+    .map(([id, rotulo]) => {
+      const on = estado.categoria === id ? " is-active" : "";
+      return `<button type="button" data-act="cat" data-cat="${id}" class="bag-cats__btn${on}" aria-selected="${estado.categoria === id}">
+        <span class="bag-cats__label">${escHtml(rotulo)}</span>
+      </button>`;
+    })
     .join("");
-  return `<p class="jogo-dinheiro">₽ ${estado.dinheiro}</p><div class="jogo-cats">${botoes}</div><div class="jogo-grade">${linhasCategoria(estado.categoria)}</div>`;
+  const grade = lista.length
+    ? lista
+        .map((item) => {
+          const qtd = item.tipo === TIPO_ITEM.CHAVE ? 1 : contar(item.tipo, item.key);
+          const selected =
+            sel && sel.tipo === item.tipo && sel.key === item.key ? " is-selected" : "";
+          const nome = nomeDe(item.tipo, item.key);
+          return `<button type="button" class="bag__slot${selected}" data-act="bag-sel" data-tipo="${item.tipo}" data-key="${escHtml(item.key)}" title="${escHtml(nome)}">
+            <span class="bag__slot-icon">${htmlIcone(item.key, "bag__slot-img", SLOT_ICONE_PX)}</span>
+            <span class="bag__slot-count">${qtd}</span>
+          </button>`;
+        })
+        .join("")
+    : `<p class="bag-detail__empty">${escHtml(t("ui.vazio"))}</p>`;
+  return `<div class="bag-panel bag-panel--botw">
+    <div class="bag-cats">${botoes}</div>
+    <div class="bag-main">
+      <div class="bag-grid-wrap"><div class="bag-grid">${grade}</div></div>
+      ${htmlDetalheBag(sel)}
+    </div>
+  </div>`;
 }
 
-function linhasCategoria(cat) {
+function itensVisiveis(cat) {
   const mapa = {
     balls: entradas(BOLAS, TIPO_ITEM.BOLA),
     berries: entradas(BERRIES, TIPO_ITEM.BERRY),
@@ -89,30 +117,60 @@ function linhasCategoria(cat) {
     tools: entradas(FERRAMENTAS, TIPO_ITEM.FERRAMENTA),
     key: entradas(CHAVES, TIPO_ITEM.CHAVE),
   };
-  const lista = mapa[cat] || [];
-  if (!lista.length) return `<p>${t("ui.vazio")}</p>`;
-  return lista
-    .map((item) => {
-      const qtd = contar(item.tipo, item.key);
-      if (qtd <= 0 && item.tipo !== TIPO_ITEM.CHAVE) return "";
-      if (item.tipo === TIPO_ITEM.CHAVE && !temChave(item.key)) return "";
-      const equipa =
-        item.tipo === TIPO_ITEM.BOLA ||
-        item.tipo === TIPO_ITEM.BERRY ||
-        item.tipo === TIPO_ITEM.REMEDIO ||
-        item.tipo === TIPO_ITEM.BLOCO ||
-        item.tipo === TIPO_ITEM.FERRAMENTA;
-      const usar = equipa
-        ? `<button type="button" data-act="usar" data-tipo="${item.tipo}" data-key="${item.key}">Equipar</button>`
-        : "";
-      const nome = nomeDe(item.tipo, item.key);
-      return `<div class="jogo-item">${htmlIcone(item.key, "jogo-item__icone")}<span>${nome} ×${qtd || 1}</span>${usar}</div>`;
-    })
-    .join("");
+  return (mapa[cat] || []).filter((item) => {
+    if (item.tipo === TIPO_ITEM.CHAVE) return temChave(item.key);
+    return contar(item.tipo, item.key) > 0;
+  });
+}
+
+function resolverSelecao(lista) {
+  const atual = estado.itemBagSel;
+  if (atual && lista.some((it) => it.tipo === atual.tipo && it.key === atual.key)) {
+    return atual;
+  }
+  if (atual) estado.itemBagSel = null;
+  return null;
+}
+
+function itemEquipa(tipo) {
+  return (
+    tipo === TIPO_ITEM.BOLA ||
+    tipo === TIPO_ITEM.BERRY ||
+    tipo === TIPO_ITEM.REMEDIO ||
+    tipo === TIPO_ITEM.BLOCO ||
+    tipo === TIPO_ITEM.FERRAMENTA
+  );
+}
+
+function htmlDetalheBag(sel) {
+  if (!sel) {
+    return `<aside class="bag-detail" data-bag-detail>
+      <p class="bag-detail__empty">Selecione um item</p>
+      <div class="bag-detail__body" hidden></div>
+    </aside>`;
+  }
+  const qtd = sel.tipo === TIPO_ITEM.CHAVE ? 1 : contar(sel.tipo, sel.key);
+  const nome = nomeDe(sel.tipo, sel.key);
+  const desc = descricaoItem(sel.tipo, sel.key) || "";
+  const acoes = itemEquipa(sel.tipo)
+    ? `<div class="bag-detail__actions">
+        <button type="button" class="bag-detail__btn" data-act="usar" data-tipo="${sel.tipo}" data-key="${escHtml(sel.key)}">Equipar</button>
+      </div>`
+    : "";
+  return `<aside class="bag-detail" data-bag-detail>
+    <p class="bag-detail__empty" hidden>Selecione um item</p>
+    <div class="bag-detail__body">
+      <div class="bag-detail__icon">${htmlIcone(sel.key, "bag__slot-img", DETAIL_ICONE_PX)}</div>
+      <h3 class="bag-detail__name">${escHtml(nome)}</h3>
+      <p class="bag-detail__count">×${qtd}</p>
+      <p class="bag-detail__desc">${escHtml(desc)}</p>
+      ${acoes}
+    </div>
+  </aside>`;
 }
 
 function entradas(obj, tipo) {
-  return Object.keys(obj).map((key) => ({ ...obj[key], tipo }));
+  return Object.keys(obj).map((key) => ({ ...obj[key], tipo, key }));
 }
 
 export function htmlQuestsMenu() {

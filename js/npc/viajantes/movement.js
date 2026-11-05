@@ -13,7 +13,7 @@ import {
 } from "../../mundo/regiao/grafoKanto.js";
 import { CIDADES_KANTO } from "../../mundo/regiao/kantoCidades.js";
 import { linhasDaRota } from "../../mundo/regiao/linhasEstrada.js";
-import { irParaNpc, snapChaoNpc } from "../locomocao.js";
+import { irParaNpc, manterFisicaNpc, snapChaoNpc } from "../locomocao.js";
 import { avancarAnimPeople } from "../render/peopleAnim.js";
 import { hashStr, mulberry32, pickIndex } from "../rng.js";
 import { OW_CFG, OW_LOD, OW_MODO } from "./config.js";
@@ -110,10 +110,16 @@ function rotaAreas(sax, say, tax, tay) {
   return path;
 }
 
-/** Persegue meta com path + pulo/climb; anima walk do people sheet. */
+/** Persegue meta com física local (nado/pulo/climb); anima walk do people sheet. */
 function moverEmDirecao(trainer, gx, gy, dt) {
   const chegou = irParaNpc(trainer, gx, gy, dt, OW_CFG.WALK_SPEED);
-  avancarAnimPeople(trainer, chegou ? 0 : dt);
+  const loco =
+    !!trainer.andando ||
+    !!trainer.nadando ||
+    !!trainer.escalando ||
+    !!trainer.mantle ||
+    !!trainer.pulando;
+  avancarAnimPeople(trainer, chegou || !loco ? 0 : dt);
   return chegou;
 }
 
@@ -131,7 +137,7 @@ function tickWander(trainer, dt) {
       trainer.vx = 0;
       trainer.vy = 0;
       trainer.andando = false;
-      snapChaoNpc(trainer);
+      manterFisicaNpc(trainer, dt);
       avancarAnimPeople(trainer, 0);
       return;
     }

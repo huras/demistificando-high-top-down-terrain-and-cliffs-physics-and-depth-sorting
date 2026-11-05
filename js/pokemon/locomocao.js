@@ -120,20 +120,25 @@ function sairDaBase(corpo) {
   return false;
 }
 
+function ignoraDespenetrar(corpo) {
+  return !!(corpo?.rideAtivo || corpo?._rideFreeze);
+}
+
 export function despenetrarCorpos() {
   const lista = corposSolidos();
   for (let i = 0; i < lista.length; i++) {
     if (lista[i].morto || lista[i].capturado || lista[i].forcaCarregado) continue;
+    if (ignoraDespenetrar(lista[i])) continue;
     sairDaBase(lista[i]);
   }
   for (let passo = 0; passo < PASSOS_SEPARAR; passo++) {
     let mexeu = false;
     for (let i = 0; i < lista.length; i++) {
       const a = lista[i];
-      if (a.morto || a.capturado || a.forcaCarregado) continue;
+      if (a.morto || a.capturado || a.forcaCarregado || ignoraDespenetrar(a)) continue;
       for (let j = i + 1; j < lista.length; j++) {
         const b = lista[j];
-        if (b.morto || b.capturado || b.forcaCarregado) continue;
+        if (b.morto || b.capturado || b.forcaCarregado || ignoraDespenetrar(b)) continue;
         const ea = a.elevacao ?? a.z ?? 0;
         const eb = b.elevacao ?? b.z ?? 0;
         if (Math.abs(ea - eb) > FOLGA_PISO) continue;

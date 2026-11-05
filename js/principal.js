@@ -59,6 +59,7 @@ import {
   atualizarStreaming,
   atualizarStreamingDuplo,
   definirRaioStream,
+  hidratarEditsDoSave,
   iniciarMundoAoRedor,
   marcarChunkSujo,
   obterRaioStream,
@@ -133,8 +134,14 @@ import {
 } from "./santuario/colocacao.js";
 import { ensureShrineArtLoaded } from "./santuario/arte.js";
 import { despenetrarCorpos } from "./pokemon/locomocao.js";
-import { estado as estadoJogo, obterSpawnSalvo, registrarCamera } from "./jogo/estado.js";
+import {
+  estado as estadoJogo,
+  idSaveAtual,
+  obterSpawnSalvo,
+  registrarCamera,
+} from "./jogo/estado.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
+import { cinemaRideAtivo, estaMontado, forcarDesmontar, tickRide } from "./jogo/ride.js";
 import { jogadorMorto } from "./jogo/hud/morte.js";
 import {
   focoStreaming,
@@ -248,6 +255,7 @@ async function iniciarInterno() {
   const spawn = obterSpawnSalvo() || SPAWN;
   definirStatus("Gerando mundo no spawn…");
   indexarColisaoCidade();
+  await hidratarEditsDoSave(idSaveAtual());
   iniciarMundoAoRedor(spawn.x, spawn.y);
   marcarFase("mundo", 1);
 
@@ -693,7 +701,12 @@ function loop(agora) {
   }
 
   const morto = jogadorMorto();
-  if (!passeioAtivo() && !trava && !morto) atualizarMovimento(corpo, dt);
+  const rideCinema = cinemaRideAtivo();
+  // Cinema de montaria conduz o corpo cedo (approach/pulo); sem WASD livre.
+  if (!passeioAtivo() && !trava && !morto) {
+    if (rideCinema) tickRide(dt, corpo);
+    else atualizarMovimento(corpo, dt);
+  }
   tickFilaPath();
   if (passeioAtivo() && !trava && !morto) atualizarPasseio(corpo, dt);
   atualizarAgente(agente, corpo, dt, 0, AGENTE_DIST_SEGUIR);
@@ -754,6 +767,11 @@ function loop(agora) {
   atualizarMapaKanto(corpo.x, corpo.y);
   tickMapaMundo(corpo.x, corpo.y, dt, corpo);
   tickPokemon(corpo, dt, agente.perfil);
+  // Snap do mon no assento depois da IA (cinema já rodou antes do movimento).
+  if (!trava) {
+    if (morto && (estaMontado() || cinemaRideAtivo())) forcarDesmontar(corpo);
+    else if (!morto && estaMontado() && !cinemaRideAtivo()) tickRide(dt, corpo);
+  }
   if (!trava) tickNpc(corpo, dt);
   tickTeleporte(dt, {
     corpo,

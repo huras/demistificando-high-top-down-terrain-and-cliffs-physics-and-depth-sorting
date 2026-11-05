@@ -16,7 +16,7 @@ import {
   listaEstagiosAtivos,
   progressoEstagio,
 } from "../../pokemon/combate/estagios.js";
-import { rideSlot, slotPodeMontar } from "../apiHud.js";
+import { rideCinemaHud, rideSlot, slotPodeMontar } from "../apiHud.js";
 import { progressoExp } from "../../pokemon/experiencia.js";
 import { relogioPokemon } from "../../pokemon/sistema.js";
 import { MODE_ICONS } from "./iconesModo.js";
@@ -278,7 +278,8 @@ function pintarDetail() {
   const cresc = ator.crescimento || ator.especie?.crescimento || "mediumSlow";
   const pctExp = Math.round(progressoExp(ator.nivel | 0, ator.exp | 0, cresc) * 100);
   const montado = rideSlot() === i;
-  const rideOk = i >= 0 && slotPodeMontar(i);
+  const rideCinema = rideCinemaHud();
+  const rideOk = i >= 0 && slotPodeMontar(i) && !rideCinema;
   const gen = simboloGenero(ator);
   const pref = prefModo(ator);
   const tipModo = pref === AI_MODE.DEFAULT
@@ -286,7 +287,7 @@ function pintarDetail() {
     : rotuloModo(pref);
   const sigEst = assinaturaEstagios(ator);
 
-  const sig = `${ator.id}:${hp}:${pctExp}:${montado ? 1 : 0}:${ator.nivel}:${pref}:${modoEfetivo(ator)}:${sigEst}`;
+  const sig = `${ator.id}:${hp}:${pctExp}:${montado ? 1 : 0}:${rideCinema ? 1 : 0}:${ator.nivel}:${pref}:${modoEfetivo(ator)}:${sigEst}`;
   if (sig === assinaturaDetail) {
     const barHp = detailHost.querySelector("[data-combat-hp]");
     const barExp = detailHost.querySelector("[data-combat-exp]");
@@ -337,8 +338,8 @@ function pintarDetail() {
         <button type="button" class="party-combat__action" data-act="deploy" data-i="${i}" title="Campo">
           ${pokemonDeployado() === ator ? "Recolher" : "Campo"}
         </button>
-        <button type="button" class="party-combat__action party-combat__action--ride${montado ? " is-on" : ""}" data-act="ride" data-i="${i}" ${rideOk ? "" : "disabled"} title="${montado ? "Desmontar" : "Montar"}">
-          ${montado ? "Desmontar" : "Ride"}
+        <button type="button" class="party-combat__action party-combat__action--ride${montado ? " is-on" : ""}" data-act="ride" data-i="${i}" ${rideOk ? "" : "disabled"} title="${rideCinema ? "Montando…" : montado ? "Desmontar" : "Montar"}">
+          ${rideCinema ? "…" : montado ? "Desmontar" : "Ride"}
         </button>
       </div>
     </div>`;

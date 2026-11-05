@@ -12,6 +12,7 @@ import {
 } from "../pokemon/evolucaoCinema.js";
 import { alternarMudo, atualizarAudio, destravarAudio, estaMudo, sincronizarBgm } from "./audio.js";
 import { tickInundar } from "../mundo/agua/inundar.js";
+import { flushEditsIdb } from "../mundo/voxel/storeMundo.js";
 import { tickBlocos } from "./blocos.js";
 import { atualizarBillboardsBerry } from "./billboards.js";
 import {
@@ -41,9 +42,17 @@ import {
   uiAberta,
 } from "./estado.js";
 import { ligarRoda, tickRoda } from "./roda.js";
+import {
+  bootHistoria,
+  tickHistoria,
+  interagirHistoria,
+  historiaBloqueiaMovimento,
+} from "../historia/index.js";
+import { receberEspecie } from "../pokemon/party.js";
 import { desenharSala, ligarSala, moverSala, pertoDe, redimensionarSala } from "./sala.js";
 import { alvoLaboratorio, executarAlvoLaboratorio } from "./laboratorio.js";
 import { alvoDoHub, executarAlvoHub, promptDoHub } from "./hub.js";
+import { alvoMovelCasa, executarMovelCasa } from "./moveisCasa.js";
 import { atualizarCuraMaquina, curaOcupada } from "./maquinaCura.js";
 import { promptDoLaboratorio } from "../mundo/cidade/laboratorio.js";
 import { fecharCartaGanho, tickGanho } from "./ganhoItem.js";
@@ -74,7 +83,6 @@ import { toggleMenu, semearDexParty } from "./apiHud.js";
 import { bootHudCompleto, tickHudCampo } from "./hud/bootHud.js";
 import { apiQuestBoard } from "./hud/questBoard/janela.js";
 import { jogadorMorto } from "./hud/morte.js";
-import { tickRide } from "./ride.js";
 import { tickMissoesQuadro } from "../quests/runtime.js";
 import { FORCA } from "../config.js";
 import {
@@ -107,7 +115,8 @@ export function jogoTravaMundo() {
     portaOcupada() ||
     evolucaoAberta() ||
     batalhaTreinadorAtiva() ||
-    !!estado.batalhaTreinador
+    !!estado.batalhaTreinador ||
+    historiaBloqueiaMovimento()
   );
 }
 
@@ -141,6 +150,7 @@ export function montarJogo(opts) {
   bootHudCompleto();
   definirGateEvolucao(() => !uiAberta() && !jogadorMorto() && !mapaAberto());
   carregar();
+  bootHistoria();
   // Mundo já streamou no outdoor; se o save estava dentro, entra no bolso agora.
   if (opts.corpo) restaurarInteriorSalvo(opts.corpo);
   semearDexParty();
@@ -150,7 +160,10 @@ export function montarJogo(opts) {
   ligarBotaoSom();
   window.addEventListener("pointerdown", destravarAudio, { once: true });
   window.addEventListener("keydown", destravarAudio, { once: true });
-  window.addEventListener("beforeunload", () => salvar());
+  window.addEventListener("beforeunload", () => {
+    salvar();
+    void flushEditsIdb();
+  });
   const rect = viewport?.getBoundingClientRect();
   redimensionarSala(Math.floor(rect?.width || 960), Math.floor(rect?.height || 540));
 }
@@ -164,8 +177,8 @@ export function tickJogo(dt, corpo) {
     tickBatalhaViajante(dt);
     return;
   }
-  tickRide(dt);
   tickHudCampo(dt, corpo);
+  tickHistoria(corpo, dt);
   if (!estado.questBoardOpen && !jogadorMorto()) {
     tickMissoesQuadro(corpo, dt);
   }
@@ -230,7 +243,17 @@ export function tickJogo(dt, corpo) {
     !estado.ganhoAberto
       ? alvoDoHub(papelHub, corpo.x, corpo.y)
       : null;
-  const curaPerto = (alvoLab?.tipo === "cura" || alvoHub?.tipo === "cura") && !curaOcupada();
+  const alvoCasa =
+    papelHub === "casa" &&
+    !estado.dialogo &&
+    !estado.painel &&
+    !estado.construir &&
+    !estado.craft &&
+    !estado.ganhoAberto
+      ? alvoMovelCasa(corpo.x, corpo.y)
+      : null;
+  const curaPerto =
+    (alvoLab?.tipo === "cura" || alvoHub?.tipo === "cura") && !curaOcupada();
   const entrarPorta = !!porta && !estado.interior && !(estado.saidaGrace > 0);
   const acao = acaoContexto({
     corpo,
@@ -238,12 +261,13 @@ export function tickJogo(dt, corpo) {
     curaPerto,
     alvoLab,
     alvoHub,
+    alvoCasa,
     papelHub,
     interior: estado.interior,
   });
   const pf = !jogadorMorto() ? promptForca(corpo) : null;
   const npcFalar =
-    !jogadorMorto() && !alvoLab && !alvoHub
+    !jogadorMorto() && !alvoLab && !alvoHub && !alvoCasa
       ? npcPertoDe(corpo.x, corpo.y)
       : null;
   if (jogadorMorto()) {
@@ -355,7 +379,9 @@ export function tickJogo(dt, corpo) {
 
 function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
   if (acao.id === "entrar") tentarEntrar(corpo, porta);
-  else if (acao.id === "falarSantuario" || acao.id === "entrarSantuario") {
+  else if (acao.id === "entrarArmazem" || acao.id === "falarHistoria") {
+    interagirHistoria(corpo, darTrialPokemon);
+  } else if (acao.id === "falarSantuario" || acao.id === "entrarSantuario") {
     tentarEntrarSantuario(corpo, acao.stone);
   } else if (acao.id === "totemSantuario") {
     if (acao.totem?.cleared) mostrar("O totem já entregou sua gema.");
@@ -366,6 +392,13 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
   } else if (acao.id === "cura") {
     if (alvoHub?.tipo === "cura") executarAlvoHub(alvoHub);
     else executarAlvoLaboratorio(alvoLab);
+  } else if (
+    acao.id === "curaCasa" ||
+    acao.id === "pcCasa" ||
+    acao.id === "craftCasa" ||
+    acao.id === "camaCasa"
+  ) {
+    executarMovelCasa(acao.alvoCasa);
   } else if (acao.id === "pc") executarAlvoHub(alvoHub);
   else if (acao.id === "loja") executarAlvoHub(alvoHub);
   else if (acao.id === "hubFalar") executarAlvoHub(alvoHub);
@@ -471,6 +504,10 @@ function lerTeclas(corpo) {
   else if (teclaAgora("KeyM")) abrirMapa(corpo.x, corpo.y);
 }
 
+function darTrialPokemon(species) {
+  receberEspecie(species, 5);
+}
+
 function interagir(corpo) {
   destravarAudio();
   if (estado.dialogo) {
@@ -478,6 +515,7 @@ function interagir(corpo) {
     return;
   }
   if (estado.painel || estado.construir || estado.craft || estado.roda) return;
+  if (interagirHistoria(corpo, darTrialPokemon)) return;
   if (estado.interior?.sala3d && estado.interior.papel === "lab") {
     const perto = alvoLaboratorio(corpo.x, corpo.y);
     if (perto) executarAlvoLaboratorio(perto);

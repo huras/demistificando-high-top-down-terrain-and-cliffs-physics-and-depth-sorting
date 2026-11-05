@@ -301,7 +301,17 @@ export function listarSolidosPokemon() {
     if (!a.morto && !a.capturado && !a.forcaCarregado) saida.push(a);
   }
   const mon = pokemonNoCampo();
-  if (mon && !mon.morto && !mon.capturado && !mon.forcaCarregado) saida.push(mon);
+  // Montaria: mon não é sólido (cola no jogador; senão despenetrar empurra pra sempre).
+  if (
+    mon &&
+    !mon.morto &&
+    !mon.capturado &&
+    !mon.forcaCarregado &&
+    !mon.rideAtivo &&
+    !mon._rideFreeze
+  ) {
+    saida.push(mon);
+  }
   return saida;
 }
 

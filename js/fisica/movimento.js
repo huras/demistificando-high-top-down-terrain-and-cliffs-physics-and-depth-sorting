@@ -238,8 +238,14 @@ export function atualizarMovimento(corpo, dt) {
   }
   let { dx, dy } = vetorMovimento();
 
-  // F: toggle fly (não drena stamina)
-  if (teclaAgora("KeyF")) {
+  // Fly-ride: mantém voo sustentado (cruzeiro fino fica em tickRide).
+  if (corpo.rideAtivo && corpo.rideModo === "fly") {
+    corpo.nadando = false;
+    if (!estaVoando(corpo)) entrarVoo(corpo);
+  }
+
+  // F: toggle fly (não drena stamina). Bloqueado enquanto montado.
+  if (teclaAgora("KeyF") && !corpo.rideAtivo) {
     if (estaVoando(corpo)) sairVoo(corpo, { pousar: false });
     else {
       corpo.nadando = false;
@@ -248,13 +254,22 @@ export function atualizarMovimento(corpo, dt) {
   }
 
   const shift = teclaBaixa("ShiftLeft") || teclaBaixa("ShiftRight");
+  const sobe = teclaBaixa("Space");
+  const desce = teclaBaixa("ControlLeft");
+  // Marca controle manual de altitude no fly-ride (Space/Ctrl).
+  if (corpo.rideAtivo && corpo.rideModo === "fly") {
+    corpo._rideFlyManual = sobe || desce;
+  } else if (corpo._rideFlyManual) {
+    delete corpo._rideFlyManual;
+  }
+
   atualizarMovimentoDirecionado(corpo, dx, dy, dt, {
     correndo: shift,
     apertouPulo: teclaAgora("Space"),
     querEscalar: teclaEscaladaAgora(),
     podeSoltarEscala: true,
-    sobeVoo: teclaBaixa("Space"),
-    desceAsa: teclaBaixa("ControlLeft"),
+    sobeVoo: sobe,
+    desceAsa: desce,
   });
 }
 

@@ -16,6 +16,8 @@ import { promptSantuario, santuarioPerto } from "../santuario/interagir.js";
 import { puzzleSantuarioAberto } from "../santuario/puzzleModal.js";
 import { totemPerto } from "../santuario/interior.js";
 import { especie } from "../pokemon/dados.js";
+import { curaOcupada } from "./maquinaCura.js";
+import { promptHistoria } from "../historia/tick.js";
 
 const FOLGA_ESCALADA_MS = 160;
 let escaladaAte = 0;
@@ -49,7 +51,16 @@ function folgaEscalada() {
 }
 
 export function acaoContexto(ctx) {
-  const { corpo, entrarPorta, curaPerto, alvoLab, alvoHub, papelHub, interior } = ctx;
+  const {
+    corpo,
+    entrarPorta,
+    curaPerto,
+    alvoLab,
+    alvoHub,
+    alvoCasa,
+    papelHub,
+    interior,
+  } = ctx;
   if (!corpo) return null;
   if (puzzleSantuarioAberto()) return null;
 
@@ -61,6 +72,27 @@ export function acaoContexto(ctx) {
         rotulo: totem.cleared ? "Vazio" : "Tocar",
         ancora: { x: totem.x, y: totem.y, z: corpo.z || 0 },
         totem,
+      };
+    }
+  }
+
+  if (!interior) {
+    const hist = promptHistoria(corpo);
+    if (hist?.entrar) {
+      escaladaAte = 0;
+      return {
+        id: "entrarArmazem",
+        rotulo: hist.rotulo || "Entrar",
+        ancora: hist.site ? { x: hist.site.x, y: hist.site.y, z: 0 } : null,
+      };
+    }
+    if (hist?.ator) {
+      escaladaAte = 0;
+      return {
+        id: "falarHistoria",
+        rotulo: hist.rotulo || "Falar",
+        ancora: { x: hist.ator.x, y: hist.ator.y, z: hist.ator.z || 0 },
+        ator: hist.ator,
       };
     }
   }
@@ -79,6 +111,46 @@ export function acaoContexto(ctx) {
           z: corpo.z,
         };
     return { id: "cura", rotulo: "Recuperar", ancora };
+  }
+
+  if (alvoCasa?.tipo === "cura" && !curaOcupada()) {
+    escaladaAte = 0;
+    return {
+      id: "curaCasa",
+      rotulo: "Recuperar",
+      ancora: { x: alvoCasa.x, y: alvoCasa.y, z: corpo.z || 0 },
+      alvoCasa,
+    };
+  }
+
+  if (alvoCasa?.tipo === "pc") {
+    escaladaAte = 0;
+    return {
+      id: "pcCasa",
+      rotulo: "PC",
+      ancora: { x: alvoCasa.x, y: alvoCasa.y, z: corpo.z || 0 },
+      alvoCasa,
+    };
+  }
+
+  if (alvoCasa?.tipo === "bancada") {
+    escaladaAte = 0;
+    return {
+      id: "craftCasa",
+      rotulo: "Bancada",
+      ancora: { x: alvoCasa.x, y: alvoCasa.y, z: corpo.z || 0 },
+      alvoCasa,
+    };
+  }
+
+  if (alvoCasa?.tipo === "cama") {
+    escaladaAte = 0;
+    return {
+      id: "camaCasa",
+      rotulo: "Descansar",
+      ancora: { x: alvoCasa.x, y: alvoCasa.y, z: corpo.z || 0 },
+      alvoCasa,
+    };
   }
 
   if (alvoHub?.tipo === "pc") {

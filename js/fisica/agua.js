@@ -24,6 +24,10 @@ import { amostraAgua } from "../mundo/agua/amostra.js";
 import { alturaSobPes, moverAereo } from "./colisao.js";
 import { drenarStaminaNado } from "./stamina.js";
 
+function surfRideAtivo(corpo) {
+  return !!(corpo?.rideAtivo && corpo?.rideModo === "surf");
+}
+
 /**
  * Altura visual do corpo no eixo do billboard (antes do tilt).
  * Pokémon: `_alturaVisual` (trim do atlas) ou fallback ~PMD; jogador: `alturaCorpo`.
@@ -349,7 +353,14 @@ export function atualizarNado(corpo, dx, dy, dt) {
     return false;
   }
 
-  if (corpo.acao !== "afogando" && corpo.acao !== "cachoeira") {
+  if (surfRideAtivo(corpo)) {
+    // Surf: sem drain; regenera leve mesmo nadando.
+    const max = corpo.staminaMax ?? STAMINA_MAX;
+    if ((corpo.stamina ?? 0) < max) {
+      corpo.stamina = Math.min(max, (corpo.stamina ?? 0) + (max * 0.12) * dt);
+    }
+    corpo.afogandoT = 0;
+  } else if (corpo.acao !== "afogando" && corpo.acao !== "cachoeira") {
     drenarStaminaNado(corpo, dt, andando);
   } else if (corpo.acao === "cachoeira" && (corpo.stamina ?? 0) > 0) {
     drenarStaminaNado(corpo, dt, true);

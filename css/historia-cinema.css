@@ -1,0 +1,9 @@
+/* HUD some durante cinemáticas de história. */
+body.is-story-cinema #jogo-hud .hud-chrome,
+body.is-story-cinema #jogo-hud .skill-hud,
+body.is-story-cinema #jogo-hud .hotbar,
+body.is-story-cinema .game-menu {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
