@@ -2,7 +2,7 @@
  * Força psíquica: telecinese (anexo flutuante) + hover do carrier.
  */
 
-export const PSIQUICO_REACH_EXTRA = 0.45;
+export const PSIQUICO_REACH_EXTRA = 0.225;
 /** Distância máx. pedra↔carrier enquanto carrega (tiles/blocos mundo). */
 export const PSIQUICO_ALCANCE_MAX = 2;
 /** Distância à frente do carrier (clampada em ALCANCE_MAX). */

@@ -3,25 +3,25 @@
  */
 
 export const PORTAO_PEDRA = {
-  enterReach: 2.85,
-  exitReach: 3.25,
+  enterReach: 1.425,
+  exitReach: 1.625,
   enterToward: -0.15,
   exitToward: -0.35,
-  enterClose2: 1.1,
-  exitClose2: 1.6,
-  enterClose: Math.sqrt(1.1),
-  exitClose: Math.sqrt(1.6),
+  enterClose2: 0.55,
+  exitClose2: 0.8,
+  enterClose: Math.sqrt(0.55),
+  exitClose: Math.sqrt(0.8),
 };
 
 export const PORTAO_CORPO = {
-  enterReach: 2.95,
-  exitReach: 3.35,
+  enterReach: 1.475,
+  exitReach: 1.675,
   enterToward: -0.2,
   exitToward: -0.4,
-  enterClose2: 1.2,
-  exitClose2: 1.7,
-  enterClose: Math.sqrt(1.2),
-  exitClose: Math.sqrt(1.7),
+  enterClose2: 0.6,
+  exitClose2: 0.85,
+  enterClose: Math.sqrt(0.6),
+  exitClose: Math.sqrt(0.85),
 };
 
 const SCORE = { dist2: 0, toward: 0 };

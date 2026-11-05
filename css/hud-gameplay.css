@@ -387,7 +387,8 @@
 
 .hud-chip--clock {
   gap: 6px;
-  min-width: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
@@ -423,9 +424,11 @@
 }
 
 .hud-clock__period {
+  flex: 0 0 auto;
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: rgba(230, 238, 252, 0.65);
 }
 
@@ -449,7 +452,8 @@
 .hud-map-dock .hud-chip--wind.hud-vento,
 .hud-map-dock #jogo-vento.hud-vento {
   width: auto;
-  max-width: var(--area-minimap-size);
+  max-width: none;
+  flex: 0 0 auto;
   min-height: 34px;
   padding: 6px 10px 8px;
   color: #e6eefc;
@@ -630,7 +634,8 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-width: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
   font: 650 11px/1 var(--font);
   color: rgba(230, 238, 252, 0.78);
 }
@@ -734,15 +739,17 @@
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  width: var(--area-minimap-size);
-  max-width: 100%;
+  width: max-content;
+  min-width: var(--area-minimap-size);
+  max-width: none;
 }
 
 .hud-map-dock__wx-row {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
   align-self: stretch;
   gap: 6px;
 }

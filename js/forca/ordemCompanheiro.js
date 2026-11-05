@@ -23,7 +23,7 @@ function rotuloLevantar(mon) {
 
 export const ALCANCE_COMANDO = 13.5;
 export const RAIO_MIRA = 1.45;
-export const ALCANCE_GRAB = 1.15;
+export const ALCANCE_GRAB = 0.575;
 export const ALCANCE_PLACE = 1.65;
 export const ALCANCE_THROW = 4.6;
 
