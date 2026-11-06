@@ -1004,6 +1004,45 @@ export const TRILHAS_BGM = Object.freeze({
     "BGM/generated/Route 7 - Taiga Pass.mp3",
     "BGM/pool/Pokemon Omega Ruby and Alpha Sapphire - Cable Car.mp3",
   ]),
+  "cave.mt-moon": Object.freeze([
+    "BGM/pool/Pokemon Red Green Blue Yellow - Mt. Moon.mp3",
+    "BGM/pool/Crystal Cavern Route.mp3",
+    "BGM/pool/Pokemon Mystery Dungeon Explorers of Sky - Boulder Quarry.mp3",
+  ]),
+  "cave.rock-tunnel": Object.freeze([
+    "BGM/pool/Pokemon Mystery Dungeon Explorers of Sky - Boulder Quarry.mp3",
+    "BGM/pool/Pokemon Red Green Blue Yellow - Mt. Moon.mp3",
+    "BGM/pool/Crystal Cavern Route.mp3",
+  ]),
+  "cave.victory-road": Object.freeze([
+    "BGM/pool/Pokemon Diamond and Pearl - Mt. Coronet.mp3",
+    "BGM/pool/Pokemon Mystery Dungeon Explorers of Sky - Sky Peak Final Pass.mp3",
+    "BGM/pool/Pokemon Red Green Blue Yellow - Mt. Moon.mp3",
+  ]),
+  "cave.digletts-cave": Object.freeze([
+    "BGM/pool/Pokemon Black 2 White 2 - Castelia Sewers.mp3",
+    "BGM/pool/Pokemon Mystery Dungeon Explorers of Sky - Quicksand Cave.mp3",
+    "BGM/pool/Crystal Cavern Route.mp3",
+  ]),
+  "cave.seafoam-islands": Object.freeze([
+    "BGM/pool/Pokemon HeartGold and SoulSilver - Ice Path.mp3",
+    "BGM/pool/Pokemon Mystery Dungeon Explorers of Sky - Sky Peak Snowfield.mp3",
+    "BGM/pool/Blizzard Pathway.mp3",
+  ]),
+  "cave.cerulean-cave": Object.freeze([
+    "BGM/pool/Pokemon Mystery Dungeon Explorers of Sky - Boulder Quarry.mp3",
+    "BGM/pool/Pokemon Red Green Blue Yellow - Mt. Moon.mp3",
+    "BGM/pool/Crystal Cavern Route.mp3",
+  ]),
+  "cave.proc": Object.freeze([
+    "BGM/pool/Crystal Cavern Route.mp3",
+    "BGM/pool/Pokemon Red Green Blue Yellow - Mt. Moon.mp3",
+  ]),
+  "cave.rock": Object.freeze([
+    "BGM/pool/Pokemon Red Green Blue Yellow - Mt. Moon.mp3",
+    "BGM/pool/Crystal Cavern Route.mp3",
+    "BGM/pool/Pokemon Mystery Dungeon Explorers of Sky - Boulder Quarry.mp3",
+  ]),
   "tunnel-hills.weather.weak": Object.freeze([
     "BGM/generated/Route 7 - Taiga Pass.mp3",
     "BGM/generated/Wind Through the Amber Route - A.mp3",

@@ -38,6 +38,7 @@ import { nivelEm } from "./distribuicao/forca.js";
 import { sortearEspecie } from "./distribuicao/sorteio.js";
 import {
   HABITAT,
+  ehAquatico,
   ehHabitatAquatico,
   infoTileHabitat,
   kindAguaDoTile,
@@ -154,6 +155,64 @@ function longeDeVizinhos(cx, cy, indice, x, y) {
 
 /** Cache: listarLaresProximos / palha chamavam resolver sem memo (gate de estrada custava caro). */
 const cacheSlot = new Map();
+/** id do slot → species key. Piso de ninhos, aplicado na resolução. */
+const forcarEspecie = new Map();
+
+function nivelMinDe(esp) {
+  const n = esp?.nivelMin | 0;
+  return n > 0 ? n : 1;
+}
+
+function especieCabeNoTile(esp, tile, nivel) {
+  if (!esp || nivel < nivelMinDe(esp)) return false;
+  const agua = tile.molhado && !tile.caindo && tile.profundidade >= 1;
+  return agua ? ehAquatico(esp) : !ehAquatico(esp);
+}
+
+/**
+ * O slot existe e a espécie pode morar nele (habitat + nível).
+ * Não grava o lar — só rejeita slot impossível no cache.
+ * @param {number} cx
+ * @param {number} cy
+ * @param {number} indice
+ * @param {{ key?: string, dex?: number, nivelMin?: number, tipos?: string[] }} esp
+ */
+export function slotAceitaEspecie(cx, cy, indice, esp) {
+  const id = `${cx},${cy},${indice}`;
+  if (forcarEspecie.has(id)) return false;
+  if (cacheSlot.get(id) === null) return false;
+  const pos = posicaoCandidata(cx, cy, indice);
+  if (!pos) {
+    cacheSlot.set(id, null);
+    return false;
+  }
+  const { x, y } = pos;
+  if (
+    zonaSemSelvagem(x, y) ||
+    ehCidade(x, y) ||
+    Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN ||
+    larTocaEstrada(x, y) ||
+    larTocaPoi(x, y) ||
+    !longeDeVizinhos(cx, cy, indice, x, y)
+  ) {
+    cacheSlot.set(id, null);
+    return false;
+  }
+  const tile = infoTileHabitat(x, y);
+  if (!(tile.molhado && !tile.caindo && tile.profundidade >= 1) && tile.zSeco <= 0) {
+    cacheSlot.set(id, null);
+    return false;
+  }
+  if (tile.molhado && !tile.caindo && tile.profundidade >= 1 && !kindAguaDoTile(tile, hash(cx, cy, 55 + indice))) {
+    cacheSlot.set(id, null);
+    return false;
+  }
+  return especieCabeNoTile(esp, tile, nivelEm(x, y));
+}
+
+export function registrarForcaLar(id, speciesKey) {
+  if (id && speciesKey) forcarEspecie.set(id, speciesKey);
+}
 
 /**
  * @param {number} cx

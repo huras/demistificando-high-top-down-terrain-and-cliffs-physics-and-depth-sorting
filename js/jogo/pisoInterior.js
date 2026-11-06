@@ -18,6 +18,9 @@ import {
   SHRINE_INTERIOR_ROWS,
   santuarioAtivo,
 } from "../santuario/interior.js";
+import { ORIGEM_CAVERNA_X, ORIGEM_CAVERNA_Y } from "../mundo/bounds.js";
+import { CHAO, classeDaCelula } from "../caverna/interior/gerar.js";
+import { layoutAtivo } from "../caverna/interior/sessao.js";
 
 const RAIO_BUSCA = 8;
 
@@ -66,6 +69,14 @@ function celulaLab(x, y) {
   return !planta || planta.muro[row * COLS_LAB + col] !== 1;
 }
 
+function celulaCaverna(x, y) {
+  const lay = layoutAtivo();
+  if (!lay) return false;
+  const tx = Math.floor(x - ORIGEM_CAVERNA_X);
+  const ty = Math.floor(y - ORIGEM_CAVERNA_Y);
+  return classeDaCelula(lay, tx, ty) === CHAO;
+}
+
 function celulaSantuario(x, y) {
   const hub = santuarioAtivo();
   if (!hub) return false;
@@ -97,6 +108,7 @@ export function pisoInteriorValido(x, y) {
   }
   if (papel === "lab") return celulaLab(x, y);
   if (papel === "santuario") return celulaSantuario(x, y);
+  if (papel === "caverna") return celulaCaverna(x, y);
   return true;
 }
 

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Censo dos ninhos</title>
+  <link rel="stylesheet" href="css/ninhos.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
+    <h1>Censo dos ninhos</h1>
+    <p class="topo__nota" id="status">Preparando…</p>
+  </header>
+  <div class="resumo" id="resumo"></div>
+  <div class="barra" aria-hidden="true"><i id="barra"></i></div>
+  <div class="ferramentas">
+    <select id="modo" disabled>
+      <option value="todos">Catálogo inteiro</option>
+      <option value="com">Só com ninho</option>
+      <option value="sem">Sem ninho</option>
+    </select>
+    <input id="busca" type="search" placeholder="Filtrar por nome ou dex" disabled />
+  </div>
+  <div class="tabela-wrap">
+    <table>
+      <thead id="cabeca"></thead>
+      <tbody id="corpo"></tbody>
+    </table>
+  </div>
+  <script type="module" src="js/ninhos/pagina.js"></script>
+</body>
+</html>

@@ -18,6 +18,7 @@ import { OFFSET_MON, OFFSET_NPC } from "../navegacao/espacoSeguir.js";
 import { pokemonDeployado } from "../pokemon/party.js";
 import { pousarMon } from "../pokemon/pousarCompanheiro.js";
 import { estado } from "./estado.js";
+import { soltarCaverna } from "../caverna/entrar.js";
 import {
   gapJornada,
   pausarJornada,
@@ -213,6 +214,7 @@ function pousarCorpo(corpo, x, y, z) {
 
 function cortar(ctx) {
   if (estado.interior) {
+    if (estado.interior.papel === "caverna") soltarCaverna();
     estado.interior = null;
     estado.saidaGrace = 0.6;
   }

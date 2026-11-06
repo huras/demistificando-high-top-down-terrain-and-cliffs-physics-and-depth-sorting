@@ -18,6 +18,7 @@ import { totemPerto } from "../santuario/interior.js";
 import { especie } from "../pokemon/dados.js";
 import { curaOcupada } from "./maquinaCura.js";
 import { promptHistoria } from "../historia/tick.js";
+import { pedraNaFrente } from "../caverna/puzzle/runtime.js";
 
 const FOLGA_ESCALADA_MS = 160;
 let escaladaAte = 0;
@@ -63,6 +64,17 @@ export function acaoContexto(ctx) {
   } = ctx;
   if (!corpo) return null;
   if (puzzleSantuarioAberto()) return null;
+
+  if (interior?.papel === "caverna") {
+    const pedra = pedraNaFrente(corpo);
+    if (pedra) {
+      return {
+        id: "chutarPedra",
+        rotulo: "Chutar",
+        ancora: { x: pedra.x, y: pedra.y, z: corpo.z || 0 },
+      };
+    }
+  }
 
   if (interior?.papel === "santuario") {
     const totem = totemPerto(corpo.x, corpo.y);

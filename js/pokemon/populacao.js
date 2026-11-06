@@ -57,6 +57,8 @@ import {
   defensoresSantuario,
   tickDefensoresSantuario,
 } from "../santuario/defensores.js";
+import { dentroDoTerrenoCaverna } from "../caverna/interior/carimbar.js";
+import { selvagensCaverna, tickSelvagensCaverna } from "../caverna/selvagens.js";
 import {
   ORIGEM_SANTUARIO_X,
   ORIGEM_SANTUARIO_Y,
@@ -95,7 +97,8 @@ function zonaSemSelvagem(x, y) {
   if (
     dentroDoTerrenoSala(x, y) ||
     dentroDoTerrenoLaboratorio(x, y) ||
-    dentroDoTerrenoSantuario(x, y)
+    dentroDoTerrenoSantuario(x, y) ||
+    dentroDoTerrenoCaverna(x, y)
   ) {
     return true;
   }
@@ -820,10 +823,15 @@ export function atualizarPopulacao(corpo, dt, relogio) {
   tentarGrama(corpo);
   tickGrama();
   tickDefensoresSantuario();
+  tickSelvagensCaverna();
 }
 
 export function selvagensAtivos() {
-  return ativos.concat(grama).concat(defensoresSantuario()).concat(skyPassersAtivos());
+  return ativos
+    .concat(grama)
+    .concat(defensoresSantuario())
+    .concat(selvagensCaverna())
+    .concat(skyPassersAtivos());
 }
 
 export function marcarCaptura(ator) {

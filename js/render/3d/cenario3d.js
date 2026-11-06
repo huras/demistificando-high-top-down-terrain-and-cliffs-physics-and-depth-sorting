@@ -40,6 +40,8 @@ import {
 import { criarPersonagem3d } from "./personagem3d.js";
 import { atualizarTeleporte3d, criarTeleporte3d } from "./teleporte3d.js";
 import { criarPalhaLar3d } from "./palhaLar3d.js";
+import { criarBocasCaverna3d } from "./bocaCaverna3d.js";
+import { criarPedrasCaverna3d } from "./pedraCaverna3d.js";
 import { criarTerrenoMalha } from "./terrenoMalha.js";
 import { criarEdificiosCidade } from "./edificiosCidade.js";
 import { criarEdificiosSites } from "./edificiosSites.js";
@@ -156,7 +158,8 @@ function ligarLuzSala(dentro, corpo = null) {
   definirPesoNoite(0);
   uniformsNuvem.uForcaSombra.value = 0;
 
-  const ehSantuario = estadoJogo.interior?.papel === "santuario";
+  const papelInterior = estadoJogo.interior?.papel;
+  const ehSantuario = papelInterior === "santuario" || papelInterior === "caverna";
   const chaoY = ALTURA_PRACA * ALTURA_BLOCO;
   let lx = lamp.x;
   let ly = lamp.y;
@@ -228,7 +231,8 @@ function aplicarVazioSala(dentro) {
     domoNoVazio = false;
     return;
   }
-  const ehSantuario = estadoJogo.interior?.papel === "santuario";
+  const papelInterior = estadoJogo.interior?.papel;
+  const ehSantuario = papelInterior === "santuario" || papelInterior === "caverna";
   const cubos = terreno.getObjectByName("terreno-cubos");
   const real = terreno.getObjectByName("terreno-real");
   // Só esconde o heightfield outdoor; no santuário a malha voxel é a cena.
@@ -412,6 +416,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.add(agente3d.grupo);
   criarTeleporte3d(scene);
   const palhaLares = criarPalhaLar3d(scene);
+  const bocasCaverna = criarBocasCaverna3d(scene);
+  const pedrasCaverna = criarPedrasCaverna3d(scene);
 
   const ventoAsa = criarVentoAsa3d();
   scene.add(ventoAsa.objeto);
@@ -468,6 +474,8 @@ export function iniciarCenario3d(canvas, atlas = null) {
     letrasPlaza,
     letrasArcos,
     palhaLares,
+    bocasCaverna,
+    pedrasCaverna,
     personagem,
     agente3d,
     ventoAsa,
@@ -536,6 +544,8 @@ export async function aquecerProgramas3d(px = 0, py = 0) {
     estado.vegetacaoDistante?.tick?.(px, py, 0, 0);
     estado.vegetacaoHorizonte?.tick?.(px, py, 0, 0);
     estado.palhaLares?.atualizar?.(px, py);
+    estado.bocasCaverna?.atualizar?.(px, py);
+    estado.pedrasCaverna?.atualizar?.();
     estado.ceu?.atualizar?.(0, {
       camera: estado.camera3d.cam,
       alvo: estado._alvoCeu?.set(px, 0, py) || undefined,
@@ -828,6 +838,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.vegetacaoDistante?.tick?.(mxLod, myLod, yaw, inclinacao);
   estado.vegetacaoHorizonte?.tick?.(mxLod, myLod, yaw, inclinacao);
   estado.palhaLares?.atualizar?.(mxLod, myLod);
+  estado.bocasCaverna?.atualizar?.(mxLod, myLod);
+  estado.pedrasCaverna?.atualizar?.();
   estado.fxCampo?.atualizar?.(yaw, inclinacao, dt);
   estado.poeiraPasso?.atualizar?.();
   estado.fxBola?.atualizar?.(camRender);

@@ -62,6 +62,15 @@ export function chaveBgmImediata({
   if (interior) {
     const papel = String(interior.papel || "").toLowerCase();
 
+    if (papel === "caverna") {
+      const id = String(interior.caveId || "");
+      if (id.startsWith("proc") && seTem(bgm, "cave.proc")) return "cave.proc";
+      const especifica = `cave.${id}`;
+      if (seTem(bgm, especifica)) return especifica;
+      if (seTem(bgm, "cave.rock")) return "cave.rock";
+      return null;
+    }
+
     if (papel === "santuario" || papel === "shrine") {
       const el = String(interior.element || "normal").toLowerCase();
       const tipada = `shrine.${el}`;

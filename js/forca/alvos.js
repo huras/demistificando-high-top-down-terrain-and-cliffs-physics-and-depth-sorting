@@ -27,6 +27,7 @@ export function ehPropLevantavel(p) {
   if (p.fase && p.fase !== FASE.EM_PE) return false;
   // Peças já encaixadas do puzzle de letra ficam fixas.
   if (p.letterPuzzle && !p.letterPuzzleLoose) return false;
+  if (p.tipo === "pedraCaverna" || p.chuteCaverna) return false;
   return (
     p.tipo === "pedra" ||
     p.tipo === "cristal" ||

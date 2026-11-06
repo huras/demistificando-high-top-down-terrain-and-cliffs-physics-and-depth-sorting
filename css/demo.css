@@ -566,6 +566,8 @@ body[data-modo="3d"] #canvas-3d.palco__camada--ativa {
 .debug-acao {
   display: block;
   margin-top: 10px;
+  text-align: center;
+  text-decoration: none;
   padding: 6px 10px;
   border: 1px solid color-mix(in srgb, var(--texto) 22%, transparent);
   border-radius: 6px;

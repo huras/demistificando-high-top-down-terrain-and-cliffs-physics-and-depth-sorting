@@ -10,6 +10,7 @@ import { marcasSantuario } from "../../santuario/mapaMarcas.js";
 import { marcasBerry } from "../../mapa/marcasBerry.js";
 import { marcasLetras } from "../../letras/mapaMarcas.js";
 import { marcasSites } from "../../mundo/sites/mapaMarcas.js";
+import { marcasCaverna } from "../../caverna/mapaMarcas.js";
 import { marcasBaseJogador } from "../../construir/mapaMarcas.js";
 
 const extras = [];
@@ -119,6 +120,7 @@ export function marcasExtras(opts = null) {
     marcasBerry(),
     marcasLetras(),
     marcasSites(opts),
+    marcasCaverna(opts),
     marcasBaseJogador()
   );
 }

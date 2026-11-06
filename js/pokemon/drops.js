@@ -50,8 +50,34 @@ export function soltarDrop(ator) {
 
 function pegar(item, quem) {
   guardarItem(item.chave);
+  if (typeof item.aoPegar === "function") item.aoPegar();
   if (quem?.faccao === "party") definirEmocao(quem, EMOCAO.EXCLAMACAO, { duracao: 1 });
   return item.chave;
+}
+
+export function colocarDropPersistente({ persistId, chave, x, y, z, aoPegar }) {
+  if (!persistId || !chave) return;
+  for (let i = 0; i < itens.length; i++) {
+    if (itens[i].persistId === persistId) return;
+  }
+  itens.push({
+    id: seq++,
+    persistId,
+    chave,
+    x,
+    y,
+    z,
+    idade: 0,
+    permanente: true,
+    aoPegar,
+  });
+}
+
+export function removerDropsPersistentes(prefixo) {
+  for (let i = itens.length - 1; i >= 0; i--) {
+    const id = itens[i].persistId;
+    if (id && String(id).startsWith(prefixo)) itens.splice(i, 1);
+  }
 }
 
 export function atualizarDrops(corpo, dt, flutuar) {
@@ -60,7 +86,7 @@ export function atualizarDrops(corpo, dt, flutuar) {
   for (let i = itens.length - 1; i >= 0; i--) {
     const item = itens[i];
     item.idade += dt;
-    if (item.idade > 90) {
+    if (!item.permanente && item.idade > 90) {
       itens.splice(i, 1);
       continue;
     }

@@ -77,7 +77,7 @@ import {
   serializarConstrucao,
 } from "../construir/estadoConstrucao.js";
 import { acharCasa, syncInteriorMoveis } from "../construir/estruturas.js";
-import { dentroDoBolsoSala } from "../mundo/bounds.js";
+import { dentroDoBolsoCaverna, dentroDoBolsoSala } from "../mundo/bounds.js";
 
 const CHAVE_SAVE = "demo-jogo-v1";
 const CAIXAS = 8;
@@ -285,6 +285,8 @@ function serializarInterior() {
     outdoorY: Number.isFinite(i.outdoorY) ? i.outdoorY : null,
     outdoorZ: Number.isFinite(i.outdoorZ) ? i.outdoorZ : null,
     shrineId: i.shrineId || null,
+    caveId: i.caveId || null,
+    bocaId: i.bocaId || null,
     element: i.element || null,
     floorIndex: Number.isFinite(i.floorIndex) ? i.floorIndex | 0 : null,
   };
@@ -312,6 +314,8 @@ function normalizarInteriorSalvo(bruto) {
     outdoorY: Number.isFinite(bruto.outdoorY) ? bruto.outdoorY : null,
     outdoorZ: Number.isFinite(bruto.outdoorZ) ? bruto.outdoorZ : null,
     shrineId: bruto.shrineId || null,
+    caveId: bruto.caveId || null,
+    bocaId: bruto.bocaId || null,
     element: bruto.element || null,
     floorIndex: Number.isFinite(bruto.floorIndex) ? bruto.floorIndex | 0 : 0,
   };
@@ -328,7 +332,8 @@ function normalizarPosicaoInterior(p) {
   if (!p || typeof p !== "object") return null;
   const x = Number(p.x);
   const y = Number(p.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !dentroDoBolsoSala(x, y)) return null;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  if (!dentroDoBolsoSala(x, y) && !dentroDoBolsoCaverna(x, y)) return null;
   const z = Number(p.z);
   return {
     x,

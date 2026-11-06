@@ -86,6 +86,7 @@ import {
   restaurarSantuarioSalvo,
   sairSantuario,
 } from "../santuario/entrar.js";
+import { checarSaidaCaverna, restaurarCavernaSalva } from "../caverna/entrar.js";
 import { aoEntrarCasa, aoSairInterior } from "../npc/index.js";
 
 const PAPEIS = new Set(["casa", "loja", "centro", "lab", "ginasio", "mansao", "condominio"]);
@@ -581,6 +582,11 @@ export function restaurarInteriorSalvo(corpo) {
     if (!ok) estado.posicaoInterior = null;
     return ok;
   }
+  if (snap.papel === "caverna") {
+    const ok = restaurarCavernaSalva(corpo, snap, local);
+    if (!ok) estado.posicaoInterior = null;
+    return ok;
+  }
 
   if (
     Number.isFinite(snap.outdoorX) &&
@@ -672,6 +678,9 @@ export function checarSaidaSala(corpo) {
   if (papel === "santuario") {
     return checarSaidaSantuario(corpo);
   }
+  if (papel === "caverna") {
+    return checarSaidaCaverna(corpo);
+  }
   if (papel === "condominio") {
     const andar = estado.interior.floorIndex | 0;
     if (naSaidaCondominio(corpo.x, corpo.y, andar)) {
@@ -750,6 +759,7 @@ export function sairInterior(corpo) {
     sairSantuario(corpo);
     return;
   }
+  if (interior.papel === "caverna") return;
   if (interior.papel === "armazem") {
     sairArmazem(corpo);
     return;

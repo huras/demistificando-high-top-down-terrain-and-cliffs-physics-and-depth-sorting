@@ -82,6 +82,8 @@ import {
 } from "../ui/mapa/mapaMundo.js";
 import { teleporteOcupado } from "./teleporte.js";
 import { portaOcupada, tickPortaTransicao } from "./portaTransicao.js";
+import { tentarEntrarCaverna, tickCaverna } from "../caverna/entrar.js";
+import { tentarChutarPedra } from "../caverna/puzzle/runtime.js";
 import { toggleMenu, semearDexParty } from "./apiHud.js";
 import { bootHudCompleto, tickHudCampo } from "./hud/bootHud.js";
 import { apiQuestBoard } from "./hud/questBoard/janela.js";
@@ -208,6 +210,16 @@ export function tickJogo(dt, corpo) {
     tickRoda();
     lerTeclas(corpo);
   }
+  if (
+    !estado.interior &&
+    !estado.dialogo &&
+    !estado.painel &&
+    !jogadorMorto() &&
+    !mapaAberto()
+  ) {
+    tentarEntrarCaverna(corpo);
+  }
+  tickCaverna(dt, corpo);
   if (estado.interior?.sala3d) {
     checarSaidaSala(corpo);
     if (estado.interior.papel === "condominio") checarEscadasCondominio(corpo);
@@ -388,6 +400,8 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
     interagirHistoria(corpo, darTrialPokemon);
   } else if (acao.id === "falarSantuario" || acao.id === "entrarSantuario") {
     tentarEntrarSantuario(corpo, acao.stone);
+  } else if (acao.id === "chutarPedra") {
+    tentarChutarPedra(corpo);
   } else if (acao.id === "totemSantuario") {
     if (acao.totem?.cleared) mostrar("O totem já entregou sua gema.");
     else {

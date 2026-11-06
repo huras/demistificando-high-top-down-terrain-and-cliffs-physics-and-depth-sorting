@@ -28,6 +28,17 @@ export const BOLSO_SALA_Y0 = 99936;
 export const BOLSO_SALA_X1 = 100900;
 export const BOLSO_SALA_Y1 = 100640;
 
+/**
+ * Bolso das cavernas. Fora do bolso das casas: o interior maior
+ * (Diglett, 256 de largura) cabe aqui e o streaming enxerga o retângulo.
+ */
+export const ORIGEM_CAVERNA_X = 102400;
+export const ORIGEM_CAVERNA_Y = 100032;
+export const BOLSO_CAVERNA_X0 = 102384;
+export const BOLSO_CAVERNA_Y0 = 100000;
+export const BOLSO_CAVERNA_X1 = 102720;
+export const BOLSO_CAVERNA_Y1 = 100240;
+
 export function dentroDoMundo(wx, wy) {
   return wx >= 0 && wy >= 0 && wx < LADO_MUNDO && wy < LADO_MUNDO;
 }
@@ -38,6 +49,15 @@ export function dentroDoBolsoSala(wx, wy) {
     wy >= BOLSO_SALA_Y0 &&
     wx < BOLSO_SALA_X1 &&
     wy < BOLSO_SALA_Y1
+  );
+}
+
+export function dentroDoBolsoCaverna(wx, wy) {
+  return (
+    wx >= BOLSO_CAVERNA_X0 &&
+    wy >= BOLSO_CAVERNA_Y0 &&
+    wx < BOLSO_CAVERNA_X1 &&
+    wy < BOLSO_CAVERNA_Y1
   );
 }
 
@@ -90,17 +110,25 @@ export function pesoCostura(wx, wy, faixa = FAIXA_COSTURA) {
   return t * t * (3 - 2 * t);
 }
 
-/** Chunk (cx,cy) intersecta o overworld ou o bolso das salas 3D. */
+/** Chunk (cx,cy) intersecta o overworld, o bolso das salas ou o das cavernas. */
 export function chunkDentroDoMundo(cx, cy, chunkXz) {
   const x0 = cx * chunkXz;
   const y0 = cy * chunkXz;
   const x1 = x0 + chunkXz;
   const y1 = y0 + chunkXz;
   if (x1 > 0 && y1 > 0 && x0 < LADO_MUNDO && y0 < LADO_MUNDO) return true;
-  return (
+  if (
     x1 > BOLSO_SALA_X0 &&
     y1 > BOLSO_SALA_Y0 &&
     x0 < BOLSO_SALA_X1 &&
     y0 < BOLSO_SALA_Y1
+  ) {
+    return true;
+  }
+  return (
+    x1 > BOLSO_CAVERNA_X0 &&
+    y1 > BOLSO_CAVERNA_Y0 &&
+    x0 < BOLSO_CAVERNA_X1 &&
+    y0 < BOLSO_CAVERNA_Y1
   );
 }

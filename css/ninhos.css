@@ -1,0 +1,193 @@
+:root {
+  --bg: #0f1410;
+  --painel: #171e19;
+  --borda: #2a382c;
+  --texto: #e8f0e6;
+  --texto-suave: #9aaf9a;
+  --destaque: #7dce6a;
+  --fonte-ui: "Segoe UI", "Candara", "Trebuchet MS", sans-serif;
+  --fonte-mono: "Cascadia Mono", "Consolas", "Courier New", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: radial-gradient(1200px 700px at 20% 0%, #1a261c 0%, var(--bg) 55%);
+  color: var(--texto);
+  font-family: var(--fonte-ui);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px 20px;
+  padding: 16px 20px 8px;
+}
+
+.topo__voltar {
+  color: var(--destaque);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.topo h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.topo__nota {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 20px 12px;
+}
+
+.resumo__item {
+  min-width: 120px;
+  padding: 8px 12px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--painel);
+}
+
+.resumo__item span {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.resumo__item strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem;
+}
+
+.barra {
+  height: 4px;
+  margin: 0 20px 12px;
+  border-radius: 99px;
+  background: var(--borda);
+  overflow: hidden;
+}
+
+.barra > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--destaque);
+}
+
+.ferramentas {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 20px 12px;
+}
+
+.ferramentas input,
+.ferramentas select {
+  padding: 7px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  background: var(--painel);
+  color: var(--texto);
+  font: inherit;
+}
+
+.ferramentas input {
+  flex: 1;
+  max-width: 280px;
+}
+
+.tabela-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 0 20px 24px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+th,
+td {
+  padding: 7px 10px;
+  text-align: right;
+  border-bottom: 1px solid var(--borda);
+  white-space: nowrap;
+}
+
+th:first-child,
+td:first-child,
+th:nth-child(2),
+td:nth-child(2) {
+  text-align: left;
+}
+
+.ninho-nome {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.ninho-icone {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #141b16;
+  color: var(--texto-suave);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+th.is-ativo {
+  color: var(--destaque);
+}
+
+tr:hover td {
+  background: color-mix(in srgb, var(--destaque) 8%, transparent);
+}
+
+tr.is-zero td {
+  color: var(--texto-suave);
+}
+
+tr.is-zero .ninho-icone {
+  opacity: 0.4;
+}
+
+td.situacao {
+  text-align: left;
+}

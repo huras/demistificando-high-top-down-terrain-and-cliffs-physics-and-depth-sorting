@@ -180,7 +180,8 @@ function sobOverhang(x, y) {
 /** Santuário elemental ou debaixo de overhang/caverna. */
 export function fadeParedeInteriorDeveAtivar(corpo) {
   if (!FADE_PAREDE_INTERIOR_ATIVO || !corpo) return false;
-  if (estadoJogo.interior?.papel === "santuario") return true;
+  const papelFade = estadoJogo.interior?.papel;
+  if (papelFade === "santuario" || papelFade === "caverna") return true;
   return sobOverhang(corpo.x, corpo.y);
 }
 

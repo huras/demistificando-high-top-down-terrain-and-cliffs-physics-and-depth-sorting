@@ -16,6 +16,7 @@ import { marcasLetras } from "../../letras/mapaMarcas.js";
 import { getWorldLetterPuzzlePlan } from "../../letras/plano.js";
 import { revelarLetras } from "../../letras/estado.js";
 import { marcasSites } from "../../mundo/sites/mapaMarcas.js";
+import { marcasCaverna } from "../../caverna/mapaMarcas.js";
 import { alturaDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
 import { LADO_MUNDO } from "./grade.js";
@@ -56,6 +57,7 @@ const RAIO_SANTUARIO = 18;
 const RAIO_WILD = 16;
 const RAIO_LETRA = 16;
 const RAIO_SITE = 17;
+const RAIO_CAVERNA = 16;
 const ZOOM_VIAGEM = 1.15;
 
 function sincronizarBotaoCalor() {
@@ -192,6 +194,19 @@ function destinoLetra(marca) {
   };
 }
 
+function destinoCaverna(marca) {
+  if (!marca) return null;
+  const z = Number.isFinite(marca.z) ? marca.z : alturaDoRelevo(marca.x, marca.y);
+  return {
+    tipo: "caverna",
+    id: marca.id,
+    nome: marca.nome || "Caverna",
+    x: marca.x,
+    y: marca.y,
+    z: z || 1,
+  };
+}
+
 function destinoSite(marca) {
   if (!marca) return null;
   const z = Number.isFinite(marca.z) ? marca.z : alturaDoRelevo(marca.x, marca.y);
@@ -221,6 +236,8 @@ function destinoNoPonto(clientX, clientY) {
   if (letra) return destinoLetra(letra);
   const site = hitNoPonto(marcasSites(), sx, sy, rect, RAIO_SITE);
   if (site) return destinoSite(site);
+  const caverna = hitNoPonto(marcasCaverna({ px: cx, py: cy }), sx, sy, rect, RAIO_CAVERNA);
+  if (caverna) return destinoCaverna(caverna);
   const vista = { cx, cy, zoom, mini: false };
   if (!wildPinVisivelNoZoom(vista)) return null;
   const wilds = filtrarWildParaVista(marcasWild(), vista);
@@ -240,6 +257,8 @@ function marcaRotuloNoPonto(clientX, clientY) {
   if (letra) return letra;
   const site = hitNoPonto(marcasSites(), sx, sy, rect, RAIO_SITE);
   if (site) return site;
+  const caverna = hitNoPonto(marcasCaverna({ px: cx, py: cy }), sx, sy, rect, RAIO_CAVERNA);
+  if (caverna) return caverna;
   const vista = { cx, cy, zoom, mini: false };
   if (!wildPinVisivelNoZoom(vista)) return null;
   const wilds = filtrarWildParaVista(marcasWild(), vista);

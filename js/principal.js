@@ -784,13 +784,14 @@ function loop(agora) {
   if (!trava) tickFxAgua(dt, corpo, agente);
   if (corpo._renasceu) {
     corpo._renasceu = false;
-    // Cinto: garante topo do terreno se o pouso ainda trouxe Z stale.
-    const zSnap = alturaSobPes(corpo.x, corpo.y, CHUNK_Y);
+    // Cinto: garante o piso do pouso. Na caverna o teto também é superfície.
+    const refZ = estadoJogo.interior?.papel === "caverna" ? corpo.z : CHUNK_Y;
+    const zSnap = alturaSobPes(corpo.x, corpo.y, refZ);
     if (zSnap > 0) {
       corpo.z = zSnap;
       corpo.elevacao = zSnap;
     }
-    const zAg = alturaSobPes(corpo.x + OFFSET_NPC.x, corpo.y + OFFSET_NPC.y, CHUNK_Y) || corpo.z;
+    const zAg = alturaSobPes(corpo.x + OFFSET_NPC.x, corpo.y + OFFSET_NPC.y, refZ) || corpo.z;
     agente.x = corpo.x + OFFSET_NPC.x;
     agente.y = corpo.y + OFFSET_NPC.y;
     agente.z = zAg;

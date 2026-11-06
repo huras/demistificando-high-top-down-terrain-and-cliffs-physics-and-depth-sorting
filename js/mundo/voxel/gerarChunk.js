@@ -19,6 +19,8 @@ import {
   dentroDoTerrenoCondominio,
 } from "../cidade/condominio.js";
 import { aplicarSantuarioNoChunk } from "../../santuario/carimbar.js";
+import { aplicarBocasNoChunk, celulaBocaLimpa } from "../../caverna/bocas.js";
+import { aplicarCavernaNoChunk } from "../../caverna/interior/carimbar.js";
 import { dentroDoTerrenoHub } from "../cidade/plantaHub.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { aplicarNaLista } from "../../campo/estadoProps.js";
@@ -215,6 +217,7 @@ export function* passosChunk(chunk, seed) {
   cronColunas?.fim();
 
   medir("carimbarCorpos", () => carimbarCorpos(chunk));
+  medir("bocasCaverna", () => aplicarBocasNoChunk(chunk));
 
   const cronProps = perf ? cronometroFatia("propsBerries") : null;
   const props = [];
@@ -255,6 +258,7 @@ export function* passosChunk(chunk, seed) {
       // Lar: limpa veg procedural; pedras/árvores vêm de propsLarChunk.
       if (sitioLar?.has(`${wx},${wy}`)) continue;
       if (sitioOutdoor?.has(`${wx},${wy}`)) continue;
+      if (celulaBocaLimpa(wx, wy)) continue;
       const planta = plantaDoRelevo(wx, wy);
       const livre = !planta || planta.classe === "grama";
       const chaveBerry = livre && arbustos < MAX_ARBUSTO_CHUNK && h >= nivel ? arbustoNaCelula(wx, wy) : null;
@@ -312,6 +316,7 @@ export function* passosChunk(chunk, seed) {
   medir("mansao", () => aplicarMansaoNoChunk(chunk));
   medir("condominio", () => aplicarCondominioNoChunk(chunk));
   medir("santuario", () => aplicarSantuarioNoChunk(chunk));
+  medir("caverna", () => aplicarCavernaNoChunk(chunk));
   medir("recalcularSuperficies", () => recalcularSuperficies(chunk));
   chunk.gerado = true;
   chunk.sujo = true;

@@ -119,8 +119,8 @@ function snapshotDoLar(larId, info = null) {
       canonico: true,
       x: lar.x,
       y: lar.y,
-      speciesKey: lar.speciesKey,
-      dex: lar.dex | 0,
+      speciesKey: info?.speciesKey || lar.speciesKey,
+      dex: (info?.dex | 0) || (lar.dex | 0),
       shiny: info?.shiny != null ? !!info.shiny : !!lar.shiny,
       kind: lar.kind || "land",
     };
@@ -241,11 +241,13 @@ export function tickDescobertaMapa(corpo, opts = {}) {
   }
 
   const ativos = selvagensAtivos();
+  const comAtor = new Set();
   for (let i = 0; i < ativos.length; i++) {
     const a = ativos[i];
     if (!a?.id?.startsWith("lar-") || a.capturado) continue;
     const larId = larIdDeAtor(a.id);
     if (!larId) continue;
+    comAtor.add(larId);
     const hx = a.casaX ?? a.x;
     const hy = a.casaY ?? a.y;
     const dx = hx - px;
@@ -259,10 +261,10 @@ export function tickDescobertaMapa(corpo, opts = {}) {
           canonico: true,
           x: lar.x,
           y: lar.y,
-          speciesKey: lar.speciesKey,
-          dex: lar.dex | 0,
+          speciesKey: a.especie?.key || lar.speciesKey,
+          dex: (a.especie?.dex | 0) || (lar.dex | 0),
           shiny: !!a.shiny || !!lar.shiny,
-          kind: lar.kind || a.habitatKind || "land",
+          kind: a.habitatKind || lar.kind || "land",
         });
       }
       continue;
@@ -280,7 +282,7 @@ export function tickDescobertaMapa(corpo, opts = {}) {
   const candidatos = listarLaresProximos(px, py, r);
   for (let i = 0; i < candidatos.length; i++) {
     const lar = candidatos[i];
-    if (!lar) continue;
+    if (!lar || comAtor.has(lar.id)) continue;
     descobrirWild(lar.id, {
       x: lar.x,
       y: lar.y,

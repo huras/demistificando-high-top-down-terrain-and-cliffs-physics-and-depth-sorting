@@ -418,6 +418,26 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       }
       continue;
     }
+    if (marca.tipo === "caverna") {
+      ctx.fillStyle = "#1f2937";
+      ctx.beginPath();
+      ctx.arc(sx, sy, (vista.mini ? 4 : 6) * dpr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#d6d3d1";
+      ctx.lineWidth = Math.max(1, 1.4 * dpr);
+      ctx.stroke();
+      if (!vista.mini && marca.nome && vista.hoverMarcaId === marca.id) {
+        nomes.push({
+          texto: marca.nome,
+          x: sx + 12 * dpr,
+          y: sy + alturaFonte * 0.3,
+          altura: alturaFonte,
+          prio: 4,
+          dist: (sx - w / 2) * (sx - w / 2) + (sy - h / 2) * (sy - h / 2),
+        });
+      }
+      continue;
+    }
     if (marca.tipo === "site") {
       desenharPinSite(ctx, marca, sx, sy, { mini: !!vista.mini, dpr });
       if (!vista.mini && marca.nome && vista.hoverMarcaId === marca.id) {

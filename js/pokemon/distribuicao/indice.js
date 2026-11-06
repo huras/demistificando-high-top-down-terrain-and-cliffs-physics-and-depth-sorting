@@ -55,6 +55,19 @@ export async function carregarDistribuicao() {
   return porBioma.size;
 }
 
+/** Todas as espécies que entram em algum bioma (casa ou extra). */
+export function chavesNoPool() {
+  const set = new Set();
+  if (!porBioma) return set;
+  for (const pool of porBioma.values()) {
+    const casa = pool.casa || [];
+    const extras = pool.extras || [];
+    for (let i = 0; i < casa.length; i++) set.add(casa[i]);
+    for (let i = 0; i < extras.length; i++) set.add(extras[i]);
+  }
+  return set;
+}
+
 export function poolDoBioma(id) {
   if (!porBioma) return VAZIO;
   const direto = porBioma.get(id);
