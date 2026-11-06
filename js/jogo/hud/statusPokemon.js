@@ -378,10 +378,10 @@ function pintarGolpes(ator) {
       const def = g?.def || g;
       const tipo = def?.tipo || "normal";
       const cor = COR_TIPO[tipo] || "#9ca3af";
-      return `<li class="party-status__move">
+      return `<li class="party-status__move" style="--type:${cor}">
         <span class="party-status__move-slot">${i + 1}</span>
         <span class="party-status__move-name">${escHtml(def?.nome || def?.name || def?.key || "—")}</span>
-        <span class="party-status__type" style="--type:${cor}">${escHtml(tipo)}</span>
+        <span class="party-status__type">${escHtml(tipo)}</span>
         <span class="party-status__move-pow">${def?.poder | 0 || "—"}</span>
       </li>`;
     })

@@ -1,6 +1,7 @@
 /** API pública do VFX de combate 3D (BattleParticles adaptado). */
 
 export { elementoDe } from "./elementos.js";
+export { curaFx, emitirCura } from "./cura.js";
 export { emitirImpacto } from "./impacto.js";
 export { emitirRastro } from "./rastro.js";
 export { folhaDaReceita, receitaFx } from "./receitas.js";

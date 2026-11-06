@@ -8,7 +8,6 @@ import { AREA_KANTO, zonaEm } from "../../mundo/regiao/grafoKanto.js";
 import { ROTAS_KANTO } from "../../mundo/regiao/kantoRotas.js";
 import { marcasSantuario } from "../../santuario/mapaMarcas.js";
 import { marcasBerry } from "../../mapa/marcasBerry.js";
-import { marcasWild } from "../../mapa/marcasWild.js";
 import { marcasLetras } from "../../letras/mapaMarcas.js";
 import { marcasSites } from "../../mundo/sites/mapaMarcas.js";
 import { marcasBaseJogador } from "../../construir/mapaMarcas.js";
@@ -118,7 +117,6 @@ export function marcasExtras(opts = null) {
   return extras.concat(
     marcasSantuario(),
     marcasBerry(),
-    marcasWild(),
     marcasLetras(),
     marcasSites(opts),
     marcasBaseJogador()

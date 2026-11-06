@@ -3,9 +3,11 @@
  * Espécie só muda com snapshot canônico (resolver do lar); evita flicker
  * quando o terreno ainda não streamou ou o ator diverge do sorteio.
  */
+import { CHUNK_XZ, POKEMON } from "../config.js";
+import { LADO_MUNDO } from "../mundo/bounds.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { selvagensAtivos } from "../pokemon/populacao.js";
-import { resolverLarPorId, listarLaresProximos } from "../pokemon/laresMapa.js";
+import { resolverLarPorId, resolverLarSlot, listarLaresProximos } from "../pokemon/laresMapa.js";
 
 const RAIO_DISCOVER = 10;
 
@@ -28,6 +30,65 @@ export function resetDescobertaMapa() {
   berries.clear();
   wilds.clear();
   bump();
+}
+
+/** Só ninhos (wild homes) — berries ficam. @returns {number} */
+export function limparWildsDescobertos() {
+  const n = wilds.size;
+  if (!n) return 0;
+  wilds.clear();
+  bump();
+  return n;
+}
+
+let varreduraId = 0;
+
+/**
+ * Marca cada lar válido do overworld como descoberto.
+ * Fatias de ~6 ms para não travar o frame. Um bump só no fim.
+ * @param {(p: { feitos: number, total: number, novos: number, pronto: boolean }) => void} [aoProgresso]
+ */
+export function descobrirTodosNinhos(aoProgresso) {
+  const token = ++varreduraId;
+  const lado = Math.ceil(LADO_MUNDO / CHUNK_XZ);
+  const slots = Math.max(1, POKEMON.LARES_POR_CHUNK | 0);
+  const total = lado * lado;
+  let cx = 0;
+  let cy = 0;
+  let feitos = 0;
+  let novos = 0;
+
+  const passo = () => {
+    if (token !== varreduraId) return;
+    const t0 = performance.now();
+    while (cy < lado && performance.now() - t0 < 6) {
+      for (let i = 0; i < slots; i++) {
+        const lar = resolverLarSlot(cx, cy, i);
+        if (!lar || wilds.has(lar.id)) continue;
+        wilds.set(lar.id, {
+          x: lar.x,
+          y: lar.y,
+          speciesKey: lar.speciesKey,
+          dex: lar.dex | 0,
+          shiny: !!lar.shiny,
+          kind: lar.kind || "land",
+        });
+        novos++;
+      }
+      cx++;
+      feitos++;
+      if (cx >= lado) {
+        cx = 0;
+        cy++;
+      }
+    }
+    const pronto = cy >= lado;
+    if (pronto) bump();
+    aoProgresso?.({ feitos, total, novos, pronto });
+    if (!pronto) requestAnimationFrame(passo);
+  };
+
+  requestAnimationFrame(passo);
 }
 
 export function berriesDescobertos() {

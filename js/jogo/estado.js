@@ -34,6 +34,7 @@ import {
 import { anunciarGanho, semearVistosDaBolsa } from "./ganhoItem.js";
 import { nomeDoItem } from "./nomeItem.js";
 import { tocarCura } from "./som/combateSfx.js";
+import { emitirCura } from "../pokemon/combate/fx/cura.js";
 import { createQuestState, normalizeQuestState } from "../quests/tipos.js";
 import { criarHistoriaState } from "../historia/flags.js";
 import {
@@ -528,11 +529,16 @@ export function usarNoPokemon(tipo, key, ator) {
       return false;
     }
     if (!gastar(tipo, key, 1)) return false;
+    const treino = obterTreinador();
     for (let i = 0; i < party.length; i++) {
       const mon = party[i];
-      if (mon && (mon.morto || mon.hp <= 0)) aplicarEfeito(mon, def.efeito);
+      if (mon && (mon.morto || mon.hp <= 0)) {
+        aplicarEfeito(mon, def.efeito);
+        emitirCura(mon, { big: true, revive: true, fallback: treino });
+      }
     }
-    tocarCura(ator || party[0]);
+    const foco = ator || party[0] || treino;
+    tocarCura(foco);
     avisar();
     return true;
   }
@@ -547,6 +553,11 @@ export function usarNoPokemon(tipo, key, ator) {
   }
   if (def.efeito.curaHp || def.efeito.curaFrac || def.efeito.reviver || def.efeito.cura) {
     tocarCura(ator);
+    emitirCura(ator, {
+      big: !!def.efeito.reviver || (def.efeito.curaFrac || 0) >= 1,
+      revive: !!def.efeito.reviver,
+      fallback: obterTreinador(),
+    });
   }
   avisar();
   return true;
@@ -564,6 +575,7 @@ export function usarNoJogador(tipo, key) {
     treino.hp = Math.min(treino.hpMax, treino.hp + Math.round(treino.hpMax * def.efeito.curaFrac));
   }
   tocarCura(treino);
+  emitirCura(treino, { big: (def.efeito.curaFrac || 0) >= 1 });
   avisar();
   return true;
 }

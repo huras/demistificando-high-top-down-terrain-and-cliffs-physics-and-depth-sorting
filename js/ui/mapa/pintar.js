@@ -30,7 +30,7 @@ import {
   prenderPinNaBorda,
 } from "../../mapa/pinMissao.js";
 import { aquecerPinBase, desenharPinBase, dimensoesPinBase } from "../../mapa/pinBase.js";
-import { filtrarWildParaVista } from "../../mapa/marcasWild.js";
+import { filtrarWildParaVista, marcasWild } from "../../mapa/marcasWild.js";
 import { aquecerPinWild, desenharPinWild, wildPinVisivelNoZoom } from "../../mapa/pinWild.js";
 import { desenharPinSite } from "../../mapa/pinSite.js";
 import { pinMissaoAtiva } from "../../quests/pins.js";
@@ -323,19 +323,28 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     });
   }
 
-  const extrasBrutos = vista.habitat
+  const outros = vista.habitat
     ? []
     : marcasExtras({
         mini: !!vista.mini,
         px: vista.jogadorX,
         py: vista.jogadorY,
       });
-  const wildCap = filtrarWildParaVista(
-    extrasBrutos.filter((m) => m.tipo === "wild"),
-    vista,
-  );
-  const wildIds = new Set(wildCap.map((m) => m.id));
-  const extras = extrasBrutos.filter((m) => m.tipo !== "wild" || wildIds.has(m.id));
+  const margemMini =
+    vista.mini && z > 0
+      ? { mx: w / (2 * z) + 32, my: h / (2 * z) + 32 }
+      : null;
+  const wildCap = filtrarWildParaVista(marcasWild(), vista, margemMini);
+  const extras = [];
+  let iOutro = 0;
+  while (
+    iOutro < outros.length &&
+    (outros[iOutro].tipo === "santuario" || outros[iOutro].tipo === "berry")
+  ) {
+    extras.push(outros[iOutro++]);
+  }
+  for (let i = 0; i < wildCap.length; i++) extras.push(wildCap[i]);
+  while (iOutro < outros.length) extras.push(outros[iOutro++]);
   let santuarioVisto = false;
   let berryVisto = false;
   let wildVisto = false;
