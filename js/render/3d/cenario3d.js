@@ -767,6 +767,14 @@ export function definirMira3d(ativa) {
 /**
  * Atualiza câmera/personagem e renderiza um frame.
  */
+/** Malha do destino, sem desenhar a cena. O corte do teleporte espera isso. */
+export function adiantarMalhaTeleporte() {
+  if (!estado?.terreno?.tickMalha) return;
+  const foco = focoStreaming();
+  if (!foco) return;
+  estado.terreno.tickMalha(foco.x, foco.y);
+}
+
 export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   if (!estado) return null;
 

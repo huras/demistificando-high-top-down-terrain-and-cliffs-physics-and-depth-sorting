@@ -851,17 +851,23 @@
   max-width: 100%;
 }
 
-/* Viagem do teleporte: o mapa sai do dock e cobre a metade direita da tela. */
+/* Cruzeiro: o mapa cobre a tela. HUD e painel ficam por baixo. */
+body.is-teleporte-mapa .cabecalho,
+body.is-teleporte-mapa #painel,
+body.is-teleporte-mapa #jogo-hud {
+  visibility: hidden;
+}
+
 .jogo-hud.is-mapa-viagem #area-minimap {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 50%;
+  position: fixed;
+  inset: 0;
+  width: 100%;
   height: 100%;
   margin: 0;
-  z-index: 6;
+  z-index: 40;
   border-radius: 0;
   pointer-events: none;
+  visibility: visible;
 }
 
 .jogo-hud.is-mapa-viagem .area-minimap__canvas,

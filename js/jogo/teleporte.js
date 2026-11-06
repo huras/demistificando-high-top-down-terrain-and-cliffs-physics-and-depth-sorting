@@ -113,11 +113,26 @@ export function ancoraCameraTeleporte() {
   return ancoraCam.ativa ? ancoraCam : null;
 }
 
-/** Painel grande do mapa: cruzeiro e descida. A desintegração fica no círculo. */
+/** Painel grande só no cruzeiro. Desintegração e reintegração ficam no círculo. */
 export function teleporteMapaAmpliado() {
-  if (!ancoraCam.ativa) return false;
-  if (fase === "descida") return true;
-  return fase === "subida" && faseT >= SUBIDA;
+  if (!ancoraCam.ativa || fase !== "subida") return false;
+  return faseT >= SUBIDA;
+}
+
+/** Centro do mapa no cruzeiro: arco entre origem e destino, longe no meio. */
+export function vistaMapaTeleporte() {
+  if (!teleporteMapaAmpliado() || !origemViagem || !destino) return null;
+  const k = progressoViagem();
+  const dx = destino.x - origemViagem.x;
+  const dy = destino.y - origemViagem.y;
+  const alcance = Math.hypot(dx, dy) || 1;
+  const barriga = Math.sin(Math.PI * k) * alcance * 0.22;
+  return {
+    x: origemViagem.x + dx * k + (-dy / alcance) * barriga,
+    y: origemViagem.y + dy * k + (dx / alcance) * barriga,
+    afastamento: Math.sin(Math.PI * k),
+    alcance,
+  };
 }
 
 export function definirChecagemMalhaTeleporte(fn) {

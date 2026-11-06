@@ -85,7 +85,7 @@ import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { tickTiles } from "../ui/mapa/atlas.js";
 import { pintarMapa } from "../ui/mapa/pintar.js";
 import { abrirMapa, mapaAberto } from "../ui/mapa/mapaMundo.js";
-import { ancoraCameraTeleporte, teleporteMapaAmpliado } from "./teleporte.js";
+import { ancoraCameraTeleporte, teleporteMapaAmpliado, vistaMapaTeleporte } from "./teleporte.js";
 
 let raiz = null;
 
@@ -1039,6 +1039,7 @@ function sincronizarMiniViagem(ativo) {
     rumoMini.tem = false;
   }
   hud.classList.toggle("is-mapa-viagem", ativo);
+  document.body.classList.toggle("is-teleporte-mapa", ativo);
 }
 
 function pintarMini() {
@@ -1047,18 +1048,29 @@ function pintarMini() {
   const voo = ancoraCameraTeleporte();
   if (!voo) rumoMini.tem = false;
   const ampliado = teleporteMapaAmpliado();
+  const viagem = ampliado ? vistaMapaTeleporte() : null;
   sincronizarMiniViagem(ampliado);
   const caixa = ampliado ? el("#area-minimap") : null;
   const cssW = ampliado ? Math.max(MINI_PX, caixa?.clientWidth || MINI_PX) : MINI_PX;
   const cssH = ampliado ? Math.max(MINI_PX, caixa?.clientHeight || MINI_PX) : MINI_PX;
   const dpr = ampliado ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  const bw = Math.max(1, Math.round(cssW * dpr));
-  const bh = Math.max(1, Math.round(cssH * dpr));
+  const LIMITE_VIAGEM = 1600;
+  const maiorCss = Math.max(cssW, cssH);
+  const escalaBuf = ampliado && maiorCss > LIMITE_VIAGEM ? LIMITE_VIAGEM / maiorCss : 1;
+  const bw = Math.max(1, Math.round(cssW * (ampliado ? escalaBuf : dpr)));
+  const bh = Math.max(1, Math.round(cssH * (ampliado ? escalaBuf : dpr)));
+  const ponto = viagem ? { x: viagem.x, y: viagem.y } : pontoMini();
+  const ZOOM_PERTO = 1.55;
+  let zoomMini = ZOOM_MINI;
+  if (viagem) {
+    const zoomLonge = Math.min(ZOOM_PERTO * 0.92, bw / Math.max(viagem.alcance * 1.5, 240));
+    zoomMini = ZOOM_PERTO + (zoomLonge - ZOOM_PERTO) * viagem.afastamento;
+    if (cssW > 0) zoomMini *= bw / cssW;
+  }
   if (tela.width !== bw || tela.height !== bh) {
     tela.width = bw;
     tela.height = bh;
   }
-  const ponto = pontoMini();
   // No voo ampliado fica só o atlas geral: tile de perto no corredor trava o jogo.
   if (!mapaAberto() && !ampliado) {
     const meioX = cssW / (2 * ZOOM_MINI);
@@ -1078,7 +1090,7 @@ function pintarMini() {
   pintarMapa(tela.getContext("2d"), bw, bh, dpr, {
     cx: ponto.x,
     cy: ponto.y,
-    zoom: ZOOM_MINI,
+    zoom: zoomMini,
     jogadorX: ponto.x,
     jogadorY: ponto.y,
     jogadorDirX: rumo ? rumo.dx : corpo?.dirX ?? 0,

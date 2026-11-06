@@ -13,6 +13,7 @@ import {
   LADO_INTIMO,
   LADO_MUNDO,
   LADO_TILE,
+  LADO_VISAO,
   LADO_TILE_MUNDO,
   ZOOM_INTIMO,
   ZOOM_TILE,
@@ -234,7 +235,46 @@ function desenharNomes(ctx, fila, w, h) {
   }
 }
 
+function pintarVisaoViagem(ctx, w, h, dpr, vista) {
+  const z = vista.zoom * dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.fillStyle = "#143e66";
+  ctx.fillRect(0, 0, w, h);
+  const atlas = canvasAtlas();
+  if (atlas && z > 0) {
+    const esc = LADO_VISAO / LADO_MUNDO;
+    const sw = (w / z) * esc;
+    const sh = (h / z) * esc;
+    const sx = (vista.cx - w / (2 * z)) * esc;
+    const sy = (vista.cy - h / (2 * z)) * esc;
+    const x0 = Math.max(0, sx);
+    const y0 = Math.max(0, sy);
+    const x1 = Math.min(LADO_VISAO, sx + sw);
+    const y1 = Math.min(LADO_VISAO, sy + sh);
+    if (x1 > x0 && y1 > y0 && sw > 0 && sh > 0) {
+      ctx.drawImage(
+        atlas,
+        x0,
+        y0,
+        x1 - x0,
+        y1 - y0,
+        ((x0 - sx) / sw) * w,
+        ((y0 - sy) / sh) * h,
+        ((x1 - x0) / sw) * w,
+        ((y1 - y0) / sh) * h,
+      );
+    }
+  }
+  desenharMarcadorJogador(ctx, w / 2, h / 2, dpr, vista);
+}
+
 export function pintarMapa(ctx, w, h, dpr, vista) {
+  if (vista.soVisao) {
+    pintarVisaoViagem(ctx, w, h, dpr, vista);
+    return;
+  }
   garantir();
   const z = vista.zoom * dpr;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -248,8 +288,8 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   ctx.translate(w / 2, h / 2);
   ctx.scale(z, z);
   ctx.translate(-vista.cx, -vista.cy);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = vista.qualidade === "low" ? "low" : "high";
+  ctx.imageSmoothingEnabled = !vista.soVisao;
+  if (!vista.soVisao) ctx.imageSmoothingQuality = vista.qualidade === "low" ? "low" : "high";
   const atlas = canvasAtlas();
   if (atlas) ctx.drawImage(atlas, 0, 0, LADO_MUNDO, LADO_MUNDO);
   // Tiles de perto (também no minimapa quando o zoom passa do limiar).

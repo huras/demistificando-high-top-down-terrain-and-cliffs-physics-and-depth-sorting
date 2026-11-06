@@ -101,6 +101,7 @@ import { definirRaioSuave, obterRaioSuave } from "./render/3d/terrenoSuave.js";
 import { definirRaioHorizonte, obterRaioHorizonte } from "./render/3d/terrenoHorizonte.js";
 import {
   ajustarZoom3d,
+  adiantarMalhaTeleporte,
   atualizarEDesenhar3d,
   aquecerProgramas3d,
   aguardarEdificios3d,
@@ -161,6 +162,7 @@ import {
 import { jogadorMorto } from "./jogo/hud/morte.js";
 import {
   focoStreaming,
+  teleporteMapaAmpliado,
   teleporteNaOrigem,
   teleporteOcupado,
   tickTeleporte,
@@ -878,7 +880,9 @@ function loop(agora) {
   sincronizarInspetorCena(dt);
 
   try {
-    if (modo === "3d") {
+    if (modo === "3d" && teleporteMapaAmpliado()) {
+      adiantarMalhaTeleporte();
+    } else if (modo === "3d") {
       garantir3d();
       const cen = atualizarEDesenhar3d(corpo, dt, atlas, comp);
       const cam3d = obterCenario3d()?.camera3d;
