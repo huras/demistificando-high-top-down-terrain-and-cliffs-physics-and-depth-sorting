@@ -17,6 +17,7 @@ import { getWorldLetterPuzzlePlan } from "../../letras/plano.js";
 import { revelarLetras } from "../../letras/estado.js";
 import { marcasSites } from "../../mundo/sites/mapaMarcas.js";
 import { marcasCaverna } from "../../caverna/mapaMarcas.js";
+import { marcasBaseJogador } from "../../construir/mapaMarcas.js";
 import { alturaDoRelevo } from "../../mundo/bioma/catalogo.js";
 import { iniciarAtlas, tickAtlas, tickTiles } from "./atlas.js";
 import { LADO_MUNDO } from "./grade.js";
@@ -58,6 +59,7 @@ const RAIO_WILD = 16;
 const RAIO_LETRA = 16;
 const RAIO_SITE = 17;
 const RAIO_CAVERNA = 16;
+const RAIO_BASE = 32;
 const ZOOM_VIAGEM = 1.15;
 
 function sincronizarBotaoCalor() {
@@ -127,7 +129,12 @@ function mesmaCidade(cidade) {
 
 function mesmoDestino(dest) {
   if (!dest) return false;
-  if (dest.tipo === "santuario" || dest.tipo === "letra" || dest.tipo === "wild") {
+  if (
+    dest.tipo === "santuario" ||
+    dest.tipo === "letra" ||
+    dest.tipo === "wild" ||
+    dest.tipo === "baseJogador"
+  ) {
     return Math.hypot(jogadorX - dest.x, jogadorY - dest.y) < 40;
   }
   return mesmaCidade(dest);
@@ -207,6 +214,28 @@ function destinoCaverna(marca) {
   };
 }
 
+function marcasDaBase() {
+  const lista = marcasBaseJogador();
+  const out = [];
+  for (let i = 0; i < lista.length; i++) {
+    if (lista[i].tipo === "baseJogador") out.push(lista[i]);
+  }
+  return out;
+}
+
+function destinoBase(marca) {
+  if (!marca) return null;
+  const z = alturaDoRelevo(marca.x, marca.y);
+  return {
+    tipo: "baseJogador",
+    id: marca.id,
+    nome: "sua base",
+    x: marca.x,
+    y: marca.y,
+    z: z || 1,
+  };
+}
+
 function destinoSite(marca) {
   if (!marca) return null;
   const z = Number.isFinite(marca.z) ? marca.z : alturaDoRelevo(marca.x, marca.y);
@@ -222,12 +251,14 @@ function destinoSite(marca) {
   };
 }
 
-/** Cidade / santuário / letra / site / wild sob o cursor (teleporte). */
+/** Cidade / base / santuário / letra / site / wild sob o cursor (teleporte). */
 function destinoNoPonto(clientX, clientY) {
   if (!tela || !aberto) return null;
   const rect = tela.getBoundingClientRect();
   const sx = clientX - rect.left;
   const sy = clientY - rect.top;
+  const base = hitNoPonto(marcasDaBase(), sx, sy, rect, RAIO_BASE);
+  if (base) return destinoBase(base);
   const cidade = hitNoPonto(cidadesDoMapa(), sx, sy, rect, RAIO_CIDADE);
   if (cidade) return cidade;
   const shrine = hitNoPonto(marcasSantuario(), sx, sy, rect, RAIO_SANTUARIO);
@@ -283,6 +314,7 @@ function mostrarConfirmacao(dest) {
   if (dest.tipo === "santuario") rotulo = `o santuário ${dest.nome}`;
   else if (dest.tipo === "letra") rotulo = `o puzzle ${dest.nome}`;
   else if (dest.tipo === "wild") rotulo = `o spawn de ${dest.nome}`;
+  else if (dest.tipo === "baseJogador") rotulo = "a sua base";
   else if (dest.tipo === "site") {
     rotulo = dest.emoji ? `${dest.emoji} ${dest.nome}` : `o sítio ${dest.nome}`;
   }
