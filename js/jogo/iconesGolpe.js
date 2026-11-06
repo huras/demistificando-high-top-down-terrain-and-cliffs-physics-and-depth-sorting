@@ -151,6 +151,20 @@ const ALIASES = Object.freeze({
 });
 
 const cache = new Map();
+const imagens = new Map();
+const filaImagens = [];
+const LIMITE_IMAGENS = 4;
+
+function tocarImagem(url) {
+  const i = filaImagens.indexOf(url);
+  if (i >= 0 && i === filaImagens.length - 1) return;
+  if (i >= 0) filaImagens.splice(i, 1);
+  filaImagens.push(url);
+  while (filaImagens.length > LIMITE_IMAGENS) {
+    const velho = filaImagens.shift();
+    if (velho && velho !== url) imagens.delete(velho);
+  }
+}
 
 function chaveParaKebab(moveKey) {
   return String(moveKey)
@@ -204,6 +218,28 @@ export function urlIconeGolpe(moveKey, tipo) {
   }
   cache.set(cacheKey, hit);
   return hit;
+}
+
+/**
+ * Image pronta ou em voo. Cache curto: a barra só mostra quatro slots.
+ * @param {string | null | undefined} moveKey
+ * @param {string | null | undefined} [tipo]
+ * @returns {HTMLImageElement | null}
+ */
+export function pedirIconeGolpe(moveKey, tipo) {
+  const url = urlIconeGolpe(moveKey, tipo);
+  if (!url) return null;
+  let img = imagens.get(url);
+  if (img) {
+    tocarImagem(url);
+    return img;
+  }
+  img = new Image();
+  img.decoding = "async";
+  img.src = url;
+  imagens.set(url, img);
+  tocarImagem(url);
+  return img;
 }
 
 /**

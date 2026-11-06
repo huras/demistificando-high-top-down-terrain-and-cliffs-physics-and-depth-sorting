@@ -348,7 +348,7 @@ function desenharPlacaAlvo(ctx, x, y, nome) {
  * A placa some se o cursor já está em cima — o hover mostra o nome.
  * Devolve o ator marcado, ou null.
  */
-export function desenharAlvoOrdem(ctx, projetar, projetarPes, sobCursor, comAnel = true) {
+export function desenharAlvoOrdem(ctx, projetar, projetarPes, sobCursor, comAnel = true, ocultarPlaca = null) {
   const alvo = alvoDeOrdem();
   if (!ctx || !alvo || !projetar) return null;
   const z = alvo.elevacao ?? alvo.z ?? 0;
@@ -357,8 +357,11 @@ export function desenharAlvoOrdem(ctx, projetar, projetarPes, sobCursor, comAnel
   if (!corpo) return alvo;
   const pes = projetarPes ? projetarPes(alvo.x, alvo.y, z, hop) : null;
   const pulso = Math.sin(relogioPokemon() * 4.2) * 0.5;
-  if (pes && comAnel) desenharAnel(ctx, pes, ANEL_ALVO, pulso);
-  if (sobCursor !== alvo) desenharPlacaAlvo(ctx, corpo.x, corpo.y, alvo.especie?.nome);
+  const pinoAqui = ocultarPlaca === alvo;
+  if (pes && comAnel && !pinoAqui) desenharAnel(ctx, pes, ANEL_ALVO, pulso);
+  if (sobCursor !== alvo && !pinoAqui) {
+    desenharPlacaAlvo(ctx, corpo.x, corpo.y, alvo.especie?.nome);
+  }
   return alvo;
 }
 

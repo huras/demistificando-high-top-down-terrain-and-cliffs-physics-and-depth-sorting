@@ -255,6 +255,16 @@ kbd {
   overflow: hidden;
 }
 
+body.sem-chrome .cabecalho,
+body.sem-chrome #painel {
+  display: none;
+}
+
+body.sem-chrome .principal {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .palco {
   min-width: 0;
   min-height: 0;

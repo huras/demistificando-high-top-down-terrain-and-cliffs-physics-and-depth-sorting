@@ -85,6 +85,7 @@ import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { tickTiles } from "../ui/mapa/atlas.js";
 import { pintarMapa } from "../ui/mapa/pintar.js";
 import { abrirMapa, mapaAberto } from "../ui/mapa/mapaMundo.js";
+import { ancoraCameraTeleporte } from "./teleporte.js";
 
 let raiz = null;
 
@@ -107,6 +108,8 @@ export function ligarUi(overlay) {
   ligarJanelaLoja(raiz);
   ligarHudClima();
   ligarHudVento();
+  ligarChrome();
+  ligarTelaCheia();
   raiz.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
     if (
@@ -430,7 +433,75 @@ function pintarUtilityIcons() {
   }
 }
 
+function botaoUtility(id) {
+  return document.querySelector(`.hud-utility-btn[data-utility="${id}"]`);
+}
+
+function aplicarChrome(oculto) {
+  document.body.classList.toggle("sem-chrome", oculto);
+  const btn = botaoUtility("chrome");
+  if (!btn) return;
+  btn.setAttribute("aria-pressed", oculto ? "true" : "false");
+  btn.setAttribute(
+    "aria-label",
+    oculto ? "Mostrar cabeçalho e painel" : "Esconder cabeçalho e painel",
+  );
+}
+
+function ligarChrome() {
+  let oculto = false;
+  try {
+    oculto = localStorage.getItem(CHAVE_CHROME) === "0";
+  } catch {
+    oculto = false;
+  }
+  aplicarChrome(oculto);
+  if (oculto) window.dispatchEvent(new Event("resize"));
+}
+
+function alternarChrome() {
+  const oculto = !document.body.classList.contains("sem-chrome");
+  aplicarChrome(oculto);
+  try {
+    localStorage.setItem(CHAVE_CHROME, oculto ? "0" : "1");
+  } catch {
+    /* preferência local indisponível */
+  }
+  window.dispatchEvent(new Event("resize"));
+}
+
+function sincronizarTelaCheia() {
+  const btn = botaoUtility("telaCheia");
+  if (!btn) return;
+  const on = document.fullscreenElement === document.documentElement;
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  btn.setAttribute("aria-label", on ? "Sair da tela cheia" : "Tela cheia");
+}
+
+function ligarTelaCheia() {
+  if (document.documentElement.dataset.telaCheia) return;
+  document.documentElement.dataset.telaCheia = "1";
+  document.addEventListener("fullscreenchange", sincronizarTelaCheia);
+  sincronizarTelaCheia();
+}
+
+function alternarTelaCheia() {
+  const doc = document.documentElement;
+  const pedido = document.fullscreenElement
+    ? document.exitFullscreen?.()
+    : doc.requestFullscreen?.();
+  pedido?.catch?.(() => {});
+}
+
 function tratarUtility(id) {
+  if (id === "chrome") {
+    alternarChrome();
+    return;
+  }
+  if (id === "telaCheia") {
+    alternarTelaCheia();
+    return;
+  }
   if (id === "pokedex") {
     if (dexAberta()) fecharDex();
     else abrirDex();
@@ -910,8 +981,14 @@ function pintarRelogio() {
 
 const ZOOM_MINI = 2;
 const MINI_PX = 220;
+const CHAVE_CHROME = "hud-chrome";
+/** Último ponto da âncora, reusado. A seta segue o deslocamento da viagem. */
+const rumoMini = { x: 0, y: 0, dx: 0, dy: 1, tem: false };
+let miniNoHud = false;
 
 function pontoMini() {
+  const voo = ancoraCameraTeleporte();
+  if (voo) return { x: voo.x, y: voo.mapaY };
   if (estado.interior && Number.isFinite(estado.interior.ax)) {
     return deLocalKanto(
       estado.interior.ax * AREA_KANTO + CENTRO_AREA + 0.5,
@@ -921,41 +998,94 @@ function pontoMini() {
   return { x: corpoRef?.x || 0, y: corpoRef?.y || 0 };
 }
 
+function rumoDaViagem(x, y, corpo) {
+  if (rumoMini.tem) {
+    const mx = x - rumoMini.x;
+    const my = y - rumoMini.y;
+    if (mx * mx + my * my > 0.04) {
+      const len = Math.hypot(mx, my) || 1;
+      rumoMini.dx = mx / len;
+      rumoMini.dy = my / len;
+    }
+  } else {
+    rumoMini.dx = corpo?.dirX || 0;
+    rumoMini.dy = corpo?.dirY || 1;
+  }
+  rumoMini.x = x;
+  rumoMini.y = y;
+  rumoMini.tem = true;
+  return rumoMini;
+}
+
+function hudJogo() {
+  if (raiz?.id === "jogo-hud") return raiz;
+  return el("#jogo-hud") || document.getElementById("jogo-hud");
+}
+
+function sincronizarMiniViagem(ativo) {
+  const mini = el("#area-minimap");
+  const hud = hudJogo();
+  const dock = el("#hud-map-dock");
+  if (!mini || !hud || !dock) return;
+  if (ativo === miniNoHud && hud.classList.contains("is-mapa-viagem") === ativo) return;
+  if (ativo && !miniNoHud) {
+    hud.appendChild(mini);
+    miniNoHud = true;
+  } else if (!ativo && miniNoHud) {
+    const readouts = dock.querySelector(".area-minimap__readouts");
+    if (readouts) dock.insertBefore(mini, readouts);
+    else dock.appendChild(mini);
+    miniNoHud = false;
+    rumoMini.tem = false;
+  }
+  hud.classList.toggle("is-mapa-viagem", ativo);
+}
+
 function pintarMini() {
   const tela = el("#jogo-mini");
   if (!tela) return;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const px = Math.round(MINI_PX * dpr);
-  if (tela.width !== px || tela.height !== px) {
-    tela.width = px;
-    tela.height = px;
+  const voo = ancoraCameraTeleporte();
+  const viagem = !!voo;
+  sincronizarMiniViagem(viagem);
+  const caixa = viagem ? el("#area-minimap") : null;
+  const cssW = viagem ? Math.max(MINI_PX, caixa?.clientWidth || MINI_PX) : MINI_PX;
+  const cssH = viagem ? Math.max(MINI_PX, caixa?.clientHeight || MINI_PX) : MINI_PX;
+  const dpr = viagem ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  const bw = Math.max(1, Math.round(cssW * dpr));
+  const bh = Math.max(1, Math.round(cssH * dpr));
+  if (tela.width !== bw || tela.height !== bh) {
+    tela.width = bw;
+    tela.height = bh;
   }
   const ponto = pontoMini();
   // Com o mapa grande fechado, pedimos os tiles de perto da janela do mini.
   if (!mapaAberto()) {
-    const meio = MINI_PX / (2 * ZOOM_MINI);
+    const meioX = cssW / (2 * ZOOM_MINI);
+    const meioY = cssH / (2 * ZOOM_MINI);
     tickTiles(
       ponto.x,
       ponto.y,
       ZOOM_MINI,
-      ponto.x - meio,
-      ponto.y - meio,
-      ponto.x + meio,
-      ponto.y + meio,
+      ponto.x - meioX,
+      ponto.y - meioY,
+      ponto.x + meioX,
+      ponto.y + meioY,
     );
   }
   const corpo = corpoRef;
-  pintarMapa(tela.getContext("2d"), px, px, dpr, {
+  const rumo = viagem ? rumoDaViagem(ponto.x, ponto.y, corpo) : null;
+  pintarMapa(tela.getContext("2d"), bw, bh, dpr, {
     cx: ponto.x,
     cy: ponto.y,
     zoom: ZOOM_MINI,
     jogadorX: ponto.x,
     jogadorY: ponto.y,
-    jogadorDirX: corpo?.dirX ?? 0,
-    jogadorDirY: corpo?.dirY ?? 0,
+    jogadorDirX: rumo ? rumo.dx : corpo?.dirX ?? 0,
+    jogadorDirY: rumo ? rumo.dy : corpo?.dirY ?? 0,
     jogadorFacing: corpo?.facing ?? 0,
     agora: performance.now(),
     mini: true,
+    qualidade: viagem ? "low" : "high",
   });
   const place = raiz?.querySelector("[data-minimap-place]");
   if (place) {

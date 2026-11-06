@@ -249,7 +249,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   ctx.scale(z, z);
   ctx.translate(-vista.cx, -vista.cy);
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
+  ctx.imageSmoothingQuality = vista.qualidade === "low" ? "low" : "high";
   const atlas = canvasAtlas();
   if (atlas) ctx.drawImage(atlas, 0, 0, LADO_MUNDO, LADO_MUNDO);
   // Tiles de perto (também no minimapa quando o zoom passa do limiar).
