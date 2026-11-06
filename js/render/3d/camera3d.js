@@ -181,7 +181,7 @@ export function aplicarOlharMouse(camera3d, dx, dy) {
  * O blend interpola distância, altura e offset lateral.
  */
 export function seguirAlvo3d(camera3d, corpo, dt) {
-  if (!camera3d.pronta) {
+  if (!camera3d.pronta && !camera3d.teleporteSemColisao) {
     if (Number.isFinite(camera3d._yawSalvo)) {
       camera3d.yaw = camera3d._yawSalvo;
       camera3d._yawSalvo = undefined;
@@ -191,14 +191,23 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
     }
   }
 
-  alinharCostas(camera3d, corpo, dt);
+  if (!camera3d.teleporteSemColisao) alinharCostas(camera3d, corpo, dt);
 
-  const elev = corpo.elevacao ?? corpo.z + (corpo.hopLift || 0);
-  const tx = corpo.x;
-  const tz = corpo.y;
+  const emViagem =
+    Number.isFinite(camera3d.teleporteAncoraX) &&
+    Number.isFinite(camera3d.teleporteAncoraZ) &&
+    Number.isFinite(camera3d.teleporteElev);
+  let elev = corpo.elevacao ?? corpo.z + (corpo.hopLift || 0);
+  let tx = corpo.x;
+  let tz = corpo.y;
+  if (emViagem) {
+    tx = camera3d.teleporteAncoraX;
+    tz = camera3d.teleporteAncoraZ;
+    elev = camera3d.teleporteElev;
+  }
   const tyAlvo = elev * ALTURA_BLOCO + camera3d.alturaPivo;
 
-  if (!camera3d.pronta || camera3d._lookY == null) {
+  if (emViagem || !camera3d.pronta || camera3d._lookY == null) {
     camera3d._lookY = tyAlvo;
   } else {
     const tY = 1 - Math.exp(-CAMERA3D_SUAVIDADE_Y * dt);
@@ -227,24 +236,29 @@ export function seguirAlvo3d(camera3d, corpo, dt) {
   const offZ = desejadoZ - tz;
   const distOff = Math.hypot(offX, offY, offZ) || 1;
 
-  const distOlho = distanciaComOlhoLivre(
-    tx,
-    tyBase,
-    tz,
-    offX / distOff,
-    offY / distOff,
-    offZ / distOff,
-    distOff,
-  );
-  if (camera3d._distClip == null) camera3d._distClip = distOff;
-  const entrando = distOlho < camera3d._distClip - 0.02;
-  if (entrando && camera3d._distClip - distOlho > 1.25) {
-    camera3d._distClip = distOlho;
+  let dist = distOff;
+  if (camera3d.teleporteSemColisao) {
+    camera3d._distClip = distOff;
   } else {
-    const tClip = 1 - Math.exp(-(entrando ? 24 : 7) * dt);
-    camera3d._distClip += (distOlho - camera3d._distClip) * tClip;
+    const distOlho = distanciaComOlhoLivre(
+      tx,
+      tyBase,
+      tz,
+      offX / distOff,
+      offY / distOff,
+      offZ / distOff,
+      distOff,
+    );
+    if (camera3d._distClip == null) camera3d._distClip = distOff;
+    const entrando = distOlho < camera3d._distClip - 0.02;
+    if (entrando && camera3d._distClip - distOlho > 1.25) {
+      camera3d._distClip = distOlho;
+    } else {
+      const tClip = 1 - Math.exp(-(entrando ? 24 : 7) * dt);
+      camera3d._distClip += (distOlho - camera3d._distClip) * tClip;
+    }
+    dist = Math.min(distOff, Math.max(DIST_OLHO_MIN, camera3d._distClip));
   }
-  const dist = Math.min(distOff, Math.max(DIST_OLHO_MIN, camera3d._distClip));
   const escala = dist / distOff;
 
   const camX = tx + offX * escala;
@@ -410,11 +424,15 @@ function poseOrbita(camera3d, tx, tyBase, tz) {
       Number.isFinite(camera3d.teleporteDistBase) ? camera3d.teleporteDistBase : camera3d.distancia;
     const distAlvo =
       Number.isFinite(camera3d.teleporteDistAlvo) ? camera3d.teleporteDistAlvo : distBase;
+    distDesejada = distBase + (distAlvo - distBase) * t;
+  }
+  if (Number.isFinite(camera3d.teleportePitch)) {
+    pitch = camera3d.teleportePitch;
+  } else if (t > 0) {
     const pitchIni =
       Number.isFinite(camera3d.teleportePitchIni) ? camera3d.teleportePitchIni : camera3d.pitchOrbita;
     const pitchFim =
       Number.isFinite(camera3d.teleportePitchFim) ? camera3d.teleportePitchFim : camera3d.pitchOrbita;
-    distDesejada = distBase + (distAlvo - distBase) * t;
     pitch = pitchIni + (pitchFim - pitchIni) * t;
   }
   pitch = clamp(pitch, CAMERA3D_PITCH_MIN, CAMERA3D_PITCH_MAX);

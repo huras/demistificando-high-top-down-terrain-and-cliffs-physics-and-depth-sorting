@@ -591,7 +591,7 @@ export function recarregarBarraEsquiva(ator, dt) {
 
 export function tickPassivo(ator, dt, agora) {
   // Sky / voo livre mantém hopLift no tick de locomocão — não decair aqui.
-  if (ator.hopLift > 0 && !ator.voando && !ator.skyPasser && !ator.planando) {
+  if (ator.hopLift > 0 && !ator.pulando && !ator.voando && !ator.skyPasser && !ator.planando) {
     ator.hopLift = Math.max(0, ator.hopLift - dt * 3.2);
   }
   if (ator.iframe > 0) ator.iframe = Math.max(0, ator.iframe - dt);

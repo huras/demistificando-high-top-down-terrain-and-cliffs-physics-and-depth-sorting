@@ -1,5 +1,6 @@
 import { sincronizarFacingParede } from "../../fisica/escalada.js";
 import { velocidadeDe } from "../ator.js";
+import { quererPulo } from "../combate/pulo.js";
 import { irPara, zDePerseguicao } from "../ia/locomocaoCampo.js";
 import {
   aiShouldKeepClosing,
@@ -40,6 +41,7 @@ export function integrarEngajar(ator, alvo, dt) {
     // Meta = alvo; freio = anel de contato (uma só distância).
     irPara(ator, alvo.x, alvo.y, z, vel, dt, stop);
     encararAlvo(ator, alvo);
+    if (ator.andando) quererPulo(ator, true);
     return;
   }
 
@@ -58,4 +60,5 @@ export function integrarEngajar(ator, alvo, dt) {
   const gy = ator.y + (steer.y / mag) * 1.6;
   irPara(ator, gx, gy, z, vel * 0.85, dt, DIST_PARAR_CURTO);
   encararAlvo(ator, alvo);
+  if (ator.andando) quererPulo(ator, true);
 }

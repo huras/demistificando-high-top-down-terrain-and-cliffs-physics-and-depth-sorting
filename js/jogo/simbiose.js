@@ -3,6 +3,7 @@
  * Porta enxuta do Pokémon AI (symbioticFollower), no mesmo corte do ride.
  */
 import { RAIO_CORPO, RAIO_POKEMON } from "../config.js";
+import { ehAquatico } from "../pokemon/habitat/gates.js";
 import { obterPonteiroCanvas } from "../entrada/hoverBloco.js";
 import { resetarNav } from "../navegacao/seguirCaminho.js";
 import { atorSobPonteiro } from "../pokemon/clique.js";
@@ -67,9 +68,11 @@ function limparFlags(ator) {
   delete ator._simbioseFreeze;
 }
 
-function sincronizarCorpo(corpo, ativo) {
+function sincronizarCorpo(corpo, ativo, ator) {
   if (!corpo) return;
   corpo.simbioseAtivo = !!ativo;
+  // Água na simbiose: sem drain de nado e +50% de velocidade (regra do tipo).
+  corpo.simbioseNadoLivre = !!(ativo && ehAquatico(ator));
 }
 
 function aplicarFundido(indice, ator, corpo) {
@@ -77,7 +80,7 @@ function aplicarFundido(indice, ator, corpo) {
   ator.simbioseAtivo = true;
   ator._simbioseFreeze = true;
   ator.capturado = false;
-  sincronizarCorpo(corpo, true);
+  sincronizarCorpo(corpo, true, ator);
 }
 
 function limparFundido(corpo) {
@@ -376,6 +379,6 @@ export function tickSimbiose(dt, corpo) {
     forcarSairSimbiose(corpo);
     return;
   }
-  sincronizarCorpo(corpo, true);
+  sincronizarCorpo(corpo, true, ator);
   snapMonNoCorpo(corpo, ator, dt);
 }

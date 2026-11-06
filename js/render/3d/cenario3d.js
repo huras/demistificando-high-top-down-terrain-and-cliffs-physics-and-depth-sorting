@@ -36,6 +36,7 @@ import {
   definirChecagemMalhaTeleporte,
   focoStreaming,
   teleporteNaOrigem,
+  ancoraCameraTeleporte,
 } from "../../jogo/teleporte.js";
 import { criarPersonagem3d } from "./personagem3d.js";
 import { atualizarTeleporte3d, criarTeleporte3d } from "./teleporte3d.js";
@@ -813,7 +814,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;
   const elevVis = elev * ALTURA_BLOCO;
-  estado._alvoCeu.set(corpo.x, elevVis, corpo.y);
+  const vooCeu = ancoraCameraTeleporte();
+  if (vooCeu) estado._alvoCeu.set(vooCeu.x, vooCeu.elev * ALTURA_BLOCO, vooCeu.mapaY);
+  else estado._alvoCeu.set(corpo.x, elevVis, corpo.y);
 
   const emCena = estaEmCena();
   const camRender = emCena ? obterCameraCena() : estado.camera3d.cam;

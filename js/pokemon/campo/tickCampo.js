@@ -10,6 +10,7 @@ import {
 } from "../combate/meleeApproach.js";
 import { bolaNoChaoMaisPerto } from "../captura.js";
 import { dropMaisPerto } from "../drops.js";
+import { integrarPulo } from "../combate/pulo.js";
 import { irPara, zDePerseguicao } from "../ia/locomocaoCampo.js";
 import { escolherAlvoParty, escolherAlvoWild } from "./alvo.js";
 import { integrarEngajar } from "./engajar.js";
@@ -26,6 +27,33 @@ import { ehDiurno } from "../distribuicao/noturno.js";
 import { obterHora } from "../../render/3d/ceu/controleCeu.js";
 
 const DIST_ITEM = 0.35;
+
+function pousarHopVisual(ator) {
+  if (!ator?.puloVisual) return;
+  ator.pulando = false;
+  ator.puloVisual = false;
+  ator.puloAlt = 0;
+  ator.vz = 0;
+  ator.hopLift = 0;
+  ator.noChao = true;
+}
+
+/** Integra o hop da luta. Ride, freeze, sono e fora de agro não sobem. */
+function fecharHopLuta(ator, dt, luta) {
+  if (!ator) return;
+  if (
+    ator.rideAtivo ||
+    ator._rideFreeze ||
+    ator._simbioseFreeze ||
+    ator.simbioseAtivo ||
+    (ator.dormindo || 0) > 0 ||
+    ator.sonoNatural
+  ) {
+    pousarHopVisual(ator);
+    return;
+  }
+  if (luta || ator.pulando || (ator.puloCd || 0) > 0) integrarPulo(ator, dt);
+}
 
 export function ehNoiteOverworld(h = obterHora()) {
   return h >= 20.5 || h < 5;
@@ -111,11 +139,18 @@ export function tickPartyCampo(mon, selvagens, jogador, dt) {
     mon.correndo = false;
     mon.alvo = null;
     mon._emLutaCampo = false;
+    pousarHopVisual(mon);
     return true;
   }
-  if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) return false;
+  if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) {
+    fecharHopLuta(mon, dt, false);
+    return false;
+  }
 
-  if (tickMeleeApproach(mon, dt)) return true;
+  if (tickMeleeApproach(mon, dt)) {
+    fecharHopLuta(mon, dt, true);
+    return true;
+  }
   tickInvestigacao(mon, dt);
 
   // Tiro ranged sem visão do atirador: corre à origem do tiro.
@@ -128,6 +163,7 @@ export function tickPartyCampo(mon, selvagens, jogador, dt) {
     } else {
       mon.andando = false;
     }
+    fecharHopLuta(mon, dt, true);
     return true;
   }
 
@@ -141,10 +177,15 @@ export function tickPartyCampo(mon, selvagens, jogador, dt) {
       mon.andando = false;
       mon.correndo = false;
       mon.itemAlvo = null;
+      fecharHopLuta(mon, dt, false);
       return true;
     }
     // Coleta no agro do treinador (FOLLOW / DEFEND / etc. sem luta).
-    if (perseguirItem(mon, jogador, dt)) return true;
+    if (perseguirItem(mon, jogador, dt)) {
+      fecharHopLuta(mon, dt, false);
+      return true;
+    }
+    fecharHopLuta(mon, dt, false);
     return false;
   }
 
@@ -154,11 +195,16 @@ export function tickPartyCampo(mon, selvagens, jogador, dt) {
   mon.modo = "agro";
   if (ocupadoCast(mon)) {
     mon.andando = false;
+    fecharHopLuta(mon, dt, true);
     return true;
   }
-  if (isCombatMotionLocked(mon)) return true;
+  if (isCombatMotionLocked(mon)) {
+    fecharHopLuta(mon, dt, true);
+    return true;
+  }
 
   integrarEngajar(mon, alvo, dt);
+  fecharHopLuta(mon, dt, true);
   return true;
 }
 
@@ -166,7 +212,10 @@ export function tickPartyCampo(mon, selvagens, jogador, dt) {
 export function tickWildCampo(ator, partyMon, jogador, dt) {
   if (!ator || ator.morto || ator.capturado || ator.preso) return;
   // Sky passers: só combate; cruise fica no habitat/skyPassers.
-  if (ator.skyPasser && ator.modo !== "agro") return;
+  if (ator.skyPasser && ator.modo !== "agro") {
+    fecharHopLuta(ator, dt, false);
+    return;
+  }
 
   // Hurt/desmaio: não troca pra roam (senão a população cull e o mon some).
   if ((ator.hp != null && ator.hp <= 0) || (ator.desmaioEm || 0) > 0) {
@@ -174,10 +223,14 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     ator.vy = 0;
     ator.andando = false;
     ator.correndo = false;
+    pousarHopVisual(ator);
     return;
   }
 
-  if (tickMeleeApproach(ator, dt)) return;
+  if (tickMeleeApproach(ator, dt)) {
+    fecharHopLuta(ator, dt, true);
+    return;
+  }
 
   if (ator.sonoNatural && !ehNoiteOverworld()) {
     acordarSonoNatural(ator);
@@ -196,6 +249,7 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
         ator.andando = false;
         ator.correndo = false;
       }
+      fecharHopLuta(ator, dt, false);
       return;
     }
   }
@@ -213,10 +267,15 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     }
     if (ocupadoCast(ator)) {
       ator.andando = false;
+      fecharHopLuta(ator, dt, true);
       return;
     }
-    if (isCombatMotionLocked(ator)) return;
+    if (isCombatMotionLocked(ator)) {
+      fecharHopLuta(ator, dt, true);
+      return;
+    }
     integrarEngajar(ator, alvo, dt);
+    fecharHopLuta(ator, dt, true);
     return;
   }
 
@@ -236,6 +295,7 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
   ) {
     deitarNoLar(ator);
   }
+  fecharHopLuta(ator, dt, false);
 }
 
 /** Dispara golpes depois da locomoção (party + wilds em luta). */

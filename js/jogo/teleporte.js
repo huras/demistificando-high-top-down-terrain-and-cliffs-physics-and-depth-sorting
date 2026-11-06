@@ -1,7 +1,9 @@
 /**
- * Relógio da viagem entre cidades. Na ida a câmera vai a dist 8.2
- * com pitch 45°→-35° (acompanha as partículas); na chegada o reverso.
- * Só corta quando stream + malha + piso caminhável do destino estão prontos.
+ * Relógio da viagem entre cidades.
+ * Na desmaterialização a câmera sobe 7 blocos e olha o céu com as partículas.
+ * Enquanto o destino carrega, ela viaja até lá ainda no céu.
+ * Na chegada o pitch desce e o olhar acompanha o feixe até o pouso.
+ * Só corta quando a viagem chegou e stream + malha + piso do destino estão prontos.
  */
 import { CHUNK_Y, ZOOM_MAX, ZOOM_MIN } from "../config.js";
 import { alturaSobPes } from "../fisica/colisao.js";
@@ -29,13 +31,18 @@ import { snapCamera3dAoCorpo } from "../render/3d/camera3d.js";
 const SUBIDA = 3.2;
 const DESCIDA = 2.6;
 const SUBIDA_BLOCOS = 17;
+/** A câmera sobe com a desmaterialização, menos que o feixe de partículas. */
+const LIFT_CAMERA = 7;
 const POR_ATOR = 26;
 const RAIO_MIOLO = 2;
+const VIAGEM_VEL = 96;
+const VIAGEM_MIN = 0.45;
+const VIAGEM_MAX = 2.8;
 /** Distância de órbita durante o teleporte. */
 const DIST_TELEPORTE = 8.2;
-/** Pitch na saída (acompanha partículas subindo): 45° → -35°. */
+/** Pitch na saída: 45° → olhar o céu. Na chegada o reverso usa a descida inteira. */
 const PITCH_TELEPORTE_INI = Math.PI / 4;
-const PITCH_TELEPORTE_FIM = (-35 * Math.PI) / 180;
+const PITCH_TELEPORTE_FIM = (-58 * Math.PI) / 180;
 
 const sementes = [];
 for (let i = 0; i < POR_ATOR * 3; i++) {
@@ -63,8 +70,13 @@ let alfa = 1;
 let zoomBase = null;
 let monMarcado = null;
 let pecasN = 0;
-/** @type {null | { x: number, y: number }} */
+/** @type {null | { x: number, y: number, z: number }} */
 let origemViagem = null;
+let viagemT = 0;
+let viagemDur = 0;
+let yawPartida = null;
+/** Reusado todo frame. Sem alocação na viagem. */
+const ancoraCam = { x: 0, mapaY: 0, elev: 0, ativa: false };
 /** @type {null | ((x: number, y: number) => boolean)} */
 let checarMalhaDestino = null;
 /** @type {null | ((ctx: object) => void)} */
@@ -94,6 +106,11 @@ export function focoStreaming() {
 /** Ainda na origem (preparo ou subida) — usa disco duplo. */
 export function teleporteNaOrigem() {
   return !!destino && fase !== "descida";
+}
+
+/** Olho da viagem (mundo x, mapa y, elevação em blocos). Null fora do teleporte. */
+export function ancoraCameraTeleporte() {
+  return ancoraCam.ativa ? ancoraCam : null;
 }
 
 export function definirChecagemMalhaTeleporte(fn) {
@@ -168,6 +185,9 @@ export function comecarSubida(alvo, opts) {
   alfa = 1;
   pecasN = 0;
   origemViagem = null;
+  viagemT = 0;
+  viagemDur = 0;
+  yawPartida = null;
   pausarJornada(true);
   gapJornada();
 }
@@ -176,6 +196,11 @@ function saida(t) {
   const u = t < 0 ? 0 : t > 1 ? 1 : t;
   const inv = 1 - u;
   return 1 - inv * inv * inv;
+}
+
+function suave(t) {
+  const u = t < 0 ? 0 : t > 1 ? 1 : t;
+  return u * u * (3 - 2 * u);
 }
 
 function encaixe(u, atraso) {
@@ -221,7 +246,6 @@ function cortar(ctx) {
   const ox = origemViagem?.x ?? ctx.corpo.x;
   const oy = origemViagem?.y ?? ctx.corpo.y;
   registrarTeleporte(ox, oy, destino.x, destino.y);
-  origemViagem = null;
 
   const zPiso = amostrarPisoTeleporte(destino.x, destino.y);
   const z = zPiso > 0 ? zPiso : destino.z;
@@ -307,22 +331,84 @@ function montarPecas(origens, u, subindo) {
   }
 }
 
+function prepararViagemCamera() {
+  if (viagemDur > 0 || !origemViagem || !destino) return;
+  const dist = Math.hypot(destino.x - origemViagem.x, destino.y - origemViagem.y);
+  viagemDur = Math.min(VIAGEM_MAX, Math.max(VIAGEM_MIN, dist / VIAGEM_VEL));
+}
+
+/** 0 na desmaterialização; 0→1 no céu enquanto o destino carrega. */
+function progressoViagem() {
+  if (fase !== "subida" || faseT < SUBIDA || viagemDur <= 0) return 0;
+  return suave(Math.min(1, viagemT / viagemDur));
+}
+
+function alturaCruzeiro(k) {
+  const z0 = origemViagem?.z ?? 0;
+  let z1 = z0;
+  if (k > 0 && destino) {
+    const piso = amostrarPisoTeleporte(destino.x, destino.y);
+    if (piso > 0) z1 = piso;
+  }
+  return z0 + (z1 - z0) * k;
+}
+
+function aplicarYawPartida(cam, giro) {
+  if (yawPartida == null) yawPartida = cam.yaw || 0;
+  const g = giro < 0 ? 0 : giro > 1 ? 1 : giro;
+  let diff = -yawPartida;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  cam.yaw = yawPartida + diff * g;
+}
+
 /**
  * @param {object} ctx
  * @param {number} extra progresso 0→1 na ida, 1→0 na chegada (mesmo easing das peças)
+ * @param {number} k viagem no céu 0→1
+ * @param {boolean} subindo
+ * @param {number} u
  */
-function aplicarCamera(ctx, extra) {
-  if (ctx.camera3d) {
+function aplicarCamera(ctx, extra, k, subindo, u) {
+  if (ctx.camera3d && origemViagem && destino) {
     const cam = ctx.camera3d;
     if (cam._teleporteDistBase == null) {
       cam._teleporteDistBase = cam.distancia;
     }
-    // Progresso 0..1: dist → 28, pitch 45° → -35° (reverso na descida via extra).
+    const giro = subindo ? Math.max(saida(u), k) : 1;
+    aplicarYawPartida(cam, giro);
+    const x = origemViagem.x + (destino.x - origemViagem.x) * k;
+    const y = origemViagem.y + (destino.y - origemViagem.y) * k;
+    const piso = alturaCruzeiro(subindo ? k : 1);
+    let elev;
+    let pitch;
+    if (subindo) {
+      const lift = k > 0 ? LIFT_CAMERA : LIFT_CAMERA * saida(u);
+      elev = piso + lift;
+      pitch = PITCH_TELEPORTE_INI + (PITCH_TELEPORTE_FIM - PITCH_TELEPORTE_INI) * extra;
+    } else {
+      // saida(u) é o mesmo relógio das partículas, na descida inteira.
+      // Sem corte: o pitch não pode chegar no chão enquanto o feixe ainda está alto.
+      const queda = saida(u);
+      const hFeixe = SUBIDA_BLOCOS * (1 - queda);
+      elev = piso + hFeixe * 0.62;
+      pitch = PITCH_TELEPORTE_FIM + (cam.pitchOrbita - PITCH_TELEPORTE_FIM) * queda;
+    }
+    ancoraCam.x = x;
+    ancoraCam.mapaY = y;
+    ancoraCam.elev = elev;
+    ancoraCam.ativa = true;
     cam.folgaTeleporte = extra;
     cam.teleporteDistBase = cam._teleporteDistBase;
     cam.teleporteDistAlvo = DIST_TELEPORTE;
     cam.teleportePitchIni = PITCH_TELEPORTE_INI;
     cam.teleportePitchFim = PITCH_TELEPORTE_FIM;
+    cam.teleportePitch = pitch;
+    cam.teleporteAncoraX = x;
+    cam.teleporteAncoraZ = y;
+    cam.teleporteLift = elev - piso;
+    cam.teleporteElev = elev;
+    cam.teleporteSemColisao = true;
   }
   if (ctx.modo === "2d" && ctx.camera) {
     if (zoomBase == null) zoomBase = ctx.camera.zoom;
@@ -332,6 +418,10 @@ function aplicarCamera(ctx, extra) {
 }
 
 function soltarCamera(ctx) {
+  ancoraCam.ativa = false;
+  yawPartida = null;
+  viagemT = 0;
+  viagemDur = 0;
   if (ctx.camera3d) {
     const cam = ctx.camera3d;
     cam.folgaTeleporte = 0;
@@ -339,7 +429,13 @@ function soltarCamera(ctx) {
     cam.teleporteDistAlvo = null;
     cam.teleportePitchIni = null;
     cam.teleportePitchFim = null;
+    cam.teleportePitch = null;
     cam._teleporteDistBase = null;
+    cam.teleporteAncoraX = null;
+    cam.teleporteAncoraZ = null;
+    cam.teleporteLift = 0;
+    cam.teleporteElev = null;
+    cam.teleporteSemColisao = false;
   }
   if (ctx.camera && zoomBase != null) ctx.camera.zoom = zoomBase;
   zoomBase = null;
@@ -375,6 +471,9 @@ function encerrar(ctx) {
   ancoras = null;
   destino = null;
   origemViagem = null;
+  viagemT = 0;
+  viagemDur = 0;
+  yawPartida = null;
   aoPousarCb = null;
   pausarJornada(false);
   soltarCamera(ctx);
@@ -385,12 +484,20 @@ export function tickTeleporte(dt, ctx) {
   if (fase === "ocioso") return;
   try {
   if (fase === "subida" && !origemViagem && ctx?.corpo) {
-    origemViagem = { x: ctx.corpo.x, y: ctx.corpo.y };
+    origemViagem = {
+      x: ctx.corpo.x,
+      y: ctx.corpo.y,
+      z: ctx.corpo.elevacao ?? ctx.corpo.z ?? 0,
+    };
   }
-  faseT += Math.min(0.05, dt || 0);
+  const passo = Math.min(0.05, dt || 0);
+  faseT += passo;
   if (fase === "subida" && faseT >= SUBIDA) {
     // Sem timeout forçado: pousar com Z errado enterra o jogador até o chunk subir.
-    if (destinoProntoParaCortar()) {
+    // A câmera cruza o céu antes do corte, mesmo com o destino já pronto.
+    prepararViagemCamera();
+    viagemT += passo;
+    if (progressoViagem() >= 1 && destinoProntoParaCortar()) {
       cortar(ctx);
       fase = "descida";
       faseT = 0;
@@ -407,7 +514,8 @@ export function tickTeleporte(dt, ctx) {
   const u = Math.min(1, faseT / dur);
   const extra = subindo ? saida(u) : 1 - saida(u);
   alfa = subindo ? 1 - saida(u) : saida(u);
-  aplicarCamera(ctx, extra);
+  const k = subindo ? progressoViagem() : 1;
+  aplicarCamera(ctx, extra, k, subindo, u);
   montarPecas(subindo ? origensVivas(ctx) : ancoras || origensVivas(ctx), u, subindo);
   marcarMon(alfa);
   } catch (err) {

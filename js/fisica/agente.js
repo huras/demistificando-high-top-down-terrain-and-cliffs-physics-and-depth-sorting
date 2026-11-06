@@ -513,9 +513,9 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
       return;
     }
 
-    if (!agente.pulando) {
-      agente.z = zChao;
-      agente.elevacao = zChao;
+    agente.z = zChao;
+    agente.elevacao = zChao;
+    if (!agente.pulando && !(agente.puloAlt > 0)) {
       agente.hopLift = 0;
       agente.vz = 0;
     }

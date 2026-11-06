@@ -28,6 +28,11 @@ function surfRideAtivo(corpo) {
   return !!(corpo?.rideAtivo && corpo?.rideModo === "surf");
 }
 
+/** Simbiose com tipo água: nada sem gastar stamina. */
+function nadoLivreSimbiose(corpo) {
+  return !!(corpo?.simbioseAtivo && corpo?.simbioseNadoLivre);
+}
+
 /**
  * Altura visual do corpo no eixo do billboard (antes do tilt).
  * Pokémon: `_alturaVisual` (trim do atlas) ou fallback ~PMD; jogador: `alturaCorpo`.
@@ -315,7 +320,7 @@ export function atualizarNado(corpo, dx, dy, dt) {
     corpo.elevacao += corpo.vz * dt;
     if (corpo.elevacao < agua.pisoQueda) corpo.elevacao = agua.pisoQueda;
     corpo.acao = "cachoeira";
-  } else if ((corpo.stamina ?? 0) <= 1e-4 && !corpo.invulneravel) {
+  } else if ((corpo.stamina ?? 0) <= 1e-4 && !corpo.invulneravel && !nadoLivreSimbiose(corpo)) {
     corpo.afogandoT = (corpo.afogandoT || 0) + dt;
     const linha = agua.caindo ? agua.pisoQueda : agua.superficie;
     const alvo = linha - (imersaoNado(corpo) + AGUA_AFOGA_EXTRA);
@@ -336,7 +341,8 @@ export function atualizarNado(corpo, dx, dy, dt) {
   corpo.z = agua.fundo > 0 ? agua.fundo : Math.floor(corpo.elevacao);
   corpo.hopLift = corpo.elevacao - corpo.z;
 
-  const andando = integrarHorizontal(corpo, dx, dy, dt, AGUA_VEL_NADO, agua, false);
+  const velNado = nadoLivreSimbiose(corpo) ? AGUA_VEL_NADO * 1.5 : AGUA_VEL_NADO;
+  const andando = integrarHorizontal(corpo, dx, dy, dt, velNado, agua, false);
   // A quina da margem fica na linha d'água. O pé submerso não pode travar nela.
   const zMin =
     agua.caindo || agua.superficie <= 0 ? 0 : Math.floor(agua.superficie);
@@ -353,8 +359,8 @@ export function atualizarNado(corpo, dx, dy, dt) {
     return false;
   }
 
-  if (surfRideAtivo(corpo)) {
-    // Surf: sem drain; regenera leve mesmo nadando.
+  if (surfRideAtivo(corpo) || nadoLivreSimbiose(corpo)) {
+    // Surf e simbiose de água: sem drain; regenera leve mesmo nadando.
     const max = corpo.staminaMax ?? STAMINA_MAX;
     if ((corpo.stamina ?? 0) < max) {
       corpo.stamina = Math.min(max, (corpo.stamina ?? 0) + (max * 0.12) * dt);

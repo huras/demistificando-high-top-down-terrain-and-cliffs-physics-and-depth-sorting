@@ -12,11 +12,12 @@ function ocupado(ator) {
   return emRecuo(ator) || emEsquiva(ator) || emAvanco(ator);
 }
 
-export function comecarPulo(ator) {
+export function comecarPulo(ator, visual = false) {
   if (!ator || ator.morto || ator.capturado || ator.pulando) return false;
   if (ocupado(ator)) return false;
   ator.pulando = true;
-  ator.noChao = false;
+  ator.puloVisual = !!visual;
+  if (!visual) ator.noChao = false;
   ator.vz = PULO_VELOCIDADE;
   ator.puloAlt = 0;
   ator.elevacao = ator.z || 0;
@@ -49,22 +50,22 @@ function garantirEmbalo(ator) {
 }
 
 /** Salta no começo do golpe se ainda vem com velocidade. Parado de verdade, o golpe continua plantado. */
-export function puloNoGolpe(ator) {
+export function puloNoGolpe(ator, visual = false) {
   if (!ator || ator.pulando) return false;
   if (!garantirEmbalo(ator)) return false;
-  if (!comecarPulo(ator)) return false;
+  if (!comecarPulo(ator, visual)) return false;
   ator.puloCd = CD_PULO;
   return true;
 }
 
 /** Hop curto enquanto corre, pra o pulo aparecer entre um golpe e outro. */
-export function quererPulo(ator) {
+export function quererPulo(ator, visual = false) {
   if (!ator || ator.morto || ator.capturado || ator.pulando) return false;
   if ((ator.puloCd || 0) > 0) return false;
   if ((ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0 || (ator.jatoDur || 0) > 0) return false;
   if (ocupado(ator)) return false;
   if (Math.hypot(ator.vx || 0, ator.vy || 0) < VEL_PULO) return false;
-  if (!comecarPulo(ator)) return false;
+  if (!comecarPulo(ator, visual)) return false;
   ator.puloCd = CD_PULO;
   return true;
 }
@@ -83,6 +84,12 @@ export function integrarPulo(ator, dt) {
   if (ator.puloCd > 0) ator.puloCd = Math.max(0, ator.puloCd - dt);
   if (ator.embaloAte > 0) ator.embaloAte = Math.max(0, ator.embaloAte - dt);
   if (!ator.pulando) return;
+  if (ator.puloVisual && ator.noChao === false) {
+    ator.puloVisual = false;
+    ator.puloAlt = 0;
+    if (!emEsquiva(ator)) ator.hopLift = 0;
+    return;
+  }
   const chao = ator.z || 0;
   ator.vz = (ator.vz || 0) - GRAVIDADE * dt;
   ator.puloAlt = (ator.puloAlt || 0) + ator.vz * dt;
@@ -90,12 +97,15 @@ export function integrarPulo(ator, dt) {
     ator.puloAlt = 0;
     ator.vz = 0;
     ator.pulando = false;
+    ator.puloVisual = false;
     ator.noChao = true;
     ator.elevacao = chao;
     if (!emEsquiva(ator)) ator.hopLift = 0;
     return;
   }
-  ator.noChao = false;
+  if (!ator.puloVisual) ator.noChao = false;
   ator.elevacao = chao;
-  ator.hopLift = Math.max(ator.hopLift || 0, ator.puloAlt);
+  ator.hopLift = ator.puloVisual
+    ? Math.max(0, ator.puloAlt)
+    : Math.max(ator.hopLift || 0, ator.puloAlt);
 }

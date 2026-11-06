@@ -618,7 +618,8 @@ function comecarPreparacao(ator, slot, mx, my, agora, efeitos) {
   ator.golpeRecRestante = 0;
   ator.golpeSlot = null;
   ator.golpeClip = distancia ? dur + rec : 0;
-  puloNoGolpe(ator);
+  const id = ator.id;
+  puloNoGolpe(ator, !(typeof id === "string" && id.startsWith("arena-")));
   pararNoLugar(ator);
   marcarPose(ator, pose, agora);
   ator.golpePose = ator.pose;
