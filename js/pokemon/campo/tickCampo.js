@@ -15,6 +15,7 @@ import { irPara, zDePerseguicao } from "../ia/locomocaoCampo.js";
 import { escolherAlvoParty, escolherAlvoWild } from "./alvo.js";
 import { integrarEngajar } from "./engajar.js";
 import { tentarGolpesCampo } from "./golpes.js";
+import { tickOrdemGolpe } from "./ordemGolpe.js";
 import { modoEfetivo } from "./modos.js";
 import {
   limparInvestigacao,
@@ -141,6 +142,12 @@ export function tickPartyCampo(mon, selvagens, jogador, dt) {
     mon._emLutaCampo = false;
     pousarHopVisual(mon);
     return true;
+  }
+  if (mon.ordemGolpe?.ativa) {
+    if (tickOrdemGolpe(mon, dt)) {
+      fecharHopLuta(mon, dt, true);
+      return true;
+    }
   }
   if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) {
     fecharHopLuta(mon, dt, false);
@@ -303,7 +310,8 @@ export function tickGolpesCampo(atores, agora, efeitos) {
   for (let i = 0; i < atores.length; i++) {
     const a = atores[i];
     if (!a || a.morto || a.capturado) continue;
-    if (!a.alvo || a.alvo.morto || a.alvo.capturado) continue;
+    if (a.ordemGolpe?.ativa) continue;
+    if (!a.alvo || a.alvo.morto || a.alvo.capturado || a.alvo._pontoOrdem) continue;
     if (isCombatMotionLocked(a)) continue;
     tentarGolpesCampo(a, agora, efeitos);
   }

@@ -97,6 +97,7 @@ function recolher(ator) {
   ator.ordemCampo = null;
   ator.ordemForca = null;
   ator.ordemAlvo = null;
+  if (ator.ordemGolpe) ator.ordemGolpe.ativa = false;
   ator.alvo = null;
   if (ator.modo === "agro") ator.modo = "roam";
   return true;
@@ -448,7 +449,7 @@ export function atualizarParty(corpo, dt, agora, perfil) {
     return;
   }
   // Ordem farm/Força ou canal/carry de lift: não puxar de volta pro follow.
-  if (mon.ordemCampo || mon.ordemForca || mon._forcaCanalLock) return;
+  if (mon.ordemCampo || mon.ordemGolpe?.ativa || mon.ordemForca || mon._forcaCanalLock) return;
   // Combate OW (tickPartyCampo) marca _emLutaCampo quando não deve follow.
   if (mon._emLutaCampo) return;
   if (mon.modo === "agro" && mon.alvo && !mon.alvo.morto) return;

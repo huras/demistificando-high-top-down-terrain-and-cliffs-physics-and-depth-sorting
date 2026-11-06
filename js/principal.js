@@ -146,6 +146,8 @@ import {
   registrarCamera,
 } from "./jogo/estado.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
+import { ordenarGolpe } from "./pokemon/campo/ordemGolpe.js";
+import { pokemonDeployado } from "./pokemon/party.js";
 import { cinemaRideAtivo, estaMontado, forcarDesmontar, tickRide } from "./jogo/ride.js";
 import {
   cinemaSimbioseAtivo,
@@ -669,6 +671,11 @@ function loop(agora) {
           teclaAgora("KeyC");
           teclaAgora("KeyV");
         }
+      } else if (pokemonDeployado() && !jogadorMorto() && !trava) {
+        if (teclaAgora("KeyZ")) ordenarGolpe(0);
+        if (teclaAgora("KeyX")) ordenarGolpe(1);
+        if (teclaAgora("KeyC")) ordenarGolpe(2);
+        if (teclaAgora("KeyV")) ordenarGolpe(3);
       } else if (teclaAgora("KeyC")) alternarModoCena();
       if (estaEmCena() && teclaAgora("Escape")) definirModoCena(false);
       if (estaEmCena() && teclaAgora("KeyF")) enquadrarSelecaoCena();

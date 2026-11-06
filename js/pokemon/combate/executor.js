@@ -1108,6 +1108,16 @@ export function dispararSlotSimbiose(ator, indice, agora, efeitos) {
   return dispararGolpeTurno(ator, slot, agora, efeitos);
 }
 
+/** Slot pedido pela ordem de campo. Não passa por escolher(). */
+export function dispararSlotOrdenado(ator, indice, alvo, agora, efeitos) {
+  const slot = ator?.golpes?.[indice | 0];
+  if (!slot?.def || !alvo || alvo.morto) return false;
+  ator.alvo = alvo;
+  ator.miraX = alvo.x;
+  ator.miraY = alvo.y;
+  return dispararGolpeTurno(ator, slot, agora, efeitos);
+}
+
 /** Básico se o alvo marcado está no alcance. */
 export function dispararBasicoSimbiose(ator, agora, efeitos) {
   const alvo = ator?.alvo;

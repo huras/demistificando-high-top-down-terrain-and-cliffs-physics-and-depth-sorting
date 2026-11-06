@@ -1,5 +1,6 @@
 /** Barra bottom-center: golpes Z/X/C/V + PP do mon em campo. */
 
+import { ordenarGolpe } from "../../pokemon/campo/ordemGolpe.js";
 import { pokemonDeployado, pokemonNoCampo } from "../../pokemon/party.js";
 import { cinemaSimbioseAtivo, estaEmSimbiose } from "../simbiose.js";
 import { ppDe, ppMaxDe } from "../../pokemon/pp.js";
@@ -26,6 +27,16 @@ export function montarMovesCampo(host) {
   root = host || document.getElementById("party-moves-combat");
   if (!root) return { sync() {} };
   garantirAtlasTipo();
+  if (!root.dataset.ordemGolpe) {
+    root.dataset.ordemGolpe = "1";
+    root.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-move-slot]");
+      if (!btn || btn.disabled) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      ordenarGolpe(Number(btn.dataset.moveSlot));
+    });
+  }
   if (!root.querySelector(".party-moves-combat__inner")) {
     root.innerHTML = `<div class="party-moves-combat__inner">
       <div class="party-moves-combat__slots" data-moves-slots></div>
