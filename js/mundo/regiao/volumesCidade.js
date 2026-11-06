@@ -45,7 +45,7 @@ const CORPO_POR_PAPEL = Object.freeze({
   loja: Object.freeze({ x: 6, y: 5 }),
   lab: Object.freeze({ x: 7, y: 6 }),
   ginasio: Object.freeze({ x: 9, y: 7 }),
-  museu: Object.freeze({ x: 10, y: 7 }),
+  museu: Object.freeze({ x: 20, y: 14 }),
   torre: Object.freeze({ x: 9, y: 7 }),
   coliseu: Object.freeze({ x: 15, y: 8 }),
   mansao: Object.freeze({ x: 18, y: 9 }),
@@ -80,7 +80,7 @@ const ALTURA = Object.freeze({
   loja: 5,
   ginasio: 6,
   lab: 5,
-  museu: 5,
+  museu: 10,
   torre: 14,
   porto: 3,
   safari: 4,
@@ -119,6 +119,13 @@ function corpoDoPapel(papel) {
 
 function loteDoCorpo(cx, cy) {
   return { x: cx + QUINTAL * 2, y: cy + QUINTAL * 2 };
+}
+
+/** Lote do museu é 2× o lote do corpo antigo (10×7), quintal incluso. */
+function loteDoPapel(papel) {
+  const corpo = corpoDoPapel(papel);
+  if (papel === "museu") return { x: 28, y: 22 };
+  return loteDoCorpo(corpo.x, corpo.y);
 }
 
 function spanDoLote(lw, lh) {
@@ -374,6 +381,23 @@ function indiceMascara(mascara, lx, ly) {
   return y * mascara.w + x;
 }
 
+/**
+ * O lote do museu não cabe na grade sem cruzar a avenida.
+ * Encosta no norte, porta para o sul, com rua em volta, e o footprint cresce.
+ */
+function anexarMuseu(def, fp, volumes, casas) {
+  const lote = loteDoPapel("museu");
+  const x1 = Math.floor(CENTRO - MEIO_RUA - RUA);
+  const x0 = x1 - lote.x;
+  const y1 = Math.floor(fp.y0) - RUA;
+  const y0 = y1 - lote.y;
+  fp.x0 = Math.min(fp.x0, x0 - RUA - BORDA);
+  fp.y0 = Math.min(fp.y0, y0 - RUA - BORDA);
+  volumes.push(
+    montarVolume(def, "museu", { x0, y0, x1, y1 }, casas),
+  );
+}
+
 export function montarLayout(def) {
   const grade = gradeDe(def);
   const cols = BORDA + LOTE_CASA_X + (grade.col - 1) * PASSO_X + BORDA;
@@ -398,8 +422,8 @@ export function montarLayout(def) {
   const especiais = papeisEspeciais(def);
   for (let i = 0; i < especiais.length; i++) {
     const papel = especiais[i];
-    const corpo = corpoDoPapel(papel);
-    const loteTam = loteDoCorpo(corpo.x, corpo.y);
+    if (papel === "museu") continue;
+    const loteTam = loteDoPapel(papel);
     const ordem = ordenarCandidatos(candidatos, def.tier === "starter" && papel === "lab");
     const lugar = encaixarLote(ocupada, grade, ordem, loteTam.x, loteTam.y, fp);
     if (!lugar) continue;
@@ -420,6 +444,8 @@ export function montarLayout(def) {
     marcarCelulas(ocupada, grade, lugar.col, lugar.lin, lugar.spanC, lugar.spanL);
     volumes.push(montarVolume(def, "casa", lugar, casas));
   }
+
+  if (especiais.includes("museu")) anexarMuseu(def, fp, volumes, casas);
 
   const mascara = assarMascara(fp, volumes);
   return { fp, volumes, mascara };

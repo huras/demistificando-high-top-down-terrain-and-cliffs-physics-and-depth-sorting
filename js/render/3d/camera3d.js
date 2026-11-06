@@ -40,7 +40,6 @@ export function criarCamera3d(aspect) {
   return {
     cam,
     _orto: orto,
-    _projPersp: new THREE.Matrix4(),
     projecao: "perspectiva",
     projBlend: 0,
     meiaLargura: aspect,
@@ -293,7 +292,6 @@ export function aplicarProjecao(camera3d, dt) {
 
   persp.updateProjectionMatrix();
   orto.updateProjectionMatrix();
-  camera3d._projPersp.copy(persp.projectionMatrix);
 
   // Mira sempre em perspectiva; o blend do ombro puxa a projeção junto.
   const prefOrto = camera3d.projecao === "orto" ? 1 : 0;
@@ -313,12 +311,47 @@ export function aplicarProjecao(camera3d, dt) {
   vista.distOlhar = dist;
   if (camera3d.projBlend === 0) return;
 
-  const origem = camera3d._projPersp.elements;
-  const destino = orto.projectionMatrix.elements;
-  const saida = persp.projectionMatrix.elements;
-  const u = camera3d.projBlend;
-  for (let i = 0; i < 16; i++) saida[i] = origem[i] + (destino[i] - origem[i]) * u;
+  // p = 1 perspectiva, p = 0 ortográfica. O plano em `dist` fica no mesmo lugar
+  // nos dois extremos, então o achatamento acompanha p em vez de pular.
+  escreverProjecaoMista(
+    persp.projectionMatrix.elements,
+    persp.fov,
+    persp.aspect,
+    persp.near,
+    persp.far,
+    dist,
+    persp.zoom || 1,
+    1 - camera3d.projBlend,
+  );
   persp.projectionMatrixInverse.copy(persp.projectionMatrix).invert();
+}
+
+/** Projeção que coincide no plano focal. p=1 perspectiva, p=0 ortográfica. */
+function escreverProjecaoMista(e, fovDeg, aspect, near, far, dist, zoom, p) {
+  const d = Math.max(dist, 0.5);
+  const tan = Math.tan((fovDeg * Math.PI) / 360);
+  const invNf = 1 / (near - far);
+  const m00 = zoom / (tan * aspect);
+  const m11 = zoom / tan;
+  const m22 = ((far + near) * p + 2 * d * (1 - p)) * invNf;
+  const m23 = (2 * far * near * p + d * (far + near) * (1 - p)) * invNf;
+
+  e[0] = m00;
+  e[1] = 0;
+  e[2] = 0;
+  e[3] = 0;
+  e[4] = 0;
+  e[5] = m11;
+  e[6] = 0;
+  e[7] = 0;
+  e[8] = 0;
+  e[9] = 0;
+  e[10] = m22;
+  e[11] = -p;
+  e[12] = 0;
+  e[13] = 0;
+  e[14] = m23;
+  e[15] = (1 - p) * d;
 }
 
 /** Yaw horizontal da câmera (rad) para strafe WASD. */

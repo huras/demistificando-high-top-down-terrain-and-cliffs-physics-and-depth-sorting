@@ -15,6 +15,7 @@ const YAW_SUL = new Set([
   "centro",
   "mansao",
   "condominio",
+  "museu",
 ]);
 
 /**
