@@ -193,12 +193,16 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
   treinador.voando = !!corpo.voando;
   treinador.planando = !!corpo.planando;
   if (treinador.iframe > 0) treinador.iframe = Math.max(0, treinador.iframe - passo);
+  if ((corpo.gracaEncontro || 0) > 0) {
+    corpo.gracaEncontro = Math.max(0, corpo.gracaEncontro - passo);
+  }
 
   const morto = jogadorMorto() || (treinador.morto && treinador.hp <= 0);
   const chrono = modoChronoCampo();
   const emChrono = sessaoChronoAtiva();
 
   atualizarPopulacao(corpo, passo, agora);
+  treinador.gracaEncontro = corpo.gracaEncontro || 0;
   definirCorposAtores(listarSolidosPokemon());
   const mon = pokemonDeployado();
   const monCampo = pokemonNoCampo();

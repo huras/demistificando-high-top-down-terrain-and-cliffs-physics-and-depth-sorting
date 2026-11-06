@@ -7,6 +7,7 @@ import {
   ASA_DELTA_DESCIDA_CTRL_MUL,
   ASA_DELTA_LIFT_MIN,
   ASA_DELTA_VEL_MUL,
+  POKEMON,
   VELOCIDADE_MAX,
 } from "../config.js";
 import { CLIMA_CFG } from "../clima/config.js";
@@ -133,7 +134,8 @@ export function atualizarCorridaAsaDelta(corpo, dx, dy, dt, correndo = false) {
   const mul = correndo ? ASA_DELTA_CORRIDA_MUL : 1;
   const acel = ASA_DELTA_ACEL_AR * mul;
   const atrito = ASA_DELTA_ATRITO_AR;
-  const vmax = VELOCIDADE_MAX * ASA_DELTA_VEL_MUL * mul;
+  const mulGraca = (corpo?.gracaEncontro || 0) > 0 ? POKEMON.MUL_VEL_GRACA : 1;
+  const vmax = VELOCIDADE_MAX * ASA_DELTA_VEL_MUL * mul * mulGraca;
   const temInput = dx !== 0 || dy !== 0;
 
   if (temInput) {

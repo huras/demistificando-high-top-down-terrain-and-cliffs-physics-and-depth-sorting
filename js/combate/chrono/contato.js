@@ -83,7 +83,8 @@ function alvoChrono(ator, partyMon, jogador) {
   const partyVivo = vivo(partyMon);
   if (partyVivo && dist2(ator, partyMon) <= lim2) return partyMon;
   const jogOk = jogador && !jogador.morto && (jogador.hp == null || jogador.hp > 0);
-  if (!partyVivo && jogOk && dist2(ator, jogador) <= lim2) return jogador;
+  const emGraca = (jogador?.gracaEncontro || 0) > 0;
+  if (!partyVivo && jogOk && !emGraca && dist2(ator, jogador) <= lim2) return jogador;
   return null;
 }
 

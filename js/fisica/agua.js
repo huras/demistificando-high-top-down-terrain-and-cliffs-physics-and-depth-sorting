@@ -17,6 +17,7 @@ import {
   AGUA_QUEDA_VEL,
   AGUA_VEL_NADO,
   ALTURA_SPRITE_JOGADOR,
+  POKEMON,
   BILLBOARD_INCLINACAO,
   STAMINA_MAX,
 } from "../config.js";
@@ -341,7 +342,8 @@ export function atualizarNado(corpo, dx, dy, dt) {
   corpo.z = agua.fundo > 0 ? agua.fundo : Math.floor(corpo.elevacao);
   corpo.hopLift = corpo.elevacao - corpo.z;
 
-  const velNado = nadoLivreSimbiose(corpo) ? AGUA_VEL_NADO * 1.5 : AGUA_VEL_NADO;
+  const mulGraca = (corpo.gracaEncontro || 0) > 0 ? POKEMON.MUL_VEL_GRACA : 1;
+  const velNado = (nadoLivreSimbiose(corpo) ? AGUA_VEL_NADO * 1.5 : AGUA_VEL_NADO) * mulGraca;
   const andando = integrarHorizontal(corpo, dx, dy, dt, velNado, agua, false);
   // A quina da margem fica na linha d'água. O pé submerso não pode travar nela.
   const zMin =

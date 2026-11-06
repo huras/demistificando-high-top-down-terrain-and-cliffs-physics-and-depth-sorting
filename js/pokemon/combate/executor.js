@@ -189,6 +189,10 @@ function aplicarTravado(atacante, alvo, agora, efeitos, travado) {
   derrubar(alvo, atacante, agora, efeitos);
 }
 
+function emGracaTreinador(alvo) {
+  return alvo?.faccao === "treinador" && (alvo.gracaEncontro || 0) > 0;
+}
+
 function errouGolpe(acerto) {
   if (acerto == null) return false;
   const p = Number(acerto);
@@ -199,7 +203,15 @@ function errouGolpe(acerto) {
 
 /** Dano fora de golpe (ex.: flecha do treinador). Forma projectile, acerto garantido. */
 export function aplicarDanoLivre(atacante, alvo, poder, tipo, categoria, agora, efeitos) {
-  if (!alvo || alvo.morto || alvo.capturado || alvo.hp <= 0 || alvo.iframe > 0 || alvo.invulneravel) {
+  if (
+    !alvo ||
+    alvo.morto ||
+    alvo.capturado ||
+    alvo.hp <= 0 ||
+    alvo.iframe > 0 ||
+    alvo.invulneravel ||
+    emGracaTreinador(alvo)
+  ) {
     return false;
   }
   if (!inimigo(atacante, alvo)) return false;
@@ -215,7 +227,17 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     return;
   }
   const mesmaRajada = rajada && alvo?.iframeRajada === rajada;
-  if (!alvo || alvo.morto || alvo.capturado || alvo.hp <= 0 || (alvo.iframe > 0 && !mesmaRajada) || alvo.invulneravel) return;
+  if (
+    !alvo ||
+    alvo.morto ||
+    alvo.capturado ||
+    alvo.hp <= 0 ||
+    (alvo.iframe > 0 && !mesmaRajada) ||
+    alvo.invulneravel ||
+    emGracaTreinador(alvo)
+  ) {
+    return;
+  }
   if (!inimigo(atacante, alvo)) return;
   if (forma !== "projectile" && forma !== "arc" && !cruzaAltura(atacante, alvo, forma === "radius" ? 0.55 : 0.35)) return;
   if (emRolamentoAtivo(alvo) && forma !== "contact") {

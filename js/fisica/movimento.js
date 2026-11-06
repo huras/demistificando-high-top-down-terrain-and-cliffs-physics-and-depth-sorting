@@ -1,6 +1,7 @@
 import {
   ALTURA_SPRITE_JOGADOR,
   ASA_DELTA_CORRIDA_MUL,
+  POKEMON,
   VELOCIDADE_MAX,
   VELOCIDADE_SPRINT,
 } from "../config.js";
@@ -126,7 +127,9 @@ export function atualizarMovimentoDirecionado(corpo, dxIn, dyIn, dt, opts = {}) 
       corpo.facing = facingDeDir(corpo.dirX || dx, corpo.dirY || dy);
     }
     corpo.correndo = forcarCorrida;
-    const velVoo = corpo.correndo ? VELOCIDADE_MAX * ASA_DELTA_CORRIDA_MUL : VELOCIDADE_MAX;
+    const velVoo =
+      (corpo.correndo ? VELOCIDADE_MAX * ASA_DELTA_CORRIDA_MUL : VELOCIDADE_MAX) *
+      mulGraca(corpo);
     const aindaVoo = atualizarVoo(corpo, dx, dy, sobeVoo, desceAsa, dt, velVoo);
     if (aindaVoo && corpo.correndo && desceAsa) corpo.acao = "voando sprint+desce";
     else if (aindaVoo && corpo.correndo) corpo.acao = "voando sprint";
@@ -276,7 +279,7 @@ export function atualizarMovimento(corpo, dt) {
 function simularSemInput(corpo, dt) {
   if (estaVoando(corpo)) {
     corpo.correndo = false;
-    atualizarVoo(corpo, 0, 0, false, false, dt, VELOCIDADE_MAX);
+    atualizarVoo(corpo, 0, 0, false, false, dt, VELOCIDADE_MAX * mulGraca(corpo));
     regenerarStamina(corpo, dt);
     return;
   }
@@ -321,7 +324,8 @@ function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
   const mulForca = Number(corpo.forcaVelMul);
   let velBase = corpo.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
   if (corpo.simbioseAtivo && corpo.correndo) velBase = VELOCIDADE_MAX * 1.7;
-  const velMax = velBase * (Number.isFinite(mulForca) && mulForca > 0 ? mulForca : 1);
+  const velMax =
+    velBase * (Number.isFinite(mulForca) && mulForca > 0 ? mulForca : 1) * mulGraca(corpo);
   const fase = inicioPassoChao(corpo, velMax);
   if (fase === "nado") {
     atualizarNado(corpo, dx, dy, dt);
@@ -422,7 +426,7 @@ function atualizarNoAr(corpo, dx, dy, dt, desceAsa = false) {
     atualizarCorridaAsaDelta(corpo, dx, dy, dt, corpo.correndo);
   } else {
     corpo.correndo = false;
-    atualizarCorrida(corpo, dx, dy, dt, false);
+    atualizarCorrida(corpo, dx, dy, dt, false, VELOCIDADE_MAX * mulGraca(corpo));
   }
 
   const passoX = corpo.vx * dt;
@@ -443,6 +447,10 @@ function atualizarNoAr(corpo, dx, dy, dt, desceAsa = false) {
 
   corpo.andando = false;
   if (Math.hypot(corpo.vx, corpo.vy) > 0.4) corpo.animT += dt * 0.6;
+}
+
+function mulGraca(corpo) {
+  return (corpo?.gracaEncontro || 0) > 0 ? POKEMON.MUL_VEL_GRACA : 1;
 }
 
 function facingDeDir(dx, dy) {

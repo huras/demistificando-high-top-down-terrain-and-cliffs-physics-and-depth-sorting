@@ -567,6 +567,10 @@ export const CHRONO = Object.freeze({
 export const POKEMON = Object.freeze({
   CHANCE_GRAMA: 0.1,
   COOLDOWN_GRAMA: 3.2,
+  /** Pisca e imunidade de alvo ao nascer um selvagem na grama (s). */
+  GRACA_ENCONTRO: 2,
+  /** Fração da velocidade do treinador durante essa graça. */
+  MUL_VEL_GRACA: 0.25,
   MAX_GRAMA: 3,
   MAX_MORADORES: 10,
   LARES_POR_CHUNK: 1,

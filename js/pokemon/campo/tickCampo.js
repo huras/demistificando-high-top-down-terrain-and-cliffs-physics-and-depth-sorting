@@ -234,6 +234,11 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     return;
   }
 
+  if ((jogador?.gracaEncontro || 0) > 0) {
+    if (ator.alvo === jogador) ator.alvo = null;
+    if (ator.meleeApproach?.target === jogador) clearMeleeApproach(ator);
+  }
+
   if (tickMeleeApproach(ator, dt)) {
     fecharHopLuta(ator, dt, true);
     return;
@@ -286,6 +291,10 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     return;
   }
 
+  if (jogador && ator.alvo === jogador && (jogador.gracaEncontro || 0) > 0) {
+    ator.alvo = null;
+    clearMeleeApproach(ator);
+  }
   if (ator.modo === "agro" && !ator.agroPersistente) {
     ator.modo = "roam";
     ator.alvo = null;

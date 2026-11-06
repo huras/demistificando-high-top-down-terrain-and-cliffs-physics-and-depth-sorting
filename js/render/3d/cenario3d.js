@@ -878,7 +878,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     estado.agente3d.grupo.visible = false;
   }
   const sumico = alfaSprites();
-  estado.personagem.definirSumico(treinadorOcultoSimbiose(corpo) ? 0 : sumico);
+  const tGraca = corpo?.gracaEncontro || 0;
+  const piscaGraca = tGraca > 0 && Math.floor(tGraca * 12) % 2 === 0;
+  estado.personagem.definirSumico(treinadorOcultoSimbiose(corpo) || piscaGraca ? 0 : sumico);
   estado.agente3d?.definirSumico(sumico);
   estado.simbioseFx?.atualizar(corpo, !!corpo?.simbioseAtivo);
   atualizarTeleporte3d(camRender);

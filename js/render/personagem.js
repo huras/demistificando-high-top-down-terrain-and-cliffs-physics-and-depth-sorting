@@ -108,6 +108,9 @@ export function desenharPersonagem(ctx, atlas, corpo, tint = null) {
   const rect = retanguloDoPersonagem(atlas, corpo);
   const { sheet, frame, linha, col, dw, dh, px, py } = rect;
 
+  const tGraca = corpo?.gracaEncontro || 0;
+  if (tGraca > 0 && Math.floor(tGraca * 12) % 2 === 0) return;
+
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha = alfaSprites();

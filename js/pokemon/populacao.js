@@ -700,6 +700,7 @@ function tentarGrama(corpo) {
   });
   ator.modo = "agro";
   grama.push(ator);
+  corpo.gracaEncontro = Math.max(corpo.gracaEncontro || 0, POKEMON.GRACA_ENCONTRO);
   cooldownGrama = POKEMON.COOLDOWN_GRAMA;
   aquecerGrito(ator);
   tocarGrito(ator, { x: ator.x, y: ator.y, importante: true });

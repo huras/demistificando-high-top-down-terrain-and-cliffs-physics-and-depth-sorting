@@ -123,8 +123,9 @@ export function escolherAlvoWild(ator, partyMon, jogador) {
 
   const partyVivo = vivo(partyMon);
   const jogOk = jogador && !jogador.morto && jogador.hp > 0;
-  /** Treinador só é alvo válido sem Pokémon deployado. */
-  const podeAlvoJogador = jogOk && !partyVivo;
+  const emGraca = (jogador?.gracaEncontro || 0) > 0;
+  /** Treinador só é alvo válido sem Pokémon deployado e fora da graça do encontro. */
+  const podeAlvoJogador = jogOk && !partyVivo && !emGraca;
 
   if (vivo(ator.pendenteAtacante)) {
     const p = ator.pendenteAtacante;
