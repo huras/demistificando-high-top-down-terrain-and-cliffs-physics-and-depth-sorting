@@ -65,6 +65,7 @@ import {
   resetEstadoSantuario,
   serializarSantuarios,
 } from "../santuario/estadoSantuario.js";
+import { partyRealOuAtual } from "../santuario/trial.js";
 import {
   hidratarDescobertaMapa,
   resetDescobertaMapa,
@@ -1107,7 +1108,9 @@ export function salvar() {
       estado.moveis[estado.interior.casaId] || []
     );
   }
-  const party = listaParty().map(snapshot);
+  const party = partyRealOuAtual()
+    .filter((mon) => mon && !mon._shrineAvatar && !mon._trialSantuario)
+    .map(snapshot);
   const construcao = serializarConstrucao();
   const posicao = normalizarPosicao(estado.posicao, { construcao });
   const interior = serializarInterior();

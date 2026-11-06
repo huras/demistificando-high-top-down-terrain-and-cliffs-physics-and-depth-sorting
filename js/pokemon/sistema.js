@@ -234,7 +234,13 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
         if (w.forcaCarregado || w._forcaSendoLevantado) continue;
         tickWildCampo(w, mon, treinador, passo);
       }
-      if (mon && !mon.forcaCarregado && !mon._forcaCanalLock) {
+      if (
+        mon &&
+        !mon.forcaCarregado &&
+        !mon._forcaCanalLock &&
+        !mon._simbioseFreeze &&
+        !mon.simbioseAtivo
+      ) {
         mon._emLutaCampo = tickPartyCampo(mon, selvagens, treinador, passo);
       }
       atualizarRoamSelvagens(selvagens, mon, treinador, passo);
@@ -311,7 +317,9 @@ export function listarSolidosPokemon() {
     !mon.capturado &&
     !mon.forcaCarregado &&
     !mon.rideAtivo &&
-    !mon._rideFreeze
+    !mon._rideFreeze &&
+    !mon._simbioseFreeze &&
+    !mon.simbioseAtivo
   ) {
     saida.push(mon);
   }

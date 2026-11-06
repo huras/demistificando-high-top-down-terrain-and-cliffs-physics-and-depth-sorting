@@ -195,6 +195,16 @@ export default {
   "keys": {
     "elementalShrineDevice": "Dispositivo de Santuário"
   },
+  "simbiose": {
+    "fuse": "Simbiose",
+    "unfuse": "Sair",
+    "fusing": "…",
+    "fainted": "Esse Pokémon não pode fundir agora.",
+    "unfuseLocked": "Não dá para sair da simbiose dentro do santuário.",
+    "titulo": "Simbiose",
+    "pronto": "Pronto",
+    "recarregando": "Recarregando"
+  },
   "santuario": {
     "entrar": "Entrar",
     "falar": "Falar",

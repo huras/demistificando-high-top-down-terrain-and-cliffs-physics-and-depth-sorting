@@ -1,6 +1,7 @@
 /** Barra bottom-center: golpes Z/X/C/V + PP do mon em campo. */
 
 import { pokemonDeployado, pokemonNoCampo } from "../../pokemon/party.js";
+import { cinemaSimbioseAtivo, estaEmSimbiose } from "../simbiose.js";
 import { ppDe, ppMaxDe } from "../../pokemon/pp.js";
 import { COR_TIPO } from "../../pokemon/tipos.js";
 import { definirEscudoTipo, garantirAtlasTipo } from "../tipoEscudo.js";
@@ -40,6 +41,11 @@ export function montarMovesCampo(host) {
 export function pintarMovesCampo() {
   if (!root) return;
   const ator = pokemonDeployado() || pokemonNoCampo();
+  if (estaEmSimbiose() || cinemaSimbioseAtivo()) {
+    root.hidden = true;
+    assinatura = "simbiose";
+    return;
+  }
   if (!ator || ator.capturado) {
     root.hidden = true;
     assinatura = "empty";

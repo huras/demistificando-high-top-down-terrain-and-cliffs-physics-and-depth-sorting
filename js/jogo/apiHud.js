@@ -33,6 +33,13 @@ import {
   modoRideAtual,
   podeMontar,
 } from "./ride.js";
+import {
+  alternarSimbiose,
+  cinemaSimbioseAtivo,
+  indiceSimbiose,
+  simbioseTravadaNoSantuario,
+  soltarSimbioseParaTroca,
+} from "./simbiose.js";
 
 let menuApi = null;
 let dexApi = null;
@@ -282,6 +289,26 @@ export function deploySlot(i) {
 
 export function toggleRideSlot(i) {
   return alternarRide(i, corpoHud());
+}
+
+export function toggleSimbioseSlot(i) {
+  return alternarSimbiose(i, corpoHud());
+}
+
+export function simbioseSlot() {
+  return indiceSimbiose();
+}
+
+export function simbioseCinemaHud() {
+  return cinemaSimbioseAtivo();
+}
+
+export function simbioseTravadaHud() {
+  return simbioseTravadaNoSantuario();
+}
+
+export function soltarSimbioseParaTrocaHud() {
+  return soltarSimbioseParaTroca(corpoHud());
 }
 
 export function rideSlot() {

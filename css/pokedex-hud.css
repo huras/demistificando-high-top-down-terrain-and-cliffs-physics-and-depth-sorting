@@ -828,7 +828,7 @@
 
 .pokedex-hud__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
   gap: 14px 10px;
 }
 
@@ -838,14 +838,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  min-height: 118px;
+  min-height: 190px;
   padding: 8px 4px 4px;
   border: none;
   border-radius: 0;
   background: transparent;
   text-align: center;
   content-visibility: auto;
-  contain-intrinsic-size: 92px 118px;
+  contain-intrinsic-size: 156px 190px;
 }
 
 .pokedex-hud__card[hidden],
@@ -896,9 +896,10 @@
 }
 
 .pokedex-hud__card-portrait-wrap {
+  --portrait-size: 144px;
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: var(--portrait-size);
+  height: var(--portrait-size);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -919,7 +920,9 @@
 }
 
 .pokedex-hud__card-portrait-wrap .pokemon-portrait {
-  --portrait-size: 144px;
+  width: var(--portrait-size);
+  height: var(--portrait-size);
+  object-fit: contain;
   border: none;
   box-shadow: none;
   background: transparent;

@@ -195,6 +195,16 @@ export default {
   "keys": {
     "elementalShrineDevice": "エレメンタルのほこらデバイス"
   },
+  "simbiose": {
+    "fuse": "きょうせい",
+    "unfuse": "ぬける",
+    "fusing": "…",
+    "fainted": "このポケモンとはきょうせいできない。",
+    "unfuseLocked": "ほこらのなかではきょうせいをぬけられない。",
+    "titulo": "きょうせい",
+    "pronto": "じゅんびOK",
+    "recarregando": "チャージ"
+  },
   "santuario": {
     "entrar": "はいる",
     "falar": "はなす",

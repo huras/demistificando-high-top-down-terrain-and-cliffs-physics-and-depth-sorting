@@ -136,6 +136,7 @@
 /* Durante diálogo: HUD de campo cede espaço visual ao balão */
 body.is-dialogo-open #party-combat-detail,
 body.is-dialogo-open .party-moves-combat,
+body.is-dialogo-open #symbiosis-hud,
 body.is-dialogo-open .hud-item-dock,
 body.is-dialogo-open .hud-utility-dock,
 body.is-dialogo-open .hud-map-dock {

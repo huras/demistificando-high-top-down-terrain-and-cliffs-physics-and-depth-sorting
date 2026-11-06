@@ -1,6 +1,7 @@
 import { FRAG_POCA, FRAG_POCA_REFLEXO, FRAG_POCA_SAIDA, ligarUniformsPoca } from "./pocaChao.js";
 import { uniformsNuvem } from "./parametros.js";
 import { GLSL_LUZ_CIDADE, ligarUniformsLuzCidade } from "../luzes/mapaChao.js";
+import { GLSL_MARCA_RAIO, GLSL_MARCA_RAIO_UNIFORM, uniformsRaio } from "./marcaRaio.js";
 
 const MARCA = "sombraNuvem";
 let avisou = false;
@@ -32,6 +33,7 @@ float sombraNuvem() {
   return mix(1.0, 1.0 - uForcaSombra, sombra);
 }
 ${GLSL_LUZ_CIDADE}
+${GLSL_MARCA_RAIO_UNIFORM}
 `;
 
 const VERT_MUNDO = `
@@ -68,6 +70,7 @@ function ligarUniforms(shader) {
   shader.uniforms.uForcaSombra = uniformsNuvem.uForcaSombra;
   shader.uniforms.uUmidade = uniformsNuvem.uUmidade;
   ligarUniformsLuzCidade(shader);
+  shader.uniforms.uMarcaRaio = uniformsRaio.uMarcaRaio;
 }
 
 /**
@@ -107,7 +110,7 @@ export function aplicarSombraNuvem(material) {
       console.warn("ceu: shader sem totalDiffuse, sombra de nuvem não entrou");
     }
     if (!material.transparent && frag.includes("#include <opaque_fragment>")) {
-      frag = frag.replace("#include <opaque_fragment>", `${FRAG_POCA_SAIDA}\n#include <opaque_fragment>`);
+      frag = frag.replace("#include <opaque_fragment>", `${FRAG_POCA_SAIDA}\n${GLSL_MARCA_RAIO}\n#include <opaque_fragment>`);
     } else if (!material.transparent && !avisouPoca) {
       avisouPoca = true;
       console.warn("ceu: shader sem opaque_fragment, poça não entrou");
@@ -122,7 +125,7 @@ export function aplicarSombraNuvem(material) {
   };
   material.customProgramCacheKey = function chaveSombra() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|sombra-nuvem|poca|reflexo-sem-ceu|mascara-agua-nivel-mar|luz-cidade|clareia-branco`;
+    return `${base}|sombra-nuvem|poca|reflexo-sem-ceu|mascara-agua-nivel-mar|luz-cidade|clareia-branco|marca-raio-rachado`;
   };
   return material;
 }

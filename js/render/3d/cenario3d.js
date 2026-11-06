@@ -58,6 +58,7 @@ import { criarVegetacaoHorizonte } from "./vegetacaoHorizonte.js";
 import { atualizarVentoVeg } from "./vegetacao/ventoVeg.js";
 import { criarCidadeHorizonte } from "./cidadeHorizonte.js";
 import { criarFxCampo } from "../../campo/fx.js";
+import { aplicarImpactoRaio } from "../../campo/impactoRaio.js";
 import { criarPoeiraPasso3d } from "./poeiraPasso3d.js";
 import { criarFxBola3d } from "./fxBola3d.js";
 import { criarFxAgua3d } from "./fxAgua3d.js";
@@ -71,6 +72,7 @@ import { tickClima } from "../../clima/amostra.js";
 import { ligarRendererSombra } from "./ceu/sombraEstavel.js";
 import { desenharReflexo, marcarLuzReflexo } from "./ceu/reflexoPoca.js";
 import { atualizarLuzBillboard } from "./ceu/luzBillboard.js";
+import { registrarFlashRaio, registrarMarcaRaio, tickMarcaRaio } from "./ceu/marcaRaio.js";
 import { comecarQuadroLuzes, criarPoolLuzes, definirPesoNoite, resolverLuzes } from "./luzes/pool.js";
 import { comecarMapaChao, resolverMapaChao } from "./luzes/mapaChao.js";
 import { oferecerLuzesTotemSantuario } from "../../santuario/luzTotem.js";
@@ -88,6 +90,8 @@ import {
 import { registrarObjetoCena, verCamadaAuxiliar } from "../../cena/registroCena.js";
 import { atualizarRealceCena, ligarSelecaoCena } from "../../cena/selecaoCena.js";
 import { atualizarPokemon3d, ligarPokemon3d } from "../../pokemon/render3d.js";
+import { treinadorOcultoSimbiose } from "../../jogo/simbiose.js";
+import { criarSimbioseFx3d } from "./simbioseFx3d.js";
 import { atoresVisiveis } from "../../pokemon/sistema.js";
 import { marcarCorposCrista } from "./texturasAgua3d.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
@@ -433,6 +437,9 @@ export function iniciarCenario3d(canvas, atlas = null) {
   scene.add(hoverTile.mesh);
 
   const elipsePokemon = criarElipsesSelecaoPokemon(scene, { canvas });
+  const simbioseFx = criarSimbioseFx3d();
+  scene.add(simbioseFx.pontos);
+  scene.add(simbioseFx.anel);
 
   const ceu = criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim });
   const luzSala = criarLuzSala(scene);
@@ -484,6 +491,7 @@ export function iniciarCenario3d(canvas, atlas = null) {
     alvoEscalada,
     hoverTile,
     elipsePokemon,
+    simbioseFx,
     ceu,
     rig,
     flechas,
@@ -828,6 +836,14 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     galeLigado: !interior && !emCena,
     interior,
   });
+  const impactos = estado.ceu.consumirImpactos();
+  for (let i = 0; i < impactos.length; i++) {
+    const golpe = impactos[i];
+    const efeito = aplicarImpactoRaio(golpe);
+    registrarFlashRaio(golpe.x, efeito.y, golpe.z);
+    if (efeito.seco) registrarMarcaRaio(golpe.x, golpe.z);
+  }
+  tickMarcaRaio(dt);
   ligarLuzSala(interior, corpo);
 
   // Mira e teleporte: sprites em pé (blend→1), como no arco.
@@ -859,8 +875,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     estado.agente3d.grupo.visible = false;
   }
   const sumico = alfaSprites();
-  estado.personagem.definirSumico(sumico);
+  estado.personagem.definirSumico(treinadorOcultoSimbiose(corpo) ? 0 : sumico);
   estado.agente3d?.definirSumico(sumico);
+  estado.simbioseFx?.atualizar(corpo, !!corpo?.simbioseAtivo);
   atualizarTeleporte3d(camRender);
   estado.alvoEscalada.atualizar(corpo, dt);
   estado.hoverTile?.atualizar();

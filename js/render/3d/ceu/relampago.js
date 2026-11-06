@@ -6,6 +6,7 @@ import { ALTURA_NUVEM } from "./parametros.js";
 const MAX_PONTOS = 96;
 const MAX_VERTS = MAX_PONTOS * 6;
 const FOLGA_NUVEM = 18;
+const VAZIO_IMPACTO = [];
 
 const VERT = /* glsl */ `
 attribute vec3 aDir;
@@ -177,6 +178,7 @@ export function criarRelampago() {
   let espera = 2.5 + Math.random() * 2;
   let eco = 0;
   let evento = null;
+  const impactos = [];
 
   function publicar(cursor) {
     geo.attributes.position.needsUpdate = true;
@@ -214,6 +216,7 @@ export function criarRelampago() {
     fita.visible = true;
     flash = secundario ? Math.max(flash, 0.72) : 1;
     evento = secundario ? "eco" : "golpe";
+    if (impactos.length < 4) impactos.push({ x: b.x, y: b.y, z: b.z });
     if (!secundario && Math.random() < 0.38) eco = 0.09 + Math.random() * 0.07;
   }
 
@@ -251,6 +254,12 @@ export function criarRelampago() {
       const e = evento;
       evento = null;
       return e;
+    },
+    consumirImpactos() {
+      if (impactos.length === 0) return VAZIO_IMPACTO;
+      const saida = impactos.slice();
+      impactos.length = 0;
+      return saida;
     },
   };
 }

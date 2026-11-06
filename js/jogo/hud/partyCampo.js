@@ -16,7 +16,8 @@ import {
   listaEstagiosAtivos,
   progressoEstagio,
 } from "../../pokemon/combate/estagios.js";
-import { rideCinemaHud, rideSlot, slotPodeMontar } from "../apiHud.js";
+import { rideCinemaHud, rideSlot, slotPodeMontar, simbioseCinemaHud, simbioseSlot, simbioseTravadaHud } from "../apiHud.js";
+import { idiomaAtual, t } from "../i18n.js";
 import { progressoExp } from "../../pokemon/experiencia.js";
 import { relogioPokemon } from "../../pokemon/sistema.js";
 import { MODE_ICONS } from "./iconesModo.js";
@@ -179,8 +180,9 @@ function pintarStrip() {
   const campo = pokemonNoCampo();
   const fora = campo && !campo.capturado;
   const montado = rideSlot();
+  const fundido = simbioseSlot();
   const teamMode = defaultFollowerMode();
-  const sig = `${teamMode}|${party
+  const sig = `${teamMode}|${idiomaAtual()}|${fundido}|${party
     .map(
       (ator, i) =>
         `${ator.id}:${ator.nivel}:${ator.shiny ? 1 : 0}:${Math.round(ator.hp)}:${fora && campo === ator ? 1 : 0}:${montado === i ? 1 : 0}:${ator.especie?.dex || 0}:${prefModo(ator)}:${modoEfetivo(ator)}`,
@@ -198,6 +200,7 @@ function pintarStrip() {
               : `<span class="party-slot__face">${escHtml(nomeEspecie(ator).slice(0, 1))}</span>`;
             const faint = ator.hpMax > 0 && ator.hp <= 0;
             const rideOn = montado === i;
+            const simOn = fundido === i;
             const pref = prefModo(ator);
             const tipModo = pref === AI_MODE.DEFAULT
               ? `Padrão (${rotuloModo(modoEfetivo(ator))})`
@@ -207,7 +210,7 @@ function pintarStrip() {
               ? `Status · ${escHtml(nomeEspecie(ator))} (desmaiado)`
               : `${escHtml(nomeEspecie(ator))} · campo / recolher`;
             return `<div class="party-slot-wrap">
-              <button type="button" class="party-slot${fora && campo === ator ? " is-on is-out" : ""}${faint ? " is-fainted" : ""}${rideOn ? " is-ride" : ""}" data-act="${actSlot}" data-i="${i}" title="${tipSlot}">
+              <button type="button" class="party-slot${fora && campo === ator ? " is-on is-out" : ""}${faint ? " is-fainted" : ""}${rideOn ? " is-ride" : ""}${simOn ? " is-simbiose" : ""}" data-act="${actSlot}" data-i="${i}" title="${tipSlot}">
                 <span class="party-slot__portrait">${face}</span>
                 <span class="party-slot__hp"><i data-hp="${i}"></i></span>
               </button>
@@ -285,6 +288,15 @@ function pintarDetail() {
   const montado = rideSlot() === i;
   const rideCinema = rideCinemaHud();
   const rideOk = i >= 0 && slotPodeMontar(i) && !rideCinema;
+  const fundido = simbioseSlot() === i;
+  const simCinema = simbioseCinemaHud();
+  const simTravada = simbioseTravadaHud();
+  const simRotulo = simCinema
+    ? t("simbiose.fusing")
+    : fundido
+      ? t("simbiose.unfuse")
+      : t("simbiose.fuse");
+  const simTip = simTravada && fundido ? t("simbiose.unfuseLocked") : simRotulo;
   const gen = simboloGenero(ator);
   const pref = prefModo(ator);
   const tipModo = pref === AI_MODE.DEFAULT
@@ -292,7 +304,7 @@ function pintarDetail() {
     : rotuloModo(pref);
   const sigEst = assinaturaEstagios(ator);
 
-  const sig = `${ator.id}:${hp}:${pctExp}:${montado ? 1 : 0}:${rideCinema ? 1 : 0}:${ator.nivel}:${pref}:${modoEfetivo(ator)}:${sigEst}`;
+  const sig = `${ator.id}:${hp}:${pctExp}:${montado ? 1 : 0}:${rideCinema ? 1 : 0}:${fundido ? 1 : 0}:${simCinema ? 1 : 0}:${idiomaAtual()}:${ator.nivel}:${pref}:${modoEfetivo(ator)}:${sigEst}`;
   if (sig === assinaturaDetail) {
     const barHp = detailHost.querySelector("[data-combat-hp]");
     const barExp = detailHost.querySelector("[data-combat-exp]");
@@ -348,6 +360,9 @@ function pintarDetail() {
         </button>
         <button type="button" class="party-combat__action party-combat__action--ride${montado ? " is-on" : ""}" data-act="ride" data-i="${i}" ${rideOk ? "" : "disabled"} title="${rideCinema ? "Montando…" : montado ? "Desmontar" : "Montar"}">
           ${rideCinema ? "…" : montado ? "Desmontar" : "Ride"}
+        </button>
+        <button type="button" class="party-combat__action party-combat__action--simbiose${fundido ? " is-on" : ""}" data-act="simbiose" data-i="${i}" ${i >= 0 && !simCinema ? "" : "disabled"} title="${escHtml(simTip)}">
+          ${escHtml(simRotulo)}
         </button>
       </div>
     </div>`;

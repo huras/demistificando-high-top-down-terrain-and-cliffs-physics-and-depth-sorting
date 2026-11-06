@@ -9,6 +9,7 @@ import {
   substituirParty,
 } from "../pokemon/party.js";
 import { especiePorDex } from "./cota.js";
+import { forcarSairSimbiose } from "../jogo/simbiose.js";
 
 /** @type {object[] | null} */
 let backup = null;
@@ -44,11 +45,18 @@ export function iniciarTrialSantuario(hub) {
     hostil: false,
   });
   trial._trialSantuario = true;
+  trial._shrineAvatar = true;
   substituirParty([trial]);
 }
 
-export function encerrarTrialSantuario() {
+/** Party de verdade enquanto o avatar do trial ocupa a lista. */
+export function partyRealOuAtual() {
+  return backup || listaParty();
+}
+
+export function encerrarTrialSantuario(corpo) {
   if (!backup) return;
+  forcarSairSimbiose(corpo);
   substituirParty(backup);
   backup = null;
 }

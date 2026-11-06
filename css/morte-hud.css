@@ -154,6 +154,7 @@ body.is-morte .action-prompt-hud,
 body.is-morte .hud-toast-dock,
 body.is-morte .zone-banner,
 body.is-morte .party-moves-combat,
+body.is-morte #symbiosis-hud,
 body.is-morte .hud-utility-cluster {
   visibility: hidden;
 }

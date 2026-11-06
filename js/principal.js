@@ -147,6 +147,14 @@ import {
 } from "./jogo/estado.js";
 import { jogoTravaMundo, montarJogo, tickJogo } from "./jogo/index.js";
 import { cinemaRideAtivo, estaMontado, forcarDesmontar, tickRide } from "./jogo/ride.js";
+import {
+  cinemaSimbioseAtivo,
+  cliqueSimbiose,
+  dispararTeclaSimbiose,
+  estaEmSimbiose,
+  forcarSairSimbiose,
+  tickSimbiose,
+} from "./jogo/simbiose.js";
 import { jogadorMorto } from "./jogo/hud/morte.js";
 import {
   focoStreaming,
@@ -649,7 +657,19 @@ function loop(agora) {
         alternarClima();
         forcarClimaPreset(obterClima());
       }
-      if (teclaAgora("KeyC")) alternarModoCena();
+      if ((estaEmSimbiose() || cinemaSimbioseAtivo()) && !jogadorMorto() && !trava) {
+        if (estaEmSimbiose()) {
+          if (teclaAgora("KeyZ")) dispararTeclaSimbiose(0);
+          if (teclaAgora("KeyX")) dispararTeclaSimbiose(1);
+          if (teclaAgora("KeyC")) dispararTeclaSimbiose(2);
+          if (teclaAgora("KeyV")) dispararTeclaSimbiose(3);
+        } else {
+          teclaAgora("KeyZ");
+          teclaAgora("KeyX");
+          teclaAgora("KeyC");
+          teclaAgora("KeyV");
+        }
+      } else if (teclaAgora("KeyC")) alternarModoCena();
       if (estaEmCena() && teclaAgora("Escape")) definirModoCena(false);
       if (estaEmCena() && teclaAgora("KeyF")) enquadrarSelecaoCena();
     }
@@ -681,6 +701,9 @@ function loop(agora) {
         const aindaMirando = !!rangedNaMao() && botaoDireitoSegurado();
         definirMira3d(aindaMirando);
         if (!aindaMirando) soltarTravaMira();
+        if (soltouEsq && estaEmSimbiose() && !rangedNaMao()) {
+          cliqueSimbiose(obterCenario3d());
+        }
       }
       if (!trava || morto) {
         if (teclaAgora("Equal") || teclaAgora("NumpadAdd")) ajustarZoom3d(ZOOM_PASSO);
@@ -712,9 +735,11 @@ function loop(agora) {
 
   const morto = jogadorMorto();
   const rideCinema = cinemaRideAtivo();
-  // Cinema de montaria conduz o corpo cedo (approach/pulo); sem WASD livre.
+  const simbCinema = cinemaSimbioseAtivo();
+  // Cinema de montaria ou simbiose conduz o corpo; sem WASD livre.
   if (!passeioAtivo() && !trava && !morto) {
     if (rideCinema) tickRide(dt, corpo);
+    else if (simbCinema) tickSimbiose(dt, corpo);
     else atualizarMovimento(corpo, dt);
   }
   tickFilaPath();
@@ -781,7 +806,9 @@ function loop(agora) {
   // Snap do mon no assento depois da IA (cinema já rodou antes do movimento).
   if (!trava) {
     if (morto && (estaMontado() || cinemaRideAtivo())) forcarDesmontar(corpo);
+    if (morto && (estaEmSimbiose() || cinemaSimbioseAtivo())) forcarSairSimbiose(corpo);
     else if (!morto && estaMontado() && !cinemaRideAtivo()) tickRide(dt, corpo);
+    else if (!morto && estaEmSimbiose() && !cinemaSimbioseAtivo()) tickSimbiose(dt, corpo);
   }
   if (!trava) tickNpc(corpo, dt);
   tickTeleporte(dt, {

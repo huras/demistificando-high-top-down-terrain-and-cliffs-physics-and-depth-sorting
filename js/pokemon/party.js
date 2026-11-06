@@ -440,7 +440,7 @@ export function atualizarParty(corpo, dt, agora, perfil) {
   if (vivo.brilhoBola > 0) vivo.brilhoBola = Math.max(0, vivo.brilhoBola - dt);
   conterNoInterior(vivo);
   // Montaria: snap do ride manda na posição — não follow.
-  if (vivo.rideAtivo || vivo._rideFreeze) {
+  if (vivo.rideAtivo || vivo._rideFreeze || vivo._simbioseFreeze || vivo.simbioseAtivo) {
     vivo.vx = 0;
     vivo.vy = 0;
     vivo.andando = false;

@@ -191,7 +191,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     );
   }
 
-  return { atualizar };
+  return { atualizar, consumirImpactos: () => relampago.consumirImpactos() };
 }
 
 function smooth(a, b, x) {

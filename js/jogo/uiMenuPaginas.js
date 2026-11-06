@@ -58,6 +58,7 @@ export function htmlPartyMenu() {
         <button type="button" data-act="status-mon" data-i="${i}">Status</button>
         <button type="button" data-act="deploy" data-i="${i}">Campo</button>
         <button type="button" data-act="ride" data-i="${i}">Ride</button>
+        <button type="button" data-act="simbiose" data-i="${i}">${escHtml(t("simbiose.fuse"))}</button>
         <button type="button" data-act="soltar-party" data-i="${i}">Soltar</button></div>`;
     })
     .join("")}</div>`;

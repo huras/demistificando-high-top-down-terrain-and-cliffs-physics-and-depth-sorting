@@ -222,6 +222,39 @@ const CAMPO_PADRAO = {
     corB: 0.48,
     grav: 5,
   },
+  impactoRaio: {
+    conta: 20,
+    espalha: 0.9,
+    z: 0.15,
+    zJitter: 0.2,
+    velMin: 1.1,
+    velExtra: 2.6,
+    vzMin: 1.8,
+    vzExtra: 2.6,
+    vidaMin: 0.28,
+    vidaExtra: 0.32,
+    chancePoeira: 0.25,
+    chanceBrasa: 0.45,
+    corNucleoR: 0.95,
+    corNucleoG: 0.97,
+    corNucleoB: 1,
+    corBrasaR: 1,
+    corBrasaG: 0.46,
+    corBrasaB: 0.1,
+    corPoeiraR: 0.42,
+    corPoeiraG: 0.38,
+    corPoeiraB: 0.32,
+    aguaConta: 12,
+    aguaVelMin: 0.8,
+    aguaVelExtra: 1.6,
+    aguaVzMin: 1.2,
+    aguaVzExtra: 1.5,
+    aguaVidaMin: 0.18,
+    aguaVidaExtra: 0.16,
+    corAguaR: 0.78,
+    corAguaG: 0.9,
+    corAguaB: 1,
+  },
 };
 
 const AGUA_PADRAO = {
@@ -409,6 +442,7 @@ export function aplicarCatalogoParticulas(bruto) {
     fagulha: mesclarObj(CAMPO_PADRAO.fagulha, bruto.campo?.fagulha),
     fagulhaForte: mesclarObj(CAMPO_PADRAO.fagulhaForte, bruto.campo?.fagulhaForte),
     lasca: mesclarObj(CAMPO_PADRAO.lasca, bruto.campo?.lasca),
+    impactoRaio: mesclarObj(CAMPO_PADRAO.impactoRaio, bruto.campo?.impactoRaio),
   };
   base.agua = {
     onda: mesclarObj(AGUA_PADRAO.onda, bruto.agua?.onda),
@@ -452,7 +486,7 @@ export function presetPasso(modo) {
 }
 
 /**
- * @param {"fagulha"|"fagulhaForte"|"lasca"} id
+ * @param {"fagulha"|"fagulhaForte"|"lasca"|"impactoRaio"} id
  */
 export function presetCampo(id) {
   return dados.campo[id] || dados.campo.fagulha;

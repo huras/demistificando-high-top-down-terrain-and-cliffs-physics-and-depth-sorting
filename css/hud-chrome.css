@@ -377,6 +377,131 @@
   --tc: #fff;
 }
 
+.party-combat__action--simbiose.is-on {
+  --c: #facc15;
+  --cd: #a16207;
+  --tc: #1c1917;
+}
+
+.party-slot.is-simbiose {
+  box-shadow: 0 0 0 2px #facc15;
+}
+
+.symbiosis-hud {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  bottom: calc(var(--hud-safe-bottom) + 4px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.symbiosis-hud[hidden] {
+  display: none !important;
+}
+
+.symbiosis-hud__titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #0f172a 72%, transparent);
+  color: #f8fafc;
+  font: 700 12px/1 var(--font);
+}
+
+.symbiosis-hud__titulo small {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fde68a;
+}
+
+.symbiosis-hud__tipos {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.symbiosis-hud__tipo {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  display: block;
+}
+
+.symbiosis-hud__slots {
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.symbiosis-hud__slot {
+  --cd: 0;
+  position: relative;
+  width: 64px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--chip-tipo, #facc15) 40%, white), transparent 60%),
+    linear-gradient(180deg, var(--paper) 0%, var(--paper-3) 100%);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 6px 6px;
+  overflow: hidden;
+}
+
+.symbiosis-hud__slot kbd {
+  font: 800 10px/1 var(--font);
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+}
+
+.symbiosis-hud__slot span {
+  font: 800 9px/1.15 var(--font);
+  max-width: 56px;
+  text-align: center;
+}
+
+.symbiosis-hud__slot em {
+  font: 700 8px/1 var(--font);
+  font-style: normal;
+  opacity: 0.7;
+}
+
+.symbiosis-hud__slot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(rgba(15, 23, 42, 0.55) calc(var(--cd) * 1turn), transparent 0);
+  pointer-events: none;
+}
+
+.symbiosis-hud__slot.is-ready {
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--chip-tipo, #facc15) 80%, white),
+    0 3px 0 color-mix(in srgb, var(--chip-tipo, #a16207) 50%, black);
+}
+
+.symbiosis-hud__slot.is-empty {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .party-combat__action--skills {
   --c: var(--yellow);
   --cd: var(--yellow-d);
@@ -986,6 +1111,7 @@ body.game-menu-open .hud-item-dock,
 body.game-menu-open .hud-party,
 body.game-menu-open #party-combat-detail,
 body.game-menu-open .party-moves-combat,
+body.game-menu-open #symbiosis-hud,
 body.game-menu-open .hud-map-dock {
   opacity: 0.15;
   pointer-events: none;

@@ -200,6 +200,56 @@ export function emitirLascas(x, y, n) {
   }
 }
 
+export function emitirImpactoRaio(x, y, agua, zExtra = 0) {
+  const cfg = presetCampo("impactoRaio");
+  const qtd = (agua ? cfg.aguaConta : cfg.conta) | 0;
+  for (let i = 0; i < qtd; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const velMin = agua ? cfg.aguaVelMin : cfg.velMin;
+    const velExtra = agua ? cfg.aguaVelExtra : cfg.velExtra;
+    const vzMin = agua ? cfg.aguaVzMin : cfg.vzMin;
+    const vzExtra = agua ? cfg.aguaVzExtra : cfg.vzExtra;
+    const vidaMin = agua ? cfg.aguaVidaMin : cfg.vidaMin;
+    const vidaExtra = agua ? cfg.aguaVidaExtra : cfg.vidaExtra;
+    const v = velMin + Math.random() * velExtra;
+    let r = cfg.corNucleoR;
+    let g = cfg.corNucleoG;
+    let b = cfg.corNucleoB;
+    let folha = "chama";
+    if (agua) {
+      r = cfg.corAguaR;
+      g = cfg.corAguaG;
+      b = cfg.corAguaB;
+      folha = "";
+    } else {
+      const sorte = Math.random();
+      if (sorte < cfg.chancePoeira) {
+        r = cfg.corPoeiraR;
+        g = cfg.corPoeiraG;
+        b = cfg.corPoeiraB;
+        folha = "";
+      } else if (sorte < cfg.chancePoeira + cfg.chanceBrasa) {
+        r = cfg.corBrasaR;
+        g = cfg.corBrasaG;
+        b = cfg.corBrasaB;
+      }
+    }
+    nascer({
+      x: x + (Math.random() - 0.5) * cfg.espalha,
+      y: y + (Math.random() - 0.5) * cfg.espalha,
+      z: cfg.z + zExtra + Math.random() * cfg.zJitter,
+      vx: Math.cos(ang) * v,
+      vy: Math.sin(ang) * v,
+      vz: vzMin + Math.random() * vzExtra,
+      vida: vidaMin + Math.random() * vidaExtra,
+      r,
+      g,
+      b,
+      folha,
+    });
+  }
+}
+
 function avancarParticulas(dt) {
   const passo = dt > 0 ? Math.min(0.05, dt) : 0;
   for (let i = particulas.length - 1; i >= 0; i--) {

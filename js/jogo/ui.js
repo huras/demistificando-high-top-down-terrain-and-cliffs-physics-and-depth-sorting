@@ -69,7 +69,7 @@ import { celulaLivre } from "../wild/salas.js";
 import { sfx } from "./audio.js";
 import { tocarChoose } from "./som/mundoSfx.js";
 import { htmlIcone } from "./icones.js";
-import { abrirDex, dexAberta, fecharDex, toggleRideSlot, toggleSkillLoadout, toggleStatusMon } from "./apiHud.js";
+import { abrirDex, dexAberta, fecharDex, soltarSimbioseParaTrocaHud, toggleRideSlot, toggleSimbioseSlot, toggleSkillLoadout, toggleStatusMon } from "./apiHud.js";
 import { tratarUtilityHud } from "./hud/bootHud.js";
 import { htmlMochilaMenu } from "./uiMenuPaginas.js";
 import { aoMudarIdioma, definirIdioma, idiomaAtual, t } from "./i18n.js";
@@ -160,8 +160,12 @@ function noClique(ev) {
   const i = Number(btn.dataset.i);
   if (act === "fechar") fecharTopo();
   else if (act === "aba") abrirPainel(btn.dataset.painel);
-  else if (act === "ride") {
+  else   if (act === "ride") {
     toggleRideSlot(Number(btn.dataset.i));
+    pintar();
+    return;
+  } else if (act === "simbiose") {
+    toggleSimbioseSlot(Number(btn.dataset.i));
     pintar();
     return;
   } else if (act === "skills") {
@@ -194,14 +198,28 @@ function noClique(ev) {
   } else if (act === "ciclo") cicloSlot(i);
   else if (act === "limpar-slot") atribuirSlot(i, null, null);
   else if (act === "deploy") {
+    if (soltarSimbioseParaTrocaHud()) {
+      pintar();
+      return;
+    }
     const mon = listaParty()[i];
     if (mon && (mon.morto || mon.hp <= 0)) toggleStatusMon(i);
     else alternarCampo(i);
   }
-  else if (act === "depositar") toast(moverDaPartyParaCaixa(i));
+  else if (act === "depositar") {
+    if (soltarSimbioseParaTrocaHud()) {
+      pintar();
+      return;
+    }
+    toast(moverDaPartyParaCaixa(i));
+  }
   else if (act === "retirar") toast(moverDaCaixaParaParty(i));
   else if (act === "soltar-caixa") toast(soltarDaCaixa(i));
   else if (act === "soltar-party") {
+    if (soltarSimbioseParaTrocaHud()) {
+      pintar();
+      return;
+    }
     const ator = tirarDaParty(i);
     toast(ator ? `Soltou ${nomeEspecie(ator)}.` : "O time precisa de um Pokémon.");
     avisar();

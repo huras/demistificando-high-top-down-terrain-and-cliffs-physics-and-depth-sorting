@@ -351,6 +351,7 @@ body.capsula-aberta .hud-item-dock,
 body.capsula-aberta .hud-party,
 body.capsula-aberta #party-combat-detail,
 body.capsula-aberta .party-moves-combat,
+body.capsula-aberta #symbiosis-hud,
 body.capsula-aberta .hud-map-dock,
 body.capsula-aberta .hud-utility-dock {
   opacity: 0.12;

@@ -22,6 +22,7 @@ import {
   limparCinemaRide,
   tickRideCinema,
 } from "./rideCinema.js";
+import { rideBloqueadoPelaSimbiose } from "./simbiose.js";
 
 garantirRideAssentos();
 
@@ -190,6 +191,7 @@ export function alternarRide(indice, corpo) {
   const party = listaParty();
   if (!party[indice] || !corpo) return false;
   if (cinemaRideAtivo()) return false;
+  if (rideBloqueadoPelaSimbiose(corpo)) return false;
 
   if (estado.interior?.sala3d) {
     estado.itemGet = "Só no overworld.";

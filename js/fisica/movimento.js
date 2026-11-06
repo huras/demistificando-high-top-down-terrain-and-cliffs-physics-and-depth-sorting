@@ -319,7 +319,8 @@ function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
   corpo.planando = false;
   corpo.tempoAr = 0;
   const mulForca = Number(corpo.forcaVelMul);
-  const velBase = corpo.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
+  let velBase = corpo.correndo ? VELOCIDADE_SPRINT : VELOCIDADE_MAX;
+  if (corpo.simbioseAtivo && corpo.correndo) velBase = VELOCIDADE_MAX * 1.7;
   const velMax = velBase * (Number.isFinite(mulForca) && mulForca > 0 ? mulForca : 1);
   const fase = inicioPassoChao(corpo, velMax);
   if (fase === "nado") {

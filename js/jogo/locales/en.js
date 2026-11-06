@@ -195,6 +195,16 @@ export default {
   "keys": {
     "elementalShrineDevice": "Elemental Shrine Device"
   },
+  "simbiose": {
+    "fuse": "Symbiosis",
+    "unfuse": "Leave",
+    "fusing": "…",
+    "fainted": "This Pokémon can't fuse right now.",
+    "unfuseLocked": "Can't leave symbiosis inside the shrine.",
+    "titulo": "Symbiosis",
+    "pronto": "Ready",
+    "recarregando": "Charging"
+  },
   "santuario": {
     "entrar": "Enter",
     "falar": "Talk",

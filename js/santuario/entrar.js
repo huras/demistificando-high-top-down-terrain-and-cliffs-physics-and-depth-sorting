@@ -26,6 +26,12 @@ import {
 import { findShrineSlotById, shrineOutdoorStand } from "./colocacao.js";
 import { spawnDefensoresSantuario, limparDefensoresSantuario } from "./defensores.js";
 import { iniciarTrialSantuario, encerrarTrialSantuario } from "./trial.js";
+import {
+  cinemaSimbioseAtivo,
+  fundirAvatarSantuario,
+  iniciarSimbioseNoAvatar,
+  sairSimbioseSantuario,
+} from "../jogo/simbiose.js";
 import { iniciarFeixe, feixeAtivo } from "./feixe.js";
 import { onShrineEnteredQuest } from "./questDevice.js";
 import { abrirPuzzleSantuario } from "./interagir.js";
@@ -115,6 +121,7 @@ export function tentarEntrarSantuario(corpo, stone) {
     pousar(corpo, spawn.x, spawn.y, spawn.z);
     iniciarTrialSantuario(hub);
     pousarCompanheiro(corpo, { z: spawn.z });
+    iniciarSimbioseNoAvatar(corpo);
     spawnDefensoresSantuario(hub);
     onShrineEnteredQuest();
     sfx("porta");
@@ -180,6 +187,7 @@ export function restaurarSantuarioSalvo(corpo, snap, local) {
   }
   iniciarTrialSantuario(hub);
   pousarCompanheiro(corpo, { z });
+  fundirAvatarSantuario(corpo);
   spawnDefensoresSantuario(hub);
   return true;
 }
@@ -195,13 +203,13 @@ export function checarSaidaSantuario(corpo) {
 export function sairSantuario(corpo) {
   const interior = estado.interior;
   if (!interior || interior.papel !== "santuario") return;
-  if (feixeAtivo()) return;
+  if (feixeAtivo() || cinemaSimbioseAtivo()) return;
   const element = interior.element || "normal";
   const ox = interior.outdoorX;
   const oy = interior.outdoorY;
   const oz = interior.outdoorZ ?? ALTURA_PRACA;
-  iniciarFeixe(element, "exit", () => {
-    encerrarTrialSantuario();
+  const seguir = () => iniciarFeixe(element, "exit", () => {
+    encerrarTrialSantuario(corpo);
     limparDefensoresSantuario();
     limparSantuarioAtivo();
     estado.interior = null;
@@ -224,4 +232,5 @@ export function sairSantuario(corpo) {
     estado.saidaGrace = 0.6;
     sfx("porta");
   });
+  sairSimbioseSantuario(corpo, seguir);
 }

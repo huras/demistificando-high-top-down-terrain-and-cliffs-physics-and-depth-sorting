@@ -43,7 +43,7 @@ import { marcarAtacante, marcarTiroRanged } from "../campo/retaliacao.js";
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
 
 /** CD extra dos golpes equipados (Investida/básico fica de fora). */
-const CD_GOLPE_S = 2;
+export const CD_GOLPE_S = 2;
 
 const CAMPO_ESTAGIO = {
   atk: "estagioAtk",
@@ -1098,6 +1098,22 @@ export function ensaiarGolpe(ator, agora, efeitos) {
   ator.hopLift = Math.max(ator.hopLift || 0, 0.28);
   aplicarDano(ator, alvo, def.poder, def.tipo, def.categoria, agora, efeitos, 0, def.forma, 0, def);
   abrirRecuperacao(ator, slot);
+}
+
+/** Slot Z/X/C/V da simbiose. O alvo já está em ator.alvo. */
+export function dispararSlotSimbiose(ator, indice, agora, efeitos) {
+  const slot = ator?.golpes?.[indice | 0];
+  if (!slot?.def) return false;
+  return dispararGolpeTurno(ator, slot, agora, efeitos);
+}
+
+/** Básico se o alvo marcado está no alcance. */
+export function dispararBasicoSimbiose(ator, agora, efeitos) {
+  const alvo = ator?.alvo;
+  if (!ator || !alvo || alvo.morto || alvo.capturado) return false;
+  const slot = escolherBasico(ator, alvo, dist(ator, alvo));
+  if (!slot) return false;
+  return dispararGolpeTurno(ator, slot, agora, efeitos);
 }
 
 export function dispararGolpeTurno(ator, slot, agora, efeitos) {

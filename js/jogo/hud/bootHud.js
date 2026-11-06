@@ -34,6 +34,7 @@ import { aoFecharMapa } from "../../ui/mapa/mapaMundo.js";
 import { ligarFecharMapaMenu, notificarMapaFechou, sincronizarMapaMenu } from "./mapaNoMenu.js";
 import { montarSkillLoadout } from "./skillLoadout.js";
 import { montarMovesCampo } from "./movesCampo.js";
+import { montarSimbioseHud } from "./simbioseHud.js";
 import { montarMorteHud } from "./morte.js";
 import { bootQuestBoard } from "./questBoard/janela.js";
 import { aquecerPinMissao } from "../../mapa/pinMissao.js";
@@ -47,6 +48,7 @@ let statusMonApi = null;
 let objetivoApi = null;
 let skillApi = null;
 let movesApi = null;
+let simbioseApi = null;
 
 export function bootHudCompleto() {
   const dexApi = montarHudPokedex(document.getElementById("pokedex-hud"), {
@@ -125,6 +127,7 @@ export function bootHudCompleto() {
   });
   objetivoApi = montarObjetivoMissao(document.getElementById("quest-objective-hud"));
   movesApi = montarMovesCampo(document.getElementById("party-moves-combat"));
+  simbioseApi = montarSimbioseHud(document.getElementById("symbiosis-hud"));
   skillApi = montarSkillLoadout();
   definirSkillApi(skillApi);
   statusMonApi = montarStatusPokemon();
@@ -166,6 +169,7 @@ export function tickHudCampo(dt, corpo) {
   partyApi?.sync?.();
   heartsApi?.sync?.();
   movesApi?.sync?.();
+  simbioseApi?.sync?.();
   objetivoApi?.sync?.();
   if (radarApi?.isOpen?.()) radarApi.sync?.();
   if (statusApi?.isOpen?.()) statusApi.sync?.();

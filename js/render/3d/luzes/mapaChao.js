@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLSL_FLASH_RAIO, somarFlashRaio, uniformsRaio } from "../ceu/marcaRaio.js";
 import { obterPesoNoite } from "./pool.js";
 
 const LADO = 128;
@@ -48,6 +49,7 @@ uniform sampler2D uMapaLuzCidade;
 uniform vec2 uOrigemLuzCidade;
 uniform float uTexelLuzCidade;
 uniform float uPesoLuzCidade;
+${GLSL_FLASH_RAIO}
 
 vec3 luzCidade(vec3 mundo) {
   vec2 uv = (mundo.xz - uOrigemLuzCidade) * uTexelLuzCidade;
@@ -57,13 +59,16 @@ vec3 luzCidade(vec3 mundo) {
   return luz.rgb * queda * uPesoLuzCidade;
 }
 
-/** Mesmo ganho do chão (sombraNuvem): o mapa cru é fraco demais nas casas. */
-vec3 clarearLampadaCidade(vec3 mundo) {
-  vec3 lampada = luzCidade(mundo);
+vec3 clarearUmaLuz(vec3 lampada) {
   float pico = max(lampada.r, max(lampada.g, lampada.b));
   float ganho = min(2.2, pico * 12.0);
   vec3 tinta = lampada / max(pico, 1e-4);
   return ganho * (vec3(0.82) + tinta * 0.18);
+}
+
+/** Poste segue a noite. O raio soma por cima, de dia também. */
+vec3 clarearLampadaCidade(vec3 mundo) {
+  return clarearUmaLuz(luzCidade(mundo)) + clarearUmaLuz(luzRelampago(mundo));
 }
 `;
 
@@ -104,6 +109,7 @@ export function ligarUniformsLuzCidade(shader) {
   shader.uniforms.uOrigemLuzCidade = uniformsLuzCidade.uOrigemLuzCidade;
   shader.uniforms.uTexelLuzCidade = uniformsLuzCidade.uTexelLuzCidade;
   shader.uniforms.uPesoLuzCidade = uniformsLuzCidade.uPesoLuzCidade;
+  shader.uniforms.uFlashRaio = uniformsRaio.uFlashRaio;
 }
 
 /** Symbol não sobrevive ao clone() (só userData via JSON) — reaplicamos o hook. */
@@ -130,7 +136,7 @@ export function aplicarLuzCidade(material) {
   };
   material.customProgramCacheKey = function chaveLuzCidade() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-cidade|clareia-branco`;
+    return `${base}|luz-cidade|clareia-branco|raio`;
   };
   return material;
 }
@@ -249,36 +255,32 @@ const _amostra = new THREE.Color();
 
 /** Luz da cidade no ponto, no mesmo espaço do chão. Sprites não recebem a cena. */
 export function amostrarLuzCidade(x, y, z, destino = _amostra) {
+  destino.setRGB(0, 0, 0);
   const peso = obterPesoNoite();
-  if (peso <= 0.001 || !Number.isFinite(origemX)) {
-    destino.setRGB(0, 0, 0);
-    return destino;
+  const u = Number.isFinite(origemX) ? (x - origemX) / METROS : -1;
+  const v = Number.isFinite(origemZ) ? (z - origemZ) / METROS : -1;
+  if (peso > 0.001 && u > 0 && v > 0 && u < 1 && v < 1) {
+    const fx = u * LADO - 0.5;
+    const fy = v * LADO - 0.5;
+    const x0 = Math.max(0, Math.floor(fx));
+    const y0 = Math.max(0, Math.floor(fy));
+    const x1 = Math.min(LADO - 1, x0 + 1);
+    const y1 = Math.min(LADO - 1, y0 + 1);
+    const tx = Math.max(0, Math.min(1, fx - x0));
+    const ty = Math.max(0, Math.min(1, fy - y0));
+    const i00 = (y0 * LADO + x0) * 4;
+    const i10 = (y0 * LADO + x1) * 4;
+    const i01 = (y1 * LADO + x0) * 4;
+    const i11 = (y1 * LADO + x1) * 4;
+    const lerpa = (canal) => {
+      const a = dados[i00 + canal] + (dados[i10 + canal] - dados[i00 + canal]) * tx;
+      const b = dados[i01 + canal] + (dados[i11 + canal] - dados[i01 + canal]) * tx;
+      return a + (b - a) * ty;
+    };
+    const queda = 1 - suave(6, 18, Math.abs(y - lerpa(3)));
+    const ganho = queda * peso;
+    destino.setRGB(lerpa(0) * ganho, lerpa(1) * ganho, lerpa(2) * ganho);
   }
-  const u = (x - origemX) / METROS;
-  const v = (z - origemZ) / METROS;
-  if (u <= 0 || v <= 0 || u >= 1 || v >= 1) {
-    destino.setRGB(0, 0, 0);
-    return destino;
-  }
-  const fx = u * LADO - 0.5;
-  const fy = v * LADO - 0.5;
-  const x0 = Math.max(0, Math.floor(fx));
-  const y0 = Math.max(0, Math.floor(fy));
-  const x1 = Math.min(LADO - 1, x0 + 1);
-  const y1 = Math.min(LADO - 1, y0 + 1);
-  const tx = Math.max(0, Math.min(1, fx - x0));
-  const ty = Math.max(0, Math.min(1, fy - y0));
-  const i00 = (y0 * LADO + x0) * 4;
-  const i10 = (y0 * LADO + x1) * 4;
-  const i01 = (y1 * LADO + x0) * 4;
-  const i11 = (y1 * LADO + x1) * 4;
-  const lerpa = (canal) => {
-    const a = dados[i00 + canal] + (dados[i10 + canal] - dados[i00 + canal]) * tx;
-    const b = dados[i01 + canal] + (dados[i11 + canal] - dados[i01 + canal]) * tx;
-    return a + (b - a) * ty;
-  };
-  const queda = 1 - suave(6, 18, Math.abs(y - lerpa(3)));
-  const ganho = queda * peso;
-  destino.setRGB(lerpa(0) * ganho, lerpa(1) * ganho, lerpa(2) * ganho);
+  somarFlashRaio(x, y, z, destino);
   return destino;
 }
