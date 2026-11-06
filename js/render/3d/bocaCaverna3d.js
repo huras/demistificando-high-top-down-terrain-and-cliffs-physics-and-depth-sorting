@@ -8,7 +8,7 @@ import { estado as estadoJogo } from "../../jogo/estado.js";
 import { bocasPerto } from "../../caverna/bocas.js";
 
 const URL_GLB = "assets/models/overworld/cavern-entrance/cavern-entrance.glb";
-const ALTURA_ALVO = 4.2;
+const ALTURA_ALVO = 2.1;
 const RAIO = 72;
 
 /** @type {THREE.Group | null} */
