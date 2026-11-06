@@ -4,6 +4,7 @@
  *
  * npm run ninhos:assar
  */
+import "./shimDomAssar.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +16,8 @@ import { CAVERNAS_KANTO, defProcedural } from "../caverna/catalogo.js";
 import { areaAceitaProcedural } from "../caverna/procedural.js";
 import { bocasDaArea } from "../caverna/bocas.js";
 import { CHAO, classeDaCelula, gerarInterior } from "../caverna/interior/gerar.js";
+import { definirCatalogo } from "../mundo/bioma/catalogo.js";
+import { definirDetalhe } from "../mundo/bioma/detalhe.js";
 import { especie, instalarCatalogo, listarEspecies } from "./dados.js";
 import { extrairCatalogo } from "./extrairCatalogo.mjs";
 import { extrairDistribuicao } from "./extrairDistribuicao.mjs";
@@ -368,6 +371,14 @@ function contarLendarios(over, caves) {
 
 async function main() {
   console.log(`catálogo em ${raizRef}`);
+  // Sem o mundo procedural, alturaDoRelevo fora de Kanto cai em h=4
+  // (abaixo do mar) e o assar marca 100% dos ninhos como água.
+  const detalhePath = path.join(raiz, "biomas", "detalhe.json");
+  const mundoPath = path.join(raiz, "biomas", "mundo.json");
+  definirDetalhe(JSON.parse(fs.readFileSync(detalhePath, "utf8")));
+  definirCatalogo(JSON.parse(fs.readFileSync(mundoPath, "utf8")));
+  console.log(`relevo: ${mundoPath}`);
+
   const cat = await extrairCatalogo(raizRef);
   const dist = await extrairDistribuicao(raizRef);
   instalarCatalogo(cat.especies);

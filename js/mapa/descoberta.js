@@ -119,8 +119,9 @@ function snapshotDoLar(larId, info = null) {
       canonico: true,
       x: lar.x,
       y: lar.y,
-      speciesKey: info?.speciesKey || lar.speciesKey,
-      dex: (info?.dex | 0) || (lar.dex | 0),
+      // Resolver assado manda na espécie/kind (rebake / hotfix).
+      speciesKey: lar.speciesKey || info?.speciesKey || "pidgey",
+      dex: (lar.dex | 0) || (info?.dex | 0),
       shiny: info?.shiny != null ? !!info.shiny : !!lar.shiny,
       kind: lar.kind || "land",
     };
@@ -261,10 +262,10 @@ export function tickDescobertaMapa(corpo, opts = {}) {
           canonico: true,
           x: lar.x,
           y: lar.y,
-          speciesKey: a.especie?.key || lar.speciesKey,
-          dex: (a.especie?.dex | 0) || (lar.dex | 0),
+          speciesKey: lar.speciesKey || a.especie?.key,
+          dex: (lar.dex | 0) || (a.especie?.dex | 0),
           shiny: !!a.shiny || !!lar.shiny,
-          kind: a.habitatKind || lar.kind || "land",
+          kind: lar.kind || a.habitatKind || "land",
         });
       }
       continue;

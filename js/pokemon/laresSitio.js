@@ -56,6 +56,7 @@ import {
   ehNucleoPlanoLar,
   temPlanoLar,
 } from "./laresRelevo.js";
+import { larAssado, ninhosProntos } from "./ninhosAssados.js";
 
 /** Raio Chebyshev do núcleo plano em terra (2 → 5×5). */
 export const LAR_NUCLEO_RAIO = 2;
@@ -68,8 +69,6 @@ export const LAR_ELEVACAO = 0;
 /** Lares FlapAround: mesa alta acima do chão local. */
 export const LAR_ELEVACAO_VOADOR_MIN = 10;
 export const LAR_ELEVACAO_VOADOR_MAX = 15;
-/** Desnível máximo no núcleo pra aceitar o carimbo. */
-export const LAR_DESNIVEL_MAX = 3;
 /** Vão de entrada/saída na borda de pedras (células de largura). */
 export const LAR_ABERTURA_LARGURA = 2;
 
@@ -241,12 +240,21 @@ export function garantirSitioLar(cx, cy, indice) {
   const id = `${cx},${cy},${indice}`;
   if (carimbados.has(id) || rejeitados.has(id)) return carimbados.has(id);
 
+  // Sem bin ainda: não rejeita — o boot gera o mundo depois de carregar ninhos.
+  if (!ninhosProntos()) return false;
+
   const pos = posicaoCandidata(cx, cy, indice);
   if (!pos) {
     rejeitados.add(id);
     return false;
   }
   const { x, y, tx, ty } = pos;
+  const assado = larAssado(cx, cy, indice);
+  // Só carimba o que o bin diz ser ninho terrestre (spawn/minimapa usam o mesmo).
+  if (!assado || (assado.kind !== "land" && assado.kind !== "high")) {
+    rejeitados.add(id);
+    return false;
+  }
   if (
     zonaSemSelvagem(x, y) ||
     ehCidade(x, y) ||
@@ -261,13 +269,17 @@ export function garantirSitioLar(cx, cy, indice) {
     return false;
   }
 
-  const esp = especieDoLar(cx, cy, indice, x, y);
+  const esp =
+    especie(assado.speciesKey) || especieDoLar(cx, cy, indice, x, y);
   if (!esp) {
     rejeitados.add(id);
     return false;
   }
-  const elev = elevacaoDoLar(cx, cy, indice, esp);
-  const voador = elev >= LAR_ELEVACAO_VOADOR_MIN;
+  const elev =
+    assado.kind === "high"
+      ? elevacaoDoLar(cx, cy, indice, esp)
+      : LAR_ELEVACAO | 0;
+  const voador = assado.kind === "high" || elev >= LAR_ELEVACAO_VOADOR_MIN;
   // Flying nest: só 3×3; terra continua 5×5.
   const raio = Math.max(
     0,
@@ -279,7 +291,6 @@ export function garantirSitioLar(cx, cy, indice) {
   const y1 = ty + raio + 1;
   const nivel = nivelMarBlocos();
   let minH = Infinity;
-  let maxH = -Infinity;
   for (let wy = y0; wy < y1; wy++) {
     for (let wx = x0; wx < x1; wx++) {
       if (temPlanoLetra(wx, wy) || temPlanoSite(wx, wy)) {
@@ -288,17 +299,13 @@ export function garantirSitioLar(cx, cy, indice) {
       }
       const hn = alturaDoRelevoNatural(wx, wy) | 0;
       if (hn < minH) minH = hn;
-      if (hn > maxH) maxH = hn;
     }
   }
   if (!Number.isFinite(minH) || minH <= nivel) {
     rejeitados.add(id);
     return false;
   }
-  if (maxH - minH > LAR_DESNIVEL_MAX) {
-    rejeitados.add(id);
-    return false;
-  }
+  // Ninho assado: o carimbo achata o núcleo — desnível alto no procedural não impede.
 
   const h = Math.max(nivel + 1, minH + elev);
   carimbarPlanoLar(x0, y0, x1, y1, h, LAR_AVENTAL);

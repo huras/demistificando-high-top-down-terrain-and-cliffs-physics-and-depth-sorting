@@ -271,6 +271,18 @@ async function iniciarInterno() {
   marcarFase("visuais", 1);
 
   const spawn = obterSpawnSalvo() || SPAWN;
+  // Ninhos antes do mundo: o carimbo de terraço/pedras roda na geração do chunk.
+  let ninhosInfo = { overworld: 0, cavernas: 0 };
+  let catInfo = { especies: 0, golpes: 0, biomas: 0 };
+  try {
+    definirStatus("Carregando catálogo Pokémon…");
+    catInfo = await carregarDados();
+    definirStatus("Lendo ninhos…");
+    ninhosInfo = await carregarNinhosAssados();
+  } catch (erro) {
+    console.error("Catálogo/ninhos não carregou antes do mundo", erro);
+  }
+
   definirStatus("Gerando mundo no spawn…");
   indexarColisaoCidade();
   await hidratarEditsDoSave(idSaveAtual());
@@ -323,10 +335,12 @@ async function iniciarInterno() {
   ligarHierarquiaCena();
   ligarInspetorCena();
   try {
-    definirStatus("Carregando catálogo Pokémon…");
-    const cat = await carregarDados();
-    definirStatus("Lendo ninhos…");
-    const ninhos = await carregarNinhosAssados();
+    if (!(catInfo.especies > 0)) {
+      definirStatus("Carregando catálogo Pokémon…");
+      catInfo = await carregarDados();
+      definirStatus("Lendo ninhos…");
+      ninhosInfo = await carregarNinhosAssados();
+    }
     ligarPokemon();
     marcarFase("pokemon", 1);
 
@@ -342,7 +356,7 @@ async function iniciarInterno() {
       if (d < perto) perto = d;
     }
     console.info(
-      `Pokémon: ${cat.especies} espécies, ${cat.golpes} golpes, ${cat.biomas | 0} biomas de encontro, ${ninhos.overworld} ninhos, ${ninhos.cavernas} na caverna`,
+      `Pokémon: ${catInfo.especies} espécies, ${catInfo.golpes} golpes, ${catInfo.biomas | 0} biomas de encontro, ${ninhosInfo.overworld} ninhos, ${ninhosInfo.cavernas} na caverna`,
     );
     console.info(
       `Santuários: ${plan.slots.length} no mundo, ${pedras} pedras nos chunks carregados` +

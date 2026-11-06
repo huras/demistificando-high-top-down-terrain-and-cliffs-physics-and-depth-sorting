@@ -84,6 +84,8 @@ export function integrarPulo(ator, dt) {
   if (ator.puloCd > 0) ator.puloCd = Math.max(0, ator.puloCd - dt);
   if (ator.embaloAte > 0) ator.embaloAte = Math.max(0, ator.embaloAte - dt);
   if (!ator.pulando) return;
+  // Pulo de locomoção (agente) já integra vz/elevação. Este hop só mexe no arco visual.
+  if (ator._loco && !ator.puloVisual) return;
   if (ator.puloVisual && ator.noChao === false) {
     ator.puloVisual = false;
     ator.puloAlt = 0;
