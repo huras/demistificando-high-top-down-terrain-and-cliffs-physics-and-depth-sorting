@@ -100,9 +100,12 @@ function pontoSaida(ator) {
 function snapMonNoCorpo(corpo, ator, dt = 0) {
   if (!corpo || !ator) return;
   const alvo = ator.alvo;
-  const parado = Math.hypot(corpo.vx || 0, corpo.vy || 0) <= 0.35 && !corpo.andando;
+  const sp = Math.hypot(corpo.vx || 0, corpo.vy || 0);
+  const movendo = sp > 0.35 || !!corpo.andando;
+  // dirX/dirY do corpo é só o sinal. Com a câmera girada, esquerda vira (−1, +1)
+  // e o sheet de 8 direções cai na diagonal. A velocidade é o eixo da tela.
   if (
-    parado &&
+    !movendo &&
     alvo &&
     alvo.faccao === "selvagem" &&
     !alvo.morto &&
@@ -114,11 +117,13 @@ function snapMonNoCorpo(corpo, ator, dt = 0) {
     const len = Math.hypot(dx, dy) || 1;
     ator.dirX = dx / len;
     ator.dirY = dy / len;
-  } else if (Number.isFinite(corpo.dirX) || Number.isFinite(corpo.dirY)) {
-    ator.dirX = corpo.dirX || 0;
-    ator.dirY = corpo.dirY || 1;
+  } else if (sp > 0.35) {
+    ator.dirX = corpo.vx / sp;
+    ator.dirY = corpo.vy / sp;
+  } else if (!ator.dirX && !ator.dirY) {
+    ator.dirX = 0;
+    ator.dirY = 1;
   }
-  ator.facing = corpo.facing ?? ator.facing;
   ator.x = corpo.x;
   ator.y = corpo.y;
   const elev = corpo.elevacao ?? corpo.z ?? 0;
@@ -129,8 +134,6 @@ function snapMonNoCorpo(corpo, ator, dt = 0) {
   ator.pulando = !!corpo.pulando;
   ator.noChao = corpo.noChao !== false;
   ator.nadando = !!corpo.nadando;
-  const sp = Math.hypot(corpo.vx || 0, corpo.vy || 0);
-  const movendo = sp > 0.35 || !!corpo.andando;
   ator.vx = movendo ? corpo.vx || 0 : 0;
   ator.vy = movendo ? corpo.vy || 0 : 0;
   ator.vz = 0;
