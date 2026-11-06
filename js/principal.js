@@ -20,6 +20,7 @@ import {
 import { alturaSobPes } from "./fisica/colisao.js";
 import { ligarEdicaoBlocos } from "./entrada/edicaoBlocos.js";
 import { atualizarHoverBloco, ligarHoverBloco } from "./entrada/hoverBloco.js";
+import { atualizarHoverDetalhe } from "./campo/hoverDetalhe.js";
 import {
   botaoDireitoSegurado,
   botaoEsquerdoSegurado,
@@ -870,6 +871,7 @@ function loop(agora) {
   despenetrarCorpos();
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();
+  atualizarHoverDetalhe();
   sincronizarPainelCeu();
   sincronizarPainelCamera();
   sincronizarHierarquiaCena();

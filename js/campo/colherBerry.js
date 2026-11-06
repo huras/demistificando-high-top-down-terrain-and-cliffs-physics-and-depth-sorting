@@ -31,6 +31,13 @@ export function arbustoMaduroPerto(x, y, z) {
   return melhor;
 }
 
+/** Maduro rende de 2 a 5. Flor e arbusto ainda não soltam. */
+export function recursoBerry(prop) {
+  if (!prop || prop.tipo !== "berry" || prop.oculto) return null;
+  if ((prop.estagio || "maduro") !== "maduro") return null;
+  return { item: prop.berryKey || "oran", min: 2, max: 5 };
+}
+
 /** Devolve a chave e a quantidade, ou null se o pé não estava maduro. */
 export function colherArbusto(prop) {
   if (!prop || prop.tipo !== "berry") return null;

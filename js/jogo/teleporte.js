@@ -113,6 +113,13 @@ export function ancoraCameraTeleporte() {
   return ancoraCam.ativa ? ancoraCam : null;
 }
 
+/** Painel grande do mapa: cruzeiro e descida. A desintegração fica no círculo. */
+export function teleporteMapaAmpliado() {
+  if (!ancoraCam.ativa) return false;
+  if (fase === "descida") return true;
+  return fase === "subida" && faseT >= SUBIDA;
+}
+
 export function definirChecagemMalhaTeleporte(fn) {
   checarMalhaDestino = typeof fn === "function" ? fn : null;
 }

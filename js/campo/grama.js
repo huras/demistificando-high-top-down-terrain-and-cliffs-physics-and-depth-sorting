@@ -22,6 +22,13 @@ function ehTufo(prop) {
   return !!prop && (prop.tipo === "grama" || prop.tipo === "mata");
 }
 
+/** Tufo em pé ainda solta uma fibra. */
+export function recursoTufo(prop) {
+  if (!ehTufo(prop) || prop.oculto) return null;
+  if (prop.fase && prop.fase !== FASE.EM_PE) return null;
+  return { item: "plantFiber", n: 1 };
+}
+
 /**
  * Puxa o tufo do chão (grab). Some e volta depois — fibra no caller.
  * @param {object} prop

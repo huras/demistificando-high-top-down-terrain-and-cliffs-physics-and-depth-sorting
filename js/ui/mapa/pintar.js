@@ -253,7 +253,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
   const atlas = canvasAtlas();
   if (atlas) ctx.drawImage(atlas, 0, 0, LADO_MUNDO, LADO_MUNDO);
   // Tiles de perto (também no minimapa quando o zoom passa do limiar).
-  if (vista.zoom >= ZOOM_TILE) {
+  if (!vista.soVisao && vista.zoom >= ZOOM_TILE) {
     const visiveis = listarTiles();
     for (let i = 0; i < visiveis.length; i++) {
       const tile = visiveis[i];
@@ -377,7 +377,11 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
     if (marca.tipo === "wild") {
       if (!wildPinVisivelNoZoom(vista)) continue;
       wildVisto = true;
-      desenharPinWild(ctx, marca, sx, sy, { mini: !!vista.mini, dpr });
+      desenharPinWild(ctx, marca, sx, sy, {
+        mini: !!vista.mini,
+        dpr,
+        semRede: !!vista.soVisao,
+      });
       if (!vista.mini && marca.nome && vista.hoverMarcaId === marca.id) {
         nomes.push({
           texto: marca.nome,
@@ -535,7 +539,7 @@ export function pintarMapa(ctx, w, h, dpr, vista) {
       if (extras[i].tipo === "berry") imagemIcone(extras[i].berryKey);
     }
   }
-  if (wildVisto) {
+  if (wildVisto && !vista.soVisao) {
     for (let i = 0; i < extras.length; i++) {
       const m = extras[i];
       if (m.tipo === "wild" && m.dex) aquecerPinWild(m.dex, !!m.shiny);

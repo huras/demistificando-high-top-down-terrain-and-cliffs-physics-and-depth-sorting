@@ -374,5 +374,93 @@ export default {
       "wait": "まだ {item}×{count} がひつようだよ。",
       "thanks": "かんぺき！ {item}×{count} ありがとう。"
     }
+  },
+  "detalhe": {
+    "arvore": "き",
+    "toco": "きりかぶ",
+    "tocoQueimado": "やけたきりかぶ",
+    "pedra": "いわ",
+    "grama": "くさ",
+    "mata": "しげみ",
+    "caindo": "たおれている",
+    "queimando": "もえている",
+    "flor": "はな",
+    "arbusto": "やぶ",
+    "cerca": "かきね",
+    "portao": "もん",
+    "minhaCasa": "あなたのいえ",
+    "papel": {
+      "casa": "いえ",
+      "centro": "ポケモンセンター",
+      "loja": "フレンドリィショップ",
+      "lab": "けんきゅうじょ",
+      "ginasio": "ジム",
+      "museu": "はくぶつかん",
+      "torre": "タワー",
+      "porto": "みなと",
+      "safari": "サファリ",
+      "ruina": "いせき",
+      "coliseu": "コロシアム",
+      "mansao": "やしき",
+      "condominio": "マンション"
+    },
+    "modelo": {
+      "moomoo-farm": "モーモーぼくじょう",
+      "pokemon-day-care": "そだてや",
+      "moomoo-farm-silo": "サイロ",
+      "windmill-1": "ふうしゃ",
+      "casa-bark": "わらのいえ",
+      "casa-amigo": "はいいろのいえ",
+      "casa-cherry": "しろいえ",
+      "casa-guia": "もくぞうのいえ",
+      "farol": "とうだい",
+      "ruina": "いせき"
+    },
+    "sitio": {
+      "farm": "ぼくじょう",
+      "graveyard": "はかば",
+      "outpost": "しゅつちょうじょ",
+      "dock": "ふねつきば",
+      "lookout": "てんぼうだい"
+    },
+    "poi": {
+      "fenoGrande": "おおわら",
+      "fenoMedio": "わら",
+      "fenoPequeno": "ちいさなわら",
+      "carroca": "にぐるま",
+      "poco": "いど",
+      "lampiao": "ランプ",
+      "toras": "まるた",
+      "sacos": "ふくろ",
+      "plantacao": "はたけ",
+      "lapideLimpa": "はか",
+      "lapideMusgo": "こけのはか",
+      "lapideRachada": "ひびのはか"
+    },
+    "movel": {
+      "cama": "ベッド",
+      "mesa": "テーブル",
+      "cadeira": "いす",
+      "planta": "かびん",
+      "bancada": "さぎょうだい",
+      "maquinaCura": "かいふくそうち",
+      "pc": "ビルのパソコン"
+    },
+    "elemento": {
+      "normal": "ノーマル",
+      "dark": "あく",
+      "ice": "こおり",
+      "fighting": "かくとう",
+      "water": "みず",
+      "grass": "くさ",
+      "fire": "ほのお",
+      "poison": "どく",
+      "electric": "でんき",
+      "bug": "むし",
+      "rock": "いわ",
+      "ground": "じめん",
+      "dragon": "ドラゴン",
+      "psychic": "エスパー"
+    }
   }
 };

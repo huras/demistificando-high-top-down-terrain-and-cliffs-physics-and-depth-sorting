@@ -374,5 +374,93 @@ export default {
       "wait": "I still need {count}× {item}. Come back when you have them!",
       "thanks": "Perfect! Thanks for the {count}× {item}."
     }
+  },
+  "detalhe": {
+    "arvore": "Tree",
+    "toco": "Stump",
+    "tocoQueimado": "Burnt stump",
+    "pedra": "Rock",
+    "grama": "Tuft",
+    "mata": "Brush",
+    "caindo": "Falling",
+    "queimando": "Burning",
+    "flor": "Flower",
+    "arbusto": "Bush",
+    "cerca": "Fence",
+    "portao": "Gate",
+    "minhaCasa": "Your house",
+    "papel": {
+      "casa": "House",
+      "centro": "Pokémon Center",
+      "loja": "Poké Mart",
+      "lab": "Lab",
+      "ginasio": "Gym",
+      "museu": "Museum",
+      "torre": "Tower",
+      "porto": "Port",
+      "safari": "Safari",
+      "ruina": "Ruin",
+      "coliseu": "Coliseum",
+      "mansao": "Mansion",
+      "condominio": "Condominium"
+    },
+    "modelo": {
+      "moomoo-farm": "MooMoo Farm",
+      "pokemon-day-care": "Pokémon Day Care",
+      "moomoo-farm-silo": "Silo",
+      "windmill-1": "Windmill",
+      "casa-bark": "Thatched house",
+      "casa-amigo": "Gray house",
+      "casa-cherry": "White house",
+      "casa-guia": "Wooden house",
+      "farol": "Lighthouse",
+      "ruina": "Ruin"
+    },
+    "sitio": {
+      "farm": "Farm",
+      "graveyard": "Graveyard",
+      "outpost": "Outpost",
+      "dock": "Dock",
+      "lookout": "Lookout"
+    },
+    "poi": {
+      "fenoGrande": "Large haystack",
+      "fenoMedio": "Haystack",
+      "fenoPequeno": "Small haystack",
+      "carroca": "Cart",
+      "poco": "Well",
+      "lampiao": "Lamp",
+      "toras": "Logs",
+      "sacos": "Sacks",
+      "plantacao": "Crop",
+      "lapideLimpa": "Gravestone",
+      "lapideMusgo": "Mossy gravestone",
+      "lapideRachada": "Cracked gravestone"
+    },
+    "movel": {
+      "cama": "Bed",
+      "mesa": "Table",
+      "cadeira": "Chair",
+      "planta": "Pot",
+      "bancada": "Workbench",
+      "maquinaCura": "Healing machine",
+      "pc": "Bill's PC"
+    },
+    "elemento": {
+      "normal": "Normal",
+      "dark": "Dark",
+      "ice": "Ice",
+      "fighting": "Fighting",
+      "water": "Water",
+      "grass": "Grass",
+      "fire": "Fire",
+      "poison": "Poison",
+      "electric": "Electric",
+      "bug": "Bug",
+      "rock": "Rock",
+      "ground": "Ground",
+      "dragon": "Dragon",
+      "psychic": "Psychic"
+    }
   }
 };

@@ -117,6 +117,35 @@ export function casasPerto(wx, wy, raio = 48) {
   });
 }
 
+/** Casa, móvel e cerca perto do ponto, sem alocar lista. */
+export function visitarEstruturasPerto(wx, wy, raio, visitar) {
+  const r2 = raio * raio;
+  for (const chave in porArea) {
+    const bundle = porArea[chave];
+    const casas = bundle.houses;
+    for (let i = 0; i < casas.length; i++) {
+      const casa = casas[i];
+      const dx = casa.x - wx;
+      const dy = casa.y - wy;
+      if (dx * dx + dy * dy <= r2) visitar(casa, "casa");
+    }
+    const moveis = bundle.outdoorFurniture;
+    for (let i = 0; i < moveis.length; i++) {
+      const movel = moveis[i];
+      const dx = movel.x + 0.5 - wx;
+      const dy = movel.y + 0.5 - wy;
+      if (dx * dx + dy * dy <= r2) visitar(movel, "movel");
+    }
+    const cercas = bundle.fences;
+    for (let i = 0; i < cercas.length; i++) {
+      const cerca = cercas[i];
+      const dx = cerca.tx + 0.5 - wx;
+      const dy = cerca.ty + 0.5 - wy;
+      if (dx * dx + dy * dy <= r2) visitar(cerca, "cerca");
+    }
+  }
+}
+
 export function proximoIdCasa(wx, wy) {
   const key = chaveAreaDe(wx, wy);
   let id = `player-house-${key}-${seqCasa++}`;

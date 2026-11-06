@@ -162,6 +162,11 @@ export function obterHoverBloco() {
   return hover;
 }
 
+/** Câmera 2D registrada no hover, para projetar o detalhe no mesmo quadro. */
+export function cameraDoHover2d() {
+  return obterCamera2d?.() || null;
+}
+
 /** Hover atual está no alcance de ação do player (5 tiles XY). */
 export function hoverEmAlcanceEdicao() {
   if (!hover) return false;

@@ -25,6 +25,7 @@ import { empilharPokemon } from "../pokemon/render2d.js";
 import { empilharPoeiraPasso } from "./poeiraPasso2d.js";
 import { empilharFxBola } from "./fxBola2d.js";
 import { empilharFxAguaChao, empilharFxAguaGotas } from "./fxAgua2d.js";
+import { desenharHoverDetalhe } from "../campo/hoverDetalhe.js";
 import { atorDaMarca, desenharMarcaOrdemGolpe } from "../pokemon/campo/marcaOrdemGolpe.js";
 import { desenharAlvoOrdem, desenharHudPokemon, desenharHoverPokemon, projetar2d, projetarPes2d, projetar3d, projetarChao3d } from "../pokemon/hud.js";
 import { avancarTempoAgua, empilharAgua2d } from "./agua2d.js";
@@ -87,6 +88,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
   desenharHudPokemon(ctx, projetar, corpo, projetarPes);
   desenharPokemonSobCursor(ctx, canvas, projetar, projetarPes);
   desenharLabelHoverHud(ctx, canvas.width, canvas.height);
+  desenharHoverDetalhe(ctx, canvas.width, canvas.height);
 
   return { ocl, modoVisual };
 }
@@ -219,6 +221,7 @@ export function desenharHudSobre3d(ctx, canvas, { corpo, camera3d, debug, modoVi
     // Tile e elipse do mon ficam no 3D (depth); HUD só placa/nome.
     desenharPokemonSobCursor(ctx, canvas, projetar, projetarChao, false);
     desenharLabelHoverHud(ctx, canvas.width, canvas.height, false);
+    desenharHoverDetalhe(ctx, canvas.width, canvas.height);
     if ((camera3d?.camera3d?.blend ?? 0) > 0.35) {
       desenharMira(ctx, canvas.width, canvas.height, camera3d?.flechas?.carga?.() ?? 0);
     }

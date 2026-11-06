@@ -374,5 +374,93 @@ export default {
       "wait": "Ainda preciso de {count}× {item}. Volte quando tiver!",
       "thanks": "Perfeito! Obrigado pelos {count}× {item}."
     }
+  },
+  "detalhe": {
+    "arvore": "Árvore",
+    "toco": "Toco",
+    "tocoQueimado": "Toco queimado",
+    "pedra": "Pedra",
+    "grama": "Tufo",
+    "mata": "Mata",
+    "caindo": "Caindo",
+    "queimando": "Queimando",
+    "flor": "Flor",
+    "arbusto": "Arbusto",
+    "cerca": "Cerca",
+    "portao": "Portão",
+    "minhaCasa": "Sua casa",
+    "papel": {
+      "casa": "Casa",
+      "centro": "Centro Pokémon",
+      "loja": "Loja",
+      "lab": "Laboratório",
+      "ginasio": "Ginásio",
+      "museu": "Museu",
+      "torre": "Torre",
+      "porto": "Porto",
+      "safari": "Safári",
+      "ruina": "Ruína",
+      "coliseu": "Coliseu",
+      "mansao": "Mansão",
+      "condominio": "Condomínio"
+    },
+    "modelo": {
+      "moomoo-farm": "Fazenda MooMoo",
+      "pokemon-day-care": "Creche Pokémon",
+      "moomoo-farm-silo": "Silo",
+      "windmill-1": "Moinho",
+      "casa-bark": "Casa de palha",
+      "casa-amigo": "Casa cinza",
+      "casa-cherry": "Casa branca",
+      "casa-guia": "Casa de madeira",
+      "farol": "Farol",
+      "ruina": "Ruína"
+    },
+    "sitio": {
+      "farm": "Fazenda",
+      "graveyard": "Cemitério",
+      "outpost": "Posto",
+      "dock": "Doca",
+      "lookout": "Mirante"
+    },
+    "poi": {
+      "fenoGrande": "Fardo grande",
+      "fenoMedio": "Fardo",
+      "fenoPequeno": "Fardo pequeno",
+      "carroca": "Carroça",
+      "poco": "Poço",
+      "lampiao": "Lampião",
+      "toras": "Toras",
+      "sacos": "Sacos",
+      "plantacao": "Plantação",
+      "lapideLimpa": "Lápide",
+      "lapideMusgo": "Lápide com musgo",
+      "lapideRachada": "Lápide rachada"
+    },
+    "movel": {
+      "cama": "Cama",
+      "mesa": "Mesa",
+      "cadeira": "Cadeira",
+      "planta": "Vaso",
+      "bancada": "Bancada",
+      "maquinaCura": "Aparelho do Centro",
+      "pc": "PC do Bill"
+    },
+    "elemento": {
+      "normal": "Normal",
+      "dark": "Sombrio",
+      "ice": "Gelo",
+      "fighting": "Lutador",
+      "water": "Água",
+      "grass": "Planta",
+      "fire": "Fogo",
+      "poison": "Veneno",
+      "electric": "Elétrico",
+      "bug": "Inseto",
+      "rock": "Pedra",
+      "ground": "Terra",
+      "dragon": "Dragão",
+      "psychic": "Psíquico"
+    }
   }
 };

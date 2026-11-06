@@ -85,7 +85,7 @@ import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
 import { tickTiles } from "../ui/mapa/atlas.js";
 import { pintarMapa } from "../ui/mapa/pintar.js";
 import { abrirMapa, mapaAberto } from "../ui/mapa/mapaMundo.js";
-import { ancoraCameraTeleporte } from "./teleporte.js";
+import { ancoraCameraTeleporte, teleporteMapaAmpliado } from "./teleporte.js";
 
 let raiz = null;
 
@@ -1045,12 +1045,13 @@ function pintarMini() {
   const tela = el("#jogo-mini");
   if (!tela) return;
   const voo = ancoraCameraTeleporte();
-  const viagem = !!voo;
-  sincronizarMiniViagem(viagem);
-  const caixa = viagem ? el("#area-minimap") : null;
-  const cssW = viagem ? Math.max(MINI_PX, caixa?.clientWidth || MINI_PX) : MINI_PX;
-  const cssH = viagem ? Math.max(MINI_PX, caixa?.clientHeight || MINI_PX) : MINI_PX;
-  const dpr = viagem ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  if (!voo) rumoMini.tem = false;
+  const ampliado = teleporteMapaAmpliado();
+  sincronizarMiniViagem(ampliado);
+  const caixa = ampliado ? el("#area-minimap") : null;
+  const cssW = ampliado ? Math.max(MINI_PX, caixa?.clientWidth || MINI_PX) : MINI_PX;
+  const cssH = ampliado ? Math.max(MINI_PX, caixa?.clientHeight || MINI_PX) : MINI_PX;
+  const dpr = ampliado ? 1 : Math.min(2, window.devicePixelRatio || 1);
   const bw = Math.max(1, Math.round(cssW * dpr));
   const bh = Math.max(1, Math.round(cssH * dpr));
   if (tela.width !== bw || tela.height !== bh) {
@@ -1058,8 +1059,8 @@ function pintarMini() {
     tela.height = bh;
   }
   const ponto = pontoMini();
-  // Com o mapa grande fechado, pedimos os tiles de perto da janela do mini.
-  if (!mapaAberto()) {
+  // No voo ampliado fica só o atlas geral: tile de perto no corredor trava o jogo.
+  if (!mapaAberto() && !ampliado) {
     const meioX = cssW / (2 * ZOOM_MINI);
     const meioY = cssH / (2 * ZOOM_MINI);
     tickTiles(
@@ -1073,7 +1074,7 @@ function pintarMini() {
     );
   }
   const corpo = corpoRef;
-  const rumo = viagem ? rumoDaViagem(ponto.x, ponto.y, corpo) : null;
+  const rumo = voo ? rumoDaViagem(ponto.x, ponto.y, corpo) : null;
   pintarMapa(tela.getContext("2d"), bw, bh, dpr, {
     cx: ponto.x,
     cy: ponto.y,
@@ -1085,7 +1086,8 @@ function pintarMini() {
     jogadorFacing: corpo?.facing ?? 0,
     agora: performance.now(),
     mini: true,
-    qualidade: viagem ? "low" : "high",
+    soVisao: ampliado,
+    qualidade: ampliado ? "low" : "high",
   });
   const place = raiz?.querySelector("[data-minimap-place]");
   if (place) {

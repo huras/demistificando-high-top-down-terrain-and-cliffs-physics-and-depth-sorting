@@ -3,7 +3,7 @@
  * do Pokemon AI. Já vêm redondos com transparência: desenha o size inteiro,
  * sem clip nem anel.
  */
-import { pedirIconeMinimap, enfileirarIconeMinimap } from "../pokemon/minimapIcone.js";
+import { pedirIconeMinimap, enfileirarIconeMinimap, espiarIconeMinimap } from "../pokemon/minimapIcone.js";
 import { especie } from "../pokemon/dados.js";
 
 const ZOOM_HIDE_MUNDO = 0.8;
@@ -93,7 +93,7 @@ function blitIconeCheio(ctx, icon, px, py, r) {
  * @param {{ id?: string, dex?: number, shiny?: boolean, count?: number, speciesKey?: string }} marca
  * @param {number} sx
  * @param {number} sy
- * @param {{ mini?: boolean, dpr?: number }} [opts]
+ * @param {{ mini?: boolean, dpr?: number, semRede?: boolean }} [opts]
  */
 export function desenharPinWild(ctx, marca, sx, sy, opts = {}) {
   if (!ctx || !Number.isFinite(sx) || !Number.isFinite(sy)) return;
@@ -101,10 +101,12 @@ export function desenharPinWild(ctx, marca, sx, sy, opts = {}) {
   const r = size * 0.5;
   const dex = (marca.dex | 0) || (especie(marca.speciesKey)?.dex | 0);
   const pinKey = String(marca.id || `${dex}:${marca.speciesKey || ""}`);
+  const semRede = !!opts.semRede;
+  const icone = semRede ? espiarIconeMinimap : pedirIconeMinimap;
 
-  let img = dex > 0 ? pedirIconeMinimap(dex, !!marca.shiny) : null;
+  let img = dex > 0 ? icone(dex, !!marca.shiny) : null;
   if (!imgPronta(img) && marca.shiny && dex > 0) {
-    img = pedirIconeMinimap(dex, false);
+    img = icone(dex, false);
   }
   if (imgPronta(img)) {
     ultimoBom.set(pinKey, img);

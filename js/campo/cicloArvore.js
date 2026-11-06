@@ -25,6 +25,19 @@ export const ACERTOS_FOGO = 5;
 const HP_TOCO = 2;
 const HP_TOCO_QUEIMADO = 4;
 
+/** Madeira ou carvão que a árvore ainda solta. Caindo e queimando não rendem. */
+export function recursoArvore(prop) {
+  if (!prop || prop.tipo !== "arvore" || prop.oculto) return null;
+  const fase = prop.fase || FASE.EM_PE;
+  if (fase === FASE.REMOVIDO || fase === FASE.CAINDO || fase === FASE.QUEIMANDO) return null;
+  const hp = Math.max(0, Math.round(prop.hp || 0));
+  if (fase === FASE.TOCO_QUEIMADO) return hp > 0 ? { item: "coal", n: hp } : null;
+  if (fase === FASE.TOCO) return hp > 0 ? { item: "wood", n: hp } : null;
+  if (fase !== FASE.EM_PE) return null;
+  const emPe = prop.hp > 0 ? hp : 4;
+  return { item: "wood", n: emPe + HP_TOCO };
+}
+
 let acumBrasa = 0;
 
 function ladoDe(id) {

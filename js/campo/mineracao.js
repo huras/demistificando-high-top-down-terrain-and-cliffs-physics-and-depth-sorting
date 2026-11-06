@@ -18,6 +18,15 @@ export function materialDoMineral(prop) {
   return "blueCrystal";
 }
 
+/** Pedra ou cristal ainda no veio. Cada ponto de vida inteiro é uma unidade. */
+export function recursoMineral(prop) {
+  if (!prop || prop.oculto || (prop.tipo !== "pedra" && prop.tipo !== "cristal")) return null;
+  if (prop.fase === FASE.REMOVIDO) return null;
+  const n = Math.ceil(prop.hp || 0);
+  if (n <= 0) return null;
+  return { item: materialDoMineral(prop), n };
+}
+
 function soltar(prop, antes, agoraHp) {
   let n = Math.floor(antes) - Math.floor(agoraHp);
   if (n <= 0 && agoraHp <= 0 && antes > 0) n = 1;
