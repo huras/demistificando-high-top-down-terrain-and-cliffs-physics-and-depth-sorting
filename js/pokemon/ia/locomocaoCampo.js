@@ -29,7 +29,7 @@ function pararCorpo(ator) {
 }
 
 function perfilCampo(ator) {
-  if (ator.perfil && (ator.faccao === "party" || ator._santuario)) return ator.perfil;
+  if (ator.perfil && (ator.faccao === "party" || ator._santuario || ator._caverna)) return ator.perfil;
   // Habitat kind → perfil (HIGH voa; água nada; resto campo).
   return perfilDoHabitat(ator.habitatKind, ator);
 }

@@ -1,6 +1,7 @@
 /**
- * Reserva PISO_NINHOS lares por espécie não-lendária, em tile que ela pode habitar.
- * O sorteio normal continua nos outros slots.
+ * Reserva antiga, por espécie, só no registro do mapa.
+ * A cota agora é por linha evolutiva e mora no script ninhos:assar.
+ * Não chamar no boot: o jogo só lê o binário.
  */
 import { CHUNK_XZ, POKEMON } from "../config.js";
 import { LADO_MUNDO, ORIGEM_KANTO_X, ORIGEM_KANTO_Y, EXTENSAO_KANTO } from "../mundo/bounds.js";

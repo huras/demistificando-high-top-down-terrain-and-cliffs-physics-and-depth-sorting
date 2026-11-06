@@ -4,7 +4,6 @@ import { alturaEm, dentroDoMapa } from "../mundo/altura.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { areaLogicaNoMundo } from "../mundo/bioma/areasMundo.js";
 import { biomaDominante } from "../mundo/bioma/catalogo.js";
-import { SPAWN } from "../mundo/mapaDemo.js";
 import {
   MIOL_X,
   MIOL_Y,
@@ -22,8 +21,7 @@ import {
 import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
-import { larTocaEstrada } from "./laresEstrada.js";
-import { larTocaPoi } from "./laresPoi.js";
+import { laresNoChunk } from "./ninhosAssados.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { criarAtor, reviverAtor } from "./ator.js";
 import { especie } from "./dados.js";
@@ -33,10 +31,8 @@ import {
   HABITAT,
   ehHabitatAquatico,
   infoTileHabitat,
-  kindAguaDoTile,
   perfilDoHabitat,
   skyPassersAtivos,
-  temFlapAround,
   tickPatrolAguaLar,
   tickPatrolVooLar,
   tickSkyPassers,
@@ -147,48 +143,6 @@ function biomaIdEm(x, y, hSorteio) {
   return biomaDominante(x, y)?.id || "light-grass";
 }
 
-function slotsPorChunk() {
-  return Math.max(1, POKEMON.LARES_POR_CHUNK | 0);
-}
-
-function posicaoCandidata(cx, cy, indice) {
-  // ~40% dos chunks têm lar (antes ~67% com 2 slots).
-  if (hash(cx, cy, 10 + indice) % 5 < 3) return null;
-  const ox = 1 + (hash(cx, cy, 20 + indice) % (CHUNK_XZ - 2));
-  const oy = 1 + (hash(cx, cy, 30 + indice) % (CHUNK_XZ - 2));
-  return {
-    x: cx * CHUNK_XZ + ox + 0.5,
-    y: cy * CHUNK_XZ + oy + 0.5,
-  };
-}
-
-function slotAnterior(nx, ny, ni, cx, cy, indice) {
-  if (ny < cy) return true;
-  if (ny > cy) return false;
-  if (nx < cx) return true;
-  if (nx > cx) return false;
-  return ni < indice;
-}
-
-function longeDeVizinhos(cx, cy, indice, x, y) {
-  const min2 = POKEMON.MIN_ESPACO_LARES * POKEMON.MIN_ESPACO_LARES;
-  const alcance = Math.max(1, Math.ceil(POKEMON.MIN_ESPACO_LARES / CHUNK_XZ));
-  const maxSlot = slotsPorChunk();
-  for (let ny = cy - alcance; ny <= cy + alcance; ny++) {
-    for (let nx = cx - alcance; nx <= cx + alcance; nx++) {
-      for (let i = 0; i < maxSlot; i++) {
-        if (!slotAnterior(nx, ny, i, cx, cy, indice)) continue;
-        const p = posicaoCandidata(nx, ny, i);
-        if (!p) continue;
-        const dx = p.x - x;
-        const dy = p.y - y;
-        if (dx * dx + dy * dy < min2) return false;
-      }
-    }
-  }
-  return true;
-}
-
 function longeDeAtivos(x, y, minDist) {
   const min2 = minDist * minDist;
   for (let i = 0; i < ativos.length; i++) {
@@ -208,75 +162,34 @@ function longeDeAtivos(x, y, minDist) {
   return true;
 }
 
-function garantirLar(cx, cy, indice) {
-  const id = `${cx},${cy},${indice}`;
-  if (lares.has(id)) return lares.get(id);
-  const pos = posicaoCandidata(cx, cy, indice);
-  if (!pos) {
-    lares.set(id, null);
-    return null;
-  }
-  const { x, y } = pos;
-  if (
-    zonaSemSelvagem(x, y) ||
-    ehCidade(x, y) ||
-    Math.hypot(x - SPAWN.x, y - SPAWN.y) < POKEMON.FOLGA_SPAWN ||
-    larTocaEstrada(x, y) ||
-    larTocaPoi(x, y)
-  ) {
-    lares.set(id, null);
-    return null;
-  }
-  if (!longeDeVizinhos(cx, cy, indice, x, y)) {
-    lares.set(id, null);
-    return null;
-  }
+function materializarLar(pin) {
+  if (!pin?.id) return null;
+  if (lares.has(pin.id)) return lares.get(pin.id);
+  const { x, y } = pin;
   if (!dentroDoMapa(Math.floor(x), Math.floor(y))) return null;
 
-  const tile = infoTileHabitat(x, y);
-  const hBioma = hash(cx, cy, 35 + indice);
-  const biomaId = biomaIdEm(x, y, hBioma);
-  const nivel = nivelEm(x, y);
-
-  /** @type {string} */
-  let kind;
-  /** @type {number} */
+  const kind = pin.kind;
+  const agua = kind === HABITAT.SURFACE || kind === HABITAT.UNDERSEA;
   let z;
-  /** @type {string} */
-  let chaveEsp;
-
-  if (tile.molhado && !tile.caindo && tile.profundidade >= 1) {
-    kind = kindAguaDoTile(tile, hash(cx, cy, 55 + indice));
-    if (!kind) {
-      lares.set(id, null);
-      return null;
-    }
-    chaveEsp = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
-      habitat: kind,
-    });
-    z = zDoLarAquatico(kind, tile);
+  if (agua) {
+    z = zDoLarAquatico(kind, infoTileHabitat(x, y)) || 0;
   } else {
     z = pisoSeco(Math.floor(x), Math.floor(y));
-    if (!z) {
-      lares.set(id, null);
-      return null;
-    }
-    chaveEsp = sortearEspecie(biomaId, hash(cx, cy, 40 + indice), nivel, {
-      habitat: HABITAT.LAND,
-    });
-    const espProbe = especie(chaveEsp);
-    kind = temFlapAround(espProbe) ? HABITAT.HIGH : HABITAT.LAND;
   }
+  if (!z) return null;
 
   const esp =
-    especie(chaveEsp) ||
-    (kind === HABITAT.SURFACE || kind === HABITAT.UNDERSEA
-      ? especie("magikarp") || especie("tentacool")
-      : especie("pidgey"));
+    especie(pin.speciesKey) ||
+    (agua ? especie("magikarp") || especie("tentacool") : especie("pidgey"));
   if (!esp) {
-    lares.set(id, null);
+    lares.set(pin.id, null);
     return null;
   }
+  const cx = pin.cx | 0;
+  const cy = pin.cy | 0;
+  const indice = pin.indice | 0;
+  const nivel = pin.nivel | 0 || 1;
+  const id = pin.id;
   const hostil = unidade(hash(cx, cy, 60 + indice)) < POKEMON.HOSTIL;
   const packSize = planPackDoLar(
     unidade(hash(cx, cy, 70 + indice)),
@@ -288,7 +201,7 @@ function garantirLar(cx, cy, indice) {
       slot: 0,
       chave: esp.key,
       nivel,
-      shiny: unidade(hash(cx, cy, 50 + indice)) < POKEMON.SHINY,
+      shiny: !!pin.shiny,
     },
   ];
   for (let s = 1; s < packSize; s++) {
@@ -571,8 +484,9 @@ function sincronizarLares(px, py) {
   const c1y = Math.floor((py + alcance) / CHUNK_XZ);
   for (let cy = c0y; cy <= c1y; cy++) {
     for (let cx = c0x; cx <= c1x; cx++) {
-      for (let indice = 0; indice < slotsPorChunk(); indice++) {
-        const lar = garantirLar(cx, cy, indice);
+      const lista = laresNoChunk(cx, cy);
+      for (let i = 0; i < lista.length; i++) {
+        const lar = materializarLar(lista[i]);
         if (!lar || lar.sumidoAte > agora) continue;
         if (zonaSemSelvagem(lar.x, lar.y)) {
           // Não some no meio do desmaio / cadáver.

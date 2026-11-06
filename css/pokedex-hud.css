@@ -919,7 +919,7 @@
 }
 
 .pokedex-hud__card-portrait-wrap .pokemon-portrait {
-  --portrait-size: 72px;
+  --portrait-size: 144px;
   border: none;
   box-shadow: none;
   background: transparent;

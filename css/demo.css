@@ -473,6 +473,10 @@ body[data-modo="3d"] #canvas-3d.palco__camada--ativa {
   margin: 0 0 10px;
 }
 
+.caps__item--solo {
+  margin: 8px 0 10px;
+}
+
 .caps__item {
   display: flex;
   align-items: center;

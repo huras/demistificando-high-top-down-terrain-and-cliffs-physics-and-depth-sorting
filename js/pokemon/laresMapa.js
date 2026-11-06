@@ -34,6 +34,7 @@ import {
   dentroDoTerrenoSantuario,
 } from "../santuario/interior.js";
 import { especie } from "./dados.js";
+import { larAssado, laresNoChunk } from "./ninhosAssados.js";
 import { nivelEm } from "./distribuicao/forca.js";
 import { sortearEspecie } from "./distribuicao/sorteio.js";
 import {
@@ -96,7 +97,7 @@ function zonaSemSelvagem(x, y) {
   );
 }
 
-function biomaIdEm(x, y, hSorteio) {
+export function biomaNoPonto(x, y, hSorteio) {
   if (dentroDoKanto(x, y)) {
     const a = amostraKanto(x, y);
     if (!a?.bioma) return "light-grass";
@@ -223,7 +224,8 @@ export function registrarForcaLar(id, speciesKey) {
  *   speciesKey: string, dex: number, shiny: boolean, nivel: number
  * } | null}
  */
-export function resolverLarSlot(cx, cy, indice) {
+/** Sorteio natural. Só o script de assar chama isto. */
+export function resolverLarNatural(cx, cy, indice) {
   const id = `${cx},${cy},${indice}`;
   if (cacheSlot.has(id)) return cacheSlot.get(id);
 
@@ -250,7 +252,7 @@ export function resolverLarSlot(cx, cy, indice) {
 
   const tile = infoTileHabitat(x, y);
   const hBioma = hash(cx, cy, 35 + indice);
-  const biomaId = biomaIdEm(x, y, hBioma);
+  const biomaId = biomaNoPonto(x, y, hBioma);
   const nivel = nivelEm(x, y);
   const shiny = unidade(hash(cx, cy, 50 + indice)) < POKEMON.SHINY;
 
@@ -317,9 +319,12 @@ export function resolverLarSlot(cx, cy, indice) {
   return lar;
 }
 
-/**
- * @param {string} larId "cx,cy,i"
- */
+/** Registro assado. O jogo não sorteia. */
+export function resolverLarSlot(cx, cy, indice) {
+  return larAssado(cx, cy, indice);
+}
+
+/** @param {string} larId "cx,cy,i" */
 export function resolverLarPorId(larId) {
   const m = String(larId || "").match(/^(-?\d+),(-?\d+),(\d+)$/);
   if (!m) return null;
@@ -341,14 +346,13 @@ export function listarLaresProximos(px, py, raio = 10, opts = null) {
   const cy0 = Math.floor((py - r) / CHUNK_XZ);
   const cx1 = Math.floor((px + r) / CHUNK_XZ);
   const cy1 = Math.floor((py + r) / CHUNK_XZ);
-  const maxSlot = slotsPorChunk();
   /** @type {ReturnType<typeof resolverLarSlot>[]} */
   const out = [];
   for (let cy = cy0; cy <= cy1; cy++) {
     for (let cx = cx0; cx <= cx1; cx++) {
-      for (let i = 0; i < maxSlot; i++) {
-        const lar = resolverLarSlot(cx, cy, i);
-        if (!lar) continue;
+      const lista = laresNoChunk(cx, cy);
+      for (let i = 0; i < lista.length; i++) {
+        const lar = lista[i];
         if (soTerrestre && ehHabitatAquatico(lar.kind)) continue;
         const dx = lar.x - px;
         const dy = lar.y - py;
@@ -368,13 +372,12 @@ export function listarLaresNaAabb(x0, y0, x1, y1) {
   const cy0 = Math.floor(y0 / CHUNK_XZ);
   const cx1 = Math.floor(x1 / CHUNK_XZ);
   const cy1 = Math.floor(y1 / CHUNK_XZ);
-  const maxSlot = slotsPorChunk();
   const out = [];
   for (let cy = cy0; cy <= cy1; cy++) {
     for (let cx = cx0; cx <= cx1; cx++) {
-      for (let i = 0; i < maxSlot; i++) {
-        const lar = resolverLarSlot(cx, cy, i);
-        if (!lar) continue;
+      const lista = laresNoChunk(cx, cy);
+      for (let i = 0; i < lista.length; i++) {
+        const lar = lista[i];
         if (lar.x < x0 || lar.x > x1 || lar.y < y0 || lar.y > y1) continue;
         out.push(lar);
       }

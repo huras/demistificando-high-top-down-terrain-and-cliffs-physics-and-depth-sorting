@@ -576,7 +576,7 @@ export const POKEMON = Object.freeze({
   RAIO_LARES: 64,
   /** Distância mínima centro↔centro entre lares (núcleo ~5×5). */
   MIN_ESPACO_LARES: 20,
-  /** Cada não-lendário ganha pelo menos estes ninhos, em tile válido. */
+  /** Cada linha evolutiva não-lendária ganha pelo menos estes ninhos. */
   PISO_NINHOS: 3,
   MIN_ESPACO_GRAMA: 10,
   FOLGA_SPAWN: 14,

@@ -22,6 +22,7 @@ import {
   uniformsNuvem,
 } from "./parametros.js";
 import { atualizarPoca } from "./pocaChao.js";
+import { criarPingoChao3d } from "./pingoChao3d.js";
 import { criarPrecipitacao } from "./precipitacao.js";
 import { atualizarLuzBillboard } from "./luzBillboard.js";
 import { definirPesoNoite } from "../luzes/pool.js";
@@ -77,9 +78,10 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
 
   const atmosfera = criarAtmosfera();
   const precipitacao = criarPrecipitacao();
+  const pingoChao = criarPingoChao3d();
   const relampago = criarRelampago();
   const gale = criarGale3d(scene);
-  scene.add(atmosfera.mesh, precipitacao.mesh, relampago.grupo);
+  scene.add(atmosfera.mesh, precipitacao.mesh, pingoChao.mesh, relampago.grupo);
   scene.add(fill.target, rim.target);
 
   function aplicarLuzes(visual, alvo) {
@@ -126,7 +128,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     if (scene.background?.isColor) scene.background.copy(visual.neblina);
   }
 
-  function atualizar(dt, { camera, alvo, nevoa, raioBlocos, galeLigado = true }) {
+  function atualizar(dt, { camera, alvo, nevoa, raioBlocos, galeLigado = true, interior = false }) {
     const seguro = Math.min(Math.max(dt || 0, 0), 0.05);
     const meio = Math.max(ALCANCE_SOMBRA_MIN, raioBlocos || 0);
     if (meio !== alcancePedido) {
@@ -154,6 +156,7 @@ export function criarCeu({ scene, renderer, sol, hemi, ambient, fill, rim }) {
     if (trovao) tocarTrovao(trovao === "eco" ? "longe" : "perto");
     atmosfera.atualizar(visual, camera, flash * 0.55, pesoCirrus, seguro);
     precipitacao.atualizar(clima, ventoPrecip, seguro, camera, renderer, alvo);
+    pingoChao.atualizar(clima.chuva, ventoPrecip, seguro, alvo, interior === true);
     atualizarPoca(seguro, clima.chuva);
     gale.atualizar(seguro, { x: alvo.x, y: alvo.z }, galeLigado, Math.max(18, (raioBlocos || 24) * 0.85));
     renderer.toneMappingExposure = visual.exposicao * (1 + flash * 1.35);

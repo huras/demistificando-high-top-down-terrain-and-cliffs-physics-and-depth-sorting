@@ -4,6 +4,7 @@
  */
 import { POKEMON } from "../config.js";
 import { especie } from "./dados.js";
+import { EVOLUCOES_HELD, EVOLUCOES_NIVEL, EVOLUCOES_OVERRIDE } from "./dados/evolucoesNivel.js";
 import {
   nivelMinSelvagem,
   podeSpawnarNoNivel,
@@ -52,6 +53,87 @@ export function instalarLinhasEvo(json, mapaEspecies = null) {
     }
   }
   linhasPorChave = mapa;
+}
+
+/**
+ * Junta a linha do JSON com a evolução por nível.
+ * A forma base (ninguém evolui para ela) fica na frente.
+ */
+export function completarLinhasNivel() {
+  if (!linhasPorChave) linhasPorChave = new Map();
+  const entra = new Map();
+  const viz = new Map();
+  const nos = new Set();
+
+  function ponta(a, b) {
+    let s = viz.get(a);
+    if (!s) {
+      s = new Set();
+      viz.set(a, s);
+    }
+    s.add(b);
+  }
+
+  function ligar(a, b) {
+    if (!a || !b || a === b) return;
+    nos.add(a);
+    nos.add(b);
+    let e = entra.get(b);
+    if (!e) {
+      e = new Set();
+      entra.set(b, e);
+    }
+    e.add(a);
+    ponta(a, b);
+    ponta(b, a);
+  }
+
+  for (const linha of linhasPorChave.values()) {
+    for (let i = 0; i + 1 < linha.length; i++) ligar(linha[i], linha[i + 1]);
+    for (let i = 0; i < linha.length; i++) nos.add(linha[i]);
+  }
+  function ligarTabela(tabela) {
+    const chaves = Object.keys(tabela);
+    for (let i = 0; i < chaves.length; i++) {
+      const regra = tabela[chaves[i]];
+      if (Array.isArray(regra)) {
+        for (let j = 0; j < regra.length; j++) ligar(chaves[i], regra[j]?.into);
+      } else {
+        ligar(chaves[i], regra?.into);
+      }
+    }
+  }
+  ligarTabela(EVOLUCOES_NIVEL);
+  ligarTabela(EVOLUCOES_OVERRIDE);
+  ligarTabela(EVOLUCOES_HELD);
+
+  const visto = new Set();
+  for (const inicio of nos) {
+    if (visto.has(inicio)) continue;
+    const comp = [];
+    const fila = [inicio];
+    visto.add(inicio);
+    while (fila.length) {
+      const u = fila.pop();
+      comp.push(u);
+      const vs = viz.get(u);
+      if (!vs) continue;
+      for (const v of vs) {
+        if (visto.has(v)) continue;
+        visto.add(v);
+        fila.push(v);
+      }
+    }
+    const raizes = [];
+    const resto = [];
+    for (let i = 0; i < comp.length; i++) {
+      const k = comp[i];
+      if (entra.get(k)?.size) resto.push(k);
+      else raizes.push(k);
+    }
+    const ordem = raizes.concat(resto);
+    for (let i = 0; i < ordem.length; i++) linhasPorChave.set(ordem[i], ordem);
+  }
 }
 
 /** Linha evolutiva da espécie (ou só ela). */

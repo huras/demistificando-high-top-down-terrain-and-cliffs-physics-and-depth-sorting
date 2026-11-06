@@ -162,7 +162,8 @@ export function criarAsaDelta3d() {
     atualizar(corpoEstado) {
       const planando = !!corpoEstado.planando;
       const voando = !!corpoEstado.voando;
-      grupo.visible = planando || voando;
+      const montariaVoo = !!corpoEstado.rideAtivo && corpoEstado.rideModo === "fly";
+      grupo.visible = (planando || voando) && !montariaVoo;
       if (!grupo.visible) return;
 
       const tempo = corpoEstado._glideTempo ?? performance.now() * 0.001;

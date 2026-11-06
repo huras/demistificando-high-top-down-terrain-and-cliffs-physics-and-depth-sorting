@@ -4,13 +4,19 @@
  * (o carimbo do chunk não varre o mundo).
  */
 import { hashSeed, mulberry32 } from "../../santuario/dungeonGen.js";
-import { temChave } from "../../jogo/estado.js";
 import {
   TILE_FLOOR,
   TILE_WALL,
   abrirEntradaPuzzle,
   gerarPuzzlePedra,
 } from "../puzzle/gerar.js";
+
+/** Leitura de chave injetada pelo jogo. O assado de ninhos não puxa o estado. */
+let lerChave = () => false;
+
+export function definirLeituraChave(fn) {
+  lerChave = typeof fn === "function" ? fn : () => false;
+}
 
 export const CHAO = 1;
 export const MURO = 2;
@@ -24,7 +30,7 @@ function chaveResolvida(caveId, roomId) {
 }
 
 export function cavernaResolvida(caveId, roomId) {
-  return temChave(chaveResolvida(caveId, roomId));
+  return lerChave(chaveResolvida(caveId, roomId));
 }
 
 export { chaveResolvida };

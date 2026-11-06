@@ -254,8 +254,10 @@ function aplicarVazioSala(dentro) {
     domoNoVazio = true;
   }
   const chuva = cena.getObjectByName("ceu-precipitacao");
+  const pingo = cena.getObjectByName("ceu-pingo-chao");
   const raio = cena.getObjectByName("ceu-relampago");
   if (chuva) chuva.visible = false;
+  if (pingo) pingo.visible = false;
   if (raio) raio.visible = false;
   if (ehSantuario) {
     cena.background.set(0x0a0c14);
@@ -824,6 +826,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     nevoa: estado.nevoaBase,
     raioBlocos: obterRaioStream() * CHUNK_XZ,
     galeLigado: !interior && !emCena,
+    interior,
   });
   ligarLuzSala(interior, corpo);
 
@@ -849,8 +852,11 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   anotarEstadoSim(estado.personagem.grupo, corpo);
   estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
   if (agente && estado.agente3d) {
+    estado.agente3d.grupo.visible = true;
     anotarEstadoSim(estado.agente3d.grupo, agente);
     estado.agente3d.atualizar(agente, camRender, yaw, inclinacao);
+  } else if (estado.agente3d) {
+    estado.agente3d.grupo.visible = false;
   }
   const sumico = alfaSprites();
   estado.personagem.definirSumico(sumico);
@@ -863,8 +869,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
 
   const planando = !!corpo.planando;
   const voando = !!corpo.voando;
+  const montariaVoo = !!corpo.rideAtivo && corpo.rideModo === "fly";
   estado.ventoAsa.atualizar(dt, {
-    gliding: planando || voando,
+    gliding: (planando || voando) && !montariaVoo,
     x: corpo.x,
     y: corpo.y,
     elev,

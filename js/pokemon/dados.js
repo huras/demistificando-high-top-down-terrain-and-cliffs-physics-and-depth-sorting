@@ -12,6 +12,19 @@ export function dadosProntos() {
   return pronto;
 }
 
+/** Catálogo já montado (script de ninhos, sem fetch). */
+export function instalarCatalogo(mapa) {
+  especies = mapa || {};
+  const chaves = Object.keys(especies);
+  for (let i = 0; i < chaves.length; i++) {
+    const esp = especies[chaves[i]];
+    if (esp && !esp.key) esp.key = chaves[i];
+  }
+  if (!golpes) golpes = {};
+  pronto = true;
+  return chaves.length;
+}
+
 export function especie(chave) {
   return especies?.[chave] || null;
 }
@@ -120,10 +133,9 @@ export async function carregarDados() {
   if (portoesRes?.ok) {
     aplicarPortoesSelvagem(await portoesRes.json());
   }
-  if (evoRes?.ok) {
-    const { instalarLinhasEvo } = await import("./pack.js");
-    instalarLinhasEvo(await evoRes.json(), especies);
-  }
+  const pack = await import("./pack.js");
+  if (evoRes?.ok) pack.instalarLinhasEvo(await evoRes.json(), especies);
+  pack.completarLinhasNivel();
   pronto = true;
   const biomas = distRes | 0;
   if (!biomas) {

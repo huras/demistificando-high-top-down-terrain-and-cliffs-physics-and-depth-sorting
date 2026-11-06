@@ -16,15 +16,31 @@ const IDS = {
 };
 
 let agenteRef = null;
+let ligado = false;
+
+export function companheiroLigado() {
+  return ligado;
+}
 
 /**
  * Liga checkboxes do painel ao perfil do companheiro.
+ * @param {(ativo: boolean) => void} [aoMudarLigado]
  */
-export function ligarHudCompanheiro(agente, capsIniciais = CAPS_PADRAO) {
+export function ligarHudCompanheiro(agente, capsIniciais = CAPS_PADRAO, aoMudarLigado) {
   agenteRef = agente;
   const caps = normalizarCaps(capsIniciais);
   aplicarCapacidades(agente, caps);
   sincronizarChecks(caps);
+
+  const ativo = document.getElementById("comp-ativo");
+  if (ativo) {
+    ativo.checked = ligado;
+    ativo.addEventListener("change", () => {
+      ligado = ativo.checked;
+      aoMudarLigado?.(ligado);
+      atualizarHudCompanheiro(agenteRef);
+    });
+  }
 
   for (const [chave, id] of Object.entries(IDS)) {
     const el = document.getElementById(id);
@@ -65,6 +81,10 @@ export function atualizarHudCompanheiro(agente) {
   if (!agente) return;
   const acao = document.getElementById("comp-acao");
   const perfil = document.getElementById("comp-perfil");
+  if (!ligado) {
+    if (acao) acao.textContent = "desligado";
+    return;
+  }
   if (acao) acao.textContent = agente.acao || "—";
   if (perfil) {
     const id = agente.perfil?.id || "—";

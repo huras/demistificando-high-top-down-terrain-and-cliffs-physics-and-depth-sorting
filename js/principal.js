@@ -87,7 +87,11 @@ import { ligarPainelCeu, sincronizarPainelCeu } from "./ui/painelCeu.js";
 import { ligarPainelCamera, sincronizarPainelCamera } from "./ui/painelCamera.js";
 import { ligarPainelDebug } from "./ui/painelDebug.js";
 import { ligarPainelCombate } from "./ui/painelCombate.js";
-import { ligarHudCompanheiro, atualizarHudCompanheiro } from "./ui/hudCompanheiro.js";
+import {
+  ligarHudCompanheiro,
+  atualizarHudCompanheiro,
+  companheiroLigado,
+} from "./ui/hudCompanheiro.js";
 import {
   ativarInputRelativoCamera,
   desativarInputRelativoCamera,
@@ -121,6 +125,7 @@ import { alternarModoCena, aoMudarCena, definirModoCena, estaEmCena } from "./ce
 import { ligarHierarquiaCena, sincronizarHierarquiaCena } from "./ui/cena/hierarquia.js";
 import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.js";
 import { carregarDados } from "./pokemon/dados.js";
+import { carregarNinhosAssados } from "./pokemon/ninhosAssados.js";
 import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
 import {
   iniciarNpc,
@@ -284,11 +289,14 @@ async function iniciarInterno() {
   });
   // Poste/pedra no offset de spawn — não nasce enfiado.
   resolverForaDeObstaculo(agente);
-  definirCorposFixos([corpo, agente]);
+  definirCorposFixos([corpo]);
   camera = criarCamera(canvas.width, canvas.height);
   redimensionarCena();
 
-  ligarHudCompanheiro(agente, CAPS_PADRAO);
+  ligarHudCompanheiro(agente, CAPS_PADRAO, (on) => {
+    definirCorposFixos(on ? [corpo, agente] : [corpo]);
+    if (on) resetarNav(agente);
+  });
   ligarRaioStream();
   ligarPainelCeu();
   ligarPainelCamera();
@@ -304,6 +312,8 @@ async function iniciarInterno() {
   try {
     definirStatus("Carregando catálogo Pokémon…");
     const cat = await carregarDados();
+    definirStatus("Lendo ninhos…");
+    const ninhos = await carregarNinhosAssados();
     ligarPokemon();
     marcarFase("pokemon", 1);
 
@@ -319,7 +329,7 @@ async function iniciarInterno() {
       if (d < perto) perto = d;
     }
     console.info(
-      `Pokémon: ${cat.especies} espécies, ${cat.golpes} golpes, ${cat.biomas | 0} biomas de encontro`,
+      `Pokémon: ${cat.especies} espécies, ${cat.golpes} golpes, ${cat.biomas | 0} biomas de encontro, ${ninhos.overworld} ninhos, ${ninhos.cavernas} na caverna`,
     );
     console.info(
       `Santuários: ${plan.slots.length} no mundo, ${pedras} pedras nos chunks carregados` +
@@ -472,7 +482,7 @@ async function iniciarInterno() {
   if (obterModo() === "3d" && corpo) {
     definirStatus("Preparando 1º quadro…", "Malha e iluminação no ponto de spawn.");
     garantir3d();
-    atualizarEDesenhar3d(corpo, 1 / 60, atlas, agente);
+    atualizarEDesenhar3d(corpo, 1 / 60, atlas, companheiroLigado() ? agente : null);
   }
 
   await concluirCarregamento();
@@ -709,7 +719,8 @@ function loop(agora) {
   }
   tickFilaPath();
   if (passeioAtivo() && !trava && !morto) atualizarPasseio(corpo, dt);
-  atualizarAgente(agente, corpo, dt, 0, AGENTE_DIST_SEGUIR);
+  const comp = companheiroLigado() ? agente : null;
+  if (comp) atualizarAgente(comp, corpo, dt, 0, AGENTE_DIST_SEGUIR);
 
   tickHistorico(corpo, dt);
   const pred = vetorPredicao();
@@ -775,13 +786,13 @@ function loop(agora) {
   if (!trava) tickNpc(corpo, dt);
   tickTeleporte(dt, {
     corpo,
-    agente,
+    agente: comp,
     camera,
     camera3d: cam3d,
     modo,
   });
-  if (!trava) tickPoeiraPasso(dt, corpo, agente);
-  if (!trava) tickFxAgua(dt, corpo, agente);
+  if (!trava) tickPoeiraPasso(dt, corpo, comp);
+  if (!trava) tickFxAgua(dt, corpo, comp);
   if (corpo._renasceu) {
     corpo._renasceu = false;
     // Cinto: garante o piso do pouso. Na caverna o teto também é superfície.
@@ -820,8 +831,8 @@ function loop(agora) {
       atualizarStreaming(corpo.x, corpo.y, undefined, true);
     }
   }
-  if (!trava) tickPassos(dt, corpo, agente);
-  if (!trava) tickAguaPulo(dt, corpo, agente);
+  if (!trava) tickPassos(dt, corpo, comp);
+  if (!trava) tickAguaPulo(dt, corpo, comp);
   despenetrarCorpos();
   atualizarHudCompanheiro(agente);
   atualizarHoverBloco();
@@ -833,7 +844,7 @@ function loop(agora) {
   try {
     if (modo === "3d") {
       garantir3d();
-      const cen = atualizarEDesenhar3d(corpo, dt, atlas, agente);
+      const cen = atualizarEDesenhar3d(corpo, dt, atlas, comp);
       const cam3d = obterCenario3d()?.camera3d;
       if (cam3d) {
         registrarCamera({
@@ -852,7 +863,7 @@ function loop(agora) {
         emCena: estaEmCena(),
       });
     } else {
-      desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, agente });
+      desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, agente: comp });
     }
   } catch (err) {
     console.error("Erro no frame:", err);

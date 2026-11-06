@@ -1,17 +1,16 @@
 /**
- * Conta os lares do overworld sem gravar descoberta.
- * Mesma regra de resolverLarSlot — só agrega.
+ * Censo lido do binário. Não varre o mundo.
  */
-import { CHUNK_XZ, POKEMON } from "../config.js";
+import { POKEMON } from "../config.js";
 import { chavesNoPool } from "./distribuicao/indice.js";
-import { LADO_MUNDO } from "../mundo/bounds.js";
 import { especie, listarEspecies } from "./dados.js";
 import { ehLendario } from "./lendarios.js";
-import { resolverLarSlot } from "./laresMapa.js";
+import { listarCaverna, listarOverworld } from "./ninhosAssados.js";
+import { linhaDaEspecie } from "./pack.js";
 
 const KINDS = ["land", "high", "surface", "undersea"];
 
-function linhaVazia(esp, noPool) {
+function linhaVazia(esp) {
   return {
     key: esp.key,
     nome: esp.nome || esp.key,
@@ -22,117 +21,112 @@ function linhaVazia(esp, noPool) {
     high: 0,
     surface: 0,
     undersea: 0,
+    cave: 0,
     nivelMin: esp.nivelMin | 0 || 1,
-    noPool,
-    situacao: ehLendario(esp.dex) ? "lendário" : noPool ? "no pool, sem ninho" : "fora dos biomas",
+    situacao: ehLendario(esp.dex) ? "lendário" : "sem ninho",
   };
 }
 
-function linhaNova(lar) {
-  const esp = especie(lar.speciesKey);
-  return {
-    key: lar.speciesKey,
-    nome: esp?.nome || lar.speciesKey,
-    dex: lar.dex | 0,
-    total: 0,
-    shiny: 0,
-    land: 0,
-    high: 0,
-    surface: 0,
-    undersea: 0,
-    nivelMin: esp?.nivelMin | 0 || 1,
-    noPool: true,
-    situacao: "com ninho",
-  };
+function raizDe(chave, cache) {
+  const hit = cache.get(chave);
+  if (hit) return hit;
+  const linha = linhaDaEspecie(chave);
+  let raiz = chave;
+  for (let i = 0; i < linha.length; i++) {
+    const esp = especie(linha[i]);
+    if (esp && !ehLendario(esp.dex)) {
+      raiz = linha[i];
+      break;
+    }
+  }
+  for (let i = 0; i < linha.length; i++) cache.set(linha[i], raiz);
+  cache.set(chave, raiz);
+  return raiz;
 }
 
-/** Inclui o catálogo inteiro. Quem não sorteou ninho fica com total 0. */
-function completarCatalogo(porEspecie) {
+export function montarCensoNinhos() {
+  const piso = Math.max(1, POKEMON.PISO_NINHOS | 0);
+  const porEspecie = new Map();
+  const porLinha = new Map();
+  const raizCache = new Map();
+  const totais = { ninhos: 0, shiny: 0, land: 0, high: 0, surface: 0, undersea: 0, cave: 0 };
   const noPool = chavesNoPool();
+
+  function somar(speciesKey, dex, kind, shiny) {
+    const esp = especie(speciesKey);
+    const key = esp?.key || speciesKey;
+    if (!key) return;
+    let row = porEspecie.get(key);
+    if (!row) {
+      row = linhaVazia(esp || { key, nome: key, dex, nivelMin: 1 });
+      porEspecie.set(key, row);
+    }
+    row.total++;
+    if (shiny) {
+      row.shiny++;
+      totais.shiny++;
+    }
+    if (kind === "cave") {
+      row.cave++;
+      totais.cave++;
+    } else if (KINDS.includes(kind)) {
+      row[kind]++;
+      totais[kind]++;
+    }
+    totais.ninhos++;
+    const raiz = raizDe(key, raizCache);
+    porLinha.set(raiz, (porLinha.get(raiz) | 0) + 1);
+  }
+
+  const over = listarOverworld();
+  for (let i = 0; i < over.length; i++) {
+    const lar = over[i];
+    somar(lar.speciesKey, lar.dex, lar.kind, lar.shiny);
+  }
+  const caves = listarCaverna();
+  for (let i = 0; i < caves.length; i++) {
+    const posto = caves[i];
+    somar(posto.speciesKey, posto.dex, "cave", posto.shiny);
+  }
+
   const todas = listarEspecies();
+  const pegaveis = new Set();
   for (let i = 0; i < todas.length; i++) {
     const esp = todas[i];
     if (!esp?.key || !(esp.dex | 0)) continue;
+    if (!ehLendario(esp.dex)) pegaveis.add(raizDe(esp.key, raizCache));
     const row = porEspecie.get(esp.key);
-    if (row) {
-      row.nivelMin = esp.nivelMin | 0 || 1;
-      row.noPool = noPool.has(esp.key);
-      if (ehLendario(esp.dex)) row.situacao = "lendário";
-      else if (row.total >= (POKEMON.PISO_NINHOS | 0 || 3)) row.situacao = "com ninho";
-      else if (row.total) row.situacao = "abaixo do piso";
-      else row.situacao = noPool.has(esp.key) ? "no pool, sem ninho" : "fora dos biomas";
-      continue;
-    }
-    porEspecie.set(esp.key, linhaVazia(esp, noPool.has(esp.key)));
+    if (!row) porEspecie.set(esp.key, linhaVazia(esp));
   }
-}
 
-function totaisNovos() {
-  return { ninhos: 0, shiny: 0, land: 0, high: 0, surface: 0, undersea: 0 };
-}
+  let cobertas = 0;
+  let abaixo = 0;
+  for (const raiz of pegaveis) {
+    const n = porLinha.get(raiz) | 0;
+    if (n >= 1) cobertas++;
+    if (n < piso) abaixo++;
+  }
 
-/**
- * @param {(p: { feitos: number, total: number, ninhos: number, pronto: boolean, linhas: object[], totais: object }) => void} aoProgresso
- */
-export function varrerCensoNinhos(aoProgresso) {
-  const lado = Math.ceil(LADO_MUNDO / CHUNK_XZ);
-  const slots = Math.max(1, POKEMON.LARES_POR_CHUNK | 0);
-  const total = lado * lado;
-  const porEspecie = new Map();
-  const totais = totaisNovos();
-  let cx = 0;
-  let cy = 0;
-  let feitos = 0;
-  let cancelado = false;
+  const linhas = [];
+  for (const row of porEspecie.values()) {
+    const esp = especie(row.key);
+    if (esp) row.nivelMin = esp.nivelMin | 0 || 1;
+    const raiz = raizDe(row.key, raizCache);
+    const daLinha = porLinha.get(raiz) | 0;
+    if (ehLendario(row.dex)) row.situacao = "lendário";
+    else if (row.total > 0 && daLinha >= piso) row.situacao = "com ninho";
+    else if (row.total > 0) row.situacao = "abaixo do piso";
+    else if (daLinha > 0) row.situacao = "na linha";
+    else if (noPool.has(row.key)) row.situacao = "no pool, sem ninho";
+    else row.situacao = "fora dos biomas";
+    linhas.push(row);
+  }
 
-  const linhas = () => {
-    completarCatalogo(porEspecie);
-    const out = [];
-    for (const row of porEspecie.values()) out.push(row);
-    return out;
-  };
-
-  const passo = () => {
-    if (cancelado) return;
-    const t0 = performance.now();
-    while (cy < lado && performance.now() - t0 < 6) {
-      for (let i = 0; i < slots; i++) {
-        const lar = resolverLarSlot(cx, cy, i);
-        if (!lar) continue;
-        totais.ninhos++;
-        if (lar.shiny) totais.shiny++;
-        const kind = KINDS.includes(lar.kind) ? lar.kind : "land";
-        totais[kind]++;
-        let row = porEspecie.get(lar.speciesKey);
-        if (!row) {
-          row = linhaNova(lar);
-          porEspecie.set(lar.speciesKey, row);
-        }
-        row.total++;
-        if (lar.shiny) row.shiny++;
-        row[kind]++;
-      }
-      cx++;
-      feitos++;
-      if (cx >= lado) {
-        cx = 0;
-        cy++;
-      }
-    }
-    const pronto = cy >= lado;
-    aoProgresso({
-      feitos,
-      total,
-      ninhos: totais.ninhos,
-      pronto,
-      linhas: pronto ? linhas() : [],
-      totais,
-    });
-    if (!pronto) requestAnimationFrame(passo);
-  };
-
-  requestAnimationFrame(passo);
-  return () => {
-    cancelado = true;
+  return {
+    linhas,
+    totais,
+    linhasCobertas: cobertas,
+    linhasPegaveis: pegaveis.size,
+    abaixo,
   };
 }

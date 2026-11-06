@@ -76,7 +76,7 @@ export function desenharCena2d(ctx, canvas, { atlas, corpo, camera, debug, dt, a
 
   if (debug) {
     desenharPivosSort(ctx, corpo);
-    desenharPathAgente(ctx, agente);
+    if (agente) desenharPathAgente(ctx, agente);
   }
 
   desenharOverlayAjuda(ctx, camera, debug, ocl, modoVisual, "2d");

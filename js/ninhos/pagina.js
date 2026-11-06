@@ -1,5 +1,6 @@
 import { carregarDados } from "../pokemon/dados.js";
-import { varrerCensoNinhos } from "../pokemon/censoNinhos.js";
+import { montarCensoNinhos } from "../pokemon/censoNinhos.js";
+import { carregarNinhosAssados } from "../pokemon/ninhosAssados.js";
 import { urlIconeMinimap } from "../pokemon/minimapIcone.js";
 
 const COLUNAS = [
@@ -12,6 +13,7 @@ const COLUNAS = [
   { id: "high", rotulo: "Alto" },
   { id: "surface", rotulo: "Superfície" },
   { id: "undersea", rotulo: "Fundo" },
+  { id: "cave", rotulo: "Caverna" },
   { id: "nivelMin", rotulo: "Nível mín." },
   { id: "situacao", rotulo: "Situação" },
 ];
@@ -76,6 +78,7 @@ function pintarResumo(totais, comNinho, catalogo) {
     ["Alto", totais.high],
     ["Superfície", totais.surface],
     ["Fundo", totais.undersea],
+    ["Caverna", totais.cave | 0],
   ];
   resumoEl.replaceChildren();
   for (let i = 0; i < itens.length; i++) {
@@ -129,6 +132,7 @@ function pintarTabela() {
       String(r.high),
       String(r.surface),
       String(r.undersea),
+      String(r.cave | 0),
       String(r.nivelMin || 1),
       r.situacao || "",
     ];
@@ -184,24 +188,22 @@ statusEl.textContent = "Carregando catálogo…";
 
 carregarDados()
   .then(() => {
-    statusEl.textContent = "Contando ninhos…";
-    varrerCensoNinhos((p) => {
-      const pctVar = p.total > 0 ? Math.min(100, (p.feitos / p.total) * 100) : 0;
-      barraEl.style.width = `${pctVar}%`;
-      if (!p.pronto) {
-        statusEl.textContent = `Contando ${Math.round(pctVar)}% · ${p.ninhos} ninhos`;
-        return;
-      }
-      linhas = p.linhas;
-      ninhos = p.totais.ninhos;
-      let comNinho = 0;
-      for (let i = 0; i < linhas.length; i++) if (linhas[i].total) comNinho++;
-      statusEl.textContent = `${comNinho} com ninho de ${linhas.length} no catálogo`;
-      pintarResumo(p.totais, comNinho, linhas.length);
-      pintarTabela();
-      buscaEl.disabled = false;
-      modoEl.disabled = false;
-    });
+    statusEl.textContent = "Lendo ninhos…";
+    return carregarNinhosAssados();
+  })
+  .then(() => {
+    const censo = montarCensoNinhos();
+    linhas = censo.linhas;
+    ninhos = censo.totais.ninhos;
+    let comNinho = 0;
+    for (let i = 0; i < linhas.length; i++) if (linhas[i].total) comNinho++;
+    const aviso = censo.abaixo ? ` · ${censo.abaixo} abaixo do piso` : "";
+    statusEl.textContent = `${censo.linhasCobertas} linhas de ${censo.linhasPegaveis}${aviso}`;
+    barraEl.style.width = "100%";
+    pintarResumo(censo.totais, comNinho, linhas.length);
+    pintarTabela();
+    buscaEl.disabled = false;
+    modoEl.disabled = false;
   })
   .catch((erro) => {
     statusEl.textContent = erro?.message || "Falha ao carregar o catálogo";

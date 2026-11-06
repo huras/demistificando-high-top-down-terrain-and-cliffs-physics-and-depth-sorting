@@ -4,8 +4,11 @@
  */
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { ORIGEM_CAVERNA_X, ORIGEM_CAVERNA_Y } from "../../mundo/bounds.js";
+import { temChave } from "../../jogo/estado.js";
 import { cavernaPorId, defProcedural } from "../catalogo.js";
-import { gerarInterior } from "./gerar.js";
+import { definirLeituraChave, gerarInterior } from "./gerar.js";
+
+definirLeituraChave(temChave);
 
 /** @type {Map<string, object>} */
 const cache = new Map();

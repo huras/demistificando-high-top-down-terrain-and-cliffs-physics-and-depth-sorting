@@ -12,28 +12,21 @@ export function distribuicaoPronta() {
   return pronto;
 }
 
-export async function carregarDistribuicao() {
+/** JSON já em memória (script de ninhos, sem fetch). */
+export function instalarDistribuicao(json) {
   porBioma = new Map();
-  try {
-    const res = await fetch("/ref/distribuicao-bioma.json");
-    if (res.ok) {
-      const json = await res.json();
-      const mapa = json?.porBioma || {};
-      const ids = Object.keys(mapa);
-      for (let i = 0; i < ids.length; i++) {
-        const id = ids[i];
-        const item = mapa[id] || {};
-        porBioma.set(
-          id,
-          Object.freeze({
-            casa: Object.freeze(Array.isArray(item.casa) ? item.casa.slice() : []),
-            extras: Object.freeze(Array.isArray(item.extras) ? item.extras.slice() : []),
-          }),
-        );
-      }
-    }
-  } catch {
-    // Sem JSON: pools vazios — sorteio usa pad aquático / light-grass fallback.
+  const mapa = json?.porBioma || {};
+  const ids = Object.keys(mapa);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const item = mapa[id] || {};
+    porBioma.set(
+      id,
+      Object.freeze({
+        casa: Object.freeze(Array.isArray(item.casa) ? item.casa.slice() : []),
+        extras: Object.freeze(Array.isArray(item.extras) ? item.extras.slice() : []),
+      }),
+    );
   }
   // Área lógica exterior → mesmo pool do bioma de encontro.
   for (let i = 0; i < AREAS_MUNDO.length; i++) {
@@ -53,6 +46,17 @@ export async function carregarDistribuicao() {
   }
   pronto = true;
   return porBioma.size;
+}
+
+export async function carregarDistribuicao() {
+  let json = null;
+  try {
+    const res = await fetch("/ref/distribuicao-bioma.json");
+    if (res.ok) json = await res.json();
+  } catch {
+    // Sem JSON: pools vazios — sorteio usa pad aquático / light-grass fallback.
+  }
+  return instalarDistribuicao(json);
 }
 
 /** Todas as espécies que entram em algum bioma (casa ou extra). */

@@ -62,6 +62,20 @@ export const CLIMA_CFG = Object.freeze({
   chuvaDensidadePow: 1.85,
   /** Tau (s) do mix chuva/areia/neve — sobe/desce pingos com suavidade. */
   chuvaDensidadeTau: 5.5,
+  /** Impactos no chão por segundo em chuva cheia. */
+  pingoTaxaCheia: 34,
+  /** Curva própria: a dos fios (1.85) deixava o chão quase vazio. */
+  pingoDensidadePow: 1.15,
+  /** Raio do disco de spawn, em blocos, em volta do jogador. */
+  pingoRaioDisco: 14,
+  pingoRaioMin: 0.24,
+  pingoRaioMax: 0.52,
+  pingoDurMin: 0.5,
+  pingoDurMax: 0.85,
+  /** Pico de alpha do anel. */
+  pingoAlpha: 0.72,
+  /** Alongamento extra no eixo do vento com vento cheio (escala = 1 + isto). */
+  pingoAlongaVento: 0.35,
   areiaQueda: 2.4,
   areiaVentoMul: 34,
   neveQueda: 3.1,
