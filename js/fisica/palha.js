@@ -6,6 +6,7 @@ import {
   PALHA_RAIO,
   PALHA_VEL_MUL,
 } from "../mundo/overworld/catalogoPalha.js";
+import { ehNinhoColmeia } from "../mundo/overworld/catalogoColmeia.js";
 
 /** @type {{ x: number, y: number }[]} */
 let lares = [];
@@ -44,6 +45,7 @@ export function sincronizarPalha(px, py, lista = null) {
 export function fatorPalhaEm(x, y) {
   for (let i = 0; i < lares.length; i++) {
     const lar = lares[i];
+    if (ehNinhoColmeia(lar.speciesKey)) continue;
     const dx = lar.x - x;
     const dy = lar.y - y;
     if (dx * dx + dy * dy <= R2) return PALHA_VEL_MUL;

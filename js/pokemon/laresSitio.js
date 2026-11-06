@@ -328,6 +328,20 @@ export function sitioLarPorId(larId) {
   return sitios.get(String(larId || "")) || null;
 }
 
+/**
+ * Yaw (rad) da frente da colmeia, olhando a abertura do ninho.
+ * Não carimba terreno. null se o sítio ainda não existe.
+ * Frente local +Z: N=π, L=π/2, S=0, O=-π/2.
+ * @param {string} larId
+ * @returns {number | null}
+ */
+export function yawEntradaLar(larId) {
+  const sitio = sitios.get(String(larId || ""));
+  if (!sitio) return null;
+  const face = specAberturaLar(sitio).face | 0;
+  return (2 - face) * (Math.PI * 0.5);
+}
+
 /** Carimba lares cujo núcleo/avental toca este chunk (vizinhos inclusos). */
 export function garantirLaresNoChunk(cx, cy) {
   const nucleoMax = Math.max(LAR_NUCLEO_RAIO | 0, LAR_NUCLEO_RAIO_VOADOR | 0);

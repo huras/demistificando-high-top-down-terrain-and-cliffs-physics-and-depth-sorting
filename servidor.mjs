@@ -32,6 +32,7 @@ const tipos = {
   ".ico": "image/x-icon",
   ".obj": "text/plain; charset=utf-8",
   ".glb": "model/gltf-binary",
+  ".gltf": "model/gltf+json",
   ".bin": "application/octet-stream",
   ".dae": "model/vnd.collada+xml",
   ".mtl": "text/plain; charset=utf-8",

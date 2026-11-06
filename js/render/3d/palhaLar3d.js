@@ -13,6 +13,8 @@ import {
 import { alturaEm } from "../../mundo/altura.js";
 import { listarLaresProximos } from "../../pokemon/laresMapa.js";
 import { sincronizarPalha } from "../../fisica/palha.js";
+import { ehNinhoColmeia } from "../../mundo/overworld/catalogoColmeia.js";
+import { colmeiaCarregada, criarColmeiaLar3d, sincronizarColmeias } from "./colmeiaLar3d.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
 
 const CAP = 128;
@@ -23,6 +25,8 @@ const _quat = new THREE.Quaternion();
 const _esc = new THREE.Vector3(1, 1, 1);
 const _eul = new THREE.Euler(0, 0, 0, "YXZ");
 const _mat4 = new THREE.Matrix4();
+const _palha = [];
+const _colmeia = [];
 
 /** @type {THREE.Group | null} */
 let grupo = null;
@@ -222,8 +226,19 @@ function garantirMalhas(scene) {
 /**
  * @param {THREE.Scene} scene
  */
+function partirLares(lista) {
+  _palha.length = 0;
+  _colmeia.length = 0;
+  for (let i = 0; i < lista.length; i++) {
+    const lar = lista[i];
+    if (ehNinhoColmeia(lar.speciesKey)) _colmeia.push(lar);
+    else _palha.push(lar);
+  }
+}
+
 export function criarPalhaLar3d(scene) {
   garantirMalhas(scene);
+  criarColmeiaLar3d(scene);
   return {
     atualizar: atualizarPalhaLares,
     get grupo() {
@@ -244,13 +259,17 @@ const SYNC_MIN_MS = 200;
 const SYNC_MOVE2 = 2.5 * 2.5;
 
 export function atualizarPalhaLares(px, py) {
-  if (!pronto || !malhas || !grupo) {
+  const palhaOk = !!(pronto && malhas && grupo);
+  if (!palhaOk) {
     if (cenaRef && !malhas && !pedido) garantirMalhas(cenaRef);
-    return;
   }
+  if (!palhaOk && !colmeiaCarregada()) return;
   if (estadoJogo.interior?.sala3d) {
-    grupo.visible = false;
-    for (let m = 0; m < malhas.length; m++) malhas[m].count = 0;
+    if (palhaOk) {
+      grupo.visible = false;
+      for (let m = 0; m < malhas.length; m++) malhas[m].count = 0;
+    }
+    sincronizarColmeias(null);
     return;
   }
   const agora = performance.now();
@@ -262,27 +281,31 @@ export function atualizarPalhaLares(px, py) {
   _ultimoPy = py;
   _proximoSync = agora + SYNC_MIN_MS;
 
-  grupo.visible = true;
   // Disco visual curto — RAIO_LARES no sync gerava dezenas de resolverLarSlot/frame.
   const lista = listarLaresProximos(px, py, Math.min(28, raioSync()), { soTerrestre: true });
-  sincronizarPalha(px, py, lista);
-  const n = Math.min(lista.length, CAP);
-  _esc.set(escala, escala, escala);
-  for (let i = 0; i < n; i++) {
-    const lar = lista[i];
-    const hz = alturaEm(Math.floor(lar.x), Math.floor(lar.y));
-    const y = (Number.isFinite(hz) && hz > 0 ? hz : lar.z || 0) * ALTURA_BLOCO + LIFT_Y;
-    _pos.set(lar.x, y, lar.y);
-    _eul.set(0, yawDoLar(lar), 0);
-    _quat.setFromEuler(_eul);
-    _mat4.compose(_pos, _quat, _esc);
+  partirLares(lista);
+  sincronizarPalha(px, py, _palha);
+  if (palhaOk) {
+    grupo.visible = true;
+    const n = Math.min(_palha.length, CAP);
+    _esc.set(escala, escala, escala);
+    for (let i = 0; i < n; i++) {
+      const lar = _palha[i];
+      const hz = alturaEm(Math.floor(lar.x), Math.floor(lar.y));
+      const y = (Number.isFinite(hz) && hz > 0 ? hz : lar.z || 0) * ALTURA_BLOCO + LIFT_Y;
+      _pos.set(lar.x, y, lar.y);
+      _eul.set(0, yawDoLar(lar), 0);
+      _quat.setFromEuler(_eul);
+      _mat4.compose(_pos, _quat, _esc);
+      for (let m = 0; m < malhas.length; m++) {
+        malhas[m].setMatrixAt(i, _mat4);
+      }
+    }
     for (let m = 0; m < malhas.length; m++) {
-      malhas[m].setMatrixAt(i, _mat4);
+      malhas[m].count = n;
+      malhas[m].instanceMatrix.needsUpdate = true;
+      if (n > 0) malhas[m].computeBoundingSphere();
     }
   }
-  for (let m = 0; m < malhas.length; m++) {
-    malhas[m].count = n;
-    malhas[m].instanceMatrix.needsUpdate = true;
-    if (n > 0) malhas[m].computeBoundingSphere();
-  }
+  sincronizarColmeias(_colmeia);
 }

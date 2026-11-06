@@ -1,0 +1,11 @@
+Model Information:
+* title:	Bee Hive
+* source:	https://sketchfab.com/3d-models/bee-hive-527579e0357d4eb397145e6851b5ebec
+* author:	science.tle999 (https://sketchfab.com/science.tle999)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Bee Hive" (https://sketchfab.com/3d-models/bee-hive-527579e0357d4eb397145e6851b5ebec) by science.tle999 (https://sketchfab.com/science.tle999) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

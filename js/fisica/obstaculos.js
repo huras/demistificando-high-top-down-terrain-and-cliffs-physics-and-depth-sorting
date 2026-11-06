@@ -251,6 +251,57 @@ export function resolverForaDeObstaculo(corpo) {
   return false;
 }
 
+/** @type {Map<string, { assinatura: string, discos: { x: number, y: number, z: number, r: number }[] }>} */
+const gruposLivres = new Map();
+
+function soltarDiscos(discos) {
+  for (let i = 0; i < discos.length; i++) {
+    const disco = discos[i];
+    const k = chaveCelula(disco.x, disco.y);
+    const balde = porCelula.get(k);
+    if (!balde) continue;
+    const idx = balde.indexOf(disco);
+    if (idx >= 0) balde.splice(idx, 1);
+    if (!balde.length) porCelula.delete(k);
+  }
+}
+
+/**
+ * Discos soltos (colmeia etc.) fora do índice por chunk.
+ * Não reindexa se id/posição/raio não mudaram.
+ * @param {string} tag
+ * @param {{ id?: string, x: number, y: number, z: number, r: number }[] | null} discos
+ */
+export function sincronizarGrupoDiscos(tag, discos) {
+  const lista = discos || [];
+  let assinatura = "";
+  for (let i = 0; i < lista.length; i++) {
+    const d = lista[i];
+    assinatura += (d.id || i) + "@" + d.x + "," + d.y + "," + d.z + "," + d.r + ";";
+  }
+  const atual = gruposLivres.get(tag);
+  if (atual && atual.assinatura === assinatura) return;
+  const antes = atual ? atual.discos : null;
+  const aabbAntes = antes && antes.length ? aabbDeDiscos(antes, 0, 0) : null;
+  if (antes) soltarDiscos(antes);
+  const meus = [];
+  for (let i = 0; i < lista.length; i++) {
+    const d = lista[i];
+    if (!(d.r > 0) || d.z == null || !Number.isFinite(d.x) || !Number.isFinite(d.y)) continue;
+    const disco = { x: d.x, y: d.y, z: d.z, r: d.r };
+    meus.push(disco);
+    const k = chaveCelula(disco.x, disco.y);
+    let balde = porCelula.get(k);
+    if (!balde) {
+      balde = [];
+      porCelula.set(k, balde);
+    }
+    balde.push(disco);
+  }
+  gruposLivres.set(tag, { assinatura, discos: meus });
+  emitirDirty(aabbAntes, meus.length ? aabbDeDiscos(meus, 0, 0) : null);
+}
+
 const CAP_DISCOS = 48;
 
 /** Discos do piso, x,y,z,r. `destino` tem pelo menos 192 floats. Sem alocação. */
