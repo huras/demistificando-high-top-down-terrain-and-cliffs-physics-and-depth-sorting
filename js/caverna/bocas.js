@@ -1,6 +1,7 @@
 /**
- * Boca no lábio do cliff, ou um afloramento se a área não tem queda.
- * O GLB não colide: o vão entalhado no voxel é o chão e o teto.
+ * Boca no lábio do cliff. O GLB é a protuberância na parede:
+ * o relevo atrás fica inteiro. Na frente, um avental raso tira
+ * o pedaço que tamparia a boca.
  */
 import { AREA_KANTO } from "../mundo/regiao/grafoKanto.js";
 import { deLocalKanto, paraLocalKanto, dentroDoKanto } from "../mundo/bounds.js";
@@ -19,8 +20,8 @@ import { areaAceitaProcedural } from "./procedural.js";
 
 const PASSO = 3;
 const QUEDA_MIN = 3;
-const PROF = 4;
-const MEIA_LARGURA = 1;
+const FRENTE = 4;
+const MEIA_LARGURA = 2;
 
 /** @type {Map<string, object[]>} */
 const porArea = new Map();
@@ -102,57 +103,35 @@ function pontoAlto(ax, ay, permitirRota) {
 
 function montarGeometria(lip, facing) {
   const out = FACE[facing];
-  const inn = { x: -out.x, y: -out.y };
   const lado = perp(out);
   const piso = Math.max(2, lip.hOut | 0);
-  const buracos = [];
-  const fachada = [];
-  for (let t = 0; t < PROF; t++) {
-    for (let s = -MEIA_LARGURA; s <= MEIA_LARGURA; s++) {
-      buracos.push({
-        x: lip.x + inn.x * t + lado.x * s,
-        y: lip.y + inn.y * t + lado.y * s,
-        piso,
-      });
-    }
-  }
-  for (let t = 0; t < PROF; t++) {
-    for (const s of [-2, 2]) {
-      const x = lip.x + inn.x * t + lado.x * s;
-      const y = lip.y + inn.y * t + lado.y * s;
-      if (alturaDoRelevo(x, y) < piso + 4) fachada.push({ x, y, topo: piso + 5 });
-    }
-  }
-  for (let s = -1; s <= 1; s++) {
-    const x = lip.x + inn.x * PROF + lado.x * s;
-    const y = lip.y + inn.y * PROF + lado.y * s;
-    if (alturaDoRelevo(x, y) < piso + 4) fachada.push({ x, y, topo: piso + 5 });
-  }
-  const gatilho = buracos[2 * 3 + 1];
-  const standX = lip.x + out.x * 2;
-  const standY = lip.y + out.y * 2;
-  const standZ = Math.max(1, alturaDoRelevo(standX, standY));
+  const frente = [];
   let x0 = Infinity;
   let y0 = Infinity;
   let x1 = -Infinity;
   let y1 = -Infinity;
-  const marcar = (x, y) => {
-    if (x < x0) x0 = x;
-    if (y < y0) y0 = y;
-    if (x > x1) x1 = x;
-    if (y > y1) y1 = y;
-  };
-  for (let i = 0; i < buracos.length; i++) marcar(buracos[i].x, buracos[i].y);
-  for (let t = 1; t <= 3; t++) {
-    for (let s = -2; s <= 2; s++) {
-      marcar(lip.x + out.x * t + lado.x * s, lip.y + out.y * t + lado.y * s);
+  for (let t = 1; t <= FRENTE; t++) {
+    for (let s = -MEIA_LARGURA; s <= MEIA_LARGURA; s++) {
+      const x = lip.x + out.x * t + lado.x * s;
+      const y = lip.y + out.y * t + lado.y * s;
+      frente.push({ x, y, piso });
+      if (x < x0) x0 = x;
+      if (y < y0) y0 = y;
+      if (x > x1) x1 = x;
+      if (y > y1) y1 = y;
     }
   }
+  const standX = lip.x + out.x * (FRENTE + 2);
+  const standY = lip.y + out.y * (FRENTE + 2);
+  const standZ = Math.max(1, alturaDoRelevo(standX, standY));
   return {
     piso,
-    buracos,
-    fachada,
-    gatilho: { x: gatilho.x + 0.5, y: gatilho.y + 0.5, z: piso },
+    frente,
+    gatilho: {
+      x: lip.x + out.x + 0.5,
+      y: lip.y + out.y + 0.5,
+      z: piso,
+    },
     stand: { x: standX + 0.5, y: standY + 0.5, z: standZ > 1 ? standZ : piso },
     plaza: { x0, y0, x1: x1 + 1, y1: y1 + 1 },
     yaw: out.yaw,
@@ -300,8 +279,7 @@ export function celulaBocaLimpa(wx, wy) {
 }
 
 /**
- * Entalha o vão e, se o terreno for baixo, empilha a fachada.
- * Chamar depois da água, senão o corpo reenche o buraco.
+ * Abaixa só o avental na frente da boca. A parede atrás não é aberta.
  */
 export function aplicarBocasNoChunk(chunk) {
   const baseX = chunk.cx * CHUNK_XZ;
@@ -326,41 +304,29 @@ export function aplicarBocasNoChunk(chunk) {
 
 function aplicarUma(chunk, baseX, baseY, boca) {
   let mudou = false;
-  const fachada = boca.fachada;
-  for (let i = 0; i < fachada.length; i++) {
-    const c = fachada[i];
+  const frente = boca.frente || [];
+  for (let i = 0; i < frente.length; i++) {
+    const c = frente[i];
     const lx = c.x - baseX;
     const ly = c.y - baseY;
     if (lx < 0 || ly < 0 || lx >= CHUNK_XZ || ly >= CHUNK_XZ) continue;
-    empilhar(chunk, lx, ly, c.topo);
-    mudou = true;
-  }
-  const buracos = boca.buracos;
-  for (let i = 0; i < buracos.length; i++) {
-    const c = buracos[i];
-    const lx = c.x - baseX;
-    const ly = c.y - baseY;
-    if (lx < 0 || ly < 0 || lx >= CHUNK_XZ || ly >= CHUNK_XZ) continue;
-    abrirBuraco(chunk, lx, ly, c.piso);
+    apararFrente(chunk, lx, ly, c.piso);
     mudou = true;
   }
   return mudou;
 }
 
-function empilhar(chunk, lx, ly, topo) {
-  const z = Math.min(CHUNK_Y, topo | 0);
-  for (let lz = 0; lz < z; lz++) definirLocal(chunk, lx, ly, lz, BLOCO.PEDRA);
-}
-
-function abrirBuraco(chunk, lx, ly, piso) {
+function apararFrente(chunk, lx, ly, piso) {
   const pisoI = piso | 0;
   if (pisoI < 2) return;
+  let topo = -1;
+  for (let z = CHUNK_Y - 1; z >= pisoI; z--) {
+    if (ehSolido(obterLocal(chunk, lx, ly, z))) {
+      topo = z;
+      break;
+    }
+  }
+  if (topo < pisoI) return;
   definirLocal(chunk, lx, ly, pisoI - 1, BLOCO.PEDRA);
-  for (let z = pisoI; z < pisoI + 3 && z < CHUNK_Y; z++) {
-    definirLocal(chunk, lx, ly, z, BLOCO.AR);
-  }
-  const teto = pisoI + 3;
-  if (teto < CHUNK_Y && !ehSolido(obterLocal(chunk, lx, ly, teto))) {
-    definirLocal(chunk, lx, ly, teto, BLOCO.PEDRA);
-  }
+  for (let z = pisoI; z <= topo; z++) definirLocal(chunk, lx, ly, z, BLOCO.AR);
 }

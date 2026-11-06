@@ -115,7 +115,7 @@ export const PULO_EPS_POUSO = 0.08;
  * Asa-delta — só com 2º toque de Space no ar (nunca hold).
  * 3º toque fecha.
  */
-export const ASA_DELTA_DESCIDA = 0.55;
+export const ASA_DELTA_DESCIDA = 2.2;
 export const ASA_DELTA_ABRIR_APOS = 0.08;
 export const ASA_DELTA_LIFT_MIN = 0.12;
 export const ASA_DELTA_VEL_MUL = 1.2;

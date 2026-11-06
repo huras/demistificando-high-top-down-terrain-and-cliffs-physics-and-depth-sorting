@@ -9,6 +9,7 @@ import { bocasPerto } from "../../caverna/bocas.js";
 
 const URL_GLB = "assets/models/overworld/cavern-entrance/cavern-entrance.glb";
 const ALTURA_ALVO = 2.1;
+const AVANCO = 1.05;
 const RAIO = 72;
 
 /** @type {THREE.Group | null} */
@@ -93,7 +94,12 @@ export function atualizarBocasCaverna(px, py) {
       continue;
     }
     mesh.visible = true;
-    mesh.position.set(boca.x, boca.z * ALTURA_BLOCO, boca.y);
+    const avanco = AVANCO;
+    mesh.position.set(
+      boca.x + (boca.dirX || 0) * avanco,
+      boca.z * ALTURA_BLOCO + ALTURA_ALVO * 0.5,
+      boca.y + (boca.dirY || 0) * avanco,
+    );
     mesh.rotation.set(0, boca.yaw || 0, 0);
     mesh.scale.setScalar(escala);
   }
