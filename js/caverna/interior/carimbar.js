@@ -4,10 +4,18 @@
  */
 import { CHUNK_XZ, CHUNK_Y } from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
-import { ORIGEM_CAVERNA_X, ORIGEM_CAVERNA_Y } from "../../mundo/bounds.js";
+import {
+  BOLSO_CAVERNA_X0,
+  BOLSO_CAVERNA_X1,
+  BOLSO_CAVERNA_Y0,
+  BOLSO_CAVERNA_Y1,
+  ORIGEM_CAVERNA_X,
+  ORIGEM_CAVERNA_Y,
+  dentroDoBolsoCaverna,
+} from "../../mundo/bounds.js";
 import { definirLocal, preencherColunaSolida } from "../../mundo/voxel/chunk.js";
 import { BLOCO } from "../../mundo/voxel/tiposBloco.js";
-import { CHAO, MURO, PORTA, classeDaCelula } from "./gerar.js";
+import { CHAO, classeDaCelula } from "./gerar.js";
 import { layoutAtivo } from "./sessao.js";
 
 const FOLGA = 3;
@@ -30,9 +38,12 @@ export function aplicarCavernaNoChunk(chunk) {
   const baseY = chunk.cy * CHUNK_XZ;
   const x1 = baseX + CHUNK_XZ;
   const y1 = baseY + CHUNK_XZ;
-  const mundoX1 = ORIGEM_CAVERNA_X + lay.cols;
-  const mundoY1 = ORIGEM_CAVERNA_Y + lay.rows;
-  if (x1 <= ORIGEM_CAVERNA_X || y1 <= ORIGEM_CAVERNA_Y || baseX >= mundoX1 || baseY >= mundoY1) {
+  if (
+    x1 <= BOLSO_CAVERNA_X0 ||
+    y1 <= BOLSO_CAVERNA_Y0 ||
+    baseX >= BOLSO_CAVERNA_X1 ||
+    baseY >= BOLSO_CAVERNA_Y1
+  ) {
     return false;
   }
   let mudou = false;
@@ -40,12 +51,13 @@ export function aplicarCavernaNoChunk(chunk) {
     for (let lx = 0; lx < CHUNK_XZ; lx++) {
       const wx = baseX + lx;
       const wy = baseY + ly;
+      if (!dentroDoBolsoCaverna(wx, wy)) continue;
       const tx = wx - ORIGEM_CAVERNA_X;
       const ty = wy - ORIGEM_CAVERNA_Y;
-      if (tx < 0 || ty < 0 || tx >= lay.cols || ty >= lay.rows) continue;
-      const classe = classeDaCelula(lay, tx, ty);
+      const noLayout = tx < 0 || ty < 0 || tx >= lay.cols || ty >= lay.rows;
+      const classe = noLayout ? 0 : classeDaCelula(lay, tx, ty);
       if (classe === CHAO) escreverChaoCaverna(chunk, lx, ly);
-      else if (classe === MURO || classe === PORTA) escreverMuro(chunk, lx, ly);
+      else escreverMuro(chunk, lx, ly);
       mudou = true;
     }
   }

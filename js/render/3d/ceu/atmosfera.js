@@ -17,7 +17,6 @@ uniform vec3 uDirSol;
 uniform vec3 uDirLua;
 uniform vec3 uCorZenite;
 uniform vec3 uCorHorizonte;
-uniform vec3 uCorChao;
 uniform vec3 uCorNeblina;
 uniform vec3 uCorSol;
 uniform vec3 uCorLua;
@@ -71,11 +70,10 @@ vec3 atmosfera(vec3 rd) {
     ceu += vec3(0.85, 0.9, 1.0) * s * tw * uEstrelas * (1.0 - apaga);
   }
 
-  if (h < 0.0) {
-    ceu = mix(uCorHorizonte, uCorChao * 0.65, smoothstep(0.0, -0.5, h));
+  if (h >= 0.0) {
+    float banda = smoothstep(0.1, -0.02, h);
+    ceu = mix(ceu, uCorNeblina, banda * 0.85);
   }
-  float banda = smoothstep(0.1, -0.02, h);
-  ceu = mix(ceu, uCorNeblina, banda * 0.85);
   return ceu;
 }
 
@@ -132,15 +130,24 @@ vec3 camada(vec3 rd, vec3 ro, vec3 ceu, float altura, vec2 vento, float escala, 
 
 void main() {
   vec3 rd = normalize(vDir);
+  bool fundo = rd.y <= 0.0;
   vec3 ceu = atmosfera(rd);
-  ceu = camada(rd, cameraPosition, ceu, uAlturaCirrus, uVentoNuvem * 1.7, uEscalaNuvem * 2.6, 0.74, uPesoCirrus, 1.0);
-  ceu = camada(rd, cameraPosition, ceu, uAlturaNuvem, uVentoNuvem, uEscalaNuvem, uLimiarNuvem, 1.0, 0.0);
-  ceu += vec3(0.75, 0.82, 1.0) * uFlash;
-  float ruido = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-  ceu += (ruido - 0.5) * 0.0035;
+  if (!fundo) {
+    ceu = camada(rd, cameraPosition, ceu, uAlturaCirrus, uVentoNuvem * 1.7, uEscalaNuvem * 2.6, 0.74, uPesoCirrus, 1.0);
+    ceu = camada(rd, cameraPosition, ceu, uAlturaNuvem, uVentoNuvem, uEscalaNuvem, uLimiarNuvem, 1.0, 0.0);
+    ceu += vec3(0.75, 0.82, 1.0) * uFlash;
+    float ruido = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    ceu += (ruido - 0.5) * 0.0035;
+  }
   gl_FragColor = vec4(max(ceu, 0.0), 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
+  // Fog do Three entra depois do encode e já vem em espaço de saída (getRGB).
+  // 20° acima do horizonte: céu → neblina. Abaixo, neblina cheia.
+  float limite = sin(radians(20.0));
+  float pesoNeblina = 1.0 - smoothstep(0.0, limite, rd.y);
+  vec3 corNeblina = linearToOutputTexel(vec4(uCorNeblina, 1.0)).rgb;
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, corNeblina, pesoNeblina);
 }
 `;
 

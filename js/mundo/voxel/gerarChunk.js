@@ -21,6 +21,7 @@ import {
 import { aplicarSantuarioNoChunk } from "../../santuario/carimbar.js";
 import { aplicarBocasNoChunk, celulaBocaLimpa } from "../../caverna/bocas.js";
 import { aplicarCavernaNoChunk } from "../../caverna/interior/carimbar.js";
+import { dentroDoBolsoCaverna } from "../bounds.js";
 import { dentroDoTerrenoHub } from "../cidade/plantaHub.js";
 import { definirPropsChunk } from "../bioma/propsBioma.js";
 import { aplicarNaLista } from "../../campo/estadoProps.js";
@@ -230,6 +231,7 @@ export function* passosChunk(chunk, seed) {
       const wx = baseX + lx;
       const wy = baseY + ly;
       if (chunk.corpo[ly * CHUNK_XZ + lx]) continue;
+      if (dentroDoBolsoCaverna(wx, wy)) continue;
       if (wx >= 0 && wy >= 0 && wx < COLUNAS && wy < LINHAS) continue;
       const h = alturas[ly * CHUNK_XZ + lx];
       let cliff = false;
