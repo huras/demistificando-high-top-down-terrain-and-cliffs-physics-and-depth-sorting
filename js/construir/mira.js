@@ -1,9 +1,9 @@
 /**
- * Mira de construção: clamp generoso + se colar nos pés do player, joga pra frente.
+ * Mira de construção: cursor no alcance; sem mira, joga pra frente do facing.
  */
 import { ALCANCE_CONSTRUIR } from "../config.js";
 
-/** Distância mínima da mira ao player — evita ghost/placement embaixo dos pés. */
+/** Só no fallback sem cursor — evita ghost colado nos pés. */
 const MIN_AHEAD = 3.2;
 
 /**
@@ -13,8 +13,9 @@ const MIN_AHEAD = 3.2;
  * @returns {{ x: number, y: number }}
  */
 export function clampMiraConstrucao(corpo, aimX, aimY) {
-  let x = Number.isFinite(aimX) ? aimX : corpo?.x ?? 0;
-  let y = Number.isFinite(aimY) ? aimY : corpo?.y ?? 0;
+  const temCursor = Number.isFinite(aimX) && Number.isFinite(aimY);
+  let x = temCursor ? aimX : corpo?.x ?? 0;
+  let y = temCursor ? aimY : corpo?.y ?? 0;
   if (!corpo || !Number.isFinite(corpo.x) || !Number.isFinite(corpo.y)) {
     return { x, y };
   }
@@ -23,22 +24,21 @@ export function clampMiraConstrucao(corpo, aimX, aimY) {
   let dy = y - corpo.y;
   let dist = Math.hypot(dx, dy);
 
-  let fx = Number(corpo.dirX);
-  let fy = Number(corpo.dirY);
-  if (!Number.isFinite(fx)) fx = 0;
-  if (!Number.isFinite(fy)) fy = 0;
-  let fl = Math.hypot(fx, fy);
-  if (fl < 1e-6) {
-    fx = 0;
-    fy = -1;
-    fl = 1;
-  } else {
-    fx /= fl;
-    fy /= fl;
-  }
-
-  // Centro da tela / fallback no corpo → empurra pra frente do facing.
-  if (dist < MIN_AHEAD) {
+  // Sem mira de cursor: empurra pra frente do facing.
+  if (!temCursor) {
+    let fx = Number(corpo.dirX);
+    let fy = Number(corpo.dirY);
+    if (!Number.isFinite(fx)) fx = 0;
+    if (!Number.isFinite(fy)) fy = 0;
+    let fl = Math.hypot(fx, fy);
+    if (fl < 1e-6) {
+      fx = 0;
+      fy = -1;
+      fl = 1;
+    } else {
+      fx /= fl;
+      fy /= fl;
+    }
     const ahead = Math.min(MIN_AHEAD + 1.2, ALCANCE_CONSTRUIR * 0.4);
     x = corpo.x + fx * ahead;
     y = corpo.y + fy * ahead;

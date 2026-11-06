@@ -457,7 +457,8 @@ export const ALCANCE_EDICAO = 5;
  * Colocar casa/móvel/cerca com o martelo (tiles). Maior que edição de bloco —
  * footprint de casa é grande e o player não precisa ficar em cima do site.
  */
-export const ALCANCE_CONSTRUIR = 20;
+/** Alcance horizontal pra bandeira / casas / móveis outdoor (metros). */
+export const ALCANCE_CONSTRUIR = 48;
 /** Cursor enxerga o chão com a câmera longe; editar continua no alcance curto. */
 export const ALCANCE_MIRA = 320;
 /** Chunks de malha 3D reconstruídos por frame (evita hitch de 200ms+ ao streamar). */

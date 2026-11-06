@@ -3,8 +3,8 @@
  */
 import { obterModo } from "../modoJogo.js";
 import { estaEmCena } from "../cena/modoCena.js";
-import { alvoBloco2d, alvoBloco3dCursor } from "../mundo/voxel/alvoBloco.js";
-import { ALCANCE_MIRA, ESCALA, FACE_H, TILE } from "../config.js";
+import { alvoBloco2d, alvoBloco3dCursor, raycastVoxel } from "../mundo/voxel/alvoBloco.js";
+import { ALCANCE_CONSTRUIR, ALCANCE_MIRA, ESCALA, FACE_H, TILE } from "../config.js";
 import { obterVisaoCaverna2d } from "../render/visaoCaverna2d.js";
 import { invalidarHoverBloco } from "./hoverBloco.js";
 import { raioDoPonteiro } from "../render/3d/camera3d.js";
@@ -24,6 +24,7 @@ import { estaCarregandoForca } from "../forca/sistemaForca.js";
 import { definirPonteiroForca } from "../forca/tickForca.js";
 import { definirMiraConstrucao } from "../construir/tick.js";
 import { temSelecaoConstruir, temRitualAtivo } from "../construir/indice.js";
+import { alturaDoRelevo } from "../mundo/bioma/catalogo.js";
 import { TIPO_ITEM } from "../wild/catalogo.js";
 
 function marteloConstruindo() {
@@ -62,6 +63,12 @@ function ndcDoEvento(ev, canvas) {
   return { ndcX: u * 2 - 1, ndcY: -(v * 2 - 1) };
 }
 
+/** Mesmo NDC do move: centro com lock/RMB; cursor livre fora disso. */
+function ndcMiraVisao(ev, canvas) {
+  if (ponteiroTravado() || botaoDireitoSegurado()) return { ndcX: 0, ndcY: 0 };
+  return ndcDoEvento(ev, canvas);
+}
+
 function pontoNoChao(raio, z) {
   const dz = raio.dz;
   if (Math.abs(dz) < 1e-4) return { x: raio.ox + raio.dx * 12, y: raio.oy + raio.dy * 12 };
@@ -70,12 +77,45 @@ function pontoNoChao(raio, z) {
   return { x: raio.ox + raio.dx * t, y: raio.oy + raio.dy * t };
 }
 
+/**
+ * Chão sob a mira de construção: voxel (o que você vê) → heightmap → plano do player.
+ * Move e clique usam a mesma função pra preview = colocação.
+ */
+function pontoChaoConstrucao(camera, ndcX, ndcY, corpo) {
+  const raio = raioDoPonteiro(camera, ndcX, ndcY);
+  const maxDist = Math.max(ALCANCE_CONSTRUIR * 2.5, 80);
+  const alvo = raycastVoxel(raio.ox, raio.oy, raio.oz, raio.dx, raio.dy, raio.dz, maxDist);
+  if (alvo) {
+    const nx = alvo.nx | 0;
+    const ny = alvo.ny | 0;
+    if (nx || ny) {
+      return { x: alvo.x + nx + 0.5, y: alvo.y + ny + 0.5 };
+    }
+    return { x: alvo.x + 0.5, y: alvo.y + 0.5 };
+  }
+
+  const passos = 96;
+  let prevAcima = null;
+  for (let i = 1; i <= passos; i++) {
+    const t = (i / passos) * maxDist;
+    const x = raio.ox + raio.dx * t;
+    const y = raio.oy + raio.dy * t;
+    const z = raio.oz + raio.dz * t;
+    const h = alturaDoRelevo(x, y);
+    const acima = z > h + 0.05;
+    if (prevAcima === true && !acima) return { x, y };
+    prevAcima = acima;
+  }
+
+  return pontoNoChao(raio, corpo?.z ?? 0);
+}
+
 function dispararItem(corpo, celula, alvo, mira) {
   if (uiAberta()) return;
   if (estaCarregandoForca()) return;
   // Arco/bola: carga e disparo ficam no tick (LMB segurar/soltar), não no mousedown.
   if (rangedNaMao()) return;
-  const msg = usarNoClique(corpo, celula, alvo);
+  const msg = usarNoClique(corpo, celula, alvo, mira);
   if (msg) estado.itemGet = msg;
   if (estado.construir) pintar();
   else if (msg) atualizarLeve();
@@ -96,19 +136,13 @@ function aoMove3d(ev) {
   const corpo = obterCorpo();
   const cen = obterCenario3d();
   if (!corpo || !cen?.camera3d) return;
-  // Com pointer lock: mira no centro. Sem lock / RMB: mira no cursor.
-  let ndcX = 0;
-  let ndcY = 0;
-  if (!(ponteiroTravado() || botaoDireitoSegurado())) {
-    const ndc = ndcDoEvento(ev, canvas3d);
-    ndcX = ndc.ndcX;
-    ndcY = ndc.ndcY;
-  }
+  const { ndcX, ndcY } = ndcMiraVisao(ev, canvas3d);
   const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
-  const chao = pontoNoChao(raio, corpo.z ?? 0);
-  definirMiraCursor(chao.x, chao.y);
-  definirPonteiroForca({ x: chao.x, y: chao.y });
+  const chaoPlano = pontoNoChao(raio, corpo.z ?? 0);
+  definirMiraCursor(chaoPlano.x, chaoPlano.y);
+  definirPonteiroForca({ x: chaoPlano.x, y: chaoPlano.y });
   if (marteloConstruindo() || temSelecaoConstruir() || temRitualAtivo()) {
+    const chao = pontoChaoConstrucao(cen.camera3d, ndcX, ndcY, corpo);
     definirMiraConstrucao(chao.x, chao.y);
   }
 }
@@ -158,13 +192,15 @@ function aoMouseDown3d(ev) {
     ev.preventDefault();
     return;
   }
-  const { ndcX, ndcY } = ndcDoEvento(ev, canvas3d);
+  const { ndcX, ndcY } = ndcMiraVisao(ev, canvas3d);
   // Mira longa como o hover; o alcance de ação é do player (emAlcanceEdicao).
   const alvo = alvoBloco3dCursor(cen.camera3d, ndcX, ndcY, ALCANCE_MIRA);
-  const raio = raioDoPonteiro(cen.camera3d, ndcX, ndcY);
-  const chao = pontoNoChao(raio, corpo.z ?? 0);
+  const construindo = marteloConstruindo() || temSelecaoConstruir() || temRitualAtivo();
+  const chao = construindo
+    ? pontoChaoConstrucao(cen.camera3d, ndcX, ndcY, corpo)
+    : pontoNoChao(raioDoPonteiro(cen.camera3d, ndcX, ndcY), corpo.z ?? 0);
   const celula = alvo ? { x: alvo.x, y: alvo.y } : { x: Math.floor(chao.x), y: Math.floor(chao.y) };
-  if (marteloConstruindo()) definirMiraConstrucao(chao.x, chao.y);
+  if (construindo) definirMiraConstrucao(chao.x, chao.y);
   ev.preventDefault();
   dispararItem(corpo, celula, alvo, chao);
 }

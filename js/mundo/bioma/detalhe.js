@@ -593,34 +593,70 @@ function avaliarMineralCelula(x, y, biomaId, tipo) {
   return { params, forca: forcaMascara(params, n) };
 }
 
-function passaMineralCelula(x, y, biomaId, tipo) {
-  return !!avaliarMineralCelula(x, y, biomaId, tipo);
+/**
+ * Sprites 2×2+ (porte médio/grande) colados no depósito brigam na profundidade.
+ * Folga mínima sobe com o porte; o JSON ainda pode pedir mais.
+ */
+function tamanhoPegadaMineral(params, porte) {
+  const p = Math.max(0, Math.min(2, porte | 0));
+  const min = p >= 2 ? 4 : p >= 1 ? 3 : 2;
+  return {
+    w: Math.max(1, params?.largura | 0 || 2, min),
+    h: Math.max(1, params?.altura | 0 || 2, min),
+  };
+}
+
+/** Porte que a célula ganharia se spawnasse — mesmo sorteio do escolherPedra. */
+function porteMineralEm(x, y, biomaId, tipo, forca, saltVar) {
+  const plano = planoDe({ id: biomaId || "" });
+  const familias = tipo === "cristal" ? plano.cristaisFam : plano.rochas;
+  const item = sortearVarianteFamilia(familias, forca, x, y, saltVar);
+  return item ? porteDe(item) : 0;
 }
 
 /**
- * Pegada entre candidatos do mesmo tipo mineral.
+ * Pegada entre candidatos do mesmo tipo mineral (tamanho conforme porte).
  * @param {"pedra"|"cristal"} tipo
- * @param {(ox: number, oy: number, idViz: string) => boolean} passaViz
  */
-function ganhaPegadaMineral(x, y, biomaId, tipo, params, saltPegada, passaViz, forcarBioma) {
+function ganhaPegadaMineral(x, y, biomaId, tipo, params, porte, saltPegada, saltVar, forcarBioma) {
   if (!params) return false;
   const idCentro = biomaId || idBiomaEm(x, y);
-  const w = params.largura;
-  const h = params.altura;
+  const { w, h } = tamanhoPegadaMineral(params, porte);
+  const alcance = Math.max(w, h, 4) - 1;
   const seed = (params.semente | 0) ^ saltPegada;
   const meu = hash2(x, y, seed);
-  for (let oy = y - (h - 1); oy <= y + (h - 1); oy++) {
-    for (let ox = x - (w - 1); ox <= x + (w - 1); ox++) {
+  for (let oy = y - alcance; oy <= y + alcance; oy++) {
+    for (let ox = x - alcance; ox <= x + alcance; ox++) {
       if (ox === x && oy === y) continue;
       const idViz = forcarBioma ? idCentro : idBiomaEm(ox, oy);
-      const viz = mineralDoBioma(idViz, tipo);
-      if (!(x < ox + viz.largura && x + w > ox && y < oy + viz.altura && y + h > oy)) continue;
-      if (!passaViz(ox, oy, idViz)) continue;
+      const avalViz = avaliarMineralCelula(ox, oy, idViz, tipo);
+      if (!avalViz) continue;
+      const porteViz = porteMineralEm(ox, oy, idViz, tipo, avalViz.forca, saltVar);
+      const viz = tamanhoPegadaMineral(avalViz.params, porteViz);
+      if (!(x < ox + viz.w && x + w > ox && y < oy + viz.h && y + h > oy)) continue;
       const outro = hash2(ox, oy, seed);
       if (outro < meu || (outro === meu && (oy < y || (oy === y && ox < x)))) return false;
     }
   }
   return true;
+}
+
+/** Mineral não nasce sob a pegada de uma árvore que ganhou spawn. */
+function conflitaComArvore(x, y, wRock, hRock, biomaId, forcarBioma = false) {
+  const idCentro = biomaId || idBiomaEm(x, y);
+  const alcance = Math.max(wRock | 0, hRock | 0, 4) + 2;
+  for (let oy = y - alcance; oy <= y + alcance; oy++) {
+    for (let ox = x - alcance; ox <= x + alcance; ox++) {
+      const idViz = forcarBioma ? idCentro : idBiomaEm(ox, oy);
+      if (!passaArvore(ox, oy, idViz) || !ganhaPegada(ox, oy, idViz, forcarBioma)) continue;
+      const a = arvoreDoBioma(idViz).params;
+      if (!a) continue;
+      if (x < ox + a.largura && x + wRock > ox && y < oy + a.altura && y + hRock > oy) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -672,40 +708,52 @@ function escolherPedra(x, y, plano, forcarBioma = false) {
   const id = plano.id || "";
   if (plano.rochas?.length) {
     const aval = avaliarMineralCelula(x, y, id, "pedra");
-    if (
-      aval &&
-      ganhaPegadaMineral(
-        x,
-        y,
-        id,
-        "pedra",
-        aval.params,
-        0x70656472,
-        (ox, oy, idViz) => passaMineralCelula(ox, oy, idViz, "pedra"),
-        forcarBioma,
-      )
-    ) {
+    if (aval) {
       const item = sortearVarianteFamilia(plano.rochas, aval.forca, x, y, 0x726f636b);
-      if (item) return { classe: "pedra", sprite: item.id, porte: porteDe(item) };
+      const porte = item ? porteDe(item) : 0;
+      const peg = tamanhoPegadaMineral(aval.params, porte);
+      if (
+        item &&
+        ganhaPegadaMineral(
+          x,
+          y,
+          id,
+          "pedra",
+          aval.params,
+          porte,
+          0x70656472,
+          0x726f636b,
+          forcarBioma,
+        ) &&
+        !conflitaComArvore(x, y, peg.w, peg.h, id, forcarBioma)
+      ) {
+        return { classe: "pedra", sprite: item.id, porte };
+      }
     }
   }
   if (plano.cristaisFam?.length) {
     const aval = avaliarMineralCelula(x, y, id, "cristal");
-    if (
-      aval &&
-      ganhaPegadaMineral(
-        x,
-        y,
-        id,
-        "cristal",
-        aval.params,
-        0x63727970,
-        (ox, oy, idViz) => passaMineralCelula(ox, oy, idViz, "cristal"),
-        forcarBioma,
-      )
-    ) {
+    if (aval) {
       const item = sortearVarianteFamilia(plano.cristaisFam, aval.forca, x, y, 0x63727973);
-      if (item) return { classe: "cristal", sprite: item.id, porte: porteDe(item) };
+      const porte = item ? porteDe(item) : 0;
+      const peg = tamanhoPegadaMineral(aval.params, porte);
+      if (
+        item &&
+        ganhaPegadaMineral(
+          x,
+          y,
+          id,
+          "cristal",
+          aval.params,
+          porte,
+          0x63727970,
+          0x63727973,
+          forcarBioma,
+        ) &&
+        !conflitaComArvore(x, y, peg.w, peg.h, id, forcarBioma)
+      ) {
+        return { classe: "cristal", sprite: item.id, porte };
+      }
     }
   }
   return null;

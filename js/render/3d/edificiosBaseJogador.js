@@ -87,13 +87,19 @@ export function criarEdificiosBaseJogador() {
     const casas = casasPerto(px, py, RAIO);
     for (const casa of casas) {
       manter.add(casa.id);
-      if (vivos.has(casa.id)) continue;
+      const z = Number.isFinite(casa.z) ? casa.z : alturaDoRelevo(casa.x, casa.y);
+      const viva = vivos.get(casa.id);
+      if (viva) {
+        // Relocação mantém o id — atualiza pose, senão colliders andam e a malha fica.
+        viva.rotation.y = casa.yaw || 0;
+        viva.position.set(casa.x, z, casa.y);
+        continue;
+      }
       const molde = moldes.get(casa.buildingId);
       if (!molde) continue;
       const inst = molde.clone(true);
       inst.name = casa.id;
       inst.rotation.y = casa.yaw || 0;
-      const z = Number.isFinite(casa.z) ? casa.z : alturaDoRelevo(casa.x, casa.y);
       inst.position.set(casa.x, z, casa.y);
       grupo.add(inst);
       vivos.set(casa.id, inst);
@@ -104,10 +110,14 @@ export function criarEdificiosBaseJogador() {
       const dy = f.y + 0.5 - py;
       if (dx * dx + dy * dy > RAIO * RAIO) continue;
       manter.add(f.id);
-      if (vivos.has(f.id)) continue;
+      const z = Number.isFinite(f.z) ? f.z : alturaDoRelevo(f.x + 0.5, f.y + 0.5);
+      const viva = vivos.get(f.id);
+      if (viva) {
+        viva.position.set(f.x + 0.5, z, f.y + 0.5);
+        continue;
+      }
       const inst = proxyMovel(f.key);
       inst.name = f.id;
-      const z = Number.isFinite(f.z) ? f.z : alturaDoRelevo(f.x + 0.5, f.y + 0.5);
       inst.position.set(f.x + 0.5, z, f.y + 0.5);
       grupo.add(inst);
       vivos.set(f.id, inst);

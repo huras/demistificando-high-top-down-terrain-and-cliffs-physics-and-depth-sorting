@@ -66,7 +66,7 @@ import {
   obterPreview,
 } from "../construir/indice.js";
 import { atualizarCatalogoConstruir } from "../ui/construirCatalogoHud.js";
-import { definirMiraConstrucao } from "../construir/tick.js";
+import { definirMiraConstrucao, miraConstrucao } from "../construir/tick.js";
 import { ordenarRitualConstrucao } from "../construir/ordemRitual.js";
 import { clampMiraConstrucao, emAlcanceConstrucao } from "../construir/mira.js";
 import {
@@ -960,8 +960,10 @@ function celulaEmAlcance(corpo, celula, alvoBloco) {
   return false;
 }
 
-/** Clique esquerdo usa o que está selecionado na hotbar. */
-export function usarNoClique(corpo, celula, alvoBloco) {
+/** Clique esquerdo usa o que está selecionado na hotbar.
+ * @param {{ x: number, y: number } | null | undefined} [miraMundo] mira do clique (mesmo ponto do ghost).
+ */
+export function usarNoClique(corpo, celula, alvoBloco, miraMundo) {
   const item = hotbarAtivo();
   const ocupaClique = item && (item.tipo === TIPO_ITEM.BLOCO || item.tipo === TIPO_ITEM.FERRAMENTA);
   if (!ocupaClique && celula && !plotEm(celula.x, celula.y)) {
@@ -980,8 +982,14 @@ export function usarNoClique(corpo, celula, alvoBloco) {
   }
   if (item.tipo === TIPO_ITEM.FERRAMENTA) {
     if (item.key === "flag" && !estado.interior) {
-      definirMiraConstrucao(celula.x + 0.5, celula.y + 0.5);
-      const r = plantarBandeira(celula.x + 0.5, celula.y + 0.5);
+      const cursor = miraConstrucao();
+      const mira = clampMiraConstrucao(
+        corpo,
+        miraMundo?.x ?? cursor?.x ?? celula.x + 0.5,
+        miraMundo?.y ?? cursor?.y ?? celula.y + 0.5,
+      );
+      definirMiraConstrucao(mira.x, mira.y);
+      const r = plantarBandeira(mira.x, mira.y);
       if (!r.ok) return mensagemFalha(r.reason) || "Não deu para plantar a bandeira.";
       return r.relocated ? "Base relocada." : "Base plantada.";
     }
@@ -995,7 +1003,12 @@ export function usarNoClique(corpo, celula, alvoBloco) {
       return "";
     }
     if (item.key === "hammer" && !estado.interior) {
-      const mira = clampMiraConstrucao(corpo, celula.x + 0.5, celula.y + 0.5);
+      const cursor = miraConstrucao();
+      const mira = clampMiraConstrucao(
+        corpo,
+        miraMundo?.x ?? cursor?.x ?? celula.x + 0.5,
+        miraMundo?.y ?? cursor?.y ?? celula.y + 0.5,
+      );
       const ax = mira.x;
       const ay = mira.y;
       definirMiraConstrucao(ax, ay);

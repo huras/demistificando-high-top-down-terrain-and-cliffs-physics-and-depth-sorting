@@ -4,6 +4,7 @@
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { velocidadeDe } from "../pokemon/ator.js";
 import { irPara } from "../pokemon/ia.js";
+import { resolverForaDeObstaculo } from "../fisica/obstaculos.js";
 import {
   definirDeployado,
   listaParty,
@@ -13,6 +14,7 @@ import {
 import { relogioPokemon } from "../pokemon/sistema.js";
 import { marcarPose } from "../pokemon/sprites.js";
 import { ACAO, capacidadesDe, esperaDaAcao } from "../campo/capacidades.js";
+import { invalidarColisaoBase, sincronizarColisaoBase } from "./colisao.js";
 import { acertarRitual, siteConstrucao, temRitualAtivo } from "./ritual.js";
 import { poeiraDoPreview } from "./poeira.js";
 
@@ -40,6 +42,36 @@ export function indiceCompanheiroConstrutor() {
     if (party[i] && !party[i].morto) return i;
   }
   return -1;
+}
+
+/**
+ * Casa nasce no companion — joga ele pra fora do footprint.
+ * @param {{ house?: { x:number, y:number, cols?:number, rows?:number } } | null | undefined} committed
+ * @param {object | null} [mon]
+ */
+export function ejetarAposConstrucao(committed, mon = pokemonDeployado()) {
+  if (!mon || mon.morto) return;
+  invalidarColisaoBase();
+  sincronizarColisaoBase();
+  cancelarPath(mon.id);
+  const house = committed?.house;
+  if (house && Number.isFinite(house.x) && Number.isFinite(house.y)) {
+    const half = Math.max(house.cols || 6, house.rows || 5) * 0.5 + 1.2;
+    let dx = mon.x - house.x;
+    let dy = mon.y - house.y;
+    let d = Math.hypot(dx, dy);
+    if (d < 1e-4) {
+      dx = 0;
+      dy = 1;
+      d = 1;
+    }
+    mon.x = house.x + (dx / d) * half;
+    mon.y = house.y + (dy / d) * half;
+  }
+  resolverForaDeObstaculo(mon);
+  mon.vx = 0;
+  mon.vy = 0;
+  mon.andando = false;
 }
 
 /**
@@ -131,6 +163,7 @@ export function tickOrdemConstrucao(dt) {
   ordem.proximo = agora + esperaDaAcao(ACAO.CONSTRUIR);
   if (r.done) {
     mon.ordemCampo = null;
+    ejetarAposConstrucao(r.committed, mon);
     return { hit: true, done: true };
   }
   return { hit: true, done: false, precisaAuto: false };

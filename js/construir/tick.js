@@ -15,9 +15,10 @@ import {
   temClaim,
 } from "./indice.js";
 import { sincronizarColisaoBase } from "./colisao.js";
-import { tickOrdemConstrucao } from "./ordemRitual.js";
+import { ejetarAposConstrucao, tickOrdemConstrucao } from "./ordemRitual.js";
 import { poeiraDoPreview } from "./poeira.js";
 import { clampMiraConstrucao } from "./mira.js";
+import { pokemonDeployado } from "../pokemon/party.js";
 
 /** @type {{ x: number, y: number } | null} */
 let mira = null;
@@ -75,7 +76,8 @@ export function tickConstrucao(corpo, dt, cenario) {
       autoHitAcc += dt;
       if (autoHitAcc >= AUTO_HIT_GRACE) {
         const r = tickRitual(dt, { autoHit: true });
-        if (r?.hit || r?.done) poeiraDoPreview(siteConstrucao()?.preview);
+        if (r?.hit && !r?.done) poeiraDoPreview(siteConstrucao()?.preview);
+        if (r?.done) ejetarAposConstrucao(r.committed, pokemonDeployado());
       }
     } else {
       autoHitAcc = 0;

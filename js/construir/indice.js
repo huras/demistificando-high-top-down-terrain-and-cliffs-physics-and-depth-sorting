@@ -105,6 +105,7 @@ export {
   ordenarRitualConstrucao,
   tickOrdemConstrucao,
   indiceCompanheiroConstrutor,
+  ejetarAposConstrucao,
 } from "./ordemRitual.js";
 
 export * from "./cerca/index.js";

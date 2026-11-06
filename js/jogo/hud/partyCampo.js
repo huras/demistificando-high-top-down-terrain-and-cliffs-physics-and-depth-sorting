@@ -22,6 +22,12 @@ import { progressoExp } from "../../pokemon/experiencia.js";
 import { relogioPokemon } from "../../pokemon/sistema.js";
 import { MODE_ICONS } from "./iconesModo.js";
 import { createModePicker, createTeamModePicker } from "./modePicker.js";
+import {
+  garantirWrapSugestao,
+  limparSugestoesItens,
+  ligarHotkeysSugestao,
+  sincronizarSugestoesItens,
+} from "./sugestoesItens.js";
 
 let stripHost = null;
 let detailHost = null;
@@ -164,6 +170,13 @@ export function montarPartyCampo({ strip, detail }) {
   garantirPickers();
   garantirTeamBtn();
   ligarCliques();
+  if (detailHost) garantirWrapSugestao(detailHost);
+  ligarHotkeysSugestao({
+    onAposUsar() {
+      assinaturaDetail = "";
+      pintarPartyCampo();
+    },
+  });
   sincronizarTeamBtn();
   return { sync: pintarPartyCampo };
 }
@@ -270,13 +283,16 @@ function atualizarAneisBuff(ator) {
 
 function pintarDetail() {
   if (!detailHost) return;
+  const wrap = garantirWrapSugestao(detailHost);
   const ator = pokemonDeployado() || pokemonNoCampo();
   if (!ator || ator.capturado) {
     if (assinaturaDetail !== "empty") {
       assinaturaDetail = "empty";
       detailHost.hidden = true;
-      detailHost.innerHTML = "";
+      const card = detailHost.querySelector(".party-combat__detail");
+      if (card) card.remove();
     }
+    limparSugestoesItens(true);
     return;
   }
 
@@ -311,6 +327,7 @@ function pintarDetail() {
     if (barHp) barHp.style.width = `${pctHp}%`;
     if (barExp) barExp.style.width = `${pctExp}%`;
     atualizarAneisBuff(ator);
+    sincronizarSugestoesItens(ator);
     return;
   }
   assinaturaDetail = sig;
@@ -323,8 +340,16 @@ function pintarDetail() {
   const agora = relogioPokemon();
   const buffs = htmlBuffs(ator, agora);
 
-  detailHost.innerHTML = `
-    <div class="party-combat__detail is-visible">
+  let card = detailHost.querySelector(".party-combat__detail");
+  if (!card) {
+    card = document.createElement("div");
+    card.className = "party-combat__detail is-visible";
+    detailHost.appendChild(card);
+  } else {
+    card.classList.add("is-visible");
+  }
+
+  card.innerHTML = `
       <div class="party-combat__head">
         ${face}
         <div class="party-combat__meta">
@@ -364,6 +389,10 @@ function pintarDetail() {
         <button type="button" class="party-combat__action party-combat__action--simbiose${fundido ? " is-on" : ""}" data-act="simbiose" data-i="${i}" ${i >= 0 && !simCinema ? "" : "disabled"} title="${escHtml(simTip)}">
           ${escHtml(simRotulo)}
         </button>
-      </div>
-    </div>`;
+      </div>`;
+
+  if (wrap && wrap.parentElement === detailHost && wrap.nextSibling !== card) {
+    detailHost.insertBefore(wrap, card);
+  }
+  sincronizarSugestoesItens(ator);
 }
