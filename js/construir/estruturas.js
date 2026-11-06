@@ -359,12 +359,17 @@ export function traduzirEstruturas(dx, dy, claimAntigo) {
   for (const b of snapshot) {
     Object.assign(interiors, b.interiors);
     for (const h of b.houses) {
-      if (dentro(h.x, h.y)) casas.push({ ...h, x: h.x + dx, y: h.y + dy });
-      else casas.push(h);
+      if (dentro(h.x, h.y)) {
+        const x = h.x + dx;
+        const y = h.y + dy;
+        casas.push({ ...h, x, y, z: alturaDoRelevo(x, y) });
+      } else casas.push(h);
     }
     for (const f of b.outdoorFurniture) {
       if (dentro(f.x + 0.5, f.y + 0.5)) {
-        moveis.push({ ...f, x: f.x + dx, y: f.y + dy });
+        const x = f.x + dx;
+        const y = f.y + dy;
+        moveis.push({ ...f, x, y, z: alturaDoRelevo(x, y) });
       } else moveis.push(f);
     }
     for (const c of b.fences) {

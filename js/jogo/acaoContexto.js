@@ -202,6 +202,20 @@ export function acaoContexto(ctx) {
     };
   }
 
+  if (alvoLab?.tipo === "pc") {
+    const terminal = alvoLab.ref;
+    escaladaAte = 0;
+    return {
+      id: "pcLab",
+      rotulo: "PC",
+      ancora: {
+        x: ORIGEM_LAB_X + terminal.x,
+        y: ORIGEM_LAB_Y + terminal.y,
+        z: corpo.z || 0,
+      },
+    };
+  }
+
   if (alvoLab?.tipo === "capsula") {
     const tank = alvoLab.ref;
     return {

@@ -7,7 +7,8 @@ import { propPorId } from "../mundo/bioma/propsBioma.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { listaParty, pokemonDeployado } from "../pokemon/party.js";
 import { estaMontado } from "../jogo/ride.js";
-import { acoesDoPokemon } from "./capacidades.js";
+import { avisar, estado } from "../jogo/estado.js";
+import { ACAO, acoesDoPokemon, capacidadesDe } from "./capacidades.js";
 import { ordenarCampo } from "./ordem.js";
 import { FASE } from "./estadoProps.js";
 import {
@@ -19,6 +20,8 @@ import {
 import { snapshotSistemaForca, obterCfgForca } from "../forca/sistemaForca.js";
 import { ordenarForca } from "../forca/tickOrdensForca.js";
 import { definirDeployado } from "../pokemon/party.js";
+import { abrirCatalogoConstruir } from "../construir/modo.js";
+import { atualizarCatalogoConstruir } from "../ui/construirCatalogoHud.js";
 import { t } from "../jogo/i18n.js";
 
 let host = null;
@@ -74,14 +77,60 @@ function indiceDoMon(mon) {
   return party.indexOf(mon);
 }
 
+function monTemConstruir(mon) {
+  if (!mon || mon.morto) return false;
+  const caps = capacidadesDe(mon.especie?.tipos || mon.tipos || []);
+  return caps.includes(ACAO.CONSTRUIR);
+}
+
+/** Mesma prioridade do ritual: deployado capaz, senão primeiro da party. */
+function monConstrutorParty() {
+  const party = listaParty();
+  const deploy = pokemonDeployado();
+  if (monTemConstruir(deploy)) return deploy;
+  for (let i = 0; i < party.length; i++) {
+    if (monTemConstruir(party[i])) return party[i];
+  }
+  return null;
+}
+
+/**
+ * Party com CONSTRUIR + mira no alcance.
+ * Outdoor = catálogo da base; casa do jogador = móveis indoor (martelo).
+ * @param {object} corpo
+ */
+function opcaoConstruir(corpo) {
+  if (Math.hypot(miraX - corpo.x, miraY - corpo.y) > ALCANCE_COMANDO) return null;
+  const mon = monConstrutorParty();
+  if (!mon) return null;
+  if (!estado.interior) return { mon, modo: "outdoor" };
+  if (estado.interior.papel === "casa") return { mon, modo: "indoor" };
+  return null;
+}
+
 /**
  * Action-first: cada opção é uma linha.
  * @param {object[]} forcaOpts
  * @param {object | null} propFarm
+ * @param {{ mon: object } | null} buildOpt
  */
-function htmlAcoes(forcaOpts, propFarm) {
+function htmlAcoes(forcaOpts, propFarm, buildOpt) {
   let html = "";
   let algum = false;
+
+  if (buildOpt?.mon) {
+    algum = true;
+    const mon = buildOpt.mon;
+    const src = retratoDe(mon);
+    const face = src
+      ? `<img class="campo-menu__face" alt="" src="${esc(src)}" />`
+      : "";
+    html += `<button type="button" class="campo-menu__row" data-kind="construir" data-modo="${esc(
+      buildOpt.modo || "outdoor",
+    )}">${face}<span class="campo-menu__row-txt"><strong>${esc(
+      t("construir.titulo"),
+    )}</strong><small>${esc(mon.especie?.nome || "Pokémon")}</small></span></button>`;
+  }
 
   for (let i = 0; i < forcaOpts.length; i++) {
     const op = forcaOpts[i];
@@ -163,7 +212,18 @@ function aoClique(ev) {
   const op = kind === "forca" ? opcoesAtivas[i] : null;
   const farmPropId = alvoId;
   const farmAcao = btn.dataset.acao || "";
+  const buildModo = btn.dataset.modo || "outdoor";
   fecharMenuCampo();
+  if (kind === "construir") {
+    if (buildModo === "indoor") {
+      estado.construir = true;
+      avisar();
+      return;
+    }
+    abrirCatalogoConstruir(true);
+    atualizarCatalogoConstruir();
+    return;
+  }
   if (kind === "forca") {
     if (!op || op.locked || !op.mon) return;
     if (op.id === ACAO_FORCA.LEVANTAR) {
@@ -249,22 +309,19 @@ export function abrirMenuCampo(clientX, clientY, mundoX, mundoY, corpo) {
   const sys = snapshotSistemaForca();
   const forcaOpts = montarOpcoesMenuForca(mundoX, mundoY, corpo, sys, obterCfgForca());
   const propFarm = buscarAlvoCampo(mundoX, mundoY);
+  const buildOpt = opcaoConstruir(corpo);
 
-  // Sem opções de força nem farm
-  if (!forcaOpts.length && !propFarm) return false;
-  if (
-    !forcaOpts.length &&
-    propFarm &&
-    Math.hypot(propFarm.x - corpo.x, propFarm.y - corpo.y) > ALCANCE_COMANDO
-  ) {
-    return false;
-  }
+  const farmLonge =
+    !!propFarm &&
+    Math.hypot(propFarm.x - corpo.x, propFarm.y - corpo.y) > ALCANCE_COMANDO;
+  const farmOk = !!propFarm && !farmLonge;
+  if (!forcaOpts.length && !farmOk && !buildOpt) return false;
 
   const painel = garantir();
   ligar();
   alvoId = propFarm?.id || "";
   opcoesAtivas = forcaOpts;
-  painel.innerHTML = htmlAcoes(forcaOpts, propFarm);
+  painel.innerHTML = htmlAcoes(forcaOpts, farmOk ? propFarm : null, buildOpt);
   painel.hidden = false;
   const margem = 8;
   const largura = painel.offsetWidth || 220;

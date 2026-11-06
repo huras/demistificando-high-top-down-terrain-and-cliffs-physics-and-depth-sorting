@@ -419,6 +419,7 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
   ) {
     executarMovelCasa(acao.alvoCasa);
   } else if (acao.id === "pc") executarAlvoHub(alvoHub);
+  else if (acao.id === "pcLab") executarAlvoLaboratorio(alvoLab);
   else if (acao.id === "loja") executarAlvoHub(alvoHub);
   else if (acao.id === "hubFalar") executarAlvoHub(alvoHub);
   else if (acao.id === "condoEscada" && alvoHub?.tipo === "escada") {

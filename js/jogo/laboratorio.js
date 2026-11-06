@@ -7,7 +7,7 @@ import { especie } from "../pokemon/dados.js";
 import { POKEMON } from "../config.js";
 import { tocarCuraCentro } from "./audio.js";
 import { curaOcupada, iniciarCuraMaquina } from "./maquinaCura.js";
-import { darChave, estado, guardarNaCaixa, guardarVariosNaCaixa, marcarQuest, snapshot, temChave, vagasNasCaixas, avisar } from "./estado.js";
+import { abrirPainel, darChave, estado, guardarNaCaixa, guardarVariosNaCaixa, marcarQuest, snapshot, temChave, vagasNasCaixas, avisar } from "./estado.js";
 import { abrirCapsula } from "./apiHud.js";
 import { falarRinaSantuario, garantirQuestDevice } from "../santuario/questDevice.js";
 import {
@@ -35,6 +35,11 @@ export function executarAlvoLaboratorio(alvo) {
     tocarCuraCentro();
     estado.itemGet = "A máquina curou o time e repôs as Pokébolas.";
     avisar();
+    return;
+  }
+  if (alvo.tipo === "pc") {
+    // Mesmo PC do Centro Pokémon (PC do Bill).
+    abrirPainel("pc");
     return;
   }
   if (alvo.tipo === "capsula") {

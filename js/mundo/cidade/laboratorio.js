@@ -308,10 +308,13 @@ function montar() {
   const pcGrade = 3 * pc.w + 2 * pcGapX;
   const pcOrigem = c.x0 + Math.max(0.5, (c.x1 - c.x0 - pcGrade) * 0.55);
   const pesPc = [c.y0 + pc.h + 0.35, c.y0 + 2 * pc.h + pcGapY + 0.45];
+  /** @type {{ x: number, y: number, halfW: number, halfH: number }[]} */
+  const pcs = [];
   for (let row = 0; row < 2; row++) {
     for (let col = 0; col < 3; col++) {
       const x = pcOrigem + pc.w / 2 + col * (pc.w + pcGapX);
-      emPe(moveis, SPRITE[chavesPc[row * 3 + col]], x, pesPc[row]);
+      const item = emPe(moveis, SPRITE[chavesPc[row * 3 + col]], x, pesPc[row]);
+      pcs.push({ x: item.x, y: item.y, halfW: item.halfW, halfH: item.halfH });
     }
   }
   carimbar(moveis, SPRITE.estante, c.x1 - 0.45 - SPRITE.estante.w, c.y0 + 0.35);
@@ -422,6 +425,7 @@ function montar() {
     salas: layout.salas,
     moveis,
     capsulas,
+    pcs,
     cura,
     bolas,
     npcs,
@@ -578,6 +582,20 @@ export function alvoDoLaboratorio(x, y) {
   const cura = PLANTA.cura;
   const naFrente = Math.hypot(px - cura.x, py - cura.footY) <= 1.85;
   if (pertoCaixa(px, py, cura, 1.6) || naFrente) return { tipo: "cura", ref: cura };
+  let pc = null;
+  let distPc = Infinity;
+  for (let i = 0; i < PLANTA.pcs.length; i++) {
+    const terminal = PLANTA.pcs[i];
+    if (!pertoCaixa(px, py, terminal, 1.35)) continue;
+    const dx = Math.max(Math.abs(px - terminal.x) - terminal.halfW, 0);
+    const dy = Math.max(Math.abs(py - terminal.y) - terminal.halfH, 0);
+    const dist = Math.hypot(dx, dy);
+    if (dist < distPc) {
+      distPc = dist;
+      pc = terminal;
+    }
+  }
+  if (pc) return { tipo: "pc", ref: pc };
   const oak = PLANTA.npcs[0];
   if (Math.hypot(px - oak.x, py - oak.y) <= oak.alcance) return { tipo: "npc", ref: oak };
   let capsula = null;
@@ -635,6 +653,7 @@ export function alvoDoLaboratorio(x, y) {
 export function promptDoLaboratorio(alvo) {
   if (!alvo) return "";
   if (alvo.tipo === "cura") return "Recuperar";
+  if (alvo.tipo === "pc") return "PC — R";
   if (alvo.tipo === "capsula") return "";
   if (alvo.tipo === "inicial") return "";
   if (alvo.tipo === "npc") return `${alvo.ref.nome} — R`;
