@@ -23,6 +23,7 @@ import {
 } from "../config.js";
 import { amostraAgua } from "../mundo/agua/amostra.js";
 import { alturaSobPes, moverAereo } from "./colisao.js";
+import { pisoComTrampolim } from "./trampolim.js";
 import { drenarStaminaNado } from "./stamina.js";
 
 function surfRideAtivo(corpo) {
@@ -99,11 +100,12 @@ export function chaoComVado(x, y, elevRef = null) {
   if (!(solido > 0)) return solido;
   const elev = elevRef != null && Number.isFinite(elevRef) ? elevRef : solido;
   const agua = amostraAgua(x, y, elev);
-  if (agua.superficie <= 0 || agua.caindo) return solido;
-  if (agua.profundidade <= 0.05) return solido;
-  if (deveNadar(agua, Math.min(elev, solido))) return solido;
-  if (agua.fundo > solido) return agua.fundo;
-  return solido;
+  let z = solido;
+  if (agua.superficie > 0 && !agua.caindo && agua.profundidade > 0.05) {
+    if (deveNadar(agua, Math.min(elev, solido))) return solido;
+    if (agua.fundo > solido) z = agua.fundo;
+  }
+  return pisoComTrampolim(x, y, elevRef, z);
 }
 
 export function lembrarChaoSeguro(corpo) {

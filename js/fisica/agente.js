@@ -44,6 +44,7 @@ import {
 } from "./agua.js";
 import { aplicarMulPalha } from "./palha.js";
 import { alturaSobPes, moverAereo, moverComColisao } from "./colisao.js";
+import { aplicarDeslizeVelocidade } from "./deslizeDisco.js";
 import { atualizarCorrida } from "./corrida.js";
 import { ritmoAndar } from "./ritmoAndar.js";
 import {
@@ -486,8 +487,9 @@ export function atualizarAgente(agente, lider, dt, velPedido = 0, distSeguir = 0
         ? atualizarCorrida(agente, ix, iy, dt, true, vel)
         : comCorrente;
     const novo = moverComColisao(agente, agente.vx * dt, agente.vy * dt, "andar");
-    if (novo.bloqueouX) agente.vx = 0;
-    if (novo.bloqueouY) agente.vy = 0;
+    aplicarDeslizeVelocidade(agente, novo);
+    if (novo.bloqueouX && !novo.deslizou) agente.vx = 0;
+    if (novo.bloqueouY && !novo.deslizou) agente.vy = 0;
     agente.x = novo.x;
     agente.y = novo.y;
 

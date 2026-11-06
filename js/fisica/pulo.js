@@ -10,6 +10,7 @@ import {
 import { teclaBaixa } from "../entrada/teclado.js";
 import { chaoComVado, resolverAguaAereo } from "./agua.js";
 import { alturaSobPes, aplicarTetoOverhang } from "./colisao.js";
+import { relancarTrampolim } from "./trampolim.js";
 
 /** Edge de pulo com buffer (aperta um pouco antes de pousar). */
 export function registrarBufferPulo(corpo, apertou) {
@@ -131,6 +132,7 @@ export function atualizarAereo(corpo, dt) {
 export function pousarNoChao(corpo, zChao) {
   const zAntes = corpo.elevacao;
   const z = chaoComVado(corpo.x, corpo.y, zChao) || zChao;
+  if (relancarTrampolim(corpo, z)) return;
   corpo.z = z;
   corpo.elevacao = z;
   corpo.vz = 0;

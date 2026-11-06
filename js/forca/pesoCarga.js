@@ -25,6 +25,8 @@ export function pesoDoProp(prop) {
   if (prop.carryWeight != null) return normalizarPeso(prop.carryWeight);
   if (prop.tipo === "grama" || prop.tipo === "mata") return PESO_MIN;
   const id = String(prop.sprite || prop.id || "").toLowerCase();
+  // Cogumelo cabe na força do jogador (tier 1), qualquer porte.
+  if (id.includes("mushroom")) return PESO_MIN;
   if (id.includes("small") || id.includes("tiny") || id.includes("pebble")) return 1;
   if (id.includes("large") || id.includes("tall") || id.includes("huge") || id.includes("boulder")) {
     return 3;

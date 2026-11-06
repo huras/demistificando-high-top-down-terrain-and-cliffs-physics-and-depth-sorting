@@ -7,6 +7,7 @@ import {
 import { dentroDoMapa } from "../mundo/altura.js";
 import { obterBloco } from "../mundo/voxel/storeMundo.js";
 import { ehSolido } from "../mundo/voxel/tiposBloco.js";
+import { deslizarDeltaDisco } from "./deslizeDisco.js";
 import { discoInvasor, invadeDisco } from "./obstaculos.js";
 
 /**
@@ -93,13 +94,43 @@ export function podeEntrar(cx, cy, zAtual, modo = "andar", elevacao = zAtual, zM
 /**
  * Movimento no chão. Pode entrar em célula mais baixa — o caller inicia a queda.
  * Sobreposição que já existe não gera empurrão: o passo só não pode afundar mais.
+ * Disco imóvel (árvore, pedra) desliza sem atrito: a tangente segue, a normal sai.
  */
 export function moverComColisao(corpo, dx, dy, modo = "andar") {
   let { x, y, z } = corpo;
   const r = corpo.raioCorpo > 0 ? corpo.raioCorpo : RAIO_CORPO;
   const x0 = x;
   const y0 = y;
+  const dx0 = dx;
+  const dy0 = dy;
   const elev = corpo.elevacao ?? z;
+  let deslizou = false;
+
+  let n = 0;
+  let n0x = 0;
+  let n0y = 0;
+  let n1x = 0;
+  let n1y = 0;
+
+  if (modo === "andar" && (dx !== 0 || dy !== 0)) {
+    const d = deslizarDeltaDisco(x, y, dx, dy, elev, r);
+    if (d.tocou) {
+      const ddx = d.dx;
+      const ddy = d.dy;
+      n = d.n;
+      n0x = d.n0x;
+      n0y = d.n0y;
+      n1x = d.n1x;
+      n1y = d.n1y;
+      const lx = x + ddx;
+      const ly = y + ddy;
+      if ((ddx !== 0 || ddy !== 0) && podeAvancar(lx, ly, x, y, elev, r, modo, elev, 0)) {
+        return passo(lx, ly, z, x0, y0, dx0, dy0, true, n, n0x, n0y, n1x, n1y);
+      }
+      const xy = melhorEixo(x, y, ddx, ddy, elev, r, modo, elev, 0);
+      return passo(xy.x, xy.y, z, x0, y0, dx0, dy0, true, n, n0x, n0y, n1x, n1y);
+    }
+  }
 
   if (dx !== 0) {
     const nx = x + dx;
@@ -110,13 +141,53 @@ export function moverComColisao(corpo, dx, dy, modo = "andar") {
     if (podeAvancar(x, ny, x, y, elev, r, modo, elev, 0)) y = ny;
   }
 
+  return passo(x, y, z, x0, y0, dx, dy, deslizou, n, n0x, n0y, n1x, n1y);
+}
+
+function passo(x, y, z, x0, y0, dx, dy, deslizou, n, n0x, n0y, n1x, n1y) {
   return {
     x,
     y,
     z,
     bloqueouX: dx !== 0 && x === x0,
     bloqueouY: dy !== 0 && y === y0,
+    deslizou,
+    n,
+    n0x,
+    n0y,
+    n1x,
+    n1y,
   };
+}
+
+/** XY e YX; fica o que anda mais. O eixo único costuma reentrar no disco. */
+function melhorEixo(x, y, dx, dy, z, r, modo, elev, zMin) {
+  let ax = x;
+  let ay = y;
+  if (dx !== 0) {
+    const tx = x + dx;
+    if (podeAvancar(tx, y, x, y, z, r, modo, elev, zMin)) ax = tx;
+  }
+  if (dy !== 0) {
+    const ty = y + dy;
+    if (podeAvancar(ax, ty, ax, y, z, r, modo, elev, zMin)) ay = ty;
+  }
+
+  let bx = x;
+  let by = y;
+  if (dy !== 0) {
+    const ty = y + dy;
+    if (podeAvancar(x, ty, x, y, z, r, modo, elev, zMin)) by = ty;
+  }
+  if (dx !== 0) {
+    const tx = x + dx;
+    if (podeAvancar(tx, by, x, by, z, r, modo, elev, zMin)) bx = tx;
+  }
+
+  const da = (ax - x) * (ax - x) + (ay - y) * (ay - y);
+  const db = (bx - x) * (bx - x) + (by - y) * (by - y);
+  if (db > da) return { x: bx, y: by };
+  return { x: ax, y: ay };
 }
 
 /**

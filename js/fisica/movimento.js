@@ -18,6 +18,7 @@ import {
   estaPlanando,
   tratarInputAsaDelta,
 } from "./asaDelta.js";
+import { aplicarDeslizeVelocidade } from "./deslizeDisco.js";
 import { moverAereo, moverComColisao } from "./colisao.js";
 import {
   aplicarCorrenteChao,
@@ -46,6 +47,7 @@ import {
   podeIniciarPulo,
   registrarBufferPulo,
 } from "./pulo.js";
+import { armarTimingTrampolim, tentarTimingTrampolim } from "./trampolim.js";
 import { iniciarStamina, regenerarStamina } from "./stamina.js";
 import { resolverMovimentoPosMantle } from "./travaInputEscalada.js";
 import { atualizarVoo, entrarVoo, estaVoando, sairVoo } from "./voo.js";
@@ -179,10 +181,12 @@ export function atualizarMovimentoDirecionado(corpo, dxIn, dyIn, dt, opts = {}) 
     tentarBracada(corpo);
   } else if (estaPlanando(corpo)) {
     tratarInputAsaDelta(corpo, apertouPulo);
+  } else if (tentarTimingTrampolim(corpo, apertouPulo)) {
+    // 3× vira 6× na janela do chapéu
   } else if ((apertouPulo || corpo.puloBufferT > 0) && podeIniciarPulo(corpo)) {
     iniciarPulo(corpo);
   } else if (apertouPulo && !corpo.noChao && !corpo.nadando) {
-    tratarInputAsaDelta(corpo, true);
+    if (!armarTimingTrampolim(corpo)) tratarInputAsaDelta(corpo, true);
   }
 
   // E: gruda na face (auto-escala só em colisão / ar — ver abaixo)
@@ -355,14 +359,23 @@ function atualizarNoChao(corpo, dx, dy, dt, autoEscalar = false) {
     const ty = corpo.y + Math.sign(passoY || corpo.vy || 0) * 0.85;
     const vault = avaliarVault(corpo, tx, ty);
     if (vault.vault && Number.isFinite(vault.landX)) {
-      novo = { x: vault.landX, y: vault.landY, bloqueouX: false, bloqueouY: false };
+      novo = {
+        x: vault.landX,
+        y: vault.landY,
+        bloqueouX: false,
+        bloqueouY: false,
+        deslizou: false,
+        vault: true,
+        n: 0,
+      };
       corpo.vz = Math.max(corpo.vz || 0, 4.2);
       corpo.hopLift = Math.max(corpo.hopLift || 0, 0.45);
     }
   }
 
-  if (novo.bloqueouX) corpo.vx = 0;
-  if (novo.bloqueouY) corpo.vy = 0;
+  if (!novo.vault) aplicarDeslizeVelocidade(corpo, novo);
+  if (novo.bloqueouX && !novo.deslizou) corpo.vx = 0;
+  if (novo.bloqueouY && !novo.deslizou) corpo.vy = 0;
 
   corpo.x = novo.x;
   corpo.y = novo.y;
