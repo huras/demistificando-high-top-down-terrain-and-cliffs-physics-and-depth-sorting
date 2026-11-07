@@ -122,7 +122,7 @@ export function projetarCentroNoChao(camera, vistaX, vistaY, destino = { x: 0, z
 
 /**
  * Sombra de contato (pés + beirada de cliff). Sem cast de shadow map.
- * redonda: disco no ponto em que o centro do sprite cai no chão.
+ * redonda: disco no pé / contato no chão (origem local do grupo do ator).
  */
 export function criarSombraContato3d(opcoes = {}) {
   const redonda = !!opcoes.redonda;

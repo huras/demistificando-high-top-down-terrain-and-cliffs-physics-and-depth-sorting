@@ -11,7 +11,7 @@ import { imagemIcone } from "../jogo/icones.js";
 import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
 import { carregarFolhasGolpe, poseImpacto, poseTiro, telaFolha } from "./combate/folhasGolpe.js";
 import { auraDe, ORBES_KI } from "./combate/ki.js";
-import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
+import { blitQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
 import { atoresVisiveis } from "./sistema.js";
 import { COR_TIPO } from "./tipos.js";
 import {
@@ -47,11 +47,11 @@ function desenharCorpo(ctx, ator) {
   const pack = garantirAtlas(ator.especie.dex, ator.shiny);
   const fr = quadroDe(ator, pack);
   const pronto = !!(fr && pack.img && pack.estado === "pronto");
-  const centro = centroDoQuadro(fr, medida);
   const { sx, sy } = squashAndar(ator);
   const evo = brilhoEvolucao(ator);
   const evoEscala = evo > 0 ? 1 + evo * 0.12 : 1;
-  if (alfa > 0.04) desenharSombra(ctx, chaoX + centro.x * PX * escala, chaoY, escala * alfa * sx);
+  // Sombra no pé (chaoX), sem deslocar pelo centro do quadro.
+  if (alfa > 0.04) desenharSombra(ctx, chaoX, chaoY, escala * alfa * sx);
   ctx.save();
   ctx.globalAlpha = alfa;
   ctx.imageSmoothingEnabled = false;

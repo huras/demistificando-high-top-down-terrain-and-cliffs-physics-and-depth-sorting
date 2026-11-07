@@ -16,8 +16,7 @@ import {
 } from "./arenas.js";
 import { CAM_TURNO } from "./cameraTurno.js";
 import { oscilacaoAndar, squashAndar } from "../pokemon/bounceAndar.js";
-import { blitQuadro, centroDoQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
-import { projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
+import { blitQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
 import { tickFadeArena } from "../render/3d/fadeObstaculo3d.js";
 import {
   aplicarPivoCartao,
@@ -63,7 +62,6 @@ let ombro = null;
 let ombroDt = 0.016;
 let ombroSegurando = false;
 let teatroAng = 0;
-const _desloc = { x: 0, z: 0 };
 const slots = [];
 const tiros = [];
 const faiscas = [];
@@ -694,11 +692,8 @@ function pintarAtor(slot, ator) {
   slot.mat.opacity = ator.morto ? 0.45 : 1;
   const hop = ator.hopLift || 0;
   const encolhe = Math.max(0.42, 1 - hop * 0.85);
-  const centro = centroDoQuadro(fr, medidaSprite(ator));
-  const vistaX = (centro.x / LADO) * slot.sprite.scale.x;
-  const vistaY = (centro.y / LADO) * slot.sprite.scale.y;
-  projetarCentroNoChao(camera, vistaX, vistaY, _desloc);
-  slot.sombra.position.set(ator.x + _desloc.x, 0.03, ator.y + _desloc.z);
+  // Sombra no pé (= posição do ator), sem projetar o centro do sprite.
+  slot.sombra.position.set(ator.x, 0.03, ator.y);
   slot.sombra.scale.set(encolhe, 1, encolhe);
   slot.sombra.material.opacity = (ator.morto ? 0.2 : 0.4) * Math.max(0.3, 1 - hop);
 }

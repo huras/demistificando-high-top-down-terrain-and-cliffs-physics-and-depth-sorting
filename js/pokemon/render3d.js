@@ -3,7 +3,7 @@ import { ALTURA_BLOCO, TILE, yLaminaAgua } from "../config.js";
 import { oscilacaoNado } from "../fx/fxAgua.js";
 import { colunaAgua } from "../mundo/agua/fluxo.js";
 import { alturaPe } from "./ator.js";
-import { criarSombraContato3d, projetarCentroNoChao } from "../render/3d/sombraContato3d.js";
+import { criarSombraContato3d } from "../render/3d/sombraContato3d.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { bolasAtivas, particulasCaptura } from "./captura.js";
 import { carregarFolhasGolpe } from "./combate/folhasGolpe.js";
@@ -13,7 +13,7 @@ import { dropsNoChao } from "./drops.js";
 import { imagemIcone } from "../jogo/icones.js";
 import { oscilacaoAndar, squashAndar } from "./bounceAndar.js";
 import { rumoVisualCorpo } from "../render/3d/facingCamera3d.js";
-import { blitQuadro, centroDoQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
+import { blitQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoEfeitos } from "../efeitos/catalogo.js";
 import { carregarCatalogoParticulas } from "../particulas/catalogo.js";
@@ -64,7 +64,6 @@ const MAX_BRILHO = 4;
 const _mundo = new THREE.Vector3();
 const _luzCidade = new THREE.Color();
 const _branco = new THREE.Color(1, 1, 1);
-const _desloc = { x: 0, z: 0 };
 /** @type {{ x: number, y: number, z: number, cor: string, intensidade: number, d2: number }[]} */
 const candidatosChao = [];
 let camChaoX = 0;
@@ -647,14 +646,11 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
     }
     slot.grupo.visible = some > 0.04;
     if (visual && dirMundo != null) visual.dir = dirMundo;
-    const centro = centroDoQuadro(fr, medidaSprite(ator));
-    const vistaX = (centro.x / LADO) * slot.sprite.scale.x;
-    const vistaY = (centro.y / LADO) * slot.sprite.scale.y;
-    projetarCentroNoChao(camera, vistaX, vistaY, _desloc);
+    // Sombra no pé (= origem do grupo), igual ao jogador — sem projetar o centro do sprite.
     slot.sombra.atualizar(
       { x: ator.x, y: ator.y, z: ator.z, noChao: true, elevacao: ator.z },
       elev,
-      _desloc,
+      { x: 0, z: 0 },
     );
     aplicarBrilho(slot, ator, offsetY, contribuirChao);
     aplicarFlashCorpo(slot, ator);
