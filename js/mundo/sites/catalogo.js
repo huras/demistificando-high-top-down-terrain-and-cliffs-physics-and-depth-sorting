@@ -96,6 +96,8 @@ export function pegadaDoModeloSite(modelo) {
 /** Props de sítio com malha 3D (sem billboard). propId → id em catalogoCasas. */
 export const MODELO_PROP_SITE = Object.freeze({
   [PROP_SITE.toras]: "logs",
+  /** Mesmo poste + luz noturna das cidades. */
+  [PROP_SITE.lampiao]: "poste",
 });
 
 export const PEGADA_PROP_SITE = Object.freeze({

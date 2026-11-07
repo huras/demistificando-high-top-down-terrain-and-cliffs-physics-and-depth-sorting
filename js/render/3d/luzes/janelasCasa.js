@@ -14,7 +14,8 @@ let _ultimoMs = 0;
 
 export function ehMaterialJanela(nome) {
   const n = (nome || "").toLowerCase();
-  return n.includes("mado") || n === "light1";
+  // mado/light1 = janelas HGSS; hikari = lanterna do Glitter Lighthouse.
+  return n.includes("mado") || n === "light1" || n === "hikari";
 }
 
 export function materialDaJanela(mapa) {

@@ -383,7 +383,7 @@ function centrosJanela(grupo) {
   return [{ x: c.x, y: c.y, z: c.z, cor: "#b9d7ff", raio: 1.15, intensidade: 1.2 }];
 }
 
-function pendurarLuzes(inst, id, dono) {
+export function pendurarLuzes(inst, id, dono) {
   let pontos = pontosDoModelo(id);
   if (!pontos.length) pontos = inst.userData.janelas || [];
   if (!pontos.length) return;

@@ -7,7 +7,10 @@ const GERAL = ["casa-bark", "casa-amigo", "casa-cherry", "casa-guia"];
 const FIXOS = {
   centro: { base: "assets/models/cidade/centro/", arquivo: "modelo.obj" },
   loja: { base: "assets/models/cidade/loja/", arquivo: "modelo.obj" },
-  lab: { base: "assets/models/cidade/lab/", arquivo: "modelo.obj" },
+  lab: {
+    base: "assets/models/hgss/Oak Pokemon Research Lab/",
+    arquivo: "Oak Pokemon Research Lab.obj",
+  },
   ginasio: { base: "assets/models/cidade/ginasio/", arquivo: "modelo.obj" },
   museu: { base: "assets/models/cidade/museu/", arquivo: "modelo.obj" },
   coliseu: { base: "assets/models/cidade/coliseu/", arquivo: "modelo.obj" },

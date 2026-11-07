@@ -1,6 +1,6 @@
 /**
- * Malhas 3D dos sítios outdoor — casas/fazenda + props (toras HGSS).
- * Stream por proximidade; moinhos animam o ventilador.
+ * Malhas 3D dos sítios outdoor — casas/fazenda + props (toras HGSS / postes).
+ * Stream por proximidade; moinhos animam o ventilador; luz noturna como a cidade.
  */
 import * as THREE from "three";
 import { CHUNK_XZ } from "../../config.js";
@@ -14,9 +14,17 @@ import {
 } from "../../mundo/sites/catalogo.js";
 import { sitesDoChunk } from "../../mundo/sites/plano.js";
 import { yawDoEdificio } from "../../mundo/cidade/orientacaoEdificio.js";
-import { carregarMoldeCidade } from "./edificiosCidade.js";
+import { carregarMoldeCidade, pendurarLuzes } from "./edificiosCidade.js";
 import { marcarReflexo } from "./ceu/reflexoPoca.js";
 import { carregarMoinhoPivo } from "../../mundo/sites/moinhoPivo.js";
+import { carregarCatalogoLuzes } from "./luzes/catalogo.js";
+import { obterPesoNoite } from "./luzes/pool.js";
+import { oferecerLuzChao } from "./luzes/mapaChao.js";
+import {
+  atualizarRoletaJanela,
+  brilhoDaInstancia,
+  prepararRoletaJanela,
+} from "./luzes/janelasCasa.js";
 import {
   ehModeloMoinho,
   eixoFanDaInstancia,
@@ -29,6 +37,8 @@ import {
 const RAIO_CHUNKS = 3;
 const IDS_CASA = Object.freeze([...new Set(Object.values(MODELO_CASA_SITE))]);
 const IDS_PROP = Object.freeze([...new Set(Object.values(MODELO_PROP_SITE))]);
+
+const _ponto = new THREE.Vector3();
 
 /** Yaw estável por id (props soltos não “olham pro centro”). */
 function yawDoProp(id) {
@@ -65,7 +75,7 @@ export function criarEdificiosSites() {
     resolverPronto = resolve;
   });
 
-  carregarMoinhoPivo()
+  Promise.all([carregarCatalogoLuzes(), carregarMoinhoPivo()])
     .then(() => {
       const cargas = [];
       for (let i = 0; i < IDS_CASA.length; i++) {
@@ -114,6 +124,15 @@ export function criarEdificiosSites() {
     rotores.delete(id);
   }
 
+  function acenderCasa(inst, modelo, dono) {
+    pendurarLuzes(inst, modelo, dono);
+    if (inst.userData.pontosLuz) prepararRoletaJanela(inst, dono);
+  }
+
+  function acenderProp(inst, modelo, dono) {
+    pendurarLuzes(inst, modelo, dono);
+  }
+
   function sincronizar(px, py) {
     const cx = Math.floor(px / CHUNK_XZ);
     const cy = Math.floor(py / CHUNK_XZ);
@@ -159,6 +178,7 @@ export function criarEdificiosSites() {
                 });
               }
             }
+            acenderCasa(inst, casa.modelo, casa.id);
             grupo.add(inst);
             vivos.set(casa.id, inst);
           }
@@ -175,6 +195,7 @@ export function criarEdificiosSites() {
             inst.rotation.y = yawDoProp(prop.id);
             const z = alturaDoRelevo(prop.x, prop.y);
             inst.position.set(prop.x, z, prop.y);
+            acenderProp(inst, modelo, prop.id);
             grupo.add(inst);
             vivos.set(prop.id, inst);
           }
@@ -187,11 +208,35 @@ export function criarEdificiosSites() {
     }
   }
 
+  function tickLuzes(dt) {
+    const pesoNoite = obterPesoNoite();
+    for (const inst of vivos.values()) {
+      const pontos = inst.userData.pontosLuz;
+      if (!pontos) continue;
+      if (inst.userData.roletaJanela) atualizarRoletaJanela(inst, pesoNoite, dt);
+      const brilho = brilhoDaInstancia(inst);
+      if (brilho <= 0.05 || pesoNoite <= 0.02) continue;
+      inst.updateWorldMatrix(true, false);
+      for (let p = 0; p < pontos.length; p++) {
+        const ponto = pontos[p];
+        _ponto.set(ponto.x, ponto.y, ponto.z).applyMatrix4(inst.matrixWorld);
+        oferecerLuzChao(
+          inst.userData.modeloLuz,
+          _ponto.x,
+          _ponto.y,
+          _ponto.z,
+          ponto.cor,
+          ponto.intensidade * brilho,
+        );
+      }
+    }
+  }
+
   return {
     grupo,
     quandoPronto,
     /**
-     * Stream por proximidade + tick dos ventiladores (dt em segundos).
+     * Stream por proximidade + tick dos ventiladores + luz noturna (dt em segundos).
      * @param {number} px
      * @param {number} py
      * @param {number} [dt]
@@ -211,6 +256,7 @@ export function criarEdificiosSites() {
         sincronizar(px, py);
       }
       if (dt > 0 && rotores.size) tickMoinhos(rotores.values(), dt, pxTick, pyTick);
+      tickLuzes(dt > 0 ? dt : 1 / 60);
     },
   };
 }
