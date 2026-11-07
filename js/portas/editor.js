@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
-import { idsVisuais, origemDoModelo, urlDoModelo } from "../mundo/cidade/catalogoCasas.js";
+import { idsEditores, origemDoModelo, urlDoModelo } from "../mundo/cidade/catalogoCasas.js";
 import { lerFacesObj, partirGrupos } from "../mundo/cidade/facesObj.js";
 
 const statusEl = document.getElementById("status");
@@ -84,21 +84,31 @@ const ROTULOS = {
   "casa-amigo": "Casa amigo",
   "casa-cherry": "Casa cherry",
   "casa-guia": "Casa guia",
+  "glitter-lighthouse": "Farol (Glitter Lighthouse)",
+  "moomoo-farm": "MooMoo Farm",
+  "moomoo-farm-silo": "MooMoo Silo",
+  "pokemon-day-care": "Pokemon Day Care",
+  logs: "Logs",
 };
 
-const modelos = idsVisuais()
-  .filter((id) => id !== "poste")
+function ehGltf(arquivo) {
+  return /\.glb$/i.test(arquivo) || /\.gltf$/i.test(arquivo);
+}
+
+const modelos = idsEditores()
   .map((id) => {
     const origem = origemDoModelo(id);
     const arquivo = origem?.arquivo || "modelo.obj";
+    if (ehGltf(arquivo)) return null;
     return {
       id,
-      nome: ROTULOS[id] || arquivo.replace(/\.obj$/i, ""),
+      nome: ROTULOS[id] || arquivo.replace(/\.(obj|glb|gltf)$/i, ""),
       url: origem
         ? `${urlDoModelo(origem.base)}${urlDoModelo(origem.arquivo)}`
         : `assets/models/cidade/${id}/modelo.obj`,
     };
-  });
+  })
+  .filter(Boolean);
 
 let partes = {};
 let modeloId = "";

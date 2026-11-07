@@ -59,7 +59,7 @@ export const MODELO_CASA_SITE = Object.freeze({
   branca: "casa-cherry",
   madeira: "casa-guia",
   cabana: "casa-bark",
-  farol: "ruina",
+  farol: "glitter-lighthouse",
   moomoo: "moomoo-farm",
   dayCare: "pokemon-day-care",
   silo: "moomoo-farm-silo",
@@ -76,6 +76,7 @@ export const PEGADA_MODELO_SITE = Object.freeze({
   "pokemon-day-care": Object.freeze({ cols: 7, rows: 6, ladoX: 7, ladoZ: 6 }),
   "moomoo-farm-silo": Object.freeze({ cols: 4, rows: 4, ladoX: 3.6, ladoZ: 3.6 }),
   "windmill-1": Object.freeze({ cols: 4, rows: 4, ladoX: 3.2, ladoZ: 3.2 }),
+  "glitter-lighthouse": Object.freeze({ cols: 8, rows: 8, ladoX: 7.2, ladoZ: 7.2 }),
 });
 
 /** Modelos HGSS com textura própria — sem tint procedural. */
@@ -85,6 +86,7 @@ export const MODELO_SITE_SEM_TINT = new Set([
   "moomoo-farm-silo",
   "windmill-1",
   "logs",
+  "glitter-lighthouse",
 ]);
 
 export function pegadaDoModeloSite(modelo) {

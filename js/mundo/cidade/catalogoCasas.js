@@ -47,6 +47,10 @@ const SITE_FIXOS = {
     base: "assets/models/hgss/Logs/",
     arquivo: "Logs.obj",
   },
+  "glitter-lighthouse": {
+    base: "assets/models/hgss/Glitter Lighthouse/",
+    arquivo: "Glitter Lighthouse.obj",
+  },
 };
 
 function casa(pasta, arquivo) {
@@ -140,6 +144,23 @@ export function idsVisuais() {
 
 export function idsModelosSite() {
   return [...IDS_SITE];
+}
+
+/** Lista completa pra editores (colisores / portas) — cidade + sítios outdoor. */
+export function idsEditores() {
+  const saida = [];
+  const vistos = new Set();
+  for (const id of idsVisuais()) {
+    if (id === "poste") continue;
+    vistos.add(id);
+    saida.push(id);
+  }
+  for (const id of idsModelosSite()) {
+    if (vistos.has(id)) continue;
+    vistos.add(id);
+    saida.push(id);
+  }
+  return saida;
 }
 
 export function idsColisao() {

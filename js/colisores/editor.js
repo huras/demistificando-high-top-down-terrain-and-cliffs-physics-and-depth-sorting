@@ -2,8 +2,10 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
-import { idsVisuais, origemDoModelo, urlDoModelo } from "../mundo/cidade/catalogoCasas.js";
+import { idsEditores, origemDoModelo, urlDoModelo } from "../mundo/cidade/catalogoCasas.js";
 import { assarSprite, corpoPadraoSprite, entradasEditorSprite, medidaSprite, portaPadraoSprite } from "../mundo/cidade/spritesPredio.js";
+import { pegadaDoModeloSite } from "../mundo/sites/catalogo.js";
+import { pegadaDoPapel } from "../mundo/regiao/volumesCidade.js";
 import { pivoDaImagem } from "../render/pivoPe.js";
 import { criarModoMoinho } from "./modoMoinho.js";
 
@@ -58,16 +60,29 @@ sol.position.set(4, 10, 6);
 cena.add(sol);
 cena.add(new THREE.GridHelper(12, 12, 0x3d5248, 0x243028));
 
-const lote = new THREE.LineLoop(
-  new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(-LADO_X / 2, 0.02, -LADO_Z / 2),
-    new THREE.Vector3(LADO_X / 2, 0.02, -LADO_Z / 2),
-    new THREE.Vector3(LADO_X / 2, 0.02, LADO_Z / 2),
-    new THREE.Vector3(-LADO_X / 2, 0.02, LADO_Z / 2),
-  ]),
-  new THREE.LineBasicMaterial({ color: 0x93a89a }),
-);
+const loteMat = new THREE.LineBasicMaterial({ color: 0x93a89a });
+const lote = new THREE.LineLoop(new THREE.BufferGeometry(), loteMat);
 cena.add(lote);
+
+function loteDoId(id) {
+  const site = pegadaDoModeloSite(id);
+  if (site?.ladoX > 0 && site?.ladoZ > 0) return { x: site.ladoX, z: site.ladoZ };
+  const papel = pegadaDoPapel(id);
+  return { x: papel.x || LADO_X, z: papel.z || LADO_Z };
+}
+
+function atualizarLote(lx, lz) {
+  const hx = lx * 0.5;
+  const hz = lz * 0.5;
+  lote.geometry.dispose();
+  lote.geometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-hx, 0.02, -hz),
+    new THREE.Vector3(hx, 0.02, -hz),
+    new THREE.Vector3(hx, 0.02, hz),
+    new THREE.Vector3(-hx, 0.02, hz),
+  ]);
+}
+atualizarLote(LADO_X, LADO_Z);
 
 const predio = new THREE.Group();
 cena.add(predio);
@@ -96,19 +111,29 @@ const ROTULOS = {
   "casa-amigo": "Casa amigo",
   "casa-cherry": "Casa cherry",
   "casa-guia": "Casa guia",
+  "glitter-lighthouse": "Farol (Glitter Lighthouse)",
+  "moomoo-farm": "MooMoo Farm",
+  "moomoo-farm-silo": "MooMoo Silo",
+  "pokemon-day-care": "Pokemon Day Care",
+  logs: "Logs",
 };
+
+function ehGltf(arquivo) {
+  return /\.glb$/i.test(arquivo) || /\.gltf$/i.test(arquivo);
+}
 
 const itens = [];
 for (let n = 1; n <= 5; n++) {
   itens.push({ id: `cartao-${n}`, nome: `Casa 2D ${n}`, cartao: n });
 }
-for (const id of idsVisuais()) {
-  if (id === "poste") continue;
+for (const id of idsEditores()) {
   const origem = origemDoModelo(id);
   const arquivo = origem?.arquivo || "modelo.obj";
+  // glTF (ex. moinho) tem aba própria — loader deste painel é OBJ.
+  if (ehGltf(arquivo)) continue;
   itens.push({
     id,
-    nome: ROTULOS[id] || arquivo.replace(/\.obj$/i, ""),
+    nome: ROTULOS[id] || arquivo.replace(/\.(obj|glb|gltf)$/i, ""),
     url: origem
       ? `${urlDoModelo(origem.base)}${urlDoModelo(origem.arquivo)}`
       : `assets/models/cidade/${id}/modelo.obj`,
@@ -135,11 +160,15 @@ function caixaDe(x, y, lx, ly) {
 }
 
 function padraoDe(item) {
-  const corpo = caixaDe(0, 0, LADO_X, LADO_Z);
+  const lote = item.cartao || item.sprite ? { x: LADO_X, z: LADO_Z } : loteDoId(item.id);
+  const corpo = caixaDe(0, 0, lote.x, lote.z);
   if (item.sprite) {
-    const corpo = corpoPadraoSprite(item.largura || LADO_X);
+    const corpoSp = corpoPadraoSprite(item.largura || LADO_X);
     const porta = portaPadraoSprite(item.largura || LADO_X);
-    return { corpo: caixaDe(corpo.x, corpo.y, corpo.lx, corpo.ly), porta: caixaDe(porta.x, porta.y, porta.lx, porta.ly) };
+    return {
+      corpo: caixaDe(corpoSp.x, corpoSp.y, corpoSp.lx, corpoSp.ly),
+      porta: caixaDe(porta.x, porta.y, porta.lx, porta.ly),
+    };
   }
   if (item.cartao === 2 || item.cartao === 4) return { corpo, porta: null };
   if (item.cartao) {
@@ -344,7 +373,7 @@ function materialVisivel(orig) {
   });
 }
 
-function prepararMalha(raiz) {
+function prepararMalha(raiz, ladoX = LADO_X, ladoZ = LADO_Z) {
   raiz.traverse((filho) => {
     if (!filho.isMesh) return;
     const antigo = Array.isArray(filho.material) ? filho.material[0] : filho.material;
@@ -363,7 +392,7 @@ function prepararMalha(raiz) {
   const caixa = new THREE.Box3().setFromObject(raiz);
   const sx = caixa.max.x - caixa.min.x || 1;
   const sz = caixa.max.z - caixa.min.z || 1;
-  const escala = Math.min(LADO_X / sx, LADO_Z / sz) * FOLGA;
+  const escala = Math.min(ladoX / sx, ladoZ / sz) * FOLGA;
   raiz.position.set(
     -((caixa.min.x + caixa.max.x) * 0.5),
     -caixa.min.y,
@@ -508,6 +537,8 @@ async function abrir(id) {
   vista = leitura(id);
   foco = vista.porta ? "porta" : "corpo";
   const ticket = ++carga;
+  const loteAlvo = loteDoId(id);
+  atualizarLote(loteAlvo.x, loteAlvo.z);
   dizer(`Abrindo ${item.nome}…`);
   desenharLista();
   enquadrar(item);
@@ -518,7 +549,7 @@ async function abrir(id) {
       ? await cartao(item.cartao)
       : item.sprite
         ? planoSprite(item)
-        : prepararMalha(await carregarObj(item.url));
+        : prepararMalha(await carregarObj(item.url), loteAlvo.x, loteAlvo.z);
     if (ticket !== carga) {
       visual.traverse?.((filho) => {
         filho.geometry?.dispose?.();

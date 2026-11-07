@@ -9,7 +9,10 @@ import { bocasPerto } from "../../caverna/bocas.js";
 
 const URL_GLB = "assets/models/overworld/cavern-entrance/cavern-entrance.glb";
 const ALTURA_ALVO = 2.1;
-const AVANCO = 1.05;
+/** Centro do vão 5×2 (células t = 1 e 2 à frente da parede). */
+const AVANCO = 1.5;
+/** Mesma folga dos prédios: kage não z-fighta com o terreno. */
+const LIFT_KAGE = 0.04;
 const RAIO = 72;
 
 /** @type {THREE.Group | null} */
@@ -37,8 +40,15 @@ function preparar(raiz) {
     mesh.receiveShadow = true;
     mesh.frustumCulled = true;
   });
-  raiz.position.sub(box.getCenter(new THREE.Vector3()));
-  return raiz;
+  // Pivot no centro do chão: o scale do clone sobe a peça sem levantar a base.
+  raiz.position.set(
+    -(box.min.x + box.max.x) * 0.5,
+    -box.min.y,
+    -(box.min.z + box.max.z) * 0.5,
+  );
+  const pivot = new THREE.Group();
+  pivot.add(raiz);
+  return pivot;
 }
 
 function garantir(scene) {
@@ -94,11 +104,10 @@ export function atualizarBocasCaverna(px, py) {
       continue;
     }
     mesh.visible = true;
-    const avanco = AVANCO;
     mesh.position.set(
-      boca.x + (boca.dirX || 0) * avanco,
-      boca.z * ALTURA_BLOCO + ALTURA_ALVO * 0.5,
-      boca.y + (boca.dirY || 0) * avanco,
+      boca.x + (boca.dirX || 0) * AVANCO,
+      boca.z * ALTURA_BLOCO + LIFT_KAGE,
+      boca.y + (boca.dirY || 0) * AVANCO,
     );
     mesh.rotation.set(0, boca.yaw || 0, 0);
     mesh.scale.setScalar(escala);

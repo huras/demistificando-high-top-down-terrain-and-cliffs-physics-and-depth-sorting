@@ -178,7 +178,8 @@ function publicar(prop) {
       else item = "";
     }
   } else if (tipo === "siteCasa") {
-    const modelo = prop.modelo === "ruina" && prop.siteTipo === "dock" ? "farol" : prop.modelo;
+    const modelo =
+      prop.modelo === "glitter-lighthouse" && prop.siteTipo === "dock" ? "farol" : prop.modelo;
     nome = texto("detalhe.modelo." + (modelo || "casa"), t("detalhe.papel.casa"));
     cor = COR.casa;
     linha = texto("detalhe.sitio." + (prop.siteTipo || ""), "");

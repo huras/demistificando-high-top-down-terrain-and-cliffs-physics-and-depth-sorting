@@ -53,6 +53,7 @@ const CUSTO_CASA_POR_ID = Object.freeze({
   "pokemon-day-care": Object.freeze({ wood: 80, stone: 40 }),
   "moomoo-farm-silo": Object.freeze({ wood: 40, stone: 50 }),
   "windmill-1": Object.freeze({ wood: 50, stone: 25, plantFiber: 15 }),
+  "glitter-lighthouse": Object.freeze({ wood: 40, stone: 50 }),
   ruina: Object.freeze({ wood: 30, stone: 80 }),
 });
 
@@ -88,7 +89,9 @@ function receitaCasa(buildingId) {
     cols: fp.cols,
     rows: fp.rows,
     floors: 1,
-    enterable: !["moomoo-farm-silo", "windmill-1", "ruina"].includes(buildingId),
+    enterable: !["moomoo-farm-silo", "windmill-1", "glitter-lighthouse", "ruina"].includes(
+      buildingId
+    ),
     costs: { ...costs },
   };
 }
