@@ -1,5 +1,5 @@
 /**
- * Aba Moinho do editor de colisores — ajusta o pivô do ventilador.
+ * Aba Moinho do editor de colisores — pivô do ventilador / feixe do farol.
  */
 import * as THREE from "three";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
@@ -15,9 +15,18 @@ import {
   eixoYawDaInstancia,
   montarArticulacaoMoinho,
 } from "../render/3d/moinhoSites.js";
+import {
+  ID_FAROL,
+  aplicarOffsetFeixeFarol,
+  ehModeloFarol,
+  montarFeixeFarol,
+  tickFarois,
+} from "../render/3d/farolSites.js";
+import { obterPesoNoite } from "../render/3d/luzes/pool.js";
 
 export const ITENS_MOINHO = Object.freeze([
   { id: "windmill-1", nome: "EditedWindmill 1" },
+  { id: ID_FAROL, nome: "Farol (feixe)" },
 ]);
 
 /**
@@ -43,6 +52,7 @@ export function criarModoMoinho(ctx) {
   /** @type {THREE.Object3D | null} */
   let marca = null;
   let spin = true;
+  let modoFarol = false;
 
   const dxEl = document.getElementById("moinho-dx");
   const dyEl = document.getElementById("moinho-dy");
@@ -73,7 +83,8 @@ export function criarModoMoinho(ctx) {
       dz: marca.position.z - hub.z,
     };
     gravar(off);
-    aplicarOffsetEixoFan(eixo, off);
+    if (modoFarol) aplicarOffsetFeixeFarol(eixo, off);
+    else aplicarOffsetEixoFan(eixo, off);
     syncHud(off);
   });
 
@@ -128,25 +139,34 @@ export function criarModoMoinho(ctx) {
     eixo = null;
     eixoYaw = null;
     marca = null;
+    modoFarol = false;
   }
 
   async function abrir(id) {
     modeloId = id;
     limparPredio();
+    modoFarol = ehModeloFarol(id);
     dizer(`Carregando ${id}…`);
     const pegada = pegadaDoModeloSite(id);
     const opts = pegada ? { ladoX: pegada.ladoX, ladoZ: pegada.ladoZ } : null;
     definirCacheMoinhoPivo(arquivo);
     const molde = await carregarMoldeCidade(id, opts);
     if (!molde) {
-      dizer("Não carregou o moinho");
+      dizer(modoFarol ? "Não carregou o farol" : "Não carregou o moinho");
       return;
     }
     const off = arquivo[id] ? { ...arquivo[id] } : { dx: 0, dy: 0, dz: 0 };
-    const art = montarArticulacaoMoinho(molde, id);
-    eixo = art?.eixoFan || null;
-    eixoYaw = art?.eixoYaw || eixoYawDaInstancia(molde);
-    if (eixo) aplicarOffsetEixoFan(eixo, off);
+
+    if (modoFarol) {
+      eixo = montarFeixeFarol(molde);
+      if (eixo) aplicarOffsetFeixeFarol(eixo, off);
+      eixoYaw = null;
+    } else {
+      const art = montarArticulacaoMoinho(molde, id);
+      eixo = art?.eixoFan || null;
+      eixoYaw = art?.eixoYaw || eixoYawDaInstancia(molde);
+      if (eixo) aplicarOffsetEixoFan(eixo, off);
+    }
     predio.add(molde);
 
     marca = new THREE.Mesh(
@@ -162,13 +182,20 @@ export function criarModoMoinho(ctx) {
       gizmo.visible = true;
     }
     syncHud(off);
-    dizer(`${id} · pivô do cata-vento (rosa) · head segue o vento no jogo`);
+    dizer(
+      modoFarol
+        ? `${id} · pivô do feixe (rosa) · dy = altura`
+        : `${id} · pivô do cata-vento (rosa) · head segue o vento no jogo`
+    );
   }
 
   function onSlider() {
     const off = lerHud();
     gravar(off);
-    if (eixo) aplicarOffsetEixoFan(eixo, off);
+    if (eixo) {
+      if (modoFarol) aplicarOffsetFeixeFarol(eixo, off);
+      else aplicarOffsetEixoFan(eixo, off);
+    }
     if (marca && eixo) marca.position.copy(eixo.position);
     syncHud(off);
   }
@@ -178,10 +205,13 @@ export function criarModoMoinho(ctx) {
   }
   btnReset.addEventListener("click", () => {
     gravar({ dx: 0, dy: 0, dz: 0 });
-    if (eixo) aplicarOffsetEixoFan(eixo, { dx: 0, dy: 0, dz: 0 });
+    if (eixo) {
+      if (modoFarol) aplicarOffsetFeixeFarol(eixo, { dx: 0, dy: 0, dz: 0 });
+      else aplicarOffsetEixoFan(eixo, { dx: 0, dy: 0, dz: 0 });
+    }
     if (marca && eixo) marca.position.copy(eixo.position);
     syncHud({ dx: 0, dy: 0, dz: 0 });
-    dizer("Offset zerado (cubo automático)");
+    dizer(modoFarol ? "Offset zerado (altura padrão)" : "Offset zerado (cubo automático)");
   });
 
   async function boot() {
@@ -197,6 +227,11 @@ export function criarModoMoinho(ctx) {
 
   function tick(dt) {
     if (!spin) return;
+    if (modoFarol && eixo) {
+      // Preview: noite simulada plena pra ver o feixe.
+      tickFarois([{ eixo }], dt, Math.max(0.85, obterPesoNoite()));
+      return;
+    }
     if (eixoYaw) eixoYaw.rotation.y += 0.35 * dt;
     if (eixo) eixo.rotation.z += 2.2 * dt;
   }

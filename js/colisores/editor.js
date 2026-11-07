@@ -749,7 +749,7 @@ btnSalvar.addEventListener("click", async () => {
   try {
     if (modo === "moinho") {
       await modoMoinho.salvar();
-      dizer("Pivô do moinho salvo. Recarrega o jogo pra ver na fazenda.");
+      dizer("Pivô animado salvo. Recarrega o jogo pra ver no mundo.");
       desenharLista();
     } else {
       const res = await fetch("/api/colisores", {

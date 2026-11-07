@@ -921,17 +921,19 @@ function validarMoinhoPivo(obj) {
   if (ids.length > 20) throw new Error("muitos moinhos");
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i];
-    if (!/^windmill-[a-z0-9-]{1,40}$/i.test(id)) {
+    // Moinhos + farol (pivô do feixe na aba Moinho).
+    if (!/^(windmill-[a-z0-9-]{1,40}|glitter-lighthouse)$/i.test(id)) {
       throw new Error(`modelo inválido: ${id}`);
     }
     const item = obj[id];
     if (!item || typeof item !== "object" || Array.isArray(item)) {
       throw new Error(`${id} sem offset`);
     }
+    const lim = id === "glitter-lighthouse" ? 64 : 8;
     const limpo = {};
     for (const eixo of ["dx", "dy", "dz"]) {
       const n = Number(item[eixo]);
-      if (!Number.isFinite(n) || Math.abs(n) > 8) {
+      if (!Number.isFinite(n) || Math.abs(n) > lim) {
         throw new Error(`${id} ${eixo}`);
       }
       limpo[eixo] = Math.round(n * 1000) / 1000;

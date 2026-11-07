@@ -21,6 +21,7 @@ import { carregarCatalogoLuzes } from "./luzes/catalogo.js";
 import { obterPesoNoite } from "./luzes/pool.js";
 import { oferecerLuzChao } from "./luzes/mapaChao.js";
 import {
+  aplicarBrilhoFarol,
   atualizarRoletaJanela,
   brilhoDaInstancia,
   prepararRoletaJanela,
@@ -33,6 +34,11 @@ import {
   montarArticulacaoMoinho,
   tickMoinhos,
 } from "./moinhoSites.js";
+import {
+  ehModeloFarol,
+  montarFeixeFarol,
+  tickFarois,
+} from "./farolSites.js";
 
 const RAIO_CHUNKS = 3;
 const IDS_CASA = Object.freeze([...new Set(Object.values(MODELO_CASA_SITE))]);
@@ -67,8 +73,10 @@ export function criarEdificiosSites() {
   const moldes = new Map();
   /** @type {Map<string, THREE.Object3D>} */
   const vivos = new Map();
-  /** @type {Map<string, { eixo: THREE.Object3D, x: number, z: number }>} */
+  /** @type {Map<string, { eixoFan: THREE.Object3D, eixoYaw?: THREE.Object3D, yawPai: number, x: number, z: number }>} */
   const rotores = new Map();
+  /** @type {Map<string, { eixo: THREE.Object3D }>} */
+  const feixes = new Map();
 
   let resolverPronto;
   const quandoPronto = new Promise((resolve) => {
@@ -122,11 +130,14 @@ export function criarEdificiosSites() {
     grupo.remove(inst);
     vivos.delete(id);
     rotores.delete(id);
+    feixes.delete(id);
   }
 
   function acenderCasa(inst, modelo, dono) {
     pendurarLuzes(inst, modelo, dono);
+    // Roleta só nas janelas mado; Shine do farol usa brilho noturno direto.
     if (inst.userData.pontosLuz) prepararRoletaJanela(inst, dono);
+    if (ehModeloFarol(modelo)) inst.userData.brilhoFarolFixo = true;
   }
 
   function acenderProp(inst, modelo, dono) {
@@ -178,6 +189,10 @@ export function criarEdificiosSites() {
                 });
               }
             }
+            if (ehModeloFarol(casa.modelo)) {
+              const eixo = montarFeixeFarol(inst);
+              if (eixo) feixes.set(casa.id, { eixo });
+            }
             acenderCasa(inst, casa.modelo, casa.id);
             grupo.add(inst);
             vivos.set(casa.id, inst);
@@ -211,6 +226,7 @@ export function criarEdificiosSites() {
   function tickLuzes(dt) {
     const pesoNoite = obterPesoNoite();
     for (const inst of vivos.values()) {
+      if (inst.userData.brilhoFarolFixo) aplicarBrilhoFarol(inst, pesoNoite);
       const pontos = inst.userData.pontosLuz;
       if (!pontos) continue;
       if (inst.userData.roletaJanela) atualizarRoletaJanela(inst, pesoNoite, dt);
@@ -255,8 +271,10 @@ export function criarEdificiosSites() {
         pyAplicado = py;
         sincronizar(px, py);
       }
+      const dtTick = dt > 0 ? dt : 1 / 60;
       if (dt > 0 && rotores.size) tickMoinhos(rotores.values(), dt, pxTick, pyTick);
-      tickLuzes(dt > 0 ? dt : 1 / 60);
+      if (feixes.size) tickFarois(feixes.values(), dtTick, obterPesoNoite());
+      tickLuzes(dtTick);
     },
   };
 }

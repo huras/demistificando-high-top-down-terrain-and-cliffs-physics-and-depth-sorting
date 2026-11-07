@@ -6,6 +6,8 @@ import { aplicarLuzCidade } from "./mapaChao.js";
 
 const COR_JANELA = 0xb9d7ff;
 const NOME_JANELA = "h_mado";
+const COR_FAROL = 0xffcc66;
+const NOME_FAROL = "hikari-farol";
 const TAXA_ACESAS = 0.55;
 /** Tempo aproximado (s) para ir de apagada a acesa. */
 const TEMPO_FADE = 1.5;
@@ -14,8 +16,14 @@ let _ultimoMs = 0;
 
 export function ehMaterialJanela(nome) {
   const n = (nome || "").toLowerCase();
-  // mado/light1 = janelas HGSS; hikari = lanterna do Glitter Lighthouse.
-  return n.includes("mado") || n === "light1" || n === "hikari";
+  // mado/light1 = janelas HGSS (não hikari — farol tem material próprio).
+  return n.includes("mado") || n === "light1";
+}
+
+/** Lanterna / Shine do Glitter Lighthouse. */
+export function ehMaterialFarol(nome) {
+  const n = (nome || "").toLowerCase();
+  return n === "hikari" || n.includes("shine") || n === NOME_FAROL;
 }
 
 export function materialDaJanela(mapa) {
@@ -36,6 +44,53 @@ export function materialDaJanela(mapa) {
   });
   aplicarLuzCidade(mat);
   return mat;
+}
+
+/**
+ * Glow do Shine — mesh de efeito (additive + transparente), como flare de poste.
+ * Opacidade sobe com a noite via aplicarBrilhoFarol.
+ */
+export function materialDoFarol(mapa) {
+  if (mapa) {
+    mapa.colorSpace = THREE.SRGBColorSpace;
+    mapa.magFilter = THREE.LinearFilter;
+    mapa.minFilter = THREE.LinearMipmapLinearFilter;
+    mapa.generateMipmaps = true;
+    mapa.wrapS = THREE.ClampToEdgeWrapping;
+    mapa.wrapT = THREE.ClampToEdgeWrapping;
+    mapa.needsUpdate = true;
+  }
+  return new THREE.MeshBasicMaterial({
+    name: NOME_FAROL,
+    map: mapa || null,
+    // Tint amarelo no additive — branco puro estoura demais.
+    color: COR_FAROL,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    side: THREE.DoubleSide,
+    fog: false,
+  });
+}
+
+/** Ajusta opacidade do glow Shine conforme peso da noite (0–1). */
+export function aplicarBrilhoFarol(raiz, pesoNoite) {
+  if (!raiz) return;
+  const n = Math.max(0, Math.min(1, pesoNoite));
+  const op = n <= 0.02 ? 0.06 : 0.12 + n * 0.45;
+  raiz.traverse((filho) => {
+    if (!filho.isMesh) return;
+    const mats = Array.isArray(filho.material) ? filho.material : [filho.material];
+    for (let i = 0; i < mats.length; i++) {
+      const m = mats[i];
+      if (!m || (m.name || "").toLowerCase() !== NOME_FAROL) continue;
+      m.opacity = op;
+      filho.visible = op > 0.02;
+    }
+  });
 }
 
 function hash32(texto) {

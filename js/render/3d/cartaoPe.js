@@ -206,18 +206,34 @@ function aplicarBrilhoBola(bola, brilho) {
 
 export function atualizarBolasCura(bolas, ativo) {
   const foto = ativo ? fotoCuraMaquina() : null;
+  const agora = performance.now() * 0.001;
   for (let i = 0; i < bolas.length; i++) {
     const bola = bolas[i];
     const quadro = foto ? foto[i] : null;
-    if (!quadro || !quadro.visivel) {
-      bola.visible = false;
+
+    // Sessão de cura: pulso / escala / sobe do FSM.
+    if (quadro && quadro.visivel) {
+      bola.visible = true;
+      if (quadro.ballKey) garantirVisualBolaCura(bola, quadro.ballKey);
+      const s = quadro.escala;
+      bola.scale.set(s, s, s);
+      bola.position.y = bola.userData.baseY + (quadro.sobe || 0);
+      aplicarBrilhoBola(bola, quadro.brilho || 0);
       continue;
     }
-    bola.visible = true;
-    if (quadro.ballKey) garantirVisualBolaCura(bola, quadro.ballKey);
-    const s = quadro.escala;
-    bola.scale.set(s, s, s);
-    bola.position.y = bola.userData.baseY + (quadro.sobe || 0);
-    aplicarBrilhoBola(bola, quadro.brilho || 0);
+
+    // Idle no Centro (sem cura): bolas visíveis com giro + bob leve.
+    if (ativo && !foto) {
+      bola.visible = true;
+      garantirVisualBolaCura(bola, bola.userData.ballKey || "pokeball");
+      bola.scale.set(1, 1, 1);
+      const fase = agora * 1.7 + i * 0.85;
+      bola.position.y = bola.userData.baseY + Math.sin(fase) * 0.035;
+      bola.rotation.y = agora * 0.9 + i * 0.4;
+      aplicarBrilhoBola(bola, 0.12);
+      continue;
+    }
+
+    bola.visible = false;
   }
 }

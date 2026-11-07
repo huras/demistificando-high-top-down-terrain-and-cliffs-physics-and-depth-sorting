@@ -18,8 +18,10 @@ import {
   atualizarRoletaJanela,
   brilhoDaInstancia,
   comecarQuadroJanelas,
+  ehMaterialFarol,
   ehMaterialJanela,
   materialDaJanela,
+  materialDoFarol,
   prepararRoletaJanela,
 } from "./luzes/janelasCasa.js";
 import { aplicarLuzBillboard, aplicarProfundidadeVolume } from "./ceu/luzBillboard.js";
@@ -297,6 +299,16 @@ function preparar(raiz, volume) {
       const mapa = filho.material?.map || null;
       filho.material?.dispose?.();
       filho.material = materialDoFlare(mapa);
+      filho.castShadow = false;
+      filho.receiveShadow = false;
+      filho.renderOrder = 2;
+      return;
+    }
+    const nomeObj = String(filho.name || "").toLowerCase();
+    if (ehMaterialFarol(nome) || ehMaterialFarol(nomeObj)) {
+      const mapa = filho.material?.map || null;
+      filho.material?.dispose?.();
+      filho.material = materialDoFarol(mapa);
       filho.castShadow = false;
       filho.receiveShadow = false;
       filho.renderOrder = 2;

@@ -52,7 +52,7 @@ const SITE_FIXOS = {
   },
   "glitter-lighthouse": {
     base: "assets/models/hgss/Glitter Lighthouse/",
-    arquivo: "Glitter Lighthouse.obj",
+    arquivo: "Glitter Lighthouse.glb",
   },
 };
 
