@@ -131,7 +131,7 @@ export function iniciarEncaixePedraLetra(prop, opts = null) {
   const fromY = Number.isFinite(opts?.fromY) ? opts.fromY : prop.y;
   const fromZ = Number.isFinite(opts?.fromZ)
     ? opts.fromZ
-    : prop.z ?? alturaDoRelevo(fromX, fromY) || 0;
+    : (prop.z ?? alturaDoRelevo(fromX, fromY)) || 0;
   const alcance = opts?.alcance > 0 ? opts.alcance : LETRA_ALCANCE_ENCAIXE;
 
   const best = acharBuracoMaisPerto(prop, fromX, fromY, alcance);

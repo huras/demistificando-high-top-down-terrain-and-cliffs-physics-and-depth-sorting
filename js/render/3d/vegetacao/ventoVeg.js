@@ -2,6 +2,9 @@
  * Balanço de vento no vértice (GPU) para billboards de vegetação.
  * Pé no pivô fica parado; o topo cede na direção do vento do clima.
  * Uniforms compartilhados — um set por frame, todos os materiais.
+ *
+ * forca = fração da altura do cartão no topo @ intensidade≈1.
+ * Fase independente da intensidade; rajada modula só amplitude.
  */
 import * as THREE from "three";
 import { VEG_VENTO_ARVORE, VEG_VENTO_CLUMP, VEG_VENTO_MATA } from "../../../config.js";
@@ -13,6 +16,9 @@ export const uniformsVentoVeg = {
 };
 
 const MARCA = Symbol("ventoVeg");
+/** Evita float32 phase noise em sessões longas. */
+const TEMPO_WRAP = 1000;
+const DT_MAX = 1 / 20;
 
 const PERFIS = Object.freeze({
   arvore: VEG_VENTO_ARVORE,
@@ -32,18 +38,23 @@ function codigoVento(perfil) {
   const tipPow = Number(p.tipPow).toFixed(3);
   return `
 {
-  float alt = max(transformed.y, 0.0);
-  float peso = pow(alt, ${tipPow});
+  float altNorm = clamp(transformed.y, 0.0, 1.0);
+  float peso = pow(altNorm, ${tipPow});
   float inten = length(uVentoVeg);
   vec2 dir = inten > 1e-5 ? uVentoVeg / inten : vec2(1.0, 0.0);
 #ifdef USE_INSTANCING
   vec3 pe = instanceMatrix[3].xyz;
+  float alturaMundo = length(instanceMatrix[1].xyz);
 #else
   vec3 pe = vec3(0.0);
+  float alturaMundo = 1.0;
 #endif
-  float fase = uTempoVeg * ${freq} * (0.85 + inten * 0.55) + pe.x * 0.19 + pe.z * 0.14;
+  // Fase fixa do perfil — intensidade não acelera a oscilação.
+  float fase = uTempoVeg * ${freq} + pe.x * 0.19 + pe.z * 0.14;
   float onda = sin(fase) * 0.62 + sin(fase * 1.73 + 2.05) * 0.38;
-  float amp = inten * ${forca} * peso;
+  // Rajada lenta: só amplitude.
+  float rajada = 0.65 + 0.35 * sin(uTempoVeg * 0.35 + pe.x * 0.07);
+  float amp = inten * ${forca} * alturaMundo * peso * rajada;
   vec3 ventoMundo = vec3(dir.x, 0.0, dir.y) * (onda * amp);
 #ifdef USE_INSTANCING
   // Colunas = eixos locais em espaço do pai (já com escala do cartão).
@@ -87,7 +98,7 @@ export function aplicarVentoVeg(material, perfil = "arvore") {
   };
   material.customProgramCacheKey = function chaveVento() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|vento-veg|${chavePerfil}`;
+    return `${base}|vento-veg-v2|${chavePerfil}`;
   };
   return material;
 }
@@ -98,5 +109,7 @@ export function atualizarVentoVeg(dt) {
   const u = uniformsVentoVeg.uVentoVeg.value;
   u.x = vento?.vx ?? 0;
   u.y = vento?.vy ?? 0;
-  uniformsVentoVeg.uTempoVeg.value += Math.max(0, dt || 0);
+  const passo = Math.min(Math.max(dt || 0, 0), DT_MAX);
+  uniformsVentoVeg.uTempoVeg.value =
+    (uniformsVentoVeg.uTempoVeg.value + passo) % TEMPO_WRAP;
 }

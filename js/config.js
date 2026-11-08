@@ -341,12 +341,12 @@ export const VEG_MATA_ESCALA = 0.75;
 /** ~1.7° — abaixo disso o rewrite de milhares de matrizes CPU não vale o custo. */
 export const VEG_YAW_EPS = 0.03;
 /**
- * Balanço GPU (ventoVeg). forca = metros no topo com intensidade≈1;
- * tipPow >1 deixa o pé mais parado.
+ * Balanço GPU (ventoVeg). forca = fração da altura do cartão no topo @ intensidade≈1;
+ * tipPow >1 deixa o pé mais parado. Fase é independente da intensidade.
  */
-export const VEG_VENTO_ARVORE = Object.freeze({ forca: 0.014, freq: 1.15, tipPow: 2.0 });
-export const VEG_VENTO_MATA = Object.freeze({ forca: 0.09, freq: 2.4, tipPow: 1.35 });
-export const VEG_VENTO_CLUMP = Object.freeze({ forca: 0.01, freq: 0.95, tipPow: 2.0 });
+export const VEG_VENTO_ARVORE = Object.freeze({ forca: 0.08, freq: 0.85, tipPow: 1.65 });
+export const VEG_VENTO_MATA = Object.freeze({ forca: 0.16, freq: 1.35, tipPow: 1.35 });
+export const VEG_VENTO_CLUMP = Object.freeze({ forca: 0.03, freq: 0.7, tipPow: 1.8 });
 
 export const JOGADOR_FRAME = 64;
 export const JOGADOR_ESCALA = 0.5;
