@@ -15,7 +15,7 @@ const modoProducao =
 const raizRef = process.env.RAIZ_REF
   ? path.resolve(process.env.RAIZ_REF)
   : path.resolve(raiz, "..", "Pokemon AI");
-const cacheAtlas = path.join(raiz, ".cache", "pmd-atlas", "v9");
+const cacheAtlas = path.join(raiz, ".cache", "pmd-atlas", "v10");
 const porta = Number(process.env.PORT || process.env.PORTA || 4177);
 const hostBind = modoProducao ? "127.0.0.1" : undefined;
 

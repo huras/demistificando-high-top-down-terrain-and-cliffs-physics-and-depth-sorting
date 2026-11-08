@@ -121,10 +121,13 @@ export function criarPersonagem3d(opts = {}) {
       );
       tex.needsUpdate = true;
     }
+    // X por quadro (balanceio lateral). Y ancora no idle da linha —
+    // senão o pe sobe junto com a subidinha da arte e o hop some (leste/oeste/norte).
     const pivo = pivoDoFrame(sheet, col, linha, JOGADOR_FRAME);
+    const pivoChao = pivoDoFrame(sheet, 0, linha, JOGADOR_FRAME);
     const aj = pivoDoJogador();
     pivotX = pivo.x - aj.dx / JOGADOR_FRAME;
-    pivotY = pivo.y - aj.dy / JOGADOR_FRAME;
+    pivotY = pivoChao.y - aj.dy / JOGADOR_FRAME;
     sincronizarPivo(cartao);
     sincronizarPivo(veu);
     sincronizarPivo(silhueta);

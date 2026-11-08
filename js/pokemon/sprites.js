@@ -45,7 +45,7 @@ function bombear() {
 
 async function carregar(item) {
   try {
-    const base = `/ref/sprites/pmd-atlas/v9/${item.id}`;
+    const base = `/ref/sprites/pmd-atlas/v10/${item.id}`;
     const res = await fetch(`${base}/meta.json`);
     if (!res.ok) throw new Error("sem meta");
     const meta = await res.json();
@@ -129,7 +129,10 @@ export function direcao8Camera(dx, dy, yawCam) {
 }
 
 /**
- * Pé em (footX, footY), na base do recorte opaco — igual ao personagem.
+ * Pé em (footX, footY) via pivot do Offsets.png (v10: pivotY + trimY).
+ * Paridade Pokemon AI (`pmdDraw.displayPivotY = 1 − y`): o verde não é a sola —
+ * ancorar em (1 − pivotY) deixa o pe no chão e preserva o hop do quadro.
+ * Atlas antigo sem pivotY: base do recorte opaco.
  * O atlas PMD entra espelhado; o pivô X vira (1 − pivot) pra o pé não escorregar.
  */
 export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala, ajuste) {
@@ -144,8 +147,11 @@ export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala, a
   const trimEsq = fr.w - trimX - trimW;
   const ox = Number(ajuste?.dx);
   const oy = Number(ajuste?.dy);
-  const dx = footX - pivotX * dw + trimEsq * escala + (Number.isFinite(ox) ? ox : 0) * escala;
-  const dy = footY - trimH * escala + (Number.isFinite(oy) ? oy : 0) * escala;
+  const adjX = (Number.isFinite(ox) ? ox : 0) * escala;
+  const adjY = (Number.isFinite(oy) ? oy : 0) * escala;
+  const dx = footX - pivotX * dw + trimEsq * escala + adjX;
+  const peNoTrim = peYNoTrim(fr);
+  const dy = footY - peNoTrim * escala + adjY;
   const sw = (fr.u1 - fr.u0) * atlasW;
   const sh = (fr.v1 - fr.v0) * atlasH;
   ctx.save();
@@ -153,6 +159,19 @@ export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala, a
   ctx.scale(-1, 1);
   ctx.drawImage(img, fr.u0 * atlasW, fr.v0 * atlasH, sw, sh, 0, 0, destW, destH);
   ctx.restore();
+}
+
+/**
+ * Distância (px) do topo do trim até o ancoramento de pé.
+ * AI: top = foot − (1 − pivotY)·h; trim começa trimY abaixo do topo do frame.
+ * Clamp em trimH: Sleep/Hurt deitam com verde no centro — sem clamp a sola enterra.
+ * Hop pra cima (pe > trimH) continua liberado.
+ */
+function peYNoTrim(fr) {
+  const trimH = fr.trimH || fr.h;
+  if (!Number.isFinite(fr.pivotY) || !Number.isFinite(fr.trimY)) return trimH;
+  const pe = (1 - fr.pivotY) * fr.h - fr.trimY;
+  return Math.max(trimH, pe);
 }
 
 /**
@@ -171,7 +190,7 @@ export function centroDoQuadro(fr, ajuste) {
   const dx = Number.isFinite(ox) ? ox : 0;
   const dy = Number.isFinite(oy) ? oy : 0;
   const esquerda = -pivotX * fr.w + trimEsq + dx;
-  const topo = -trimH + dy;
+  const topo = -peYNoTrim(fr) + dy;
   return {
     x: esquerda + trimW * 0.5,
     y: -(topo + trimH * 0.5),

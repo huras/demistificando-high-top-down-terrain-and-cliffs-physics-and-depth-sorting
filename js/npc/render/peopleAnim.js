@@ -52,6 +52,18 @@ export function precisaEspelharDir(dir) {
   return (dir | 0) === DIR_RIGHT;
 }
 
+/**
+ * Sheet Platinum quase não sobe o sprite no walk lateral (frente/costas já sobem ~1px).
+ * Retorna pixels pra deslocar o quadro pra cima nos strides (frames 1 e 3).
+ */
+export function bobPxWalkLateral(dir, frame, andando) {
+  if (!andando) return 0;
+  const d = dir | 0;
+  if (d !== DIR_LEFT && d !== DIR_RIGHT) return 0;
+  const f = ((frame | 0) % WALK_FRAMES + WALK_FRAMES) % WALK_FRAMES;
+  return f === 1 || f === 3 ? 1 : 0;
+}
+
 export function srcRowColumn9(dir, frame, andando) {
   const d = ((dir | 0) % 4 + 4) % 4;
   if (!andando) return COLUMN9_IDLE_SRC[d] | 0;

@@ -85,6 +85,8 @@ export function retanguloDoPersonagem(atlas, corpo) {
   const dw = frame * JOGADOR_ESCALA * ESCALA;
   const dh = dw;
   const pivo = sheet ? pivoDoFrame(sheet, col, linha, frame) : { x: 0.5, y: 1 };
+  // Y do idle da linha: preserva a subidinha dos frames de walk (igual ao 3D).
+  const pivoChao = sheet ? pivoDoFrame(sheet, 0, linha, frame) : pivo;
   const aj = pivoDoJogador();
   const pxSprite = dw / frame;
   const footX = mundoParaTelaX(corpo.x);
@@ -99,7 +101,7 @@ export function retanguloDoPersonagem(atlas, corpo) {
     dw,
     dh,
     px: footX - pivo.x * dw + aj.dx * pxSprite,
-    py: footY - pivo.y * dh + aj.dy * pxSprite,
+    py: footY - pivoChao.y * dh + aj.dy * pxSprite,
     peY: footY,
   };
 }

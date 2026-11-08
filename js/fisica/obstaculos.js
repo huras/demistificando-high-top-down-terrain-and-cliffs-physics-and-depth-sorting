@@ -112,7 +112,7 @@ export function indexarBases(cx, cy, lista) {
     const p = itens[i];
     if (p.oculto || p.forcaCarregado || p.r < 0 || p.fase === "caindo" || p.fase === "removido") continue;
     // Chapéu de meio cliff: piso em trampolim.js, não disco que bloqueia o pé.
-    if (p.sprite === "mushroom-1") continue;
+    if (String(p.sprite || "").includes("mushroom")) continue;
     const r = p.r > 0 ? p.r : raioBase(p.tipo);
     if (!(r > 0) || p.z == null) continue;
     const disco = { x: p.x, y: p.y, z: p.z, r };

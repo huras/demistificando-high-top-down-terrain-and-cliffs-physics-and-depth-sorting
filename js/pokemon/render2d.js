@@ -107,9 +107,14 @@ function retanguloAgua(fr, medida, footX, footY) {
   const destH = trimH * escala;
   const pivotX = 1 - (fr.pivotX ?? 0.5);
   const trimEsq = fr.w - trimX - trimW;
+  // Mesma regra do blitQuadro / Pokemon AI (displayPivotY = 1 − y, clamp na sola).
+  const peNoTrim =
+    Number.isFinite(fr.pivotY) && Number.isFinite(fr.trimY)
+      ? Math.max(trimH, (1 - fr.pivotY) * fr.h - fr.trimY)
+      : trimH;
   const px = footX - pivotX * quadro + trimEsq * escala + medida.dx * escala;
-  const py = footY - destH + medida.dy * escala;
-  return { px, py, dw: destW, peY: py + destH };
+  const py = footY - peNoTrim * escala + medida.dy * escala;
+  return { px, py, dw: destW, peY: footY };
 }
 
 function desenharFlashCorpo(ctx, ator, x, y, escala) {

@@ -1,6 +1,7 @@
 /**
  * Empacota as sheets PMD (overworld) num atlas que o cliente já sabe ler:
- * meta.json + atlas.png em .cache/pmd-atlas/v9/<id>/.
+ * meta.json + atlas.png em .cache/pmd-atlas/v10/<id>/.
+ * v10: pivotY + trimY (offsets verdes) — hop vertical da animação.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -181,7 +182,7 @@ function recorte(data, sheetW, sx, sy, fw, fh) {
   };
 }
 
-function pivo(data, sheetW, sx, sy, fw, fh) {
+function pivo(data, sheetW, sx, sy, fw, fh, peFallbackY = 1) {
   const limX = Math.min(fw, sheetW - sx);
   const limY = Math.min(fh, data.length / 4 / sheetW - sy);
   for (let y = 0; y < limY; y++) {
@@ -196,7 +197,7 @@ function pivo(data, sheetW, sx, sy, fw, fh) {
       }
     }
   }
-  return { x: 0.5, y: 0.5 };
+  return { x: 0.5, y: peFallbackY };
 }
 
 function fatiar(anim, off, meta) {
@@ -216,9 +217,10 @@ function fatiar(anim, off, meta) {
       const sx = f * fw;
       const sy = dir * fh;
       const caixa = recorte(anim.data, anim.width, sx, sy, fw, fh);
+      const peFallbackY = caixa.vazio ? 1 : (caixa.trimY + caixa.trimH) / fh;
       const pivot = off
-        ? pivo(off.data, off.width, sx, sy, fw, fh)
-        : { x: 0.5, y: 0.5 };
+        ? pivo(off.data, off.width, sx, sy, fw, fh, peFallbackY)
+        : { x: 0.5, y: peFallbackY };
       frames.push({
         dir,
         frame: f,
@@ -230,6 +232,7 @@ function fatiar(anim, off, meta) {
         trimH: caixa.trimH,
         vazio: caixa.vazio,
         pivotX: pivot.x,
+        pivotY: pivot.y,
         src: anim,
         sx,
         sy,
@@ -293,9 +296,11 @@ function serializar(fr, atlasW, atlasH) {
     w: fr.w,
     h: fr.h,
     trimX: fr.vazio ? 0 : fr.trimX,
+    trimY: fr.vazio ? 0 : fr.trimY,
     trimW: fr.vazio ? fr.pw : fr.trimW,
     trimH: fr.vazio ? fr.ph : fr.trimH,
     pivotX: fr.pivotX,
+    pivotY: fr.pivotY,
     u0: fr.ax / atlasW,
     v0: fr.ay / atlasH,
     u1: (fr.ax + fr.pw) / atlasW,
@@ -380,7 +385,7 @@ function assarId(raizRef, pastaCache, id) {
 }
 
 export function interpretarPedidoAtlas(pathname) {
-  const m = /^\/ref\/sprites\/pmd-atlas\/v9\/(\d{3}s?)\/(meta\.json|atlas\.png)$/.exec(pathname);
+  const m = /^\/ref\/sprites\/pmd-atlas\/v10\/(\d{3}s?)\/(meta\.json|atlas\.png)$/.exec(pathname);
   if (!m) return null;
   return { id: m[1], arquivo: m[2] };
 }

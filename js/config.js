@@ -193,8 +193,11 @@ export const AGUA_NADO_BOB_A = 0.05;
 export const AGUA_NADO_BOB_B = 0.03;
 export const AGUA_NADO_BOB_PARADO = 0.62;
 
-/** Bounce só visual do Walk PMD (compensa trim do atlas). Em blocos / fração de scale. */
-export const POKE_ANDAR_BOB = 0.055;
+/**
+ * Bounce procedural do Walk — desligado: o hop vem do pivotY do atlas v10.
+ * Squash slime no pouso ainda é só visual.
+ */
+export const POKE_ANDAR_BOB = 0;
 export const POKE_ANDAR_SQUASH = 0.035;
 
 /** Elipse na lâmina. rx cresce até CRESCE vezes; ry é fração de rx. */

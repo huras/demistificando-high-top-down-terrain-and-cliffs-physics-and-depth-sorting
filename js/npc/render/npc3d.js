@@ -22,6 +22,7 @@ import { fatorSombraMundo } from "../../render/3d/ceu/mapaNuvem.js";
 import { amostrarLuzCidade } from "../../render/3d/luzes/mapaChao.js";
 import { FOLHA_PLATINUM } from "../catalogo/carregar.js";
 import {
+  bobPxWalkLateral,
   facingToDirPeople,
   precisaEspelharDir,
   srcRowColumn9,
@@ -82,6 +83,8 @@ function pintarFrame(coluna, dir, frame, andando) {
     ctx.translate(lado, 0);
     ctx.scale(-1, 1);
   }
+  // Hop lateral: pivô já é do idle; sobe 1px nos strides pra bater com frente/costas.
+  const bobPx = bobPxWalkLateral(dir, frame, andando);
   ctx.drawImage(
     folha,
     col * lado,
@@ -89,7 +92,7 @@ function pintarFrame(coluna, dir, frame, andando) {
     lado,
     lado,
     0,
-    0,
+    -bobPx,
     lado,
     lado,
   );

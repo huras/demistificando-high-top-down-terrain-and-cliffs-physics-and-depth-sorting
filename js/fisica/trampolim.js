@@ -1,5 +1,5 @@
 /**
- * Chapéu do cogumelo de bolinhas: meio cliff de piso e relance no pouso.
+ * Chapéu de cogumelo: meio cliff de piso e relance no pouso.
  * A consulta fica no chunk do pé — não varre a vegetação carregada.
  */
 import {
@@ -13,8 +13,14 @@ import {
 import { sacudir } from "../campo/sacudida.js";
 import { propsDoChunk } from "../mundo/bioma/propsBioma.js";
 
-/** Sprite vermelho de bolinhas. Os outros cogumelos só são carga. */
+/** Compat: sprite clássico de bolinhas (todos os mushroom-* pulam agora). */
 export const SPRITE_TRAMPOLIM = "mushroom-1";
+
+/** Qualquer prop cujo sprite seja cogumelo. */
+export function ehSpriteTrampolim(sprite) {
+  const id = String(sprite || "");
+  return id === SPRITE_TRAMPOLIM || id.includes("mushroom");
+}
 
 /** Metade de um nível de cliff. */
 export const ALTURA_CHAPEU = 0.5;
@@ -38,12 +44,12 @@ function vzDe(mul) {
 
 function vivo(prop) {
   if (!prop || prop.oculto || prop.forcaCarregado) return false;
-  if (prop.sprite !== SPRITE_TRAMPOLIM) return false;
+  if (!ehSpriteTrampolim(prop.sprite)) return false;
   const fase = prop.fase;
   return fase !== "caindo" && fase !== "removido";
 }
 
-/** Cogumelo de bolinhas sob o ponto, no disco da pedra. */
+/** Cogumelo sob o ponto, no disco da pedra. */
 export function cogumeloNoDisco(x, y) {
   const x0 = Math.floor((x - RAIO_BASE_PEDRA) / CHUNK_XZ);
   const x1 = Math.floor((x + RAIO_BASE_PEDRA) / CHUNK_XZ);
