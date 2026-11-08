@@ -4,7 +4,7 @@
 import { RAIO_BASE_PEDRA, RAIO_POKEMON } from "../config.js";
 import { colherTufoPorForca } from "../campo/grama.js";
 import { alturaSobPes } from "../fisica/colisao.js";
-import { reindexarEm } from "../mundo/bioma/propsBioma.js";
+import { reindexarEm, sincronizarPropChunk } from "../mundo/bioma/propsBioma.js";
 import { ajustarItem } from "../pokemon/party.js";
 import { iniciarEncaixePedraLetra } from "../letras/runtime.js";
 import { forcaDoCarrier, poderForca, FORCA_HUMANO } from "./forcaEspecie.js";
@@ -82,14 +82,12 @@ export function ocultarProp(prop) {
 export function restaurarProp(prop, x, y) {
   if (!prop) return;
   const z = alturaSobPes(x, y, (prop.z ?? 0) + 1) || prop.z || 0;
-  const ox = prop.x;
-  const oy = prop.y;
   prop.x = x;
   prop.y = y;
   prop.z = z;
   prop.forcaCarregado = false;
-  reindexarEm(ox, oy);
-  reindexarEm(x, y);
+  // Prop pode ter saído do chunk de spawn no voo — move a lista + reindexa bases.
+  sincronizarPropChunk(prop);
 }
 
 /**

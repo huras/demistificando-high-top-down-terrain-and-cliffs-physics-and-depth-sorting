@@ -1,9 +1,8 @@
 /**
  * Chapéu de cogumelo: meio cliff de piso e relance no pouso.
- * A consulta fica no chunk do pé — não varre a vegetação carregada.
+ * Busca por x/y real na área do disco (sobrevive a prop movida de chunk).
  */
 import {
-  CHUNK_XZ,
   GRAVIDADE,
   GRAVIDADE_PULO_SEGURANDO,
   PULO_EPS_POUSO,
@@ -11,7 +10,7 @@ import {
   RAIO_BASE_PEDRA,
 } from "../config.js";
 import { sacudir } from "../campo/sacudida.js";
-import { propsDoChunk } from "../mundo/bioma/propsBioma.js";
+import { visitarVegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 
 /** Compat: sprite clássico de bolinhas (todos os mushroom-* pulam agora). */
 export const SPRITE_TRAMPOLIM = "mushroom-1";
@@ -49,30 +48,25 @@ function vivo(prop) {
   return fase !== "caindo" && fase !== "removido";
 }
 
-/** Cogumelo sob o ponto, no disco da pedra. */
+/** Cogumelo sob o ponto, no disco da pedra (por x/y real, não só bucket do chunk). */
 export function cogumeloNoDisco(x, y) {
-  const x0 = Math.floor((x - RAIO_BASE_PEDRA) / CHUNK_XZ);
-  const x1 = Math.floor((x + RAIO_BASE_PEDRA) / CHUNK_XZ);
-  const y0 = Math.floor((y - RAIO_BASE_PEDRA) / CHUNK_XZ);
-  const y1 = Math.floor((y + RAIO_BASE_PEDRA) / CHUNK_XZ);
   let melhor = null;
   let melhorD = RAIO2;
-  for (let cy = y0; cy <= y1; cy++) {
-    for (let cx = x0; cx <= x1; cx++) {
-      const lista = propsDoChunk(cx, cy);
-      if (!lista) continue;
-      for (let i = 0; i < lista.length; i++) {
-        const p = lista[i];
-        if (!vivo(p)) continue;
-        const dx = p.x - x;
-        const dy = p.y - y;
-        const d = dx * dx + dy * dy;
-        if (d >= melhorD) continue;
-        melhorD = d;
-        melhor = p;
-      }
-    }
-  }
+  visitarVegetacaoNaArea(
+    x - RAIO_BASE_PEDRA,
+    y - RAIO_BASE_PEDRA,
+    x + RAIO_BASE_PEDRA,
+    y + RAIO_BASE_PEDRA,
+    (p) => {
+      if (!vivo(p)) return;
+      const dx = p.x - x;
+      const dy = p.y - y;
+      const d = dx * dx + dy * dy;
+      if (d >= melhorD) return;
+      melhorD = d;
+      melhor = p;
+    },
+  );
   return melhor;
 }
 
