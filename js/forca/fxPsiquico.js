@@ -91,12 +91,13 @@ function criarSprite(id, ordem) {
 
 function garantir() {
   const cen = obterCenario3d();
-  if (!cen?.cena) return null;
-  if (grupo && grupo.parent === cen.cena) return grupo;
+  const cena = cen?.scene;
+  if (!cena) return null;
+  if (grupo && grupo.parent === cena) return grupo;
   void carregarCatalogoElemental();
   grupo = new THREE.Group();
   grupo.name = "forca-psiquico-fx";
-  cen.cena.add(grupo);
+  cena.add(grupo);
   wind = criarSprite(WIND_ID, 9);
   glow = criarSprite(GLOW_ID, 8);
   rastroA = criarSprite(WIND_ID, 7);

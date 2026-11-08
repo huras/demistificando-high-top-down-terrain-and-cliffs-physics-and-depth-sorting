@@ -31,6 +31,8 @@ import { criarRigCamera3d } from "./rigCamera3d.js";
 import { bolaNaMao, cargaRanged, rangedCarregando } from "../../jogo/ranged.js";
 import { obterMiraCursor } from "../../pokemon/captura.js";
 import { botaoDireitoSegurado } from "../../entrada/ponteiro3d.js";
+import { atualizarVisualForca } from "../../forca/visualForca.js";
+import { obterPonteiroForca } from "../../forca/tickForca.js";
 import {
   alfaSprites,
   definirChecagemMalhaTeleporte,
@@ -819,6 +821,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
     carga: cargaRanged(),
     mira: obterMiraCursor(),
   });
+  // Mira de arremesso Força — antes do render (igual arco da bola).
+  atualizarVisualForca(corpo, obterPonteiroForca());
 
   const elev = corpo.elevacao ?? corpo.z ?? 0;
   const elevVis = elev * ALTURA_BLOCO;

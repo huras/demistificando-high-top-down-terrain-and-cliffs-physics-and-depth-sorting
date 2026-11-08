@@ -70,6 +70,7 @@ export {
   alcanceMaxArremesso,
   FORCA_CARGA_MS,
 } from "./arremessar.js";
+export { tentarAcertoArremesso, poderDoImpacto } from "./impactoArremesso.js";
 export { deltaTelaStruggle, ehAgroForca, ehVivoLevantavel } from "./agarrarVivo.js";
 export { ordenarForca, tickOrdensForca } from "./tickOrdensForca.js";
 export { atualizarVisualForca } from "./visualForca.js";
@@ -90,6 +91,7 @@ export {
   tickForca,
   promptForca,
   definirPonteiroForca,
+  obterPonteiroForca,
   prepararCarrierJogador,
   tentarPegarComE,
 } from "./tickForca.js";

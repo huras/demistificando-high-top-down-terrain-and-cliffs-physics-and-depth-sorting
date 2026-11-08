@@ -1,5 +1,6 @@
 /**
  * Arcos elétricos entre pedras vizinhas do glifo (Thunder stretch).
+ * Folhas Thunder_01/02/03 (1×4, anim=variacao): cicla o tile no UV do mesh.
  */
 import * as THREE from "three";
 import { ALTURA_BLOCO } from "../../config.js";
@@ -11,55 +12,100 @@ import {
 } from "../../efeitos/elemental.js";
 
 const CAP = 64;
-const TEX_ID = "Thunder_01";
+const TEX_IDS = Object.freeze(["Thunder_01", "Thunder_02", "Thunder_03"]);
+/** Fallback se o catálogo ainda não veio (Thunder é sempre 1×4). */
+const LAY_THUNDER = Object.freeze({ cols: 1, rows: 4, frames: 4 });
 const AMP = 0.14;
+/** Troca de variante ~12×/s — flicker elétrico. */
+const FRAME_HZ = 12;
 
 /** @type {Map<string, THREE.Texture>} */
-const texCache = new Map();
-/** @type {THREE.Texture | null} */
-let texBase = null;
-/** @type {boolean} */
-let pedindoBase = false;
+const texBase = new Map();
+/** @type {Set<string>} */
+const pedindoBase = new Set();
 
-function garantirTexBase() {
-  if (texBase || pedindoBase) return texBase;
-  const meta = texturaElemental(TEX_ID);
+function layoutThunder(id) {
+  const lay = layoutElemental(id);
+  // Catálogo vazio → 1×1; não cachear UV errado.
+  if ((lay.rows | 0) <= 1 && (lay.cols | 0) <= 1 && (lay.frames | 0) <= 1) {
+    return LAY_THUNDER;
+  }
+  return {
+    cols: Math.max(1, lay.cols | 0),
+    rows: Math.max(1, lay.rows | 0),
+    frames: Math.max(1, lay.frames | 0),
+  };
+}
+
+function garantirTexBase(id) {
+  if (texBase.has(id) || pedindoBase.has(id)) return texBase.get(id) || null;
+  const meta = texturaElemental(id);
   if (!meta?.path || typeof Image === "undefined") return null;
-  pedindoBase = true;
+  pedindoBase.add(id);
   const img = new Image();
   img.onload = () => {
-    texBase = new THREE.Texture(img);
-    texBase.colorSpace = THREE.SRGBColorSpace;
-    texBase.magFilter = THREE.LinearFilter;
-    texBase.minFilter = THREE.LinearFilter;
-    texBase.wrapS = THREE.ClampToEdgeWrapping;
-    texBase.wrapT = THREE.ClampToEdgeWrapping;
-    texBase.needsUpdate = true;
+    const tex = new THREE.Texture(img);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearFilter;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    texBase.set(id, tex);
   };
   img.src = meta.path;
   return null;
 }
 
-function texDoFrame(frame) {
-  garantirTexBase();
-  if (!texBase) return null;
-  const chave = `${TEX_ID}#${frame}`;
-  if (texCache.has(chave)) return texCache.get(chave);
-  const lay = layoutElemental(TEX_ID);
-  const f = Math.max(0, Math.min(lay.frames - 1, frame | 0));
+/**
+ * Isola 1 tile da folha mutando offset/repeat da textura do próprio material.
+ * Evita trocar clones da mesma Source (UV às vezes não atualiza no renderer).
+ * @param {THREE.MeshBasicMaterial} mat
+ * @param {string} texId
+ * @param {number} frame
+ */
+function aplicarFrameNoMaterial(mat, texId, frame) {
+  const base = garantirTexBase(texId);
+  if (!base) return false;
+  const lay = layoutThunder(texId);
+  const frames = Math.max(1, lay.frames);
+  const f = ((frame % frames) + frames) % frames;
   const col = f % lay.cols;
   const row = Math.floor(f / lay.cols);
-  const tex = texBase.clone();
-  tex.needsUpdate = true;
-  tex.repeat.set(1 / lay.cols, 1 / lay.rows);
-  tex.offset.set(col / lay.cols, (lay.rows - 1 - row) / lay.rows);
-  texCache.set(chave, tex);
-  return tex;
+  const offX = col / lay.cols;
+  const offY = (lay.rows - 1 - row) / lay.rows;
+  const repX = 1 / lay.cols;
+  const repY = 1 / lay.rows;
+
+  let tex = mat.map;
+  if (!tex || tex.userData?.texId !== texId) {
+    tex = base.clone();
+    tex.userData = { ...(tex.userData || {}), texId };
+    tex.colorSpace = base.colorSpace;
+    tex.magFilter = base.magFilter;
+    tex.minFilter = base.minFilter;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.matrixAutoUpdate = true;
+    mat.map = tex;
+    mat.needsUpdate = true;
+  }
+
+  if (tex.repeat.x !== repX || tex.repeat.y !== repY) tex.repeat.set(repX, repY);
+  if (tex.offset.x !== offX || tex.offset.y !== offY) {
+    tex.offset.set(offX, offY);
+    tex.updateMatrix();
+  }
+  return true;
 }
 
 function hash01(n) {
   const x = Math.sin(n * 127.1 + n * 311.7) * 43758.5453;
   return x - Math.floor(x);
+}
+
+function texIdDoSeed(seed) {
+  return TEX_IDS[((seed >>> 0) + Math.imul(seed | 0, 7)) % TEX_IDS.length];
 }
 
 const _deX = new THREE.Vector3(1, 0, 0);
@@ -117,9 +163,11 @@ export function criarLetrasArcos3d() {
   }
 
   function atualizar(foco) {
-    garantirTexBase();
+    for (let i = 0; i < TEX_IDS.length; i++) garantirTexBase(TEX_IDS[i]);
     const arcs = arcosLetrasAtivos(foco, 52);
-    const t = performance.now() * 0.014;
+    const agora = performance.now();
+    const tWave = agora * 0.014;
+    const tick = Math.floor(agora * 0.001 * FRAME_HZ);
     let used = 0;
 
     for (let a = 0; a < arcs.length && used < CAP; a++) {
@@ -129,36 +177,37 @@ export function criarLetrasArcos3d() {
       const len = Math.hypot(dx, dy) || 1;
       const nx = -dy / len;
       const ny = dx / len;
-      const envelope = 1;
       const wave =
-        Math.sin(t + arc.seed * 0.01) * AMP * envelope +
-        (hash01(arc.seed + (t | 0)) - 0.5) * AMP * 0.4;
+        Math.sin(tWave + arc.seed * 0.01) * AMP +
+        (hash01(arc.seed + tick) - 0.5) * AMP * 0.4;
       const mx = (arc.sx + arc.ex) * 0.5 + nx * wave;
       const my = (arc.sy + arc.ey) * 0.5 + ny * wave;
       const mz = (arc.sz + arc.ez) * 0.5;
 
-      const mesh = meshes[used++];
-      mesh.visible = true;
-      const frame = (arc.seed + (t | 0)) % 4;
-      const tex = texDoFrame(frame);
-      if (tex && mesh.material.map !== tex) {
-        mesh.material.map = tex;
-        mesh.material.needsUpdate = true;
-      }
-      mesh.material.opacity = 0.55 + 0.4 * arc.grow;
+      const texId = texIdDoSeed(arc.seed);
+      const lay = layoutThunder(texId);
+      // Variacao: troca o tile (e a folha fica fixa por arco via seed).
+      const frame = (arc.seed + tick) % lay.frames;
       const largura = 0.28 * (0.72 + 0.28 * arc.grow);
       const roll = (hash01(arc.seed + 9) - 0.5) * 0.35;
-      // Dois meios-arcos passando pelo ponto médio jitterado
+      const op = 0.55 + 0.4 * arc.grow;
+
+      const mesh = meshes[used++];
+      mesh.visible = true;
+      aplicarFrameNoMaterial(/** @type {THREE.MeshBasicMaterial} */ (mesh.material), texId, frame);
+      mesh.material.opacity = op;
       orientar(mesh, arc.sx, arc.sy, arc.sz, mx, my, mz, largura, roll);
 
       if (used < CAP) {
         const mesh2 = meshes[used++];
         mesh2.visible = true;
-        if (tex && mesh2.material.map !== tex) {
-          mesh2.material.map = tex;
-          mesh2.material.needsUpdate = true;
-        }
-        mesh2.material.opacity = 0.55 + 0.4 * arc.grow;
+        // Meio-arco oposto: outro tile da mesma folha pra parecer raio vivo.
+        aplicarFrameNoMaterial(
+          /** @type {THREE.MeshBasicMaterial} */ (mesh2.material),
+          texId,
+          frame + 1 + (arc.seed & 1),
+        );
+        mesh2.material.opacity = op;
         orientar(mesh2, mx, my, mz, arc.ex, arc.ey, arc.ez, largura, -roll);
       }
     }
@@ -169,9 +218,16 @@ export function criarLetrasArcos3d() {
   function liberar() {
     geo.dispose();
     for (let i = 0; i < meshes.length; i++) {
-      meshes[i].material.map = null;
-      meshes[i].material.dispose();
+      const mat = meshes[i].material;
+      if (mat.map) {
+        mat.map.dispose();
+        mat.map = null;
+      }
+      mat.dispose();
     }
+    for (const tex of texBase.values()) tex.dispose();
+    texBase.clear();
+    pedindoBase.clear();
   }
 
   return { grupo, atualizar, liberar };

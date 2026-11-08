@@ -28,6 +28,7 @@ import {
   FORCA_CARGA_MS,
 } from "./arremessar.js";
 import { aplicarDanoLivre } from "../pokemon/combate/executor.js";
+import { efeitosPokemon, relogioPokemon } from "../pokemon/sistema.js";
 import { reindexarEm } from "../mundo/bioma/propsBioma.js";
 import { alturaCorpo } from "../pokemon/ator.js";
 import {
@@ -405,7 +406,15 @@ export function atualizarCanal(dt, carrier, opts = {}) {
       if (ordered) limparOrderCarrier();
       if (enemy && !enemy.morto) {
         try {
-          aplicarDanoLivre(enemy, carrier, 40, "normal", "physical", Date.now(), null);
+          aplicarDanoLivre(
+            enemy,
+            carrier,
+            40,
+            "normal",
+            "physical",
+            relogioPokemon(),
+            efeitosPokemon(),
+          );
         } catch {
           /* ok */
         }

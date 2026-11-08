@@ -1,17 +1,19 @@
 /**
  * Arremesso balístico de pedras / corpos (Força).
+ * Hit/dano/knockback: ver impactoArremesso.js.
  */
 import { alturaSobPes } from "../fisica/colisao.js";
-import { aplicarDanoLivre } from "../pokemon/combate/executor.js";
-import { selvagensAtivos } from "../pokemon/populacao.js";
 import { restaurarPokemon, restaurarProp } from "./carregar.js";
 import { tentarEncaixarPedraLetra } from "../letras/runtime.js";
+import { pesoDoPokemon } from "./alvos.js";
+import { normalizarPeso, pesoDoProp, PESO_MIN } from "./pesoCarga.js";
+import { tentarAcertoArremesso } from "./impactoArremesso.js";
 
 const THROW_SPEED = 11.2;
-const THROW_SPEED_MIN = 2.05;
-const AIM_CLOSE = 0.5;
+const THROW_SPEED_MIN = 1.55;
+const AIM_CLOSE = 1;
 const AIM_FAR = 5.4;
-const POWER_FLOOR = 0.16;
+const POWER_FLOOR = 0.08;
 const VZ0 = 5.65;
 const GRAV = 13.5;
 const H_DRAG = 1.22;
@@ -22,7 +24,6 @@ const ROLL_MAX = 2.05;
 const ROLL_DRAG_BODY = 4.35;
 const ROLL_STOP_BODY = 0.055;
 const ROLL_MAX_BODY = 3.25;
-const HIT_PAD = 0.42;
 const POWER_DEFAULT = 35;
 const PREVIEW_DT = 1 / 90;
 const CHARGE_MS_DEFAULT = 950;
@@ -90,13 +91,15 @@ export function resolverMiraArremesso(carrier, opts = {}) {
   const ptr = opts.pointer;
   let dirX;
   let dirY;
-  let dist = maxDist;
+  // Sem cursor: joga no mínimo à frente (não no alcance carregado — isso
+  // fazia o “mínimo” parecer 3–4 tiles enquanto a carga subia).
+  let dist = AIM_CLOSE;
 
   if (ptr && Number.isFinite(ptr.x) && Number.isFinite(ptr.y)) {
     const dx = ptr.x - sx;
     const dy = ptr.y - sy;
     const raw = Math.hypot(dx, dy);
-    if (raw > 0.2) {
+    if (raw > 1e-4) {
       dirX = dx / raw;
       dirY = dy / raw;
       dist = Math.max(AIM_CLOSE, Math.min(maxDist, raw));
@@ -115,13 +118,23 @@ export function resolverMiraArremesso(carrier, opts = {}) {
 }
 
 /**
+ * @param {object | null | undefined} carry
+ */
+function pesoDoCarry(carry) {
+  if (carry?.weightTier != null) return normalizarPeso(carry.weightTier, PESO_MIN);
+  if (carry?.prop) return pesoDoProp(carry.prop);
+  if (carry?.enemy) return pesoDoPokemon(carry.enemy);
+  return PESO_MIN;
+}
+
+/**
  * @param {object} carrier
  * @param {object} carry
  * @param {number} aimTx
  * @param {number} aimTy
  */
 export function criarArremesso(carrier, carry, aimTx, aimTy) {
-  const { sx, sy, vx, vy, vz } = calcularLancamento(carrier, aimTx, aimTy);
+  const { sx, sy, vx, vy, vz, power } = calcularLancamento(carrier, aimTx, aimTy);
   // Telecinese: parte da posição atual do anexo (já flutuando).
   const held = carry?.prop || carry?.enemy;
   const startX = Number.isFinite(held?.x) ? held.x : sx;
@@ -129,6 +142,13 @@ export function criarArremesso(carrier, carry, aimTx, aimTy) {
   const zSolo = alturaSobPes(startX, startY, (carrier.z ?? 0) + 1) || carrier.z || 0;
   const zHeld = Number(held?.z);
   const zStart = Number.isFinite(zHeld) ? Math.max(zSolo + 0.26, zHeld) : zSolo + 0.26;
+  const halfW = Math.max(
+    0.35,
+    Number(carry?.halfW) || 0,
+    Number(carry?.prop?.r) || 0,
+    Number(carry?.enemy?.r) || 0,
+    0.45,
+  );
   return {
     id: nextId++,
     kind: carry.kind === "faintedWild" ? "faintedWild" : "rock",
@@ -146,6 +166,9 @@ export function criarArremesso(carrier, carry, aimTx, aimTy) {
     hitDone: false,
     carry,
     thrower: carrier ?? null,
+    weightTier: pesoDoCarry(carry),
+    launchPower: power,
+    halfW,
   };
 }
 
@@ -220,46 +243,6 @@ function pousar(thrown) {
   }
 }
 
-function tentarAcerto(thrown, poder) {
-  if (thrown.hitDone || thrown.phase !== "air") return;
-  const r = Math.max(
-    0.35,
-    thrown.carry?.halfW ?? 0.45,
-    thrown.carry?.enemy?.r ?? 0,
-  );
-  const lista = selvagensAtivos();
-  for (let i = 0; i < lista.length; i++) {
-    const alvo = lista[i];
-    if (!alvo || alvo.morto || alvo.capturado || alvo.forcaCarregado) continue;
-    if (alvo === thrown.carry?.enemy) continue;
-    const ar = Math.max(0.3, alvo.r || 0.34);
-    const d = Math.hypot(alvo.x - thrown.x, alvo.y - thrown.y);
-    if (d > r + ar + HIT_PAD) continue;
-    const pe = alvo.z ?? 0;
-    if (Math.abs((thrown.z ?? pe) - pe) > 2.2) continue;
-    thrown.hitDone = true;
-    const atacante = thrown.thrower?.stats
-      ? thrown.thrower
-      : {
-          tipos: ["normal"],
-          stats: { level: 20, atk: 45, def: 45, spa: 45, spd: 45, spe: 45 },
-          x: thrown.x,
-          y: thrown.y,
-        };
-    try {
-      aplicarDanoLivre(atacante, alvo, poder, "normal", "physical", Date.now(), null);
-    } catch {
-      /* combate opcional */
-    }
-    thrown.x = alvo.x;
-    thrown.y = alvo.y;
-    thrown.vx *= 0.35;
-    thrown.vy *= 0.35;
-    thrown.vz = Math.min(thrown.vz, 0);
-    return;
-  }
-}
-
 /**
  * @param {object[]} lista
  * @param {number} dt
@@ -282,7 +265,7 @@ export function atualizarArremessos(lista, dt, poder = POWER_DEFAULT) {
       t.x += t.vx * dt;
       t.y += t.vy * dt;
       t.z += t.vz * dt;
-      tentarAcerto(t, poder);
+      tentarAcertoArremesso(t, poder);
       const solo = alturaSobPes(t.x, t.y, (t.zSolo ?? 0) + 3) || t.zSolo || 0;
       t.zSolo = solo;
       if ((t.age > 0.05 && t.z <= solo + 0.02 && t.vz <= 0.15) || t.age > MAX_AGE) {
@@ -300,6 +283,7 @@ export function atualizarArremessos(lista, dt, poder = POWER_DEFAULT) {
       const solo = alturaSobPes(t.x, t.y, (t.zSolo ?? 0) + 3) || t.zSolo || 0;
       t.z = solo;
       t.zSolo = solo;
+      tentarAcertoArremesso(t, poder);
       if (Math.hypot(t.vx, t.vy) < rollStop || t.rollAge > rollMax) {
         pousar(t);
         lista.splice(i, 1);

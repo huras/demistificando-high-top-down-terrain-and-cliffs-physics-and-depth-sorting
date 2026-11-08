@@ -6,7 +6,7 @@ import { botaoEsquerdoSegurado } from "../entrada/ponteiro3d.js";
 import { estaMontado, indiceMontado } from "../jogo/ride.js";
 import { estado, avisar } from "../jogo/estado.js";
 import { listaParty } from "../pokemon/party.js";
-import { rangedNaMao } from "../jogo/ranged.js";
+import { obterMiraCursor } from "../pokemon/captura.js";
 import { t } from "../jogo/i18n.js";
 import { carregarOverridesForca, forcaPorDex } from "./forcaEspecie.js";
 import {
@@ -39,6 +39,11 @@ export async function iniciarForca(cfg = null) {
  */
 export function definirPonteiroForca(pt) {
   ponteiroMundo = pt;
+}
+
+/** @returns {{ x: number, y: number } | null} */
+export function obterPonteiroForca() {
+  return ponteiroMundo || obterMiraCursor();
 }
 
 /**
@@ -77,17 +82,20 @@ export function tickForca(dt, corpo, opts = {}) {
   }
 
   const donoCarry = obterCarryOwner();
+  // Com objeto na mão o LMB é do arremesso (tickRanged já fica bloqueadoPorForca),
+  // mesmo com bola/arco equipados na hotbar.
   const playerCarrega = estaCarregandoForca() && donoCarry === carrier;
-  const lmbAgora = playerCarrega && !rangedNaMao() && botaoEsquerdoSegurado();
-  const soltou = playerCarrega && !rangedNaMao() && lmbAntes && !lmbAgora;
+  const lmbAgora = playerCarrega && botaoEsquerdoSegurado();
+  const soltou = playerCarrega && lmbAntes && !lmbAgora;
   lmbAntes = lmbAgora;
 
   // Canal/carry do companion ou do jogador — um tick por frame.
   const actorCanal = obterGrabActor() || donoCarry || obterOrderCarrier() || carrier;
+  const pointer = ponteiroMundo || obterMiraCursor();
   atualizarCanal(dt, actorCanal, {
     carregando: lmbAgora && actorCanal === carrier,
     soltou: soltou && actorCanal === carrier,
-    pointer: ponteiroMundo,
+    pointer,
     playerCarrier: carrier,
   });
 

@@ -11,6 +11,7 @@ import { mundoParaTelaX, mundoParaTelaY } from "../render/camera.js";
 import { hotbarAtivo, contar, uiAberta } from "../jogo/estado.js";
 import { getSpeciesDexStatus } from "../jogo/pokedex/progresso.js";
 import { TIPO_ITEM } from "../wild/catalogo.js";
+import { cargaArremesso, mirandoArremesso } from "../forca/sistemaForca.js";
 import * as THREE from "three";
 
 const _ponto = new THREE.Vector3();
@@ -235,10 +236,33 @@ function textos(ctx, projetar) {
 }
 
 function carga(ctx, projetar, corpo) {
+  if (!corpo) return;
+  // Arremesso Força (pedra/letra): círculo de carga enquanto segura LMB.
+  if (mirandoArremesso()) {
+    const tForca = Math.max(0.05, cargaArremesso());
+    const z = corpo.elevacao ?? corpo.z ?? 0;
+    const p = projetar(corpo.x, corpo.y, z, 0);
+    if (!p) return;
+    const raio = 14 + tForca * 10;
+    ctx.save();
+    ctx.strokeStyle = `rgba(253, 230, 138, ${0.55 + tForca * 0.4})`;
+    ctx.lineWidth = 3.25;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 30, raio, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * tForca);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(15, 23, 42, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 30, raio, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
   // Na mira 3D o arco já comunica a força; círculo só no hipfire.
   if (bolaEmMira()) return;
   const t = cargaAtual();
-  if (t <= 0 || !corpo) return;
+  if (t <= 0) return;
   const z = corpo.elevacao ?? corpo.z ?? 0;
   const p = projetar(corpo.x, corpo.y, z, 0);
   if (!p) return;
