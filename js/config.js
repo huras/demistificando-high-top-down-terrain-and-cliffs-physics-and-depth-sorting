@@ -296,6 +296,16 @@ export const BOLA_LOFT_TOPDOWN = 0.48;
 /** Amostras do arco de mira 3D (grenade-aim). */
 export const BOLA_ARCO_AMOSTRAS = 48;
 
+/**
+ * Colisão compartilhada de projetil (Força / Pokébola) vs cliff/terrace.
+ * Degrau acima disso + abaixo do lip = face → ricochete (não sobe).
+ */
+export const PROJETIL_MAX_STEP_UP = 0.2;
+export const PROJETIL_RESTITUICAO = 0.45;
+export const PROJETIL_ATRITO_PAREDE = 0.7;
+/** AABB vertical do projetil em blocos (corpoColideSolido). */
+export const PROJETIL_ALTURA_COLISAO = 0.35;
+
 /** Carga compartilhada arco/bola no LMB (segure para carregar). */
 export const RANGED_CARGA_TEMPO = 0.7;
 

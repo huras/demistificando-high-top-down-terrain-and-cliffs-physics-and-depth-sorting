@@ -3,6 +3,7 @@
  * Hit/dano/knockback: ver impactoArremesso.js.
  */
 import { alturaSobPes } from "../fisica/colisao.js";
+import { resolverPassoProjetil } from "../fisica/colisaoProjetil.js";
 import { restaurarPokemon, restaurarProp } from "./carregar.js";
 import {
   iniciarEncaixePedraLetra,
@@ -189,49 +190,47 @@ export function amostrarArcoArremesso(carrier, carry, aimTx, aimTy) {
   const rollMax = fainted ? ROLL_MAX_BODY : ROLL_MAX;
   const { sx, sy, vx: vx0, vy: vy0, vz: vz0 } = calcularLancamento(carrier, aimTx, aimTy);
   const zSolo0 = alturaSobPes(sx, sy, (carrier.z ?? 0) + 1) || carrier.z || 0;
-  let vx = vx0;
-  let vy = vy0;
-  let vz = vz0;
-  let x = sx;
-  let y = sy;
-  let z = 0.26;
+  /** Estado mutável — mesma física do runtime (inclui ricochete). */
+  const p = {
+    x: sx,
+    y: sy,
+    z: zSolo0 + 0.26,
+    zSolo: zSolo0,
+    vx: vx0,
+    vy: vy0,
+    vz: vz0,
+    bounces: 0,
+  };
   /** @type {Array<{ x: number, y: number, z: number }>} */
-  const points = [{ x, y, z: zSolo0 + z }];
+  const points = [{ x: p.x, y: p.y, z: p.z }];
   let phase = "air";
   let rollAge = 0;
   let t = 0;
   while (t < MAX_AGE + rollMax + 0.25) {
     t += PREVIEW_DT;
     if (phase === "air") {
-      const prevZ = z;
-      const drag = Math.exp(-H_DRAG * PREVIEW_DT);
-      vx *= drag;
-      vy *= drag;
-      vz -= GRAV * PREVIEW_DT;
-      x += vx * PREVIEW_DT;
-      y += vy * PREVIEW_DT;
-      z += vz * PREVIEW_DT;
-      const solo = alturaSobPes(x, y, zSolo0 + 2) || zSolo0;
-      points.push({ x, y, z: solo + Math.max(0, z) });
-      if ((t > 0.05 && z <= 0.02 && vz <= 0.15) || (prevZ > 0.04 && z < -0.08)) {
-        z = 0;
-        vz = 0;
+      const hit = resolverPassoProjetil(p, PREVIEW_DT, {
+        modo: "air",
+        gravidade: GRAV,
+        dragH: H_DRAG,
+        raio: 0.02,
+      });
+      points.push({ x: p.x, y: p.y, z: p.z });
+      if ((t > 0.05 && hit === "floor") || t > MAX_AGE) {
+        p.vz = 0;
         phase = "roll";
       }
     } else {
       rollAge += PREVIEW_DT;
-      const rDrag = Math.exp(-rollDragK * PREVIEW_DT);
-      vx *= rDrag;
-      vy *= rDrag;
-      x += vx * PREVIEW_DT;
-      y += vy * PREVIEW_DT;
-      const solo = alturaSobPes(x, y, zSolo0 + 2) || zSolo0;
-      points.push({ x, y, z: solo });
-      if (Math.hypot(vx, vy) < rollStop || rollAge > rollMax) break;
+      resolverPassoProjetil(p, PREVIEW_DT, {
+        modo: "roll",
+        dragH: rollDragK,
+      });
+      points.push({ x: p.x, y: p.y, z: p.z });
+      if (Math.hypot(p.vx, p.vy) < rollStop || rollAge > rollMax) break;
     }
-    if (phase === "air" && t > MAX_AGE) break;
   }
-  return { points, landX: x, landY: y };
+  return { points, landX: p.x, landY: p.y };
 }
 
 function pousar(thrown) {
@@ -280,35 +279,28 @@ export function atualizarArremessos(lista, dt, poder = POWER_DEFAULT) {
     const rollMax = fainted ? ROLL_MAX_BODY : ROLL_MAX;
 
     if (t.phase === "air") {
-      const drag = Math.exp(-H_DRAG * dt);
-      t.vx *= drag;
-      t.vy *= drag;
-      t.vz -= GRAV * dt;
-      t.x += t.vx * dt;
-      t.y += t.vy * dt;
-      t.z += t.vz * dt;
+      const hit = resolverPassoProjetil(t, dt, {
+        modo: "air",
+        gravidade: GRAV,
+        dragH: H_DRAG,
+        raio: 0.02,
+      });
       if (magnetizarLetra(t)) {
         lista.splice(i, 1);
         continue;
       }
       tentarAcertoArremesso(t, poder);
-      const solo = alturaSobPes(t.x, t.y, (t.zSolo ?? 0) + 3) || t.zSolo || 0;
-      t.zSolo = solo;
-      if ((t.age > 0.05 && t.z <= solo + 0.02 && t.vz <= 0.15) || t.age > MAX_AGE) {
-        t.z = solo;
+      if ((t.age > 0.05 && hit === "floor") || t.age > MAX_AGE) {
+        t.z = t.zSolo ?? t.z;
         t.vz = 0;
         t.phase = "roll";
       }
     } else {
       t.rollAge = (t.rollAge || 0) + dt;
-      const rDrag = Math.exp(-rollDragK * dt);
-      t.vx *= rDrag;
-      t.vy *= rDrag;
-      t.x += t.vx * dt;
-      t.y += t.vy * dt;
-      const solo = alturaSobPes(t.x, t.y, (t.zSolo ?? 0) + 3) || t.zSolo || 0;
-      t.z = solo;
-      t.zSolo = solo;
+      resolverPassoProjetil(t, dt, {
+        modo: "roll",
+        dragH: rollDragK,
+      });
       if (magnetizarLetra(t)) {
         lista.splice(i, 1);
         continue;

@@ -1,5 +1,6 @@
 import { estaEmCena } from "../cena/modoCena.js";
 import { alturaSobPes } from "../fisica/colisao.js";
+import { resolverPassoProjetil } from "../fisica/colisaoProjetil.js";
 import { BOLAS, TIPO_ITEM } from "../wild/catalogo.js";
 import {
   ALTURA_BLOCO,
@@ -369,10 +370,13 @@ function tickBola(bola, corpo, dt, efeitos) {
   }
 
   if (bola.fase === "voo") {
-    bola.x += bola.vx * dt;
-    bola.y += bola.vy * dt;
-    bola.z += bola.vz * dt;
-    bola.vz -= (bola.grav || BOLA_GRAVIDADE / ALTURA_BLOCO) * dt;
+    const grav = bola.grav || BOLA_GRAVIDADE / ALTURA_BLOCO;
+    const hit = resolverPassoProjetil(bola, dt, {
+      modo: "air",
+      gravidade: grav,
+      floorOffset: BOLA_RAIO_BLOCO,
+      raio: 0.02,
+    });
 
     const lista = selvagensAtivos();
     for (let i = 0; i < lista.length; i++) {
@@ -387,10 +391,7 @@ function tickBola(bola, corpo, dt, efeitos) {
       return;
     }
 
-    const chao = alturaSobPes(bola.x, bola.y, bola.z + 1);
-    const pouso = chao + BOLA_RAIO_BLOCO;
-    if (bola.z <= pouso) {
-      bola.z = pouso;
+    if (hit === "floor") {
       bola.vz = 0;
       bola.fase = "rolando";
       bola.faseT = 0;
@@ -402,10 +403,11 @@ function tickBola(bola, corpo, dt, efeitos) {
 
   if (bola.fase === "rolando") {
     const atrito = Math.max(0, 1 - bola.faseT / BOLA_ROLAR_TEMPO);
-    bola.x += bola.vx * dt * 0.28 * atrito;
-    bola.y += bola.vy * dt * 0.28 * atrito;
-    const chao = alturaSobPes(bola.x, bola.y, bola.z + 1);
-    bola.z = chao + BOLA_RAIO_BLOCO;
+    resolverPassoProjetil(bola, dt, {
+      modo: "roll",
+      floorOffset: BOLA_RAIO_BLOCO,
+      rollMul: 0.28 * atrito,
+    });
     if (bola.faseT > BOLA_ROLAR_TEMPO) {
       bola.vx = 0;
       bola.vy = 0;

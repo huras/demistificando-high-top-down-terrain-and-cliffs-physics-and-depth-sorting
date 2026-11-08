@@ -15,7 +15,7 @@ import {
   BOLA_VEL_MAX,
   BOLA_VEL_MIN,
 } from "../config.js";
-import { alturaSobPes } from "../fisica/colisao.js";
+import { resolverPassoProjetil } from "../fisica/colisaoProjetil.js";
 
 const _dir = { x: 0, y: 0, z: 0 };
 const _arcoPos = new Float32Array(BOLA_ARCO_AMOSTRAS * 3);
@@ -30,6 +30,17 @@ const _resolvido = {
   impacto: _impacto,
   distAlvo: 0,
   maxDist: 0,
+};
+/** Scratch bloco — simularBalistica (Three Y-up → x,y,z bloco). */
+const _passoBola = {
+  x: 0,
+  y: 0,
+  z: 0,
+  zSolo: 0,
+  vx: 0,
+  vy: 0,
+  vz: 0,
+  bounces: 0,
 };
 
 function direcaoComLoft(ux, uy, loft = 0.4) {
@@ -163,14 +174,31 @@ function simularBalistica(corpo, camera3d, vel, mira, loft, gravarArco) {
     count = 1;
   }
 
-  for (let i = 0; i < maxPassos; i++) {
-    vy -= BOLA_GRAVIDADE * dt;
-    px += vx * dt;
-    py += vy * dt;
-    pz += vz * dt;
+  // Three: px=x, py=altura_m, pz=y_mundo. Helper usa blocos x,y,z.
+  const p = _passoBola;
+  p.x = px;
+  p.y = pz;
+  p.z = py / ALTURA_BLOCO;
+  p.zSolo = p.z;
+  p.vx = vx;
+  p.vy = vz;
+  p.vz = vy / ALTURA_BLOCO;
+  p.bounces = 0;
+  const gravBloco = BOLA_GRAVIDADE / ALTURA_BLOCO;
 
-    const soloBloco = alturaSobPes(px, pz, py / ALTURA_BLOCO + 1) || 0;
-    const soloY = soloBloco * ALTURA_BLOCO + BOLA_RAIO_BLOCO * ALTURA_BLOCO;
+  for (let i = 0; i < maxPassos; i++) {
+    const hit = resolverPassoProjetil(p, dt, {
+      modo: "air",
+      gravidade: gravBloco,
+      floorOffset: BOLA_RAIO_BLOCO,
+      raio: 0.02,
+    });
+    px = p.x;
+    pz = p.y;
+    py = p.z * ALTURA_BLOCO;
+    vx = p.vx;
+    vz = p.vy;
+    vy = p.vz * ALTURA_BLOCO;
 
     if (gravarArco && count < BOLA_ARCO_AMOSTRAS) {
       const i3 = count * 3;
@@ -180,7 +208,9 @@ function simularBalistica(corpo, camera3d, vel, mira, loft, gravarArco) {
       count += 1;
     }
 
-    if (py <= soloY) {
+    if (hit === "floor") {
+      const soloBloco = p.zSolo ?? p.z - BOLA_RAIO_BLOCO;
+      const soloY = soloBloco * ALTURA_BLOCO + BOLA_RAIO_BLOCO * ALTURA_BLOCO;
       if (gravarArco && count > 0) {
         const i3 = (count - 1) * 3;
         _arcoPos[i3 + 1] = soloY;
