@@ -356,10 +356,16 @@ function montar(lado, entrada) {
   ator.dirY = 0;
   ator.usaCorpo = entrada.usaCorpo !== false;
   ator.usaDistancia = entrada.usaDistancia !== false;
-  const chaves = Array.isArray(entrada.golpes)
+  const brutas = Array.isArray(entrada.golpes)
     ? entrada.golpes
     : [entrada.corpo, entrada.distancia];
-  equiparGolpes(ator, chaves);
+  const chaves = [];
+  for (let i = 0; i < brutas.length; i++) {
+    const chave = brutas[i];
+    if (chave) chaves.push(chave);
+  }
+  // Sem chaves explícitas: mantém learnset de criarAtor (party OW / viajante).
+  if (chaves.length) equiparGolpes(ator, chaves);
   apresentar(ator);
   return ator;
 }

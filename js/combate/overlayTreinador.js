@@ -51,12 +51,16 @@ const CATEGORIA = {
   status: "status",
 };
 
+const FOCO_MAX = 0.45;
+
 /** @type {HTMLElement|null} */
 let raiz = null;
 /** @type {HTMLCanvasElement|null} */
 let canvas = null;
 let versaoMenu = -1;
 let ritmo = 1;
+let focoAcc = 0;
+let statusEscolhaVersao = -1;
 const poseTiro = { tipo: "tiro", alvo: null };
 
 function garantirDom() {
@@ -124,6 +128,8 @@ export function fecharOverlayTreinador() {
   window.removeEventListener("resize", redimensionar);
   versaoMenu = -1;
   ritmo = 1;
+  focoAcc = 0;
+  statusEscolhaVersao = -1;
 }
 
 export function definirStatusBatalha(texto) {
@@ -191,6 +197,11 @@ function pintarTurno(pedido, aviso) {
   versaoMenu = pedido.versao;
   painel.dataset.modo = "escolha";
   titulo.textContent = "Seu turno";
+  if (pedido.versao !== statusEscolhaVersao) {
+    statusEscolhaVersao = pedido.versao;
+    const mon = estadoLuta().esquerda?.especie?.nome || "Pokémon";
+    definirStatusBatalha(`O que ${mon} fará?`);
+  }
   caixa.replaceChildren();
   for (let i = 0; i < pedido.golpes.length; i++) {
     const g = pedido.golpes[i];
@@ -232,7 +243,25 @@ function poseDoQuadro() {
   return enquadramentoTurno();
 }
 
+function sairDoFoco() {
+  focoAcc = 0;
+  ritmo = 0;
+  concluirFoco();
+  limparInterludio();
+}
+
 function andarRitmo(bruto) {
+  // Failsafe Chrono-style: impacto sticky não pode travar o comando.
+  if (emFoco()) {
+    focoAcc += bruto;
+    if (focoAcc >= FOCO_MAX) {
+      sairDoFoco();
+      return;
+    }
+  } else {
+    focoAcc = 0;
+  }
+
   const pedidoRitmo = ritmoImpacto();
   if (pedidoRitmo !== 1) {
     const passo = bruto / 0.12;
@@ -249,11 +278,7 @@ function andarRitmo(bruto) {
   }
   if (emFoco()) {
     ritmo = Math.max(0, ritmo - bruto / 0.5);
-    if (ritmo <= 0.02) {
-      ritmo = 0;
-      concluirFoco();
-      limparInterludio();
-    }
+    if (ritmo <= 0.02) sairDoFoco();
     return;
   }
   if (pedidoEscolha()) {

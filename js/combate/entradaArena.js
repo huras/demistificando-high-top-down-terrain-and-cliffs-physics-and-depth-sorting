@@ -50,7 +50,7 @@ export function entradaDeSlot(slot) {
   return cfg;
 }
 
-/** Slots vivos do time do jogador no formato { especie, nivel }. */
+/** Slots vivos do time do jogador ({ especie, nivel, golpes? }). */
 export function slotsPartyJogador() {
   const party = listaParty() || [];
   const out = [];
@@ -59,11 +59,21 @@ export function slotsPartyJogador() {
     if (!ator || ator.morto || (ator.hp | 0) <= 0) continue;
     const key = ator.especie?.key || ator.especie?.id;
     if (!key) continue;
-    out.push({
+    const slot = {
       especie: key,
       nivel: ator.nivel | 0,
       origemIndex: i,
-    });
+    };
+    const golpes = ator.golpes;
+    if (Array.isArray(golpes) && golpes.length) {
+      const chaves = [];
+      for (let g = 0; g < golpes.length && chaves.length < 4; g++) {
+        const chave = golpes[g]?.chave || golpes[g]?.def?.key;
+        if (chave) chaves.push(chave);
+      }
+      if (chaves.length) slot.golpes = chaves;
+    }
+    out.push(slot);
   }
   return out;
 }

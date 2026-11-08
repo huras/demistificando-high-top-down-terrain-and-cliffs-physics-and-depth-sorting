@@ -19,7 +19,7 @@ import {
   montarLados,
   tickLuta,
 } from "../../combate/luta.js";
-import { definirModoLuta } from "../../combate/turnos.js";
+import { definirModoLuta, encerrarTurnos } from "../../combate/turnos.js";
 import { estado, avisar } from "../../jogo/estado.js";
 import { curarParty } from "../../pokemon/party.js";
 
@@ -176,6 +176,8 @@ function encerrar(resultado) {
 }
 
 function fecharTudo() {
+  encerrarTurnos();
+  definirModoLuta("real");
   fecharOverlayTreinador();
   estado.batalhaTreinador = null;
   sessao = null;
