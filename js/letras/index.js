@@ -20,6 +20,9 @@ export {
   ehPedraLetra,
   ehPedraLetraSolta,
   tentarEncaixarPedraLetra,
+  iniciarEncaixePedraLetra,
+  tickEncaixeLetras,
+  temBuracoNoAlcance,
 } from "./runtime.js";
 export {
   letraResolvida,

@@ -96,6 +96,7 @@ import {
   promptForca,
   tentarPegarComE,
 } from "../forca/tickForca.js";
+import { tickEncaixeLetras } from "../letras/runtime.js";
 import { t } from "./i18n.js";
 import { tickConstrucao, definirMiraConstrucao } from "../construir/tick.js";
 import { obterCenario3d } from "../render/3d/cenario3d.js";
@@ -203,6 +204,7 @@ export function tickJogo(dt, corpo) {
   if (!campoFocado() && !jogadorMorto()) {
     tickForca(dt, corpo, { trava: jogoTravaMundo() || !!estado.interior });
   }
+  tickEncaixeLetras(dt);
   tickDescobertaMapa(corpo, { interior: !!estado.interior });
   tickBlocos(corpo, dt);
   tickInundar(dt);

@@ -16,6 +16,8 @@ export const LETRA_BURACOS = 3;
 export const LETRA_SOLTAS_MIN = 2;
 export const LETRA_SOLTAS_MAX = 6;
 export const LETRA_ALCANCE_ENCAIXE = 1.35;
+/** Duração do deslize até o buraco (ms). */
+export const LETRA_ENCAIXE_MS = 300;
 export const LETRA_VEG_CLEAR = 1;
 export const LETRA_PLAZA_PISO = "shrine-floor-a";
 export const LETRA_ARC_CONNECT_MS = 480;

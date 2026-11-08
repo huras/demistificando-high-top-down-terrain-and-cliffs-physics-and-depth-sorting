@@ -4,7 +4,10 @@
  */
 import { alturaSobPes } from "../fisica/colisao.js";
 import { restaurarPokemon, restaurarProp } from "./carregar.js";
-import { tentarEncaixarPedraLetra } from "../letras/runtime.js";
+import {
+  iniciarEncaixePedraLetra,
+  temBuracoNoAlcance,
+} from "../letras/runtime.js";
 import { pesoDoPokemon } from "./alvos.js";
 import { normalizarPeso, pesoDoProp, PESO_MIN } from "./pesoCarga.js";
 import { tentarAcertoArremesso } from "./impactoArremesso.js";
@@ -239,8 +242,27 @@ function pousar(thrown) {
     restaurarPokemon(carry.enemy, x, y);
   } else if (carry?.prop) {
     restaurarProp(carry.prop, x, y);
-    if (carry.prop.letterPuzzleLoose) tentarEncaixarPedraLetra(carry.prop);
+    if (carry.prop.letterPuzzleLoose) {
+      iniciarEncaixePedraLetra(carry.prop, { fromX: x, fromY: y, fromZ: carry.prop.z });
+    }
   }
+}
+
+/**
+ * Pedra de letra perto do buraco: corta o voo e inicia o tween.
+ * @param {object} thrown
+ * @returns {boolean}
+ */
+function magnetizarLetra(thrown) {
+  const prop = thrown?.carry?.prop;
+  if (!prop?.letterPuzzleLoose) return false;
+  if (!temBuracoNoAlcance(prop, thrown.x, thrown.y)) return false;
+  const z = Number.isFinite(thrown.z) ? thrown.z : prop.z;
+  return iniciarEncaixePedraLetra(prop, {
+    fromX: thrown.x,
+    fromY: thrown.y,
+    fromZ: z,
+  });
 }
 
 /**
@@ -265,6 +287,10 @@ export function atualizarArremessos(lista, dt, poder = POWER_DEFAULT) {
       t.x += t.vx * dt;
       t.y += t.vy * dt;
       t.z += t.vz * dt;
+      if (magnetizarLetra(t)) {
+        lista.splice(i, 1);
+        continue;
+      }
       tentarAcertoArremesso(t, poder);
       const solo = alturaSobPes(t.x, t.y, (t.zSolo ?? 0) + 3) || t.zSolo || 0;
       t.zSolo = solo;
@@ -283,6 +309,10 @@ export function atualizarArremessos(lista, dt, poder = POWER_DEFAULT) {
       const solo = alturaSobPes(t.x, t.y, (t.zSolo ?? 0) + 3) || t.zSolo || 0;
       t.z = solo;
       t.zSolo = solo;
+      if (magnetizarLetra(t)) {
+        lista.splice(i, 1);
+        continue;
+      }
       tentarAcertoArremesso(t, poder);
       if (Math.hypot(t.vx, t.vy) < rollStop || t.rollAge > rollMax) {
         pousar(t);

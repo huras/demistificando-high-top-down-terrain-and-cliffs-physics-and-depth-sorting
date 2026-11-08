@@ -6,7 +6,7 @@ import { colherTufoPorForca } from "../campo/grama.js";
 import { alturaSobPes } from "../fisica/colisao.js";
 import { reindexarEm } from "../mundo/bioma/propsBioma.js";
 import { ajustarItem } from "../pokemon/party.js";
-import { tentarEncaixarPedraLetra } from "../letras/runtime.js";
+import { iniciarEncaixePedraLetra } from "../letras/runtime.js";
 import { forcaDoCarrier, poderForca, FORCA_HUMANO } from "./forcaEspecie.js";
 import { normalizarPeso } from "./pesoCarga.js";
 import { podeLevantar, duracaoFalhaSec } from "./falhaLevantar.js";
@@ -282,7 +282,10 @@ export function tentarSoltarEm(carrier, carry, x, y) {
   }
   if (!carry.prop) return false;
   restaurarProp(carry.prop, x, y);
-  if (carry.prop.letterPuzzleLoose && tentarEncaixarPedraLetra(carry.prop)) {
+  if (
+    carry.prop.letterPuzzleLoose &&
+    iniciarEncaixePedraLetra(carry.prop, { fromX: x, fromY: y, fromZ: carry.prop.z })
+  ) {
     reindexarEm(carry.prop.x, carry.prop.y);
   }
   return true;
@@ -315,7 +318,14 @@ export function tentarSoltarAFrente(carrier, carry) {
   }
   if (!carry.prop) return false;
   restaurarProp(carry.prop, fx2, fy2);
-  if (carry.prop.letterPuzzleLoose && tentarEncaixarPedraLetra(carry.prop)) {
+  if (
+    carry.prop.letterPuzzleLoose &&
+    iniciarEncaixePedraLetra(carry.prop, {
+      fromX: carry.prop.x,
+      fromY: carry.prop.y,
+      fromZ: carry.prop.z,
+    })
+  ) {
     reindexarEm(carry.prop.x, carry.prop.y);
   }
   return true;
