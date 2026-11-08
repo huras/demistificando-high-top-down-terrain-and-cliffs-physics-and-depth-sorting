@@ -15,7 +15,7 @@ const CAP_QUEDA = 8;
 const CAP_PARTICULA = 96;
 const QUEDA_MS = 720;
 const FRAMES_CHAMA = FOLHAS.flamethrower?.frames || 4;
-const TAM_CHAMA = 0.42;
+const TAM_CHAMA = 0.84;
 
 const caindo = [];
 const particulas = [];
@@ -454,7 +454,7 @@ export function criarFxCampo() {
 
       if (p.folha === "chama") {
         const u = 1 - a;
-        const lado = Math.max(0.28, TAM_CHAMA * (0.75 + a * 0.55));
+        const lado = Math.max(0.56, TAM_CHAMA * (0.75 + a * 0.55));
         dummy.position.set(p.x, y, p.y);
         dummy.quaternion.identity();
         dummy.scale.set(lado, lado, 1);
