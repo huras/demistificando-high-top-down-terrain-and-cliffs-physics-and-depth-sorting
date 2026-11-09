@@ -3,6 +3,7 @@
  * Hit → se não está no alvo, corre à origem do tiro → acha quem atirou → luta.
  */
 import { POKEMON } from "../../config.js";
+import { alcanceEngajavel, dist2Espaco } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { saoInimigos } from "../faccao.js";
 
@@ -12,12 +13,6 @@ const ACHAR_RAIO = 4.5;
 
 function vivo(a) {
   return a && !a.morto && !a.capturado && (a.hp == null || a.hp > 0);
-}
-
-function dist2(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return dx * dx + dy * dy;
 }
 
 function inimigoDe(vitima, atacante) {
@@ -88,7 +83,11 @@ export function alvoRetaliacao(mon) {
   }
 
   const leash = POKEMON.RAIO_SOLTA * 1.35;
-  if (dist2(mon, r) > leash * leash) {
+  if (dist2Espaco(mon, r) > leash * leash) {
+    mon.retaliacaoAlvo = null;
+    return null;
+  }
+  if (!alcanceEngajavel(mon, r) && !alcanceEngajavel(r, mon)) {
     mon.retaliacaoAlvo = null;
     return null;
   }
@@ -108,7 +107,7 @@ export function pontoInvestigacao(mon) {
   }
 
   // Já chegou perto da origem — tenta achar quem atirou.
-  if (dist2(mon, inv) <= CHEGOU * CHEGOU) {
+  if (dist2Espaco(mon, inv) <= CHEGOU * CHEGOU) {
     const achado = acharSuspeito(mon, inv);
     if (achado) {
       mon.retaliacaoAlvo = achado;
@@ -123,7 +122,11 @@ export function pontoInvestigacao(mon) {
   }
 
   // Suspeito já à vista (perto): pula investigação e luta.
-  if (vivo(inv.suspeito) && dist2(mon, inv.suspeito) < ACHAR_RAIO * ACHAR_RAIO) {
+  if (
+    vivo(inv.suspeito) &&
+    dist2Espaco(mon, inv.suspeito) < ACHAR_RAIO * ACHAR_RAIO &&
+    (alcanceEngajavel(mon, inv.suspeito) || alcanceEngajavel(inv.suspeito, mon))
+  ) {
     mon.retaliacaoAlvo = inv.suspeito;
     limparInvestigacao(mon);
     return null;
@@ -133,7 +136,7 @@ export function pontoInvestigacao(mon) {
 }
 
 function acharSuspeito(mon, inv) {
-  if (vivo(inv.suspeito) && dist2(inv, inv.suspeito) <= ACHAR_RAIO * ACHAR_RAIO) {
+  if (vivo(inv.suspeito) && dist2Espaco(inv, inv.suspeito) <= ACHAR_RAIO * ACHAR_RAIO) {
     return inv.suspeito;
   }
   return null;

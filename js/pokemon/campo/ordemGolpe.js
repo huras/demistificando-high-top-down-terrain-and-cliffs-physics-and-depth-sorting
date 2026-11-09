@@ -6,7 +6,7 @@ import { alturaSobPes } from "../../fisica/colisao.js";
 import { obterHoverBloco, obterPonteiroCanvas, atualizarHoverBloco } from "../../entrada/hoverBloco.js";
 import { raioDoPonteiro } from "../../render/3d/camera3d.js";
 import { obterCenario3d } from "../../render/3d/cenario3d.js";
-import { velocidadeDe } from "../ator.js";
+import { alcanceEngajavel, cruzaAltura, distEspaco, velocidadeDe } from "../ator.js";
 import { atorSobPonteiro } from "../clique.js";
 import { dispararSlotOrdenado, emConjuracao } from "../combate/executor.js";
 import { isCombatMotionLocked } from "../combate/meleeApproach.js";
@@ -222,11 +222,29 @@ export function tickOrdemGolpe(mon, dt) {
 
   const alcance = alcanceDaOrdem(slot.def);
   const parada = alcance <= 0 ? 0 : Math.max(0.45, alcance * 0.85);
-  const dist = Math.hypot(mira.x - mon.x, mira.y - mon.y);
+  const dist = distEspaco(mon, mira);
+  const forma = slot.def.forma;
+  const precisaPlano = forma === "contact" || forma === "radius";
+  const engaja =
+    !ordem.alvo ||
+    !precisaPlano ||
+    cruzaAltura(mon, mira) ||
+    alcanceEngajavel(mon, mira);
 
-  if (!ocupado && alcance > 0 && dist > parada + 0.12) {
+  if (!ocupado && alcance > 0 && (dist > parada + 0.12 || (precisaPlano && !cruzaAltura(mon, mira) && alcanceEngajavel(mon, mira)))) {
+    if (!engaja) {
+      parar(mon);
+      encarar(mon, mira.x, mira.y);
+      return true;
+    }
     mon.correndo = true;
     irPara(mon, mira.x, mira.y, ordem.z, velocidadeDe(mon, true), dt, parada);
+    return true;
+  }
+
+  if (precisaPlano && ordem.alvo && !cruzaAltura(mon, mira)) {
+    parar(mon);
+    encarar(mon, mira.x, mira.y);
     return true;
   }
 

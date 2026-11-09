@@ -54,6 +54,51 @@ export function cruzaAltura(a, b, margem = 0.35) {
   return a0 <= b1 + margem && b0 <= a1 + margem;
 }
 
+/** Distância² no plano (LOD / cull). */
+export function dist2Plano(a, b) {
+  if (!a || !b) return Infinity;
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+}
+
+/** Distância² espacial (pé a pé). */
+export function dist2Espaco(a, b) {
+  if (!a || !b) return Infinity;
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = alturaPe(a) - alturaPe(b);
+  return dx * dx + dy * dy + dz * dz;
+}
+
+export function distEspaco(a, b) {
+  return Math.sqrt(dist2Espaco(a, b));
+}
+
+export function gapVertical(a, b) {
+  if (!a || !b) return Infinity;
+  return Math.abs(alturaPe(a) - alturaPe(b));
+}
+
+function podeFecharGapVertical(ator) {
+  if (!ator) return false;
+  if (ator.perfil?.podeVoar) return true;
+  if (ator.voando || ator.planando || ator.skyPasser) return true;
+  if (ator.escalando) return true;
+  return false;
+}
+
+/**
+ * Dá pra engajar de verdade: corpos no mesmo band vertical, ou o atacante
+ * consegue fechar o gap (voo / escalada). Caçador no chão vs mesa alta → false.
+ */
+export function alcanceEngajavel(a, b, limGap = 2.2) {
+  if (!a || !b) return false;
+  if (cruzaAltura(a, b)) return true;
+  if (podeFecharGapVertical(a)) return true;
+  return gapVertical(a, b) <= limGap;
+}
+
 function montarGolpes(especie, nivel) {
   const lista = especie.learnset || [];
   const sabidos = [];

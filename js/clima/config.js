@@ -80,10 +80,19 @@ export const CLIMA_CFG = Object.freeze({
   areiaVentoMul: 34,
   neveQueda: 3.1,
   neveVentoMul: 12,
-  /** Quão forte a neblina corta exposição (ciclo). */
-  chuvaExposicaoMul: 0.16,
-  /** Piso extra de ambient sob umidade/chuva. */
-  chuvaAmbienteExtra: 0.08,
+  /**
+   * Corte residual de exposição sob névoa. Baixo de propósito:
+   * clima fosco deve dessaturar / achatar, não escurecer como noite.
+   */
+  chuvaExposicaoMul: 0.05,
+  /** Piso extra de ambient sob umidade/chuva (flatten fill). */
+  chuvaAmbienteExtra: 0.14,
+  /** Quanto o fosco puxa chroma → cinza (0..1 escala fosco). */
+  foscoDesat: 0.72,
+  /** Quanto o fosco eleva ambient/fill relativos ao sol fraco. */
+  foscoFillLift: 0.22,
+  /** Quanto o fosco suaviza brilhoSol sem matar midtones. */
+  foscoBrilhoSol: 0.28,
   /** Morph puff→manto no domo (0..1 escala uUmidade). */
   chuvaNuvemMorph: 1,
   /** Alongamento UV stratus — baixo pra não parecer o céu deslizando na troca. */

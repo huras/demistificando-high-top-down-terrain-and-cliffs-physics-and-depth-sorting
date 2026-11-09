@@ -1,13 +1,8 @@
 import { POKEMON } from "../../config.js";
 import { AI_MODE } from "../aiModes.js";
+import { alcanceEngajavel, dist2Espaco } from "../ator.js";
 import { modoEfetivo } from "./modos.js";
 import { alvoRetaliacao } from "./retaliacao.js";
-
-function dist2(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return dx * dx + dy * dy;
-}
 
 function vivo(a) {
   return a && !a.morto && !a.capturado && (a.hp == null || a.hp > 0);
@@ -21,7 +16,8 @@ function agroNoRaio(selvagens, jogador) {
   for (let i = 0; i < selvagens.length; i++) {
     const s = selvagens[i];
     if (!vivo(s) || s.modo !== "agro") continue;
-    if (dist2(s, jogador) > lim) continue;
+    if (dist2Espaco(s, jogador) > lim) continue;
+    if (!alcanceEngajavel(s, jogador) && !alcanceEngajavel(jogador, s)) continue;
     out.push(s);
   }
   return out;
@@ -35,7 +31,8 @@ function vivosNoRaio(selvagens, jogador) {
   for (let i = 0; i < selvagens.length; i++) {
     const s = selvagens[i];
     if (!vivo(s)) continue;
-    if (dist2(s, jogador) > lim) continue;
+    if (dist2Espaco(s, jogador) > lim) continue;
+    if (!alcanceEngajavel(s, jogador) && !alcanceEngajavel(jogador, s)) continue;
     out.push(s);
   }
   return out;
@@ -46,7 +43,7 @@ function maisPertoDe(lista, piv) {
   let melhorD = Infinity;
   for (let i = 0; i < lista.length; i++) {
     const a = lista[i];
-    const d = dist2(a, piv);
+    const d = dist2Espaco(a, piv);
     if (d < melhorD) {
       melhor = a;
       melhorD = d;
@@ -63,7 +60,11 @@ export function escolherAlvoParty(mon, selvagens, jogador) {
   if (!vivo(mon)) return null;
 
   const ordem = mon.ordemAlvo;
-  if (vivo(ordem) && ordem.faccao !== "party") return ordem;
+  if (vivo(ordem) && ordem.faccao !== "party") {
+    if (alcanceEngajavel(mon, ordem) || dist2Espaco(mon, ordem) <= POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA) {
+      return ordem;
+    }
+  }
   if (mon.ordemAlvo && !vivo(mon.ordemAlvo)) mon.ordemAlvo = null;
 
   // Retaliação sticky (vale em FOLLOW/DEFEND — não some no próximo frame).
@@ -81,16 +82,19 @@ export function escolherAlvoParty(mon, selvagens, jogador) {
     const zona = vivosNoRaio(selvagens, jogador);
     const lim2 = POKEMON.RAIO_AGRO * POKEMON.RAIO_AGRO;
     if (vivo(mon.alvo) && mon.alvo.faccao === "selvagem") {
-      const ainda = zona.includes(mon.alvo) || dist2(mon.alvo, jogador || mon) <= lim2;
+      const ainda =
+        (zona.includes(mon.alvo) || dist2Espaco(mon.alvo, jogador || mon) <= lim2) &&
+        (alcanceEngajavel(mon, mon.alvo) || alcanceEngajavel(mon.alvo, mon));
       if (ainda) {
         const maisPerto = maisPertoDe(zona, jogador || mon);
         if (maisPerto && maisPerto !== mon.alvo) {
-          const dAtual = dist2(mon.alvo, jogador || mon);
-          const dNovo = dist2(maisPerto, jogador || mon);
+          const dAtual = dist2Espaco(mon.alvo, jogador || mon);
+          const dNovo = dist2Espaco(maisPerto, jogador || mon);
           if (dNovo + 1 < dAtual) return maisPerto;
         }
         return mon.alvo;
       }
+      mon.alvo = null;
     }
     return maisPertoDe(zona, jogador || mon);
   }
@@ -103,7 +107,8 @@ export function escolherAlvoParty(mon, selvagens, jogador) {
     for (let i = 0; i < (selvagens?.length || 0); i++) {
       const s = selvagens[i];
       if (!vivo(s)) continue;
-      const d = dist2(s, mon);
+      if (!alcanceEngajavel(mon, s)) continue;
+      const d = dist2Espaco(s, mon);
       if (d > lim2) continue;
       if (d < melhorD) {
         melhor = s;
@@ -142,10 +147,10 @@ export function escolherAlvoWild(ator, partyMon, jogador) {
       // Tinha o treinador; mon saiu — troca pra party se possível.
       // (cai no pick abaixo)
     } else {
-      const d = dist2(ator, ator.alvo);
-      if (ator.agroPersistente || d <= POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA) {
-        return ator.alvo;
-      }
+      const d = dist2Espaco(ator, ator.alvo);
+      const aindaPerto = ator.agroPersistente || d <= POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA;
+      const aindaEngaja = alcanceEngajavel(ator, ator.alvo) || alcanceEngajavel(ator.alvo, ator);
+      if (aindaPerto && aindaEngaja) return ator.alvo;
     }
   }
   if (!ator.hostil && ator.modo !== "agro") return null;
@@ -157,11 +162,13 @@ export function escolherAlvoWild(ator, partyMon, jogador) {
         ? POKEMON.RAIO_AGRO
         : POKEMON.RAIO_AGRO * 2;
   const raio = raioBase * raioBase;
-  const dParty = partyVivo ? dist2(ator, partyMon) : Infinity;
-  const partyNoRaio = partyVivo && dParty < raio;
+  const dParty = partyVivo ? dist2Espaco(ator, partyMon) : Infinity;
+  const partyNoRaio =
+    partyVivo && dParty < raio && (alcanceEngajavel(ator, partyMon) || alcanceEngajavel(partyMon, ator));
 
-  const dJog = podeAlvoJogador ? dist2(ator, jogador) : Infinity;
-  const jogNoRaio = podeAlvoJogador && dJog < raio;
+  const dJog = podeAlvoJogador ? dist2Espaco(ator, jogador) : Infinity;
+  const jogNoRaio =
+    podeAlvoJogador && dJog < raio && (alcanceEngajavel(ator, jogador) || alcanceEngajavel(jogador, ator));
 
   if (partyNoRaio) return partyMon;
   if (jogNoRaio) return jogador;

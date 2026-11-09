@@ -3,6 +3,7 @@
  * Dash/jumpKick/grabSlam ficam pra depois — basic + contact usam lunge.
  */
 import { RAIO_POKEMON } from "../../config.js";
+import { alcanceEngajavel, cruzaAltura } from "../ator.js";
 
 export const APPROACH = Object.freeze({
   LUNGE: "lunge",
@@ -85,12 +86,15 @@ export function aiMeleeApproachGoal(from, target) {
 
 export function aiShouldKeepClosing(attacker, target) {
   if (!attacker || !target) return false;
+  // Mesa / terraço inalcançável: não fingir anel de melee sob o cliff.
+  if (!alcanceEngajavel(attacker, target)) return false;
   const d = Math.hypot(target.x - attacker.x, target.y - attacker.y);
   return d > meleeContactStopDistance(attacker, target) + 0.12;
 }
 
 export function aiContactInRange(attacker, target, reach = BASIC_MELEE.reach) {
   if (!attacker || !target) return false;
+  if (!cruzaAltura(attacker, target)) return false;
   const d = Math.hypot(target.x - attacker.x, target.y - attacker.y);
   return d <= contactAttackHitDistance(attacker, target, reach);
 }

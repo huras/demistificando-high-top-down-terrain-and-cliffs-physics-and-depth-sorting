@@ -1,5 +1,5 @@
 import { sincronizarFacingParede } from "../../fisica/escalada.js";
-import { velocidadeDe } from "../ator.js";
+import { alcanceEngajavel, velocidadeDe } from "../ator.js";
 import { quererPulo } from "../combate/pulo.js";
 import { irPara, zDePerseguicao } from "../ia/locomocaoCampo.js";
 import {
@@ -30,6 +30,16 @@ function encararAlvo(ator, alvo) {
  */
 export function integrarEngajar(ator, alvo, dt) {
   if (!ator || !alvo) return;
+
+  // Gap vertical inalcançável: não strafe/chase na face do cliff.
+  if (!alcanceEngajavel(ator, alvo)) {
+    ator.vx = 0;
+    ator.vy = 0;
+    ator.andando = false;
+    ator.correndo = false;
+    encararAlvo(ator, alvo);
+    return;
+  }
 
   const z = zDePerseguicao(ator, alvo);
   // Sempre sprint no chase (igual follow com Shift) — não herdar walk do alvo.

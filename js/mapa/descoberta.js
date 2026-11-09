@@ -8,8 +8,48 @@ import { LADO_MUNDO } from "../mundo/bounds.js";
 import { vegetacaoNaArea } from "../mundo/bioma/propsBioma.js";
 import { selvagensAtivos } from "../pokemon/populacao.js";
 import { resolverLarPorId, resolverLarSlot, listarLaresProximos } from "../pokemon/laresMapa.js";
+import { obterCenario3d } from "../render/3d/cenario3d.js";
+import { aabbVisivelChao } from "../render/3d/frustumChao.js";
 
-const RAIO_DISCOVER = 10;
+/** Piso / fallback quando a câmera não entrega AABB (≈ sync visual da palha). */
+const RAIO_DISCOVER_MIN = 12;
+const RAIO_DISCOVER_FALLBACK = 28;
+const RAIO_DISCOVER_MAX = 48;
+const PAD_TELA = 1;
+
+/**
+ * Disco de query + caixa de tela (AABB do chão).
+ * @param {{ x: number, y: number, elevacao?: number, z?: number }} corpo
+ * @returns {{ r: number, caixa: { x0: number, y0: number, x1: number, y1: number } | null }}
+ */
+function alcanceDescoberta(corpo) {
+  const elev = corpo.elevacao ?? corpo.z ?? 0;
+  const cam = obterCenario3d()?.camera3d;
+  const caixa = cam ? aabbVisivelChao(cam, elev) : null;
+  if (!caixa || caixa.x1 < caixa.x0 || caixa.y1 < caixa.y0) {
+    return { r: RAIO_DISCOVER_FALLBACK, caixa: null };
+  }
+  const hw = (caixa.x1 - caixa.x0) * 0.5;
+  const hh = (caixa.y1 - caixa.y0) * 0.5;
+  const diag = Math.sqrt(hw * hw + hh * hh);
+  const r = Math.max(RAIO_DISCOVER_MIN, Math.min(RAIO_DISCOVER_MAX, diag));
+  return { r, caixa };
+}
+
+/** @param {number} x @param {number} y @param {{ x0: number, y0: number, x1: number, y1: number } | null} caixa @param {number} px @param {number} py @param {number} r */
+function visivelNaDescoberta(x, y, caixa, px, py, r) {
+  if (caixa) {
+    return (
+      x >= caixa.x0 - PAD_TELA &&
+      x <= caixa.x1 + PAD_TELA &&
+      y >= caixa.y0 - PAD_TELA &&
+      y <= caixa.y1 + PAD_TELA
+    );
+  }
+  const dx = x - px;
+  const dy = y - py;
+  return dx * dx + dy * dy <= r * r;
+}
 
 /** @type {Map<string, { x: number, y: number, berryKey: string }>} */
 const berries = new Map();
@@ -222,22 +262,20 @@ export function reconciliarWildsDescobertos() {
 }
 
 /**
- * Proximidade outdoor: berries carregados + lares acordados / resolvidos.
- * @param {{ x: number, y: number } | null} corpo
+ * Outdoor: berries + lares visíveis no AABB do chão da câmera (não só perto do pé).
+ * @param {{ x: number, y: number, elevacao?: number, z?: number } | null} corpo
  * @param {{ interior?: boolean }} [opts]
  */
 export function tickDescobertaMapa(corpo, opts = {}) {
   if (!corpo || opts.interior) return;
   const px = corpo.x;
   const py = corpo.y;
-  const r = RAIO_DISCOVER;
+  const { r, caixa } = alcanceDescoberta(corpo);
   const props = vegetacaoNaArea(px - r, py - r, px + r, py + r);
   for (let i = 0; i < props.length; i++) {
     const p = props[i];
     if (p?.tipo !== "berry" || p.oculto) continue;
-    const dx = p.x - px;
-    const dy = p.y - py;
-    if (dx * dx + dy * dy > r * r) continue;
+    if (!visivelNaDescoberta(p.x, p.y, caixa, px, py, r)) continue;
     descobrirBerry(Math.floor(p.x), Math.floor(p.y), p.berryKey || "oran");
   }
 
@@ -251,9 +289,7 @@ export function tickDescobertaMapa(corpo, opts = {}) {
     comAtor.add(larId);
     const hx = a.casaX ?? a.x;
     const hy = a.casaY ?? a.y;
-    const dx = hx - px;
-    const dy = hy - py;
-    if (dx * dx + dy * dy > r * r) continue;
+    if (!visivelNaDescoberta(hx, hy, caixa, px, py, r)) continue;
     // Já conhecido: só reconcilia via resolver (candidatos / snapshot canônico).
     if (wilds.has(larId)) {
       const lar = resolverLarPorId(larId);
@@ -284,6 +320,7 @@ export function tickDescobertaMapa(corpo, opts = {}) {
   for (let i = 0; i < candidatos.length; i++) {
     const lar = candidatos[i];
     if (!lar || comAtor.has(lar.id)) continue;
+    if (!visivelNaDescoberta(lar.x, lar.y, caixa, px, py, r)) continue;
     descobrirWild(lar.id, {
       x: lar.x,
       y: lar.y,

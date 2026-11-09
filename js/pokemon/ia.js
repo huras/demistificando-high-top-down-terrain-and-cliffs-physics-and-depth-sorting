@@ -9,7 +9,7 @@ import { soltarEscalada } from "../fisica/escalada.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { garantirNav } from "../navegacao/seguirCaminho.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
-import { velocidadeDe } from "./ator.js";
+import { alcanceEngajavel, dist2Espaco, dist2Plano, velocidadeDe } from "./ator.js";
 import {
   cfgPack,
   ehMembroPack,
@@ -63,12 +63,6 @@ function andarRoamBarato(ator, gx, gy, vel, dt) {
   ator.acao = "andando";
   if (mov.bloqueouX && mov.bloqueouY) return false;
   return true;
-}
-
-function dist2(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return dx * dx + dy * dy;
 }
 
 function noTerritorio(ator, x, y) {
@@ -213,14 +207,17 @@ export function atualizarRoamSelvagens(selvagens, mon, jogador, dt) {
     const foco = mon && !mon.morto ? mon : jogador;
     if (!ator.efemero && !ator.avisou && foco) {
       const raioAviso = POKEMON.RAIO_AVISO * POKEMON.RAIO_AVISO;
-      if (dist2(ator, foco) < raioAviso) {
+      if (
+        dist2Espaco(ator, foco) < raioAviso &&
+        (alcanceEngajavel(ator, foco) || alcanceEngajavel(foco, ator))
+      ) {
         ator.avisou = true;
         definirEmocao(ator, EMOCAO.EXCLAMACAO);
         if (foco.faccao === "party") definirEmocao(foco, EMOCAO.EXCLAMACAO, { duracao: 1.2 });
       }
     }
     // LOD: longe do foco não gasta path/física de passeio (logs: aiMs 70–90 ms).
-    if (foco && dist2(ator, foco) > RAIO_ROAM_LOD2) {
+    if (foco && dist2Plano(ator, foco) > RAIO_ROAM_LOD2) {
       pararCorpo(ator);
       ator.andando = false;
       continue;

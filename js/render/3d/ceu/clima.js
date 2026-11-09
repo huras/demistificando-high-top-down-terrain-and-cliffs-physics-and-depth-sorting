@@ -10,6 +10,7 @@ const CAMPOS_PRECIP = new Set(["chuva", "areia", "neve"]);
 /**
  * Alvo de cada clima. A mistura é contínua pra não estourar exposição nem fog.
  * sol: multiplicador da luz do dia. limiar baixo = céu mais fechado.
+ * fosco: 0..1 — dessatura / achata (não escurece como noite).
  */
 export const PRESETS = {
   limpo: {
@@ -17,6 +18,7 @@ export const PRESETS = {
     forcaSombra: 0.62,
     vento: 3.4,
     sol: 1,
+    fosco: 0,
     umidade: 0,
     chuva: 0,
     areia: 0,
@@ -30,9 +32,10 @@ export const PRESETS = {
   },
   chuva: {
     limiar: 0.18,
-    forcaSombra: 0.62,
+    forcaSombra: 0.48,
     vento: 13,
-    sol: 0.48,
+    sol: 0.68,
+    fosco: 0.62,
     umidade: 0.85,
     chuva: 1,
     areia: 0,
@@ -48,7 +51,8 @@ export const PRESETS = {
     limiar: 0.62,
     forcaSombra: 0.28,
     vento: 26,
-    sol: 0.48,
+    sol: 0.62,
+    fosco: 0.5,
     umidade: 0,
     chuva: 0,
     areia: 1,
@@ -63,9 +67,10 @@ export const PRESETS = {
   /** Vento forte + nuvens; partículas zeradas — o visual são as faixas de gale. */
   vendaval: {
     limiar: 0.34,
-    forcaSombra: 0.72,
+    forcaSombra: 0.66,
     vento: 22,
-    sol: 0.7,
+    sol: 0.78,
+    fosco: 0.25,
     umidade: 0.12,
     chuva: 0,
     areia: 0,
@@ -79,9 +84,10 @@ export const PRESETS = {
   },
   nevasca: {
     limiar: 0.26,
-    forcaSombra: 0.66,
+    forcaSombra: 0.52,
     vento: 16,
-    sol: 0.4,
+    sol: 0.58,
+    fosco: 0.45,
     umidade: 0,
     chuva: 0,
     areia: 0,
@@ -100,6 +106,7 @@ const CAMPOS = [
   "forcaSombra",
   "vento",
   "sol",
+  "fosco",
   "umidade",
   "chuva",
   "areia",
@@ -143,7 +150,8 @@ export function avaliarClima(dt) {
       else if (campo === "neblinaPerto") alvo = Math.min(alvo, 0.72);
       else if (campo === "neblinaLonge") alvo = Math.min(alvo, 0.68);
       else if (campo === "pesoZenite") alvo = Math.max(alvo, 0.22);
-      else if (campo === "sol") alvo = Math.min(alvo, 0.72);
+      else if (campo === "sol") alvo = Math.min(alvo, 0.78);
+      else if (campo === "fosco") alvo = Math.max(alvo, 0.58);
     }
     let k = kLuz;
     if (CAMPOS_COBERTURA.has(campo)) k = kCobertura;

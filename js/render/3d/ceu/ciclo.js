@@ -42,6 +42,23 @@ const BRANCO = new THREE.Color(1, 1, 1);
 /** Ardósia clara / sombra de tempestade (linear). */
 const NUVEM_TEMPESTADE_LUZ = linear(0x7a8694);
 const NUVEM_TEMPESTADE_SOMBRA = linear(0x2a323c);
+/** Cinza frio de referência pra fosco (linear). */
+const CINZA_FOSCO = linear(0x8a929a);
+
+/**
+ * Puxa chroma em direção ao cinza (luma + leve bias frio).
+ * @param {THREE.Color} cor
+ * @param {number} t 0..1
+ */
+function dessaturarFosco(cor, t) {
+  if (t <= 1e-4) return;
+  const y = 0.2126 * cor.r + 0.7152 * cor.g + 0.0722 * cor.b;
+  const k = Math.max(0, Math.min(1, t));
+  cor.r += (y - cor.r) * k;
+  cor.g += (y - cor.g) * k;
+  cor.b += (y - cor.b) * k;
+  cor.lerp(CINZA_FOSCO, k * 0.18);
+}
 
 const saida = {
   zenite: new THREE.Color(),
@@ -130,7 +147,12 @@ export function avaliarVisual(hora, clima, orbita) {
 
   const pesoDia = passo(-0.05, 0.28, saida.dirSol.y);
   saida.pesoDia = pesoDia;
-  saida.brilhoSol = pesoDia * clima.sol;
+  const fosco = Math.max(0, Math.min(1, clima.fosco || 0));
+  const desatK = fosco * (CLIMA_CFG.foscoDesat ?? 0.72);
+  const fillLift = fosco * (CLIMA_CFG.foscoFillLift ?? 0.22);
+  const brilhoCut = fosco * (CLIMA_CFG.foscoBrilhoSol ?? 0.28);
+  // Sol fraco = overcast difuso; fosco corta só um pouco o disco (não a cena inteira).
+  saida.brilhoSol = pesoDia * clima.sol * (1 - brilhoCut * 0.55);
   saida.brilhoLua = (1 - passo(-0.35, 0.08, saida.dirSol.y)) * (0.35 + (1 - clima.pesoNeblina) * 0.65);
   saida.estrelas *= 1 - clima.pesoNeblina * 0.85;
 
@@ -138,6 +160,12 @@ export function avaliarVisual(hora, clima, orbita) {
   saida.horizonte.lerp(clima.neblina, clima.pesoNeblina * 0.92);
   saida.chao.lerp(clima.neblina, Math.min(1, clima.pesoNeblina * 0.8));
   saida.zenite.lerp(clima.neblina, clima.pesoZenite);
+
+  dessaturarFosco(saida.zenite, desatK);
+  dessaturarFosco(saida.horizonte, desatK * 0.9);
+  dessaturarFosco(saida.chao, desatK * 0.85);
+  dessaturarFosco(saida.neblina, desatK * 0.75);
+  dessaturarFosco(saida.sol, desatK * 0.55);
 
   saida.nuvemLuz.copy(saida.sol).lerp(BRANCO, 0.62);
   saida.nuvemSombra.set(0.1, 0.14, 0.22).lerp(saida.chao, 0.22);
@@ -154,21 +182,29 @@ export function avaliarVisual(hora, clima, orbita) {
     saida.nuvemLuz.lerp(clima.neblina, t * 0.22);
     saida.nuvemSombra.lerp(clima.neblina, t * 0.18);
   }
+  dessaturarFosco(saida.nuvemLuz, desatK * 0.65);
+  dessaturarFosco(saida.nuvemSombra, desatK * 0.5);
 
-  const expMul = CLIMA_CFG.chuvaExposicaoMul ?? 0.16;
-  const ambExtra = CLIMA_CFG.chuvaAmbienteExtra ?? 0.08;
-  saida.exposicao *= 1 - clima.pesoNeblina * expMul;
+  const expMul = CLIMA_CFG.chuvaExposicaoMul ?? 0.05;
+  const ambExtra = CLIMA_CFG.chuvaAmbienteExtra ?? 0.14;
+  // Exposição quase intacta — noite continua dona do “escuro”.
+  saida.exposicao *= 1 - clima.pesoNeblina * expMul * (1 - fosco * 0.65);
   saida.ambiente =
-    saida.ambiente * (0.75 + 0.25 * clima.sol) +
-    clima.pesoNeblina * 0.05 +
-    tempestade * ambExtra;
-  saida.hemi *= 0.78 + 0.22 * (1 - clima.pesoNeblina * 0.85);
-  saida.fill = 0.06 + pesoDia * 0.24 * clima.sol;
-  saida.rim = 0.12 + (1 - Math.min(1, Math.abs(saida.dirSol.y) * 1.4)) * 0.42 * pesoDia;
+    saida.ambiente * (0.88 + 0.12 * clima.sol) +
+    clima.pesoNeblina * 0.04 +
+    tempestade * ambExtra +
+    fillLift * 0.18;
+  saida.hemi =
+    saida.hemi * (0.86 + 0.14 * (1 - clima.pesoNeblina * 0.55)) + fillLift * 0.12;
+  saida.fill = 0.08 + pesoDia * 0.22 * (0.55 + 0.45 * clima.sol) + fillLift * 0.16;
+  saida.rim =
+    (0.12 + (1 - Math.min(1, Math.abs(saida.dirSol.y) * 1.4)) * 0.42 * pesoDia) *
+    (1 - fosco * 0.35);
 
   const base = 0.72 + pesoDia * 1.01;
   const mulNoite = 1 - pesoDia * (1 - clima.sol);
-  saida.intensidadeSol = base * mulNoite * (0.42 + 0.58 * pesoDia);
+  // Direcional mais fraco = sombra soft / overcast; midtones vêm do fill.
+  saida.intensidadeSol = base * mulNoite * (0.42 + 0.58 * pesoDia) * (1 - fosco * 0.22);
 
   if (saida.dirSol.y > 0.02) {
     saida.dirLuz.copy(saida.dirSol);

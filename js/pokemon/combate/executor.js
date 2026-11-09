@@ -8,6 +8,7 @@ import {
   emEsquiva,
   emRecuo,
   emRolamentoAtivo,
+  gapVertical,
   golpeBasico,
   recargaDoGolpe,
 } from "../ator.js";
@@ -435,14 +436,28 @@ function aplicarAilment(def, alvo, efeitos, opts = {}) {
   return aplicarAilmentGolpe(def, alvo, efeitos, opts);
 }
 
-function statusEmAlcance(ator, def, d) {
+function tiroNoArcoVertical(ator, alvo, alcance) {
+  if (!alvo) return true;
+  const lim = Math.max(2.2, (alcance || 0) * 0.85);
+  return gapVertical(ator, alvo) <= lim;
+}
+
+function statusEmAlcance(ator, def, d, alvo) {
   if (!def) return false;
   if (def.debuff?.target === "self" && !def.ailment) return true;
   const forma = def.forma;
-  if (forma === "contact") return usaCorpo(ator) && d <= alcanceCorpo(def);
-  if (forma === "radius") return usaCorpo(ator) && d <= Math.max(2.2, def.alcance || 2.2);
+  if (forma === "contact") {
+    return usaCorpo(ator) && (!alvo || cruzaAltura(ator, alvo)) && d <= alcanceCorpo(def);
+  }
+  if (forma === "radius") {
+    return usaCorpo(ator) && (!alvo || cruzaAltura(ator, alvo)) && d <= Math.max(2.2, def.alcance || 2.2);
+  }
   if (forma === "projectile" || forma === "arc") {
-    return usaDistancia(ator) && d <= alcanceTiro(def);
+    return (
+      usaDistancia(ator) &&
+      d <= alcanceTiro(def) &&
+      tiroNoArcoVertical(ator, alvo, alcanceTiro(def))
+    );
   }
   return d <= (def.alcance || 10);
 }
@@ -452,7 +467,7 @@ function escolhaStatusUtil(prontos, ator, alvo, d) {
     const g = prontos[i];
     const def = g.def;
     if ((def.poder || 0) > 0) continue;
-    if (!statusEmAlcance(ator, def, d)) continue;
+    if (!statusEmAlcance(ator, def, d, alvo)) continue;
     if (def.debuff) {
       const campo = campoEstagio(def.debuff.stat);
       if (!campo) continue;
@@ -533,7 +548,13 @@ function escolher(ator, alvo, d) {
   for (let i = 0; i < prontos.length; i++) {
     const g = prontos[i];
     if ((g.def.poder || 0) <= 0) continue;
-    if (distancia && linhaLivre && (g.def.forma === "projectile" || g.def.forma === "arc") && d <= alcanceTiro(g.def)) {
+    if (
+      distancia &&
+      linhaLivre &&
+      (g.def.forma === "projectile" || g.def.forma === "arc") &&
+      d <= alcanceTiro(g.def) &&
+      tiroNoArcoVertical(ator, alvo, alcanceTiro(g.def))
+    ) {
       return g;
     }
   }
