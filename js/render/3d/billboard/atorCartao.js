@@ -35,7 +35,8 @@ export function criarAtorCartao(mapa, opts = {}) {
   mesh.name = opts.nome || "ator-cartao";
   mesh.rotation.order = "YXZ";
   mesh.castShadow = false;
-  mesh.receiveShadow = false;
+  // Recebe mapa do sol (cliff/veg) na coluna do pé — ver receberSombraBasica.
+  mesh.receiveShadow = opts.receiveShadow !== false;
   mesh.renderOrder = opts.renderOrder ?? 3;
   mesh.userData.pivotKey = "0.5:1";
   return mesh;

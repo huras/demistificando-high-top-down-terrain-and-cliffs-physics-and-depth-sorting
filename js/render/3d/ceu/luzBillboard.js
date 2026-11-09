@@ -16,6 +16,39 @@ const _cor = new THREE.Color();
 const _out = new THREE.Color();
 const _ind = new THREE.Color();
 
+/**
+ * MeshBasic não passa por needsLights — o renderer nunca liga
+ * directionalShadowMap/Matrix. Compartilhamos o mapa do sol à mão.
+ */
+const _matrizSombraBasica = new THREE.Matrix4();
+const _sombraDirBasica = {
+  shadowIntensity: 1,
+  shadowBias: 0,
+  shadowNormalBias: 0,
+  shadowRadius: 1,
+  shadowMapSize: new THREE.Vector2(1, 1),
+};
+export const uniformsSombraBasica = {
+  directionalShadowMap: { value: [null] },
+  directionalShadowMatrix: { value: [_matrizSombraBasica] },
+  directionalLightShadows: { value: [_sombraDirBasica] },
+};
+
+function sincronizarSombraBasicaSol(sol) {
+  const sh = sol?.shadow;
+  if (!sol?.castShadow || !sh?.map?.texture) {
+    uniformsSombraBasica.directionalShadowMap.value[0] = null;
+    return;
+  }
+  uniformsSombraBasica.directionalShadowMap.value[0] = sh.map.texture;
+  _matrizSombraBasica.copy(sh.matrix);
+  _sombraDirBasica.shadowIntensity = sh.intensity ?? 1;
+  _sombraDirBasica.shadowBias = sh.bias;
+  _sombraDirBasica.shadowNormalBias = sh.normalBias;
+  _sombraDirBasica.shadowRadius = sh.radius;
+  _sombraDirBasica.shadowMapSize.copy(sh.mapSize);
+}
+
 function direcaoDaLuz(luz, destino) {
   destino.copy(luz.position).sub(luz.target.position);
   if (destino.lengthSq() < 1e-8) destino.set(0, 1, 0);
@@ -31,6 +64,7 @@ function somarDireta(luz, ndot) {
 /** Chamado depois que o céu posiciona sol, fill e rim. */
 export function atualizarLuzBillboard({ sol, ambient, hemi, fill, rim }) {
   if (sol) direcaoDaLuz(sol, normalSol);
+  sincronizarSombraBasicaSol(sol);
 
   indireta.set(0, 0, 0);
   if (ambient) {
@@ -256,6 +290,54 @@ function sombraColunaBillboard(shader) {
 }
 
 /**
+ * MeshBasic (atores) não tem shadow map no shader do Three.
+ * Injeta pars + coluna + máscara; piso ~0.52 pra não zerar ambiente.
+ */
+const PISO_SOMBRA_BASICA = "0.52";
+
+function receberSombraBasica(shader) {
+  if (shader.fragmentShader.includes("sombraBasicaColuna")) return;
+  // Liga o mapa do sol — Basic não recebe esses uniforms do WebGLLights.
+  shader.uniforms.directionalShadowMap = uniformsSombraBasica.directionalShadowMap;
+  shader.uniforms.directionalShadowMatrix = uniformsSombraBasica.directionalShadowMatrix;
+  shader.uniforms.directionalLightShadows = uniformsSombraBasica.directionalLightShadows;
+  if (!shader.vertexShader.includes("#include <shadowmap_pars_vertex>") &&
+      !shader.vertexShader.includes("vDirectionalShadowCoord")) {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        `#include <common>\n#include <shadowmap_pars_vertex>`,
+      )
+      .replace(
+        "#include <worldpos_vertex>",
+        `#include <worldpos_vertex>\n#include <shadowmap_vertex>`,
+      );
+  }
+  sombraColunaBillboard(shader);
+  // MeshBasic não traz <packing>; sem unpackRGBAToDepth o programa não compila
+  // (entidades somem). Standard já inclui packing antes do shadowmap.
+  if (!shader.fragmentShader.includes("getShadowMask")) {
+    const packing = shader.fragmentShader.includes("#include <packing>")
+      ? ""
+      : "#include <packing>\n";
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <common>",
+      `#include <common>\nuniform bool receiveShadow;\n${packing}#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>`,
+    );
+  }
+  const ancora = "vec3 outgoingLight = reflectedLight.indirectDiffuse;";
+  if (!shader.fragmentShader.includes(ancora)) return;
+  shader.fragmentShader = shader.fragmentShader.replace(
+    ancora,
+    `${ancora}
+/* sombraBasicaColuna */
+#ifdef USE_SHADOWMAP
+	outgoingLight *= mix( ${PISO_SOMBRA_BASICA}, 1.0, getShadowMask() );
+#endif`,
+  );
+}
+
+/**
  * Sprite THREE.Sprite: sem `transformed` de mesh — depth no pivô com folga baixa.
  * Preferir malha + aplicarLuzBillboard (coluna) quando possível.
  */
@@ -388,11 +470,13 @@ export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
       "#include <normal_fragment_maps>\nnormal = normalize( mat3( viewMatrix ) * uNormalSol );",
     );
     profundidadeColuna(shader, folgaTxt, prefTxt, porDistTxt, tetoTxt);
-    sombraColunaBillboard(shader);
+    if (material.isMeshBasicMaterial) receberSombraBasica(shader);
+    else sombraColunaBillboard(shader);
   };
   material.customProgramCacheKey = function chaveLuzBillboard() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-billboard|coluna|sombra-coluna|pe-clamp-frag|desempate-pref|${folgaTxt}|${prefTxt}|${porDistTxt}|${tetoTxt}`;
+    const basica = material.isMeshBasicMaterial ? "|sombra-basica-sol" : "";
+    return `${base}|luz-billboard|coluna|sombra-coluna${basica}|pe-clamp-frag|desempate-pref|${folgaTxt}|${prefTxt}|${porDistTxt}|${tetoTxt}`;
   };
   return material;
 }

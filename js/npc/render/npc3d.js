@@ -160,7 +160,7 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
       });
       aplicarLuzBillboard(mat, FOLGA_CHAO + FOLGA_ATOR);
       cartao.material = mat;
-      cartao.receiveShadow = false;
+      cartao.receiveShadow = true;
       // Mesma sombra de contato do jogador (oval no pé).
       const sombra = criarSombraContato3d();
       grupo.add(sombra.grupo);
