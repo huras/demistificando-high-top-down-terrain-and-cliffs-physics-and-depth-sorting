@@ -35,3 +35,31 @@ export function ehAnimVoo(nome) {
   }
   return false;
 }
+
+/** Voo/planagem de verdade — não pulo de chão. */
+export function ehVooDeVerdade(ator) {
+  return !!(ator && (ator.skyPasser || ator.voando || ator.planando));
+}
+
+/**
+ * No ar por pulo de locomoção/combate (hopLift / pulando), sem voo verdadeiro.
+ */
+export function ehPuloChao(ator) {
+  if (!ator || ehVooDeVerdade(ator)) return false;
+  if (ator.pulando) return true;
+  if ((ator.hopLift || 0) > 0.12) return true;
+  if ((ator.puloAlt || 0) > 0.02 && ator.puloVisual) return true;
+  return false;
+}
+
+/**
+ * Pulo de chão em mon sem FlapAround/Hover — usa Hop scrubado + pivot atenuado.
+ * @param {object | null | undefined} ator
+ * @param {{ anims?: Record<string, unknown> } | null | undefined} pack
+ */
+export function querHopOrientado(ator, pack) {
+  if (!ehPuloChao(ator) || ehVooDeVerdade(ator)) return false;
+  if (!pack?.anims?.Hop) return false;
+  if (pack.anims.FlapAround || pack.anims.Hover) return false;
+  return true;
+}

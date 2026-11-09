@@ -132,15 +132,6 @@ button, input {
   color: var(--destaque);
 }
 
-.lista button.tem-ajuste::after {
-  content: " ·";
-  color: #ffcc66;
-}
-
-.lista button.tem-assento::after {
-  content: " ★";
-  color: #38bdf8;
-}
 
 .assento {
   margin-top: 8px;

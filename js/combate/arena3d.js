@@ -16,7 +16,14 @@ import {
 } from "./arenas.js";
 import { CAM_TURNO } from "./cameraTurno.js";
 import { oscilacaoAndar, squashAndar } from "../pokemon/bounceAndar.js";
-import { blitQuadro, direcao8Camera, garantirAtlas, medidaSprite, quadroDe } from "../pokemon/sprites.js";
+import {
+  blitQuadro,
+  direcao8Camera,
+  garantirAtlas,
+  medidaSprite,
+  peYOrientado,
+  quadroDe,
+} from "../pokemon/sprites.js";
 import { tickFadeArena } from "../render/3d/fadeObstaculo3d.js";
 import {
   aplicarPivoCartao,
@@ -630,12 +637,14 @@ function aplicarMedida(slot, ator) {
 
 function pintar(slot, ator, fr, pack) {
   const { dx, dy } = medidaSprite(ator);
-  const chave = `${ator.id}:${pack.id}:${ator.visual?.anim}:${ator.visual?.dir}:${ator.visual?.frame}:${ator.morto ? 1 : 0}:${dx}:${dy}`;
+  const peY = peYOrientado(fr, pack, ator);
+  const peKey = Math.round(peY * 100);
+  const chave = `${ator.id}:${pack.id}:${ator.visual?.anim}:${ator.visual?.dir}:${ator.visual?.frame}:${ator.morto ? 1 : 0}:${dx}:${dy}:${peKey}`;
   if (slot.chave === chave) return;
   slot.chave = chave;
   slot.ctx.imageSmoothingEnabled = false;
   slot.ctx.clearRect(0, 0, LADO, LADO);
-  blitQuadro(slot.ctx, pack.img, pack.atlasW, pack.atlasH, fr, PE_X, PE_Y, 1, { dx, dy });
+  blitQuadro(slot.ctx, pack.img, pack.atlasW, pack.atlasH, fr, PE_X, PE_Y, 1, { dx, dy, peY });
   slot.tex.needsUpdate = true;
   ancorar(slot);
 }

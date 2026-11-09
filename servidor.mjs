@@ -990,6 +990,13 @@ function validarPivos(obj) {
     }
     if (item.offsetY < -4 || item.offsetY > 4) throw new Error(`${id} altura fora`);
     if (Math.abs(item.dx) > 256 || Math.abs(item.dy) > 256) throw new Error(`${id} pivô fora`);
+    if (item.escala != null && item.escala !== "") {
+      const esc = Number(item.escala);
+      if (!Number.isFinite(esc) || esc < 0.05 || esc > 4) throw new Error(`${id} escala fora`);
+      item.escala = Math.round(esc * 100) / 100;
+    } else {
+      delete item.escala;
+    }
   }
 }
 

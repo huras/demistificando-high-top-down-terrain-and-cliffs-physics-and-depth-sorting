@@ -13,7 +13,14 @@ import { dropsNoChao } from "./drops.js";
 import { imagemIcone } from "../jogo/icones.js";
 import { oscilacaoAndar, squashAndar } from "./bounceAndar.js";
 import { rumoVisualCorpo } from "../render/3d/facingCamera3d.js";
-import { blitQuadro, quadroDe, garantirAtlas, direcao8Camera, medidaSprite } from "./sprites.js";
+import {
+  blitQuadro,
+  quadroDe,
+  garantirAtlas,
+  direcao8Camera,
+  medidaSprite,
+  peYOrientado,
+} from "./sprites.js";
 import { atoresVisiveis, pokemonLigado } from "./sistema.js";
 import { carregarCatalogoEfeitos } from "../efeitos/catalogo.js";
 import { carregarCatalogoParticulas } from "../particulas/catalogo.js";
@@ -406,12 +413,14 @@ function aplicarMedida(slot, ator) {
 
 function pintar(slot, ator, fr, pack) {
   const { dx, dy } = medidaSprite(ator);
-  const chave = `${ator.id}:${pack.id}:${ator.visual?.anim}:${ator.visual?.dir}:${ator.visual?.frame}:${ator.morto ? 1 : 0}:${dx}:${dy}`;
+  const peY = peYOrientado(fr, pack, ator);
+  const peKey = Math.round(peY * 100);
+  const chave = `${ator.id}:${pack.id}:${ator.visual?.anim}:${ator.visual?.dir}:${ator.visual?.frame}:${ator.morto ? 1 : 0}:${dx}:${dy}:${peKey}`;
   if (slot.chave === chave) return;
   slot.chave = chave;
   slot.ctx.imageSmoothingEnabled = false;
   slot.ctx.clearRect(0, 0, LADO, LADO);
-  blitQuadro(slot.ctx, pack.img, pack.atlasW, pack.atlasH, fr, PE_X, PE_Y, 1, { dx, dy });
+  blitQuadro(slot.ctx, pack.img, pack.atlasW, pack.atlasH, fr, PE_X, PE_Y, 1, { dx, dy, peY });
   slot.tex.needsUpdate = true;
   ancorar(slot);
 }

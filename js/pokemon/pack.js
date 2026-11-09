@@ -400,24 +400,50 @@ export function pontoSlot(lider, slot, packCfg = cfgPack()) {
 }
 
 /**
- * Trava mates acordados no mesmo alvo. Dormindo fica passivo até hit/amanhecer.
+ * Trava mate no alvo com lock duro (não some no próximo tick se !hostil).
+ * Acorda sono natural / dormindo de campo; sleep de status major fica.
+ */
+export function travarAgroPack(mate, alvo) {
+  if (!mate || !alvo) return;
+  if (mate.status === "sleep") return;
+  if (mate.sonoNatural) mate.sonoNatural = false;
+  if ((mate.dormindo || 0) > 0) mate.dormindo = 0;
+  mate.modo = "agro";
+  mate.alvo = alvo;
+  mate.pendenteAtacante = alvo;
+  mate.agroPersistente = true;
+}
+
+function dist2Xy(a, b) {
+  if (!a || !b) return Infinity;
+  const dx = (a.x || 0) - (b.x || 0);
+  const dy = (a.y || 0) - (b.y || 0);
+  return dx * dx + dy * dy;
+}
+
+/**
+ * Alerta mates no raio de lealdade (perto da fonte ou do atacante).
  * @param {object[]} itens
  * @param {object} fonte
  * @param {object} alvo
- * @param {(mate: object, alvo: object) => void} travarAgro
+ * @param {(mate: object, alvo: object) => void} [travarAgro]
  */
-export function alertarPackAgro(itens, fonte, alvo, travarAgro) {
+export function alertarPackAgro(itens, fonte, alvo, travarAgro = travarAgroPack) {
   const packCfg = cfgPack();
   if (!packCfg.alertPackOnAgro) return;
   if (!fonte || fonte.packId == null || !alvo) return;
   if (fonte._packAlertando) return;
   fonte._packAlertando = true;
+  const lim = POKEMON.RAIO_AGRO * POKEMON.RAIO_AGRO;
   for (let i = 0; i < itens.length; i++) {
     const mate = itens[i];
     if (mate === fonte) continue;
     if (mate.packId !== fonte.packId) continue;
     if (!vivoPack(mate)) continue;
-    if (mate.sonoNatural || (mate.dormindo || 0) > 0 || mate.status === "sleep") continue;
+    // Sleep major: só sai com hit próprio / cura.
+    if (mate.status === "sleep") continue;
+    // Longe do ninho E do atacante → não puxa o mapa inteiro.
+    if (dist2Xy(mate, fonte) > lim && dist2Xy(mate, alvo) > lim) continue;
     travarAgro(mate, alvo);
   }
   fonte._packAlertando = false;

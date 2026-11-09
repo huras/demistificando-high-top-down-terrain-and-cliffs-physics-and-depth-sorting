@@ -11,7 +11,7 @@ import { imagemIcone } from "../jogo/icones.js";
 import { impactosVivos, projeteisVivos } from "./combate/projeteis.js";
 import { carregarFolhasGolpe, poseImpacto, poseTiro, telaFolha } from "./combate/folhasGolpe.js";
 import { auraDe, ORBES_KI } from "./combate/ki.js";
-import { blitQuadro, quadroDe, garantirAtlas, medidaSprite } from "./sprites.js";
+import { blitQuadro, quadroDe, garantirAtlas, medidaSprite, peYOrientado } from "./sprites.js";
 import { atoresVisiveis } from "./sistema.js";
 import { COR_TIPO } from "./tipos.js";
 import {
@@ -61,8 +61,13 @@ function desenharCorpo(ctx, ator) {
     ctx.translate(-footX, -footY);
   }
   if (evo > 0.02) ctx.filter = `brightness(${1 + evo * 1.8}) saturate(${1 - evo * 0.85})`;
+  const peY = pronto ? peYOrientado(fr, pack, ator) : 0;
   if (pronto) {
-    blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala, { dx, dy });
+    blitQuadro(ctx, pack.img, pack.atlasW, pack.atlasH, fr, footX, footY, PX * escala, {
+      dx,
+      dy,
+      peY,
+    });
   } else {
     const cor = ator.especie.cor || COR_TIPO[ator.tipos?.[0]] || "#94a3b8";
     ctx.fillStyle = cor;
@@ -73,7 +78,7 @@ function desenharCorpo(ctx, ator) {
   ctx.filter = "none";
   ctx.restore();
   if (espEvo) ator.especie = espBackup;
-  cobrirPernasAgua(ctx, ator, retanguloAgua(pronto ? fr : null, medida, footX, footY));
+  cobrirPernasAgua(ctx, ator, retanguloAgua(pronto ? fr : null, medida, footX, footY, peY));
   desenharKi(ctx, ator, footX, footY, escala);
   desenharFlashCorpo(ctx, ator, footX, footY, escala);
   if (evo > 0.02) {
@@ -88,7 +93,7 @@ function desenharCorpo(ctx, ator) {
 }
 
 /** Caixa do sprite, do mesmo jeito que o blit, para o véu da água. */
-function retanguloAgua(fr, medida, footX, footY) {
+function retanguloAgua(fr, medida, footX, footY, peYOverride) {
   const escala = PX * medida.escala;
   if (!fr || !(fr.w > 0)) {
     const r = 12 * medida.escala;
@@ -104,12 +109,12 @@ function retanguloAgua(fr, medida, footX, footY) {
   const trimH = fr.trimH || fr.h;
   const quadro = fr.w * escala;
   const destW = trimW * escala;
-  const destH = trimH * escala;
   const pivotX = 1 - (fr.pivotX ?? 0.5);
   const trimEsq = fr.w - trimX - trimW;
-  // Mesma regra do blitQuadro / Pokemon AI (displayPivotY = 1 − y, clamp na sola).
-  const peNoTrim =
-    Number.isFinite(fr.pivotY) && Number.isFinite(fr.trimY)
+  // Mesma regra do blitQuadro (peY orientado no pulo de chão).
+  const peNoTrim = Number.isFinite(peYOverride)
+    ? peYOverride
+    : Number.isFinite(fr.pivotY) && Number.isFinite(fr.trimY)
       ? Math.max(trimH, (1 - fr.pivotY) * fr.h - fr.trimY)
       : trimH;
   const px = footX - pivotX * quadro + trimEsq * escala + medida.dx * escala;

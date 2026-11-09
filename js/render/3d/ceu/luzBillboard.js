@@ -57,6 +57,24 @@ export function yawCartaoSol() {
 }
 
 /**
+ * Empurra o proxy de sombra PARA LONGE da luz.
+ * Em direção à luz o caster escreve depth mais perto → o cartão visível
+ * fica atrás no mapa e se auto-escurece. Longe da luz: cartão fica na frente
+ * da própria silhueta (recebe cliff, não a si mesmo).
+ */
+export const OFFSET_CASTER_SOL = 0.22;
+/** Encolhe o proxy pra silhueta não cobrir o cartão câmera no light-space. */
+export const ESCALA_CASTER_SOL = 0.9;
+
+export function offsetCasterSol(objeto3d, metros = OFFSET_CASTER_SOL) {
+  if (!objeto3d) return;
+  objeto3d.position.addScaledVector(normalSol, -metros);
+  const s = ESCALA_CASTER_SOL;
+  objeto3d.scale.x *= s;
+  objeto3d.scale.y *= s;
+}
+
+/**
  * Sprite sem luz de cena (personagem): mesma cor que o cartão virado pro sol,
  * com a sombra de nuvem no mesmo peso do terreno.
  */

@@ -68,10 +68,14 @@ function pertoDoAlvo(projetil) {
  * Só chamar no modo turnos. Tiro real (garantirAlvo, não ensaio).
  * Inicia o filminho do disparo e acompanha voo → aproximação.
  */
+function projetilVivo(p) {
+  return !!(p && p.viva && !p.ensaio);
+}
+
 export function observarTiro(projetil) {
   if (cena.tipo === "acerto" || cena.tipo === "erro") return;
 
-  if (projetil && projetil.garantirAlvo && !projetil.ensaio) {
+  if (projetilVivo(projetil) && projetil.garantirAlvo) {
     if (
       cena.tipo === "disparo" ||
       cena.tipo === "voo" ||
@@ -136,7 +140,7 @@ export function tickImpacto(dt) {
     cena.restante -= dt;
     if (cena.restante > 0) return;
     cena.restante = 0;
-    if (!cena.projetil) {
+    if (!projetilVivo(cena.projetil)) {
       limparFaseTiro();
       return;
     }
@@ -161,7 +165,14 @@ export function emImpacto() {
     return cena.restante > 0 && !!cena.alvo;
   }
   if (cena.tipo === "disparo") return cena.restante > 0;
-  if (cena.tipo === "voo" || cena.tipo === "aproximacao") return !!cena.projetil;
+  if (cena.tipo === "voo" || cena.tipo === "aproximacao") {
+    // Projétil morto / stale: não trava o turno pra sempre.
+    if (!projetilVivo(cena.projetil)) {
+      limparFaseTiro();
+      return false;
+    }
+    return true;
+  }
   return false;
 }
 

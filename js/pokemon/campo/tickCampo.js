@@ -22,7 +22,7 @@ import {
   pontoInvestigacao,
   tickInvestigacao,
 } from "./retaliacao.js";
-import { alertarPackAgro } from "../pack.js";
+import { alertarPackAgro, travarAgroPack } from "../pack.js";
 import { selvagensAtivos } from "../populacao.js";
 import { ehDiurno } from "../distribuicao/noturno.js";
 import { obterHora } from "../../render/3d/ceu/controleCeu.js";
@@ -272,10 +272,7 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     ator.modo = "agro";
     ator.alvo = alvo;
     if (mudou && ator.packId != null) {
-      alertarPackAgro(selvagensAtivos(), ator, alvo, (mate, t) => {
-        mate.modo = "agro";
-        mate.alvo = t;
-      });
+      alertarPackAgro(selvagensAtivos(), ator, alvo, travarAgroPack);
     }
     if (ocupadoCast(ator)) {
       ator.andando = false;

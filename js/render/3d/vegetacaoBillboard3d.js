@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { aplicarLuzBillboard, yawCartaoSol } from "./ceu/luzBillboard.js";
+import { aplicarLuzBillboard, offsetCasterSol, yawCartaoSol } from "./ceu/luzBillboard.js";
 import { marcarReflexo, soltarReflexo } from "./ceu/reflexoPoca.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import { marcarSombraSuja } from "./ceu/sombraEstavel.js";
@@ -378,6 +378,10 @@ export function criarVegetacaoBillboard3d() {
       map: tex,
       alphaTest: VEG_ALPHA_TEST,
       side: THREE.DoubleSide,
+      // Depth um pouco mais longe da luz → cartão visível não amostra a si.
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 4,
     });
     // Vento na depth da grama forçaria shadow map a cada frame — não.
     if (perfilVento && !grama) depth = aplicarVentoVeg(depth, perfilVento);
@@ -388,10 +392,12 @@ export function criarVegetacaoBillboard3d() {
     const pivotY = pivo.y;
     const opacoY = Number.isFinite(pivo.opacoY) ? pivo.opacoY : 1;
     const dz = pivo.dz || 0;
+    // Visível recebe o mapa do sol (cliff/terreno). Cast fica no proxy —
+    // mesmo mesh cast+receive amostrava a própria depth no billboard.
     const mesh = new THREE.InstancedMesh(geo, material, CAP_INSTANCIAS);
     mesh.name = `veg-${def.chave}`;
     mesh.castShadow = false;
-    mesh.receiveShadow = false;
+    mesh.receiveShadow = true;
     mesh.frustumCulled = true;
     mesh.count = Math.min(def.itens.length, CAP_INSTANCIAS);
     grupo.add(mesh);
@@ -588,11 +594,15 @@ export function criarVegetacaoBillboard3d() {
     }
   }
 
-  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora, pivotY, dz, opacoY, refrescarAltura) {
+  function escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, limites, agora, pivotY, dz, opacoY, refrescarAltura, empurrarSol = false) {
     if (!mesh) return;
     for (let i = 0; i < itens.length; i++) {
       const p = itens[i];
       pose(p, largura, altura, yaw, inclinacao, amostraSacudida(p, agora), pivotY, dz, opacoY, refrescarAltura);
+      if (empurrarSol) {
+        offsetCasterSol(dummy);
+        dummy.updateMatrix();
+      }
       mesh.setMatrixAt(i, dummy.matrix);
       mesh.setColorAt(i, corDe(p));
     }
@@ -641,7 +651,7 @@ export function criarVegetacaoBillboard3d() {
       const pe = Number.isFinite(opacoY) ? opacoY : 1;
       escreverMesh(mesh, itens, largura, altura, yaw, inclinacao, recalcularLimites, agora, pivotY, dz, pe, refrescarAltura);
       if (escreverSombra) {
-        escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora, pivotY, dz, pe, refrescarAltura);
+        escreverMesh(sombra, itens, largura, altura, yawSol, 0, false, agora, pivotY, dz, pe, refrescarAltura, true);
         sombraEscrita = true;
       }
       for (let i = 0; i < itens.length; i++) {
@@ -682,6 +692,8 @@ export function criarVegetacaoBillboard3d() {
     marcarSuja(v.mesh);
     if (!v.sombra) return;
     pose(p, v.largura, v.altura, yawSol, 0, amostra, v.pivotY, v.dz, pe);
+    offsetCasterSol(dummy);
+    dummy.updateMatrix();
     v.sombra.setMatrixAt(v.i, dummy.matrix);
     marcarSuja(v.sombra);
   }

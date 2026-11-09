@@ -1,5 +1,23 @@
-import { POKEMON } from "../config.js";
-import { CADEIA_VOO, escolherAnimVoo, ehAnimVoo } from "./habitat/poseVoo.js";
+import {
+  POKEMON,
+  PULO_VELOCIDADE,
+  GRAVIDADE_PULO_SEGURANDO,
+  TILE,
+} from "../config.js";
+import {
+  CADEIA_VOO,
+  escolherAnimVoo,
+  ehAnimVoo,
+  ehVooDeVerdade,
+  ehPuloChao,
+  querHopOrientado,
+} from "./habitat/poseVoo.js";
+
+/** Apex hold ≈ v²/(2·g) — progresso do scrub Hop. */
+const APEX_PULO =
+  (PULO_VELOCIDADE * PULO_VELOCIDADE) / (2 * GRAVIDADE_PULO_SEGURANDO);
+/** Cue máximo do pivot Hop em blocos (altura real vem da física). */
+const CUE_HOP_MAX_BLOCOS = 0.22;
 
 const QUER = new Set([
   "Idle",
@@ -150,7 +168,8 @@ export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala, a
   const adjX = (Number.isFinite(ox) ? ox : 0) * escala;
   const adjY = (Number.isFinite(oy) ? oy : 0) * escala;
   const dx = footX - pivotX * dw + trimEsq * escala + adjX;
-  const peNoTrim = peYNoTrim(fr);
+  const peOverride = Number(ajuste?.peY);
+  const peNoTrim = Number.isFinite(peOverride) ? peOverride : peYNoTrim(fr);
   const dy = footY - peNoTrim * escala + adjY;
   const sw = (fr.u1 - fr.u0) * atlasW;
   const sh = (fr.v1 - fr.v0) * atlasH;
@@ -167,16 +186,79 @@ export function blitQuadro(ctx, img, atlasW, atlasH, fr, footX, footY, escala, a
  * Clamp em trimH: Sleep/Hurt deitam com verde no centro — sem clamp a sola enterra.
  * Hop pra cima (pe > trimH) continua liberado.
  */
-function peYNoTrim(fr) {
+export function peYNoTrim(fr) {
   const trimH = fr.trimH || fr.h;
   if (!Number.isFinite(fr.pivotY) || !Number.isFinite(fr.trimY)) return trimH;
   const pe = (1 - fr.pivotY) * fr.h - fr.trimY;
   return Math.max(trimH, pe);
 }
 
+function peIdleDoPack(pack, dir) {
+  if (!pack?.quadros) return 0;
+  if (!pack.peIdlePorDir) pack.peIdlePorDir = [];
+  const d = (dir | 0) & 7;
+  const cached = pack.peIdlePorDir[d];
+  if (Number.isFinite(cached) && cached > 0) return cached;
+  const fr =
+    pack.quadros.get(`Idle:${d}:0`) ||
+    pack.quadros.get("Idle:0:0");
+  const pe = fr ? peYNoTrim(fr) : 0;
+  if (pe > 0) pack.peIdlePorDir[d] = pe;
+  return pe;
+}
+
+/**
+ * Progresso 0..1 do pulo de chão: 0 takeoff, 0.5 apex, 1 land.
+ * Altura vem da física; isto só orienta scrub/peso do pivot.
+ */
+export function fasePuloChao(ator) {
+  const lift = Math.max(ator?.hopLift || 0, ator?.puloAlt || 0);
+  const apex = APEX_PULO > 0.2 ? APEX_PULO : 1.49;
+  const u = Math.max(0, Math.min(1, lift / apex));
+  const vz = ator?.vz || 0;
+  if (vz > 0.15) return u * 0.5;
+  if (vz < -0.15) return 0.5 + (1 - u) * 0.5;
+  return lift > 0.05 ? 0.5 : 0;
+}
+
+/**
+ * Peso do delta pivot Hop vs Idle (0 = só física, 1 = atlas cheio).
+ * Alto no prepare/início da subida; quase zero no pouso.
+ */
+export function pesoPivotHop(ator) {
+  if (!ehPuloChao(ator) || ehVooDeVerdade(ator)) return 1;
+  const fase = fasePuloChao(ator);
+  if (fase < 0.18) return 0.65;
+  if (fase < 0.42) return 0.55 - (fase - 0.18) * 1.1;
+  if (fase < 0.55) return 0.2;
+  if (fase < 0.72) return 0.1;
+  return 0;
+}
+
+/**
+ * peY do blit: Idle + (Hop − Idle) * peso, com clamp de cue em blocos.
+ * Voo verdadeiro / strips FlapAround|Hover mantêm peY integral.
+ */
+export function peYOrientado(fr, pack, ator) {
+  if (!fr) return 0;
+  const peHop = peYNoTrim(fr);
+  if (!querHopOrientado(ator, pack)) return peHop;
+  const peIdle = peIdleDoPack(pack, ator.visual?.dir | 0);
+  if (!(peIdle > 0)) return peHop;
+  const peso = pesoPivotHop(ator);
+  let pe = peIdle + (peHop - peIdle) * peso;
+  const escSp = Number(ator?.especie?.escala);
+  const escala = escSp > 0 ? escSp : 1;
+  const maxDelta = (CUE_HOP_MAX_BLOCOS * TILE) / escala;
+  const delta = pe - peIdle;
+  if (Math.abs(delta) > maxDelta) pe = peIdle + Math.sign(delta || 1) * maxDelta;
+  return pe;
+}
+
 /**
  * Centro do recorte, em px do canvas 1:1, relativo ao pé.
  * x para a direita, y para cima. Sem quadro, o círculo de fallback.
+ * `ajuste.peY` opcional (mesmo override do blit).
  */
 export function centroDoQuadro(fr, ajuste) {
   if (!fr || !(fr.w > 0)) return { x: 0, y: 18 };
@@ -189,8 +271,10 @@ export function centroDoQuadro(fr, ajuste) {
   const oy = Number(ajuste?.dy);
   const dx = Number.isFinite(ox) ? ox : 0;
   const dy = Number.isFinite(oy) ? oy : 0;
+  const peOverride = Number(ajuste?.peY);
+  const pe = Number.isFinite(peOverride) ? peOverride : peYNoTrim(fr);
   const esquerda = -pivotX * fr.w + trimEsq + dx;
-  const topo = -peYNoTrim(fr) + dy;
+  const topo = -pe + dy;
   return {
     x: esquerda + trimW * 0.5,
     y: -(topo + trimH * 0.5),
@@ -304,7 +388,7 @@ function marcarPasso(ator) {
 
 /** No ar de verdade (paridade Pokemon AI isFlightPoseActive) — não só tipo Flying. */
 function voa(ator, passo) {
-  if (ator.skyPasser || ator.voando || ator.planando) return true;
+  if (ehVooDeVerdade(ator)) return true;
   if (ator.habitatKind === "sky" || ator.habitatKind === "high") {
     if ((ator.hopLift || 0) > 0.12 || ator.voando) return true;
   }
@@ -329,8 +413,14 @@ function escolherFaixa(ator, pack, agora, passo) {
   if (noGolpe && ator.golpePose && pack.anims?.[ator.golpePose]) return ator.golpePose;
   if ((ator.conjuroRestante || 0) > 0 && pack.anims?.Shoot) return "Shoot";
   if (agora < ator.poseAte && POSE_GOLPE.has(ator.pose)) return faixaDoGolpe(pack, ator.pose);
+  // Pulo de chão sem flap: Hop scrubado (altura = física).
+  if (querHopOrientado(ator, pack)) return "Hop";
   // Voo: FlapAround → Hover → Hop → Float; Idle só se pack quebrado.
   if (voa(ator, passo)) {
+    // Pulo curto sem strip aérea real: não cair em Float.
+    if (ehPuloChao(ator) && !ehVooDeVerdade(ator) && !pack.anims?.FlapAround && !pack.anims?.Hover) {
+      return pack.anims?.Idle ? "Idle" : "Walk";
+    }
     return escolherAnimVoo(pack) || (pack.anims?.Idle ? "Idle" : "Walk");
   }
   if (passo && pack.anims?.Walk) return "Walk";
@@ -390,6 +480,15 @@ export function tickVisual(ator, dt, agora) {
   let spec = pack.anims?.[v.anim];
   if (!spec) {
     v.fase = 0;
+    return pack;
+  }
+  // Hop orientado: scrub pela fase do pulo (não loop livre do atlas).
+  if (v.anim === "Hop" && querHopOrientado(ator, pack)) {
+    const fase = fasePuloChao(ator);
+    const n = spec.frameCount || 1;
+    v.frame = Math.min(n - 1, Math.max(0, Math.floor(fase * n)));
+    v.t = 0;
+    v.fase = fase;
     return pack;
   }
   const noGolpe = (ator.conjuroRestante || 0) > 0 || (ator.golpeRecRestante || 0) > 0;

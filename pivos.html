@@ -5,35 +5,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pivô do Pokémon</title>
   <link rel="stylesheet" href="css/pivos.css" />
+  <link rel="stylesheet" href="css/pivos-pokemon.css" />
 </head>
 <body>
   <header class="topo">
     <a class="topo__voltar" href="index.html">Voltar ao jogo</a>
-    <h1>Pivô e altura do chão</h1>
+    <h1>Pivô · tamanho · animação</h1>
     <p class="topo__nota" id="status">Carregando catálogo…</p>
     <button type="button" id="salvar">Salvar</button>
   </header>
 
   <div class="miolo">
-    <aside class="coluna">
+    <aside class="coluna coluna--pivos">
       <section class="coluna__lista">
         <h2>Pokémon</h2>
         <input id="busca" type="search" placeholder="Nome ou número" />
         <ul class="lista lista--alta" id="lista-pokemon"></ul>
       </section>
-      <section>
+
+      <nav class="abas" id="abas" role="tablist" aria-label="Painéis de edição">
+        <button type="button" role="tab" data-aba="pivo" class="ativo" aria-selected="true">Pivô</button>
+        <button type="button" role="tab" data-aba="tamanho" aria-selected="false">Tamanho</button>
+        <button type="button" role="tab" data-aba="montaria" aria-selected="false">Montaria</button>
+      </nav>
+
+      <section class="painel-aba" id="painel-pivo" data-painel="pivo" role="tabpanel">
         <h2>Altura do chão</h2>
         <label class="campo">
-          Células <strong id="offset-valor">0.00</strong>
+          <span class="campo__topo">Células <strong id="offset-valor">0.00</strong></span>
           <input id="offset" type="range" min="-2" max="3" step="0.01" value="0" />
+          <input id="offset-num" type="number" min="-4" max="4" step="0.01" value="0" />
         </label>
-        <p class="coords" id="coords">dx 0    dy 0</p>
-        <h2>Pose</h2>
-        <div class="faixas" id="faixas">
-          <button type="button" data-faixa="Idle" class="ativo">Parado</button>
-          <button type="button" data-faixa="Walk">Andando</button>
+        <p class="coords" id="coords">dx 0 · dy 0</p>
+        <p class="nota">Arraste o sprite para alinhar o pé na cruz amarela. A linha verde é o chão.</p>
+      </section>
+
+      <section class="painel-aba" id="painel-tamanho" data-painel="tamanho" role="tabpanel" hidden>
+        <h2>Escala vs jogador</h2>
+        <label class="campo">
+          <span class="campo__topo">Escala <strong id="escala-valor">1.00</strong></span>
+          <input id="escala" type="range" min="0.05" max="4" step="0.01" value="1" />
+          <input id="escala-num" type="number" min="0.05" max="4" step="0.01" value="1" />
+        </label>
+        <p class="coords" id="escala-base">catálogo 1.00 · jogador 0.50</p>
+        <button type="button" id="escala-reset" class="btn-bloco">Resetar ao catálogo</button>
+        <p class="nota">Use o modo <em>Comparar</em> no palco para ver o mon ao lado do jogador.</p>
+      </section>
+
+      <section class="painel-aba" id="painel-montaria" data-painel="montaria" role="tabpanel" hidden>
+        <div id="montaria-aviso" class="aviso-modo" hidden>
+          Ative o modo <strong>Montaria</strong> no palco para editar o assento com preview.
         </div>
-        <div class="dirs" id="dirs">
+        <div id="montaria-controles">
+          <h2>Assento</h2>
+          <div class="faixas" id="modos-assento">
+            <button type="button" data-modo="ride" class="ativo">Ride</button>
+            <button type="button" data-modo="fly">Fly</button>
+            <button type="button" data-modo="surf">Surf</button>
+          </div>
+          <label class="campo">
+            <span class="campo__topo">Lateral X <strong id="seat-x-valor">0.00</strong></span>
+            <input id="seat-x" type="range" min="-1.5" max="1.5" step="0.01" value="0" />
+            <input id="seat-x-num" type="number" min="-1.5" max="1.5" step="0.01" value="0" />
+          </label>
+          <label class="campo">
+            <span class="campo__topo">Costas Y <strong id="seat-y-valor">-0.22</strong></span>
+            <input id="seat-y" type="range" min="-1.5" max="1.5" step="0.01" value="-0.22" />
+            <input id="seat-y-num" type="number" min="-1.5" max="1.5" step="0.01" value="-0.22" />
+          </label>
+          <label class="campo">
+            <span class="campo__topo">Altura pés <strong id="seat-elev-valor">0.55</strong></span>
+            <input id="seat-elev" type="range" min="0" max="2" step="0.01" value="0.55" />
+            <input id="seat-elev-num" type="number" min="0" max="2" step="0.01" value="0.55" />
+          </label>
+          <p class="coords" id="seat-coords">assento 0.00, -0.22 · elev 0.55</p>
+          <p class="nota nota--ciano">Cruz ciano = pé do jogador. Arraste a cruz ou use os sliders. Shift = só elevação.</p>
+        </div>
+      </section>
+    </aside>
+
+    <div class="palco palco--pivos">
+      <canvas id="vista"></canvas>
+      <div class="palco-hud">
+        <div class="palco-hud__modos" id="modos-preview" role="group" aria-label="Modo de preview">
+          <button type="button" data-preview="livre" class="ativo">Livre</button>
+          <button type="button" data-preview="comparar">Comparar</button>
+          <button type="button" data-preview="montaria">Montaria</button>
+        </div>
+        <div class="palco-hud__anims" id="faixas" role="group" aria-label="Animações"></div>
+        <div class="dirs dirs--hud" id="dirs">
           <button type="button" data-dir="3">NO</button>
           <button type="button" data-dir="4">N</button>
           <button type="button" data-dir="5">NE</button>
@@ -44,33 +104,7 @@
           <button type="button" data-dir="0" class="ativo">S</button>
           <button type="button" data-dir="7">SE</button>
         </div>
-        <section class="assento" id="painel-assento" hidden>
-          <h2>Assento montaria</h2>
-          <div class="faixas" id="modos-assento">
-            <button type="button" data-modo="ride" class="ativo">Ride</button>
-            <button type="button" data-modo="fly">Fly</button>
-            <button type="button" data-modo="surf">Surf</button>
-          </div>
-          <label class="campo">
-            Lateral X <strong id="seat-x-valor">0.00</strong>
-            <input id="seat-x" type="range" min="-1.5" max="1.5" step="0.01" value="0" />
-          </label>
-          <label class="campo">
-            Costas Y <strong id="seat-y-valor">-0.22</strong>
-            <input id="seat-y" type="range" min="-1.5" max="1.5" step="0.01" value="-0.22" />
-          </label>
-          <label class="campo">
-            Altura pés <strong id="seat-elev-valor">0.55</strong>
-            <input id="seat-elev" type="range" min="0" max="2" step="0.01" value="0.55" />
-          </label>
-          <p class="coords" id="seat-coords">assento 0.00, -0.22 · elev 0.55</p>
-          <p class="nota">Cruz ciano = pivô do pé do protagonista nas costas. Arraste a cruz ou use os sliders. Y negativo = costas (atrás do facing).</p>
-        </section>
-        <p class="nota">Arraste o desenho para pôr o pé na cruz. A cruz é o pivô. A altura desce (positivo) ou sobe esse ponto em relação à linha do chão. O mesmo pivô vale para parado e andando. O jogador fica no topo da lista.</p>
-      </section>
-    </aside>
-    <div class="palco">
-      <canvas id="vista"></canvas>
+      </div>
     </div>
   </div>
   <script type="module" src="js/pivos/editor.js"></script>

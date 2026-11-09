@@ -6,6 +6,8 @@ import { POKEMON } from "../../config.js";
 import { alcanceEngajavel, dist2Espaco } from "../ator.js";
 import { definirEmocao, EMOCAO } from "../emocoes.js";
 import { saoInimigos } from "../faccao.js";
+import { alertarPackAgro, travarAgroPack } from "../pack.js";
+import { selvagensAtivos } from "../populacao.js";
 
 const INVESTIGAR_SEG = 10;
 const CHEGOU = 1.35;
@@ -20,12 +22,18 @@ function inimigoDe(vitima, atacante) {
   return saoInimigos(vitima, atacante);
 }
 
-/** Marca quem bateu (melee ou ranged). */
+/** Marca quem bateu (melee ou ranged). Pack selvagem: loyalty imediata. */
 export function marcarAtacante(vitima, atacante) {
   if (!inimigoDe(vitima, atacante)) return;
   vitima.pendenteAtacante = atacante;
   if (vitima.faccao === "party") {
     vitima.retaliacaoAlvo = atacante;
+  }
+  if (vitima.faccao === "selvagem" && vitima.packId != null) {
+    vitima.modo = "agro";
+    vitima.alvo = atacante;
+    vitima.agroPersistente = true;
+    alertarPackAgro(selvagensAtivos(), vitima, atacante, travarAgroPack);
   }
 }
 

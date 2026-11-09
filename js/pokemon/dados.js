@@ -78,9 +78,11 @@ function aplicarPivos(arquivo) {
     const offsetY = Number(item.offsetY);
     const dx = Number(item.dx);
     const dy = Number(item.dy);
+    const escala = Number(item.escala);
     if (Number.isFinite(offsetY)) esp.offsetY = offsetY;
     if (Number.isFinite(dx)) esp.pivoDx = dx;
     if (Number.isFinite(dy)) esp.pivoDy = dy;
+    if (Number.isFinite(escala) && escala > 0) esp.escala = escala;
   }
 }
 

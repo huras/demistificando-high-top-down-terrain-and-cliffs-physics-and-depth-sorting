@@ -16,7 +16,7 @@ import {
   prepararTurnosGrupo,
   tickTurnos,
 } from "../turnos.js";
-import { atualizarProjeteis } from "../../pokemon/combate/projeteis.js";
+import { atualizarProjeteis, primeiroTiro } from "../../pokemon/combate/projeteis.js";
 import {
   impactoProjetil,
   tickConjuracao,
@@ -26,9 +26,28 @@ import { tickStatus } from "../../pokemon/combate/status.js";
 import { tickPassivo } from "../../pokemon/ator.js";
 import { tickVisual } from "../../pokemon/sprites.js";
 import { montarGrade } from "../../pokemon/grade.js";
+import {
+  limparImpacto,
+  marcarImpacto,
+  observarTiro,
+  tickImpacto,
+} from "../impacto.js";
 import { definirVolumeChrono, limparVolumeChrono } from "./volume.js";
 import { abrirHudChrono, fecharHudChrono, tickHudChrono } from "./hud.js";
 import { limparCameraChrono } from "./camera.js";
+
+/** Garante anotar→marcarImpacto no hub de efeitos (arena já faz isso). */
+function efeitosComImpacto(efx) {
+  if (!efx) return efx;
+  if (efx._chronoImpacto) return efx;
+  const base = typeof efx.anotar === "function" ? efx.anotar.bind(efx) : null;
+  efx.anotar = (item) => {
+    if (base) base(item);
+    if (item && (item.tipo === "dano" || item.tipo === "erro")) marcarImpacto(item);
+  };
+  efx._chronoImpacto = true;
+  return efx;
+}
 
 /** @type {null|((seg: number) => void)} */
 let aplicarIframeTreinador = null;
@@ -210,6 +229,7 @@ export function encerrarSessaoChrono(resultado = "fuga") {
 
   encerrarTurnos();
   definirModoLuta("real");
+  limparImpacto();
   limparVolumeChrono();
   fecharHudChrono();
   limparCameraChrono();
@@ -234,8 +254,13 @@ function algumVivo(lista) {
  */
 export function tickSessaoChrono(dt, agora, efeitos) {
   if (!sessao) return;
-  const efx = efeitos || sessao.efeitos;
+  const efx = efeitosComImpacto(efeitos || sessao.efeitos);
   sessao.efeitos = efx;
+
+  // Mesmo lifecycle da arena: senão emImpacto trava fase="golpe" após ranged.
+  tickImpacto(dt);
+  const tiro = primeiroTiro();
+  observarTiro(tiro);
 
   if (emFoco()) {
     focoAcc += dt;
