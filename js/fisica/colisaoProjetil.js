@@ -27,21 +27,33 @@ import { alturaSobPes, corpoColideSolido } from "./colisao.js";
 
 /**
  * True se a coluna destino é face de parede pro projetil (não piso caminhável).
+ * Não trata a própria célula atual como parede (senão cai pelo cliff preso).
  * @param {number} nx
  * @param {number} ny
  * @param {number} z
  * @param {number} soloAntes
  * @param {number} maxStep
  * @param {number} alturaCol
+ * @param {number} x0
+ * @param {number} y0
  */
-function ehFaceParede(nx, ny, z, soloAntes, maxStep, alturaCol) {
+function ehFaceParede(nx, ny, z, soloAntes, maxStep, alturaCol, x0, y0) {
   const elevRef = Math.max(z, soloAntes) + 1;
   const solo = alturaSobPes(nx, ny, elevRef) || 0;
   if (solo - soloAntes > maxStep && z < solo - 1e-3) return true;
   const cx = Math.floor(nx);
   const cy = Math.floor(ny);
-  // Sólido na faixa vertical do projetil (meio da face).
-  if (corpoColideSolido(cx, cy, z, alturaCol, Math.floor(z))) return true;
+  const ox = Math.floor(x0);
+  const oy = Math.floor(y0);
+  // Mesma célula: não é face — evita bounce infinito enquanto z cai no cliff.
+  if (cx === ox && cy === oy) return false;
+  // Sólido só na célula NOVA (bateu na face), não no volume já ocupado.
+  if (
+    corpoColideSolido(cx, cy, z, alturaCol, Math.floor(z)) &&
+    !corpoColideSolido(ox, oy, z, alturaCol, Math.floor(z))
+  ) {
+    return true;
+  }
   return false;
 }
 
@@ -99,7 +111,7 @@ export function resolverPassoProjetil(p, dt, opts = {}) {
 
   if (dx !== 0) {
     const nx = x0 + dx;
-    if (ehFaceParede(nx, y0, z, soloAntes, maxStep, alturaCol)) {
+    if (ehFaceParede(nx, y0, z, soloAntes, maxStep, alturaCol, x0, y0)) {
       vx *= -rest;
       vy *= atrito;
       hit = "wall";
@@ -110,7 +122,7 @@ export function resolverPassoProjetil(p, dt, opts = {}) {
   }
   if (dy !== 0) {
     const ny = y0 + dy;
-    if (ehFaceParede(x, ny, z, soloAntes, maxStep, alturaCol)) {
+    if (ehFaceParede(x, ny, z, soloAntes, maxStep, alturaCol, x0, y0)) {
       vy *= -rest;
       vx *= atrito;
       hit = "wall";
@@ -120,7 +132,9 @@ export function resolverPassoProjetil(p, dt, opts = {}) {
     }
   }
 
-  const elevSolo = Math.max(z, soloAntes) + 1;
+  // Piso sob a célula atual (após bounce XY). Não usa z caindo como elevRef
+  // pra não “escavar” andares dentro do cliff.
+  const elevSolo = Math.max(soloAntes, z0) + 1;
   const solo = alturaSobPes(x, y, elevSolo) || soloAntes;
 
   p.vx = vx;
@@ -141,18 +155,23 @@ export function resolverPassoProjetil(p, dt, opts = {}) {
     return hit;
   }
 
-  // Air: aterrissa só se o piso sob o pé está ao alcance (não face).
-  // limiar = topo do piso + offset do raio do projetil; `raio` é folga de contato.
+  // Air: aterrissa no piso real mesmo após ricochete (senão cai pelo cliff).
   const pisoOk = solo - soloAntes <= maxStep + 1e-3 || z + raio >= solo - 1e-3;
-  if (
-    hit !== "wall" &&
-    pisoOk &&
-    z <= solo + floorOff + raio &&
-    vz <= 0.15
-  ) {
+  if (pisoOk && z <= solo + floorOff + raio && vz <= 0.15) {
     p.z = solo + floorOff;
     p.vz = 0;
+    if (hit === "wall") {
+      p.vx *= 0.35;
+      p.vy *= 0.35;
+    }
     return "floor";
+  }
+
+  // Segurança: nunca atravessar o piso da célula atual.
+  if (z < solo + floorOff) {
+    p.z = solo + floorOff;
+    p.vz = Math.min(0, vz);
+    return hit === "wall" ? "wall" : "floor";
   }
 
   p.z = z;

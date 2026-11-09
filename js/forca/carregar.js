@@ -86,6 +86,8 @@ export function restaurarProp(prop, x, y) {
   prop.y = y;
   prop.z = z;
   prop.forcaCarregado = false;
+  // Cache do billboard no spawn enterra/flutua até o lote rebuildar.
+  if (prop._veg) prop._veg.baseY = undefined;
   // Prop pode ter saído do chunk de spawn no voo — move a lista + reindexa bases.
   sincronizarPropChunk(prop);
 }
