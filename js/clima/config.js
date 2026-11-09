@@ -78,6 +78,18 @@ export const CLIMA_CFG = Object.freeze({
   pingoAlongaVento: 0.35,
   areiaQueda: 2.4,
   areiaVentoMul: 34,
+  /** Alpha no pico. A rampa com o mix fica em precipitacao.js. */
+  areiaAlpha: 0.12,
+  /** Fração do instanceCount da chuva — areia é véu, não cortina. */
+  areiaDensidade: 0.4,
+  /** Largura no mundo. Baixa pra o grão não virar mancha no zoom. */
+  areiaLargura: 0.04,
+  areiaLarguraPx: 2.4,
+  /** Piso do peso em pixel na mira (orto 0); no top-down o orto cobre o resto. */
+  areiaPesoLarguraPx: 0.45,
+  /** Fade da lente: some até ~1.5 m e só fecha por volta de 8 m. */
+  areiaFadePerto0: 1.5,
+  areiaFadePerto1: 8,
   neveQueda: 3.1,
   neveVentoMul: 12,
   /**

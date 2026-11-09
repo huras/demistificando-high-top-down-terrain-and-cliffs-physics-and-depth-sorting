@@ -57,21 +57,15 @@ export function yawCartaoSol() {
 }
 
 /**
- * Empurra o proxy de sombra PARA LONGE da luz.
- * Em direção à luz o caster escreve depth mais perto → o cartão visível
- * fica atrás no mapa e se auto-escurece. Longe da luz: cartão fica na frente
- * da própria silhueta (recebe cliff, não a si mesmo).
+ * Folga extra do proxy longe da luz (acne no pé da coluna).
+ * A anti-auto-sombra de verdade é amostrar sombra na coluna do pivô
+ * (cartão câmera ≠ caster sol) — ver sombraColunaBillboard.
  */
-export const OFFSET_CASTER_SOL = 0.22;
-/** Encolhe o proxy pra silhueta não cobrir o cartão câmera no light-space. */
-export const ESCALA_CASTER_SOL = 0.9;
+export const OFFSET_CASTER_SOL = 0.12;
 
 export function offsetCasterSol(objeto3d, metros = OFFSET_CASTER_SOL) {
   if (!objeto3d) return;
   objeto3d.position.addScaledVector(normalSol, -metros);
-  const s = ESCALA_CASTER_SOL;
-  objeto3d.scale.x *= s;
-  objeto3d.scale.y *= s;
 }
 
 /**
@@ -193,6 +187,72 @@ function profundidadeColuna(shader, folgaTxt, prefTxt, porDistTxt, tetoTxt) {
       "#include <dithering_fragment>",
       `#include <dithering_fragment>\n${calcColunaFrag(folgaTxt, prefTxt, porDistTxt, tetoTxt)}`,
     );
+}
+
+/**
+ * Shadow map na coluna do pé (XZ pivô + Y do vértice), não no cartão câmera.
+ * Visível billboarda com a câmera; o caster fica de frente pro sol — amostrar
+ * worldPosition do cartão auto-escurece. Coluna = mesma âncora do depth sort.
+ */
+const SHADOWMAP_COLUNA = `
+#if ( defined( USE_SHADOWMAP ) && ( NUM_DIR_LIGHT_SHADOWS > 0 || NUM_POINT_LIGHT_SHADOWS > 0 ) ) || ( NUM_SPOT_LIGHT_COORDS > 0 )
+	vec3 shadowWorldNormal = uNormalSol;
+	vec4 shadowWorldPosition;
+	vec4 localPivoSombra = vec4( 0.0, 0.0, 0.0, 1.0 );
+	vec4 localFragSombra = vec4( transformed, 1.0 );
+	#ifdef USE_BATCHING
+		localPivoSombra = batchingMatrix * localPivoSombra;
+		localFragSombra = batchingMatrix * localFragSombra;
+	#endif
+	#ifdef USE_INSTANCING
+		localPivoSombra = instanceMatrix * localPivoSombra;
+		localFragSombra = instanceMatrix * localFragSombra;
+	#endif
+	vec3 pivoSombraW = ( modelMatrix * localPivoSombra ).xyz;
+	vec3 fragSombraW = ( modelMatrix * localFragSombra ).xyz;
+	vec4 worldPositionColunaSombra = vec4( pivoSombraW.x, max( fragSombraW.y, pivoSombraW.y ), pivoSombraW.z, 1.0 );
+#endif
+#if defined( USE_SHADOWMAP )
+	#if NUM_DIR_LIGHT_SHADOWS > 0
+		#pragma unroll_loop_start
+		for ( int i = 0; i < NUM_DIR_LIGHT_SHADOWS; i ++ ) {
+			shadowWorldPosition = worldPositionColunaSombra + vec4( shadowWorldNormal * directionalLightShadows[ i ].shadowNormalBias, 0 );
+			vDirectionalShadowCoord[ i ] = directionalShadowMatrix[ i ] * shadowWorldPosition;
+		}
+		#pragma unroll_loop_end
+	#endif
+	#if NUM_POINT_LIGHT_SHADOWS > 0
+		#pragma unroll_loop_start
+		for ( int i = 0; i < NUM_POINT_LIGHT_SHADOWS; i ++ ) {
+			shadowWorldPosition = worldPositionColunaSombra + vec4( shadowWorldNormal * pointLightShadows[ i ].shadowNormalBias, 0 );
+			vPointShadowCoord[ i ] = pointShadowMatrix[ i ] * shadowWorldPosition;
+		}
+		#pragma unroll_loop_end
+	#endif
+#endif
+#if NUM_SPOT_LIGHT_COORDS > 0
+	#pragma unroll_loop_start
+	for ( int i = 0; i < NUM_SPOT_LIGHT_COORDS; i ++ ) {
+		shadowWorldPosition = worldPositionColunaSombra;
+		#if ( defined( USE_SHADOWMAP ) && UNROLLED_LOOP_INDEX < NUM_SPOT_LIGHT_SHADOWS )
+			shadowWorldPosition.xyz += shadowWorldNormal * spotLightShadows[ i ].shadowNormalBias;
+		#endif
+		vSpotLightCoord[ i ] = spotLightMatrix[ i ] * shadowWorldPosition;
+	}
+	#pragma unroll_loop_end
+#endif
+`;
+
+function sombraColunaBillboard(shader) {
+  if (!shader.vertexShader.includes("#include <shadowmap_vertex>")) return;
+  if (shader.vertexShader.includes("worldPositionColunaSombra")) return;
+  if (!shader.vertexShader.includes("uniform vec3 uNormalSol")) {
+    shader.vertexShader = `uniform vec3 uNormalSol;\n${shader.vertexShader}`;
+  }
+  shader.vertexShader = shader.vertexShader.replace(
+    "#include <shadowmap_vertex>",
+    SHADOWMAP_COLUNA,
+  );
 }
 
 /**
@@ -328,10 +388,11 @@ export function aplicarLuzBillboard(material, folgaPivo = FOLGA_CHAO) {
       "#include <normal_fragment_maps>\nnormal = normalize( mat3( viewMatrix ) * uNormalSol );",
     );
     profundidadeColuna(shader, folgaTxt, prefTxt, porDistTxt, tetoTxt);
+    sombraColunaBillboard(shader);
   };
   material.customProgramCacheKey = function chaveLuzBillboard() {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
-    return `${base}|luz-billboard|coluna|pe-clamp-frag|desempate-pref|${folgaTxt}|${prefTxt}|${porDistTxt}|${tetoTxt}`;
+    return `${base}|luz-billboard|coluna|sombra-coluna|pe-clamp-frag|desempate-pref|${folgaTxt}|${prefTxt}|${porDistTxt}|${tetoTxt}`;
   };
   return material;
 }

@@ -89,8 +89,19 @@ export const MODELO_SITE_SEM_TINT = new Set([
   "glitter-lighthouse",
 ]);
 
+/** Decoração / landmark — sem interior jogável. */
+export const MODELO_SITE_SEM_ENTRADA = new Set([
+  "moomoo-farm-silo",
+  "windmill-1",
+]);
+
 export function pegadaDoModeloSite(modelo) {
   return PEGADA_MODELO_SITE[modelo] || null;
+}
+
+/** Casa/fazenda/farol de sítio com porta de entrada. */
+export function modeloSiteEntravel(modelo) {
+  return !!modelo && !MODELO_SITE_SEM_ENTRADA.has(modelo);
 }
 
 /** Props de sítio com malha 3D (sem billboard). propId → id em catalogoCasas. */

@@ -97,6 +97,8 @@ varying float vBorda;
 uniform vec3 uCor;
 uniform float uAlpha;
 uniform float uTipo;
+uniform float uFadePerto0;
+uniform float uFadePerto1;
 
 void main() {
   float ax = 1.0 - abs(vCanto.x);
@@ -105,7 +107,7 @@ void main() {
   float grao = smoothstep(0.0, 0.35, ax) * smoothstep(0.0, 0.28, ay);
   float floco = smoothstep(0.05, 0.85, 1.0 - length(vCanto));
   float forma = uTipo < 0.5 ? fio : mix(grao, floco, clamp(uTipo - 1.0, 0.0, 1.0));
-  float perto = smoothstep(0.35, 1.6, vDistCam);
+  float perto = smoothstep(uFadePerto0, max(uFadePerto1, uFadePerto0 + 0.001), vDistCam);
   float longe = 1.0 - smoothstep(26.0, 40.0, vDistCam);
   float borda = 1.0 - smoothstep(0.92, 1.0, vBorda);
   float alpha = forma * uAlpha * perto * longe * borda;
@@ -212,6 +214,8 @@ export function criarPrecipitacao() {
     uCor: { value: new THREE.Color() },
     uAlpha: { value: 0 },
     uTipo: { value: 0 },
+    uFadePerto0: { value: 0.35 },
+    uFadePerto1: { value: 1.6 },
   };
 
   const material = new THREE.ShaderMaterial({
@@ -263,19 +267,27 @@ export function criarPrecipitacao() {
     return Math.min(N, Math.max(1, n));
   }
 
+  function fadePerto(a, b) {
+    uniforms.uFadePerto0.value = a;
+    uniforms.uFadePerto1.value = b;
+  }
+
   function aplicarTipo(tipo, clima, ventoXZ) {
     if (tipo === 1) {
       const { vx, vz } = ventoHoriz(ventoXZ, cfg.areiaVentoMul ?? 34);
       velMundo.set(vx, -(cfg.areiaQueda ?? 2.4), vz);
-      uniforms.uLargura.value = 0.09;
-      uniforms.uLarguraPx.value = 2.4;
+      uniforms.uLargura.value = cfg.areiaLargura ?? 0.04;
+      uniforms.uLarguraPx.value = cfg.areiaLarguraPx ?? 2.4;
       uniforms.uComprimento.value = 0.42;
       uniforms.uComprimentoPx.value = 5;
       uniforms.uBamboleio.value = 0.15;
-      uniforms.uAlpha.value = 0.28 * Math.min(1, 0.45 + clima.areia * 0.85);
-      uniforms.uPesoLarguraPx.value = uniforms.uOrto.value;
+      uniforms.uAlpha.value = (cfg.areiaAlpha ?? 0.12) * Math.min(1, 0.45 + clima.areia * 0.85);
+      uniforms.uPesoLarguraPx.value = Math.max(cfg.areiaPesoLarguraPx ?? 0.45, uniforms.uOrto.value);
+      fadePerto(cfg.areiaFadePerto0 ?? 1.5, cfg.areiaFadePerto1 ?? 8);
       uniforms.uCor.value.copy(corAreia);
-      geo.instanceCount = contarInstancias(clima.areia);
+      const nAreia = contarInstancias(clima.areia);
+      const dens = cfg.areiaDensidade ?? 0.4;
+      geo.instanceCount = nAreia <= 0 ? 0 : Math.max(1, Math.floor(nAreia * dens));
       return;
     }
     if (tipo === 2) {
@@ -288,10 +300,12 @@ export function criarPrecipitacao() {
       uniforms.uBamboleio.value = 0.55;
       uniforms.uAlpha.value = 0.72 * Math.min(1, 0.45 + clima.neve * 0.85);
       uniforms.uPesoLarguraPx.value = uniforms.uOrto.value;
+      fadePerto(0.35, 1.6);
       uniforms.uCor.value.copy(corNeve);
       geo.instanceCount = contarInstancias(clima.neve);
       return;
     }
+    fadePerto(0.35, 1.6);
     const { vx, vz } = ventoHoriz(ventoXZ, cfg.chuvaVentoMul ?? 28);
     const queda = cfg.chuvaQueda ?? 30;
     velMundo.set(vx, -queda, vz);

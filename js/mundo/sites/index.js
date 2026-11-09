@@ -6,11 +6,13 @@ export {
   PEGADA_MODELO_SITE,
   PEGADA_PROP_SITE,
   MODELO_SITE_SEM_TINT,
+  MODELO_SITE_SEM_ENTRADA,
   CASA_SITE,
   LAPIDES,
   raioDoPropSite,
   lapideDoSlot,
   pegadaDoModeloSite,
+  modeloSiteEntravel,
   modeloDoPropSite,
   pegadaDoPropSite,
 } from "./catalogo.js";
@@ -27,7 +29,12 @@ export {
   peekSiteDaArea,
   peekSitesDaArea,
 } from "./plano.js";
-export { celulasSiteChunk, celulasAradoSiteChunk, propsSiteChunk } from "./colocacao.js";
+export {
+  celulasSiteChunk,
+  celulasAradoSiteChunk,
+  propsSiteChunk,
+  edificiosSitePerto,
+} from "./colocacao.js";
 export {
   carregarAtlasSites,
   atlasSitesPronto,

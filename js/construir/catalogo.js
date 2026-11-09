@@ -5,6 +5,7 @@ import { MOVEIS } from "../wild/catalogo.js";
 import {
   CASA_SITE,
   MODELO_CASA_SITE,
+  MODELO_SITE_SEM_ENTRADA,
   pegadaDoModeloSite,
 } from "../mundo/sites/catalogo.js";
 import { listarIdsCasaJogador } from "./modelosCasa.js";
@@ -89,9 +90,7 @@ function receitaCasa(buildingId) {
     cols: fp.cols,
     rows: fp.rows,
     floors: 1,
-    enterable: !["moomoo-farm-silo", "windmill-1", "glitter-lighthouse", "ruina"].includes(
-      buildingId
-    ),
+    enterable: buildingId !== "ruina" && !MODELO_SITE_SEM_ENTRADA.has(buildingId),
     costs: { ...costs },
   };
 }

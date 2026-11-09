@@ -4,6 +4,8 @@ import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { idsEditores, origemDoModelo, urlDoModelo } from "../mundo/cidade/catalogoCasas.js";
 import { lerFacesObj, partirGrupos } from "../mundo/cidade/facesObj.js";
+import { pegadaDoModeloSite } from "../mundo/sites/catalogo.js";
+import { carregarMoldeCidade } from "../render/3d/edificiosCidade.js";
 
 const statusEl = document.getElementById("status");
 const listaEl = document.getElementById("lista");
@@ -77,38 +79,68 @@ const grupo = new THREE.Group();
 cena.add(grupo);
 
 const ROTULOS = {
-  centro: "Centro",
+  centro: "Centro Pokémon",
   loja: "Loja",
   lab: "Laboratório",
-  "casa-bark": "Casa bark",
-  "casa-amigo": "Casa amigo",
-  "casa-cherry": "Casa cherry",
-  "casa-guia": "Casa guia",
-  "glitter-lighthouse": "Farol (Glitter Lighthouse)",
-  "moomoo-farm": "MooMoo Farm",
-  "moomoo-farm-silo": "MooMoo Silo",
-  "pokemon-day-care": "Pokemon Day Care",
-  logs: "Logs",
+  ginasio: "Ginásio",
+  museu: "Museu",
+  coliseu: "Coliseu",
+  mansao: "Mansão",
+  condominio: "Condomínio",
+  ruina: "Ruína",
+  "casa-bark": "Casa de palha",
+  "casa-amigo": "Casa cinza",
+  "casa-cherry": "Casa branca",
+  "casa-guia": "Casa de madeira",
+  "glitter-lighthouse": "Farol",
+  "moomoo-farm": "Fazenda MooMoo",
+  "moomoo-farm-silo": "Silo",
+  "pokemon-day-care": "Creche Pokémon",
+  "windmill-1": "Moinho",
+  logs: "Toras",
 };
 
 function ehGltf(arquivo) {
   return /\.glb$/i.test(arquivo) || /\.gltf$/i.test(arquivo);
 }
 
-const modelos = idsEditores()
-  .map((id) => {
-    const origem = origemDoModelo(id);
-    const arquivo = origem?.arquivo || "modelo.obj";
-    if (ehGltf(arquivo)) return null;
-    return {
-      id,
-      nome: ROTULOS[id] || arquivo.replace(/\.(obj|glb|gltf)$/i, ""),
-      url: origem
-        ? `${urlDoModelo(origem.base)}${urlDoModelo(origem.arquivo)}`
-        : `assets/models/cidade/${id}/modelo.obj`,
-    };
-  })
-  .filter(Boolean);
+/** Portas marca faces do OBJ; se o jogo usa glTF, pega o .obj irmão. */
+function arquivoObjDoEditor(arquivo) {
+  if (ehGltf(arquivo)) return arquivo.replace(/\.(glb|gltf)$/i, ".obj");
+  return arquivo;
+}
+
+function nomeDoEdificio(id, arquivo) {
+  if (ROTULOS[id]) return ROTULOS[id];
+  const base = String(arquivo || "")
+    .replace(/\.(obj|glb|gltf)$/i, "")
+    .trim();
+  if (base && !/^modelo$/i.test(base)) return base;
+  return String(id || "")
+    .split("-")
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+}
+
+const modelos = idsEditores().map((id) => {
+  const origem = origemDoModelo(id);
+  const arquivo = origem?.arquivo || "modelo.obj";
+  const arquivoObj = arquivoObjDoEditor(arquivo);
+  const base = origem ? urlDoModelo(origem.base) : `assets/models/cidade/${id}/`;
+  const urlObj = origem
+    ? `${base}${urlDoModelo(arquivoObj)}`
+    : `assets/models/cidade/${id}/modelo.obj`;
+  // Visual = arquivo do jogo (glTF quando houver); faces de porta continuam no OBJ.
+  const urlVisual = origem ? `${base}${urlDoModelo(arquivo)}` : urlObj;
+  return {
+    id,
+    nome: nomeDoEdificio(id, arquivo),
+    url: urlObj,
+    urlVisual,
+    visualGltf: ehGltf(arquivo),
+  };
+});
 
 let partes = {};
 let modeloId = "";
@@ -241,43 +273,126 @@ function materialVisivel(orig) {
 function prepararVisual(raiz) {
   raiz.traverse((filho) => {
     if (!filho.isMesh) return;
-    const antigo = Array.isArray(filho.material) ? filho.material[0] : filho.material;
-    const nome = (antigo?.name || filho.name || "").toLowerCase();
-    if (nome.includes("kage")) {
+    const mats = Array.isArray(filho.material) ? filho.material : [filho.material];
+    const primeiro = mats[0];
+    const nome = (primeiro?.name || filho.name || "").toLowerCase();
+    if (nome.includes("kage") || nome.includes("shade")) {
       filho.visible = false;
       return;
     }
-    filho.material = materialVisivel(antigo);
-    if (antigo) {
-      antigo.map = null;
-      antigo.dispose();
+    // Copia o map do material original antes de descartar (glTF / OBJ).
+    filho.material = materialVisivel(primeiro);
+    for (let i = 0; i < mats.length; i++) {
+      const m = mats[i];
+      if (!m || m === filho.material) continue;
+      m.map = null;
+      m.dispose?.();
     }
   });
   return raiz;
 }
 
-function carregarVisual(url) {
+function sanitizarMtl(texto) {
+  return String(texto || "")
+    .split(/\r?\n/)
+    .map((linha) => {
+      const m = linha.match(/^(map_\w+)\s+(.+)$/i);
+      if (!m) return linha;
+      if (/^map_d$/i.test(m[1])) return "";
+      let path = m[2].trim().replace(/^"(.*)"$/, "$1");
+      if (/^[a-zA-Z]:[\\/]/.test(path) || path.includes("\\\\") || /^[\\/]/.test(path)) {
+        path = path.split(/[/\\]/).pop() || path;
+      }
+      return `${m[1]} ${path}`;
+    })
+    .filter((l) => l.length > 0)
+    .join("\n");
+}
+
+function carregarObjVisual(url) {
   const barra = url.lastIndexOf("/");
   const base = url.slice(0, barra + 1);
   const arquivo = url.slice(barra + 1);
   const mtl = arquivo.replace(/\.obj$/i, ".mtl");
-  return new Promise((resolve, reject) => {
-    const mats = new MTLLoader();
-    mats.setResourcePath(base);
-    mats.load(
-      `${base}${mtl}`,
-      (pronto) => {
-        pronto.preload();
+  return fetch(`${base}${mtl}`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`mtl ${res.status}`);
+      return res.text();
+    })
+    .then((texto) => {
+      const mats = new MTLLoader();
+      mats.setResourcePath(base);
+      const pronto = mats.parse(sanitizarMtl(texto), base);
+      pronto.preload();
+      return new Promise((resolve, reject) => {
         const obj = new OBJLoader();
         obj.setMaterials(pronto);
         obj.load(`${base}${arquivo}`, resolve, undefined, reject);
-      },
-      undefined,
-      () => {
+      });
+    })
+    .catch(() =>
+      new Promise((resolve, reject) => {
         new OBJLoader().load(`${base}${arquivo}`, resolve, undefined, reject);
-      },
+      }),
     );
+}
+
+function carregarVisualObj(modelo) {
+  return carregarObjVisual(modelo.urlVisual || modelo.url);
+}
+
+const _fa = new THREE.Vector3();
+const _fb = new THREE.Vector3();
+const _fc = new THREE.Vector3();
+
+/** Faces clicáveis no mesmo espaço do molde do jogo (glTF). */
+function facesDaMalha(raiz) {
+  const facesOut = [];
+  const pos = [];
+  const mapaTri = [];
+  let indice = 0;
+  raiz.updateMatrixWorld(true);
+  raiz.traverse((filho) => {
+    if (!filho.isMesh || !filho.visible || !filho.geometry) return;
+    const mats = Array.isArray(filho.material) ? filho.material : [filho.material];
+    const nome = String(mats[0]?.name || filho.name || "").toLowerCase();
+    if (nome.includes("kage") || nome.includes("shade")) return;
+    const geo = filho.geometry;
+    const attr = geo.getAttribute("position");
+    if (!attr) return;
+    const index = geo.index;
+    const matrix = filho.matrixWorld;
+    const start = geo.drawRange?.start || 0;
+    const total =
+      geo.drawRange && geo.drawRange.count >= 0 && geo.drawRange.count !== Infinity
+        ? geo.drawRange.count
+        : index
+          ? index.count
+          : attr.count;
+    const tris = Math.floor(total / 3);
+    for (let t = 0; t < tris; t++) {
+      const base = start + t * 3;
+      const i0 = index ? index.getX(base) : base;
+      const i1 = index ? index.getX(base + 1) : base + 1;
+      const i2 = index ? index.getX(base + 2) : base + 2;
+      _fa.fromBufferAttribute(attr, i0).applyMatrix4(matrix);
+      _fb.fromBufferAttribute(attr, i1).applyMatrix4(matrix);
+      _fc.fromBufferAttribute(attr, i2).applyMatrix4(matrix);
+      const a = [_fa.x, _fa.y, _fa.z];
+      const b = [_fb.x, _fb.y, _fb.z];
+      const c = [_fc.x, _fc.y, _fc.z];
+      facesOut.push({ mtl: nome, a, b, c, indice });
+      pos.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+      mapaTri.push(indice);
+      indice += 1;
+    }
   });
+  return { faces: facesOut, pos, triParaFace: mapaTri, quantidade: indice };
+}
+
+function limparIndicesFora(item, max) {
+  item.porta = (item.porta || []).filter((n) => Number.isInteger(n) && n >= 0 && n < max);
+  item.janela = (item.janela || []).filter((n) => Number.isInteger(n) && n >= 0 && n < max);
 }
 
 function enquadrar() {
@@ -294,13 +409,66 @@ function enquadrar() {
   controles.update();
 }
 
-async function abrir(id) {
-  const modelo = modelos.find((m) => m.id === id);
-  if (!modelo) return;
-  modeloId = id;
-  const ticket = ++carga;
-  dizer(`Abrindo ${modelo.nome}…`);
-  desenharLista();
+function montarCena(pos, visual, centrarPick) {
+  soltar(malhaCasa);
+  soltar(malhaHover);
+  soltarVisual();
+  malhaHover = null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeBoundingBox();
+  malhaCasa = new THREE.Mesh(geo, visual ? matCasa : matSemTextura);
+  grupo.clear();
+  grupo.position.set(0, 0, 0);
+  if (visual) {
+    raizVisual = visual;
+    grupo.add(raizVisual);
+  }
+  grupo.add(malhaCasa);
+  if (centrarPick && geo.boundingBox) {
+    const caixa = geo.boundingBox;
+    grupo.position.set(
+      -((caixa.min.x + caixa.max.x) * 0.5),
+      -caixa.min.y,
+      -((caixa.min.z + caixa.max.z) * 0.5),
+    );
+  }
+}
+
+async function abrirGltf(modelo, ticket) {
+  const pegada = pegadaDoModeloSite(modelo.id);
+  let visual = null;
+  try {
+    visual = await carregarMoldeCidade(
+      modelo.id,
+      pegada ? { ladoX: pegada.ladoX, ladoZ: pegada.ladoZ } : null,
+    );
+  } catch (erro) {
+    console.error("gltf", modelo.id, erro);
+    dizer(`Não abriu ${modelo.nome}`);
+    return;
+  }
+  if (ticket !== carga) {
+    if (visual) {
+      raizVisual = visual;
+      soltarVisual();
+    }
+    return;
+  }
+  const extraido = facesDaMalha(visual);
+  faces = extraido.faces;
+  triParaFace = extraido.triParaFace;
+  portaArquivo = new Set();
+  hoverIndice = -2;
+  limparIndicesFora(itemDo(modelo.id), extraido.quantidade);
+  montarCena(extraido.pos, visual, false);
+  pintar();
+  enquadrar();
+  materialEl.textContent = "Material: —";
+  dizer(`${modelo.nome} · clique numa face`);
+}
+
+async function abrirObj(modelo, ticket) {
   const res = await fetch(modelo.url);
   if (ticket !== carga) return;
   if (!res.ok) {
@@ -312,7 +480,7 @@ async function abrir(id) {
   const obj = lerFacesObj(texto);
   let visual = null;
   try {
-    visual = prepararVisual(await carregarVisual(modelo.url));
+    visual = prepararVisual(await carregarVisualObj(modelo));
   } catch (erro) {
     console.error("material", modelo.id, erro);
   }
@@ -333,38 +501,27 @@ async function abrir(id) {
   for (let i = 0; i < faces.length; i++) {
     const f = faces[i];
     const nome = (f.mtl || "").toLowerCase();
-    if (nome.includes("kage")) continue;
+    if (nome.includes("kage") || nome.includes("shade")) continue;
     if (nome.startsWith("door_only")) portaArquivo.add(f.indice);
     pos.push(f.a[0], f.a[1], f.a[2], f.b[0], f.b[1], f.b[2], f.c[0], f.c[1], f.c[2]);
     triParaFace.push(f.indice);
   }
-  soltar(malhaCasa);
-  soltar(malhaHover);
-  soltarVisual();
-  malhaHover = null;
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  malhaCasa = new THREE.Mesh(geo, visual ? matCasa : matSemTextura);
-  grupo.clear();
-  if (visual) {
-    raizVisual = visual;
-    grupo.add(raizVisual);
-  }
-  grupo.add(malhaCasa);
-  grupo.position.set(0, 0, 0);
-  geo.computeBoundingBox();
-  const caixa = geo.boundingBox;
-  if (caixa) {
-    grupo.position.set(
-      -((caixa.min.x + caixa.max.x) * 0.5),
-      -caixa.min.y,
-      -((caixa.min.z + caixa.max.z) * 0.5),
-    );
-  }
+  montarCena(pos, visual, true);
   pintar();
   enquadrar();
   materialEl.textContent = "Material: —";
   dizer(`${modelo.nome} · clique numa face`);
+}
+
+async function abrir(id) {
+  const modelo = modelos.find((m) => m.id === id);
+  if (!modelo) return;
+  modeloId = id;
+  const ticket = ++carga;
+  dizer(`Abrindo ${modelo.nome}…`);
+  desenharLista();
+  if (modelo.visualGltf) await abrirGltf(modelo, ticket);
+  else await abrirObj(modelo, ticket);
 }
 
 function indiceNoPonteiro(ev) {

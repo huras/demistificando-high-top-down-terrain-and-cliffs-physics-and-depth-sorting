@@ -104,22 +104,48 @@ const planoChao = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const ponto = new THREE.Vector3();
 
 const ROTULOS = {
-  centro: "Centro",
+  centro: "Centro Pokémon",
   loja: "Loja",
-  lab: "Laboratório 3D",
-  "casa-bark": "Casa bark",
-  "casa-amigo": "Casa amigo",
-  "casa-cherry": "Casa cherry",
-  "casa-guia": "Casa guia",
-  "glitter-lighthouse": "Farol (Glitter Lighthouse)",
-  "moomoo-farm": "MooMoo Farm",
-  "moomoo-farm-silo": "MooMoo Silo",
-  "pokemon-day-care": "Pokemon Day Care",
-  logs: "Logs",
+  lab: "Laboratório",
+  ginasio: "Ginásio",
+  museu: "Museu",
+  coliseu: "Coliseu",
+  mansao: "Mansão",
+  condominio: "Condomínio",
+  ruina: "Ruína",
+  "casa-bark": "Casa de palha",
+  "casa-amigo": "Casa cinza",
+  "casa-cherry": "Casa branca",
+  "casa-guia": "Casa de madeira",
+  "glitter-lighthouse": "Farol",
+  "moomoo-farm": "Fazenda MooMoo",
+  "moomoo-farm-silo": "Silo",
+  "pokemon-day-care": "Creche Pokémon",
+  "windmill-1": "Moinho",
+  logs: "Toras",
 };
 
 function ehGltf(arquivo) {
   return /\.glb$/i.test(arquivo) || /\.gltf$/i.test(arquivo);
+}
+
+/** Colisor mede no OBJ; se o jogo usa glTF, pega o .obj irmão. */
+function arquivoObjDoEditor(arquivo) {
+  if (ehGltf(arquivo)) return arquivo.replace(/\.(glb|gltf)$/i, ".obj");
+  return arquivo;
+}
+
+function nomeDoEdificio(id, arquivo) {
+  if (ROTULOS[id]) return ROTULOS[id];
+  const base = String(arquivo || "")
+    .replace(/\.(obj|glb|gltf)$/i, "")
+    .trim();
+  if (base && !/^modelo$/i.test(base)) return base;
+  return String(id || "")
+    .split("-")
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
 }
 
 const itens = [];
@@ -129,13 +155,14 @@ for (let n = 1; n <= 5; n++) {
 for (const id of idsEditores()) {
   const origem = origemDoModelo(id);
   const arquivo = origem?.arquivo || "modelo.obj";
-  // glTF (ex. moinho) tem aba própria — loader deste painel é OBJ.
-  if (ehGltf(arquivo)) continue;
+  // Moinho tem aba própria (pivô do ventilador).
+  if (id === "windmill-1") continue;
+  const arquivoObj = arquivoObjDoEditor(arquivo);
   itens.push({
     id,
-    nome: ROTULOS[id] || arquivo.replace(/\.(obj|glb|gltf)$/i, ""),
+    nome: nomeDoEdificio(id, arquivo),
     url: origem
-      ? `${urlDoModelo(origem.base)}${urlDoModelo(origem.arquivo)}`
+      ? `${urlDoModelo(origem.base)}${urlDoModelo(arquivoObj)}`
       : `assets/models/cidade/${id}/modelo.obj`,
   });
 }

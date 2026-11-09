@@ -65,6 +65,7 @@ import {
   acertarDemolicao,
   obterPreview,
 } from "../construir/indice.js";
+import { edificiosSitePerto } from "../mundo/sites/colocacao.js";
 import { atualizarCatalogoConstruir } from "../ui/construirCatalogoHud.js";
 import { definirMiraConstrucao, miraConstrucao } from "../construir/tick.js";
 import { ordenarRitualConstrucao } from "../construir/ordemRitual.js";
@@ -116,6 +117,8 @@ export function idCasa(info) {
   if (!info) return "";
   if (info.playerHouse?.id) return `player-${info.playerHouse.id}`;
   if (info.predio?.playerHouseId) return `player-${info.predio.playerHouseId}`;
+  if (info.siteCasa?.id) return `site-${info.siteCasa.id}`;
+  if (info.predio?.siteCasaId) return `site-${info.predio.siteCasaId}`;
   const v = info.predio;
   const zonaKey = info.zona?.key || "campo";
   return `${zonaKey}:${v.papel}:${v.x0 ?? v.x}:${v.y0 ?? v.y}`;
@@ -216,6 +219,35 @@ function fecharBusca(estadoBusca) {
   return { zona: escolhido.zona, predio: escolhido.predio, ax: escolhido.ax, ay: escolhido.ay };
 }
 
+/** Porta sintética (frente sul da pegada, coords mundo). */
+function predioPortaSul(opts) {
+  const cols = opts.cols || 6;
+  const rows = opts.rows || 5;
+  const x0 = opts.x - cols / 2;
+  const y0 = opts.y - rows / 2;
+  const x1 = x0 + cols;
+  const y1 = y0 + rows;
+  return {
+    papel: "casa",
+    modelo: opts.modelo,
+    porta: true,
+    x0,
+    y0,
+    x1,
+    y1,
+    x: x0,
+    y: y0,
+    w: cols,
+    h: rows,
+    ...opts.extra,
+  };
+}
+
+function portaSulDe(h) {
+  const rows = h.rows || 5;
+  return { x: h.x, y: h.y + rows * 0.5 + 0.35 };
+}
+
 /** Porta sintética de casa do jogador (frente sul da pegada, coords mundo). */
 function entradaCasaJogador(x, y) {
   const casas = casasPerto(x, y, 10);
@@ -223,12 +255,9 @@ function entradaCasaJogador(x, y) {
   let melhorD = 2.4 * 2.4;
   for (const h of casas) {
     if (!h.enterable) continue;
-    const cols = h.cols || 6;
-    const rows = h.rows || 5;
-    const portaX = h.x;
-    const portaY = h.y + rows * 0.5 + 0.35;
-    const dx = x - portaX;
-    const dy = y - portaY;
+    const porta = portaSulDe(h);
+    const dx = x - porta.x;
+    const dy = y - porta.y;
     const d = dx * dx + dy * dy;
     if (d < melhorD) {
       melhorD = d;
@@ -236,32 +265,57 @@ function entradaCasaJogador(x, y) {
     }
   }
   if (!melhor) return null;
-  const cols = melhor.cols || 6;
-  const rows = melhor.rows || 5;
-  const x0 = melhor.x - cols / 2;
-  const y0 = melhor.y - rows / 2;
-  const x1 = x0 + cols;
-  const y1 = y0 + rows;
   return {
     // ax/ay não se aplicam — saída usa outdoorX/Y ou a pegada mundo.
     ax: null,
     ay: null,
-    predio: {
-      papel: "casa",
+    predio: predioPortaSul({
+      x: melhor.x,
+      y: melhor.y,
+      cols: melhor.cols,
+      rows: melhor.rows,
       modelo: melhor.buildingId,
-      porta: true,
-      x0,
-      y0,
-      x1,
-      y1,
-      x: x0,
-      y: y0,
-      w: cols,
-      h: rows,
-      playerHouseId: melhor.id,
-      casaJogador: true,
-    },
+      extra: {
+        playerHouseId: melhor.id,
+        casaJogador: true,
+      },
+    }),
     playerHouse: melhor,
+  };
+}
+
+/** Porta sintética de casa/farol de sítio outdoor. */
+function entradaCasaSite(x, y) {
+  const casas = edificiosSitePerto(x, y, 10);
+  let melhor = null;
+  let melhorD = 2.4 * 2.4;
+  for (let i = 0; i < casas.length; i++) {
+    const h = casas[i];
+    const porta = portaSulDe(h);
+    const dx = x - porta.x;
+    const dy = y - porta.y;
+    const d = dx * dx + dy * dy;
+    if (d < melhorD) {
+      melhorD = d;
+      melhor = h;
+    }
+  }
+  if (!melhor) return null;
+  return {
+    ax: null,
+    ay: null,
+    predio: predioPortaSul({
+      x: melhor.x,
+      y: melhor.y,
+      cols: melhor.cols,
+      rows: melhor.rows,
+      modelo: melhor.modelo,
+      extra: {
+        siteCasaId: melhor.id,
+        casaSite: true,
+      },
+    }),
+    siteCasa: melhor,
   };
 }
 
@@ -293,6 +347,11 @@ export function entradaPerto(x, y) {
   if (casaPlayer) {
     portaSegura = casaPlayer.playerHouse.id;
     return casaPlayer;
+  }
+  const casaSite = entradaCasaSite(x, y);
+  if (casaSite) {
+    portaSegura = casaSite.siteCasa.id;
+    return casaSite;
   }
   const zona = zonaNoMundo(x, y);
   if (!zona?.layout || zona.tipo !== "cidade") {
@@ -744,7 +803,12 @@ export function checarEscadasCondominio(corpo) {
 }
 
 function saidaDoPredio(interior) {
-  if (interior?.playerHouseId || interior?.predio?.casaJogador) {
+  if (
+    interior?.playerHouseId ||
+    interior?.predio?.casaJogador ||
+    interior?.predio?.casaSite ||
+    interior?.predio?.siteCasaId
+  ) {
     return saidaCasaJogador(interior);
   }
   const v = interior.predio;

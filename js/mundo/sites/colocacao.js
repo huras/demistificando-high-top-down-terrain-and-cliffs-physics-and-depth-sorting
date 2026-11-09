@@ -3,6 +3,7 @@
  */
 import { CHUNK_XZ } from "../../config.js";
 import { alturaDoRelevo } from "../bioma/catalogo.js";
+import { modeloSiteEntravel } from "./catalogo.js";
 import { sitesDoChunk } from "./plano.js";
 
 function chaveCelula(x, y) {
@@ -141,8 +142,42 @@ export function propsSiteChunk(cx, cy) {
         tint: e.tint,
         siteId: site.id,
         siteTipo: site.tipo,
+        enterable: modeloSiteEntravel(e.modelo),
         ocultoBillboard: true,
       });
+    }
+  }
+  return out;
+}
+
+/**
+ * Edifícios de sítio com porta, perto do ponto (chunks vizinhos).
+ * @returns {object[]}
+ */
+export function edificiosSitePerto(wx, wy, raio = 10) {
+  const r2 = raio * raio;
+  const cx = Math.floor(wx / CHUNK_XZ);
+  const cy = Math.floor(wy / CHUNK_XZ);
+  const span = Math.max(1, Math.ceil(raio / CHUNK_XZ));
+  /** @type {object[]} */
+  const out = [];
+  /** @type {Set<string>} */
+  const vistos = new Set();
+  for (let dy = -span; dy <= span; dy++) {
+    for (let dx = -span; dx <= span; dx++) {
+      const sites = sitesDoChunk(cx + dx, cy + dy);
+      for (let s = 0; s < sites.length; s++) {
+        const edificios = sites[s].edificios;
+        for (let i = 0; i < edificios.length; i++) {
+          const e = edificios[i];
+          if (vistos.has(e.id) || !modeloSiteEntravel(e.modelo)) continue;
+          const ddx = e.x - wx;
+          const ddy = e.y - wy;
+          if (ddx * ddx + ddy * ddy > r2) continue;
+          vistos.add(e.id);
+          out.push(e);
+        }
+      }
     }
   }
   return out;
