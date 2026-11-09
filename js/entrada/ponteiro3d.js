@@ -1,6 +1,7 @@
 /**
  * Botões no viewport com cursor livre.
  * A mira ranged pede pointer lock só no gesto do RMB (mouse-look).
+ * MMB + arraste gira a órbita (yaw) sem pointer lock.
  *
  * Ao ganhar pointer lock, alguns browsers disparam mouseup sintético.
  * Engolimos só a soltura logo após o lock; soltura real dispara normalmente.
@@ -11,6 +12,7 @@ let acumuladoX = 0;
 let acumuladoY = 0;
 let direito = false;
 let esquerdo = false;
+let meio = false;
 let soltouEsquerdo = false;
 let soltouDireito = false;
 /** Intenção de mira (RMB) enquanto o gesto vale. */
@@ -33,7 +35,8 @@ function noViewport(ev) {
 
 function aoMover(ev) {
   const travado = document.pointerLockElement === elementoAlvo;
-  if (!travado && !(olharLivre && (direito || esquerdo))) return;
+  // Lock (mira), olhar livre L/R, ou arraste do scroll (órbita).
+  if (!travado && !meio && !(olharLivre && (direito || esquerdo))) return;
   acumuladoX += ev.movementX || 0;
   acumuladoY += ev.movementY || 0;
 }
@@ -60,6 +63,11 @@ function aoBotaoBaixo(ev) {
     }
   }
   if (ev.button === 0) esquerdo = true;
+  if (ev.button === 1) {
+    // Evita autoscroll do browser; gira a câmera no arraste.
+    ev.preventDefault();
+    meio = true;
+  }
 }
 
 function aoBotaoCima(ev) {
@@ -83,6 +91,15 @@ function aoBotaoCima(ev) {
     if (esquerdo) soltouEsquerdo = true;
     esquerdo = false;
   }
+  if (ev.button === 1) meio = false;
+}
+
+/** Bloqueia o gesto de autoscroll / abrir aba do botão do meio. */
+function aoAuxClick(ev) {
+  if (ev.button !== 1) return;
+  if (!ligado || !elementoAlvo) return;
+  if (!noViewport(ev) && document.pointerLockElement !== elementoAlvo) return;
+  ev.preventDefault();
 }
 
 function aoTravaMudou() {
@@ -102,6 +119,7 @@ function aoTravaMudou() {
   miraIntent = false;
   lockDesde = 0;
   esquerdo = false;
+  meio = false;
   soltouEsquerdo = false;
   soltouDireito = false;
   acumuladoX = 0;
@@ -118,6 +136,7 @@ export function ligarPonteiro3d(el) {
   document.addEventListener("mousemove", aoMover);
   document.addEventListener("mousedown", aoBotaoBaixo);
   document.addEventListener("mouseup", aoBotaoCima);
+  document.addEventListener("auxclick", aoAuxClick);
   document.addEventListener("pointerlockchange", aoTravaMudou);
 }
 
@@ -127,6 +146,7 @@ export function desligarPonteiro3d() {
   document.removeEventListener("mousemove", aoMover);
   document.removeEventListener("mousedown", aoBotaoBaixo);
   document.removeEventListener("mouseup", aoBotaoCima);
+  document.removeEventListener("auxclick", aoAuxClick);
   document.removeEventListener("pointerlockchange", aoTravaMudou);
   soltarTravaMira();
   elementoAlvo = null;
@@ -136,6 +156,7 @@ export function desligarPonteiro3d() {
   miraIntent = false;
   lockDesde = 0;
   esquerdo = false;
+  meio = false;
   soltouEsquerdo = false;
   soltouDireito = false;
 }
@@ -161,13 +182,14 @@ export function zerarBotoesMira() {
   miraIntent = false;
   lockDesde = 0;
   esquerdo = false;
+  meio = false;
   soltouEsquerdo = false;
   soltouDireito = false;
   acumuladoX = 0;
   acumuladoY = 0;
 }
 
-/** Consome deltas do frame (pixels). Só acumula com pointer lock (mira). */
+/** Consome deltas do frame (pixels). Mira (lock), olhar livre ou MMB. */
 export function consumirMovimentoMouse() {
   const dx = acumuladoX;
   const dy = acumuladoY;
@@ -188,6 +210,11 @@ export function botaoDireitoSegurado() {
 /** Botão esquerdo segurado a partir do viewport (não exige lock). */
 export function botaoEsquerdoSegurado() {
   return esquerdo;
+}
+
+/** Scroll click (MMB) segurado — órbita da câmera. */
+export function botaoMeioSegurado() {
+  return meio;
 }
 
 /** True uma vez ao soltar o esquerdo. */

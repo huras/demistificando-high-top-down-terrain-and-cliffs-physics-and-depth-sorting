@@ -1,9 +1,5 @@
 /** Interface DOM: mochila, roda, party, PC, loja, diálogo, dex, quests, craft e móveis. */
 
-import * as THREE from "three";
-import { ALTURA_BLOCO } from "../config.js";
-import { estaEm3d } from "../modoJogo.js";
-import { obterCenario3d } from "../render/3d/cenario3d.js";
 import {
   BOLAS,
   BERRIES,
@@ -566,8 +562,6 @@ export function atualizarLeve(dt = 0.016) {
   // party strip / combat card: tickHudCampo em index.js
 }
 
-const _ancora = new THREE.Vector3();
-
 function pintarPrompt() {
   const entrar = el("#jogo-entrar");
   const host = el("#jogo-prompt");
@@ -609,7 +603,9 @@ function pintarPrompt() {
         void entrar.offsetWidth;
         entrar.classList.add("acao-prompt--nova");
       }
-      colocarEntrar(entrar, estado.promptAncora || corpoRef);
+      // Centro inferior via CSS; limpa leftovers de âncora no mundo.
+      entrar.style.left = "";
+      entrar.style.top = "";
     } else if (estava) {
       entrar.classList.remove("acao-prompt--nova");
       entrar.dataset.teclaAtiva = "";
@@ -618,29 +614,6 @@ function pintarPrompt() {
   if (!host) return;
   host.hidden = !estado.prompt;
   host.textContent = estado.prompt || "";
-}
-
-function colocarEntrar(entrar, corpo) {
-  const canvas = document.getElementById(estaEm3d() ? "canvas-3d" : "canvas");
-  const hud = entrar.offsetParent || entrar.parentElement;
-  if (!canvas || !hud || !corpo) return;
-  const cRect = canvas.getBoundingClientRect();
-  const hRect = hud.getBoundingClientRect();
-  let x = cRect.width * 0.5;
-  let y = cRect.height * 0.42;
-  if (estaEm3d()) {
-    const cam = obterCenario3d()?.camera3d?.cam;
-    if (cam) {
-      _ancora.set(corpo.x, (corpo.z || 0) * ALTURA_BLOCO + 2.6, corpo.y);
-      _ancora.project(cam);
-      if (_ancora.z >= -1 && _ancora.z <= 1) {
-        x = (_ancora.x * 0.5 + 0.5) * cRect.width;
-        y = (-_ancora.y * 0.5 + 0.5) * cRect.height;
-      }
-    }
-  }
-  entrar.style.left = `${cRect.left - hRect.left + x}px`;
-  entrar.style.top = `${cRect.top - hRect.top + y}px`;
 }
 
 function pintarDinheiro() {

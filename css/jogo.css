@@ -55,14 +55,20 @@
 .acao-prompt {
   --fonte: "Segoe UI", system-ui, sans-serif;
   position: absolute;
-  z-index: 7;
-  left: 0;
-  top: 0;
-  transform: translate(-36px, -28px);
+  z-index: 10;
+  left: 50%;
+  top: auto;
+  bottom: calc(var(--hud-safe-bottom, 12px) + 16px);
+  transform: translateX(-50%);
   display: flex;
   pointer-events: none;
   user-select: none;
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+}
+
+/* Acima da barra Z/X/C/V quando ela estiver na tela */
+.jogo-hud:has(.party-moves-combat:not([hidden])) .acao-prompt {
+  bottom: max(148px, calc(var(--hud-safe-bottom, 12px) + 132px));
 }
 
 .acao-prompt[hidden] {
