@@ -178,6 +178,20 @@ export default {
     "vazio": "Empty.",
     "idioma": "Language"
   },
+  "aprenderGolpe": {
+    "titulo": "New move",
+    "querAprender": "{mon} wants to learn {golpe}!",
+    "escolherEsquecer": "Choose a move to forget.",
+    "confirmarTroca": "Forget {velho} and learn {novo}?",
+    "desistir": "Give up on learning {golpe}?",
+    "aprender": "Learn",
+    "naoAprender": "Don't learn",
+    "confirmarDesistir": "Give up",
+    "voltar": "Back",
+    "aprendeu": "Learned {golpe}!",
+    "aprendeuTrocando": "Learned {novo}! Forgot {velho}.",
+    "naoAprendeu": "Did not learn {golpe}."
+  },
   "morte": {
     "eyebrow": "Journey's end",
     "titulo": "You fainted",

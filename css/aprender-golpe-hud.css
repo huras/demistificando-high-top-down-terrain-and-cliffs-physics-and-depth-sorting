@@ -1,0 +1,148 @@
+/**
+ * Modal de aprendizado de golpe no level-up.
+ * Reaproveita .skill-card / .hud-panel / .hud-head do chrome.
+ */
+
+.aprender-golpe-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 7700;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  user-select: none;
+}
+
+.aprender-golpe-hud.is-open {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.aprender-golpe-hud[hidden] {
+  display: none !important;
+}
+
+.aprender-golpe-hud__veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 28%, #2a183866, #0c0a14d8);
+  backdrop-filter: blur(5px);
+}
+
+.aprender-golpe-hud__panel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 96vw);
+  max-height: min(90vh, 820px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  overflow: auto;
+  transform: scale(0.96) translateY(10px);
+  transition: transform 180ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.aprender-golpe-hud.is-open .aprender-golpe-hud__panel {
+  transform: none;
+}
+
+.aprender-golpe-hud__head {
+  flex-shrink: 0;
+}
+
+.aprender-golpe-hud__head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aprender-golpe-hud__head-text b {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.aprender-golpe-hud__head-text span {
+  font-size: 0.82rem;
+  opacity: 0.78;
+}
+
+.aprender-golpe-hud__msg {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(15, 18, 28, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #f8fafc;
+}
+
+.aprender-golpe-hud__hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.aprender-golpe-hud__hero .skill-card.is-hero {
+  outline: 2px solid color-mix(in srgb, var(--card-tipo, #fbbf24) 75%, #fff);
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.25),
+    0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.aprender-golpe-hud__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.aprender-golpe-hud__card,
+.aprender-golpe-hud .aprender-golpe__card {
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    outline-color 120ms ease;
+}
+
+.aprender-golpe-hud .aprender-golpe__card.is-selected {
+  outline: 2px solid #f8fafc;
+  outline-offset: 1px;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+.aprender-golpe-hud .aprender-golpe__card.is-empty {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.aprender-golpe-hud__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+body.is-aprender-golpe #jogo-hud .hud-chrome,
+body.is-aprender-golpe #jogo-hud .skill-hud,
+body.is-aprender-golpe #symbiosis-hud,
+body.is-aprender-golpe #jogo-hud .hotbar,
+body.is-aprender-golpe .game-menu {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+@media (max-width: 640px) {
+  .aprender-golpe-hud__grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -396,7 +396,7 @@ export function aplicarNivel(ator, nivelNovo) {
   ator.stats = calcularStats(ator.especie, nivelNovo);
   ator.hpMax = ator.stats.hp;
   ator.hp = Math.min(ator.hpMax, ator.hp + Math.max(0, ator.hpMax - antes));
-  ator.golpes = montarGolpes(ator.especie, nivelNovo);
+  // Golpes: party aprende via fila/prompt; spawn ainda usa montarGolpes.
   ator.ppMax = ppMaximo(nivelNovo, ator.stats.velocidade);
   sincronizarPpTipos(ator);
   encherPp(ator);

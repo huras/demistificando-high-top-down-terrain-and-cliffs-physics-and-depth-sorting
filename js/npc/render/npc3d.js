@@ -20,6 +20,7 @@ import {
 } from "../../render/3d/ceu/luzBillboard.js";
 import { fatorSombraMundo } from "../../render/3d/ceu/mapaNuvem.js";
 import { amostrarLuzCidade } from "../../render/3d/luzes/mapaChao.js";
+import { criarSombraContato3d } from "../../render/3d/sombraContato3d.js";
 import { FOLHA_PLATINUM } from "../catalogo/carregar.js";
 import {
   bobPxWalkLateral,
@@ -112,6 +113,7 @@ export function limparNpc3d() {
   if (!raiz) return;
   for (const [, v] of inst) {
     soltarCartao(v.cartao);
+    v.sombra?.liberar?.();
     raiz.remove(v.grupo);
     v.tex?.dispose?.();
     v.mat?.dispose?.();
@@ -159,9 +161,13 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
       aplicarLuzBillboard(mat, FOLGA_CHAO + FOLGA_ATOR);
       cartao.material = mat;
       cartao.receiveShadow = false;
+      // Mesma sombra de contato do jogador (oval no pé).
+      const sombra = criarSombraContato3d();
+      grupo.add(sombra.grupo);
       entry = {
         grupo,
         cartao,
+        sombra,
         tex,
         mat,
         corBase: mat.color.clone(),
@@ -171,15 +177,24 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
       };
       inst.set(npc.id, entry);
     }
-    const z = Number.isFinite(npc.elevacao)
+    if (!entry.sombra) {
+      entry.sombra = criarSombraContato3d();
+      entry.grupo.add(entry.sombra.grupo);
+    }
+    const elev = Number.isFinite(npc.elevacao)
       ? npc.elevacao
       : Number.isFinite(npc.z)
         ? npc.z
         : ALTURA_PRACA;
-    entry.grupo.position.set(npc.x, z, npc.y);
+    const solo = Number.isFinite(npc.z) ? npc.z : elev;
+    entry.grupo.position.set(npc.x, elev, npc.y);
     entry.cartao.rotation.x = inclinacao;
     entry.cartao.rotation.y = yawCam;
     entry.grupo.visible = true;
+    entry.sombra.atualizar(
+      { x: npc.x, y: npc.y, z: solo, noChao: true },
+      elev,
+    );
 
     // Mesma iluminação do jogador: céu + mapa de postes da cidade.
     const px = entry.grupo.position.x;
@@ -212,6 +227,7 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
   for (const [id, entry] of inst) {
     if (vivos.has(id)) continue;
     soltarCartao(entry.cartao);
+    entry.sombra?.liberar?.();
     raiz.remove(entry.grupo);
     entry.tex?.dispose?.();
     entry.mat?.dispose?.();

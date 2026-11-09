@@ -178,6 +178,20 @@ export default {
     "vazio": "Vazio.",
     "idioma": "Idioma"
   },
+  "aprenderGolpe": {
+    "titulo": "Novo golpe",
+    "querAprender": "{mon} quer aprender {golpe}!",
+    "escolherEsquecer": "Escolha um golpe para esquecer.",
+    "confirmarTroca": "Esquecer {velho} e aprender {novo}?",
+    "desistir": "Desistir de aprender {golpe}?",
+    "aprender": "Aprender",
+    "naoAprender": "Não aprender",
+    "confirmarDesistir": "Desistir",
+    "voltar": "Voltar",
+    "aprendeu": "Aprendeu {golpe}!",
+    "aprendeuTrocando": "Aprendeu {novo}! Esqueceu {velho}.",
+    "naoAprendeu": "Não aprendeu {golpe}."
+  },
   "morte": {
     "eyebrow": "Fim de jornada",
     "titulo": "Você desmaiou",

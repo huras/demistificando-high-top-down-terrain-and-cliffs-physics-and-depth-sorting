@@ -10,6 +10,12 @@ import {
   evolucaoAberta,
   tratarTeclaEvolucao,
 } from "../pokemon/evolucaoCinema.js";
+import {
+  aprenderGolpeAberto,
+  aprenderGolpePendente,
+  definirGateAprenderGolpe,
+  tratarTeclaAprenderGolpe,
+} from "../pokemon/aprenderGolpeCinema.js";
 import { alternarMudo, atualizarAudio, destravarAudio, estaMudo, sincronizarBgm } from "./audio.js";
 import { tickInundar } from "../mundo/agua/inundar.js";
 import { flushEditsIdb } from "../mundo/voxel/storeMundo.js";
@@ -113,13 +119,14 @@ function campoFocado() {
 }
 
 export function jogoTravaMundo() {
-  // uiAberta() já inclui menu/dex/status
+  // uiAberta() já inclui menu/dex/status/aprenderGolpe
   return (
     uiAberta() ||
     mapaAberto() ||
     teleporteOcupado() ||
     portaOcupada() ||
     evolucaoAberta() ||
+    aprenderGolpeAberto() ||
     batalhaTreinadorAtiva() ||
     !!estado.batalhaTreinador ||
     historiaBloqueiaMovimento()
@@ -154,7 +161,16 @@ export function montarJogo(opts) {
   ligarRoda();
   ligarSala(document.getElementById("jogo-sala"));
   bootHudCompleto();
-  definirGateEvolucao(() => !uiAberta() && !jogadorMorto() && !mapaAberto());
+  definirGateAprenderGolpe(
+    () => !uiAberta() && !jogadorMorto() && !mapaAberto() && !evolucaoAberta(),
+  );
+  definirGateEvolucao(
+    () =>
+      !uiAberta() &&
+      !jogadorMorto() &&
+      !mapaAberto() &&
+      !aprenderGolpePendente(),
+  );
   carregar();
   bootHistoria();
   // Mundo já streamou no outdoor; se o save estava dentro, entra no bolso agora.
@@ -442,6 +458,31 @@ function executarAcaoE(acao, corpo, porta, alvoLab, alvoHub) {
 
 function lerTeclas(corpo) {
   if (jogadorMorto()) return;
+  if (aprenderGolpeAberto()) {
+    const codes = [
+      "Escape",
+      "Enter",
+      "Space",
+      "KeyZ",
+      "KeyX",
+      "ArrowLeft",
+      "ArrowRight",
+      "KeyA",
+      "KeyD",
+      "Digit1",
+      "Digit2",
+      "Digit3",
+      "Digit4",
+      "Numpad1",
+      "Numpad2",
+      "Numpad3",
+      "Numpad4",
+    ];
+    for (let i = 0; i < codes.length; i++) {
+      if (teclaAgora(codes[i]) && tratarTeclaAprenderGolpe(codes[i])) return;
+    }
+    return;
+  }
   if (evolucaoAberta()) {
     const codes = [
       "Escape",

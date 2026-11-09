@@ -42,6 +42,11 @@ import { aquecerGrito, tickGritosAmbiente } from "../jogo/som/gritos.js";
 import { markSpeciesSeen } from "../jogo/pokedex/progresso.js";
 import { entrarMorte, jogadorMorto } from "../jogo/hud/morte.js";
 import { enfileirarEvolucao, tickEvolucaoCinema } from "./evolucaoCinema.js";
+import { golpesNoNivel } from "./aprenderGolpe.js";
+import {
+  enfileirarAprenderGolpe,
+  tickAprenderGolpe,
+} from "./aprenderGolpeCinema.js";
 import { modoChronoCampo } from "../combate/chrono/modo.js";
 import { tickContatoChrono } from "../combate/chrono/contato.js";
 import {
@@ -114,6 +119,10 @@ const efeitos = {
         aplicarNivel(p, p.nivel + 1);
         flutuar(p, `Nv ${p.nivel}`, "#fde68a");
         tocarLevelUp(p);
+        const novos = golpesNoNivel(p.especie, p.nivel);
+        for (let g = 0; g < novos.length; g++) {
+          enfileirarAprenderGolpe(p, novos[g]);
+        }
         enfileirarEvolucao(p);
       }
     }
@@ -295,6 +304,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     if (emChrono && a && (a._chronoHold || a.combatHold)) continue;
     tickVisual(a, passo, agora);
   }
+  tickAprenderGolpe();
   tickEvolucaoCinema();
   tickFlutuantes(passo);
   tickParticulas(passo);

@@ -178,6 +178,20 @@ export default {
     "vazio": "からっぽ。",
     "idioma": "言語"
   },
+  "aprenderGolpe": {
+    "titulo": "新しいわざ",
+    "querAprender": "{mon}は{golpe}を覚えたい！",
+    "escolherEsquecer": "わすれるわざを選んでください。",
+    "confirmarTroca": "{velho}をわすれて{novo}を覚えますか？",
+    "desistir": "{golpe}を覚えるのをやめますか？",
+    "aprender": "おぼえる",
+    "naoAprender": "おぼえない",
+    "confirmarDesistir": "やめる",
+    "voltar": "もどる",
+    "aprendeu": "{golpe}をおぼえた！",
+    "aprendeuTrocando": "{novo}をおぼえた！{velho}をわすれた。",
+    "naoAprendeu": "{golpe}をおぼえなかった。"
+  },
   "morte": {
     "eyebrow": "たびのおわり",
     "titulo": "めがまわった",

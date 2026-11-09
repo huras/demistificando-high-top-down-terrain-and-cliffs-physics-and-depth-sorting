@@ -139,6 +139,7 @@ export const estado = {
   painel: null,
   menuAberto: false,
   skillAberto: false,
+  aprenderGolpeAberto: false,
   statusMonAberto: false,
   dexAberta: false,
   capsulaAberta: false,
@@ -1013,6 +1014,7 @@ export function uiAberta() {
     estado.capsulaAberta ||
     estado.statusAberto ||
     estado.skillAberto ||
+    estado.aprenderGolpeAberto ||
     estado.statusMonAberto ||
     estado.dialogo ||
     estado.roda ||
