@@ -30,6 +30,7 @@ import {
   criarAtorCartao,
   poseAtorCartao,
 } from "../render/3d/billboard/atorCartao.js";
+import { girarPropsTerrazas, terrazasAtivas } from "./stage/terrazas.js";
 
 const PX_MUNDO = 1 / TILE;
 const LADO = 256;
@@ -43,6 +44,8 @@ const CAP_GRAMA = 40;
 const CAP_FAISCA = 160;
 const CAP_TRACO = 24;
 const CAP_KI = 8;
+/** Aliados + foes no BattleStage (cap 5 por lado). */
+const CAP_SLOTS = 10;
 
 let canvas = null;
 let renderer = null;
@@ -86,6 +89,10 @@ const pecasFade = [];
 let chaoNormal = null;
 let coberturaVista = -1;
 let spritesVista = -1;
+/** "disco" = metades clássicas; "terrazas" = BattleStage 3 decks. */
+let modoChao = "disco";
+/** @type {THREE.Mesh|null} */
+let anelChao = null;
 
 function texturaSuave() {
   const c = document.createElement("canvas");
@@ -913,17 +920,17 @@ export function ligarArena(elemento) {
     metadesChao.push({ mesh, mat, theta: espec.theta });
   }
 
-  const anel = new THREE.Mesh(
+  anelChao = new THREE.Mesh(
     new THREE.TorusGeometry(10.15, 0.16, 8, 72),
     new THREE.MeshStandardMaterial({ color: 0x4a564c, roughness: 0.8 }),
   );
-  anel.rotation.x = Math.PI / 2;
-  anel.position.y = 0.08;
-  cena.add(anel);
+  anelChao.rotation.x = Math.PI / 2;
+  anelChao.position.y = 0.08;
+  cena.add(anelChao);
 
   const suave = texturaSuave();
   const nucleo = texturaNucleo();
-  for (let i = 0; i < 2; i++) slots.push(criarAtorSlot());
+  for (let i = 0; i < CAP_SLOTS; i++) slots.push(criarAtorSlot());
   for (let i = 0; i < CAP_TIRO; i++) tiros.push(criarPonto(nucleo, 4, false));
   for (let i = 0; i < CAP_FAISCA; i++) faiscas.push(criarPonto(suave, 5, true));
   for (let i = 0; i < CAP_TRACO; i++) tracos.push(criarTraco());
@@ -1125,17 +1132,70 @@ function aplicarOmbro() {
 
 export function desenharArena(atores, dt = 0.016) {
   if (!renderer) return;
-  sincronizarCobertura();
+  if (modoChao === "disco") sincronizarCobertura();
   girarCartoesArena();
+  if (modoChao === "terrazas" && terrazasAtivas()) {
+    girarPropsTerrazas(yawDaVista());
+  }
   ajustarTamanho();
   aplicarOmbro();
-  atualizarFadeCobertura(atores, dt);
+  if (modoChao === "disco") atualizarFadeCobertura(atores, dt);
   for (let i = 0; i < slots.length; i++) pintarAtor(slots[i], atores?.[i] || null);
-  for (let i = 0; i < tiros.length; i++) tiros[i].visible = false;
+  pintarTiros();
   pintarFaiscas();
   pintarKi();
   sincronizarFx(0, null, camera);
   renderer.render(cena, camera);
+}
+
+export function obterCenaArena() {
+  return cena;
+}
+
+/**
+ * @param {"disco"|"terrazas"} modo
+ */
+export function definirModoChao(modo) {
+  modoChao = modo === "terrazas" ? "terrazas" : "disco";
+  for (let i = 0; i < metadesChao.length; i++) {
+    if (metadesChao[i]?.mesh) metadesChao[i].mesh.visible = modoChao === "disco";
+  }
+  if (anelChao) anelChao.visible = modoChao === "disco";
+  // Cobertura/grama do disco lab só no modo disco.
+  if (modoChao === "terrazas") {
+    for (let i = 0; i < coberturas.length; i++) {
+      if (coberturas[i]?.sprite) coberturas[i].sprite.visible = false;
+      if (coberturas[i]?.sombra) coberturas[i].sombra.visible = false;
+    }
+    for (let i = 0; i < gramas.length; i++) {
+      if (gramas[i]?.sprite) gramas[i].sprite.visible = false;
+    }
+    // Enquadramento SF: horizonte nos cliffs, piso na frente.
+    distUsuario = false;
+    az = 0.12;
+    elev = 0.36;
+    dist = 26;
+    alvo.set(0, 1.35, -1.8);
+    if (camera) posicionarCamera();
+  } else {
+    coberturaVista = -1;
+    alvo.set(0, 1.15, 0);
+    az = 0.62;
+    elev = 0.46;
+    if (camera) posicionarCamera();
+  }
+}
+
+/** Ajusta exposição / hemi da arena a partir do perfil de scenery. */
+export function aplicarLuzArena(luz) {
+  if (!renderer || !cena || !luz) return;
+  if (Number.isFinite(luz.exposure)) {
+    renderer.toneMappingExposure = Math.max(0.6, Math.min(1.4, luz.exposure));
+  }
+  const hemi = cena.children.find((c) => c.isHemisphereLight);
+  if (hemi && Number.isFinite(luz.ambient)) {
+    hemi.intensity = Math.max(0.4, Math.min(1.2, luz.ambient));
+  }
 }
 
 export function projetarArena(x, alturaMetros, y) {

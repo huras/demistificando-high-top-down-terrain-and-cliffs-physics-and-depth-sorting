@@ -166,6 +166,8 @@ export const estado = {
   posicao: null,
   /** Sessão de batalha treinador (overlay turnos). */
   batalhaTreinador: null,
+  /** BattleStage ativo ({ kind: "wild"|"trainer", ... }). */
+  batalhaStage: null,
   /** Opening + warehouses Rocket. */
   historia: criarHistoriaState(),
 };

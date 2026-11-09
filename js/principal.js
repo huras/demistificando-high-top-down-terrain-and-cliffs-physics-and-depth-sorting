@@ -799,27 +799,33 @@ function loop(agora) {
     Number.isFinite(interior.outdoorY)
       ? interior
       : null;
-  if (ancoraOutdoor) {
-    // Casa/lab/santuário: bolso + overworld quente (sem unload na porta).
-    const raioBolso =
-      interior.papel === "santuario" ? obterRaioStream() : RAIO_STREAM_BOLSO;
-    atualizarStreamingDuplo(
-      ancoraOutdoor.outdoorX,
-      ancoraOutdoor.outdoorY,
-      corpo.x,
-      corpo.y,
-      obterRaioStream(),
-      false,
-      raioBolso,
-    );
-  } else if (foco && teleporteNaOrigem()) {
-    atualizarStreamingDuplo(corpo.x, corpo.y, foco.x, foco.y);
-  } else if (alvoPasseio) {
-    atualizarStreamingDuplo(corpo.x, corpo.y, alvoPasseio.x, alvoPasseio.y);
-  } else if (foco) {
-    atualizarStreaming(foco.x, foco.y);
-  } else {
-    atualizarStreaming(corpo.x, corpo.y);
+  // BattleStage: congela expansão de stream (mantém chunks quentes).
+  const emBatalhaStage =
+    !!estadoJogo.batalhaStage ||
+    !!estadoJogo.batalhaTreinador;
+  if (!emBatalhaStage) {
+    if (ancoraOutdoor) {
+      // Casa/lab/santuário: bolso + overworld quente (sem unload na porta).
+      const raioBolso =
+        interior.papel === "santuario" ? obterRaioStream() : RAIO_STREAM_BOLSO;
+      atualizarStreamingDuplo(
+        ancoraOutdoor.outdoorX,
+        ancoraOutdoor.outdoorY,
+        corpo.x,
+        corpo.y,
+        obterRaioStream(),
+        false,
+        raioBolso,
+      );
+    } else if (foco && teleporteNaOrigem()) {
+      atualizarStreamingDuplo(corpo.x, corpo.y, foco.x, foco.y);
+    } else if (alvoPasseio) {
+      atualizarStreamingDuplo(corpo.x, corpo.y, alvoPasseio.x, alvoPasseio.y);
+    } else if (foco) {
+      atualizarStreaming(foco.x, foco.y);
+    } else {
+      atualizarStreaming(corpo.x, corpo.y);
+    }
   }
   tickJornada(corpo.x, corpo.y, dt);
   definirCorposAtores([...listarSolidosPokemon(), ...listarSolidosNpc()]);

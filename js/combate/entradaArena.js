@@ -47,6 +47,9 @@ export function entradaDeSlot(slot) {
   if (Array.isArray(slot.golpes) && slot.golpes.length) {
     cfg.golpes = slot.golpes.slice(0, 4);
   }
+  if (Number.isFinite(slot.hp)) cfg.hp = Math.max(0, slot.hp | 0);
+  if (Number.isFinite(slot.hpMax)) cfg.hpMax = Math.max(1, slot.hpMax | 0);
+  if (slot.status) cfg.status = slot.status;
   return cfg;
 }
 
@@ -63,6 +66,9 @@ export function slotsPartyJogador() {
       especie: key,
       nivel: ator.nivel | 0,
       origemIndex: i,
+      hp: ator.hp | 0,
+      hpMax: ator.hpMax | 0,
+      status: ator.status || null,
     };
     const golpes = ator.golpes;
     if (Array.isArray(golpes) && golpes.length) {

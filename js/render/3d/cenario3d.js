@@ -22,8 +22,6 @@ import {
   yawCamera,
   yawDeCameraThree,
 } from "./camera3d.js";
-import { aplicarCameraChrono } from "../../combate/chrono/camera.js";
-import { sessaoChronoAtiva } from "../../combate/chrono/sessao.js";
 import { aplicarCameraEvento } from "../../historia/cameraEvento.js";
 import { criarFlechas3d } from "./flechas3d.js";
 import { criarMiraArcoBola3d } from "./miraArcoBola3d.js";
@@ -804,9 +802,8 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.terrenoSuave?.tick(mxLod, myLod, estado.terreno.chunksExibidos?.());
   estado.terrenoHorizonte?.tick(mxLod, myLod);
   estado.cidadeHorizonte?.tick?.(mxLod, myLod);
-  if (sessaoChronoAtiva() && aplicarCameraChrono(estado.camera3d, dt)) {
-    /* câmera de turno Chrono */
-  } else if (aplicarCameraEvento(estado.camera3d, corpo, dt)) {
+  // BattleStage tem câmera própria no overlay — OW fica parado atrás.
+  if (aplicarCameraEvento(estado.camera3d, corpo, dt)) {
     /* câmera de história / opening */
   } else {
     seguirAlvo3d(estado.camera3d, corpo, dt);
@@ -836,9 +833,7 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   if (emCena) atualizarCameraCena(dt);
   // Billboards olham a câmera de JOGO (e Chrono), nunca a câmera livre de inspeção.
   // Chrono move o Three.cam sem atualizar camera3d.yaw orbital → derivar do cam real.
-  const yaw = sessaoChronoAtiva()
-    ? yawDeCameraThree(estado.camera3d.cam)
-    : yawCamera(estado.camera3d);
+  const yaw = yawCamera(estado.camera3d);
 
   const interior = !!estadoJogo.interior?.sala3d;
   tickClima(dt, { x: corpo.x, y: corpo.y, interior });

@@ -366,6 +366,13 @@ function montar(lado, entrada) {
   }
   // Sem chaves explícitas: mantém learnset de criarAtor (party OW / viajante).
   if (chaves.length) equiparGolpes(ator, chaves);
+  if (Number.isFinite(entrada.hpMax) && entrada.hpMax > 0) {
+    ator.hpMax = entrada.hpMax | 0;
+  }
+  if (Number.isFinite(entrada.hp)) {
+    ator.hp = Math.max(0, Math.min(ator.hpMax | 0, entrada.hp | 0));
+  }
+  if (entrada.status) ator.status = entrada.status;
   apresentar(ator);
   return ator;
 }

@@ -1,5 +1,5 @@
 /**
- * Controlador: viajante OW → arena por turnos (multi-mon).
+ * Controlador: viajante OW → BattleStage por turnos (multi-mon sequencial).
  */
 import {
   entradaDeSlot,
@@ -20,13 +20,16 @@ import {
   tickLuta,
 } from "../../combate/luta.js";
 import { definirModoLuta, encerrarTurnos } from "../../combate/turnos.js";
+import { limparImpacto } from "../../combate/impacto.js";
+import { limparCampoCombate } from "../../pokemon/combate/limparCampo.js";
+import { aplicarSceneryStage, limparCacheSceneryStage } from "../../combate/stage/scenery.js";
 import { estado, avisar } from "../../jogo/estado.js";
-import { curarParty } from "../../pokemon/party.js";
+import { curarParty, listaParty } from "../../pokemon/party.js";
 
 /** @type {null|{
  *  npc: object,
  *  foeParty: {especie:string,nivel:number}[],
- *  playerSlots: {especie:string,nivel:number}[],
+ *  playerSlots: {especie:string,nivel:number,origemIndex?:number,hp?:number,hpMax?:number}[],
  *  foeIndex: number,
  *  playerIndex: number,
  *  fase: "luta"|"troca"|"fim",
@@ -43,6 +46,7 @@ export function batalhaTreinadorAtiva() {
 export function iniciarBatalhaViajante(npc) {
   if (!npc?.owTrainer || npc.defeatedByPlayer) return false;
   if (batalhaTreinadorAtiva()) return false;
+  if (estado.batalhaStage?.kind === "wild") return false;
   const playerSlots = slotsPartyJogador();
   if (!playerSlots.length) {
     estado.itemGet = "Você não tem Pokémon em condições de batalhar.";
@@ -65,6 +69,7 @@ export function iniciarBatalhaViajante(npc) {
     trocaMsg: "",
   };
   estado.batalhaTreinador = { npcId: npc.id };
+  estado.batalhaStage = { kind: "trainer", npcId: npc.id };
   estado.dialogo = null;
   avisar();
 
@@ -73,7 +78,24 @@ export function iniciarBatalhaViajante(npc) {
     nomePlayer: "Você",
     nomeFoe: npc.nome || "Treinador",
   });
+  aplicarSceneryStage(npc.x || 0, npc.y || 0, { forcar: true, activePerSide: 1 });
   return montarRodada();
+}
+
+function sincronizarPartyDaLuta() {
+  if (!sessao) return;
+  const slot = sessao.playerSlots[sessao.playerIndex];
+  if (!slot || slot.origemIndex == null) return;
+  const party = listaParty() || [];
+  const mon = party[slot.origemIndex];
+  const arena = estadoLuta().esquerda;
+  if (!mon || !arena) return;
+  mon.hp = Math.max(0, arena.hp | 0);
+  if (Number.isFinite(arena.hpMax)) mon.hpMax = arena.hpMax | 0;
+  mon.status = arena.status || null;
+  slot.hp = mon.hp;
+  slot.hpMax = mon.hpMax;
+  slot.status = mon.status;
 }
 
 function montarRodada() {
@@ -108,6 +130,7 @@ function proximoIndice(lista, atual) {
 function aoAcabarRodada() {
   const e = estadoLuta();
   if (!e.acabou || !sessao) return;
+  sincronizarPartyDaLuta();
 
   if (e.vencedor === "esquerda") {
     const next = proximoIndice(sessao.foeParty, sessao.foeIndex);
@@ -150,6 +173,7 @@ function aoAcabarRodada() {
 
 function encerrar(resultado) {
   if (!sessao) return;
+  sincronizarPartyDaLuta();
   sessao.resultado = resultado;
   sessao.fase = "fim";
   const npc = sessao.npc;
@@ -178,8 +202,12 @@ function encerrar(resultado) {
 function fecharTudo() {
   encerrarTurnos();
   definirModoLuta("real");
+  limparImpacto();
+  limparCampoCombate([]);
+  limparCacheSceneryStage();
   fecharOverlayTreinador();
   estado.batalhaTreinador = null;
+  if (estado.batalhaStage?.kind === "trainer") estado.batalhaStage = null;
   sessao = null;
   avisar();
 }
