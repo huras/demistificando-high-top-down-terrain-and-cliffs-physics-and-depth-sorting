@@ -6,7 +6,11 @@
 import { CHRONO } from "../../config.js";
 import { avisar, estado } from "../../jogo/estado.js";
 import { matesVivos, vivoPack } from "../../pokemon/pack.js";
-import { pokemonDeployado } from "../../pokemon/party.js";
+import {
+  definirDeployado,
+  listaParty,
+  pokemonDeployado,
+} from "../../pokemon/party.js";
 import { selvagensAtivos } from "../../pokemon/populacao.js";
 import { limparCampoCombate } from "../../pokemon/combate/limparCampo.js";
 import {
@@ -117,6 +121,22 @@ export function ligarHooksChrono({ obterTreinador, aplicarIframe } = {}) {
 
 function vivo(ator) {
   return !!(ator && !ator.morto && !ator.capturado && (ator.hp == null || ator.hp > 0));
+}
+
+/** Sem mon fora: manda o 1º saudável da party. */
+export function garantirPartyChrono() {
+  const atual = pokemonDeployado();
+  if (atual) return atual;
+  const party = listaParty();
+  for (let i = 0; i < party.length; i++) {
+    const p = party[i];
+    if (!p || p.morto || (p.hp != null && p.hp <= 0)) continue;
+    if (definirDeployado(i)) {
+      const mon = pokemonDeployado();
+      if (mon) return mon;
+    }
+  }
+  return null;
 }
 
 function puxarFoes(fonte) {
@@ -248,7 +268,8 @@ export function abrirSessaoChrono(fonte, opts = {}) {
   if (sessao || !fonte) return false;
   if (estado.batalhaTreinador || estado.batalhaStage) return false;
 
-  const mon = pokemonDeployado();
+  // Sem mon fora: manda o 1º saudável (tiro no player / engate sem party out).
+  const mon = garantirPartyChrono() || pokemonDeployado();
   if (!mon || !vivo(mon)) {
     estado.itemGet = "Você precisa de um Pokémon em campo para batalhar.";
     avisar();

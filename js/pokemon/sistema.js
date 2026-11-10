@@ -49,6 +49,7 @@ import {
 } from "./aprenderGolpeCinema.js";
 import { modoChronoCampo } from "../combate/chrono/modo.js";
 import { tickContatoChrono } from "../combate/chrono/contato.js";
+import { tentarEngateChronoPorTiro } from "../combate/chrono/tiro.js";
 import {
   ligarHooksChrono,
   sessaoChronoAtiva,
@@ -181,7 +182,12 @@ export function tentarAcertoFlecha(x, y, zAltura, forca = 1) {
   if (!melhor) return false;
   const t = Math.min(1, Math.max(0, forca));
   const poder = 28 + Math.round(36 * t);
-  return aplicarDanoLivre(treinador, melhor, poder, "normal", "physical", agora, efeitos);
+  const hpAntes = melhor.hp;
+  const ok = aplicarDanoLivre(treinador, melhor, poder, "normal", "physical", agora, efeitos);
+  if (ok && melhor.hp > 0 && melhor.hp < hpAntes) {
+    tentarEngateChronoPorTiro(treinador, melhor, efeitos);
+  }
+  return ok;
 }
 
 export function ligarPokemon() {
@@ -288,16 +294,15 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
     montarGrade(atores.concat(treinador));
     if (!morto) {
-      if (!chrono) {
-        for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
-        tickGolpesCampo(atores, agora, efeitos);
-      } else if (monNoMundo) {
-        // Chrono OW: só o party conjura/golpeia (ZXCV + ordem de clique).
-        tickConjuracao(monNoMundo, passo, agora, efeitos);
-        tickGolpesCampo([monNoMundo], agora, efeitos);
-      }
+      // Chrono OW: party ZXCV + wilds em chase podem atirar; hit ranged abre sessão.
+      for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
+      tickGolpesCampo(atores, agora, efeitos);
       atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
+        const hpAntes = alvo?.hp;
         impactoProjetil(p, alvo, agora, efeitos);
+        if (alvo && hpAntes != null && alvo.hp < hpAntes) {
+          tentarEngateChronoPorTiro(p?.dono, alvo, efeitos);
+        }
       });
     }
     if (!morto) atualizarCaptura(corpo, passo, agora, efeitos);

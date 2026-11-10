@@ -5,6 +5,7 @@ export {
   abrirSessaoChrono,
   combateChronoSeguraEntrada,
   encerrarSessaoChrono,
+  garantirPartyChrono,
   ligarHooksChrono,
   obterSessaoChrono,
   sessaoChronoAtiva,
