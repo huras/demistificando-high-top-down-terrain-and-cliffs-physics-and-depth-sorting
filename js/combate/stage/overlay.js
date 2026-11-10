@@ -13,7 +13,12 @@ import { limparInterludio } from "../luta.js";
 import { observarTiro, poseDisparo, poseImpacto, ritmoImpacto } from "../impacto.js";
 import { primeiroTiro } from "../../pokemon/combate/projeteis.js";
 import { definirOmbro, desenharStage, ligarStage } from "./stage3d.js";
-import { ligarCliquesHud, pintarTurnoStage, pintarVidasStage } from "./hud.js";
+import {
+  ligarCliquesHud,
+  pintarTurnoStage,
+  pintarVidasStage,
+  resetarAssinaturaVidasStage,
+} from "./hud.js";
 
 const FOCO_MAX = 0.45;
 
@@ -45,20 +50,20 @@ function garantirDom() {
   raiz.className = "batalha-stage";
   raiz.hidden = true;
   raiz.innerHTML = `
-    <div class="batalha-stage__topo">
+    <div class="batalha-stage__topo hud-head">
       <div class="batalha-stage__nomes">
         <span data-bs-esq>Você</span>
         <span data-bs-dir>Oponente</span>
       </div>
       <p class="batalha-stage__status" data-bs-status></p>
-      <button type="button" class="batalha-stage__fuga" data-bs-fuga hidden>Fugir</button>
+      <button type="button" class="batalha-stage__fuga hud-btn red small" data-bs-fuga hidden>Fugir</button>
     </div>
     <canvas class="batalha-stage__vista" data-bs-vista></canvas>
-    <div class="batalha-stage__vidas" data-bs-vidas></div>
-    <div class="batalha-stage__turno" data-bs-turno hidden>
-      <p class="batalha-stage__turno-titulo" data-bs-turno-titulo></p>
-      <div class="batalha-stage__alvos" data-bs-alvos hidden></div>
-      <div class="batalha-stage__golpes" data-bs-golpes></div>
+    <div class="batalha-stage__vidas batalha-turno__vidas" data-bs-vidas></div>
+    <div class="batalha-stage__turno hud-panel" data-bs-turno hidden>
+      <p class="batalha-turno__titulo" data-bs-turno-titulo></p>
+      <div class="batalha-turno__alvos" data-bs-alvos hidden></div>
+      <div class="batalha-turno__golpes" data-bs-golpes></div>
     </div>
   `;
   document.body.appendChild(raiz);
@@ -99,6 +104,7 @@ export function abrirOverlayStage(opts = {}) {
   ui.versaoMenu = -1;
   ui.versaoAlvo = -1;
   ui.statusEscolhaVersao = -1;
+  resetarAssinaturaVidasStage();
   ritmo = 1;
   focoAcc = 0;
   redimensionar();
@@ -119,6 +125,9 @@ export function fecharOverlayStage() {
   ui.versaoMenu = -1;
   ui.versaoAlvo = -1;
   ui.statusEscolhaVersao = -1;
+  resetarAssinaturaVidasStage();
+  const vidas = raiz.querySelector("[data-bs-vidas]");
+  if (vidas) vidas.replaceChildren();
   ritmo = 1;
   focoAcc = 0;
   document.body.classList.remove("batalha-stage-ativa");

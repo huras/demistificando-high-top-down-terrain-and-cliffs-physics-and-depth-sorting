@@ -1,28 +1,27 @@
-/* BattleStage — overlay fullscreen unificado (wild + treinador). */
+/* BattleStage — overlay fullscreen (treinador / sandbox) + chrome candy de turno. */
 
 .batalha-stage {
+  --head-c: var(--orange);
+  --head-cd: var(--orange-d);
   position: fixed;
   inset: 0;
   z-index: 80;
   display: flex;
   flex-direction: column;
   background: #0b100e;
-  color: #e8efe9;
-  font-family: Nunito, "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  font-family: var(--font);
 }
 
 .batalha-stage[hidden] {
   display: none !important;
 }
 
-.batalha-stage__topo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  background: rgb(12 18 14 / 92%);
-  border-bottom: 1px solid #2a3830;
+.batalha-stage__topo.hud-head {
+  flex: 0 0 auto;
+  border-radius: 0;
+  padding: 12px 16px;
+  gap: 14px;
 }
 
 .batalha-stage__nomes {
@@ -30,34 +29,27 @@
   flex: 1;
   justify-content: space-between;
   gap: 16px;
-  font-weight: 800;
-  font-size: 0.95rem;
+  font: 800 0.95rem/1.2 var(--font-title);
+  min-width: 0;
+}
+
+.batalha-stage__nomes span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .batalha-stage__status {
   margin: 0;
-  color: #9fb0a6;
-  font-size: 0.82rem;
+  color: #fff;
+  opacity: 0.9;
+  font: 700 0.82rem/1.2 var(--font);
   min-height: 1.2em;
+  text-align: center;
+  flex: 1.2;
 }
 
-.batalha-stage__fuga {
-  appearance: none;
-  border: 1px solid rgba(248, 180, 180, 0.35);
-  background: rgba(90, 28, 28, 0.55);
-  color: #fecaca;
-  border-radius: 8px;
-  padding: 0.35rem 0.7rem;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.batalha-stage__fuga:hover {
-  background: rgba(120, 36, 36, 0.7);
-}
-
-.batalha-stage__fuga[hidden] {
+.batalha-stage__fuga.hud-btn[hidden] {
   display: none !important;
 }
 
@@ -70,41 +62,13 @@
 }
 
 .batalha-stage__vidas {
-  display: grid;
-  gap: 6px;
-  padding: 8px 14px;
-  background: rgb(12 18 14 / 90%);
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--paper-2) 92%, #0b100e);
+  border-top: 1px solid var(--line);
 }
 
-.batalha-stage__vida {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(72px, 120px) auto;
-  gap: 0.45rem;
-  align-items: center;
-  font-size: 0.78rem;
-}
-
-.batalha-stage__vida--aliado strong {
-  color: #86efac;
-}
-
-.batalha-stage__barra {
-  height: 8px;
-  border-radius: 999px;
-  background: #243028;
-  overflow: hidden;
-}
-
-.batalha-stage__barra > span {
-  display: block;
-  height: 100%;
-  width: 100%;
-  background: linear-gradient(90deg, #3ecf8e, #7dffb2);
-  transform-origin: left center;
-  transform: scaleX(1);
-}
-
-.batalha-stage__turno {
+.batalha-stage__turno.hud-panel {
   position: absolute;
   left: 50%;
   bottom: 24px;
@@ -112,81 +76,37 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: min(480px, calc(100% - 28px));
-  transform: translateX(-50%);
+  width: min(520px, calc(100% - 28px));
+  transform: translateX(-50%) translateY(10px) scale(0.97);
+  opacity: 0;
   padding: 12px;
-  border: 1px solid #2a3830;
-  border-radius: 12px;
-  background: rgb(16 22 18 / 94%);
+  pointer-events: auto;
+  transition:
+    opacity 0.16s ease,
+    transform 0.26s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.batalha-stage__turno:not([hidden]) {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
 }
 
 .batalha-stage__turno[hidden] {
   display: none !important;
 }
 
-.batalha-stage__turno-titulo {
-  margin: 0;
-  color: #9fb0a6;
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.batalha-stage__alvos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.batalha-stage__alvos[hidden] {
+.batalha-stage__turno[data-modo="carregar"] .batalha-turno__golpes,
+.batalha-stage__turno[data-modo="carregar"] .batalha-turno__alvos {
   display: none !important;
 }
 
-.batalha-stage__alvos button {
-  appearance: none;
-  border: 1px solid rgba(180, 210, 190, 0.28);
-  background: #243028;
-  color: inherit;
-  border-radius: 8px;
-  padding: 0.35rem 0.55rem;
-  font: inherit;
-  cursor: pointer;
-}
+@media (prefers-reduced-motion: reduce) {
+  .batalha-stage__turno.hud-panel {
+    transition: opacity 0.12s ease;
+    transform: translateX(-50%);
+  }
 
-.batalha-stage__alvos button.is-ativo {
-  border-color: #5ad69a;
-  background: #2a4034;
-}
-
-.batalha-stage__golpes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.batalha-stage__golpes button {
-  flex: 1 1 40%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 8px 10px;
-  border: 1px solid #2a3830;
-  border-radius: 8px;
-  background: #243028;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.batalha-stage__golpes button:hover {
-  border-color: #5ad69a;
-}
-
-.batalha-stage__golpe-nome {
-  font-weight: 750;
-}
-
-.batalha-stage__golpe-meta {
-  color: #9fb0a6;
-  font-size: 0.78rem;
+  .batalha-stage__turno:not([hidden]) {
+    transform: translateX(-50%);
+  }
 }

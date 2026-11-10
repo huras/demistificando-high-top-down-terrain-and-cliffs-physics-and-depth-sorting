@@ -1,0 +1,270 @@
+/**
+ * Chrome compartilhado de turno (Chrono + Stage) — paper candy.
+ */
+
+.batalha-turno__vidas {
+  display: grid;
+  gap: 8px;
+}
+
+.batalha-turno__vida {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "nome nv"
+    "barra num";
+  gap: 2px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--paper) 88%, var(--paper-3));
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+.batalha-turno__vida--aliado {
+  box-shadow:
+    inset 3px 0 0 var(--green),
+    inset 0 0 0 1px var(--line);
+}
+
+.batalha-turno__vida--foe {
+  box-shadow:
+    inset 3px 0 0 var(--red),
+    inset 0 0 0 1px var(--line);
+}
+
+.batalha-turno__vida-nome {
+  grid-area: nome;
+  font: 800 13px/1.2 var(--font-title);
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batalha-turno__vida-nv {
+  grid-area: nv;
+  font: 700 11px/1 var(--font);
+  color: var(--ink-2);
+  opacity: 0.85;
+}
+
+.batalha-turno__barra {
+  grid-area: barra;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bar-track);
+  box-shadow: inset 0 1px 2px #00000055;
+  overflow: hidden;
+}
+
+.batalha-turno__barra > i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(1);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7af0a0, var(--green-d));
+  will-change: transform;
+}
+
+.batalha-turno__barra > i[data-faixa="mid"] {
+  background: linear-gradient(90deg, #ffe08a, var(--yellow-d));
+}
+
+.batalha-turno__barra > i[data-faixa="crit"] {
+  background: linear-gradient(90deg, #ff9a9e, var(--red-d));
+}
+
+.batalha-turno__vida-num {
+  grid-area: num;
+  font: 800 11px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  min-width: 3.6em;
+  text-align: right;
+}
+
+.batalha-turno__alvos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.batalha-turno__alvos[hidden] {
+  display: none !important;
+}
+
+.batalha-turno__alvo.hud-pill {
+  background: color-mix(in srgb, var(--ink) 6%, var(--paper-2));
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.batalha-turno__alvo.hud-pill.is-on,
+.batalha-turno__alvo.hud-pill.on {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 2px 0 #1a12461f, var(--shadow-sm);
+}
+
+.batalha-turno__golpes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.batalha-turno__golpe {
+  --card-tipo: var(--purple);
+  appearance: none;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow:
+    inset 4px 0 0 var(--card-tipo),
+    inset 0 0 0 1px var(--line),
+    var(--shadow-sm);
+  color: var(--ink);
+  font-family: var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.12s cubic-bezier(0.3, 1.6, 0.5, 1),
+    filter 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.batalha-turno__golpe:hover {
+  filter: brightness(1.03);
+  transform: translateY(-2px) scale(1.01);
+}
+
+.batalha-turno__golpe:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.batalha-turno__golpe-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.batalha-turno__golpe-tipo {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+}
+
+.batalha-turno__golpe-tipo .type-shield-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.batalha-turno__golpe-titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.batalha-turno__golpe-nome {
+  font: 800 13px/1.2 var(--font-title);
+  color: var(--ink);
+}
+
+.batalha-turno__golpe-sub {
+  font: 700 10px/1.2 var(--font);
+  color: var(--ink-2);
+  text-transform: capitalize;
+}
+
+.batalha-turno__golpe-art {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-tipo) 16%, var(--paper-2));
+}
+
+.batalha-turno__golpe-art[hidden] {
+  display: none !important;
+}
+
+.batalha-turno__golpe-art img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.batalha-turno__golpe-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.batalha-turno__golpe-stats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-right: 1px solid var(--line);
+}
+
+.batalha-turno__golpe-stats > div:last-child {
+  border-right: 0;
+}
+
+.batalha-turno__golpe-stats dt {
+  font: 700 9px/1 var(--font);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.batalha-turno__golpe-stats dd {
+  margin: 0;
+  font: 800 12px/1 var(--font);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.batalha-turno__titulo {
+  margin: 0;
+  font: 800 13px/1.2 var(--font-title);
+  color: var(--ink-2);
+}
+
+@media (max-width: 520px) {
+  .batalha-turno__golpes {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .batalha-turno__golpe {
+    transition: none;
+  }
+
+  .batalha-turno__golpe:hover,
+  .batalha-turno__golpe:active {
+    transform: none;
+  }
+}
