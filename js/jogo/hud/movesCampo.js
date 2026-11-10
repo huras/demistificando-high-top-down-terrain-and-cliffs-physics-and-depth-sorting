@@ -1,5 +1,6 @@
 /** Barra bottom-center: golpes Z/X/C/V + PP do mon em campo. */
 
+import { sessaoChronoAtiva } from "../../combate/chrono/sessao.js";
 import { ordenarGolpe } from "../../pokemon/campo/ordemGolpe.js";
 import { pokemonDeployado, pokemonNoCampo } from "../../pokemon/party.js";
 import { cinemaSimbioseAtivo, estaEmSimbiose } from "../simbiose.js";
@@ -55,6 +56,11 @@ export function pintarMovesCampo() {
   if (estaEmSimbiose() || cinemaSimbioseAtivo()) {
     root.hidden = true;
     assinatura = "simbiose";
+    return;
+  }
+  if (sessaoChronoAtiva()) {
+    root.hidden = true;
+    assinatura = "chrono";
     return;
   }
   if (!ator || ator.capturado) {

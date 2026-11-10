@@ -88,6 +88,7 @@ function garantirDom() {
 export function abrirHudChrono({ nomeParty, nomeFoe, onFuga } = {}) {
   const host = garantirDom();
   host.hidden = false;
+  document.body.classList.add("is-chrono");
   aoFugir = typeof onFuga === "function" ? onFuga : null;
   host.querySelector("[data-ch-status]").textContent =
     `${nomeParty || "Pokémon"} vs ${nomeFoe || "Selvagem"}`;
@@ -96,6 +97,7 @@ export function abrirHudChrono({ nomeParty, nomeFoe, onFuga } = {}) {
 }
 
 export function fecharHudChrono() {
+  document.body.classList.remove("is-chrono");
   if (!raiz) return;
   raiz.hidden = true;
   aoFugir = null;

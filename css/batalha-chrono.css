@@ -20,6 +20,17 @@
   display: none !important;
 }
 
+/* Chrono: some o HUD de campo que compete com o painel de turno */
+body.is-chrono .party-moves-combat,
+body.is-chrono #party-combat-detail,
+body.is-chrono #symbiosis-hud,
+body.is-chrono .action-prompt-hud,
+body.is-chrono #jogo-prompt,
+body.is-chrono #jogo-entrar {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .batalha-chrono__cabeca {
   display: flex;
   align-items: center;

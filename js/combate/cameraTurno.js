@@ -31,11 +31,11 @@ export const CAM_TURNO = Object.freeze({
  * Party na esquerda da tela, foe na direita.
  */
 export const CAM_CHRONO = Object.freeze({
-  lado: 11.8,
-  altura: 5.35,
-  olharY: 1.15,
-  ladoPorSep: 0.42,
-  sepMin: 4.2,
+  lado: 8.4,
+  altura: 4.05,
+  olharY: 1.05,
+  ladoPorSep: 0.3,
+  sepMin: 3.4,
   zoomImpacto: 0.78,
   zoomTiro: 0.86,
   zoomFoco: 0.9,

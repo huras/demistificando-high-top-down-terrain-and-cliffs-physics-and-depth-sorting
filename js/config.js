@@ -573,11 +573,11 @@ export const CHRONO = Object.freeze({
    * Câmera lateral travada (party esquerda / foe direita).
    * Distância no eixo perpendicular à linha de enfrentamento.
    */
-  CAM_LADO: 11.8,
-  CAM_ALTURA: 5.35,
-  CAM_OLHAR_Y: 1.15,
+  CAM_LADO: 8.4,
+  CAM_ALTURA: 4.05,
+  CAM_OLHAR_Y: 1.05,
   /** Empurra a câmera conforme a separação party↔foe. */
-  CAM_LADO_POR_SEP: 0.42,
+  CAM_LADO_POR_SEP: 0.3,
   /** Zoom relativo por beat (1 = framing base). */
   CAM_ZOOM_IMPACTO: 0.78,
   CAM_ZOOM_TIRO: 0.86,
