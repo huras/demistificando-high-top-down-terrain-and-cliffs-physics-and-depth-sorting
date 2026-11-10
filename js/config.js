@@ -549,7 +549,7 @@ export const FADE_PAREDE_INTERIOR_FOCOS = 4;
  * Combate no overworld: "realtime" (BOTW) ou "chrono" (Paper Mario / Chrono Trigger).
  * A sidebar altera em runtime via `definirModoCombateCampo`.
  */
-export const MODO_COMBATE_CAMPO = "realtime";
+export const MODO_COMBATE_CAMPO = "chrono";
 
 /** Knobs do modo Chrono (stomp / toque / volume da sessão). */
 export const CHRONO = Object.freeze({
@@ -561,12 +561,9 @@ export const CHRONO = Object.freeze({
   ALTURA_MON: 1.05,
   /** Debounce entre tentativas de contato (s). */
   CONTATO_COOLDOWN: 0.55,
-  /**
-   * Distância pra iniciar batalha (wild hostil ↔ party/player).
-   * Maior que ALCANCE_TIRO_MAX (10) pra engajar antes de qualquer golpe.
-   */
-  RAIO_ENGATE: 12,
-  /** Hostil começa a perseguir (deve ser > RAIO_ENGATE pra ter chase visível). */
+  /** Folga extra na soma de raios pra bump player/party ↔ wild. */
+  CONTATO_FOLGA: 0.08,
+  /** Hostil começa a perseguir; luta só abre no contato corporal. */
   RAIO_PERSEGUIR: 16,
   /** Raio do volume suave da batalha in-place. */
   RAIO_VOLUME: 11,

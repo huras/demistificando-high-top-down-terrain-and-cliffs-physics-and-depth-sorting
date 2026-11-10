@@ -799,11 +799,11 @@ function loop(agora) {
     Number.isFinite(interior.outdoorY)
       ? interior
       : null;
-  // BattleStage: congela expansão de stream (mantém chunks quentes).
-  const emBatalhaStage =
-    !!estadoJogo.batalhaStage ||
+  // Sandbox treinador: congela expansão de stream. Wild Chrono fica no mundo.
+  const emBatalhaSandbox =
+    estadoJogo.batalhaStage?.kind === "trainer" ||
     !!estadoJogo.batalhaTreinador;
-  if (!emBatalhaStage) {
+  if (!emBatalhaSandbox) {
     if (ancoraOutdoor) {
       // Casa/lab/santuário: bolso + overworld quente (sem unload na porta).
       const raioBolso =

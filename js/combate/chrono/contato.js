@@ -1,6 +1,6 @@
 /**
- * Chrono no overworld: engate por proximidade (maior que range de golpe),
- * stomp na cabeça ou toque no chão. Wild hostil persegue até o RAIO_ENGATE.
+ * Chrono no overworld — engate estilo Paper Mario 64:
+ * só contato corporal (player↔wild ou party↔wild). Hostil persegue até o bump.
  */
 import { CHRONO, RAIO_CORPO, RAIO_POKEMON } from "../../config.js";
 import { velocidadeDe } from "../../pokemon/ator.js";
@@ -23,6 +23,23 @@ function dist2(a, b) {
   return dx * dx + dy * dy;
 }
 
+function raioDe(ator, fallback) {
+  return ator?.raioCorpo > 0 ? ator.raioCorpo : fallback;
+}
+
+function elevDe(ator) {
+  return ator?.elevacao ?? ator?.z ?? 0;
+}
+
+/** Colisão XY + altura compatível (soma de raios + CONTATO_FOLGA). */
+function corposColidem(a, b, fallbackA = RAIO_POKEMON, fallbackB = RAIO_POKEMON, folgaVertical = FOLGA_PISO) {
+  if (!a || !b) return false;
+  if (Math.abs(elevDe(a) - elevDe(b)) > folgaVertical) return false;
+  const folga = CHRONO.CONTATO_FOLGA ?? 0.08;
+  const lim = raioDe(a, fallbackA) + raioDe(b, fallbackB) + folga;
+  return dist2(a, b) <= lim * lim;
+}
+
 function tentarAbrir(fonte, motivo, efeitos) {
   cooldown = CHRONO.CONTATO_COOLDOWN;
   return abrirSessaoChrono(fonte, { motivo, efeitos });
@@ -33,15 +50,16 @@ function contatoPlayer(corpo, mon, efeitos) {
   if (!corpo || !vivo(mon)) return false;
   if (mon.forcaCarregado || mon._forcaSendoLevantado) return false;
 
-  const elevP = corpo.elevacao ?? corpo.z ?? 0;
-  const elevM = mon.elevacao ?? mon.z ?? 0;
+  const elevP = elevDe(corpo);
+  const elevM = elevDe(mon);
   if (Math.abs(elevP - elevM) > FOLGA_PISO + CHRONO.ALTURA_MON) return false;
 
   const noChao = !!corpo.noChao && !corpo.pulando;
   const caindo = !noChao && (corpo.vz == null || corpo.vz <= 0.15);
-  const rPlayer = corpo.raioCorpo > 0 ? corpo.raioCorpo : RAIO_CORPO;
-  const rMon = mon.raioCorpo > 0 ? mon.raioCorpo : RAIO_POKEMON;
-  const lim = rPlayer + rMon + 0.08;
+  const rPlayer = raioDe(corpo, RAIO_CORPO);
+  const rMon = raioDe(mon, RAIO_POKEMON);
+  const folga = CHRONO.CONTATO_FOLGA ?? 0.08;
+  const lim = rPlayer + rMon + folga;
   if (dist2(corpo, mon) > lim * lim) return false;
 
   if (caindo) {
@@ -60,18 +78,17 @@ function contatoPlayer(corpo, mon, efeitos) {
   return false;
 }
 
-/** Engate por distância (wild ↔ party/player) — maior que qualquer range de golpe. */
-function engatePorDistancia(mon, foco, efeitos) {
-  if (!vivo(mon) || !foco) return false;
-  const lim = CHRONO.RAIO_ENGATE;
-  if (dist2(mon, foco) > lim * lim) return false;
-  const elevM = mon.elevacao ?? mon.z ?? 0;
-  const elevF = foco.elevacao ?? foco.z ?? 0;
-  if (Math.abs(elevM - elevF) > FOLGA_PISO + 1.2) return false;
-  return tentarAbrir(mon, "proximidade", efeitos);
+/** Party Pokémon encostou no selvagem. */
+function contatoParty(mon, wild, efeitos) {
+  if (!vivo(mon) || !vivo(wild)) return false;
+  if (mon.forcaCarregado || mon._forcaSendoLevantado) return false;
+  if (mon.combatHold || mon._chronoHold) return false;
+  if (wild.forcaCarregado || wild._forcaSendoLevantado) return false;
+  if (!corposColidem(mon, wild)) return false;
+  return tentarAbrir(wild, "party", efeitos);
 }
 
-/** Alvo no raio de engate Chrono (maior que RAIO_AGRO / range de golpe). */
+/** Alvo de perseguição Chrono (não abre batalha). */
 function alvoChrono(ator, partyMon, jogador) {
   if (!vivo(ator)) return null;
   if (ator.sonoNatural || (ator.dormindo || 0) > 0 || ator.status === "sleep") return null;
@@ -107,7 +124,7 @@ function perseguirChrono(ator, alvo, dt) {
 }
 
 /**
- * Campo Chrono fora de sessão: chase hostil + engate por raio / stomp / toque.
+ * Campo Chrono fora de sessão: chase hostil + engate só por contato.
  * @returns {boolean} true se abriu batalha
  */
 export function tickContatoChrono(corpo, selvagens, mon, dt, efeitos = null) {
@@ -124,16 +141,15 @@ export function tickContatoChrono(corpo, selvagens, mon, dt, efeitos = null) {
     if (w.forcaCarregado || w._forcaSendoLevantado) continue;
     if (w.sonoNatural || (w.dormindo || 0) > 0 || w.status === "sleep") continue;
 
-    // Player stomp / toque ainda inicia.
     if (!corpo.voando && !corpo.planando && !corpo.escalando && !corpo.nadando) {
       if (contatoPlayer(corpo, w, efeitos)) return true;
     }
 
-    // Só quem tá a fim de lutar (hostil/agro) persegue e engaja por distância.
+    if (contatoParty(mon, w, efeitos)) return true;
+
     const alvo = alvoChrono(w, mon, corpo);
     if (!alvo) continue;
     perseguirChrono(w, alvo, dt);
-    if (engatePorDistancia(w, alvo, efeitos)) return true;
   }
   return false;
 }

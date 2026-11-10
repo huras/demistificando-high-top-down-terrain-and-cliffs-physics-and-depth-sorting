@@ -1,6 +1,5 @@
 /**
- * Chrono → BattleStage (compat re-exports).
- * A luta em turno wild agora roda no sandbox 3D isolado.
+ * Chrono → sessão de campo (formação no OW).
  */
 export {
   abrirSessaoChrono,
@@ -11,6 +10,7 @@ export {
   sessaoChronoAtiva,
   tickSessaoChrono,
   stageAtivo,
+  stageSandboxAtivo,
   kindStage,
   entrarStage,
   sairStage,

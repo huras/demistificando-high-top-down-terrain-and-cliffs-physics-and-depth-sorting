@@ -1,10 +1,16 @@
 /**
- * Park / restore de atores OW durante BattleStage.
+ * Park / restore de atores OW durante batalha (campo ou sandbox).
  */
 
-export function estacionarAtor(ator) {
+/**
+ * @param {object} ator
+ * @param {{ ocultar?: boolean }} [opts] ocultar=true some do render OW (sandbox).
+ */
+export function estacionarAtor(ator, opts = {}) {
   if (!ator || ator._stageParked) return;
+  const ocultar = opts.ocultar !== false;
   ator._stageParked = true;
+  ator._stageOculto = ocultar;
   ator._stagePrevX = ator.x;
   ator._stagePrevY = ator.y;
   ator._stagePrevZ = ator.z ?? ator.elevacao ?? 0;
@@ -27,11 +33,13 @@ export function colocarNoSlot(ator, slot) {
   if (!ator || !slot) return;
   ator.x = slot.x;
   ator.y = slot.y;
-  ator.z = 0;
-  ator.elevacao = 0;
+  if (Number.isFinite(slot.z)) {
+    ator.z = slot.z;
+    ator.elevacao = slot.z;
+  }
   ator.casaX = slot.x;
   ator.casaY = slot.y;
-  ator.casaZ = 0;
+  ator.casaZ = ator.z ?? 0;
   ator.casaChronoX = slot.x;
   ator.casaChronoY = slot.y;
   if (slot.dirX != null) ator.dirX = slot.dirX;
@@ -72,6 +80,7 @@ export function restaurarAtor(ator, opts = {}) {
     }
   }
   ator._stageParked = false;
+  ator._stageOculto = false;
   delete ator._stagePrevX;
   delete ator._stagePrevY;
   delete ator._stagePrevZ;
@@ -83,4 +92,9 @@ export function restaurarAtor(ator, opts = {}) {
 
 export function atorEstacionado(ator) {
   return !!(ator && ator._stageParked);
+}
+
+/** Sandbox esconde; batalha no campo continua visível. */
+export function atorOcultoNoOw(ator) {
+  return !!(ator && ator._stageParked && ator._stageOculto);
 }

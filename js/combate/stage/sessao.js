@@ -1,5 +1,7 @@
 /**
- * BattleStage — sessão unificada (wild Chrono no sandbox 3D).
+ * Sessão de batalha em turno.
+ * Wild Chrono: no overworld, Pokémon assumem formação.
+ * Trainer: continua no overlay/sandbox (batalha.js).
  */
 import { CHRONO } from "../../config.js";
 import { avisar, estado } from "../../jogo/estado.js";
@@ -34,16 +36,12 @@ import {
   tickImpacto,
 } from "../impacto.js";
 import { estacionarAtor, restaurarAtor } from "./park.js";
-import { aplicarFormacao, listaAtoresStage } from "./layout.js";
-import { aplicarSceneryStage, limparCacheSceneryStage } from "./scenery.js";
-import { aplicarLuzStage } from "./stage3d.js";
-import {
-  abrirOverlayStage,
-  definirStatusStage,
-  fecharOverlayStage,
-  overlayStageAberto,
-  tickOverlayStage,
-} from "./overlay.js";
+import { aplicarFormacaoMundo } from "./layout.js";
+import { limparCacheSceneryStage } from "./scenery.js";
+import { fecharOverlayStage } from "./overlay.js";
+import { abrirHudChrono, fecharHudChrono, tickHudChrono } from "../chrono/hud.js";
+import { limparCameraChrono } from "../chrono/camera.js";
+import { definirVolumeChrono, limparVolumeChrono } from "../chrono/volume.js";
 
 function efeitosComImpacto(efx) {
   if (!efx) return efx;
@@ -61,8 +59,10 @@ function efeitosComImpacto(efx) {
 let aplicarIframeTreinador = null;
 /** @type {null|(() => object|null)} */
 let obterTreinadorRef = null;
+
 /** @type {null|{
  *  kind: "wild"|"trainer",
+ *  inplace: boolean,
  *  aliados: object[],
  *  foes: object[],
  *  parked: object[],
@@ -70,7 +70,7 @@ let obterTreinadorRef = null;
  *  origemX: number,
  *  origemY: number,
  *  fase: "luta"|"fim",
- *  resultado: "vitoria"|"derrota"|"fuga"|"troca"|null,
+ *  resultado: string|null,
  *  efeitos: object|null,
  * }} */
 let sessao = null;
@@ -79,6 +79,11 @@ const scratchMates = [];
 
 export function stageAtivo() {
   return !!(estado.batalhaStage || sessao);
+}
+
+/** True só no sandbox overlay (treinador). Wild inplace NÃO trava o mundo inteiro. */
+export function stageSandboxAtivo() {
+  return !!(sessao && !sessao.inplace) || estado.batalhaStage?.kind === "trainer";
 }
 
 export function kindStage() {
@@ -93,7 +98,6 @@ export function obterSessaoStage() {
   return sessao;
 }
 
-/** Compat Chrono: sessão wild no stage. */
 export function sessaoChronoAtiva() {
   return !!(sessao && sessao.kind === "wild");
 }
@@ -103,7 +107,7 @@ export function obterSessaoChrono() {
 }
 
 export function combateChronoSeguraEntrada() {
-  return stageAtivo();
+  return sessaoChronoAtiva();
 }
 
 export function ligarHooksChrono({ obterTreinador, aplicarIframe } = {}) {
@@ -147,19 +151,26 @@ function marcarHoldChrono(ator) {
   }
 }
 
+function facingDoEncontro(aliados, foes, ox, oy) {
+  const a = aliados[0];
+  const f = foes[0];
+  if (a && f) {
+    const dx = f.x - a.x;
+    const dy = f.y - a.y;
+    if (dx * dx + dy * dy > 0.04) return { fx: dx, fy: dy };
+  }
+  // Fallback: do jogador/party para o ninho.
+  if (a) {
+    const dx = ox - a.x;
+    const dy = oy - a.y;
+    if (dx * dx + dy * dy > 0.04) return { fx: dx, fy: dy };
+  }
+  return { fx: 1, fy: 0 };
+}
+
 /**
- * @param {{
- *  kind?: "wild"|"trainer",
- *  aliados: object[],
- *  foes: object[],
- *  fonte?: object,
- *  origemXY?: { x: number, y: number },
- *  efeitos?: object,
- *  motivo?: string,
- *  nomePlayer?: string,
- *  nomeFoe?: string,
- *  onFuga?: () => void,
- * }} opts
+ * Wild: batalha no OW com formação.
+ * Trainer: não usa este path (overlay em batalha.js).
  */
 export function entrarStage(opts) {
   if (sessao) return false;
@@ -170,17 +181,19 @@ export function entrarStage(opts) {
   if (!aliados.length || !foes.length) return false;
 
   const kind = opts.kind === "trainer" ? "trainer" : "wild";
+  // Wild sempre no mundo; trainer fica no sandbox via batalha.js.
+  const inplace = kind === "wild";
   const origemX = opts.origemXY?.x ?? foes[0].x ?? 0;
   const origemY = opts.origemXY?.y ?? foes[0].y ?? 0;
 
   const parked = [];
   for (let i = 0; i < aliados.length; i++) {
-    estacionarAtor(aliados[i]);
+    estacionarAtor(aliados[i], { ocultar: !inplace });
     marcarHoldChrono(aliados[i]);
     parked.push(aliados[i]);
   }
   for (let i = 0; i < foes.length; i++) {
-    estacionarAtor(foes[i]);
+    estacionarAtor(foes[i], { ocultar: !inplace });
     marcarHoldChrono(foes[i]);
     foes[i].alvo = aliados[0];
     if (!foes[i].participantes) foes[i].participantes = new Set();
@@ -188,12 +201,17 @@ export function entrarStage(opts) {
     parked.push(foes[i]);
   }
 
-  aplicarFormacao(aliados, foes);
+  const face = facingDoEncontro(aliados, foes, origemX, origemY);
+  aplicarFormacaoMundo(aliados, foes, origemX, origemY, face.fx, face.fy, {
+    amostrarChao: inplace,
+  });
+
   limparCampoCombate(parked);
   limparImpacto();
 
   sessao = {
     kind,
+    inplace,
     aliados,
     foes,
     parked,
@@ -205,26 +223,20 @@ export function entrarStage(opts) {
     efeitos: opts.efeitos || null,
     motivo: opts.motivo || "contato",
   };
-  estado.batalhaStage = { kind, fonteId: sessao.fonteId };
+  estado.batalhaStage = { kind, inplace, fonteId: sessao.fonteId };
 
   definirModoLuta("turnos");
   prepararTurnosGrupo(aliados, foes);
 
-  // Overlay liga o WebGL antes do scenery 3-step.
-  abrirOverlayStage({
-    nomePlayer: opts.nomePlayer || aliados[0]?.especie?.nome || "Você",
-    nomeFoe: opts.nomeFoe || foes[0]?.especie?.nome || "Oponente",
-    podeFugir: kind === "wild",
-    onFuga: opts.onFuga || (() => sairStage("fuga")),
-    obterAtores: () => listaAtoresStage(sessao?.aliados, sessao?.foes),
-    obterSessaoHud: () => sessao,
-  });
-  const perfil = aplicarSceneryStage(origemX, origemY, {
-    forcar: true,
-    activePerSide: Math.max(aliados.length, foes.length),
-  });
-  if (perfil?.luz) aplicarLuzStage(perfil.luz);
-  definirStatusStage("A batalha começou!");
+  if (inplace) {
+    definirVolumeChrono(origemX, origemY, CHRONO.RAIO_VOLUME);
+    abrirHudChrono({
+      nomeParty: opts.nomePlayer || aliados[0]?.especie?.nome || "Pokémon",
+      nomeFoe: opts.nomeFoe || foes[0]?.especie?.nome || "Selvagem",
+      onFuga: opts.onFuga || (() => sairStage("fuga")),
+    });
+  }
+
   return true;
 }
 
@@ -264,7 +276,7 @@ export function encerrarSessaoChrono(resultado = "fuga") {
 }
 
 /**
- * @param {"vitoria"|"derrota"|"fuga"|"troca"|string} resultado
+ * @param {string} resultado
  */
 export function sairStage(resultado = "fuga") {
   if (!sessao) return;
@@ -277,20 +289,25 @@ export function sairStage(resultado = "fuga") {
   definirModoLuta("real");
   limparImpacto();
   limparCampoCombate(snap.parked);
-  fecharOverlayStage();
-  limparCacheSceneryStage();
+  limparVolumeChrono();
+  fecharHudChrono();
+  limparCameraChrono();
+  if (!snap.inplace) {
+    fecharOverlayStage();
+    limparCacheSceneryStage();
+  }
   estado.batalhaStage = null;
 
   for (let i = 0; i < snap.parked.length; i++) {
     const ator = snap.parked[i];
     if (!ator) continue;
-    // Vitória: selvagens mortos não voltam à pose OW (população culle).
     const foeMorto =
       snap.kind === "wild" &&
       ator.faccao === "selvagem" &&
       resultado === "vitoria" &&
       (!vivo(ator) || ator.morto);
     restaurarAtor(ator, {
+      // Vitória: mortos ficam onde caíram; vivos voltam à pose pré-luta.
       restaurarPose: !foeMorto,
       soltarHold: true,
     });
@@ -325,7 +342,6 @@ export function tickStage(dt, agora, efeitos) {
   tickImpacto(dt);
   observarTiro(primeiroTiro());
 
-  // Passivo/status/visual mesmo com menu aberto (turno pausado).
   const combatentes = sessao.aliados.concat(sessao.foes);
   for (let i = 0; i < combatentes.length; i++) {
     const a = combatentes[i];
@@ -335,8 +351,9 @@ export function tickStage(dt, agora, efeitos) {
     tickVisual(a, dt, agora);
   }
 
-  tickOverlayStage(dt, (passo) => {
-    if (pedidoEscolha() || avisoTurno()) return;
+  const pedido = pedidoEscolha();
+  const passo = pedido || avisoTurno() ? 0 : Math.min(0.05, dt);
+  if (passo > 0) {
     const treinador = obterTreinadorRef ? obterTreinadorRef() : null;
     montarGrade(treinador ? combatentes.concat(treinador) : combatentes);
     for (let i = 0; i < combatentes.length; i++) {
@@ -346,14 +363,15 @@ export function tickStage(dt, agora, efeitos) {
     atualizarProjeteis(passo, combatentes, (p, alvo) => {
       impactoProjetil(p, alvo, agora, efx);
     });
-  });
+  }
 
-  // FX no relógio de parede (mesmo com menu/foco) — senão faiscas ficam congeladas.
   const fxDt = Math.min(0.05, dt);
   tickParticulas(fxDt);
   tickFx(fxDt);
 
-  if (!overlayStageAberto()) return;
+  if (sessao.inplace) {
+    tickHudChrono(pedidoEscolha(), avisoTurno(), sessao);
+  }
 
   if (!algumVivo(sessao.aliados)) {
     sairStage("derrota");
@@ -364,7 +382,6 @@ export function tickStage(dt, agora, efeitos) {
   }
 }
 
-/** Alias Chrono. */
 export function tickSessaoChrono(dt, agora, efeitos) {
   tickStage(dt, agora, efeitos);
 }

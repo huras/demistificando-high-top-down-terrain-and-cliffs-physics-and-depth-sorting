@@ -14,6 +14,7 @@ import { notaGolpeTurno, resolverTurno } from "../pokemon/combate/acertoClassico
 import { mapaPp, podeGastarPp } from "../pokemon/pp.js";
 import { emImpacto } from "./impacto.js";
 import { CAM_TURNO } from "./cameraTurno.js";
+import { limitarVolumeChrono, volumeChronoAtivo } from "./chrono/volume.js";
 
 const ESPERA_LINHA = 1.6;
 const ESPERA_CARGA = 0.85;
@@ -63,8 +64,8 @@ let distAntesAprox = Infinity;
 let semProgresso = 0;
 
 function limitarPosicao(quem) {
-  // BattleStage / arena: disco centrado em 0,0.
-  limitarArena(quem);
+  if (volumeChronoAtivo()) limitarVolumeChrono(quem);
+  else limitarArena(quem);
 }
 
 export function definirModoLuta(proximo) {

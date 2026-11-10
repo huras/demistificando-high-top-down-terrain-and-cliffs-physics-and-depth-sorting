@@ -3,10 +3,10 @@
  */
 import { obterModo } from "../modoJogo.js";
 import { modoChronoCampo } from "../combate/chrono/modo.js";
-import { abrirSessaoChrono, sessaoChronoAtiva } from "../combate/chrono/sessao.js";
+import { sessaoChronoAtiva } from "../combate/chrono/sessao.js";
 import { projetar2d, projetar3d } from "./hud.js";
 import { ordenarAtaque } from "./party.js";
-import { atoresVisiveis, efeitosPokemon } from "./sistema.js";
+import { atoresVisiveis } from "./sistema.js";
 
 const RAIO_PX = 72;
 const RAIO_HOVER = 72;
@@ -99,13 +99,12 @@ export function pokemonSobClique(ev, camera2d, cenario) {
   return melhor;
 }
 
-/** True se o clique mandou o Pokémon em campo atacar (ou abriu Chrono). */
+/** True se o clique mandou o Pokémon em campo atacar. */
 export function tentarAtaqueNoClique(ev, camera2d, cenario) {
   const alvo = pokemonSobClique(ev, camera2d, cenario);
   if (!alvo) return false;
-  if (modoChronoCampo()) {
-    if (sessaoChronoAtiva()) return false;
-    return abrirSessaoChrono(alvo, { motivo: "clique", efeitos: efeitosPokemon() });
-  }
+  // Em sessão Chrono o turno é pelo HUD; clique não manda ordem realtime.
+  if (modoChronoCampo() && sessaoChronoAtiva()) return false;
+  // Fora de sessão: party persegue (engate da luta Chrono continua só no contato).
   return ordenarAtaque(alvo);
 }

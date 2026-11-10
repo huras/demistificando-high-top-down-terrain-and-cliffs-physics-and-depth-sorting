@@ -78,12 +78,7 @@ import {
   batalhaTreinadorAtiva,
   tickBatalhaViajante,
 } from "../npc/viajantes/batalha.js";
-import {
-  sessaoChronoAtiva,
-  stageAtivo,
-  tickSessaoChrono,
-} from "../combate/stage/sessao.js";
-import { efeitosPokemon, relogioPokemon } from "../pokemon/sistema.js";
+import { stageSandboxAtivo } from "../combate/stage/sessao.js";
 import {
   abrirMapa,
   cancelarConfirmacaoMapa,
@@ -135,8 +130,7 @@ export function jogoTravaMundo() {
     aprenderGolpeAberto() ||
     batalhaTreinadorAtiva() ||
     !!estado.batalhaTreinador ||
-    stageAtivo() ||
-    !!estado.batalhaStage ||
+    stageSandboxAtivo() ||
     historiaBloqueiaMovimento()
   );
 }
@@ -205,11 +199,6 @@ export function tickJogo(dt, corpo) {
   registrarPosicao(corpo);
   if (batalhaTreinadorAtiva() || estado.batalhaTreinador) {
     tickBatalhaViajante(dt);
-    return;
-  }
-  // Wild BattleStage: tick isolado (sem OW / party / stream no mesmo frame).
-  if (sessaoChronoAtiva() || estado.batalhaStage?.kind === "wild") {
-    tickSessaoChrono(dt, relogioPokemon(), efeitosPokemon());
     return;
   }
   tickHudCampo(dt, corpo);
