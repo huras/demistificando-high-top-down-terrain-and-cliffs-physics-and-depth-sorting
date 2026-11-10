@@ -6,7 +6,7 @@ import { alturaSobPes } from "../../fisica/colisao.js";
 export const STAGE_SLOT_CAP = 5;
 
 /** Separação aliado↔foe no eixo de enfrentamento (unidades de mundo). */
-const SEP_FRENTE = 2.85;
+export const SEP_FRENTE = 2.85;
 /** Espaçamento lateral entre mates. */
 const SEP_LADO = 1.45;
 

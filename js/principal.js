@@ -127,6 +127,7 @@ import { ligarHierarquiaCena, sincronizarHierarquiaCena } from "./ui/cena/hierar
 import { ligarInspetorCena, sincronizarInspetorCena } from "./ui/cena/inspetor.js";
 import { carregarDados } from "./pokemon/dados.js";
 import { carregarNinhosAssados } from "./pokemon/ninhosAssados.js";
+import { sessaoChronoAtiva } from "./combate/chrono/sessao.js";
 import { ligarPokemon, listarSolidosPokemon, tickPokemon } from "./pokemon/sistema.js";
 import {
   iniciarNpc,
@@ -687,7 +688,12 @@ function loop(agora) {
           teclaAgora("KeyC");
           teclaAgora("KeyV");
         }
-      } else if (pokemonDeployado() && !jogadorMorto() && !trava) {
+      } else if (
+        pokemonDeployado() &&
+        !jogadorMorto() &&
+        !trava &&
+        !sessaoChronoAtiva()
+      ) {
         if (teclaAgora("KeyZ")) ordenarGolpe(0);
         if (teclaAgora("KeyX")) ordenarGolpe(1);
         if (teclaAgora("KeyC")) ordenarGolpe(2);
@@ -759,11 +765,16 @@ function loop(agora) {
   const morto = jogadorMorto();
   const rideCinema = cinemaRideAtivo();
   const simbCinema = cinemaSimbioseAtivo();
-  // Cinema de montaria ou simbiose conduz o corpo; sem WASD livre.
-  if (!passeioAtivo() && !trava && !morto) {
+  // Cinema de montaria ou simbiose conduz o corpo; Chrono estaciona o jogador atrás da linha.
+  if (!passeioAtivo() && !trava && !morto && !sessaoChronoAtiva()) {
     if (rideCinema) tickRide(dt, corpo);
     else if (simbCinema) tickSimbiose(dt, corpo);
     else atualizarMovimento(corpo, dt);
+  } else if (sessaoChronoAtiva() && corpo) {
+    corpo.vx = 0;
+    corpo.vy = 0;
+    corpo.andando = false;
+    corpo.correndo = false;
   }
   tickFilaPath();
   if (passeioAtivo() && !trava && !morto) atualizarPasseio(corpo, dt);

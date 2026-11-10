@@ -18,7 +18,6 @@ import {
   reempilharLideranca,
   vivoPack,
 } from "./pack.js";
-
 export { irPara, zDePerseguicao } from "./ia/locomocaoCampo.js";
 
 function facingDeDir(dx, dy) {

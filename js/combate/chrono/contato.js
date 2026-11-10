@@ -40,9 +40,9 @@ function corposColidem(a, b, fallbackA = RAIO_POKEMON, fallbackB = RAIO_POKEMON,
   return dist2(a, b) <= lim * lim;
 }
 
-function tentarAbrir(fonte, motivo, efeitos) {
+function tentarAbrir(fonte, motivo, efeitos, corpo = null) {
   cooldown = CHRONO.CONTATO_COOLDOWN;
-  return abrirSessaoChrono(fonte, { motivo, efeitos });
+  return abrirSessaoChrono(fonte, { motivo, efeitos, corpo });
 }
 
 /** Player encostou / stompou um selvagem. */
@@ -68,24 +68,24 @@ function contatoPlayer(corpo, mon, efeitos) {
       corpo.vz = Math.max(corpo.vz || 0, CHRONO.STOMP_BOUNCE_VZ);
       corpo.pulando = true;
       corpo.noChao = false;
-      return tentarAbrir(mon, "stomp", efeitos);
+      return tentarAbrir(mon, "stomp", efeitos, corpo);
     }
   }
 
   if (noChao && Math.abs(elevP - elevM) <= FOLGA_PISO) {
-    return tentarAbrir(mon, "toque", efeitos);
+    return tentarAbrir(mon, "toque", efeitos, corpo);
   }
   return false;
 }
 
 /** Party Pokémon encostou no selvagem. */
-function contatoParty(mon, wild, efeitos) {
+function contatoParty(mon, wild, efeitos, corpo = null) {
   if (!vivo(mon) || !vivo(wild)) return false;
   if (mon.forcaCarregado || mon._forcaSendoLevantado) return false;
   if (mon.combatHold || mon._chronoHold) return false;
   if (wild.forcaCarregado || wild._forcaSendoLevantado) return false;
   if (!corposColidem(mon, wild)) return false;
-  return tentarAbrir(wild, "party", efeitos);
+  return tentarAbrir(wild, "party", efeitos, corpo);
 }
 
 /** Alvo de perseguição Chrono (não abre batalha). */
@@ -145,7 +145,7 @@ export function tickContatoChrono(corpo, selvagens, mon, dt, efeitos = null) {
       if (contatoPlayer(corpo, w, efeitos)) return true;
     }
 
-    if (contatoParty(mon, w, efeitos)) return true;
+    if (contatoParty(mon, w, efeitos, corpo)) return true;
 
     const alvo = alvoChrono(w, mon, corpo);
     if (!alvo) continue;

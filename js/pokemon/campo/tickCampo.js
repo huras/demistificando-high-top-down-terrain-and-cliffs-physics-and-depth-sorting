@@ -83,6 +83,52 @@ function deitarNoLar(ator) {
   ator.dormindo = 1;
 }
 
+/**
+ * Sono de campo (spawn nap + noite no lar).
+ * Separado do combate realtime — Chrono OW também precisa tickar isto
+ * senão `dormindo: 1` do spawn nunca cai e o roam pula o mon pra sempre.
+ * @returns {boolean} true se ainda está dormindo (congela o corpo)
+ */
+export function tickSonoSelvagem(ator, dt) {
+  if (!ator || ator.morto || ator.capturado || ator.preso) return false;
+  if (ator._chronoHold || ator.combatHold || ator._stageParked) return false;
+
+  if (ator.sonoNatural && !ehNoiteOverworld()) {
+    acordarSonoNatural(ator);
+  }
+
+  if (ator.dormindo > 0 || ator.sonoNatural) {
+    if (ator.status !== "sleep" && !ator.sonoNatural) {
+      ator.dormindo = Math.max(0, ator.dormindo - dt);
+    }
+    if (ator.sonoNatural || ator.dormindo > 0) {
+      if (ator.sonoNatural) deitarNoLar(ator);
+      else {
+        ator.vx = 0;
+        ator.vy = 0;
+        ator.andando = false;
+        ator.correndo = false;
+      }
+      fecharHopLuta(ator, dt, false);
+      return true;
+    }
+  }
+
+  // Diurnos de lar dormem na palha à noite (sem decay até amanhecer/agro).
+  if (
+    ehNoiteOverworld() &&
+    ator.larId &&
+    ator.faccao === "selvagem" &&
+    !ator.efemero &&
+    ehDiurno(ator.especie || ator)
+  ) {
+    deitarNoLar(ator);
+    fecharHopLuta(ator, dt, false);
+    return true;
+  }
+  return false;
+}
+
 /** Drop de batalha ou bola grounded — o mais perto do mon. */
 function coletavelMaisPerto(mon, jogador) {
   const drop = dropMaisPerto(mon, jogador);
@@ -244,27 +290,7 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     return;
   }
 
-  if (ator.sonoNatural && !ehNoiteOverworld()) {
-    acordarSonoNatural(ator);
-  }
-
-  // Dormindo (natural ou status): congela e não agroa passantes.
-  if (ator.dormindo > 0 || ator.sonoNatural) {
-    if (ator.status !== "sleep" && !ator.sonoNatural) {
-      ator.dormindo = Math.max(0, ator.dormindo - dt);
-    }
-    if (ator.sonoNatural || ator.dormindo > 0) {
-      if (ator.sonoNatural) deitarNoLar(ator);
-      else {
-        ator.vx = 0;
-        ator.vy = 0;
-        ator.andando = false;
-        ator.correndo = false;
-      }
-      fecharHopLuta(ator, dt, false);
-      return;
-    }
-  }
+  if (tickSonoSelvagem(ator, dt)) return;
 
   const alvo = escolherAlvoWild(ator, partyMon, jogador);
   if (alvo) {
@@ -298,17 +324,14 @@ export function tickWildCampo(ator, partyMon, jogador, dt) {
     clearMeleeApproach(ator);
   }
 
-  // Diurnos de lar dormem na palha à noite (sem decay até amanhecer/agro).
-  if (
-    ehNoiteOverworld() &&
-    ator.larId &&
-    ator.faccao === "selvagem" &&
-    !ator.efemero &&
-    ehDiurno(ator.especie || ator)
-  ) {
-    deitarNoLar(ator);
-  }
   fecharHopLuta(ator, dt, false);
+}
+
+function alvoDormindo(alvo) {
+  return !!(
+    alvo &&
+    (alvo.sonoNatural || (alvo.dormindo || 0) > 0 || alvo.status === "sleep")
+  );
 }
 
 /** Dispara golpes depois da locomoção (party + wilds em luta). */
@@ -318,6 +341,12 @@ export function tickGolpesCampo(atores, agora, efeitos) {
     if (!a || a.morto || a.capturado) continue;
     if (a.ordemGolpe?.ativa) continue;
     if (!a.alvo || a.alvo.morto || a.alvo.capturado || a.alvo._pontoOrdem) continue;
+    // Não spammar tiro em mon dormindo / fora do mundo (parece “alvo invisível”).
+    if (a.faccao === "party" && (alvoDormindo(a.alvo) || a.alvo._stageParked)) {
+      if (a.ordemAlvo === a.alvo) a.ordemAlvo = null;
+      a.alvo = null;
+      continue;
+    }
     if (isCombatMotionLocked(a)) continue;
     tentarGolpesCampo(a, agora, efeitos);
   }

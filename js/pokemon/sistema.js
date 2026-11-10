@@ -24,6 +24,7 @@ import { atualizarRoamSelvagens } from "./ia.js";
 import {
   tickGolpesCampo,
   tickPartyCampo,
+  tickSonoSelvagem,
   tickWildCampo,
 } from "./campo/tickCampo.js";
 import {
@@ -65,12 +66,15 @@ aoLiberarSom(() => {
 });
 
 let hooksChronoLigados = false;
+/** Corpo físico do jogador (atualizado a cada tick). */
+let corpoAtual = null;
 
 function garantirHooksChrono() {
   if (hooksChronoLigados) return;
   hooksChronoLigados = true;
   ligarHooksChrono({
     obterTreinador: () => treinador,
+    obterCorpo: () => corpoAtual,
     aplicarIframe: (seg) => {
       treinador.iframe = Math.max(treinador.iframe || 0, seg);
     },
@@ -203,6 +207,7 @@ export function ligarPokemon() {
 export function tickPokemon(corpo, dt, perfilSeguidor) {
   if (!ligado || !corpo) return;
   garantirHooksChrono();
+  corpoAtual = corpo;
   const passo = Math.min(0.05, dt);
   agora += passo;
   treinador.x = corpo.x;
@@ -248,6 +253,12 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
             w.agroPersistente = false;
           }
         }
+      }
+      // Chrono não chama tickWildCampo — ainda precisa decair sono de spawn / noite.
+      for (let i = 0; i < selvagens.length; i++) {
+        const w = selvagens[i];
+        if (!w || w.forcaCarregado || w._forcaSendoLevantado) continue;
+        tickSonoSelvagem(w, passo);
       }
       atualizarRoamSelvagens(selvagens, mon, treinador, passo);
       if (!emChrono) {
@@ -295,16 +306,23 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
     montarGrade(atores.concat(treinador));
     if (!morto) {
-      // Chrono OW: golpes realtime até o 1º hit — aí abre sessão Chrono.
-      for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
-      tickGolpesCampo(atores, agora, efeitos);
-      atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
-        impactoProjetil(p, alvo, agora, efeitos);
-      });
-      // Depois do loop: limparCampo no engate não corrompe projéteis/golpes.
-      const engate = consumirEngateChronoHit();
-      if (engate) {
-        tentarEngateChronoPorHit(engate.atacante, engate.alvo, efeitos);
+      // Chrono OW fora de sessão: sem golpes realtime (evita spray em nest/agro).
+      // Engate = contato corporal ou clique → abrirSessaoChrono.
+      if (!chrono) {
+        for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
+        tickGolpesCampo(atores, agora, efeitos);
+        atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
+          impactoProjetil(p, alvo, agora, efeitos);
+        });
+      } else {
+        // Projéteis órfãos (pré-Chrono) ainda precisam tickar/morrer.
+        atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
+          impactoProjetil(p, alvo, agora, efeitos);
+        });
+        const engate = consumirEngateChronoHit();
+        if (engate) {
+          tentarEngateChronoPorHit(engate.atacante, engate.alvo, efeitos);
+        }
       }
     }
     if (!morto) atualizarCaptura(corpo, passo, agora, efeitos);

@@ -1,6 +1,7 @@
 /**
  * Park / restore de atores OW durante batalha (campo ou sandbox).
  */
+import { alturaSobPes } from "../../fisica/colisao.js";
 
 /**
  * @param {object} ator
@@ -103,4 +104,76 @@ export function atorEstacionado(ator) {
 /** Sandbox esconde; batalha no campo continua visível. */
 export function atorOcultoNoOw(ator) {
   return !!(ator && ator._stageParked && ator._stageOculto);
+}
+
+/**
+ * Guarda pose do jogador e leva pra trás da linha Chrono (sem hold de combate).
+ * @param {object} corpo
+ * @param {{ ox: number, oy: number, fx: number, fy: number, atras: number, sepFrente: number }} opts
+ */
+export function estacionarJogadorChrono(corpo, opts) {
+  if (!corpo || corpo._chronoPose) return;
+  let fx = Number.isFinite(opts?.fx) ? opts.fx : 1;
+  let fy = Number.isFinite(opts?.fy) ? opts.fy : 0;
+  const len = Math.hypot(fx, fy) || 1;
+  fx /= len;
+  fy /= len;
+  const ox = opts?.ox ?? corpo.x;
+  const oy = opts?.oy ?? corpo.y;
+  const sep = Number.isFinite(opts?.sepFrente) ? opts.sepFrente : 2.85;
+  const atras = Number.isFinite(opts?.atras) ? opts.atras : 3.5;
+
+  corpo._chronoPose = {
+    x: corpo.x,
+    y: corpo.y,
+    z: corpo.z,
+    elevacao: corpo.elevacao,
+    dirX: corpo.dirX,
+    dirY: corpo.dirY,
+    facing: corpo.facing,
+  };
+
+  const wx = ox - fx * (sep + atras);
+  const wy = oy - fy * (sep + atras);
+  corpo.x = wx;
+  corpo.y = wy;
+  const ref = corpo.elevacao ?? corpo.z ?? 0;
+  const z = alturaSobPes(wx, wy, ref, ref);
+  if (Number.isFinite(z)) {
+    corpo.z = z;
+    corpo.elevacao = z;
+  }
+  corpo.dirX = fx;
+  corpo.dirY = fy;
+  // Mesma regra 4-way de movimento.js (0 S/N conforme |dx|/|dy|).
+  if (typeof corpo.facing === "number") {
+    if (Math.abs(fx) > Math.abs(fy)) corpo.facing = fx < 0 ? 1 : 2;
+    else corpo.facing = fy < 0 ? 3 : 0;
+  }
+  corpo.vx = 0;
+  corpo.vy = 0;
+  corpo.vz = 0;
+  corpo.andando = false;
+  corpo.correndo = false;
+  corpo.pulando = false;
+  corpo.hopLift = 0;
+  corpo.noChao = true;
+}
+
+/** Devolve o jogador à pose exata de antes do Chrono. */
+export function restaurarJogadorChrono(corpo) {
+  if (!corpo || !corpo._chronoPose) return;
+  const p = corpo._chronoPose;
+  corpo.x = p.x;
+  corpo.y = p.y;
+  if (Number.isFinite(p.z)) corpo.z = p.z;
+  if (Number.isFinite(p.elevacao)) corpo.elevacao = p.elevacao;
+  if (p.dirX != null) corpo.dirX = p.dirX;
+  if (p.dirY != null) corpo.dirY = p.dirY;
+  if (p.facing != null) corpo.facing = p.facing;
+  corpo.vx = 0;
+  corpo.vy = 0;
+  corpo.vz = 0;
+  corpo.andando = false;
+  delete corpo._chronoPose;
 }

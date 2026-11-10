@@ -8,6 +8,23 @@ function vivo(a) {
   return a && !a.morto && !a.capturado && (a.hp == null || a.hp > 0);
 }
 
+function dormindoCampo(a) {
+  return !!(a && (a.sonoNatural || (a.dormindo || 0) > 0 || a.status === "sleep"));
+}
+
+/** Alvo válido pra party auto-pick (não pega mon dormindo / parkado). */
+function combativoParty(a) {
+  return vivo(a) && !dormindoCampo(a) && !a._stageParked && !a._stageOculto;
+}
+
+function aindaNoMundo(alvo, selvagens) {
+  if (!alvo || !selvagens) return false;
+  for (let i = 0; i < selvagens.length; i++) {
+    if (selvagens[i] === alvo) return true;
+  }
+  return false;
+}
+
 /** Wilds em agro dentro do raio do treinador (DEFEND). */
 function agroNoRaio(selvagens, jogador) {
   const lim = POKEMON.RAIO_AGRO * POKEMON.RAIO_AGRO;
@@ -15,7 +32,7 @@ function agroNoRaio(selvagens, jogador) {
   if (!selvagens || !jogador) return out;
   for (let i = 0; i < selvagens.length; i++) {
     const s = selvagens[i];
-    if (!vivo(s) || s.modo !== "agro") continue;
+    if (!combativoParty(s) || s.modo !== "agro") continue;
     if (dist2Espaco(s, jogador) > lim) continue;
     if (!alcanceEngajavel(s, jogador) && !alcanceEngajavel(jogador, s)) continue;
     out.push(s);
@@ -30,7 +47,7 @@ function vivosNoRaio(selvagens, jogador) {
   if (!selvagens || !jogador) return out;
   for (let i = 0; i < selvagens.length; i++) {
     const s = selvagens[i];
-    if (!vivo(s)) continue;
+    if (!combativoParty(s)) continue;
     if (dist2Espaco(s, jogador) > lim) continue;
     if (!alcanceEngajavel(s, jogador) && !alcanceEngajavel(jogador, s)) continue;
     out.push(s);
@@ -60,16 +77,17 @@ export function escolherAlvoParty(mon, selvagens, jogador) {
   if (!vivo(mon)) return null;
 
   const ordem = mon.ordemAlvo;
-  if (vivo(ordem) && ordem.faccao !== "party") {
+  if (ordem && (!vivo(ordem) || !aindaNoMundo(ordem, selvagens) || dormindoCampo(ordem))) {
+    mon.ordemAlvo = null;
+  } else if (vivo(ordem) && ordem.faccao !== "party" && aindaNoMundo(ordem, selvagens)) {
     if (alcanceEngajavel(mon, ordem) || dist2Espaco(mon, ordem) <= POKEMON.RAIO_SOLTA * POKEMON.RAIO_SOLTA) {
       return ordem;
     }
   }
-  if (mon.ordemAlvo && !vivo(mon.ordemAlvo)) mon.ordemAlvo = null;
 
   // Retaliação sticky (vale em FOLLOW/DEFEND — não some no próximo frame).
   const retalia = alvoRetaliacao(mon);
-  if (retalia) return retalia;
+  if (retalia && combativoParty(retalia) && aindaNoMundo(retalia, selvagens)) return retalia;
 
   const modo = modoEfetivo(mon);
   if (modo === AI_MODE.STAY || modo === AI_MODE.FOLLOW) return null;
@@ -81,7 +99,7 @@ export function escolherAlvoParty(mon, selvagens, jogador) {
   if (modo === AI_MODE.AGRO) {
     const zona = vivosNoRaio(selvagens, jogador);
     const lim2 = POKEMON.RAIO_AGRO * POKEMON.RAIO_AGRO;
-    if (vivo(mon.alvo) && mon.alvo.faccao === "selvagem") {
+    if (combativoParty(mon.alvo) && mon.alvo.faccao === "selvagem" && aindaNoMundo(mon.alvo, selvagens)) {
       const ainda =
         (zona.includes(mon.alvo) || dist2Espaco(mon.alvo, jogador || mon) <= lim2) &&
         (alcanceEngajavel(mon, mon.alvo) || alcanceEngajavel(mon.alvo, mon));
@@ -106,7 +124,7 @@ export function escolherAlvoParty(mon, selvagens, jogador) {
     let melhorD = Infinity;
     for (let i = 0; i < (selvagens?.length || 0); i++) {
       const s = selvagens[i];
-      if (!vivo(s)) continue;
+      if (!combativoParty(s)) continue;
       if (!alcanceEngajavel(mon, s)) continue;
       const d = dist2Espaco(s, mon);
       if (d > lim2) continue;

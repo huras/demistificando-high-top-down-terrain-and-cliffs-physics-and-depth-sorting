@@ -40,8 +40,13 @@ import {
   observarTiro,
   tickImpacto,
 } from "../impacto.js";
-import { estacionarAtor, restaurarAtor } from "./park.js";
-import { aplicarFormacaoMundo } from "./layout.js";
+import {
+  estacionarAtor,
+  estacionarJogadorChrono,
+  restaurarAtor,
+  restaurarJogadorChrono,
+} from "./park.js";
+import { aplicarFormacaoMundo, SEP_FRENTE } from "./layout.js";
 import { limparCacheSceneryStage } from "./scenery.js";
 import { fecharOverlayStage } from "./overlay.js";
 import { abrirHudChrono, fecharHudChrono, tickHudChrono } from "../chrono/hud.js";
@@ -64,6 +69,8 @@ function efeitosComImpacto(efx) {
 let aplicarIframeTreinador = null;
 /** @type {null|(() => object|null)} */
 let obterTreinadorRef = null;
+/** @type {null|(() => object|null)} */
+let obterCorpoRef = null;
 
 /** @type {null|{
  *  kind: "wild"|"trainer",
@@ -115,8 +122,9 @@ export function combateChronoSeguraEntrada() {
   return sessaoChronoAtiva();
 }
 
-export function ligarHooksChrono({ obterTreinador, aplicarIframe } = {}) {
+export function ligarHooksChrono({ obterTreinador, obterCorpo, aplicarIframe } = {}) {
   obterTreinadorRef = typeof obterTreinador === "function" ? obterTreinador : null;
+  obterCorpoRef = typeof obterCorpo === "function" ? obterCorpo : null;
   aplicarIframeTreinador = typeof aplicarIframe === "function" ? aplicarIframe : null;
 }
 
@@ -223,7 +231,12 @@ export function entrarStage(opts) {
   }
 
   const face = facingDoEncontro(aliados, foes, origemX, origemY);
-  aplicarFormacaoMundo(aliados, foes, origemX, origemY, face.fx, face.fy, {
+  let fx = face.fx;
+  let fy = face.fy;
+  const fl = Math.hypot(fx, fy) || 1;
+  fx /= fl;
+  fy /= fl;
+  aplicarFormacaoMundo(aliados, foes, origemX, origemY, fx, fy, {
     amostrarChao: inplace,
   });
 
@@ -239,6 +252,8 @@ export function entrarStage(opts) {
     fonteId: opts.fonte?.id ?? foes[0]?.id,
     origemX,
     origemY,
+    faceX: fx,
+    faceY: fy,
     fase: "luta",
     resultado: null,
     efeitos: opts.efeitos || null,
@@ -251,6 +266,15 @@ export function entrarStage(opts) {
 
   if (inplace) {
     definirVolumeChrono(origemX, origemY, CHRONO.RAIO_VOLUME);
+    const corpo = opts.corpo || (obterCorpoRef ? obterCorpoRef() : null);
+    estacionarJogadorChrono(corpo, {
+      ox: origemX,
+      oy: origemY,
+      fx,
+      fy,
+      sepFrente: SEP_FRENTE,
+      atras: CHRONO.TREINADOR_ATRAS ?? 3.5,
+    });
     abrirHudChrono({
       nomeParty: opts.nomePlayer || aliados[0]?.especie?.nome || "Pokémon",
       nomeFoe: opts.nomeFoe || foes[0]?.especie?.nome || "Selvagem",
@@ -288,6 +312,7 @@ export function abrirSessaoChrono(fonte, opts = {}) {
     origemXY: { x: fonte.x, y: fonte.y },
     efeitos: opts.efeitos,
     motivo: opts.motivo || "contato",
+    corpo: opts.corpo || null,
     nomePlayer: mon.especie?.nome || "Pokémon",
     nomeFoe: fonte.especie?.nome || "Selvagem",
   });
@@ -319,6 +344,10 @@ export function sairStage(resultado = "fuga") {
     limparCacheSceneryStage();
   }
   estado.batalhaStage = null;
+
+  if (snap.inplace) {
+    restaurarJogadorChrono(obterCorpoRef ? obterCorpoRef() : null);
+  }
 
   for (let i = 0; i < snap.parked.length; i++) {
     const ator = snap.parked[i];

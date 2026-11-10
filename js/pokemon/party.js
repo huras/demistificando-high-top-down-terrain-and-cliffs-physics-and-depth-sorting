@@ -23,6 +23,10 @@ import { encherPp } from "./pp.js";
 import { definirEmocao, EMOCAO } from "./emocoes.js";
 import { anunciarGanho } from "../jogo/ganhoItem.js";
 import { soltarFxEnvio, soltarFxRecolher } from "../fx/fxBola.js";
+import { modoChronoCampo } from "../combate/chrono/modo.js";
+import { alertarPackAgro, travarAgroPack } from "./pack.js";
+import { selvagensAtivos } from "./populacao.js";
+import { acordarSonoNatural } from "./campo/tickCampo.js";
 import { markSpeciesCaught } from "../jogo/pokedex/progresso.js";
 
 const party = [];
@@ -120,6 +124,16 @@ export function ordenarAtaque(alvo) {
   const mon = pokemonDeployado();
   if (!mon || !alvo || alvo === mon || alvo.morto || alvo.capturado) return false;
   if (alvo.faccao === "party") return false;
+  // Acorda sono de campo e trava agro — evita cull do ninho + tiro em mon “fantasma”.
+  if (alvo.status !== "sleep") acordarSonoNatural(alvo);
+  if ((alvo.dormindo || 0) > 0 && alvo.status !== "sleep") alvo.dormindo = 0;
+  alvo.modo = "agro";
+  alvo.alvo = mon;
+  alvo.agroPersistente = true;
+  // Pack inteiro só no realtime; Chrono puxa mates na sessão.
+  if (alvo.packId != null && !modoChronoCampo()) {
+    alertarPackAgro(selvagensAtivos(), alvo, mon, travarAgroPack);
+  }
   mon.ordemAlvo = alvo;
   mon.modo = "agro";
   mon.alvo = alvo;

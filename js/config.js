@@ -567,6 +567,8 @@ export const CHRONO = Object.freeze({
   RAIO_PERSEGUIR: 16,
   /** Raio do volume suave da batalha in-place. */
   RAIO_VOLUME: 11,
+  /** Jogador atrás da linha party (células além do slot aliado, no eixo −face). */
+  TREINADOR_ATRAS: 3.5,
   /** Iframe do treinador após fuga (s). */
   FUGA_IFRAME: 1.4,
   /**
