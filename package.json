@@ -10,6 +10,7 @@
     "mapa:assar": "node js/ui/mapa/assarMapa.mjs",
     "ninhos:assar": "node js/pokemon/assarNinhos.mjs",
     "horizonte:assar": "node js/render/3d/assarHorizonte.mjs",
+    "golpes:textos": "node scripts/gerar-golpe-textos.mjs",
     "deploy": "node scripts/deploy.mjs",
     "deploy:direct": "node scripts/deploy.mjs --direct"
   },

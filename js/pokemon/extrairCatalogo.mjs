@@ -3,11 +3,11 @@
  * Só roda no servidor — o browser recebe JSON.
  */
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { extrairPortoesSelvagem } from "./extrairPortoesSelvagem.mjs";
 
-/** Bumpe quando o schema do JSON muda (ex.: nivelMin). */
-const VERSAO_SCHEMA = 2;
+/** Bumpe quando o schema do JSON muda (ex.: nivelMin / desc de golpe). */
+const VERSAO_SCHEMA = 3;
 
 let cache = null;
 let cacheVersao = 0;
@@ -45,7 +45,12 @@ async function importOpcional(arquivo) {
 async function montar(raizRef) {
   const base = path.join(raizRef, "src", "data", "pokemon");
   const escalaMod = path.join(raizRef, "src", "sprites", "pmd", "pmdScale.js");
-  const [especiesMod, golpesMod, pmdEscala, bodyMod, metaMod, flavorMod, portoes] =
+  const golpeTextoLocal = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "dados",
+    "golpeTextos.js",
+  );
+  const [especiesMod, golpesMod, pmdEscala, bodyMod, metaMod, flavorMod, golpeTextoMod, portoes] =
     await Promise.all([
       import(pathToFileURL(path.join(base, "index.js")).href),
       import(pathToFileURL(path.join(base, "moves.js")).href),
@@ -53,6 +58,7 @@ async function montar(raizRef) {
       importOpcional(path.join(base, "bodyMetrics.js")),
       importOpcional(path.join(base, "speciesDexMeta.js")),
       importOpcional(path.join(base, "speciesFlavor.js")),
+      importOpcional(golpeTextoLocal),
       extrairPortoesSelvagem(raizRef),
     ]);
   const nivelMin = portoes?.nivelMin || {};
@@ -61,6 +67,7 @@ async function montar(raizRef) {
   const corpoDe = bodyMod?.getSpeciesBody || null;
   const metaDe = metaMod?.getSpeciesDexMeta || null;
   const flavorDe = flavorMod?.getSpeciesFlavor || null;
+  const textoGolpeDe = golpeTextoMod?.getGolpeTexto || null;
 
   const especies = {};
   const chaves = Object.keys(especiesMod.SPECIES);
@@ -180,6 +187,16 @@ async function montar(raizRef) {
         id: g.ailment.id,
         chance: Number.isFinite(g.ailment.chance) ? g.ailment.chance : 100,
       };
+    }
+    try {
+      // pt-BR não existe na PokeAPI — en (es como fallback no picker)
+      const desc =
+        textoGolpeDe?.(g.key, "en") ||
+        textoGolpeDe?.(g.key, "es") ||
+        textoGolpeDe?.(g.key);
+      if (desc) item.desc = desc;
+    } catch {
+      /* golpeTextos ausente ou inválido */
     }
     golpes[g.key] = item;
   }

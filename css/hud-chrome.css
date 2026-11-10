@@ -1444,6 +1444,10 @@ body.game-menu-open .hud-utility-dock {
   flex: 1;
   font: 600 12px/1.4 var(--font);
   color: var(--ink-3);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .skill-card__desc--muted {
