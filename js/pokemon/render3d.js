@@ -39,6 +39,10 @@ import {
   criarAtorCartao,
   poseAtorCartao,
 } from "../render/3d/billboard/atorCartao.js";
+import {
+  alfaSpriteEntidade,
+  FADE_VIS_LIMIAR,
+} from "../render/fadeVis.js";
 import { dropsBloco } from "../jogo/blocos.js";
 import { estado as estadoJogo } from "../jogo/estado.js";
 import {
@@ -68,6 +72,8 @@ const CAP_KI = 8;
 /** Poças no mapa de chão por quadro (flare no cartão não entra no teto). */
 const CAP_CHAO_POKEMON = 14;
 const MAX_BRILHO = 4;
+const ALPHA_TEST_CHEIO = 0.12;
+const ALPHA_TEST_FADE = 0.02;
 const _mundo = new THREE.Vector3();
 const _luzCidade = new THREE.Color();
 const _branco = new THREE.Color(1, 1, 1);
@@ -610,10 +616,12 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
     }
     if (espEvo) ator.especie = espBackup;
     const some = ator._sumindo == null ? 1 : Math.max(0, Math.min(1, ator._sumindo));
+    const alfa = alfaSpriteEntidade(ator);
     const { sx, sy } = squashAndar(ator);
     const evoBrilho = brilhoEvolucao(ator);
     const evoEscala = evoBrilho > 0 ? 1 + evoBrilho * 0.12 : 1;
     slot.sprite.visible = true;
+    // Escala só com captura/teleporte — LOD fade é opacity.
     slot.sprite.scale.x *= some * sx * evoEscala;
     slot.sprite.scale.y *= some * sy * evoEscala;
     poseAtorCartao(slot.sprite, {
@@ -627,19 +635,23 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
       pivotX: PIVO_X,
       pivotY: PIVO_Y,
     });
-    if (ator.faccao === "party" && ator._sumicoTeleporte) {
-      slot.sprite.material.opacity = some;
-      slot.silhueta.material.opacity = some;
-    } else if (ator.faccao === "party" && slot.sprite.material.opacity !== 1) {
-      slot.sprite.material.opacity = 1;
-      slot.silhueta.material.opacity = 1;
-    }
+    slot.sprite.material.opacity = alfa;
+    slot.silhueta.material.opacity = alfa;
+    slot.sprite.material.alphaTest =
+      alfa < 0.999 ? ALPHA_TEST_FADE : ALPHA_TEST_CHEIO;
+    slot.silhueta.material.alphaTest =
+      alfa < 0.999 ? ALPHA_TEST_FADE : ALPHA_TEST_CHEIO;
     copiarCartao(slot.silhueta, slot.sprite);
     copiarCartao(slot.veu, slot.sprite);
     const agua = colunaAgua(ator.x, ator.y);
     const pe = alturaPe(ator);
     const imerso = agua.superficie > 0 && pe < agua.superficie - 0.05;
-    slot.veu.visible = imerso && some > 0.04;
+    slot.veu.visible = imerso && alfa > FADE_VIS_LIMIAR;
+    if (slot.veu.visible) {
+      slot.veu.material.opacity = 0.55 * alfa;
+      slot.veu.material.alphaTest =
+        alfa < 0.999 ? ALPHA_TEST_FADE : ALPHA_TEST_CHEIO;
+    }
     if (imerso) {
       const yLamina = yLaminaAgua(agua.superficie) * ALTURA_BLOCO;
       slot.planoVeu.constant = yLamina;
@@ -648,12 +660,12 @@ export function atualizarPokemon3d(yawCam = 0, camera = null, inclinacao = 0, op
       slot.planoSeco.constant = 1e6;
     }
     // Selvagem: sem silhueta atrás de árvore/sólido (só party/jogador).
-    const silhuetaLigada = ator.faccao === "party" && some > 0.04;
+    const silhuetaLigada = ator.faccao === "party" && alfa > FADE_VIS_LIMIAR;
     slot.silhueta.visible = silhuetaLigada;
     if (silhuetaLigada) {
       slot.silhueta.material.color.setHex(COR_SILHUETA_JOGADOR);
     }
-    slot.grupo.visible = some > 0.04;
+    slot.grupo.visible = alfa > FADE_VIS_LIMIAR;
     if (visual && dirMundo != null) visual.dir = dirMundo;
     // Sombra no pé (= origem do grupo), igual ao jogador — sem projetar o centro do sprite.
     slot.sombra.atualizar(

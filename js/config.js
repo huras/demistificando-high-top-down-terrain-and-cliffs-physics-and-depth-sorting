@@ -623,6 +623,10 @@ export const POKEMON = Object.freeze({
   RAIO_MANTER: 56,
   RAIO_MANTER_AGRO: 80,
   RAIO_LARES: 64,
+  /** Faixa (blocos) antes do cull onde o selvagem some/aparece por opacity. */
+  FADE_BANDA: 10,
+  /** Segundos pra rampa de `_fadeVis` 0↔1. */
+  FADE_DURACAO: 0.4,
   /** Distância mínima centro↔centro entre lares (núcleo ~5×5). */
   MIN_ESPACO_LARES: 20,
   /** Cada linha evolutiva não-lendária ganha pelo menos estes ninhos. */

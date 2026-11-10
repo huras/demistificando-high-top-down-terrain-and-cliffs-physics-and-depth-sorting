@@ -21,6 +21,11 @@ import {
 import { faixasSemSelvagem } from "../mundo/cidade/plantaHub.js";
 import { ehCidade } from "../mundo/regiao/grafoKanto.js";
 import { amostraKanto, dentroDoKanto } from "../mundo/regiao/amostraKanto.js";
+import {
+  alvoFadePorDist,
+  fadeVisAtivo,
+  rampaFadeVis,
+} from "../render/fadeVis.js";
 import { laresNoChunk } from "./ninhosAssados.js";
 import { cancelarPath } from "../navegacao/filaPath.js";
 import { criarAtor, reviverAtor } from "./ator.js";
@@ -363,7 +368,33 @@ function acordar(lar) {
   }
 
   lar.atores = criados;
-  for (let i = 0; i < criados.length; i++) ativos.push(criados[i]);
+  for (let i = 0; i < criados.length; i++) {
+    criados[i]._fadeVis = 0;
+    ativos.push(criados[i]);
+  }
+}
+
+function tickFadeLar(lar, px, py, dt, alvoForcado = null) {
+  const lista = lar.atores;
+  if (!lista?.length) return true;
+  const banda = POKEMON.FADE_BANDA;
+  const dur = POKEMON.FADE_DURACAO;
+  const limite =
+    alvoForcado == null ? limiteCull(lar) : null;
+  let todosBaixos = true;
+  for (let i = 0; i < lista.length; i++) {
+    const a = lista[i];
+    if (!a || a.capturado) continue;
+    let alvo = alvoForcado;
+    if (alvo == null) {
+      const dx = a.x - px;
+      const dy = a.y - py;
+      alvo = alvoFadePorDist(Math.hypot(dx, dy), limite, banda);
+    }
+    rampaFadeVis(a, alvo, dt, dur);
+    if (fadeVisAtivo(a)) todosBaixos = false;
+  }
+  return todosBaixos;
 }
 
 function guardar(lar) {
@@ -464,7 +495,7 @@ function limiteCull(lar) {
   return POKEMON.RAIO_SIM;
 }
 
-function sincronizarLares(px, py) {
+function sincronizarLares(px, py, dt) {
   const alcance = POKEMON.RAIO_LARES;
   const alcance2 = alcance * alcance;
   const manter = new Set();
@@ -520,7 +551,14 @@ function sincronizarLares(px, py) {
 
   for (const lar of lares.values()) {
     if (!lar || !larTemAtores(lar)) continue;
-    if (manter.has(lar.id)) continue;
+    if (manter.has(lar.id)) {
+      tickFadeLar(lar, px, py, dt, null);
+      continue;
+    }
+    // Fora do cull: segura o despawn até o fade terminar.
+    if (emCenaMorteLar(lar)) continue;
+    const todosBaixos = tickFadeLar(lar, px, py, dt, 0);
+    if (!todosBaixos) continue;
     guardar(lar);
   }
 }
@@ -725,7 +763,7 @@ function tickGrama() {
 export function atualizarPopulacao(corpo, dt, relogio) {
   agora = relogio;
   if (cooldownGrama > 0) cooldownGrama = Math.max(0, cooldownGrama - dt);
-  sincronizarLares(corpo.x, corpo.y);
+  sincronizarLares(corpo.x, corpo.y, dt);
   tickMoradores();
   for (let i = 0; i < ativos.length; i++) {
     const a = ativos[i];

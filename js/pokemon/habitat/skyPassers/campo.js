@@ -2,6 +2,11 @@
  * Pool limitada de sky passers — cruise aéreo efêmero.
  */
 import { alturaEm } from "../../../mundo/altura.js";
+import {
+  alvoFadePorDist,
+  fadeVisAtivo,
+  rampaFadeVis,
+} from "../../../render/fadeVis.js";
 import { criarAtor } from "../../ator.js";
 import { especie } from "../../dados.js";
 import { nivelEm } from "../../distribuicao/forca.js";
@@ -24,6 +29,10 @@ export const SKY_CFG = Object.freeze({
   altMax: 9,
   cullPad: 36,
   spawnPad: 22,
+  /** Faixa antes do cullPad onde o flyer some por opacity. */
+  fadeBanda: 7,
+  /** Segundos pra rampa de `_fadeVis` 0↔1. */
+  fadeDuracao: 0.4,
   /** Blocos/s — acompanha cliff sem teleporte (≈ VOO_VEL_VERT). */
   chaoSegueVel: 5.2,
 });
@@ -182,6 +191,7 @@ function spawnFlock(px, py, chavesLocais, agora) {
     ator.vx = dirX * speed;
     ator.vy = dirY * speed;
     ator.modo = "passeio";
+    ator._fadeVis = 0;
     slot.active = true;
     slot.ator = ator;
     slot.dirX = dirX;
@@ -218,7 +228,8 @@ export function tickSkyPassers(px, py, dt, agora, ctx = {}) {
   }
 
   const cull = SKY_CFG.cullPad;
-  const cull2 = cull * cull;
+  const banda = SKY_CFG.fadeBanda;
+  const dur = SKY_CFG.fadeDuracao;
   for (let i = 0; i < slots.length; i++) {
     const slot = slots[i];
     if (!slot.active || !slot.ator) continue;
@@ -247,7 +258,11 @@ export function tickSkyPassers(px, py, dt, agora, ctx = {}) {
     }
     const dx = ator.x - px;
     const dy = ator.y - py;
-    if (dx * dx + dy * dy > cull2 && ator.modo !== "agro") liberar(slot);
+    const dist = Math.hypot(dx, dy);
+    const agro = ator.modo === "agro";
+    const alvo = agro ? 1 : alvoFadePorDist(dist, cull, banda);
+    rampaFadeVis(ator, alvo, dt, dur);
+    if (!agro && !fadeVisAtivo(ator) && dist > cull - banda) liberar(slot);
   }
 }
 

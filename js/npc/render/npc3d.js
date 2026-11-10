@@ -20,6 +20,7 @@ import {
 } from "../../render/3d/ceu/luzBillboard.js";
 import { fatorSombraMundo } from "../../render/3d/ceu/mapaNuvem.js";
 import { amostrarLuzCidade } from "../../render/3d/luzes/mapaChao.js";
+import { alfaFadeVis, FADE_VIS_LIMIAR } from "../../render/fadeVis.js";
 import { criarSombraContato3d } from "../../render/3d/sombraContato3d.js";
 import { FOLHA_PLATINUM } from "../catalogo/carregar.js";
 import {
@@ -28,6 +29,9 @@ import {
   precisaEspelharDir,
   srcRowColumn9,
 } from "./peopleAnim.js";
+
+const ALPHA_TEST_CHEIO = 0.12;
+const ALPHA_TEST_FADE = 0.02;
 
 /** Mesma altura de amostra do jogador (`personagem3d`). */
 const LUZ_Y_PEITO = ALTURA_SPRITE_JOGADOR * 0.56;
@@ -131,7 +135,8 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
   const vivos = new Set();
   for (let i = 0; i < npcs.length; i++) {
     const npc = npcs[i];
-    if (!npc?.visivel) continue;
+    const alfa = alfaFadeVis(npc);
+    if (alfa <= FADE_VIS_LIMIAR) continue;
     vivos.add(npc.id);
     let entry = inst.get(npc.id);
     if (!entry) {
@@ -153,7 +158,7 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
       const mat = new THREE.MeshBasicMaterial({
         map: tex,
         transparent: true,
-        alphaTest: 0.12,
+        alphaTest: ALPHA_TEST_CHEIO,
         depthWrite: true,
         side: THREE.FrontSide,
         color: 0xffffff,
@@ -191,6 +196,9 @@ export function sincronizarNpc3d(npcs, yawCam = 0, inclinacao = 0) {
     entry.cartao.rotation.x = inclinacao;
     entry.cartao.rotation.y = yawCam;
     entry.grupo.visible = true;
+    entry.mat.opacity = alfa;
+    entry.mat.alphaTest = alfa < 0.999 ? ALPHA_TEST_FADE : ALPHA_TEST_CHEIO;
+    if (entry.sombra?.grupo) entry.sombra.grupo.visible = alfa > FADE_VIS_LIMIAR;
     entry.sombra.atualizar(
       { x: npc.x, y: npc.y, z: solo, noChao: true },
       elev,

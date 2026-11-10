@@ -272,6 +272,7 @@ export function anexarQuestNpcVisivel(lista, px, py, reachSq) {
   const dy = questNpc.y - py;
   if (dx * dx + dy * dy > reachSq) return lista;
   questNpc.visivel = true;
+  if (questNpc._fadeVis == null) questNpc._fadeVis = 1;
   lista.push(questNpc);
   return lista;
 }

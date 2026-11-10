@@ -3,6 +3,11 @@
  */
 import { estado as estadoJogo } from "../jogo/estado.js";
 import { anexarQuestNpcVisivel } from "../quests/escort.js";
+import {
+  alvoFadePorDist,
+  fadeVisAtivo,
+  rampaFadeVis,
+} from "../render/fadeVis.js";
 import { carregarCatalogoNpc, catalogoPronto } from "./catalogo/carregar.js";
 import { gerarNpcsCasa } from "./casa/gerar.js";
 import {
@@ -27,6 +32,10 @@ const NAV_RAIO_SQ = NAV_RAIO * NAV_RAIO;
 /** Raio (tiles) pra render + colisão dinâmica. */
 export const NPC_RENDER_REACH = 36;
 const NPC_RENDER_REACH_SQ = NPC_RENDER_REACH * NPC_RENDER_REACH;
+/** Faixa antes do reach onde o NPC some/aparece por opacity. */
+export const NPC_FADE_BANDA = 7;
+/** Segundos pra rampa de `_fadeVis` 0↔1. */
+export const NPC_FADE_DURACAO = 0.4;
 /** Simula lot-walk só perto da câmera (AABB pad). */
 const LOT_SIM_PAD = 20;
 
@@ -81,17 +90,31 @@ export function listarCivisCasa() {
   return civisCasa;
 }
 
-function pertoDoPlayer(n, px, py) {
+function distNpc(n, px, py) {
   const dx = n.x - px;
   const dy = n.y - py;
-  return dx * dx + dy * dy <= NPC_RENDER_REACH_SQ;
+  return Math.hypot(dx, dy);
 }
 
-/** NPCs próximos o bastante pra renderizar / colidir. */
+function atualizarFadeNpc(n, px, py, dt) {
+  if (!n) return;
+  const alvo = alvoFadePorDist(
+    distNpc(n, px, py),
+    NPC_RENDER_REACH,
+    NPC_FADE_BANDA,
+  );
+  if (n._fadeVis == null) n._fadeVis = 0;
+  rampaFadeVis(n, alvo, dt, NPC_FADE_DURACAO);
+  n.visivel = fadeVisAtivo(n);
+}
+
+/** NPCs próximos o bastante pra renderizar / colidir (inclui fade-out). */
 export function listarNpcsVisiveis() {
   const interior = estadoJogo.interior;
   if (interior?.sala3d) {
-    if (interior.papel === "casa") return civisCasa.filter((n) => n.visivel !== false);
+    if (interior.papel === "casa") {
+      return civisCasa.filter((n) => n.visivel !== false);
+    }
     return [];
   }
   if (interior) return [];
@@ -101,11 +124,12 @@ export function listarNpcsVisiveis() {
   if (px == null || py == null) return out;
   for (let i = 0; i < civisCidade.length; i++) {
     const n = civisCidade[i];
-    if (n.visivel && pertoDoPlayer(n, px, py)) out.push(n);
+    if (fadeVisAtivo(n)) out.push(n);
   }
   for (let i = 0; i < viajantes.length; i++) {
     const n = viajantes[i];
-    if (n.visivel !== false && pertoDoPlayer(n, px, py)) out.push(n);
+    if (n.visivel === false) continue;
+    if (fadeVisAtivo(n)) out.push(n);
   }
   return anexarQuestNpcVisivel(out, px, py, NPC_RENDER_REACH_SQ);
 }
@@ -169,7 +193,12 @@ export function tickNpc(player, dt, ctx = {}) {
 
   if (interior?.sala3d && interior.papel === "casa") {
     for (let i = 0; i < civisCasa.length; i++) {
-      tickLotWalk(civisCasa[i], player, dt, null);
+      const n = civisCasa[i];
+      if (n._fadeVis == null || n._fadeVis < 1) {
+        n._fadeVis = 1;
+        n.visivel = true;
+      }
+      tickLotWalk(n, player, dt, null);
     }
     return;
   }
@@ -179,7 +208,7 @@ export function tickNpc(player, dt, ctx = {}) {
   npcPerfMeasure("tickCivis", () => {
     for (let i = 0; i < civisCidade.length; i++) {
       const n = civisCidade[i];
-      n.visivel = pertoDoPlayer(n, player.x, player.y);
+      atualizarFadeNpc(n, player.x, player.y, dt);
       // Lot-walk já faz LOD por AABB; só chama quem está perto o bastante.
       if (
         aabb &&
@@ -206,13 +235,16 @@ export function tickNpc(player, dt, ctx = {}) {
       aabb,
       ctx.periodo || "day",
     );
-    if (spawned) viajantes.push(spawned);
+    if (spawned) {
+      spawned._fadeVis = 0;
+      viajantes.push(spawned);
+    }
   }
 
   npcPerfMeasure("tickViajantes", () => {
     for (let i = 0; i < viajantes.length; i++) {
       const t = viajantes[i];
-      t.visivel = pertoDoPlayer(t, player.x, player.y);
+      atualizarFadeNpc(t, player.x, player.y, dt);
       if (t.combatHold || estadoJogo.batalhaTreinador) {
         t.vx = 0;
         t.vy = 0;
