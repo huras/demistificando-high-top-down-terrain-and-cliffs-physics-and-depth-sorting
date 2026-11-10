@@ -3,7 +3,7 @@
  */
 import { obterModo } from "../modoJogo.js";
 import { modoChronoCampo } from "../combate/chrono/modo.js";
-import { abrirSessaoChrono, sessaoChronoAtiva } from "../combate/chrono/sessao.js";
+import { sessaoChronoAtiva } from "../combate/chrono/sessao.js";
 import { projetar2d, projetar3d } from "./hud.js";
 import { ordenarAtaque } from "./party.js";
 import { atoresVisiveis } from "./sistema.js";
@@ -105,10 +105,6 @@ export function tentarAtaqueNoClique(ev, camera2d, cenario) {
   if (!alvo) return false;
   // Em sessão Chrono o turno é pelo HUD; clique não manda ordem realtime.
   if (modoChronoCampo() && sessaoChronoAtiva()) return false;
-  // Chrono fora de sessão: abre a luta no clique (sem spray realtime de golpes).
-  if (modoChronoCampo()) {
-    const ok = abrirSessaoChrono(alvo, { motivo: "clique" });
-    if (ok) return true;
-  }
+  // Chrono: clique só ordena chase; sessão abre no toque (contato) ou hit.
   return ordenarAtaque(alvo);
 }

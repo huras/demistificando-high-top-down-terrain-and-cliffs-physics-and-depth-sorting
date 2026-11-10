@@ -89,6 +89,13 @@ export function aplicarFormacaoMundo(aliados, foes, ox, oy, faceX = 1, faceY = 0
     ator.casaChronoY = wy;
     ator.dirX = dirX;
     ator.dirY = dirY;
+    if (!ator.visual) ator.visual = { anim: "Idle", dir: 0, frame: 0, t: 0, fase: 0 };
+    // Atualiza dir do sheet na hora (tickVisual pode pular no mesmo frame do engate).
+    {
+      const a = Math.atan2(dirY, dirX);
+      let d = Math.round((a - Math.PI / 2) / (Math.PI / 4));
+      ator.visual.dir = ((d % 8) + 8) % 8;
+    }
     ator.vx = 0;
     ator.vy = 0;
     ator.vz = 0;

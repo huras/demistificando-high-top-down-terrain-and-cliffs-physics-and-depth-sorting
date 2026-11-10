@@ -223,7 +223,8 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
 
   const morto = jogadorMorto() || (treinador.morto && treinador.hp <= 0);
   const chrono = modoChronoCampo();
-  const emChrono = sessaoChronoAtiva();
+  // Pode virar true no meio do tick (contato/hit) — reconsultar após engate.
+  let emChrono = sessaoChronoAtiva();
   // Sandbox treinador: sem sim OW. Wild Chrono roda no mundo.
   if (stageSandboxAtivo() || estadoJogo.batalhaTreinador) {
     tickAprenderGolpe();
@@ -263,8 +264,10 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
       atualizarRoamSelvagens(selvagens, mon, treinador, passo);
       if (!emChrono) {
         tickContatoChrono(corpo, selvagens, mon, passo, efeitos);
+        emChrono = sessaoChronoAtiva();
         // Fora de sessão: party ainda persegue / ZXCV no OW; wild só bump→Chrono.
         if (
+          !emChrono &&
           mon &&
           !mon.forcaCarregado &&
           !mon._forcaCanalLock &&
@@ -307,7 +310,7 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     montarGrade(atores.concat(treinador));
     if (!morto) {
       // Chrono OW fora de sessão: sem golpes realtime (evita spray em nest/agro).
-      // Engate = contato corporal ou clique → abrirSessaoChrono.
+      // Engate = contato corporal ou hit → abrirSessaoChrono.
       if (!chrono) {
         for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
         tickGolpesCampo(atores, agora, efeitos);
@@ -322,10 +325,12 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
         const engate = consumirEngateChronoHit();
         if (engate) {
           tentarEngateChronoPorHit(engate.atacante, engate.alvo, efeitos);
+          emChrono = sessaoChronoAtiva();
+          if (emChrono) tickSessaoChrono(passo, agora, efeitos);
         }
       }
     }
-    if (!morto) atualizarCaptura(corpo, passo, agora, efeitos);
+    if (!emChrono && !morto) atualizarCaptura(corpo, passo, agora, efeitos);
   }
 
   tickFxBola(passo);

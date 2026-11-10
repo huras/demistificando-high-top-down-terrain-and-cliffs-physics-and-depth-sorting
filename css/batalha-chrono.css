@@ -1,5 +1,5 @@
 /**
- * Chrono OW — painel de batalha paper candy.
+ * Chrono OW — painel de batalha paper candy (largo + baixo).
  */
 
 .batalha-chrono {
@@ -7,9 +7,9 @@
   --head-cd: var(--purple-d);
   position: fixed;
   left: 50%;
-  bottom: 1.1rem;
+  bottom: 1rem;
   z-index: 40;
-  width: min(560px, calc(100vw - 2rem - 260px));
+  width: min(960px, calc(100vw - 1.5rem));
   max-width: calc(100vw - 1.5rem);
   padding: 0;
   pointer-events: auto;
@@ -29,26 +29,42 @@
   display: none !important;
 }
 
-/* Chrono: some o HUD de campo que compete com o painel de turno */
-body.is-chrono .party-moves-combat,
+/* Chrono: só a HUD de batalha — some o chrome de campo */
+body.is-chrono .hud-item-dock,
+body.is-chrono .hud-utility-dock,
+body.is-chrono .hud-party,
+body.is-chrono .hud-map-dock,
 body.is-chrono #party-combat-detail,
+body.is-chrono .party-moves-combat,
 body.is-chrono #symbiosis-hud,
 body.is-chrono .action-prompt-hud,
 body.is-chrono #jogo-prompt,
-body.is-chrono #jogo-entrar {
+body.is-chrono #jogo-entrar,
+body.is-chrono #quest-objective-hud,
+body.is-chrono #player-status-hud,
+body.is-chrono #party-status-layer,
+body.is-chrono #skill-loadout-hud,
+body.is-chrono #mapa-kanto,
+body.is-chrono .zone-banner,
+body.is-chrono .bag-wheel {
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
 .batalha-chrono__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(200px, 250px) minmax(0, 1fr);
+  grid-template-areas:
+    "cabeca cabeca"
+    "vidas turno";
+  gap: 10px 14px;
   padding: 12px;
   overflow: hidden;
+  align-items: start;
 }
 
 .batalha-chrono__cabeca {
+  grid-area: cabeca;
   margin: -12px -12px 0;
   border-radius: 16px 16px 10px 10px;
 }
@@ -67,14 +83,34 @@ body.is-chrono #jogo-entrar {
   flex: 0 0 auto;
 }
 
+.batalha-chrono .batalha-turno__vidas {
+  grid-area: vidas;
+  align-content: start;
+}
+
 .batalha-chrono__turno {
+  grid-area: turno;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .batalha-chrono__turno[hidden] {
   display: none !important;
+}
+
+.batalha-chrono:has(.batalha-chrono__turno[hidden]) .batalha-chrono__panel {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "cabeca"
+    "vidas";
+}
+
+.batalha-chrono:has(.batalha-chrono__turno[hidden]) .batalha-turno__vidas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .batalha-chrono__turno[data-modo="carregar"] .batalha-turno__golpes,
@@ -82,10 +118,77 @@ body.is-chrono #jogo-entrar {
   display: none !important;
 }
 
-@media (max-width: 900px) {
+/* Uma fileira de 4 — painel mais baixo */
+.batalha-chrono .batalha-turno__golpes {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.batalha-chrono .batalha-turno__golpe {
+  padding: 8px 10px;
+  gap: 6px;
+  border-radius: 14px;
+}
+
+.batalha-chrono .batalha-turno__golpe-art {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+}
+
+.batalha-chrono .batalha-turno__golpe-art img {
+  width: 22px;
+  height: 22px;
+}
+
+.batalha-chrono .batalha-turno__golpe-nome {
+  font-size: 12px;
+}
+
+.batalha-chrono .batalha-turno__golpe-stats {
+  padding-top: 4px;
+}
+
+.batalha-chrono .batalha-turno__golpe-stats dd {
+  font-size: 11px;
+}
+
+.batalha-chrono .batalha-turno__vida {
+  padding: 7px 9px;
+}
+
+@media (max-width: 820px) {
+  .batalha-chrono__panel {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "cabeca"
+      "vidas"
+      "turno";
+  }
+
+  .batalha-chrono .batalha-turno__vidas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .batalha-chrono .batalha-turno__golpes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
   .batalha-chrono {
-    width: calc(100vw - 1.5rem);
-    bottom: 0.75rem;
+    width: calc(100vw - 1rem);
+    bottom: 0.6rem;
+  }
+
+  .batalha-chrono .batalha-turno__vidas {
+    grid-template-columns: 1fr;
+  }
+
+  .batalha-chrono .batalha-turno__golpes {
+    grid-template-columns: 1fr;
   }
 }
 

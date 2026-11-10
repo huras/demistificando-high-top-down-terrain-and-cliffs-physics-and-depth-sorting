@@ -188,6 +188,17 @@ function facingDoEncontro(aliados, foes, ox, oy) {
     const dy = f.y - a.y;
     if (dx * dx + dy * dy > 0.04) return { fx: dx, fy: dy };
   }
+  // No toque os corpos se sobrepõem — usa o rumo de chase já apontado pro alvo.
+  if (a) {
+    const dx = a.dirX || 0;
+    const dy = a.dirY || 0;
+    if (dx * dx + dy * dy > 1e-6) return { fx: dx, fy: dy };
+  }
+  if (f) {
+    const dx = -(f.dirX || 0);
+    const dy = -(f.dirY || 0);
+    if (dx * dx + dy * dy > 1e-6) return { fx: dx, fy: dy };
+  }
   // Fallback: do jogador/party para o ninho.
   if (a) {
     const dx = ox - a.x;
@@ -239,6 +250,14 @@ export function entrarStage(opts) {
   aplicarFormacaoMundo(aliados, foes, origemX, origemY, fx, fy, {
     amostrarChao: inplace,
   });
+  // Garante frame de direção no mesmo instante do park (antes do 1º render).
+  const agoraFace = performance.now() / 1000;
+  for (let i = 0; i < aliados.length; i++) {
+    if (aliados[i]) tickVisual(aliados[i], 0, agoraFace);
+  }
+  for (let i = 0; i < foes.length; i++) {
+    if (foes[i]) tickVisual(foes[i], 0, agoraFace);
+  }
 
   limparCampoCombate(parked);
   limparImpacto();

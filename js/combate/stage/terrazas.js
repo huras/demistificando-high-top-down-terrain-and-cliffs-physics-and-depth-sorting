@@ -3,7 +3,11 @@
  * Camera em +Z olha para −Z (longe = plateau).
  */
 import * as THREE from "three";
-import { BILLBOARD_INCLINACAO } from "../../config.js";
+import { CHRONO } from "../../config.js";
+
+const INCLINACAO_BATALHA = Number.isFinite(CHRONO.BILLBOARD_INCLINACAO)
+  ? CHRONO.BILLBOARD_INCLINACAO
+  : 0;
 import {
   aplicarPivoCartao,
   criarAtorCartao,
@@ -265,7 +269,7 @@ function colocarProp(slot, url, x, y, z, escala, yaw) {
     largura: w,
     altura: h,
     yaw,
-    inclinacao: BILLBOARD_INCLINACAO,
+    inclinacao: INCLINACAO_BATALHA,
     pivotX: 0.5,
     pivotY: 1,
   });
@@ -477,7 +481,7 @@ export function girarPropsTerrazas(yaw) {
       largura: slot.largura,
       altura: slot.altura,
       yaw,
-      inclinacao: BILLBOARD_INCLINACAO,
+      inclinacao: INCLINACAO_BATALHA,
       pivotX: 0.5,
       pivotY: 1,
     });

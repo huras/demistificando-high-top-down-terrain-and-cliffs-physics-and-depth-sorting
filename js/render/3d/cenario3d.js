@@ -1,7 +1,15 @@
 import * as THREE from "three";
 import { atualizarVisualAlvoEscalada } from "../alvoEscalada.js";
 import { usarTiles } from "../atlas.js";
-import { ALTURA_BLOCO, ASA_DELTA_DESCIDA, BILLBOARD_INCLINACAO, CAMERA3D_DIST_MAX, CHUNK_XZ, RAIO_STREAM } from "../../config.js";
+import {
+  ALTURA_BLOCO,
+  ASA_DELTA_DESCIDA,
+  BILLBOARD_INCLINACAO,
+  CAMERA3D_DIST_MAX,
+  CHUNK_XZ,
+  CHRONO,
+  RAIO_STREAM,
+} from "../../config.js";
 import { ALTURA_PRACA } from "../../mundo/regiao/amostraKanto.js";
 import { medidasSala } from "../../mundo/cidade/sala3d.js";
 import { obterRaioStream } from "../../mundo/voxel/storeMundo.js";
@@ -868,8 +876,12 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   ligarLuzSala(interior, corpo);
 
   // Mira e teleporte: sprites em pé (blend→1), como no arco.
+  // Chrono: câmera lateral → cartões eretos (90°), não o tilt −45° do OW.
   const blendBb = Math.max(estado.camera3d.blend ?? 0, estado.camera3d.folgaTeleporte ?? 0);
-  const inclinacao = BILLBOARD_INCLINACAO * (1 - blendBb);
+  const inclinacaoBase = sessaoChronoAtiva()
+    ? (Number.isFinite(CHRONO.BILLBOARD_INCLINACAO) ? CHRONO.BILLBOARD_INCLINACAO : 0)
+    : BILLBOARD_INCLINACAO;
+  const inclinacao = inclinacaoBase * (1 - blendBb);
   estado.edificios?.atualizar?.(mxLod, myLod, yaw, inclinacao);
   estado.edificiosSites?.atualizar?.(mxLod, myLod, dt);
   estado.edificiosBase?.atualizar?.(mxLod, myLod);

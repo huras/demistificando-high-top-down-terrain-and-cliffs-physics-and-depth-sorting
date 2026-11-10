@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ALTURA_BLOCO, BILLBOARD_INCLINACAO, TILE, VEG_MATA_ESCALA } from "../config.js";
+import { ALTURA_BLOCO, CHRONO, TILE, VEG_MATA_ESCALA } from "../config.js";
 import { particulasVivas } from "../pokemon/combate/particulas.js";
 import { impactosVivos, projeteisVivos } from "../pokemon/combate/projeteis.js";
 import { aplicarPose, carregarFolhasGolpe, poseImpacto, poseTiro } from "../pokemon/combate/folhasGolpe.js";
@@ -32,6 +32,9 @@ import {
 } from "../render/3d/billboard/atorCartao.js";
 import { girarPropsTerrazas, terrazasAtivas } from "./stage/terrazas.js";
 
+const INCLINACAO_BATALHA = Number.isFinite(CHRONO.BILLBOARD_INCLINACAO)
+  ? CHRONO.BILLBOARD_INCLINACAO
+  : 0;
 const PX_MUNDO = 1 / TILE;
 const LADO = 256;
 const PE_X = LADO * 0.5;
@@ -447,7 +450,7 @@ function sincronizarCobertura() {
       largura: w,
       altura: h,
       yaw: yawDaVista(),
-      inclinacao: BILLBOARD_INCLINACAO,
+      inclinacao: INCLINACAO_BATALHA,
       pivotX: 0.5,
       pivotY: 1,
     });
@@ -488,7 +491,7 @@ function sincronizarCobertura() {
       largura: w,
       altura: h,
       yaw: yawDaVista(),
-      inclinacao: BILLBOARD_INCLINACAO,
+      inclinacao: INCLINACAO_BATALHA,
       pivotX: 0.5,
       pivotY: 1,
     });
@@ -509,7 +512,7 @@ function girarCartoesArena() {
       largura: u.largura,
       altura: u.altura,
       yaw,
-      inclinacao: BILLBOARD_INCLINACAO,
+      inclinacao: INCLINACAO_BATALHA,
       pivotX: 0.5,
       pivotY: 1,
     });
@@ -526,7 +529,7 @@ function girarCartoesArena() {
       largura: u.largura,
       altura: u.altura,
       yaw,
-      inclinacao: BILLBOARD_INCLINACAO,
+      inclinacao: INCLINACAO_BATALHA,
       pivotX: 0.5,
       pivotY: 1,
     });
@@ -636,7 +639,7 @@ function aplicarMedida(slot, ator) {
     largura: lado,
     altura: lado,
     yaw: yawDaVista(),
-    inclinacao: BILLBOARD_INCLINACAO,
+    inclinacao: INCLINACAO_BATALHA,
     pivotX: PIVO_X,
     pivotY: PIVO_Y,
   });

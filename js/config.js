@@ -590,6 +590,11 @@ export const CHRONO = Object.freeze({
   CAM_SAIDA_LERP: 5.0,
   /** Tempo máximo do retorno à órbita OW (s). */
   CAM_SAIDA_DUR: 0.7,
+  /**
+   * Inclinação dos cartões na luta (rad). 0 = ereto (90° ao chão);
+   * OW usa BILLBOARD_INCLINACAO (−45°) pra câmera top-down.
+   */
+  BILLBOARD_INCLINACAO: 0,
   /** Fade screen-door: cunha câmera → linha party↔foe (billboards inclusos). */
   FADE_ALPHA: 0.28,
   /** Meia-largura na linha de luta (células). Cresce rumo à câmera. */
