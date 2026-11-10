@@ -18,6 +18,7 @@ import {
 import { carregarMoldesProps, criarBolasCuraNaMalha, instanciarProp } from "./propsObj3d.js";
 import { fatorYCasa, fatorYCartao, fatorYProp } from "./escalaVertical.js";
 import { criarFaixaParede } from "./paredeInteriorDual.js";
+import { estado as estadoJogo } from "../../jogo/estado.js";
 
 const FOLHA = "/ref/sprites/interiors/pokecenter-emerald-bg.png";
 const FOLHA_FRENTE = "/ref/sprites/interiors/pokecenter-emerald-fg.png";
@@ -314,10 +315,12 @@ export function montarCentro3d(grupo) {
 
 export function atualizarCentro(px, py) {
   const planta = plantaCentro();
+  // LOD indoor passa outdoorX/Y pro stream da cidade — não use só AABB do bolso.
   const dentro =
-    px >= planta.origemX &&
-    py >= planta.origemY &&
-    px < planta.origemX + planta.cols &&
-    py < planta.origemY + planta.rows;
+    estadoJogo.interior?.papel === "centro" ||
+    (px >= planta.origemX &&
+      py >= planta.origemY &&
+      px < planta.origemX + planta.cols &&
+      py < planta.origemY + planta.rows);
   atualizarBolasCura(bolas, dentro);
 }

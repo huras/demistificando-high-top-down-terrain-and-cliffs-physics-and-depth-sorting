@@ -41,8 +41,8 @@ export const NAV_FOLGA_DISCO = 0.2;
 export const ALTURA_CORPO = 1.7;
 
 /** Corrida (células/s e células/s²). */
-export const VELOCIDADE_MAX = 5.4;
-export const VELOCIDADE_SPRINT = 8.2; // Shift
+export const VELOCIDADE_MAX = 4.4;
+export const VELOCIDADE_SPRINT = 7.6; // Shift
 export const ACELERACAO_CHAO = 32;
 export const ATRITO_CHAO = 26;
 export const ACELERACAO_AR = 16;

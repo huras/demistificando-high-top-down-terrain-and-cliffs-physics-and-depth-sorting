@@ -28,6 +28,7 @@ import {
   recortar,
   facesParedeInterior,
 } from "./cartaoPe.js";
+import { estado as estadoJogo } from "../../jogo/estado.js";
 import {
   carregarMoldesProps,
   criarBolasCuraNaMalha,
@@ -162,11 +163,13 @@ function anexarMaquinasExtras(sala, planta) {
 
 export function atualizarLaboratorio(yaw, inclinacao, px, py) {
   girarCartoes(yaw, inclinacao);
+  // LOD indoor passa outdoorX/Y pro stream da cidade — não use só AABB do bolso.
   const dentro =
-    px >= ORIGEM_LAB_X &&
-    py >= ORIGEM_LAB_Y &&
-    px < ORIGEM_LAB_X + COLS_LAB &&
-    py < ORIGEM_LAB_Y + ROWS_LAB;
+    estadoJogo.interior?.papel === "lab" ||
+    (px >= ORIGEM_LAB_X &&
+      py >= ORIGEM_LAB_Y &&
+      px < ORIGEM_LAB_X + COLS_LAB &&
+      py < ORIGEM_LAB_Y + ROWS_LAB);
   atualizarBolasCura(bolasCura, dentro);
 }
 
