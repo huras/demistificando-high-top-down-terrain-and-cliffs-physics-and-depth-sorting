@@ -31,6 +31,7 @@ import { tickStatus } from "../../pokemon/combate/status.js";
 import { tickParticulas } from "../../pokemon/combate/particulas.js";
 import { tickFx } from "../../pokemon/combate/fx/index.js";
 import { tickPassivo } from "../../pokemon/ator.js";
+import { integrarPulo } from "../../pokemon/combate/pulo.js";
 import { tickVisual } from "../../pokemon/sprites.js";
 import { montarGrade } from "../../pokemon/grade.js";
 import {
@@ -367,6 +368,7 @@ export function tickStage(dt, agora, efeitos) {
   for (let i = 0; i < combatentes.length; i++) {
     const a = combatentes[i];
     tickPassivo(a, dt, agora);
+    integrarPulo(a, dt);
     tickStatus(a, agora, efx, "turnos");
     tickDesmaio(a, agora);
     tickVisual(a, dt, agora);

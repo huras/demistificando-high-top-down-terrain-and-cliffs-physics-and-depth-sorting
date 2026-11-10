@@ -49,7 +49,8 @@ import {
 } from "./aprenderGolpeCinema.js";
 import { modoChronoCampo } from "../combate/chrono/modo.js";
 import { tickContatoChrono } from "../combate/chrono/contato.js";
-import { tentarEngateChronoPorTiro } from "../combate/chrono/tiro.js";
+import { consumirEngateChronoHit } from "../combate/chrono/engateFila.js";
+import { tentarEngateChronoPorHit } from "../combate/chrono/tiro.js";
 import {
   ligarHooksChrono,
   sessaoChronoAtiva,
@@ -182,10 +183,10 @@ export function tentarAcertoFlecha(x, y, zAltura, forca = 1) {
   if (!melhor) return false;
   const t = Math.min(1, Math.max(0, forca));
   const poder = 28 + Math.round(36 * t);
-  const hpAntes = melhor.hp;
   const ok = aplicarDanoLivre(treinador, melhor, poder, "normal", "physical", agora, efeitos);
-  if (ok && melhor.hp > 0 && melhor.hp < hpAntes) {
-    tentarEngateChronoPorTiro(treinador, melhor, efeitos);
+  if (ok) {
+    const engate = consumirEngateChronoHit();
+    if (engate) tentarEngateChronoPorHit(engate.atacante, engate.alvo, efeitos);
   }
   return ok;
 }
@@ -294,16 +295,17 @@ export function tickPokemon(corpo, dt, perfilSeguidor) {
     for (let i = 0; i < atores.length; i++) tickDesmaio(atores[i], agora);
     montarGrade(atores.concat(treinador));
     if (!morto) {
-      // Chrono OW: party ZXCV + wilds em chase podem atirar; hit ranged abre sessão.
+      // Chrono OW: golpes realtime até o 1º hit — aí abre sessão Chrono.
       for (let i = 0; i < atores.length; i++) tickConjuracao(atores[i], passo, agora, efeitos);
       tickGolpesCampo(atores, agora, efeitos);
       atualizarProjeteis(passo, atores.concat(treinador), (p, alvo) => {
-        const hpAntes = alvo?.hp;
         impactoProjetil(p, alvo, agora, efeitos);
-        if (alvo && hpAntes != null && alvo.hp < hpAntes) {
-          tentarEngateChronoPorTiro(p?.dono, alvo, efeitos);
-        }
       });
+      // Depois do loop: limparCampo no engate não corrompe projéteis/golpes.
+      const engate = consumirEngateChronoHit();
+      if (engate) {
+        tentarEngateChronoPorHit(engate.atacante, engate.alvo, efeitos);
+      }
     }
     if (!morto) atualizarCaptura(corpo, passo, agora, efeitos);
   }

@@ -41,6 +41,14 @@ export function golpe(chave) {
   return golpes?.[chave] || null;
 }
 
+export function listarGolpes() {
+  if (!golpes) return [];
+  const chaves = Object.keys(golpes);
+  const lista = [];
+  for (let i = 0; i < chaves.length; i++) lista.push(golpes[chaves[i]]);
+  return lista;
+}
+
 export function dropsDaEspecie(chave) {
   return {
     berries: drops.berries?.[chave] || null,

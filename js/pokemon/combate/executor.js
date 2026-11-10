@@ -40,6 +40,8 @@ import { marcarEstagioAte } from "./estagios.js";
 import { gastarPp, podeGastarPp } from "../pp.js";
 import { beginMeleeApproach, isCombatMotionLocked } from "./meleeApproach.js";
 import { marcarAtacante, marcarTiroRanged } from "../campo/retaliacao.js";
+import { modoChronoCampo } from "../../combate/chrono/modo.js";
+import { filarEngateChronoHit } from "../../combate/chrono/engateFila.js";
 
 const CURA = /recover|synthesis|roost|softboiled|milkdrink|slackoff|heal|moonlight|rest/i;
 
@@ -314,6 +316,10 @@ function aplicarDano(atacante, alvo, poder, tipo, categoria, agora, efeitos, ace
     marcarAtacante(alvo, atacante);
   } else if (alvo.faccao === "treinador") {
     anotarHitTreinador(alvo, atacante, def, dano);
+  }
+  // Chrono OW: 1º hit (contato ou ranged) enfileira engate — flush no tick do campo.
+  if (modoChronoCampo() && !atacante?.resultadoTurno) {
+    filarEngateChronoHit(atacante, alvo);
   }
   if (alvo.hp > 0) return;
   derrubar(alvo, atacante, agora, efeitos);

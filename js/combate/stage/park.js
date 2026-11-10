@@ -20,8 +20,14 @@ export function estacionarAtor(ator, opts = {}) {
   ator._stagePrevCombatHold = !!ator.combatHold;
   ator.vx = 0;
   ator.vy = 0;
+  ator.vz = 0;
   ator.andando = false;
   ator.correndo = false;
+  ator.pulando = false;
+  ator.puloVisual = false;
+  ator.puloAlt = 0;
+  ator.hopLift = 0;
+  ator.noChao = true;
   ator.combatHold = true;
   if (ator.status !== "sleep") {
     ator.sonoNatural = false;

@@ -91,7 +91,13 @@ export function aplicarFormacaoMundo(aliados, foes, ox, oy, faceX = 1, faceY = 0
     ator.dirY = dirY;
     ator.vx = 0;
     ator.vy = 0;
+    ator.vz = 0;
     ator.andando = false;
+    ator.pulando = false;
+    ator.puloVisual = false;
+    ator.puloAlt = 0;
+    ator.hopLift = 0;
+    ator.noChao = true;
   }
 
   const na = Math.max(1, a.length);

@@ -569,6 +569,33 @@ export const CHRONO = Object.freeze({
   RAIO_VOLUME: 11,
   /** Iframe do treinador após fuga (s). */
   FUGA_IFRAME: 1.4,
+  /**
+   * Câmera lateral travada (party esquerda / foe direita).
+   * Distância no eixo perpendicular à linha de enfrentamento.
+   */
+  CAM_LADO: 11.8,
+  CAM_ALTURA: 5.35,
+  CAM_OLHAR_Y: 1.15,
+  /** Empurra a câmera conforme a separação party↔foe. */
+  CAM_LADO_POR_SEP: 0.42,
+  /** Zoom relativo por beat (1 = framing base). */
+  CAM_ZOOM_IMPACTO: 0.78,
+  CAM_ZOOM_TIRO: 0.86,
+  CAM_ZOOM_FOCO: 0.9,
+  /** Blend de giro/posição na entrada e na saída da luta (1/s). */
+  CAM_ENTRADA_LERP: 4.2,
+  CAM_ENTRADA_DUR: 0.55,
+  CAM_SAIDA_LERP: 5.0,
+  /** Tempo máximo do retorno à órbita OW (s). */
+  CAM_SAIDA_DUR: 0.7,
+  /** Fade screen-door: cunha câmera → linha party↔foe (billboards inclusos). */
+  FADE_ALPHA: 0.28,
+  /** Meia-largura na linha de luta (células). Cresce rumo à câmera. */
+  FADE_MEIA_LARGURA: 3.4,
+  /** Folga além das pontas party/foe ao longo da linha. */
+  FADE_FOLGA_LINHA: 1.4,
+  /** Chão baixo sob os pés fica opaco; folhas/troncos acima somem. */
+  FADE_DELTA_Y: 0.4,
 });
 
 /**

@@ -3,6 +3,7 @@ import { aplicarLuzBillboard, offsetCasterSol, yawCartaoSol } from "./ceu/luzBil
 import { marcarReflexo, soltarReflexo } from "./ceu/reflexoPoca.js";
 import { aplicarSombraNuvem } from "./ceu/sombraNuvem.js";
 import { marcarSombraSuja } from "./ceu/sombraEstavel.js";
+import { aplicarFadeParedeInterior } from "./fadeParedeInterior3d.js";
 import { aplicarVentoVeg } from "./vegetacao/ventoVeg.js";
 import {
   ALTURA_BLOCO,
@@ -363,6 +364,7 @@ export function criarVegetacaoBillboard3d() {
       side: THREE.FrontSide,
     })), { clareia: true });
     if (perfilVento) material = aplicarVentoVeg(material, perfilVento);
+    else aplicarFadeParedeInterior(material);
     if (grama) {
       material.stencilWrite = true;
       material.stencilRef = STENCIL_GRAMA;

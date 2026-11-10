@@ -3,13 +3,15 @@
  */
 
 import { pokemonDeployado, pokemonNoCampo } from "../../pokemon/party.js";
-import { recargaDoGolpe } from "../../pokemon/ator.js";
+import { equiparGolpes, recargaDoGolpe } from "../../pokemon/ator.js";
+import { listarGolpes } from "../../pokemon/dados.js";
 import { COR_TIPO } from "../../pokemon/tipos.js";
 import { definirEscudoTipo, garantirAtlasTipo } from "../tipoEscudo.js";
 import { preencherIconeGolpe } from "../iconesGolpe.js";
 import { estado, avisar } from "../estado.js";
 
 const TECLAS = Object.freeze(["Z", "X", "C", "V"]);
+const SLOTS = 4;
 
 const FORMA = Object.freeze({
   contact: "Contato",
@@ -28,6 +30,7 @@ let root = null;
 let aberto = false;
 let assinatura = "";
 let onEsc = null;
+let optionsHtmlCache = "";
 
 function escHtml(valor) {
   return String(valor ?? "").replace(/[&<>"']/g, (c) => {
@@ -72,15 +75,51 @@ function fmtAlcance(def) {
   return a.toFixed(a >= 10 ? 0 : 1);
 }
 
+function htmlOptionsGolpes() {
+  if (optionsHtmlCache) return optionsHtmlCache;
+  const lista = listarGolpes().slice().sort((a, b) => {
+    const na = String(a?.nome || a?.name || a?.key || "");
+    const nb = String(b?.nome || b?.name || b?.key || "");
+    return na.localeCompare(nb, "pt-BR");
+  });
+  let html = `<option value="">— vazio —</option>`;
+  for (let i = 0; i < lista.length; i++) {
+    const def = lista[i];
+    if (!def?.key) continue;
+    const nome = def.nome || def.name || def.key;
+    html += `<option value="${escHtml(def.key)}">${escHtml(nome)} (${escHtml(def.key)})</option>`;
+  }
+  if (lista.length) optionsHtmlCache = html;
+  return html;
+}
+
+function htmlDevSelect(slot, chaveAtual) {
+  const options = htmlOptionsGolpes();
+  const chave = chaveAtual || "";
+  const marcado = chave
+    ? options.replace(
+        `value="${escHtml(chave)}"`,
+        `value="${escHtml(chave)}" selected`,
+      )
+    : options;
+  return `<label class="skill-card__dev">
+    <span>DEV</span>
+    <select data-skill-dev-slot="${slot}">${marcado}</select>
+  </label>`;
+}
+
 function htmlCard(slot, g, ator) {
   const tecla = TECLAS[slot] || String(slot + 1);
   const def = g?.def || g;
+  const chaveAtual = def?.key || g?.chave || "";
+  const selectDev = htmlDevSelect(slot, chaveAtual);
   if (!def) {
     return `<article class="skill-card is-empty" data-move-slot="${slot}">
       <div class="skill-card__top">
         <span class="skill-card__badge">${tecla}</span>
       </div>
       <p class="skill-card__empty">Slot vazio</p>
+      ${selectDev}
     </article>`;
   }
 
@@ -112,6 +151,7 @@ function htmlCard(slot, g, ator) {
       <div><dt>Cooldown</dt><dd>${escHtml(cd)}</dd></div>
       <div><dt>Reach</dt><dd>${escHtml(alcance)}</dd></div>
     </dl>
+    ${selectDev}
   </article>`;
 }
 
@@ -150,6 +190,12 @@ export function montarSkillLoadout() {
     }
   });
 
+  root.addEventListener("change", (ev) => {
+    const select = ev.target.closest("[data-skill-dev-slot]");
+    if (!select) return;
+    aplicarDevSlot(select);
+  });
+
   return {
     open: abrir,
     close: fechar,
@@ -157,6 +203,23 @@ export function montarSkillLoadout() {
     isOpen: () => aberto,
     sync: pintar,
   };
+}
+
+function aplicarDevSlot(select) {
+  const ator = monAtivo();
+  if (!ator || ator.capturado) return;
+  const slot = Number(select.dataset.skillDevSlot);
+  if (!Number.isFinite(slot) || slot < 0 || slot >= SLOTS) return;
+
+  const chaves = [];
+  for (let i = 0; i < SLOTS; i++) {
+    const atual = ator.golpes?.[i];
+    chaves[i] = atual?.chave || atual?.def?.key || "";
+  }
+  chaves[slot] = select.value || "";
+  equiparGolpes(ator, chaves.filter(Boolean));
+  assinatura = "";
+  pintar();
 }
 
 function ligarEsc() {
@@ -250,6 +313,13 @@ function pintar() {
         const temArt = preencherIconeGolpe(art, key, moveTipo);
         if (art) art.hidden = !temArt;
         if (typeHost) definirEscudoTipo(typeHost, moveTipo, 28);
+      }
+      const selects = grid.querySelectorAll("[data-skill-dev-slot]");
+      for (let i = 0; i < selects.length; i++) {
+        const select = selects[i];
+        const slot = Number(select.dataset.skillDevSlot);
+        const atual = golpes[slot];
+        select.value = atual?.chave || atual?.def?.key || "";
       }
     }
   }

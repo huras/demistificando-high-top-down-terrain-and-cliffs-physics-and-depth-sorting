@@ -115,7 +115,10 @@ function atualizarImpactos(dt) {
 
 export function atualizarProjeteis(dt, candidatos, aoAtingir) {
   for (let i = vivos.length - 1; i >= 0; i--) {
+    // limparProjeteis() no meio do hit (ex.: engate Chrono) zera o array.
+    if (i >= vivos.length) break;
     const p = vivos[i];
+    if (!p) continue;
     p.antX = p.x;
     p.antY = p.y;
     p.antZ = p.z;

@@ -6,7 +6,7 @@ import { invadeDisco } from "../fisica/obstaculos.js";
 import { bloqueioNoTrecho } from "./arenas.js";
 import { dispararGolpeTurno } from "../pokemon/combate/executor.js";
 import { projeteisVivos } from "../pokemon/combate/projeteis.js";
-import { emAvanco, velocidadeDe } from "../pokemon/ator.js";
+import { emAvanco, emRecuo, velocidadeDe } from "../pokemon/ator.js";
 import { processarInicioTurno, residualTurno } from "../pokemon/combate/status.js";
 import { RAIO_PROJETIL } from "../pokemon/ia/constantes.js";
 import { limitarArena, paradaDe } from "../pokemon/ia/espaco.js";
@@ -284,7 +284,8 @@ export function tickTurnos(dt, agora, efeitos) {
     if (ocupado(ator)) return;
     if (!disparou) return;
     ator.resultadoTurno = null;
-    if (corpoDoGolpe(slot?.def) && temCasa(ator)) {
+    // Atacante (contato) e quem levou hit/knockback voltam à formação antes do próximo turno.
+    if (deveVoltarFormacao()) {
       fase = "voltar";
       return;
     }
@@ -446,11 +447,13 @@ function abrirTurno() {
       continue;
     }
     if (ehAliado(atual)) {
-      if (veioDoTeatro) {
+      // Chrono OW não tem interlúdio de foco (arena chama concluirFoco via ritmo).
+      if (veioDoTeatro && !modoGrupo) {
         veioDoTeatro = false;
         fase = "foco";
         return;
       }
+      veioDoTeatro = false;
       fase = "escolha";
       versaoEscolha += 1;
       return;
@@ -525,6 +528,61 @@ function temCasa(quem) {
   return quem && Number.isFinite(quem.casaChronoX) && Number.isFinite(quem.casaChronoY);
 }
 
+function listaCombate() {
+  if (modoGrupo) return aliados.concat(foes);
+  const out = [];
+  if (esquerda) out.push(esquerda);
+  if (direita && direita !== esquerda) out.push(direita);
+  return out;
+}
+
+function foraDeCasa(quem, folga = 0.12) {
+  if (!temCasa(quem)) return false;
+  const dx = quem.casaChronoX - quem.x;
+  const dy = quem.casaChronoY - quem.y;
+  return dx * dx + dy * dy > folga * folga;
+}
+
+function deveVoltarFormacao() {
+  if (corpoDoGolpe(slot?.def) && temCasa(ator)) return true;
+  const lista = listaCombate();
+  for (let i = 0; i < lista.length; i++) {
+    const q = lista[i];
+    if (!vivo(q) || !temCasa(q)) continue;
+    if (emRecuo(q) || foraDeCasa(q)) return true;
+  }
+  return false;
+}
+
+/** Um mon caminha (ou teleporta) de volta ao slot da formação. */
+function passoVoltarUm(quem, dt) {
+  if (!quem || !temCasa(quem)) return true;
+  if (emRecuo(quem)) return false;
+  const tx = quem.casaChronoX;
+  const ty = quem.casaChronoY;
+  const dx = tx - quem.x;
+  const dy = ty - quem.y;
+  const d = Math.hypot(dx, dy);
+  if (d <= 0.12) {
+    quem.x = tx;
+    quem.y = ty;
+    pousarNoChao(quem);
+    pararPasso(quem);
+    return true;
+  }
+  const casa = { x: tx, y: ty, elevacao: quem.elevacao ?? quem.z ?? 0 };
+  if (modoGrupo && trechoComProp(quem, casa, 0.1)) {
+    quem.x = tx;
+    quem.y = ty;
+    pousarNoChao(quem);
+    pararPasso(quem);
+    return true;
+  }
+  const len = d || 1;
+  andar(quem, dx / len, dy / len, dt, d, 1.05);
+  return false;
+}
+
 function raioAtor(quem) {
   return quem?.raioCorpo > 0 ? quem.raioCorpo : RAIO_POKEMON;
 }
@@ -597,30 +655,14 @@ function puxarParaContato(quem, para, parada) {
 }
 
 function passoVoltar(dt) {
-  if (!ator || !temCasa(ator)) return true;
-  const tx = ator.casaChronoX;
-  const ty = ator.casaChronoY;
-  const dx = tx - ator.x;
-  const dy = ty - ator.y;
-  const d = Math.hypot(dx, dy);
-  if (d <= 0.12) {
-    ator.x = tx;
-    ator.y = ty;
-    pousarNoChao(ator);
-    pararPasso(ator);
-    return true;
+  const lista = listaCombate();
+  let pronto = true;
+  for (let i = 0; i < lista.length; i++) {
+    const q = lista[i];
+    if (!vivo(q) || !temCasa(q)) continue;
+    if (!passoVoltarUm(q, dt)) pronto = false;
   }
-  const casa = { x: tx, y: ty, elevacao: ator.elevacao ?? ator.z ?? 0 };
-  // Props no caminho de volta: warp pra casa (não atravessa o ninho de pedra).
-  if (modoGrupo && trechoComProp(ator, casa, 0.1)) {
-    ator.x = tx;
-    ator.y = ty;
-    pousarNoChao(ator);
-    pararPasso(ator);
-    return true;
-  }
-  andar(ator, dx / d, dy / d, dt, d, 1.05);
-  return false;
+  return pronto;
 }
 
 function passoAproximar(dt) {

@@ -9,6 +9,7 @@
 import * as THREE from "three";
 import { VEG_VENTO_ARVORE, VEG_VENTO_CLUMP, VEG_VENTO_MATA } from "../../../config.js";
 import { obterVentoMundo } from "../../../clima/amostra.js";
+import { aplicarFadeParedeInterior } from "../fadeParedeInterior3d.js";
 
 export const uniformsVentoVeg = {
   uVentoVeg: { value: new THREE.Vector2() },
@@ -100,6 +101,8 @@ export function aplicarVentoVeg(material, perfil = "arvore") {
     const base = typeof chaveAnterior === "function" ? chaveAnterior.call(this) : "";
     return `${base}|vento-veg-v2|${chavePerfil}`;
   };
+  // Dither de oclusão (Chrono / interior): cartão na frente da câmera some em partes.
+  aplicarFadeParedeInterior(material);
   return material;
 }
 

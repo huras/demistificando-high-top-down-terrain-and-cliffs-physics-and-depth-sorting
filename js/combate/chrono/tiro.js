@@ -1,6 +1,6 @@
 /**
- * Engate Chrono por tiro ranged no overworld (fora de sessão).
- * Wild acerta player/party → luta. Player/party acerta wild vivo → luta.
+ * Engate Chrono por hit no overworld (fora de sessão).
+ * Qualquer dano que conecta (contato / ranged / flecha) abre a luta.
  */
 import { modoChronoCampo } from "./modo.js";
 import {
@@ -15,27 +15,31 @@ import {
  * @param {object|null} [efeitos]
  * @returns {boolean}
  */
-export function tentarEngateChronoPorTiro(atacante, alvo, efeitos = null) {
+export function tentarEngateChronoPorHit(atacante, alvo, efeitos = null) {
   if (!modoChronoCampo() || sessaoChronoAtiva()) return false;
-  if (!atacante || !alvo || alvo.morto || (alvo.hp != null && alvo.hp <= 0)) return false;
+  if (!atacante || !alvo) return false;
 
   const facAtk = atacante.faccao;
   const facAlvo = alvo.faccao;
+  const alvoVivo = !alvo.morto && (alvo.hp == null || alvo.hp > 0);
 
-  // Tiro selvagem no treinador ou no party → Chrono com o wild.
+  // Selvagem acertou treinador/party → Chrono (manda o 1º saudável se precisar).
   if (facAtk === "selvagem" && (facAlvo === "treinador" || facAlvo === "party")) {
     if (!garantirPartyChrono()) return false;
-    return abrirSessaoChrono(atacante, { motivo: "tiro", efeitos });
+    return abrirSessaoChrono(atacante, { motivo: "hit", efeitos });
   }
 
-  // Tiro do player/party num wild que sobreviveu → Chrono.
-  if (
-    facAlvo === "selvagem" &&
-    (facAtk === "treinador" || facAtk === "party")
-  ) {
+  // Player/party acertou wild que sobreviveu → Chrono.
+  if (facAlvo === "selvagem" && (facAtk === "treinador" || facAtk === "party")) {
+    if (!alvoVivo) return false;
     if (!garantirPartyChrono()) return false;
-    return abrirSessaoChrono(alvo, { motivo: "tiro", efeitos });
+    return abrirSessaoChrono(alvo, { motivo: "hit", efeitos });
   }
 
   return false;
+}
+
+/** @deprecated use tentarEngateChronoPorHit */
+export function tentarEngateChronoPorTiro(atacante, alvo, efeitos = null) {
+  return tentarEngateChronoPorHit(atacante, alvo, efeitos);
 }

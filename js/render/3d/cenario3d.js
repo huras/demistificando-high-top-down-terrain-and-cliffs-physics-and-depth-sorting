@@ -24,7 +24,7 @@ import {
 } from "./camera3d.js";
 import { aplicarCameraEvento } from "../../historia/cameraEvento.js";
 import { aplicarCameraChrono } from "../../combate/chrono/camera.js";
-import { sessaoChronoAtiva } from "../../combate/chrono/sessao.js";
+import { obterSessaoChrono, sessaoChronoAtiva } from "../../combate/chrono/sessao.js";
 import { criarFlechas3d } from "./flechas3d.js";
 import { criarMiraArcoBola3d } from "./miraArcoBola3d.js";
 import { criarRigCamera3d } from "./rigCamera3d.js";
@@ -99,10 +99,15 @@ import { atoresVisiveis } from "../../pokemon/sistema.js";
 import { marcarCorposCrista } from "./texturasAgua3d.js";
 import { estado as estadoJogo } from "../../jogo/estado.js";
 import { ligarNpc3d, listarNpcsVisiveis, sincronizarNpc3d } from "../../npc/index.js";
-import { tickFadeParedeInterior } from "./fadeParedeInterior3d.js";
+import {
+  sincronizarFadeParedeNaCena,
+  tickFadeParedeInterior,
+} from "./fadeParedeInterior3d.js";
 
 let estado = null;
 let domoNoVazio = false;
+/** Evita traverse da cena todo frame — só ao entrar em Chrono / bump de versão. */
+let fadeChronoSyncFeito = false;
 
 /** Nevoeiro calibrado no raio 5 (disco de ~80 blocos). */
 const NEVOA_NEAR = 36;
@@ -804,8 +809,9 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   estado.terrenoSuave?.tick(mxLod, myLod, estado.terreno.chunksExibidos?.());
   estado.terrenoHorizonte?.tick(mxLod, myLod);
   estado.cidadeHorizonte?.tick?.(mxLod, myLod);
-  if (sessaoChronoAtiva() && aplicarCameraChrono(estado.camera3d, dt)) {
-    /* câmera de turno Chrono no OW */
+  const sessChrono = obterSessaoChrono();
+  if (aplicarCameraChrono(estado.camera3d, dt, sessChrono, corpo)) {
+    /* câmera lateral Chrono (entrada / luta / saída suave) */
   } else if (aplicarCameraEvento(estado.camera3d, corpo, dt)) {
     /* câmera de história / opening */
   } else {
@@ -921,6 +927,14 @@ export function atualizarEDesenhar3d(corpo, dt, atlas, agente = null) {
   // Montaria: redesenha o player depois do mon (pés no assento por cima).
   if (corpo?.rideAtivo) {
     estado.personagem.atualizar(corpo, camRender, yaw, inclinacao);
+  }
+  if (sessaoChronoAtiva()) {
+    if (!fadeChronoSyncFeito && estado.scene) {
+      sincronizarFadeParedeNaCena(estado.scene);
+      fadeChronoSyncFeito = true;
+    }
+  } else {
+    fadeChronoSyncFeito = false;
   }
   tickFadeParedeInterior(corpo, camRender);
   atualizarDebugCorpos();
